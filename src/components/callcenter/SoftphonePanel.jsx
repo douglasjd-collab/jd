@@ -3,10 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Phone, PhoneOff, PhoneIncoming, PhoneMissed,
-  Mic, MicOff, Wifi, WifiOff, Loader2, RefreshCw, Radio
+  Phone, PhoneOff, PhoneIncoming,
+  Mic, MicOff, Wifi, WifiOff, Loader2, RefreshCw, Radio, AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ChamadaEntrantePopup from './ChamadaEntrantePopup';
 
 const STATUS_CFG = {
   desconectado: { label: 'Desconectado',  color: 'bg-slate-100 text-slate-500',   icon: WifiOff,  dot: 'bg-slate-400' },
@@ -62,6 +63,14 @@ export default function SoftphonePanel({ softphone, numbersip }) {
   const StatusIcon = cfg.icon;
 
   return (
+    <>
+    {/* Popup global de chamada entrante */}
+    <ChamadaEntrantePopup
+      chamadaEntrante={chamadaEntrante}
+      onAtender={atenderChamada}
+      onRejeitar={rejeitarChamada}
+    />
+
     <div className="bg-white border rounded-2xl shadow-sm overflow-hidden flex flex-col h-full">
 
       {/* Header */}
@@ -79,23 +88,14 @@ export default function SoftphonePanel({ softphone, numbersip }) {
 
       <div className="p-4 space-y-3 flex-1">
 
-        {/* ── CHAMADA ENTRANTE ── */}
+        {/* Chamada entrante: tratada pelo popup global ChamadaEntrantePopup */}
         {chamadaEntrante && (
-          <div className="border-2 border-blue-400 bg-blue-50 rounded-xl p-4 text-center space-y-3">
-            <div className="w-14 h-14 bg-blue-500 rounded-full mx-auto flex items-center justify-center animate-bounce">
-              <PhoneIncoming className="w-7 h-7 text-white" />
-            </div>
-            <div>
-              <p className="text-xs text-blue-500 font-semibold uppercase tracking-wide">Chamada Recebida</p>
-              <p className="font-bold text-blue-900 text-xl">{chamadaEntrante.origem}</p>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={atenderChamada} className="flex-1 bg-green-600 hover:bg-green-700 text-white h-11">
-                <Phone className="w-4 h-4 mr-1" /> Atender
-              </Button>
-              <Button onClick={rejeitarChamada} className="flex-1 bg-red-600 hover:bg-red-700 text-white h-11">
-                <PhoneMissed className="w-4 h-4 mr-1" /> Rejeitar
-              </Button>
+          <div className="border-2 border-green-400 bg-green-50 rounded-xl p-3 text-center">
+            <div className="flex items-center gap-2 justify-center text-green-700">
+              <PhoneIncoming className="w-5 h-5 animate-bounce" />
+              <span className="font-semibold text-sm">
+                {chamadaEntrante.clienteNome || chamadaEntrante.origem} — ligando...
+              </span>
             </div>
           </div>
         )}
@@ -110,6 +110,9 @@ export default function SoftphonePanel({ softphone, numbersip }) {
               <Phone className="w-8 h-8" />
             </div>
             <div>
+              {chamadaAtiva.clienteNome && (
+                <p className="text-green-300 text-sm font-semibold">{chamadaAtiva.clienteNome}</p>
+              )}
               <p className="font-bold text-xl tracking-wide">{chamadaAtiva.destino}</p>
               <p className="text-slate-400 text-xs mt-0.5">
                 {chamadaAtiva.direcao === 'saida' ? '↗ Saída' : '↙ Entrada'}
@@ -206,10 +209,19 @@ export default function SoftphonePanel({ softphone, numbersip }) {
         )}
       </div>
 
+      {/* Alerta offline */}
+      {(sipStatus === 'erro' || sipStatus === 'desconectado') && (
+        <div className="px-4 py-2 bg-amber-50 border-t border-amber-200 flex items-center gap-2 text-xs text-amber-800">
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          <span>Webphone offline. Chamadas recebidas não chegarão no CRM.</span>
+        </div>
+      )}
+
       {/* Modo info */}
       <div className="px-4 py-2 border-t bg-slate-50 text-xs text-slate-400 text-center">
         Webphone WebRTC — INVITE SIP direto • wss://app.nvoip.com.br:7443
       </div>
     </div>
+    </>
   );
 }
