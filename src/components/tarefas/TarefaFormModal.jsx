@@ -38,6 +38,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
   const [nomeInicialCliente, setNomeInicialCliente] = useState('');
   const [subsetoresFiltrados, setSubsetoresFiltrados] = useState([]);
   const [loadingSetores, setLoadingSetores] = useState(false);
+  const [clientesLocais, setClientesLocais] = useState([]); // clientes recém criados ainda não na prop
 
   useEffect(() => {
     if (form.setor_id) {
@@ -129,7 +130,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
       return { id, nome: c?.nome || c?.full_name || '', foto: c?.foto_perfil || '' };
     });
 
-    const cliente = clientes.find(c => c.id === form.cliente_id);
+    const cliente = todosClientes.find(c => c.id === form.cliente_id);
     const principalColab = colaboradores.find(c => c.id === (form.responsavel_principal_id || responsaveisFinais[0]));
 
     const setorSelecionado = setoresList.find(s => s.id === form.setor_id);
@@ -157,7 +158,8 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
   };
 
   const favoriteTemplates = templates?.filter(t => t.favorito) || [];
-  const clientesFiltrados = clientes.filter(c => {
+  const todosClientes = [...clientes, ...clientesLocais.filter(cl => !clientes.find(c => c.id === cl.id))];
+  const clientesFiltrados = todosClientes.filter(c => {
     if (!clienteSearch) return true;
     return normalize(c.nome_completo || c.pj_razao_social || '').includes(normalize(clienteSearch));
   });
@@ -169,6 +171,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
   const responsaveisSelecionadosDados = responsaveisSel.map(id => colaboradores.find(c => c.id === id)).filter(Boolean);
 
   const handleClienteCriado = (criado) => {
+    setClientesLocais(prev => [...prev, criado]);
     setForm(f => ({ ...f, cliente_id: criado.id, cliente_nome: criado.nome_completo, cliente_telefone: criado.celular || '' }));
     setClienteDropdownOpen(false);
     setClienteSearch('');
@@ -221,7 +224,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
               >
                 <span className={form.cliente_id ? 'text-foreground truncate pr-2' : 'text-muted-foreground'}>
                   {form.cliente_id
-                    ? (clientes.find(c => c.id === form.cliente_id)?.nome_completo || clientes.find(c => c.id === form.cliente_id)?.pj_razao_social || 'Cliente')
+                    ? (todosClientes.find(c => c.id === form.cliente_id)?.nome_completo || todosClientes.find(c => c.id === form.cliente_id)?.pj_razao_social || 'Cliente')
                     : 'Selecionar cliente'}
                 </span>
                 <span className="text-slate-400 text-xs flex-shrink-0">▼</span>
