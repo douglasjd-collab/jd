@@ -136,12 +136,12 @@ export default function useSoftphone(config) {
     } catch (e) { console.warn('Histórico chamada:', e.message); }
   };
 
-  // ── desconectar ────────────────────────────────────────────────────────────
-  const desconectar = useCallback((permanente = false) => {
+  // ── desconectar ─── apenas chamado MANUALMENTE pelo usuário ─────────────────
+  const desconectar = useCallback(() => {
     if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
     if (uaRef.current) { try { uaRef.current.stop(); } catch {} uaRef.current = null; }
     _stopRing();
-    if (permanente && mountedRef.current) {
+    if (mountedRef.current) {
       setSipStatus('desconectado');
       setChamadaAtiva(null);
       setChamadaEntrante(null);
@@ -168,12 +168,12 @@ export default function useSoftphone(config) {
       authorization_user   : String(cfg.numbersip),
       display_name         : String(cfg.numbersip),
       register             : true,
-      register_expires     : 300,
+      register_expires     : 600,
       session_timers       : false,
       use_preloaded_route  : false,
       no_answer_timeout    : 60,
-      connection_recovery_min_interval: 4,
-      connection_recovery_max_interval: 30,
+      connection_recovery_min_interval: 2,
+      connection_recovery_max_interval: 32,
       log                  : { builtinEnabled: false, level: 'error' },
     });
 
@@ -191,22 +191,30 @@ export default function useSoftphone(config) {
         console.log('📋 Contact registrado:', regContact);
       } catch {}
     });
-    ua.on('unregistered',  () => { if (mountedRef.current) setSipStatus('conectando'); }); // JsSIP vai tentar re-registrar
+    ua.on('unregistered',  () => {
+      if (!mountedRef.current) return;
+      // JsSIP re-registra automaticamente — não destruir o UA
+      setSipStatus('conectando');
+    });
     ua.on('disconnected',  (e) => {
       if (!mountedRef.current) return;
-      console.warn('🔌 WebSocket desconectado, reconectando em 3s...', e?.cause);
+      const cause = e?.cause || '';
+      console.warn('🔌 WebSocket desconectado:', cause);
       setSipStatus('conectando');
       setErroMsg('');
-      // Destrói o UA atual e reconecta do zero após 3 segundos
+      // NÃO destruir o UA — deixar o JsSIP reconectar sozinho via
+      // connection_recovery. Só força nova instância se o UA já foi limpo.
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      uaRef.current = null;
-      try { ua.stop(); } catch {}
       reconnectTimerRef.current = setTimeout(() => {
-        if (mountedRef.current && configRef.current?.sip_password) {
-          console.log('🔄 Reconectando SIP...');
+        if (!mountedRef.current) return;
+        // Se o UA ainda existe, ele já está tentando reconectar internamente
+        if (uaRef.current) {
+          try { uaRef.current.start(); } catch {}
+        } else if (configRef.current?.sip_password) {
+          console.log('🔄 UA destruído externamente, recriando...');
           conectar();
         }
-      }, 3000);
+      }, 5000);
     });
     ua.on('registrationFailed', (e) => {
       if (!mountedRef.current) return;
