@@ -142,13 +142,14 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
           </div>
         )}
 
-        {/* Aviso: numero_chip desvia chamadas para celular físico */}
-        {numeroChip && sipStatus === 'registrado' && !chamadaAtiva && !chamadaEntrante && (
-          <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-xs text-amber-800 flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+        {/* Aviso CRÍTICO: numero_chip desvia chamadas para celular físico */}
+        {numeroChip && !chamadaAtiva && !chamadaEntrante && (
+          <div className="p-3 bg-red-50 border-2 border-red-400 rounded-lg text-xs text-red-800 flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
             <div>
-              <p className="font-semibold">Chamadas sendo desviadas para celular!</p>
-              <p className="mt-0.5">O campo <strong>"Número Chip"</strong> está preenchido ({numeroChip}). O NVOIP encaminha chamadas entrantes para esse número em vez do Webphone. Para receber aqui, limpe esse campo em <strong>"Meu Ramal"</strong>.</p>
+              <p className="font-bold text-sm text-red-700">⚠️ Chamadas NÃO chegam no Webphone!</p>
+              <p className="mt-1">O campo <strong>"Número Chip"</strong> está preenchido com <strong>{numeroChip}</strong>. O NVOIP está desviando TODAS as chamadas entrantes para este celular físico.</p>
+              <p className="mt-1 font-semibold">Solução: clique em <strong>"Meu Ramal"</strong> → limpe o campo <strong>Número Chip</strong> → Salvar.</p>
             </div>
           </div>
         )}

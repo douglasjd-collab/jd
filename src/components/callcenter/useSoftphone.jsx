@@ -162,20 +162,19 @@ export default function useSoftphone(config) {
 
     const socket = new JsSIP.WebSocketInterface('wss://app.nvoip.com.br:7443');
     const ua = new JsSIP.UA({
-      sockets: [socket],
-      uri: `sip:${cfg.numbersip}@app.nvoip.com.br`,
-      password: cfg.sip_password,
-      authorization_user: String(cfg.numbersip),
-      display_name: String(cfg.numbersip),
-      register: true,
-      register_expires: 300,
-      session_timers: false,
-      // IMPORTANTE: NÃO usar hackViaTcp — isso quebra chamadas entrantes
-      // O servidor precisa saber usar WSS para rotear INVITEs de volta
-      use_preloaded_route: false,
+      sockets              : [socket],
+      uri                  : `sip:${cfg.numbersip}@app.nvoip.com.br`,
+      password             : cfg.sip_password,
+      authorization_user   : String(cfg.numbersip),
+      display_name         : String(cfg.numbersip),
+      register             : true,
+      register_expires     : 300,
+      session_timers       : false,
+      use_preloaded_route  : false,
+      no_answer_timeout    : 60,
       connection_recovery_min_interval: 4,
       connection_recovery_max_interval: 30,
-      log: { builtinEnabled: true, level: 'warn' },
+      log                  : { builtinEnabled: false, level: 'error' },
     });
 
     ua.on('connecting',    () => { if (mountedRef.current) setSipStatus('conectando'); });
@@ -184,9 +183,13 @@ export default function useSoftphone(config) {
       if (!mountedRef.current) return;
       setSipStatus('registrado');
       setErroMsg('');
-      // Cancela qualquer tentativa de reconexão pendente — já estamos online
       if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
-      console.log(`✅ SIP registrado: ${cfg.numbersip}`);
+      console.log(`✅ SIP registrado: ${cfg.numbersip} — aguardando chamadas entrantes`);
+      // Diagnóstico: imprime o Contact header registrado (contém o endereço que o servidor usa para rotear INVITEs)
+      try {
+        const regContact = ua.contact?.toString?.();
+        console.log('📋 Contact registrado:', regContact);
+      } catch {}
     });
     ua.on('unregistered',  () => { if (mountedRef.current) setSipStatus('conectando'); }); // JsSIP vai tentar re-registrar
     ua.on('disconnected',  (e) => {

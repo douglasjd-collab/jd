@@ -141,9 +141,9 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
             <div className="p-3 bg-green-50 border border-green-300 rounded-lg text-sm text-green-900">
               <p className="font-semibold mb-1">📡 Como funciona o Webphone:</p>
               <ol className="list-decimal list-inside space-y-0.5 text-xs">
-                <li>O CRM registra seu ramal SIP via WebSocket seguro (WSS)</li>
-                <li>Ao clicar em "Ligar", o CRM envia o INVITE SIP diretamente</li>
-                <li>O áudio acontece dentro do navegador — sem celular físico</li>
+                <li>O CRM registra seu ramal SIP via WebSocket seguro</li>
+                <li>Chamadas de saída e entrada acontecem 100% no navegador</li>
+                <li><strong>Nenhum celular físico necessário</strong> — deixe o Chip vazio</li>
                 <li>Chamadas recebidas aparecem em popup dentro do CRM</li>
               </ol>
             </div>
@@ -192,41 +192,44 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
               <p className="text-xs text-slate-400">NVOIP → Ramais → selecione o ramal → campo "Senha SIP"</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              {/* CHIP - para RECEBER */}
-              <div className={`${chipIgualDid ? "space-y-2 p-3 bg-red-50 border-2 border-red-600 rounded-lg" : "space-y-2 p-3 bg-red-50 border-2 border-red-400 rounded-lg"} col-span-2`}>
-                <Label className="text-red-800 font-bold">📱 Número do CHIP (para RECEBER) *</Label>
-                <Input
-                  placeholder="Ex: 87 9 9123-4567 (celular físico)"
-                  value={form.numero_chip}
-                  onChange={e => setForm({ ...form, numero_chip: e.target.value.replace(/\D/g, '') })}
-                  className={`border-red-300 bg-white ${chipIgualDid ? "border-red-600" : ""}`}
-                />
-                <div className="text-xs text-red-700 space-y-0.5">
-                  <p className="font-medium">⚠️ OBRIGATÓRIO para receber a chamada</p>
-                  <p>Seu celular/chip físico onde a chamada será encaminhada</p>
-                  {chipIgualDid && (
-                    <p className="font-semibold text-red-800 mt-1">
-                      ❌ Este número é igual ao DID. Use um celular físico diferente!
-                    </p>
-                  )}
+            {/* CHIP - ATENÇÃO: desvia chamadas para fora do Webphone */}
+            <div className={`space-y-2 p-3 rounded-lg border-2 ${form.numero_chip ? 'bg-amber-50 border-amber-400' : 'bg-slate-50 border-slate-200'}`}>
+              <Label className={form.numero_chip ? 'text-amber-800 font-bold' : 'text-slate-700'}>
+                📱 Número Chip (encaminhamento para celular físico)
+                {form.numero_chip && <span className="ml-2 text-xs font-normal text-amber-700">— chamadas serão desviadas para este celular!</span>}
+              </Label>
+              <Input
+                placeholder="Deixe vazio para receber no Webphone (navegador)"
+                value={form.numero_chip}
+                onChange={e => setForm({ ...form, numero_chip: e.target.value.replace(/\D/g, '') })}
+                className={form.numero_chip ? 'border-amber-300 bg-white' : 'bg-white'}
+              />
+              {form.numero_chip ? (
+                <div className="text-xs text-amber-800 space-y-0.5">
+                  <p className="font-semibold">⚠️ Com este campo preenchido, o NVOIP vai desviar TODAS as chamadas entrantes para o celular {form.numero_chip}.</p>
+                  <p>Para receber chamadas no Webphone (navegador), <strong>deixe este campo vazio</strong>.</p>
+                  <button type="button" onClick={() => setForm({ ...form, numero_chip: '' })} className="text-red-600 hover:underline font-semibold mt-1 block">
+                    🗑️ Limpar — quero receber no Webphone
+                  </button>
                 </div>
-              </div>
+              ) : (
+                <p className="text-xs text-green-700 font-medium">✅ Vazio = chamadas chegam direto no Webphone (navegador)</p>
+              )}
+              {chipIgualDid && (
+                <p className="text-xs font-semibold text-red-800">❌ Este número é igual ao DID. Use um celular físico diferente!</p>
+              )}
+            </div>
 
-              {/* DID - para SAIR */}
-              <div className="space-y-2 p-3 bg-blue-50 border-2 border-blue-300 rounded-lg col-span-2">
-                <Label className="text-blue-800 font-bold">☎️ Número DID (para SAIR) <span className="text-xs font-normal">(opcional)</span></Label>
-                <Input
-                  placeholder="Ex: 5581329984700"
-                  value={form.numero_did}
-                  onChange={e => setForm({ ...form, numero_did: e.target.value.trim() })}
-                  className="border-blue-300 bg-white"
-                />
-                <div className="text-xs text-blue-700 space-y-0.5">
-                  <p className="font-medium">Quem vai receber a chamada verá este número</p>
-                  <p>Se deixar vazio, aparecerá o ramal SIP</p>
-                </div>
-              </div>
+            {/* DID - para SAIR */}
+            <div className="space-y-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <Label className="text-blue-800 font-semibold">☎️ Número DID (CallerID de saída) <span className="text-xs font-normal">(opcional)</span></Label>
+              <Input
+                placeholder="Ex: 5581329984700"
+                value={form.numero_did}
+                onChange={e => setForm({ ...form, numero_did: e.target.value.trim() })}
+                className="border-blue-300 bg-white"
+              />
+              <p className="text-xs text-blue-700">Quem receber sua ligação verá este número. Se vazio, aparecerá o ramal SIP.</p>
             </div>
 
             <div className="flex items-center gap-2">
