@@ -1,27 +1,48 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import JsSIP from 'jssip';
+import { base44 } from '@/api/base44Client';
 
-// Hook que gerencia o softphone SIP/WebRTC via JsSIP + NVOIP
+// Hook que gerencia o softphone SIP/WebRTC via JsSIP + NVOIP WSS
 export default function useSoftphone(config) {
   const [sipStatus, setSipStatus] = useState('desconectado'); // desconectado | conectando | registrado | erro
-  const [chamadaAtiva, setChamadaAtiva] = useState(null); // { session, destino, direcao, status }
+  const [chamadaAtiva, setChamadaAtiva] = useState(null);   // { session, destino, direcao, status }
   const [chamadaEntrante, setChamadaEntrante] = useState(null); // { session, origem }
+  const [erroMsg, setErroMsg] = useState('');
 
   const uaRef = useRef(null);
   const audioRemotoRef = useRef(null);
   const ringtoneRef = useRef(null);
+  const inicioRef = useRef(null); // timestamp inicio chamada para histórico
 
-  // Inicializa áudio remoto
+  // Inicializa elementos de áudio
   useEffect(() => {
     audioRemotoRef.current = new Audio();
     audioRemotoRef.current.autoplay = true;
-    ringtoneRef.current = new Audio('https://www.soundjay.com/phone/phone-ringing-1.mp3');
-    ringtoneRef.current.loop = true;
+
+    // Ringtone simples via Web Audio API
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const playRingtone = () => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 440;
+      gain.gain.value = 0.3;
+      osc.start();
+      setTimeout(() => osc.stop(), 800);
+    };
+    ringtoneRef.current = { play: playRingtone, pause: () => {}, ctx };
+
+    return () => {
+      if (audioRemotoRef.current) {
+        audioRemotoRef.current.srcObject = null;
+      }
+    };
   }, []);
 
   const desconectar = useCallback(() => {
     if (uaRef.current) {
-      uaRef.current.stop();
+      try { uaRef.current.stop(); } catch {}
       uaRef.current = null;
     }
     setSipStatus('desconectado');
@@ -29,52 +50,54 @@ export default function useSoftphone(config) {
 
   const conectar = useCallback(() => {
     if (!config?.numbersip || !config?.sip_password) {
-      console.warn('SIP: numbersip ou sip_password ausente. Configure nas credenciais NVOIP.');
+      console.warn('SIP: numbersip ou sip_password ausente');
       return;
     }
     if (uaRef.current) desconectar();
 
     setSipStatus('conectando');
+    setErroMsg('');
 
-    // NVOIP WebSocket SIP — sip.nvoip.com.br é o host correto (webrtc.nvoip.com.br não existe no DNS)
-    // Tenta múltiplos endpoints em ordem
-    const wsEndpoints = [
-      'wss://sip.nvoip.com.br:443',
-      'wss://sip.nvoip.com.br:8089',
-      'wss://sip.nvoip.com.br:5065',
-    ];
-    const sockets = wsEndpoints.map(url => new JsSIP.WebSocketInterface(url));
+    // NVOIP WSS endpoint conforme documentação oficial
+    const socket = new JsSIP.WebSocketInterface('wss://app.nvoip.com.br:7443');
 
     const ua = new JsSIP.UA({
-      sockets,
-      uri: `sip:${config.numbersip}@sip.nvoip.com.br`,
+      sockets: [socket],
+      uri: `sip:${config.numbersip}@app.nvoip.com.br`,
       password: config.sip_password,
-      display_name: config.numbersip,
+      authorization_user: config.numbersip,
+      display_name: 'JD Promotora',
       register: true,
       register_expires: 300,
       session_timers: false,
       connection_recovery_min_interval: 2,
       connection_recovery_max_interval: 30,
-      log: { builtinEnabled: true, level: 'warn' },
+      log: { builtinEnabled: false, level: 'warn' },
     });
 
-    ua.on('connecting', () => { console.log('SIP: conectando...'); setSipStatus('conectando'); });
-    ua.on('connected', () => { console.log('SIP: WebSocket conectado, aguardando registro...'); setSipStatus('conectando'); });
+    ua.on('connecting', () => setSipStatus('conectando'));
+    ua.on('connected', () => setSipStatus('conectando'));
     ua.on('disconnected', (e) => {
-      console.warn('SIP: WebSocket desconectado — code:', e?.code, 'reason:', e?.reason, 'error:', e?.error);
+      console.warn('SIP desconectado:', e?.code, e?.reason);
       setSipStatus('desconectado');
+      setErroMsg('WebSocket desconectado. Reconectando...');
     });
     ua.on('registered', () => {
-      console.log('SIP: registrado com sucesso! Ramal:', config.numbersip);
       setSipStatus('registrado');
+      setErroMsg('');
+      console.log('✅ SIP registrado — ramal:', config.numbersip);
     });
-    ua.on('unregistered', (e) => {
-      console.warn('SIP: unregistered — cause:', e?.cause);
-      setSipStatus('desconectado');
-    });
+    ua.on('unregistered', () => setSipStatus('desconectado'));
     ua.on('registrationFailed', (e) => {
-      console.error('SIP: falha no registro — cause:', e?.cause, 'status:', e?.response?.status_code, 'reason:', e?.response?.reason_phrase);
+      const cause = e?.cause || '';
+      const status = e?.response?.status_code;
+      console.error('SIP falha registro:', cause, status);
       setSipStatus('erro');
+      if (status === 401 || status === 403) {
+        setErroMsg('Credenciais SIP inválidas. Verifique a senha SIP nas configurações.');
+      } else {
+        setErroMsg(`Falha no registro SIP: ${cause || status || 'erro desconhecido'}`);
+      }
     });
 
     // Chamada entrante
@@ -82,121 +105,203 @@ export default function useSoftphone(config) {
       const { session, originator } = data;
 
       if (originator === 'remote') {
-        // Chamada entrante
-        const origem = session.remote_identity?.uri?.user || 'Desconhecido';
+        const origem = session.remote_identity?.uri?.user || session.remote_identity?.display_name || 'Desconhecido';
         setChamadaEntrante({ session, origem });
-        ringtoneRef.current?.play().catch(() => {});
+
+        // Toca ringtone em loop
+        let ringInterval = setInterval(() => {
+          try { ringtoneRef.current?.play(); } catch {}
+        }, 1200);
 
         session.on('failed', () => {
+          clearInterval(ringInterval);
           setChamadaEntrante(null);
-          ringtoneRef.current?.pause();
         });
         session.on('ended', () => {
+          clearInterval(ringInterval);
           setChamadaEntrante(null);
           setChamadaAtiva(null);
-          ringtoneRef.current?.pause();
-          if (audioRemotoRef.current) audioRemotoRef.current.srcObject = null;
+          _limparAudio();
+          _salvarHistorico(origem, 'entrada', 'nao_atendida');
         });
       }
     });
 
     ua.start();
     uaRef.current = ua;
-  }, [config, desconectar]);
+  }, [config?.numbersip, config?.sip_password]);
 
-  // Conecta automaticamente quando config com sip_password estiver disponível
+  // Reconecta automaticamente quando config muda
   useEffect(() => {
     if (config?.numbersip && config?.sip_password) {
       conectar();
+    } else {
+      desconectar();
     }
     return () => desconectar();
   }, [config?.numbersip, config?.sip_password]);
 
   const realizarChamada = useCallback((numero) => {
-    if (!uaRef.current || sipStatus !== 'registrado') return;
+    if (!uaRef.current || sipStatus !== 'registrado') {
+      console.warn('SIP não registrado, não é possível discar');
+      return false;
+    }
 
-    const destino = `sip:${numero}@sip.nvoip.com.br`;
+    const numeroLimpo = numero.replace(/\D/g, '');
+    // NVOIP: para externos, usar sip:numero@app.nvoip.com.br
+    const destino = `sip:${numeroLimpo}@app.nvoip.com.br`;
+
     const session = uaRef.current.call(destino, {
+      mediaConstraints: { audio: true, video: false },
+      rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
+      pcConfig: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+        ],
+      },
+    });
+
+    inicioRef.current = Date.now();
+    setChamadaAtiva({ session, destino: numeroLimpo, direcao: 'saida', status: 'chamando' });
+
+    session.on('progress', () => setChamadaAtiva(prev => prev ? { ...prev, status: 'chamando' } : null));
+    session.on('accepted', () => {
+      inicioRef.current = Date.now();
+      setChamadaAtiva(prev => prev ? { ...prev, status: 'em_ligacao' } : null);
+      _conectarAudio(session);
+    });
+    session.on('confirmed', () => {
+      inicioRef.current = Date.now();
+      setChamadaAtiva(prev => prev ? { ...prev, status: 'em_ligacao' } : null);
+      _conectarAudio(session);
+    });
+    session.on('ended', () => {
+      const durSeg = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0;
+      _salvarHistorico(numeroLimpo, 'saida', 'atendida', durSeg);
+      setChamadaAtiva(null);
+      _limparAudio();
+    });
+    session.on('failed', (e) => {
+      console.error('Chamada SIP falhou:', e.cause);
+      _salvarHistorico(numeroLimpo, 'saida', 'nao_atendida', 0);
+      setChamadaAtiva(null);
+      _limparAudio();
+    });
+
+    return true;
+  }, [sipStatus]);
+
+  const atenderChamada = useCallback(() => {
+    if (!chamadaEntrante?.session) return;
+    const { session, origem } = chamadaEntrante;
+
+    session.answer({
       mediaConstraints: { audio: true, video: false },
       pcConfig: {
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
       },
     });
 
-    setChamadaAtiva({ session, destino: numero, direcao: 'saida', status: 'chamando' });
-
-    session.on('progress', () => setChamadaAtiva(prev => ({ ...prev, status: 'chamando' })));
-    session.on('accepted', () => {
-      setChamadaAtiva(prev => ({ ...prev, status: 'em_ligacao' }));
-      _conectarAudio(session);
-    });
-    session.on('confirmed', () => {
-      setChamadaAtiva(prev => ({ ...prev, status: 'em_ligacao' }));
-      _conectarAudio(session);
-    });
-    session.on('ended', () => {
-      setChamadaAtiva(null);
-      if (audioRemotoRef.current) audioRemotoRef.current.srcObject = null;
-    });
-    session.on('failed', (e) => {
-      console.error('Chamada falhou:', e.cause);
-      setChamadaAtiva(null);
-    });
-  }, [sipStatus]);
-
-  const atenderChamada = useCallback(() => {
-    if (!chamadaEntrante?.session) return;
-    ringtoneRef.current?.pause();
-
-    const { session, origem } = chamadaEntrante;
-    session.answer({ mediaConstraints: { audio: true, video: false } });
-
+    inicioRef.current = Date.now();
     setChamadaEntrante(null);
     setChamadaAtiva({ session, destino: origem, direcao: 'entrada', status: 'em_ligacao' });
 
     session.on('confirmed', () => _conectarAudio(session));
     session.on('ended', () => {
+      const durSeg = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0;
+      _salvarHistorico(origem, 'entrada', 'atendida', durSeg);
       setChamadaAtiva(null);
-      if (audioRemotoRef.current) audioRemotoRef.current.srcObject = null;
+      _limparAudio();
     });
     session.on('failed', () => {
       setChamadaAtiva(null);
+      _limparAudio();
     });
   }, [chamadaEntrante]);
 
   const rejeitarChamada = useCallback(() => {
-    chamadaEntrante?.session?.terminate();
+    if (chamadaEntrante?.session) {
+      chamadaEntrante.session.terminate();
+      _salvarHistorico(chamadaEntrante.origem, 'entrada', 'nao_atendida', 0);
+    }
     setChamadaEntrante(null);
-    ringtoneRef.current?.pause();
   }, [chamadaEntrante]);
 
   const encerrarChamada = useCallback(() => {
-    chamadaAtiva?.session?.terminate();
+    if (chamadaAtiva?.session) {
+      try { chamadaAtiva.session.terminate(); } catch {}
+    }
     setChamadaAtiva(null);
-    if (audioRemotoRef.current) audioRemotoRef.current.srcObject = null;
+    _limparAudio();
   }, [chamadaAtiva]);
 
   const _conectarAudio = (session) => {
     const pc = session.connection;
     if (!pc) return;
-    pc.getReceivers().forEach(receiver => {
-      if (receiver.track && receiver.track.kind === 'audio') {
-        const stream = new MediaStream([receiver.track]);
-        if (audioRemotoRef.current) {
-          audioRemotoRef.current.srcObject = stream;
-        }
-      }
-    });
+
+    // Tenta via getReceivers
+    const receivers = pc.getReceivers?.() || [];
+    const audioTrack = receivers.find(r => r.track?.kind === 'audio')?.track;
+    if (audioTrack && audioRemotoRef.current) {
+      audioRemotoRef.current.srcObject = new MediaStream([audioTrack]);
+      audioRemotoRef.current.play().catch(() => {});
+    }
+
     // Fallback via ontrack
     pc.ontrack = (e) => {
-      if (e.streams && e.streams[0] && audioRemotoRef.current) {
+      if (e.streams?.[0] && audioRemotoRef.current) {
         audioRemotoRef.current.srcObject = e.streams[0];
+        audioRemotoRef.current.play().catch(() => {});
       }
     };
   };
 
+  const _limparAudio = () => {
+    if (audioRemotoRef.current) {
+      audioRemotoRef.current.srcObject = null;
+    }
+  };
+
+  const _salvarHistorico = async (numero, direcao, status, duracaoSegundos = 0) => {
+    try {
+      const me = await base44.auth.me();
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me?.id });
+      const colab = colabs?.[0];
+      if (!colab?.empresa_id) return;
+
+      // Tenta encontrar cliente pelo número
+      const numLimpo = numero.replace(/\D/g, '');
+      let clienteId = null, clienteNome = null;
+      try {
+        const clientes = await base44.entities.Cliente.filter({ empresa_id: colab.empresa_id, telefone: numLimpo });
+        if (clientes?.length > 0) {
+          clienteId = clientes[0].id;
+          clienteNome = clientes[0].nome;
+        }
+      } catch {}
+
+      await base44.entities.HistoricoChamadaMicroSIP.create({
+        empresa_id: colab.empresa_id,
+        usuario_id: colab.id,
+        usuario_nome: colab.nome,
+        direcao,
+        numero: numLimpo,
+        cliente_id: clienteId,
+        cliente_nome: clienteNome,
+        status,
+        inicio: new Date(Date.now() - duracaoSegundos * 1000).toISOString(),
+        fim: new Date().toISOString(),
+        duracao_segundos: duracaoSegundos,
+      });
+    } catch (e) {
+      console.warn('Erro ao salvar histórico:', e.message);
+    }
+  };
+
   return {
     sipStatus,
+    erroMsg,
     chamadaAtiva,
     chamadaEntrante,
     conectar,

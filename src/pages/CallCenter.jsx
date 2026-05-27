@@ -38,8 +38,6 @@ export default function CallCenter() {
   const [chamadaAtiva, setChamadaAtiva] = useState(null);
   const [numeroParaChamar, setNumeroParaChamar] = useState('');
   const [credencialInvalida, setCredencialInvalida] = useState(false);
-  const [microSIPOpen, setMicroSIPOpen] = useState(false);
-  const [numeroMicroSIP, setNumeroMicroSIP] = useState('');
 
   // Softphone WebRTC — só inicializa se tiver sip_password
   const softphone = useSoftphone(sipConfig?.sip_password ? sipConfig : null);
@@ -175,8 +173,7 @@ export default function CallCenter() {
             <PhoneCall className="w-7 h-7 text-[#23BE84]" />
             Call Center
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Chamadas via NVOIP API</p>
-          <p className="text-xs text-amber-600 mt-1">⚠️ Limite diário de chamadas: se atingir, use o botão "Ligar com MicroSIP" como fallback.</p>
+          <p className="text-slate-500 text-sm mt-1">Softphone WebRTC — ligações diretas no navegador</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {!naoConfigurado && (
@@ -293,10 +290,6 @@ export default function CallCenter() {
               <SoftphonePanel
                 softphone={softphone}
                 numbersip={sipConfig?.numbersip || config?.numbersip}
-                onChamadaApiRest={(numero) => {
-                  setNumeroParaChamar(numero);
-                  setChamadaOpen(true);
-                }}
               />
             </div>
 
@@ -313,17 +306,7 @@ export default function CallCenter() {
               </CardContent>
             </Card>
 
-            <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 border-cyan-400 hover:border-cyan-500 bg-cyan-50" onClick={() => {
-              setMicroSIPOpen(true);
-            }}>
-              <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
-                <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center">
-                  <PhoneCall className="w-6 h-6 text-white" />
-                </div>
-                <span className="font-semibold text-sm text-slate-700">Ligar com MicroSIP</span>
-                <span className="text-xs text-cyan-600 font-medium">Dentro do CRM</span>
-              </CardContent>
-            </Card>
+
 
             <Card className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-blue-300" onClick={() => setSmsOpen(true)}>
               <CardContent className="flex flex-col items-center justify-center py-6 gap-2">
@@ -418,74 +401,7 @@ export default function CallCenter() {
         numbersip={config?.numbersip}
       />
 
-      {/* Modal MicroSIP */}
-      {microSIPOpen && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
-              <h2 className="text-lg font-semibold text-slate-800">MicroSIP - Ligar (dentro do CRM)</h2>
-              <button 
-                onClick={() => {
-                  setMicroSIPOpen(false);
-                  setNumeroMicroSIP('');
-                }}
-                className="text-slate-400 hover:text-slate-600 text-2xl leading-none"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto p-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Digite o número para ligar (DDD + número):
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ex: 87991426333"
-                    value={numeroMicroSIP}
-                    onChange={(e) => setNumeroMicroSIP(e.target.value.replace(/\D/g, ''))}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && numeroMicroSIP.length >= 8) {
-                        setNumeroParaChamar(numeroMicroSIP);
-                        setMicroSIPOpen(false);
-                        setChamadaOpen(true);
-                      }
-                    }}
-                    autoFocus
-                  />
-                  <p className="text-xs text-slate-500 mt-1">A ligação será feita via NVOIP dentro do CRM.</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2 px-6 py-4 border-t bg-slate-50">
-              <button
-                onClick={() => {
-                  setMicroSIPOpen(false);
-                  setNumeroMicroSIP('');
-                }}
-                className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100 font-medium"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => {
-                  if (numeroMicroSIP.length >= 8) {
-                    setNumeroParaChamar(numeroMicroSIP);
-                    setMicroSIPOpen(false);
-                    setChamadaOpen(true);
-                  }
-                }}
-                disabled={numeroMicroSIP.length < 8}
-                className="flex-1 px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-slate-300 text-white rounded-lg font-medium"
-              >
-                Ligar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
