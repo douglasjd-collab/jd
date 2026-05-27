@@ -18,7 +18,9 @@ export default function useSoftphone(config) {
   const ringRef = useRef(null);
   const inicioRef = useRef(null);
   const configRef = useRef(config);
-  const colabCacheRef = useRef(null); // cache do colaborador para não re-buscar toda chamada
+  const colabCacheRef = useRef(null);
+  const reconnectTimerRef = useRef(null); // timer de reconexão automática
+  const mountedRef = useRef(true); // evita setState após unmount
 
   useEffect(() => { configRef.current = config; }, [config]);
 
@@ -135,12 +137,15 @@ export default function useSoftphone(config) {
   };
 
   // ── desconectar ────────────────────────────────────────────────────────────
-  const desconectar = useCallback(() => {
+  const desconectar = useCallback((permanente = false) => {
+    if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
     if (uaRef.current) { try { uaRef.current.stop(); } catch {} uaRef.current = null; }
     _stopRing();
-    setSipStatus('desconectado');
-    setChamadaAtiva(null);
-    setChamadaEntrante(null);
+    if (permanente && mountedRef.current) {
+      setSipStatus('desconectado');
+      setChamadaAtiva(null);
+      setChamadaEntrante(null);
+    }
   }, []);
 
   // ── conectar / registrar ramal ─────────────────────────────────────────────
@@ -172,17 +177,52 @@ export default function useSoftphone(config) {
       log: { builtinEnabled: false, level: 'error' },
     });
 
-    ua.on('connecting',    () => setSipStatus('conectando'));
-    ua.on('connected',     () => setSipStatus('conectando'));
-    ua.on('registered',    () => { setSipStatus('registrado'); setErroMsg(''); console.log(`✅ SIP registrado: ${cfg.numbersip}`); });
-    ua.on('unregistered',  () => setSipStatus('desconectado'));
-    ua.on('disconnected',  () => { setSipStatus('desconectado'); setErroMsg('WebSocket desconectado. Tentando reconectar...'); });
+    ua.on('connecting',    () => { if (mountedRef.current) setSipStatus('conectando'); });
+    ua.on('connected',     () => { if (mountedRef.current) setSipStatus('conectando'); });
+    ua.on('registered',    () => {
+      if (!mountedRef.current) return;
+      setSipStatus('registrado');
+      setErroMsg('');
+      // Cancela qualquer tentativa de reconexão pendente — já estamos online
+      if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
+      console.log(`✅ SIP registrado: ${cfg.numbersip}`);
+    });
+    ua.on('unregistered',  () => { if (mountedRef.current) setSipStatus('conectando'); }); // JsSIP vai tentar re-registrar
+    ua.on('disconnected',  (e) => {
+      if (!mountedRef.current) return;
+      console.warn('🔌 WebSocket desconectado, reconectando em 3s...', e?.cause);
+      setSipStatus('conectando');
+      setErroMsg('');
+      // Destrói o UA atual e reconecta do zero após 3 segundos
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+      uaRef.current = null;
+      try { ua.stop(); } catch {}
+      reconnectTimerRef.current = setTimeout(() => {
+        if (mountedRef.current && configRef.current?.sip_password) {
+          console.log('🔄 Reconectando SIP...');
+          conectar();
+        }
+      }, 3000);
+    });
     ua.on('registrationFailed', (e) => {
+      if (!mountedRef.current) return;
       const code = e?.response?.status_code;
-      setSipStatus('erro');
-      if (code === 401 || code === 403) setErroMsg('Senha SIP incorreta. Verifique em "Meu Ramal".');
-      else if (code === 404)            setErroMsg('Ramal SIP não encontrado no servidor NVOIP.');
-      else                              setErroMsg(`Falha SIP: ${e?.cause || code || 'erro'}`);
+      // 401/403 = credencial errada → não reconectar automaticamente
+      if (code === 401 || code === 403) {
+        setSipStatus('erro');
+        setErroMsg('Senha SIP incorreta. Verifique em "Meu Ramal".');
+      } else if (code === 404) {
+        setSipStatus('erro');
+        setErroMsg('Ramal SIP não encontrado no servidor NVOIP.');
+      } else {
+        // Outros erros: tenta reconectar após 5s
+        setSipStatus('conectando');
+        setErroMsg('');
+        if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = setTimeout(() => {
+          if (mountedRef.current && configRef.current?.sip_password) conectar();
+        }, 5000);
+      }
     });
 
     // ── CHAMADA ENTRANTE ────────────────────────────────────────────────────
@@ -227,6 +267,16 @@ export default function useSoftphone(config) {
     uaRef.current = ua;
   }, []);
 
+  // Cleanup no unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
+      if (uaRef.current) { try { uaRef.current.stop(); } catch {} uaRef.current = null; }
+    };
+  }, []);
+
   // Auto-conecta ao receber config válida — conecta 1x, sem re-conectar em re-renders
   const lastConnectedRef = useRef('');
   useEffect(() => {
@@ -241,8 +291,6 @@ export default function useSoftphone(config) {
     if (lastConnectedRef.current === key && uaRef.current) return;
     lastConnectedRef.current = key;
     conectar();
-    // cleanup só no unmount real — não roda em re-renders do mesmo efeito
-    return () => { lastConnectedRef.current = ''; desconectar(); };
   }, [config?.numbersip, config?.sip_password]); // eslint-disable-line
 
   // ── CHAMADA DE SAÍDA ──────────────────────────────────────────────────────

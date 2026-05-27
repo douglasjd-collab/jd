@@ -200,10 +200,10 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
                 ⟳ Conectando ao servidor SIP NVOIP...
               </p>
             )}
-            {(sipStatus === 'erro' || sipStatus === 'desconectado') && (
+            {sipStatus === 'erro' && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 space-y-2">
                 <p className="font-semibold">
-                  {erroMsg || (sipStatus === 'erro' ? '⚠️ Falha na conexão SIP' : 'Softphone desconectado')}
+                  {erroMsg || '⚠️ Falha na conexão SIP'}
                 </p>
                 {!erroMsg?.includes('Senha SIP') && (
                   <p className="text-red-700">Verifique se a <strong>Senha SIP</strong> está configurada em "Meu Ramal".</p>
@@ -220,8 +220,8 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
         )}
       </div>
 
-      {/* Alerta offline */}
-      {(sipStatus === 'erro' || sipStatus === 'desconectado') && (
+      {/* Alerta offline — só mostra se erro de credencial, não durante reconexão automática */}
+      {sipStatus === 'erro' && (
         <div className="px-4 py-2 bg-amber-50 border-t border-amber-200 flex items-center gap-2 text-xs text-amber-800">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
           <span>Webphone offline. Chamadas recebidas não chegarão no CRM.</span>
