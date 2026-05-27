@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Phone, MessageSquare, Volume2, History, Settings,
-  Loader2, WifiOff, Wallet, PhoneCall, RefreshCw, Hash
+  Loader2, WifiOff, Wallet, PhoneCall, RefreshCw, Hash, Stethoscope
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -188,6 +188,10 @@ export default function CallCenter() {
           <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
             <Settings className="w-4 h-4 mr-1" />
             Configurações
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => window.location.href = '/DiagnosticoNvoip'} className="border-blue-200 text-blue-700 hover:bg-blue-50">
+            <Stethoscope className="w-4 h-4 mr-1" />
+            Diagnóstico
           </Button>
         </div>
       </div>
