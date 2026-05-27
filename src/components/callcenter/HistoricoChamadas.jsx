@@ -1,48 +1,80 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Phone, PhoneIncoming, PhoneOutgoing, Play, RefreshCw } from 'lucide-react';
+import { Loader2, Phone, PhoneIncoming, PhoneOutgoing, RefreshCw } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const statusConfig = {
-  'Completada': { color: 'bg-green-100 text-green-700', label: 'Completada' },
-  'Nao atendida': { color: 'bg-yellow-100 text-yellow-700', label: 'Não Atendida' },
-  'Ocupado': { color: 'bg-red-100 text-red-700', label: 'Ocupado' },
-  'Falha': { color: 'bg-red-100 text-red-700', label: 'Falha' },
+  atendida:     { color: 'bg-green-100 text-green-700', label: 'Atendida' },
+  nao_atendida: { color: 'bg-yellow-100 text-yellow-700', label: 'Não Atendida' },
+  ocupado:      { color: 'bg-red-100 text-red-700', label: 'Ocupado' },
+  em_andamento: { color: 'bg-blue-100 text-blue-700', label: 'Em Andamento' },
 };
 
-export default function HistoricoChamadas() {
+function formatDuracao(seg) {
+  if (!seg || seg <= 0) return '-';
+  const m = Math.floor(seg / 60);
+  const s = seg % 60;
+  return `${m}m ${s}s`;
+}
+
+function formatData(iso) {
+  if (!iso) return '-';
+  try {
+    return format(new Date(iso), "dd/MM/yyyy HH:mm", { locale: ptBR });
+  } catch {
+    return iso;
+  }
+}
+
+export default function HistoricoChamadas({ empresaId, usuarioId, perfil }) {
   const [chamadas, setChamadas] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [tipo, setTipo] = useState('');
-  const [data, setData] = useState('');
-
-  const [erro, setErro] = useState(null);
+  const [tipo, setTipo] = useState('todos');
+  const [periodo, setPeriodo] = useState('todos');
 
   const carregar = async () => {
+    if (!empresaId) return;
     setLoading(true);
-    setErro(null);
     try {
-      const res = await base44.functions.invoke('nvoipCallCenter', {
-        action: 'historicoChamadas',
-        type: tipo || undefined,
-        date: data || undefined,
-      });
-      if (res.data?.error) {
-        setErro(res.data.error);
-      } else if (res.data?.calls) {
-        // Aceita qualquer chamada válida, independente do nome do campo de data
-        setChamadas(res.data.calls.filter(c => c != null));
+      const filtro = { empresa_id: empresaId };
+      // Se não for admin/gerente, filtra só as do usuário
+      if (perfil && !['admin', 'gerente', 'master', 'super_admin'].includes(perfil)) {
+        filtro.usuario_id = usuarioId;
       }
+      if (tipo !== 'todos') filtro.direcao = tipo;
+
+      let registros = await base44.entities.HistoricoChamadaMicroSIP.filter(filtro, '-inicio', 100);
+
+      // Filtro de período no frontend
+      if (periodo !== 'todos') {
+        const agora = new Date();
+        const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+        const ontem = new Date(hoje); ontem.setDate(ontem.getDate() - 1);
+        const semana = new Date(hoje); semana.setDate(semana.getDate() - 7);
+
+        registros = registros.filter(c => {
+          const d = c.inicio ? new Date(c.inicio) : null;
+          if (!d) return false;
+          if (periodo === 'hoje') return d >= hoje;
+          if (periodo === 'ontem') return d >= ontem && d < hoje;
+          if (periodo === 'semana') return d >= semana;
+          return true;
+        });
+      }
+
+      setChamadas(registros);
     } catch (e) {
-      setErro(e.message || 'Erro ao carregar histórico');
+      console.error('Erro ao carregar histórico:', e);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { carregar(); }, [tipo, data]);
+  useEffect(() => { carregar(); }, [tipo, periodo, empresaId]);
 
   return (
     <div className="space-y-4">
@@ -52,20 +84,21 @@ export default function HistoricoChamadas() {
             <SelectValue placeholder="Tipo" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={null}>Todos</SelectItem>
-            <SelectItem value="inbound">Entrantes</SelectItem>
-            <SelectItem value="outbound">Saintes</SelectItem>
+            <SelectItem value="todos">Todos</SelectItem>
+            <SelectItem value="entrada">Entrantes</SelectItem>
+            <SelectItem value="saida">Saintes</SelectItem>
           </SelectContent>
         </Select>
 
-        <Select value={data} onValueChange={setData}>
+        <Select value={periodo} onValueChange={setPeriodo}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Período" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={null}>Todos</SelectItem>
-            <SelectItem value="today">Hoje</SelectItem>
-            <SelectItem value="yesterday">Ontem</SelectItem>
+            <SelectItem value="todos">Todos</SelectItem>
+            <SelectItem value="hoje">Hoje</SelectItem>
+            <SelectItem value="ontem">Ontem</SelectItem>
+            <SelectItem value="semana">Esta semana</SelectItem>
           </SelectContent>
         </Select>
 
@@ -79,49 +112,38 @@ export default function HistoricoChamadas() {
         <div className="flex justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
         </div>
-      ) : erro ? (
-        <div className="text-center py-12 text-red-400">
-          <Phone className="w-12 h-12 mx-auto mb-2 opacity-30" />
-          <p className="text-sm font-medium">Erro ao carregar histórico</p>
-          <p className="text-xs mt-1 text-slate-400">{erro}</p>
-          <Button variant="outline" size="sm" className="mt-3" onClick={carregar}>Tentar novamente</Button>
-        </div>
       ) : chamadas.length === 0 ? (
         <div className="text-center py-12 text-slate-400">
           <Phone className="w-12 h-12 mx-auto mb-2 opacity-30" />
           <p>Nenhuma chamada encontrada</p>
+          <p className="text-xs mt-1">As chamadas realizadas/recebidas pelo Webphone aparecem aqui</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {chamadas.map((c, i) => {
-            const cfg = statusConfig[c.status] || { color: 'bg-slate-100 text-slate-600', label: c.status };
+          {chamadas.map((c) => {
+            const cfg = statusConfig[c.status] || { color: 'bg-slate-100 text-slate-600', label: c.status || '-' };
+            const isEntrada = c.direcao === 'entrada';
             return (
-              <div key={i} className="flex items-center justify-between p-3 bg-white border rounded-lg hover:shadow-sm transition-shadow">
+              <div key={c.id} className="flex items-center justify-between p-3 bg-white border rounded-lg hover:shadow-sm transition-shadow">
                 <div className="flex items-center gap-3">
-                   {(c.type === 'outbound' || c.callType === 'outbound' || c.direction === 'outbound')
-                     ? <PhoneOutgoing className="w-5 h-5 text-blue-500" />
-                     : <PhoneIncoming className="w-5 h-5 text-green-500" />
-                   }
-                   <div>
-                     <p className="font-medium text-sm">
-                       {c.destination || c.called || c.origin || c.caller || c.number || c.phone || '-'}
-                     </p>
-                     <p className="text-xs text-slate-400">
-                       {c.date || c.dateStart || c.callDate || c.startTime || c.createdAt || c.created_at || ''}
-                     </p>
-                   </div>
-                 </div>
-                 <div className="flex items-center gap-3">
-                   <span className="text-xs text-slate-500">{c.duration || c.talkingDuration || c.billDuration || ''}</span>
-                   {c.cost && <span className="text-xs text-slate-500">{c.cost}</span>}
-                   <Badge className={cfg.color}>{cfg.label}</Badge>
-                  {c.audio && (
-                    <a href={c.audio} target="_blank" rel="noreferrer">
-                      <Button variant="ghost" size="sm">
-                        <Play className="w-4 h-4" />
-                      </Button>
-                    </a>
+                  {isEntrada
+                    ? <PhoneIncoming className="w-5 h-5 text-green-500 flex-shrink-0" />
+                    : <PhoneOutgoing className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                  }
+                  <div>
+                    <p className="font-medium text-sm">{c.numero || '-'}</p>
+                    {c.cliente_nome && (
+                      <p className="text-xs text-slate-500">{c.cliente_nome}</p>
+                    )}
+                    <p className="text-xs text-slate-400">{formatData(c.inicio)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-slate-500">{formatDuracao(c.duracao_segundos)}</span>
+                  {c.usuario_nome && (
+                    <span className="text-xs text-slate-400 hidden md:inline">{c.usuario_nome}</span>
                   )}
+                  <Badge className={cfg.color}>{cfg.label}</Badge>
                 </div>
               </div>
             );

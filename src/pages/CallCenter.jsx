@@ -364,7 +364,11 @@ export default function CallCenter() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="historico" className="mt-4">
-              <HistoricoChamadas />
+              <HistoricoChamadas
+                empresaId={user?.empresa_id}
+                usuarioId={user?.colaborador_id}
+                perfil={user?.perfil}
+              />
             </TabsContent>
             <TabsContent value="numeros" className="mt-4">
               <MeusNumeros />
