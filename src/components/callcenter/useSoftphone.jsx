@@ -168,7 +168,7 @@ export default function useSoftphone(config) {
       hackIpAddrAnyEnabled: true,   // necessário para receber chamadas atrás de NAT
       connection_recovery_min_interval: 2,
       connection_recovery_max_interval: 30,
-      log: { builtinEnabled: true, level: 'debug' },  // ativo temporariamente para diagnosticar
+      log: { builtinEnabled: false, level: 'error' },
     });
 
     ua.on('connecting',    () => setSipStatus('conectando'));
@@ -227,15 +227,23 @@ export default function useSoftphone(config) {
     uaRef.current = ua;
   }, []);
 
-  // Auto-conecta ao receber config válida
+  // Auto-conecta ao receber config válida — evita reconexão desnecessária
+  const lastConnectedRef = useRef(''); // ramal+senha da última conexão bem-sucedida
   useEffect(() => {
+    const key = `${config?.numbersip}|${config?.sip_password}`;
     if (config?.numbersip && config?.sip_password) {
+      if (lastConnectedRef.current === key && uaRef.current) return; // já conectado com mesma config
+      lastConnectedRef.current = key;
       conectar();
     } else if (config?.numbersip && !config?.sip_password) {
       setSipStatus('erro');
       setErroMsg('Senha SIP não configurada. Acesse "Meu Ramal".');
     }
-    return () => desconectar();
+    return () => {
+      // só desconecta se a config mudou de verdade (unmount ou nova config)
+      lastConnectedRef.current = '';
+      desconectar();
+    };
   }, [config?.numbersip, config?.sip_password]);
 
   // ── CHAMADA DE SAÍDA ──────────────────────────────────────────────────────
