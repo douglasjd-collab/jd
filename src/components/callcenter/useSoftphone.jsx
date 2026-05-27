@@ -165,9 +165,10 @@ export default function useSoftphone(config) {
       register: true,
       register_expires: 600,
       session_timers: false,
+      hackIpAddrAnyEnabled: true,   // necessário para receber chamadas atrás de NAT
       connection_recovery_min_interval: 2,
       connection_recovery_max_interval: 30,
-      log: { builtinEnabled: false, level: 'error' },
+      log: { builtinEnabled: true, level: 'debug' },  // ativo temporariamente para diagnosticar
     });
 
     ua.on('connecting',    () => setSipStatus('conectando'));
@@ -186,7 +187,9 @@ export default function useSoftphone(config) {
     // ── CHAMADA ENTRANTE ────────────────────────────────────────────────────
     ua.on('newRTCSession', (data) => {
       const { session, originator } = data;
-      if (originator !== 'remote') return; // saída tratada em realizarChamada
+      console.log(`📞 newRTCSession — originator: ${originator}`, session?.remote_identity?.uri?.toString?.());
+      // 'remote' = entrante | 'local' = saída (saída já tratada em realizarChamada)
+      if (originator === 'local') return;
 
       // Extrai número de origem
       const origem = session.remote_identity?.uri?.user
@@ -272,7 +275,13 @@ export default function useSoftphone(config) {
 
     session.answer({
       mediaConstraints: { audio: true, video: false },
-      pcConfig: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] },
+      rtcAnswerConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
+      pcConfig: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+        ],
+      },
     });
 
     inicioRef.current = Date.now();
