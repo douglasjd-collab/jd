@@ -282,18 +282,11 @@ export default function BatePapo() {
 
   const ligarParaContato = async (telefone) => {
     if (!nvoipConfig) { toast.error('Configure seu ramal em Call Center > Meu Ramal'); return; }
-    if (!nvoipConfig.numero_chip) { toast.error('Configure o número do Chip/Celular em Call Center → Meu Ramal. Sem ele a NVOIP não entrega a chamada.'); return; }
+    if (sipStatus !== 'registrado') { toast.error(`Ramal SIP não registrado (${sipStatus}). Aguarde a conexão ou acesse Call Center → Meu Ramal.`); return; }
     const numLimpo = (telefone || '').replace(/\D/g, '');
     if (!numLimpo) { toast.error('Número inválido'); return; }
-    const toastId = 'chamada-nvoip';
-    toast.loading('Iniciando chamada...', { id: toastId });
-    try {
-      const resp = await base44.functions.invoke('nvoipCallCenter', { action: 'realizarChamada', called: numLimpo, webphoneAtivo: sipStatus === 'registrado' });
-      const data = resp?.data;
-      toast.dismiss(toastId);
-      if (data?.error || data?._error_type) { toast.error(data.error || 'Erro ao iniciar chamada'); return; }
-      toast.success(`✅ Chamada iniciada! A NVOIP ligará para ${nvoipConfig.numero_chip} — atenda para falar com o cliente.`);
-    } catch (e) { toast.dismiss(toastId); toast.error('Erro ao ligar: ' + e.message); }
+    const ok = await realizarChamada(numLimpo);
+    if (!ok && erroSip) toast.error(erroSip);
   };
 
   const abrirGruposBloqueados = async () => {

@@ -349,20 +349,13 @@ export default function useSoftphone(config) {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun.nvoip.com.br:3478' },
-          {
-            urls: [
-              'turn:turn.nvoip.com.br:3478?transport=udp',
-              'turn:turn.nvoip.com.br:3478?transport=tcp',
-              'turns:turn.nvoip.com.br:5349?transport=tcp',
-            ],
-            username: String(cfg?.numbersip || ''),
-            credential: String(cfg?.sip_password || ''),
-          },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
         ],
         iceTransportPolicy: 'all',
-        bundlePolicy: 'max-bundle',
+        bundlePolicy: 'balanced',
         rtcpMuxPolicy: 'require',
+        iceCandidatePoolSize: 10,
       },
       extraHeaders: [
         ...(cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : []),
@@ -377,14 +370,22 @@ export default function useSoftphone(config) {
       pc.oniceconnectionstatechange = () => {
         console.log(`🧊 ICE state: ${pc.iceConnectionState}`);
         if (pc.iceConnectionState === 'failed') {
-          console.warn('❌ ICE falhou — verifique firewall/NAT');
+          console.warn('❌ ICE falhou — tentando restart ICE');
+          try { pc.restartIce?.(); } catch {}
+        }
+        if (pc.iceConnectionState === 'disconnected') {
+          console.warn('⚠️ ICE desconectado — aguardando reconexão...');
         }
       };
       pc.onicegatheringstatechange = () => {
         console.log(`🧊 ICE gathering: ${pc.iceGatheringState}`);
       };
       pc.onicecandidate = (e) => {
-        if (e.candidate) console.log(`🧊 Candidate: ${e.candidate.type} ${e.candidate.address || ''}`);
+        if (e.candidate) console.log(`🧊 Candidate: ${e.candidate.type} ${e.candidate.protocol || ''} ${e.candidate.address || ''}`);
+        else console.log('🧊 ICE gathering complete');
+      };
+      pc.onconnectionstatechange = () => {
+        console.log(`🔗 Connection state: ${pc.connectionState}`);
       };
     });
 
@@ -429,27 +430,19 @@ export default function useSoftphone(config) {
     _stopRing();
     const { session, origem, clienteId, clienteNome } = chamadaEntrante;
 
-    const cfg = configRef.current;
     session.answer({
       mediaConstraints: { audio: true, video: false },
       pcConfig: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun.nvoip.com.br:3478' },
-          {
-            urls: [
-              'turn:turn.nvoip.com.br:3478?transport=udp',
-              'turn:turn.nvoip.com.br:3478?transport=tcp',
-              'turns:turn.nvoip.com.br:5349?transport=tcp',
-            ],
-            username: String(cfg?.numbersip || ''),
-            credential: String(cfg?.sip_password || ''),
-          },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          { urls: 'stun:stun3.l.google.com:19302' },
         ],
         iceTransportPolicy: 'all',
-        bundlePolicy: 'max-bundle',
+        bundlePolicy: 'balanced',
         rtcpMuxPolicy: 'require',
+        iceCandidatePoolSize: 10,
       },
     });
 
