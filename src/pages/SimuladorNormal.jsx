@@ -555,9 +555,14 @@ export default function SimuladorNormal() {
         pdf_url: `#simulacao-impressao-${simulacao.id}`
       });
 
+      // Buscar etapa de Simulação do funil consórcio especificamente
       const etapaSimulacao = etapas.find(e => 
-        e.nome.toLowerCase().includes('simulação') || 
-        e.nome.toLowerCase().includes('simulacao')
+        e.produto === 'consorcio' && (
+          e.nome.toLowerCase().includes('simulação') || 
+          e.nome.toLowerCase().includes('simulacao')
+        )
+      ) || etapas.find(e => 
+        e.produto === 'consorcio'
       ) || etapas[0];
 
       const oportunidade = await base44.entities.Oportunidade.create({
@@ -568,6 +573,7 @@ export default function SimuladorNormal() {
         valor_estimado: creditoTotal,
         etapa_id: etapaSimulacao.id,
         etapa_nome: etapaSimulacao.nome,
+        produto: 'consorcio',
         vendedor_id: currentUser.id,
         vendedor_nome: colab.nome || currentUser.full_name,
         origem: 'Simulador com Recursos Próprios',
