@@ -39,6 +39,7 @@ export default function ChatHeader({
   onLigar,
   sipStatus,
   chamadaAtiva,
+  erroSip,
 }) {
   if (!conversaSelecionada) return null;
 
@@ -258,6 +259,14 @@ export default function ChatHeader({
           </Tooltip>
         </div>
       </div>
+
+      {/* Aviso de erro SIP / microfone */}
+      {erroSip && erroSip.includes('microfone') && (
+        <div className="mt-1.5 flex items-center gap-2 bg-red-50 border border-red-200 rounded-md px-3 py-1.5 text-xs text-red-700">
+          <span>🎤</span>
+          <span>{erroSip}</span>
+        </div>
+      )}
 
       {/* Linha 2: Tags + botão gerenciar */}
       {(tagsDoContato.length > 0 || true) && (

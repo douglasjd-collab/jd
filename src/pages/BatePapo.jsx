@@ -278,15 +278,16 @@ export default function BatePapo() {
       .catch(() => {});
   }, [user?.id]);
 
-  const { sipStatus, chamadaAtiva, realizarChamada, encerrarChamada } = useSoftphone(nvoipConfig);
+  const { sipStatus, erroMsg: erroSip, chamadaAtiva, realizarChamada, encerrarChamada } = useSoftphone(nvoipConfig);
 
-  const ligarParaContato = (telefone) => {
+  const ligarParaContato = async (telefone) => {
     if (!nvoipConfig) { toast.error('Configure seu ramal em Call Center > Meu Ramal'); return; }
     if (sipStatus !== 'registrado') { toast.error(`Ramal não registrado (${sipStatus})`); return; }
     const numLimpo = (telefone || '').replace(/\D/g, '');
     if (!numLimpo) { toast.error('Número inválido'); return; }
-    realizarChamada(numLimpo);
-    toast.success(`Ligando para ${numLimpo}...`);
+    const ok = await realizarChamada(numLimpo);
+    if (ok) toast.success(`Ligando para ${numLimpo}...`);
+    else if (erroSip) toast.error(erroSip);
   };
 
   const abrirGruposBloqueados = async () => {
@@ -1793,6 +1794,7 @@ export default function BatePapo() {
                 onLigar={() => ligarParaContato(conversaSelecionada?.cliente_telefone)}
                 sipStatus={sipStatus}
                 chamadaAtiva={chamadaAtiva}
+                erroSip={erroSip}
                 />
                 <ChamadaAtivaBar chamadaAtiva={chamadaAtiva} onEncerrar={encerrarChamada} />
 

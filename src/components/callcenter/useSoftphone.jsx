@@ -311,8 +311,19 @@ export default function useSoftphone(config) {
   }, [config?.numbersip, config?.sip_password]); // eslint-disable-line
 
   // ── CHAMADA DE SAÍDA ──────────────────────────────────────────────────────
-  const realizarChamada = useCallback((numero) => {
+  const realizarChamada = useCallback(async (numero) => {
     if (!uaRef.current || sipStatus !== 'registrado') return false;
+
+    // Solicita permissão de microfone ANTES de tentar a chamada
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      stream.getTracks().forEach(t => t.stop()); // libera imediatamente, JsSIP abrirá novo stream
+    } catch (err) {
+      console.warn('🎤 Permissão de microfone negada:', err.message);
+      setErroMsg('Permissão de microfone negada. Clique no ícone de cadeado na barra do navegador e permita o microfone, depois recarregue a página.');
+      return false;
+    }
+
     const cfg = configRef.current;
     const numLimpo = numero.replace(/\D/g, '');
     const destino = `sip:${numLimpo}@app.nvoip.com.br`;
