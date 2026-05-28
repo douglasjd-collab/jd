@@ -318,14 +318,16 @@ export default function SimuladorNormal() {
       const pctEmbutido = parseFloat(lanceEmbutidoPercentual) / 100;
       lanceEmbutidoValor = creditoTotal * pctEmbutido;
     }
-    // O lance embutido NÃO desconta do saldo quando:
-    // 1. O usuário selecionou parcela reduzida (a parcela já está reduzida pelo embutido), OU
-    // 2. O plano selecionado é 50% ou 70% (detectado pelo planoSelecionadoInfo OU pelo nomePlano de qualquer carta)
+    // O lance embutido NÃO desconta do saldo quando o plano já inclui o embutido (50% ou 70% no nome)
+    // Nesses planos, a parcela já é calculada pela administradora considerando o embutido,
+    // então NÃO se desconta novamente do saldo devedor.
     const planoSelecionadoUpper = planoSelecionadoInfo?.toUpperCase() || '';
     const nomesCartasUpper = cartas.map(c => (c.nomePlano || '').toUpperCase()).join(' ');
     const textoPlanos = planoSelecionadoUpper + ' ' + nomesCartasUpper;
-    const planoEmbComDesconto = textoPlanos.includes('50%') || textoPlanos.includes('70%');
-    const lanceEmbutidoDescontaNoSaldo = usarLanceEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0) && !planoEmbComDesconto;
+    const planoJaTemEmbutido = textoPlanos.includes('50%') || textoPlanos.includes('70%');
+    // Se o plano já tem embutido (50%/70%), NÃO desconta do saldo devedor
+    // Se parcela reduzida foi selecionada, também NÃO desconta (embutido já refletido na parcela menor)
+    const lanceEmbutidoDescontaNoSaldo = usarLanceEmbutido && !planoJaTemEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0);
 
     // Aplicar lance próprio se ativo
     if (usarLanceProprio && lanceProprio) {
@@ -481,6 +483,7 @@ export default function SimuladorNormal() {
       lanceEmbutido: lanceEmbutidoValor,
       lanceEmbutidoPercentual: usarLanceEmbutido ? parseFloat(lanceEmbutidoPercentual) : 0,
       lanceEmbutidoDescontaNoSaldo,
+      planoJaTemEmbutido,
       parcelaReduzidaSelecionada: usarParcelaReduzida && parcelaReduzidaTotal > 0,
       lanceTotal: lanceTotalValor,
       saldoAposLance,
@@ -817,7 +820,7 @@ export default function SimuladorNormal() {
                           className="h-9 text-xs"
                         />
                         {carta.nomePlano && (carta.nomePlano.toUpperCase().includes('50%') || carta.nomePlano.toUpperCase().includes('70%')) && (
-                          <p className="text-xs text-emerald-600 mt-1">✅ Plano {carta.nomePlano.toUpperCase().includes('70%') ? '70%' : '50%'} identificado — Lance embutido não descontará do saldo devedor</p>
+                          <p className="text-xs text-emerald-600 mt-1">✅ Plano com lance embutido identificado — o embutido já está incluso nas parcelas do plano e <strong>não será descontado novamente</strong> do saldo devedor</p>
                         )}
                       </div>
                     </div>
@@ -1248,7 +1251,7 @@ export default function SimuladorNormal() {
                     )}
                     {resultado.usarLanceEmbutido && !resultado.lanceEmbutidoDescontaNoSaldo && (
                      <div className="flex justify-between text-xs text-emerald-700">
-                       <span>✨ Lance Embutido incluso na parcela reduzida (não desconta do saldo)</span>
+                       <span>✨ Lance Embutido já incluso no plano (não desconta do saldo devedor)</span>
                        <span className="font-semibold">{formatCurrency(resultado.lanceEmbutido)}</span>
                      </div>
                     )}
