@@ -78,8 +78,9 @@ export default function CallCenter() {
 
         // Carrega config com sip_password para o softphone
         const sipRes = await base44.functions.invoke('nvoipCallCenter', { action: 'buscarConfigUsuario' });
-        if (sipRes.data?.config?.sip_password) {
-          setSipConfig(sipRes.data.config);
+        const cfgSip = sipRes.data?.config;
+        if (cfgSip?.numbersip) {
+          setSipConfig(cfgSip); // conecta mesmo sem sip_password — useSoftphone mostrará erro adequado
         }
       } catch (e) {
         console.error('Erro ao inicializar CallCenter:', e);

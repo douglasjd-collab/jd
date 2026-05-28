@@ -233,12 +233,12 @@ Deno.serve(async (req) => {
 
     // Buscar config do usuário para exibir no modal
     if (action === 'buscarConfigUsuario') {
-      // 1. Tenta config pessoal do usuário
+      // 1. Tenta config pessoal do usuário (retorna se tiver numbersip, independente de user_token)
       if (colaboradorId) {
         const existentes = await base44.asServiceRole.entities.ConfiguracaoNvoipUsuario.filter({
           colaborador_id: colaboradorId,
         });
-        if (existentes.length > 0 && existentes[0].numbersip && (existentes[0].user_token || existentes[0].napikey)) {
+        if (existentes.length > 0 && existentes[0].numbersip) {
           return Response.json({ config: existentes[0], tipo: 'usuario' });
         }
       }

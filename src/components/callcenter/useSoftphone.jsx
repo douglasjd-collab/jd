@@ -303,11 +303,10 @@ export default function useSoftphone(config) {
   // Auto-conecta ao receber config válida — conecta 1x, sem re-conectar em re-renders
   const lastConnectedRef = useRef('');
   useEffect(() => {
-    if (!config?.numbersip || !config?.sip_password) {
-      if (config?.numbersip && !config?.sip_password) {
-        setSipStatus('erro');
-        setErroMsg('Senha SIP não configurada. Acesse "Meu Ramal".');
-      }
+    if (!config?.numbersip) return;
+    if (!config?.sip_password) {
+      setSipStatus('erro');
+      setErroMsg('Senha SIP não configurada. Acesse "Meu Ramal" → preencha a Senha SIP → Salvar.');
       return;
     }
     const key = `${config.numbersip}|${config.sip_password}`;
