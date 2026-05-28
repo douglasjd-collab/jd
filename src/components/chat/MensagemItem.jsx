@@ -245,13 +245,58 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
   const formatarTexto = (texto) => {
     if (!texto) return null;
-    const parts = texto.split(/(\*[^*]+\*|_[^_]+_|~[^~]+~)/g);
-    return parts.map((part, i) => {
-      if (part.startsWith('*') && part.endsWith('*')) return <strong key={i}>{part.slice(1, -1)}</strong>;
-      if (part.startsWith('_') && part.endsWith('_')) return <em key={i}>{part.slice(1, -1)}</em>;
-      if (part.startsWith('~') && part.endsWith('~')) return <s key={i}>{part.slice(1, -1)}</s>;
-      return part;
+    // Detectar URLs e formatação
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    const boldItalicRegex = /(\*[^*]+\*|_[^_]+_|~[^~]+~)/g;
+    
+    // Primeiro, split por URLs
+    const urlParts = texto.split(urlRegex);
+    const urlMatches = texto.match(urlRegex) || [];
+    
+    const result = [];
+    let urlIndex = 0;
+    
+    urlParts.forEach((part, i) => {
+      if (i > 0 && urlIndex < urlMatches.length && part === undefined) {
+        // Espaço reservado para URL
+        const url = urlMatches[urlIndex];
+        result.push(
+          <a 
+            key={`url-${urlIndex}`}
+            href={url.startsWith('http') ? url : `https://${url}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 underline break-all"
+          >
+            {url}
+          </a>
+        );
+        urlIndex++;
+      } else if (part) {
+        // Processar formatação dentro de texto não-URL
+        const boldItalicParts = part.split(boldItalicRegex);
+        const boldItalicMatches = part.match(boldItalicRegex) || [];
+        
+        let formatIndex = 0;
+        boldItalicParts.forEach((subpart, j) => {
+          if (subpart === undefined) return;
+          if (boldItalicMatches[formatIndex] === subpart) {
+            if (subpart.startsWith('*') && subpart.endsWith('*')) {
+              result.push(<strong key={`${i}-${j}`}>{subpart.slice(1, -1)}</strong>);
+            } else if (subpart.startsWith('_') && subpart.endsWith('_')) {
+              result.push(<em key={`${i}-${j}`}>{subpart.slice(1, -1)}</em>);
+            } else if (subpart.startsWith('~') && subpart.endsWith('~')) {
+              result.push(<s key={`${i}-${j}`}>{subpart.slice(1, -1)}</s>);
+            }
+            formatIndex++;
+          } else if (subpart) {
+            result.push(subpart);
+          }
+        });
+      }
     });
+    
+    return result.length > 0 ? result : null;
   };
 
   // Detectar se é uma mensagem JSON codificada do WhatsApp (mensagens internas)
