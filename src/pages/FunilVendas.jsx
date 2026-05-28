@@ -27,6 +27,7 @@ import {
 import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2, Users, Globe, AlertTriangle, Clock, Flame, Target, Settings, ChevronDown, Zap, MessageSquare, Bell } from 'lucide-react';
 import ChatFunilModal from '@/components/funil/ChatFunilModal';
 import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
+import CampanhasStatusModal from '@/components/funil/CampanhasStatusModal';
 import AlertasPreFechamentoBell from '@/components/funil/AlertasPreFechamentoBell';
 import ConfiguracaoAlertasPreFechamento from '@/components/funil/ConfiguracaoAlertasPreFechamento';
 import { ModalAlterarResponsavel, ModalComentarios, ModalAlterarQuadro, ModalCriarFunil, ModalVenda } from '@/components/funil/FunilModais';
@@ -1380,11 +1381,18 @@ export default function FunilVendas() {
                                 {etapaAtual?.tipo === 'planejamento' && (
                                   <div className="mb-2">
                                     <p className="text-[9px] text-slate-400 uppercase font-semibold mb-1">Jornada 60 dias</p>
-                                    <CampanhasPlanejamentoBadge
-                                      ultimaCampanha={oport.campanha_planejamento_ultima || 0}
-                                      dataEntrada={oport.data_entrada_planejamento}
-                                      compact={false}
-                                    />
+                                    <div className="flex items-center gap-2">
+                                      <CampanhasPlanejamentoBadge
+                                        ultimaCampanha={oport.campanha_planejamento_ultima || 0}
+                                        dataEntrada={oport.data_entrada_planejamento}
+                                        compact={true}
+                                      />
+                                      <CampanhasStatusModal
+                                        oportunidade={oport}
+                                        ultimaCampanha={oport.campanha_planejamento_ultima || 0}
+                                        dataEntrada={oport.data_entrada_planejamento}
+                                      />
+                                    </div>
                                   </div>
                                 )}
 
