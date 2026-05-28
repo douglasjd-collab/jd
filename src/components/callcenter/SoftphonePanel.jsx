@@ -142,18 +142,7 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
           </div>
         )}
 
-        {/* Aviso CRÍTICO: numero_chip desvia chamadas para celular físico */}
-        {numeroChip && !chamadaAtiva && !chamadaEntrante && (
-          <div className="p-3 bg-red-50 border-2 border-red-500 rounded-lg text-xs text-red-800 flex items-start gap-2">
-            <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
-            <div className="space-y-1">
-              <p className="font-bold text-sm text-red-700">🚫 Chamadas NÃO chegam no Webphone!</p>
-              <p>O <strong>"Número Chip"</strong> está configurado como <strong>{numeroChip}</strong>. O NVOIP está desviando TODAS as chamadas entrantes para este celular físico.</p>
-              <p className="font-semibold">Solução: clique em <strong>"Meu Ramal"</strong> → clique em <strong>"Remover Chip"</strong> → Salvar.</p>
-              <p className="text-blue-700 font-medium">Após remover: confirme que o DID está roteado para o ramal {numbersip} no painel NVOIP.</p>
-            </div>
-          </div>
-        )}
+
 
         {/* ── DISCADOR ── */}
         {!chamadaAtiva && !chamadaEntrante && (
