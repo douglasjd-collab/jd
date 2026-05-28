@@ -96,19 +96,19 @@ export default function useSoftphone(config) {
     if (audioRef.current) { audioRef.current.srcObject = null; }
   };
 
-  // ── timeout de chamada ────────────────────────────────────────────────────
+  // ── timeout de chamada (60s após INVITE enviado) ──────────────────────────
   const _startCallTimeout = (session, numHistorico) => {
     _clearCallTimeout();
     callTimeoutRef.current = setTimeout(() => {
-      console.warn('⏰ Timeout 15s em Chamando — encerrando sessão');
+      console.warn('⏰ Timeout 60s sem resposta — encerrando sessão');
       try { session.terminate(); } catch {}
       if (mountedRef.current) {
-        setErroMsg('A chamada não foi atendida em 15 segundos. Verifique o número e tente novamente.');
+        setErroMsg('Sem resposta após 60 segundos. Verifique o número e tente novamente.');
         setChamadaAtiva(null);
       }
       _clearAudio();
       _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
-    }, 15000);
+    }, 60000);
   };
 
   const _clearCallTimeout = () => {
@@ -382,8 +382,10 @@ export default function useSoftphone(config) {
       ],
     });
 
-    // ── Log SIP detalhado ──────────────────────────────────────────────────
+    // ── Log SIP detalhado + inicia timeout SOMENTE após INVITE enviado ───────
     session.on('sending', (e) => {
+      // Inicia timeout de 60s apenas quando o INVITE já saiu pelo WebSocket
+      _startCallTimeout(session, numHistorico);
       try {
         const req = e?.request;
         console.log('📤 SIP INVITE enviado:', {
@@ -419,9 +421,7 @@ export default function useSoftphone(config) {
     inicioRef.current = null;
     setChamadaAtiva({ session, destino: numHistorico, direcao: 'saida', status: 'chamando' });
 
-    // Inicia timeout de 15s
-    _startCallTimeout(session, numHistorico);
-
+    // Timeout iniciado dentro do evento 'sending' (após INVITE efetivamente enviado)
     session.on('progress', (e) => {
       const code = e?.response?.status_code;
       console.log(`📞 SIP ${code} ${e?.response?.reason_phrase || ''}`);
