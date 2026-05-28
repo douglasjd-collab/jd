@@ -320,11 +320,25 @@ export default function useSoftphone(config) {
     const session = uaRef.current.call(destino, {
       mediaConstraints: { audio: true, video: false },
       rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
-      pcConfig: { iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun.nvoip.com.br:3478' },
-      ]},
+      pcConfig: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun.nvoip.com.br:3478' },
+          {
+            urls: [
+              'turn:turn.nvoip.com.br:3478?transport=udp',
+              'turn:turn.nvoip.com.br:3478?transport=tcp',
+              'turns:turn.nvoip.com.br:5349?transport=tcp',
+            ],
+            username: String(cfg.numbersip),
+            credential: String(cfg.sip_password),
+          },
+        ],
+        iceTransportPolicy: 'all',
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require',
+      },
       extraHeaders: cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did}`] : [],
     });
 
@@ -346,6 +360,7 @@ export default function useSoftphone(config) {
     _stopRing();
     const { session, origem, clienteId, clienteNome } = chamadaEntrante;
 
+    const cfg = configRef.current;
     session.answer({
       mediaConstraints: { audio: true, video: false },
       pcConfig: {
@@ -353,7 +368,19 @@ export default function useSoftphone(config) {
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
           { urls: 'stun:stun.nvoip.com.br:3478' },
+          {
+            urls: [
+              'turn:turn.nvoip.com.br:3478?transport=udp',
+              'turn:turn.nvoip.com.br:3478?transport=tcp',
+              'turns:turn.nvoip.com.br:5349?transport=tcp',
+            ],
+            username: String(cfg?.numbersip || ''),
+            credential: String(cfg?.sip_password || ''),
+          },
         ],
+        iceTransportPolicy: 'all',
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require',
       },
     });
 
