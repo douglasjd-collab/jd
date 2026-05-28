@@ -192,6 +192,14 @@ export function ModalAlterarQuadro({
   novaEtapaId, setNovaEtapaId, funilDestino, setFunilDestino,
   onConfirmar, isPending
 }) {
+  // Determinar o funil atual ou selecionado
+  const funiAtualSelecionado = funilDestino && funilDestino !== 'todos' ? funilDestino : oportunidade?.produto || 'consorcio';
+  
+  // Filtrar etapas: se funil foi selecionado, mostra apenas etapas desse funil; senão mostra todas
+  const etapasFiltradas = funilDestino && funilDestino !== 'todos'
+    ? etapasOrdenadas.filter(e => e.produto === funilDestino)
+    : etapasOrdenadas;
+
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setFunilDestino(''); }}>
       <DialogContent className="max-w-md">
@@ -208,9 +216,8 @@ export function ModalAlterarQuadro({
           <div>
             <Label>Funil de Destino</Label>
             <Select value={funilDestino} onValueChange={(v) => { setFunilDestino(v); setNovaEtapaId(''); }}>
-              <SelectTrigger><SelectValue placeholder="Selecione o funil (opcional)" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Selecione o funil" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">🔀 Todos os funis</SelectItem>
                 {todosOsFunis.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -220,7 +227,7 @@ export function ModalAlterarQuadro({
             <Select value={novaEtapaId} onValueChange={setNovaEtapaId}>
               <SelectTrigger><SelectValue placeholder="Selecione a etapa" /></SelectTrigger>
               <SelectContent>
-                {etapasOrdenadas.map((e) => (
+                {etapasFiltradas.map((e) => (
                   <SelectItem key={e.id} value={e.id}>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: e.cor }} />
