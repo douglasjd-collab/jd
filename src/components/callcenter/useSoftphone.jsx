@@ -21,14 +21,16 @@ export default function useSoftphone(config) {
   const audioRef = useRef(null);
   const ringRef = useRef(null);
   const inicioRef = useRef(null);
-  const callTimeoutRef = useRef(null); // timeout 15s para "Chamando..."
+  const callTimeoutRef = useRef(null);
   const configRef = useRef(config);
   const colabCacheRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   const mountedRef = useRef(true);
   const lastConnectedRef = useRef('');
+  const sipStatusRef = useRef('desconectado');
 
   useEffect(() => { configRef.current = config; }, [config]);
+  useEffect(() => { sipStatusRef.current = sipStatus; }, [sipStatus]);
 
   // Elemento de áudio remoto persistente
   useEffect(() => {
@@ -334,8 +336,12 @@ export default function useSoftphone(config) {
 
   // ── CHAMADA DE SAÍDA — WebRTC puro via WSS ────────────────────────────────
   const realizarChamada = useCallback(async (numero) => {
-    if (!uaRef.current || sipStatus !== 'registrado') {
-      console.warn('⚠️ realizarChamada: UA não registrado');
+    // Usa ref para pegar sipStatus sempre atualizado (evita closure stale)
+    const statusAtual = sipStatusRef.current;
+    console.log(`📞 realizarChamada — sipStatus atual: ${statusAtual} | UA: ${uaRef.current ? 'OK' : 'null'}`);
+    if (!uaRef.current || statusAtual !== 'registrado') {
+      console.warn(`⚠️ realizarChamada: UA não registrado (status=${statusAtual})`);
+      if (mountedRef.current) setErroMsg(`Ramal não registrado (${statusAtual}). Aguarde a conexão e tente novamente.`);
       return false;
     }
 
@@ -475,7 +481,7 @@ export default function useSoftphone(config) {
     });
 
     return true;
-  }, [sipStatus]);
+  }, []); // sipStatus lido via sipStatusRef — sem dependência de closure
 
   // ── ATENDER chamada entrante ──────────────────────────────────────────────
   const atenderChamada = useCallback(() => {
