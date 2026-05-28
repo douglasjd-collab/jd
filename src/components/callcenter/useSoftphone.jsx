@@ -354,17 +354,23 @@ export default function useSoftphone(config) {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' },
-          { urls: 'stun:stun4.l.google.com:19302' },
-          { urls: 'stun:stun.ekiga.net' },
-          { urls: 'stun:stun.ideasip.com' },
-          { urls: 'stun:stun.schlund.de' },
+          { urls: 'stun:stun.cloudflare.com:3478' },
+          // TURN público OpenRelay — relay de mídia quando STUN falha (NAT simétrico)
+          {
+            urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443'],
+            username: 'openrelayproject',
+            credential: 'openrelayproject',
+          },
+          {
+            urls: ['turn:a.relay.metered.ca:80', 'turn:a.relay.metered.ca:443', 'turns:a.relay.metered.ca:443'],
+            username: 'e499486ca9b4fc9d7a3dc2b4',
+            credential: 'FbGq5r+NqGpTBP4P',
+          },
         ],
         iceTransportPolicy: 'all',
         bundlePolicy: 'max-compat',
         rtcpMuxPolicy: 'negotiate',
-        iceCandidatePoolSize: 10,
+        iceCandidatePoolSize: 5,
       },
       extraHeaders: [
         ...(cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : []),
@@ -379,11 +385,25 @@ export default function useSoftphone(config) {
       pc.oniceconnectionstatechange = () => {
         console.log(`🧊 ICE state: ${pc.iceConnectionState}`);
         if (pc.iceConnectionState === 'failed') {
-          console.warn('❌ ICE falhou — tentando restart ICE');
-          try { pc.restartIce?.(); } catch {}
+          console.warn('❌ ICE falhou — forçando restart ICE via TURN relay');
+          try {
+            // Força uso apenas de relay (TURN) como fallback
+            const config = pc.getConfiguration?.();
+            if (config) {
+              config.iceTransportPolicy = 'relay';
+              pc.setConfiguration?.(config);
+            }
+            pc.restartIce?.();
+          } catch (err) { console.warn('restartIce error:', err); }
         }
         if (pc.iceConnectionState === 'disconnected') {
-          console.warn('⚠️ ICE desconectado — aguardando reconexão...');
+          // Aguarda 3s antes de tentar restart — pode ser temporário
+          setTimeout(() => {
+            if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+              console.warn('⚠️ ICE ainda desconectado — tentando restart');
+              try { pc.restartIce?.(); } catch {}
+            }
+          }, 3000);
         }
       };
       pc.onicegatheringstatechange = () => {
@@ -460,17 +480,22 @@ export default function useSoftphone(config) {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
           { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          { urls: 'stun:stun3.l.google.com:19302' },
-          { urls: 'stun:stun4.l.google.com:19302' },
-          { urls: 'stun:stun.ekiga.net' },
-          { urls: 'stun:stun.ideasip.com' },
-          { urls: 'stun:stun.schlund.de' },
+          { urls: 'stun:stun.cloudflare.com:3478' },
+          {
+            urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443'],
+            username: 'openrelayproject',
+            credential: 'openrelayproject',
+          },
+          {
+            urls: ['turn:a.relay.metered.ca:80', 'turn:a.relay.metered.ca:443', 'turns:a.relay.metered.ca:443'],
+            username: 'e499486ca9b4fc9d7a3dc2b4',
+            credential: 'FbGq5r+NqGpTBP4P',
+          },
         ],
         iceTransportPolicy: 'all',
         bundlePolicy: 'max-compat',
         rtcpMuxPolicy: 'negotiate',
-        iceCandidatePoolSize: 10,
+        iceCandidatePoolSize: 5,
       },
     });
 
