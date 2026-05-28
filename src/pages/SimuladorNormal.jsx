@@ -37,6 +37,7 @@ export default function SimuladorNormal() {
   const [modoReducao, setModoReducao] = useState('parcela'); // 'parcela' | '5050'
   const [usarLanceEmbutido, setUsarLanceEmbutido] = useState(false);
   const [lanceEmbutidoPercentual, setLanceEmbutidoPercentual] = useState('30');
+  const [lanceEmbutidoJaIncluso, setLanceEmbutidoJaIncluso] = useState(false);
   const [usarParcelaReduzida, setUsarParcelaReduzida] = useState(false); // false = parcela normal, true = parcela reduzida
   const [resultado, setResultado] = useState(null);
   const [planoModalOpen, setPlanoModalOpen] = useState(false);
@@ -324,7 +325,7 @@ export default function SimuladorNormal() {
     const planoSelecionadoUpper = planoSelecionadoInfo?.toUpperCase() || '';
     const nomesCartasUpper = cartas.map(c => (c.nomePlano || '').toUpperCase()).join(' ');
     const textoPlanos = planoSelecionadoUpper + ' ' + nomesCartasUpper;
-    const planoJaTemEmbutido = textoPlanos.includes('50%') || textoPlanos.includes('70%');
+    const planoJaTemEmbutido = textoPlanos.includes('50%') || textoPlanos.includes('70%') || lanceEmbutidoJaIncluso;
     // Se o plano já tem embutido (50%/70%), NÃO desconta do saldo devedor
     // Se parcela reduzida foi selecionada, também NÃO desconta (embutido já refletido na parcela menor)
     const lanceEmbutidoDescontaNoSaldo = usarLanceEmbutido && !planoJaTemEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0);
@@ -627,10 +628,15 @@ export default function SimuladorNormal() {
       let ativarLanceEmbutido = false;
       let lanceEmbutidoPercentualAuto = '';
       
-      // Se o plano é 70%, ativar lance embutido de 30%
-      if (nomeBem.includes('70%')) {
+      // Se o plano é 50% ou 70%, ativar lance embutido e marcar "já incluso"
+      if (nomeBem.includes('50%')) {
+        ativarLanceEmbutido = true;
+        lanceEmbutidoPercentualAuto = '50';
+        setLanceEmbutidoJaIncluso(true);
+      } else if (nomeBem.includes('70%')) {
         ativarLanceEmbutido = true;
         lanceEmbutidoPercentualAuto = '30';
+        setLanceEmbutidoJaIncluso(true);
       }
       
       // Se não for 50% nem 70%, buscar o equivalente de 50%
@@ -670,12 +676,13 @@ export default function SimuladorNormal() {
       setCartas(novasCartas);
       setPlanoSelecionadoInfo(plano.nome_bem || '');
       
-      // Ativar lance embutido automaticamente se plano é 70%
+      // Ativar lance embutido automaticamente se plano é 50% ou 70%
       if (ativarLanceEmbutido) {
         setUsarLanceEmbutido(true);
         setLanceEmbutidoPercentual(lanceEmbutidoPercentualAuto);
-        toast.success(`Plano selecionado: ${plano.nome_bem} — Lance Embutido (30%) ativado automaticamente!`);
+        toast.success(`Plano selecionado: ${plano.nome_bem} — Lance Embutido (${lanceEmbutidoPercentualAuto}%) ativado. Embutido já incluso no plano.`);
       } else {
+        setLanceEmbutidoJaIncluso(false);
         toast.success(`Plano selecionado: ${plano.nome_bem}`);
       }
     }
@@ -962,6 +969,13 @@ export default function SimuladorNormal() {
               </div>
               {usarLanceEmbutido && (
                 <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+                    <div>
+                      <Label className="text-sm font-medium text-amber-800">Plano 50% / 70% (embutido já incluso)?</Label>
+                      <p className="text-xs text-amber-600 mt-1">Marque se o plano selecionado já tem o lance embutido nas parcelas (ex: Renovação 50%, Leve 50%, 70%). O embutido <strong>não descontará</strong> do saldo devedor.</p>
+                    </div>
+                    <Switch checked={lanceEmbutidoJaIncluso} onCheckedChange={setLanceEmbutidoJaIncluso} />
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs">Percentual do Lance Embutido (%)</Label>
