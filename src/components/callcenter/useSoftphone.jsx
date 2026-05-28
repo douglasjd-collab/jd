@@ -323,33 +323,38 @@ export default function useSoftphone(config) {
       pcConfig: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
           { urls: 'stun:stun.nvoip.com.br:3478' },
-          {
-            urls: [
-              'turn:turn.nvoip.com.br:3478?transport=udp',
-              'turn:turn.nvoip.com.br:3478?transport=tcp',
-              'turns:turn.nvoip.com.br:5349?transport=tcp',
-            ],
-            username: String(cfg.numbersip),
-            credential: String(cfg.sip_password),
-          },
         ],
-        iceTransportPolicy: 'all',
-        bundlePolicy: 'max-bundle',
-        rtcpMuxPolicy: 'require',
       },
       extraHeaders: cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did}`] : [],
+    });
+
+    // Log de estado ICE para diagnóstico
+    session.on('peerconnection', (data) => {
+      const pc = data.peerconnection;
+      if (!pc) return;
+      pc.oniceconnectionstatechange = () => {
+        console.log(`🧊 ICE state: ${pc.iceConnectionState}`);
+        if (pc.iceConnectionState === 'failed') {
+          console.warn('❌ ICE falhou — verifique firewall/NAT');
+        }
+      };
+      pc.onicegatheringstatechange = () => {
+        console.log(`🧊 ICE gathering: ${pc.iceGatheringState}`);
+      };
+      pc.onicecandidate = (e) => {
+        if (e.candidate) console.log(`🧊 Candidate: ${e.candidate.type} ${e.candidate.address || ''}`);
+      };
     });
 
     inicioRef.current = null;
     setChamadaAtiva({ session, destino: numLimpo, direcao: 'saida', status: 'chamando' });
 
-    session.on('progress',  () => setChamadaAtiva(p => p ? { ...p, status: 'chamando' } : null));
+    session.on('progress',  (e) => { console.log('📞 progress', e?.response?.status_code); setChamadaAtiva(p => p ? { ...p, status: 'chamando' } : null); });
     session.on('accepted',  () => { inicioRef.current = Date.now(); setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null); _attachAudio(session); });
     session.on('confirmed', () => { if (!inicioRef.current) inicioRef.current = Date.now(); setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null); _attachAudio(session); });
-    session.on('ended',  () => { const d = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0; _salvarHistorico(numLimpo, 'saida', d > 0 ? 'atendida' : 'nao_atendida', d); setChamadaAtiva(null); _clearAudio(); });
-    session.on('failed', () => { _salvarHistorico(numLimpo, 'saida', 'nao_atendida', 0); setChamadaAtiva(null); _clearAudio(); });
+    session.on('ended',  (e) => { console.log('📞 ended', e?.cause); const d = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0; _salvarHistorico(numLimpo, 'saida', d > 0 ? 'atendida' : 'nao_atendida', d); setChamadaAtiva(null); _clearAudio(); });
+    session.on('failed', (e) => { console.warn('📞 failed', e?.cause, e?.response?.status_code, e?.message); _salvarHistorico(numLimpo, 'saida', 'nao_atendida', 0); setChamadaAtiva(null); _clearAudio(); });
 
     return true;
   }, [sipStatus]);
