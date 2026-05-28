@@ -325,8 +325,20 @@ export default function useSoftphone(config) {
     }
 
     const cfg = configRef.current;
-    const numLimpo = numero.replace(/\D/g, '');
+    let numLimpo = numero.replace(/\D/g, '');
+
+    // Garantir formato internacional: números externos precisam de 55 + DDD + número
+    if (!numLimpo.startsWith('55') && numLimpo.length <= 11) {
+      numLimpo = '55' + numLimpo;
+    }
+
+    console.log(`📞 Discando: ${numLimpo} → ramal ${cfg?.numbersip} | DID: ${cfg?.numero_did}`);
+
+    // Na NVOIP WebRTC, para chamar PSTN externo o Request-URI deve ter
+    // o número no formato E.164 + @app.nvoip.com.br
+    // O From/Contact usa o ramal registrado (JsSIP já cuida disso automaticamente)
     const destino = `sip:${numLimpo}@app.nvoip.com.br`;
+    console.log(`📞 SIP INVITE → ${destino}`);
 
     const session = uaRef.current.call(destino, {
       mediaConstraints: { audio: true, video: false },
@@ -350,7 +362,10 @@ export default function useSoftphone(config) {
         bundlePolicy: 'max-bundle',
         rtcpMuxPolicy: 'require',
       },
-      extraHeaders: cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did}`] : [],
+      extraHeaders: [
+        ...(cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : []),
+        `X-CallerID: ${(cfg?.numero_did || cfg?.numbersip || '').replace(/\D/g, '')}`,
+      ],
     });
 
     // Log de estado ICE para diagnóstico
@@ -374,11 +389,34 @@ export default function useSoftphone(config) {
     inicioRef.current = null;
     setChamadaAtiva({ session, destino: numLimpo, direcao: 'saida', status: 'chamando' });
 
-    session.on('progress',  (e) => { console.log('📞 progress', e?.response?.status_code); setChamadaAtiva(p => p ? { ...p, status: 'chamando' } : null); });
+    session.on('sending', (e) => {
+      // Log do SIP INVITE que está saindo — confirma o número e headers enviados
+      try {
+        const req = e?.request;
+        console.log(`📤 SIP INVITE enviado:`, {
+          to: req?.to?.toString?.(),
+          from: req?.from?.toString?.(),
+          contact: req?.contact?.[0]?.toString?.(),
+          request_uri: req?.ruri?.toString?.(),
+        });
+      } catch {}
+    });
+    session.on('progress',  (e) => {
+      const code = e?.response?.status_code;
+      console.log(`📞 progress ${code}`, e?.response?.reason_phrase || '');
+      setChamadaAtiva(p => p ? { ...p, status: 'chamando' } : null);
+    });
     session.on('accepted',  () => { inicioRef.current = Date.now(); setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null); _attachAudio(session); });
     session.on('confirmed', () => { if (!inicioRef.current) inicioRef.current = Date.now(); setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null); _attachAudio(session); });
     session.on('ended',  (e) => { console.log('📞 ended', e?.cause); const d = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0; _salvarHistorico(numLimpo, 'saida', d > 0 ? 'atendida' : 'nao_atendida', d); setChamadaAtiva(null); _clearAudio(); });
-    session.on('failed', (e) => { console.warn('📞 failed', e?.cause, e?.response?.status_code, e?.message); _salvarHistorico(numLimpo, 'saida', 'nao_atendida', 0); setChamadaAtiva(null); _clearAudio(); });
+    session.on('failed', (e) => {
+      const code = e?.response?.status_code;
+      const cause = e?.cause;
+      console.warn(`📞 failed — código: ${code}, causa: ${cause}`, e?.response?.reason_phrase || '');
+      _salvarHistorico(numLimpo, 'saida', 'nao_atendida', 0);
+      setChamadaAtiva(null);
+      _clearAudio();
+    });
 
     return true;
   }, [sipStatus]);
