@@ -7,17 +7,16 @@ import {
   Mic, MicOff, Wifi, WifiOff, Loader2, RefreshCw, Radio, AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { base44 } from '@/api/base44Client';
 import ChamadaEntrantePopup from './ChamadaEntrantePopup';
 
 const STATUS_CFG = {
-  desconectado: { label: 'Desconectado',  color: 'bg-slate-100 text-slate-500',   icon: WifiOff,  dot: 'bg-slate-400' },
-  conectando:   { label: 'Conectando...',  color: 'bg-yellow-100 text-yellow-700', icon: Loader2,  dot: 'bg-yellow-400' },
-  registrado:   { label: 'Pronto',         color: 'bg-green-100 text-green-700',   icon: Wifi,     dot: 'bg-green-500' },
-  erro:         { label: 'Erro SIP',       color: 'bg-red-100 text-red-700',       icon: WifiOff,  dot: 'bg-red-500' },
+  desconectado: { label: 'Desconectado',  color: 'bg-slate-100 text-slate-500',   dot: 'bg-slate-400' },
+  conectando:   { label: 'Conectando...',  color: 'bg-yellow-100 text-yellow-700', dot: 'bg-yellow-400' },
+  registrado:   { label: 'Pronto',         color: 'bg-green-100 text-green-700',   dot: 'bg-green-500'  },
+  erro:         { label: 'Erro SIP',       color: 'bg-red-100 text-red-700',       dot: 'bg-red-500'    },
 };
 
-export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
+export default function SoftphonePanel({ softphone, numbersip }) {
   const {
     sipStatus, erroMsg,
     chamadaAtiva, chamadaEntrante,
@@ -27,11 +26,9 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
   const [numero, setNumero] = useState('');
   const [mutado, setMutado] = useState(false);
   const [duracao, setDuracao] = useState(0);
-  const [discando, setDiscando] = useState(false);
-  const [erroDiscagem, setErroDiscagem] = useState('');
   const timerRef = useRef(null);
 
-  // Timer
+  // Timer de duração
   useEffect(() => {
     if (chamadaAtiva?.status === 'em_ligacao') {
       setDuracao(0);
@@ -53,37 +50,23 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
     setMutado(!mutado);
   };
 
-  const handleLigar = async () => {
+  const handleLigar = () => {
     const num = numero.replace(/\D/g, '');
-    if (!num || sipStatus !== 'registrado' || discando) return;
-    setErroDiscagem('');
-    setDiscando(true);
-    try {
-      // Usa API REST NVOIP para iniciar chamada de saída (INVITE via WebSocket não é suportado para saída)
-      const res = await base44.functions.invoke('nvoipCallCenter', {
-        action: 'realizarChamadaDireta',
-        called: num,
-      });
-      const data = res.data;
-      if (data?.error) {
-        setErroDiscagem(data.error);
-      } else {
-        // Chamada iniciada com sucesso via API — mostra chamada ativa na UI
-        setNumero('');
-        // Simula estado de chamada ativa para a UI (será encerrada manualmente ou por timeout)
-        realizarChamada(num); // ainda tenta via WebRTC para áudio entrante da 2ª perna
-      }
-    } catch (e) {
-      setErroDiscagem('Erro ao iniciar chamada: ' + e.message);
-    } finally {
-      setDiscando(false);
-    }
+    if (!num || sipStatus !== 'registrado') return;
+    realizarChamada(num);
+    setNumero('');
   };
 
   const fmtDuracao = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   const cfg = STATUS_CFG[sipStatus] || STATUS_CFG.desconectado;
-  const StatusIcon = cfg.icon;
+
+  // Label e cor do status da chamada ativa
+  const callStatusLabel = chamadaAtiva?.status === 'em_ligacao'
+    ? null
+    : chamadaAtiva?.status === 'tocando'
+    ? '☎ Tocando...'
+    : '⟳ Chamando...';
 
   return (
     <>
@@ -111,7 +94,7 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
 
       <div className="p-4 space-y-3 flex-1">
 
-        {/* Chamada entrante: tratada pelo popup global ChamadaEntrantePopup */}
+        {/* Chamada entrante inline */}
         {chamadaEntrante && (
           <div className="border-2 border-green-400 bg-green-50 rounded-xl p-3 text-center">
             <div className="flex items-center gap-2 justify-center text-green-700">
@@ -128,7 +111,9 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
           <div className="bg-slate-900 text-white rounded-xl p-5 text-center space-y-3">
             <div className={cn(
               'w-16 h-16 rounded-full mx-auto flex items-center justify-center',
-              chamadaAtiva.status === 'em_ligacao' ? 'bg-green-500' : 'bg-amber-500 animate-pulse'
+              chamadaAtiva.status === 'em_ligacao' ? 'bg-green-500'
+              : chamadaAtiva.status === 'tocando'  ? 'bg-blue-500 animate-pulse'
+              : 'bg-amber-500 animate-pulse'
             )}>
               <Phone className="w-8 h-8" />
             </div>
@@ -143,7 +128,10 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
             </div>
             {chamadaAtiva.status === 'em_ligacao'
               ? <p className="text-3xl font-mono text-green-400 tabular-nums">{fmtDuracao(duracao)}</p>
-              : <p className="text-amber-300 text-sm animate-pulse">⟳ Chamando...</p>
+              : <p className={cn(
+                  'text-sm animate-pulse',
+                  chamadaAtiva.status === 'tocando' ? 'text-blue-300' : 'text-amber-300'
+                )}>{callStatusLabel}</p>
             }
             <div className="flex gap-2">
               <Button
@@ -165,8 +153,6 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
           </div>
         )}
 
-
-
         {/* ── DISCADOR ── */}
         {!chamadaAtiva && !chamadaEntrante && (
           <div className="space-y-3">
@@ -182,10 +168,10 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
               />
               <Button
                 onClick={handleLigar}
-                disabled={!numero.trim() || sipStatus !== 'registrado' || discando}
+                disabled={!numero.trim() || sipStatus !== 'registrado'}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 disabled:opacity-40"
               >
-                {discando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
+                <Phone className="w-4 h-4" />
               </Button>
             </div>
 
@@ -203,15 +189,15 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
               ))}
             </div>
 
-            {/* Erro de discagem */}
-            {erroDiscagem && (
+            {/* Erro */}
+            {erroMsg && (
               <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
-                ⚠️ {erroDiscagem}
+                ⚠️ {erroMsg}
               </div>
             )}
 
             {/* Status messages */}
-            {sipStatus === 'registrado' && !erroDiscagem && (
+            {sipStatus === 'registrado' && !erroMsg && (
               <p className="text-xs text-green-600 text-center font-medium">
                 ✓ Registrado — ligações com áudio direto no navegador
               </p>
@@ -223,9 +209,7 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
             )}
             {sipStatus === 'erro' && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 space-y-2">
-                <p className="font-semibold">
-                  {erroMsg || '⚠️ Falha na conexão SIP'}
-                </p>
+                <p className="font-semibold">{erroMsg || '⚠️ Falha na conexão SIP'}</p>
                 {!erroMsg?.includes('Senha SIP') && (
                   <p className="text-red-700">Verifique se a <strong>Senha SIP</strong> está configurada em "Meu Ramal".</p>
                 )}
@@ -241,7 +225,7 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
         )}
       </div>
 
-      {/* Alerta offline — só mostra se erro de credencial, não durante reconexão automática */}
+      {/* Alerta offline */}
       {sipStatus === 'erro' && (
         <div className="px-4 py-2 bg-amber-50 border-t border-amber-200 flex items-center gap-2 text-xs text-amber-800">
           <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
@@ -249,9 +233,9 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
         </div>
       )}
 
-      {/* Modo info */}
+      {/* Rodapé */}
       <div className="px-4 py-2 border-t bg-slate-50 text-xs text-slate-400 text-center">
-        Webphone WebRTC — INVITE SIP direto • wss://app.nvoip.com.br:7443
+        WebRTC puro via WSS • wss://app.nvoip.com.br:7443
       </div>
     </div>
     </>
