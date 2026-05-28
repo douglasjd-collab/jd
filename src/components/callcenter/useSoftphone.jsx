@@ -327,16 +327,18 @@ export default function useSoftphone(config) {
     const cfg = configRef.current;
     let numLimpo = numero.replace(/\D/g, '');
 
-    // Garantir formato internacional: números externos precisam de 55 + DDD + número
-    if (!numLimpo.startsWith('55') && numLimpo.length <= 11) {
-      numLimpo = '55' + numLimpo;
+    // Guarda o número original para histórico/busca de cliente
+    const numHistorico = numLimpo;
+
+    // Remove prefixo 55 se existir — a NVOIP roteia pelo plano de discagem interno
+    // e espera apenas DDD + número (sem código de país) no Request-URI
+    if (numLimpo.startsWith('55') && numLimpo.length >= 12) {
+      numLimpo = numLimpo.slice(2); // remove o 55
     }
 
     console.log(`📞 Discando: ${numLimpo} → ramal ${cfg?.numbersip} | DID: ${cfg?.numero_did}`);
 
-    // Na NVOIP WebRTC, para chamar PSTN externo o Request-URI deve ter
-    // o número no formato E.164 + @app.nvoip.com.br
-    // O From/Contact usa o ramal registrado (JsSIP já cuida disso automaticamente)
+    // NVOIP WebRTC: destino SIP = DDD+número sem prefixo de país
     const destino = `sip:${numLimpo}@app.nvoip.com.br`;
     console.log(`📞 SIP INVITE → ${destino}`);
 
@@ -387,7 +389,7 @@ export default function useSoftphone(config) {
     });
 
     inicioRef.current = null;
-    setChamadaAtiva({ session, destino: numLimpo, direcao: 'saida', status: 'chamando' });
+    setChamadaAtiva({ session, destino: numHistorico, direcao: 'saida', status: 'chamando' });
 
     session.on('sending', (e) => {
       // Log do SIP INVITE que está saindo — confirma o número e headers enviados
@@ -408,12 +410,12 @@ export default function useSoftphone(config) {
     });
     session.on('accepted',  () => { inicioRef.current = Date.now(); setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null); _attachAudio(session); });
     session.on('confirmed', () => { if (!inicioRef.current) inicioRef.current = Date.now(); setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null); _attachAudio(session); });
-    session.on('ended',  (e) => { console.log('📞 ended', e?.cause); const d = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0; _salvarHistorico(numLimpo, 'saida', d > 0 ? 'atendida' : 'nao_atendida', d); setChamadaAtiva(null); _clearAudio(); });
+    session.on('ended',  (e) => { console.log('📞 ended', e?.cause); const d = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0; _salvarHistorico(numHistorico, 'saida', d > 0 ? 'atendida' : 'nao_atendida', d); setChamadaAtiva(null); _clearAudio(); });
     session.on('failed', (e) => {
       const code = e?.response?.status_code;
       const cause = e?.cause;
       console.warn(`📞 failed — código: ${code}, causa: ${cause}`, e?.response?.reason_phrase || '');
-      _salvarHistorico(numLimpo, 'saida', 'nao_atendida', 0);
+      _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
       setChamadaAtiva(null);
       _clearAudio();
     });
