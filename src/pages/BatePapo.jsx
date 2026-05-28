@@ -1743,6 +1743,7 @@ export default function BatePapo() {
                                      oportunidadeAtual={oportunidadeAtual}
                                      onCriarTarefa={(conv) => { setConversaTarefa(conv); setCriarTarefaOpen(true); }}
                                      onAgendarReuniao={setAgendarReuniaoModal}
+                                     onAdicionarAoFunil={() => setFunilModalOpen(true)}
                                      />
                                    <DropdownMenuSeparator />
                                    <DropdownMenuItem

@@ -18,6 +18,7 @@ import {
   Trash2,
   CalendarClock,
   CalendarCheck,
+  TrendingUp,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -38,6 +39,7 @@ export default function ConversaContextMenu({
   onAgendarMensagem,
   onCriarTarefa,
   onAgendarReuniao,
+  onAdicionarAoFunil,
 }) {
   const queryClient = useQueryClient();
 
@@ -175,10 +177,15 @@ export default function ConversaContextMenu({
         <CalendarClock className="mr-2 h-3.5 w-3.5 text-blue-600" />
         <span className="text-blue-600">Agendar mensagem</span>
       </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={() => onAdicionarAoFunil && onAdicionarAoFunil(conversa)}>
+        <TrendingUp className="mr-2 h-3.5 w-3.5 text-blue-600" />
+        <span className="text-blue-600">Adicionar ao Funil</span>
+      </DropdownMenuItem>
       <DropdownMenuItem onClick={() => toast.success('Adicionado aos favoritos')}>
         <Star className="mr-2 h-3.5 w-3.5" />
         Favoritar
       </DropdownMenuItem>
-    </>
-  );
-}
+      </>
+      );
+      }
