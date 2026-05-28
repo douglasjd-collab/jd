@@ -376,6 +376,7 @@ Deno.serve(async (req) => {
 
       const ramalSip = config.numbersip;
       const numeroDid = (config.numero_did || '').replace(/\D/g, '');
+      const numeroChip = (config.numero_chip || '').replace(/\D/g, '');
 
       if (!ramalSip && !numeroDid) {
         return Response.json({
@@ -389,27 +390,36 @@ Deno.serve(async (req) => {
       if (!calledFormatado || calledFormatado.length < 8) {
         return Response.json({ error: 'Número de destino inválido. Informe DDD + número.', _error_type: 'numero_invalido' }, { status: 200 });
       }
+      // Garante formato com 55 (padrão NVOIP para PSTN)
       if (!calledFormatado.startsWith('55') && calledFormatado.length <= 11) {
         calledFormatado = '55' + calledFormatado;
       }
 
-      const numeroChip = (config.numero_chip || '').replace(/\D/g, '');
-
-      // A NVOIP usa callback de 2 pernas:
-      //   1ª perna: NVOIP liga para o ramal SIP do "caller" (usuário)
-      //   2ª perna: Após usuário atender, NVOIP liga para o contato (called) e conecta
-      // O encaminhamento para o chip já está configurado no painel NVOIP — NÃO enviar callForward
+      // NVOIP callback de 2 pernas:
+      //   1ª perna: NVOIP liga para o "caller" (ramal SIP do usuário)
+      //   2ª perna: Após atender, NVOIP conecta com o "called" (contato)
+      //
+      // Se o ramal é webphone (sem chip físico), a 1ª perna falha pois o NVOIP
+      // não consegue entregar a chamada ao browser via API REST.
+      // Solução: enviar callForward com o chip quando disponível, assim a 1ª perna
+      // vai para o celular físico do usuário, e a 2ª perna vai para o contato.
       const callBody = {
         caller: ramalSip,
         called: calledFormatado,
       };
       if (numeroDid) callBody.callerId = numeroDid;
+      if (numeroChip) {
+        // callForward: NVOIP encaminha a 1ª perna para o celular do agente
+        callBody.callForward = numeroChip;
+        console.log(`[NVOIP] Usando callForward para chip: ${numeroChip}`);
+      }
 
       console.log(`[NVOIP] INICIANDO CHAMADA:`, {
         ramalSip,
         called: calledFormatado,
         callerId: numeroDid,
         chip: numeroChip,
+        callForward: callBody.callForward || 'não configurado',
         webphoneAtivo,
       });
       console.log(`[NVOIP] POST /calls/ body:`, JSON.stringify(callBody));
@@ -437,7 +447,15 @@ Deno.serve(async (req) => {
         }, { status: 200 });
       }
 
-      return Response.json({ ...data, _tipo_config: tipo, _caller: callBody.caller, _called: calledFormatado, _callerId: numeroDid });
+      return Response.json({ 
+        ...data, 
+        _tipo_config: tipo, 
+        _caller: callBody.caller, 
+        _called: calledFormatado, 
+        _callerId: numeroDid,
+        _callForward: callBody.callForward || null,
+        _chip_configurado: !!numeroChip,
+      });
     }
 
     if (action === 'consultarChamada') {
