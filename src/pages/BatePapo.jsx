@@ -6,10 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
@@ -26,35 +23,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-   Search,
-   Filter,
-   Plus,
-   MoreVertical,
-   PhoneCall,
-   Star,
-   Tag,
-   UserPlus,
-   ArrowRightLeft,
-   BellOff,
-   Pin,
-   Check,
-   Clock,
-   Loader2,
-   MessageCircle,
-   AlignJustify,
-   X,
-   Trash2,
-   RefreshCw,
-   Contact,
-   Pencil,
-   Users,
-   Image as ImageIcon,
-   Bell,
-   Lock,
-   Unlock,
-   Instagram,
-   TrendingUp,
- } from "lucide-react";
+  Search, Plus, MoreVertical, PhoneCall, PhoneOff, Tag, ArrowRightLeft,
+  BellOff, Pin, Check, Clock, Loader2, MessageCircle, AlignJustify,
+  X, Trash2, RefreshCw, Contact, Pencil, Lock, Unlock, TrendingUp,
+} from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -93,15 +65,12 @@ import BatePapoMenu from '@/components/chat/BatePapoMenu';
 import AgendarMensagemModal from '@/components/chat/AgendarMensagemModal';
 import MensagensAgendadasModal from '@/components/chat/MensagensAgendadasModal';
 import AgendarReuniaoModal from '@/components/chat/AgendarReuniaoModal';
-import RealizarChamadaModal from '@/components/callcenter/RealizarChamadaModal';
+import useSoftphone from '@/components/callcenter/useSoftphone';
+import ChamadaAtivaBar from '@/components/chat/ChamadaAtivaBar.jsx';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
 }
-
-const quickReplies = ["/boasvindas", "/consorcio", "/financiamento", "/documentos"];
-
-
 
 export default function BatePapo() {
   const [user, setUser] = useState(null);
@@ -300,8 +269,25 @@ export default function BatePapo() {
   const [agendadasOpen, setAgendadasOpen] = useState(false);
   const [agendarReuniaoModal, setAgendarReuniaoModal] = useState(null); // conversa
   const [mobileViewChat, setMobileViewChat] = useState(false); // mobile: false=lista, true=chat
-  const [chamadaModalOpen, setChamadaModalOpen] = useState(false);
-  const [chamadaNumeroInicial, setChamadaNumeroInicial] = useState('');
+  const [nvoipConfig, setNvoipConfig] = useState(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    base44.entities.ConfiguracaoNvoipUsuario.filter({ user_id: user.id }, '-created_date', 1)
+      .then(configs => { if (configs?.length > 0) setNvoipConfig(configs[0]); })
+      .catch(() => {});
+  }, [user?.id]);
+
+  const { sipStatus, chamadaAtiva, realizarChamada, encerrarChamada } = useSoftphone(nvoipConfig);
+
+  const ligarParaContato = (telefone) => {
+    if (!nvoipConfig) { toast.error('Configure seu ramal em Call Center > Meu Ramal'); return; }
+    if (sipStatus !== 'registrado') { toast.error(`Ramal não registrado (${sipStatus})`); return; }
+    const numLimpo = (telefone || '').replace(/\D/g, '');
+    if (!numLimpo) { toast.error('Número inválido'); return; }
+    realizarChamada(numLimpo);
+    toast.success(`Ligando para ${numLimpo}...`);
+  };
 
   const abrirGruposBloqueados = async () => {
     setGruposBloqueadosOpen(true);
@@ -1409,12 +1395,7 @@ export default function BatePapo() {
           conversa={agendarReuniaoModal}
           user={user}
         />
-        <RealizarChamadaModal
-          open={chamadaModalOpen}
-          onOpenChange={(v) => { setChamadaModalOpen(v); if (!v) setChamadaNumeroInicial(''); }}
-          numeroInicial={chamadaNumeroInicial}
-          onChamadaIniciada={() => {}}
-        />
+
 
         {/* Modal Funil de Vendas */}
         <FunilSelectionModal
@@ -1791,25 +1772,29 @@ export default function BatePapo() {
                 </div>
                 {/* Header do chat - fixo */}
                 <ChatHeader
-                 conversaSelecionada={conversaSelecionada}
-                 contatosWhatsapp={contatosWhatsapp}
-                 empresaId={empresaId}
-                 user={user}
-                 infoLeadAberto={infoLeadAberto}
-                 setInfoLeadAberto={setInfoLeadAberto}
-                 setTransferirModal={setTransferirModal}
-                 abrirSalvarCrm={abrirSalvarCrm}
-                 setContatoParaTags={setContatoParaTags}
-                 setTagsModalOpen={setTagsModalOpen}
-                 setCriarTarefaOpen={setCriarTarefaOpen}
-                 refetchMensagens={refetchMensagens}
-                 queryClient={queryClient}
-                 setConversaSelecionada={setConversaSelecionada}
-                 onAgendarMensagem={setAgendarMensagemModal}
-                 setFunilModalOpen={setFunilModalOpen}
-                 oportunidadeAtual={oportunidadeAtual}
-                 tagsDB={tagsDB}
-                 />
+                conversaSelecionada={conversaSelecionada}
+                contatosWhatsapp={contatosWhatsapp}
+                empresaId={empresaId}
+                user={user}
+                infoLeadAberto={infoLeadAberto}
+                setInfoLeadAberto={setInfoLeadAberto}
+                setTransferirModal={setTransferirModal}
+                abrirSalvarCrm={abrirSalvarCrm}
+                setContatoParaTags={setContatoParaTags}
+                setTagsModalOpen={setTagsModalOpen}
+                setCriarTarefaOpen={setCriarTarefaOpen}
+                refetchMensagens={refetchMensagens}
+                queryClient={queryClient}
+                setConversaSelecionada={setConversaSelecionada}
+                onAgendarMensagem={setAgendarMensagemModal}
+                setFunilModalOpen={setFunilModalOpen}
+                oportunidadeAtual={oportunidadeAtual}
+                tagsDB={tagsDB}
+                onLigar={() => ligarParaContato(conversaSelecionada?.cliente_telefone)}
+                sipStatus={sipStatus}
+                chamadaAtiva={chamadaAtiva}
+                />
+                <ChamadaAtivaBar chamadaAtiva={chamadaAtiva} onEncerrar={encerrarChamada} />
 
                 {/* Área principal: mensagens + painel lead lado a lado */}
                 <div className="flex flex-1 overflow-hidden">
@@ -1882,15 +1867,11 @@ export default function BatePapo() {
 
                           <div className="grid grid-cols-2 gap-1.5">
                             <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 justify-center gap-1 rounded-md text-[10px] px-2 text-green-700 border-green-300 hover:bg-green-50"
-                              title="Realizar chamada"
-                              onClick={() => {
-                                const tel = conversaSelecionada?.cliente_telefone?.replace(/\D/g, '') || '';
-                                setChamadaNumeroInicial(tel);
-                                setChamadaModalOpen(true);
-                              }}
+                             variant={chamadaAtiva ? "destructive" : "outline"}
+                             size="sm"
+                             className={`h-7 justify-center gap-1 rounded-md text-[10px] px-2 ${!chamadaAtiva ? 'text-green-700 border-green-300 hover:bg-green-50' : ''}`}
+                             title={chamadaAtiva ? 'Encerrar chamada' : 'Realizar chamada'}
+                             onClick={() => chamadaAtiva ? encerrarChamada() : ligarParaContato(conversaSelecionada?.cliente_telefone)}
                             >
                               <PhoneCall className="h-3 w-3" />
                               <span className="hidden sm:inline">Ligar</span>

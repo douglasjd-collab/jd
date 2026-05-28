@@ -11,7 +11,8 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Check, ArrowRightLeft, MoreVertical, RefreshCw, Tag, Clock,
-  Contact, Pencil, BellOff, Pin, X, AlignJustify, CalendarClock, TrendingUp
+  Contact, Pencil, BellOff, Pin, X, AlignJustify, CalendarClock, TrendingUp,
+  PhoneCall, PhoneOff,
 } from "lucide-react";
 import AvatarContato from './AvatarContato';
 import { toast } from 'sonner';
@@ -35,6 +36,9 @@ export default function ChatHeader({
   setFunilModalOpen,
   oportunidadeAtual,
   tagsDB = [],
+  onLigar,
+  sipStatus,
+  chamadaAtiva,
 }) {
   if (!conversaSelecionada) return null;
 
@@ -90,6 +94,25 @@ export default function ChatHeader({
         </div>
 
         <div className="flex items-center gap-2">
+          {onLigar && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={chamadaAtiva ? "destructive" : "outline"}
+                  size="sm"
+                  className={`gap-1.5 rounded-md text-xs font-medium ${!chamadaAtiva ? 'border-green-300 text-green-700 hover:text-green-800 hover:border-green-400 hover:bg-green-50' : ''}`}
+                  onClick={chamadaAtiva ? undefined : onLigar}
+                  disabled={sipStatus && sipStatus !== 'registrado' && sipStatus !== 'desconectado' && !chamadaAtiva}
+                >
+                  {chamadaAtiva ? <PhoneOff className="h-3.5 w-3.5" /> : <PhoneCall className="h-3.5 w-3.5" />}
+                  {chamadaAtiva ? 'Em ligação' : 'Ligar'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {chamadaAtiva ? `Chamada ativa com ${chamadaAtiva.destino}` : sipStatus === 'registrado' ? 'Ligar para este contato' : `Ramal SIP: ${sipStatus || 'não configurado'}`}
+              </TooltipContent>
+            </Tooltip>
+          )}
           <Button
             variant="outline"
             size="sm"
