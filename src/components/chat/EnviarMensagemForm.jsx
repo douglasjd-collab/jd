@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Paperclip, Smile, AlertCircle, Mic, MicOff, X, PenLine, Zap } from 'lucide-react';
+import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap } from 'lucide-react';
 import MensagensRapidasModal from './MensagensRapidasModal';
 
 const MAX_HEIGHT = 256;
@@ -13,7 +13,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const [assinaturaAtiva, setAssinaturaAtiva] = useState(() => {
     return localStorage.getItem('chat_assinatura') === 'true';
   });
-  const [arquivo, setArquivo] = useState(null);
+  const [arquivos, setArquivos] = useState([]);
   const [showScroll, setShowScroll] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [erro, setErro] = useState(null);
@@ -23,10 +23,10 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // Focar o textarea automaticamente ao montar
   useEffect(() => {
     setTimeout(() => textareaRef.current?.focus(), 100);
   }, []);
+
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
@@ -103,18 +103,36 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
 
   const formatarTempo = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
+  const lerArquivoBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const getMimeType = (file) => {
+    let tipo = file.type || '';
+    if (!tipo) {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      const mimeMap = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', mp3: 'audio/mpeg', mp4: 'video/mp4', webm: 'audio/webm', ogg: 'audio/ogg' };
+      tipo = mimeMap[ext] || 'application/octet-stream';
+    }
+    return tipo;
+  };
+
   const handleEnviar = async (e) => {
     e.preventDefault();
-    if (!texto.trim() && !arquivo) return;
+    if (!texto.trim() && arquivos.length === 0) return;
     if (isLoading) return;
 
     const assinatura = assinaturaAtiva && nomeUsuario ? `*Atendente - ${nomeUsuario}*\n\n` : '';
     const textoEnviar = assinatura + texto.trim();
     setErro(null);
-    
-    // Limpar UI imediatamente (antes de enviar)
+
+    // Limpar UI imediatamente
+    const arquivosParaEnviar = [...arquivos];
     setTexto('');
-    setArquivo(null);
+    setArquivos([]);
     setShowQuickReplies(false);
     if (textareaRef.current) {
       textareaRef.current.style.height = '40px';
@@ -122,33 +140,28 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     setShowScroll(false);
 
     try {
-      let arquivoBase64 = null;
-      let nomeArquivo = null;
-      let tipoArquivo = null;
-
-      if (arquivo) {
-        const reader = new FileReader();
-        arquivoBase64 = await new Promise((resolve, reject) => {
-          reader.onload = () => {
-            const base64 = reader.result.split(',')[1];
-            resolve(base64);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(arquivo);
+      if (arquivosParaEnviar.length === 0) {
+        // Só texto
+        await onEnviar({ texto: textoEnviar, arquivo: null });
+      } else if (arquivosParaEnviar.length === 1) {
+        // Um arquivo + texto opcional
+        const base64 = await lerArquivoBase64(arquivosParaEnviar[0]);
+        await onEnviar({
+          texto: textoEnviar,
+          arquivo: { base64, nome: arquivosParaEnviar[0].name, tipo: getMimeType(arquivosParaEnviar[0]) }
         });
-        nomeArquivo = arquivo.name;
-        tipoArquivo = arquivo.type || '';
-        if (!tipoArquivo) {
-          const ext = nomeArquivo.split('.').pop()?.toLowerCase();
-          const mimeMap = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', mp3: 'audio/mpeg', mp4: 'video/mp4', webm: 'audio/webm', ogg: 'audio/ogg' };
-          tipoArquivo = mimeMap[ext] || 'application/octet-stream';
+      } else {
+        // Múltiplos arquivos: enviar cada um separadamente
+        for (let i = 0; i < arquivosParaEnviar.length; i++) {
+          const f = arquivosParaEnviar[i];
+          const base64 = await lerArquivoBase64(f);
+          // Texto só na primeira mensagem
+          await onEnviar({
+            texto: i === 0 ? textoEnviar : '',
+            arquivo: { base64, nome: f.name, tipo: getMimeType(f) }
+          });
         }
       }
-
-      await onEnviar({ 
-        texto: textoEnviar, 
-        arquivo: arquivoBase64 ? { base64: arquivoBase64, nome: nomeArquivo, tipo: tipoArquivo } : null 
-      });
     } catch (err) {
       setErro(err.message || 'Erro ao enviar mensagem. Tente novamente.');
     }
@@ -163,7 +176,6 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const handleChange = (e) => {
     const val = e.target.value;
     setTexto(val);
-    // Mostrar quick replies se o texto for apenas "/" ou começar com "/"
     setShowQuickReplies(val === '/' || (val.startsWith('/') && !val.includes(' ')));
     const el = e.target;
     el.style.height = '40px';
@@ -180,20 +192,30 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   };
 
   const handleArquivo = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const nome = file.name?.toLowerCase() || '';
-    const tipo = file.type || '';
-    const aceito = tipo.startsWith('image/') || tipo.startsWith('audio/') || tipo.startsWith('video/') ||
-      tipo === 'application/pdf' || tipo.includes('pdf') ||
-      nome.endsWith('.pdf') || nome.endsWith('.jpg') || nome.endsWith('.jpeg') ||
-      nome.endsWith('.png') || nome.endsWith('.gif') || nome.endsWith('.mp3') ||
-      nome.endsWith('.mp4') || nome.endsWith('.webm') || nome.endsWith('.ogg');
-    if (aceito) {
-      setArquivo(file);
-    } else {
-      alert('Tipo de arquivo não suportado. Use imagem, áudio, vídeo ou PDF.');
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const aceitos = files.filter(file => {
+      const nome = file.name?.toLowerCase() || '';
+      const tipo = file.type || '';
+      return tipo.startsWith('image/') || tipo.startsWith('audio/') || tipo.startsWith('video/') ||
+        tipo === 'application/pdf' || tipo.includes('pdf') ||
+        nome.endsWith('.pdf') || nome.endsWith('.jpg') || nome.endsWith('.jpeg') ||
+        nome.endsWith('.png') || nome.endsWith('.gif') || nome.endsWith('.mp3') ||
+        nome.endsWith('.mp4') || nome.endsWith('.webm') || nome.endsWith('.ogg') ||
+        nome.endsWith('.doc') || nome.endsWith('.docx') || nome.endsWith('.xls') || nome.endsWith('.xlsx');
+    });
+    if (aceitos.length < files.length) {
+      setErro('Alguns arquivos não são suportados e foram ignorados.');
     }
+    if (aceitos.length > 0) {
+      setArquivos(prev => [...prev, ...aceitos]);
+    }
+    // Reset input para permitir selecionar os mesmos arquivos novamente
+    e.target.value = '';
+  };
+
+  const removerArquivo = (idx) => {
+    setArquivos(prev => prev.filter((_, i) => i !== idx));
   };
 
   const quickRepliesFiltered = texto === '/'
@@ -220,6 +242,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
         <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           {erro}
+          <button type="button" onClick={() => setErro(null)} className="ml-auto"><X className="w-3 h-3" /></button>
         </div>
       )}
       <style>{`
@@ -231,9 +254,10 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         onChange={handleArquivo}
         className="hidden"
-        accept="image/*,audio/*,video/*,application/pdf,.pdf,.doc,.docx"
+        accept="image/*,audio/*,video/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx"
       />
 
       {/* Quick Replies Popup */}
@@ -248,6 +272,20 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
             >
               <span className="font-medium text-blue-600">{reply}</span>
             </button>
+          ))}
+        </div>
+      )}
+
+      {/* Preview arquivos selecionados */}
+      {arquivos.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {arquivos.map((f, i) => (
+            <div key={i} className="flex items-center gap-1 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1 text-xs text-blue-800 max-w-[200px]">
+              <span className="truncate flex-1">{f.name}</span>
+              <button type="button" onClick={() => removerArquivo(i)} className="text-blue-400 hover:text-red-500 flex-shrink-0 ml-1">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -283,16 +321,17 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
         </div>
       ) : (
         <div className="flex items-end gap-2">
-          {/* Botões esquerda: Anexo + Figurinha + Assinatura */}
+          {/* Botões esquerda */}
           <div className="flex items-center gap-1 pb-1">
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={() => fileInputRef.current?.click()}
-              className="rounded-full hover:bg-slate-100 w-9 h-9"
+              className={`rounded-full hover:bg-slate-100 w-9 h-9 ${arquivos.length > 0 ? 'text-blue-500' : ''}`}
+              title="Anexar arquivo(s)"
             >
-              <Paperclip className="w-5 h-5 text-slate-500" />
+              <Paperclip className="w-5 h-5" />
             </Button>
             <Button
               type="button"
@@ -350,16 +389,15 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
                     e.preventDefault();
                     const file = item.getAsFile();
                     if (file) {
-                      // Dar nome ao arquivo colado
                       const ext = item.type.split('/')[1] || 'png';
                       const nomeFile = new File([file], `imagem_colada.${ext}`, { type: item.type });
-                      setArquivo(nomeFile);
+                      setArquivos(prev => [...prev, nomeFile]);
                     }
                     break;
                   }
                 }
               }}
-              placeholder={arquivo ? `📎 ${arquivo.name}` : 'Digite sua mensagem...'}
+              placeholder={arquivos.length > 0 ? `📎 ${arquivos.length} arquivo(s) selecionado(s)` : 'Digite sua mensagem...'}
               rows={1}
               className="msg-textarea w-full rounded-2xl border border-slate-300 px-4 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none text-sm"
               style={{
@@ -387,7 +425,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
           {/* Botão enviar */}
           <Button
             type="submit"
-            disabled={(!texto.trim() && !arquivo) || isLoading}
+            disabled={(!texto.trim() && arquivos.length === 0) || isLoading}
             className="rounded-full w-10 h-10 bg-blue-500 hover:bg-blue-600 shadow-md flex-shrink-0 mb-0.5"
             size="icon"
           >
