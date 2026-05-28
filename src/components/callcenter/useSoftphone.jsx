@@ -353,9 +353,7 @@ export default function useSoftphone(config) {
       pcConfig: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
           { urls: 'stun:stun.cloudflare.com:3478' },
-          // TURN público OpenRelay — relay de mídia quando STUN falha (NAT simétrico)
           {
             urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443'],
             username: 'openrelayproject',
@@ -367,10 +365,10 @@ export default function useSoftphone(config) {
             credential: 'FbGq5r+NqGpTBP4P',
           },
         ],
-        iceTransportPolicy: 'all',
+        iceTransportPolicy: 'relay',
         bundlePolicy: 'max-compat',
         rtcpMuxPolicy: 'negotiate',
-        iceCandidatePoolSize: 5,
+        iceCandidatePoolSize: 0,
       },
       extraHeaders: [
         ...(cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : []),
@@ -479,7 +477,6 @@ export default function useSoftphone(config) {
       pcConfig: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
           { urls: 'stun:stun.cloudflare.com:3478' },
           {
             urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443'],
@@ -492,10 +489,10 @@ export default function useSoftphone(config) {
             credential: 'FbGq5r+NqGpTBP4P',
           },
         ],
-        iceTransportPolicy: 'all',
+        iceTransportPolicy: 'relay',
         bundlePolicy: 'max-compat',
         rtcpMuxPolicy: 'negotiate',
-        iceCandidatePoolSize: 5,
+        iceCandidatePoolSize: 0,
       },
     });
 
