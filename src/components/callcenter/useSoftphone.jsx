@@ -352,23 +352,12 @@ export default function useSoftphone(config) {
       rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
       pcConfig: {
         iceServers: [
+          { urls: 'stun:app.nvoip.com.br:3478' },
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun.cloudflare.com:3478' },
-          {
-            urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443'],
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-          {
-            urls: ['turn:a.relay.metered.ca:80', 'turn:a.relay.metered.ca:443', 'turns:a.relay.metered.ca:443'],
-            username: 'e499486ca9b4fc9d7a3dc2b4',
-            credential: 'FbGq5r+NqGpTBP4P',
-          },
         ],
-        iceTransportPolicy: 'relay',
-        bundlePolicy: 'max-compat',
-        rtcpMuxPolicy: 'negotiate',
-        iceCandidatePoolSize: 0,
+        iceTransportPolicy: 'all',
+        bundlePolicy: 'balanced',
+        rtcpMuxPolicy: 'require',
       },
       extraHeaders: [
         ...(cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : []),
@@ -376,44 +365,17 @@ export default function useSoftphone(config) {
       ],
     });
 
-    // Log de estado ICE para diagnóstico
+    // Log de diagnóstico ICE
     session.on('peerconnection', (data) => {
       const pc = data.peerconnection;
       if (!pc) return;
-      pc.oniceconnectionstatechange = () => {
-        console.log(`🧊 ICE state: ${pc.iceConnectionState}`);
-        if (pc.iceConnectionState === 'failed') {
-          console.warn('❌ ICE falhou — forçando restart ICE via TURN relay');
-          try {
-            // Força uso apenas de relay (TURN) como fallback
-            const config = pc.getConfiguration?.();
-            if (config) {
-              config.iceTransportPolicy = 'relay';
-              pc.setConfiguration?.(config);
-            }
-            pc.restartIce?.();
-          } catch (err) { console.warn('restartIce error:', err); }
-        }
-        if (pc.iceConnectionState === 'disconnected') {
-          // Aguarda 3s antes de tentar restart — pode ser temporário
-          setTimeout(() => {
-            if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-              console.warn('⚠️ ICE ainda desconectado — tentando restart');
-              try { pc.restartIce?.(); } catch {}
-            }
-          }, 3000);
-        }
-      };
-      pc.onicegatheringstatechange = () => {
-        console.log(`🧊 ICE gathering: ${pc.iceGatheringState}`);
-      };
+      pc.oniceconnectionstatechange = () => console.log(`🧊 ICE: ${pc.iceConnectionState}`);
+      pc.onicegatheringstatechange = () => console.log(`🧊 Gathering: ${pc.iceGatheringState}`);
       pc.onicecandidate = (e) => {
-        if (e.candidate) console.log(`🧊 Candidate: ${e.candidate.type} ${e.candidate.protocol || ''} ${e.candidate.address || ''}`);
+        if (e.candidate) console.log(`🧊 Candidate: ${e.candidate.type} ${e.candidate.protocol} ${e.candidate.address}`);
         else console.log('🧊 ICE gathering complete');
       };
-      pc.onconnectionstatechange = () => {
-        console.log(`🔗 Connection state: ${pc.connectionState}`);
-      };
+      pc.onconnectionstatechange = () => console.log(`🔗 Connection: ${pc.connectionState}`);
     });
 
     inicioRef.current = null;
@@ -440,13 +402,6 @@ export default function useSoftphone(config) {
       inicioRef.current = Date.now();
       setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null);
       _attachAudio(session);
-      // Forçar ICE restart após aceitar — resolve problema de Contact .invalid
-      try {
-        const pc = session.connection;
-        if (pc && pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
-          setTimeout(() => { try { pc.restartIce?.(); } catch {} }, 500);
-        }
-      } catch {}
     });
     session.on('confirmed', () => {
       if (!inicioRef.current) inicioRef.current = Date.now();
@@ -476,23 +431,12 @@ export default function useSoftphone(config) {
       mediaConstraints: { audio: true, video: false },
       pcConfig: {
         iceServers: [
+          { urls: 'stun:app.nvoip.com.br:3478' },
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun.cloudflare.com:3478' },
-          {
-            urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443', 'turns:openrelay.metered.ca:443'],
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
-          },
-          {
-            urls: ['turn:a.relay.metered.ca:80', 'turn:a.relay.metered.ca:443', 'turns:a.relay.metered.ca:443'],
-            username: 'e499486ca9b4fc9d7a3dc2b4',
-            credential: 'FbGq5r+NqGpTBP4P',
-          },
         ],
-        iceTransportPolicy: 'relay',
-        bundlePolicy: 'max-compat',
-        rtcpMuxPolicy: 'negotiate',
-        iceCandidatePoolSize: 0,
+        iceTransportPolicy: 'all',
+        bundlePolicy: 'balanced',
+        rtcpMuxPolicy: 'require',
       },
     });
 
