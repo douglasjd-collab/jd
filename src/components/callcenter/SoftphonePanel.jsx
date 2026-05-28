@@ -7,6 +7,7 @@ import {
   Mic, MicOff, Wifi, WifiOff, Loader2, RefreshCw, Radio, AlertTriangle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { base44 } from '@/api/base44Client';
 import ChamadaEntrantePopup from './ChamadaEntrantePopup';
 
 const STATUS_CFG = {
@@ -26,6 +27,8 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
   const [numero, setNumero] = useState('');
   const [mutado, setMutado] = useState(false);
   const [duracao, setDuracao] = useState(0);
+  const [discando, setDiscando] = useState(false);
+  const [erroDiscagem, setErroDiscagem] = useState('');
   const timerRef = useRef(null);
 
   // Timer
@@ -50,11 +53,31 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
     setMutado(!mutado);
   };
 
-  const handleLigar = () => {
+  const handleLigar = async () => {
     const num = numero.replace(/\D/g, '');
-    if (!num || sipStatus !== 'registrado') return;
-    realizarChamada(num);
-    setNumero('');
+    if (!num || sipStatus !== 'registrado' || discando) return;
+    setErroDiscagem('');
+    setDiscando(true);
+    try {
+      // Usa API REST NVOIP para iniciar chamada de saída (INVITE via WebSocket não é suportado para saída)
+      const res = await base44.functions.invoke('nvoipCallCenter', {
+        action: 'realizarChamadaDireta',
+        called: num,
+      });
+      const data = res.data;
+      if (data?.error) {
+        setErroDiscagem(data.error);
+      } else {
+        // Chamada iniciada com sucesso via API — mostra chamada ativa na UI
+        setNumero('');
+        // Simula estado de chamada ativa para a UI (será encerrada manualmente ou por timeout)
+        realizarChamada(num); // ainda tenta via WebRTC para áudio entrante da 2ª perna
+      }
+    } catch (e) {
+      setErroDiscagem('Erro ao iniciar chamada: ' + e.message);
+    } finally {
+      setDiscando(false);
+    }
   };
 
   const fmtDuracao = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -159,10 +182,10 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
               />
               <Button
                 onClick={handleLigar}
-                disabled={!numero.trim() || sipStatus !== 'registrado'}
+                disabled={!numero.trim() || sipStatus !== 'registrado' || discando}
                 className="bg-green-600 hover:bg-green-700 text-white px-4 disabled:opacity-40"
               >
-                <Phone className="w-4 h-4" />
+                {discando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
               </Button>
             </div>
 
@@ -180,8 +203,15 @@ export default function SoftphonePanel({ softphone, numbersip, numeroChip }) {
               ))}
             </div>
 
+            {/* Erro de discagem */}
+            {erroDiscagem && (
+              <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
+                ⚠️ {erroDiscagem}
+              </div>
+            )}
+
             {/* Status messages */}
-            {sipStatus === 'registrado' && (
+            {sipStatus === 'registrado' && !erroDiscagem && (
               <p className="text-xs text-green-600 text-center font-medium">
                 ✓ Registrado — ligações com áudio direto no navegador
               </p>
