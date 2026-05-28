@@ -161,9 +161,12 @@ export default function useSoftphone(config) {
     setErroMsg('');
 
     const socket = new JsSIP.WebSocketInterface('wss://app.nvoip.com.br:7443');
+    // Gerar um contact_uri com host fixo para evitar o .invalid do WebSocket
+    const wsContactUri = `sip:${cfg.numbersip}@app.nvoip.com.br`;
+
     const ua = new JsSIP.UA({
       sockets                         : [socket],
-      uri                             : `sip:${cfg.numbersip}@app.nvoip.com.br`,
+      uri                             : wsContactUri,
       password                        : cfg.sip_password,
       authorization_user              : String(cfg.numbersip),
       display_name                    : String(cfg.numbersip),
@@ -173,7 +176,8 @@ export default function useSoftphone(config) {
       use_preloaded_route             : false,
       no_answer_timeout               : 60,
       hack_via_tcp                    : false,
-      hack_ip_in_contact              : true,
+      hack_ip_in_contact              : false,
+      contact_uri                     : `sip:${cfg.numbersip}@app.nvoip.com.br;transport=ws`,
       connection_recovery_min_interval: 2,
       connection_recovery_max_interval: 30,
       log                             : { builtinEnabled: false, level: 'error' },
@@ -332,15 +336,15 @@ export default function useSoftphone(config) {
     // Guarda o número original para histórico/busca de cliente
     const numHistorico = numLimpo;
 
-    // Remove prefixo 55 se existir — a NVOIP roteia pelo plano de discagem interno
-    // e espera apenas DDD + número (sem código de país) no Request-URI
-    if (numLimpo.startsWith('55') && numLimpo.length >= 12) {
-      numLimpo = numLimpo.slice(2); // remove o 55
+    // NVOIP WebRTC: manter o 55 no número — servidor espera o número completo com DDI
+    // Garante que começa com 55 para chamadas brasileiras
+    if (!numLimpo.startsWith('55') && numLimpo.length <= 11) {
+      numLimpo = '55' + numLimpo;
     }
 
     console.log(`📞 Discando: ${numLimpo} → ramal ${cfg?.numbersip} | DID: ${cfg?.numero_did}`);
 
-    // NVOIP WebRTC: destino SIP = DDD+número sem prefixo de país
+    // NVOIP WebRTC: destino SIP com número completo (DDI+DDD+número)
     const destino = `sip:${numLimpo}@app.nvoip.com.br`;
     console.log(`📞 SIP INVITE → ${destino}`);
 
@@ -415,8 +419,23 @@ export default function useSoftphone(config) {
       console.log(`📞 progress ${code}`, e?.response?.reason_phrase || '');
       setChamadaAtiva(p => p ? { ...p, status: 'chamando' } : null);
     });
-    session.on('accepted',  () => { inicioRef.current = Date.now(); setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null); _attachAudio(session); });
-    session.on('confirmed', () => { if (!inicioRef.current) inicioRef.current = Date.now(); setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null); _attachAudio(session); });
+    session.on('accepted',  () => {
+      inicioRef.current = Date.now();
+      setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null);
+      _attachAudio(session);
+      // Forçar ICE restart após aceitar — resolve problema de Contact .invalid
+      try {
+        const pc = session.connection;
+        if (pc && pc.iceConnectionState !== 'connected' && pc.iceConnectionState !== 'completed') {
+          setTimeout(() => { try { pc.restartIce?.(); } catch {} }, 500);
+        }
+      } catch {}
+    });
+    session.on('confirmed', () => {
+      if (!inicioRef.current) inicioRef.current = Date.now();
+      setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null);
+      _attachAudio(session);
+    });
     session.on('ended',  (e) => { console.log('📞 ended', e?.cause); const d = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0; _salvarHistorico(numHistorico, 'saida', d > 0 ? 'atendida' : 'nao_atendida', d); setChamadaAtiva(null); _clearAudio(); });
     session.on('failed', (e) => {
       const code = e?.response?.status_code;
