@@ -24,7 +24,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2, Users, Globe, AlertTriangle, Clock, Flame, Target, Settings, ChevronDown, Zap, MessageSquare, Bell } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2, Users, Globe, AlertTriangle, Clock, Flame, Target, Settings, ChevronDown, Zap, MessageSquare, Bell, PhoneCall, PhoneOff } from 'lucide-react';
+import useSoftphone from '@/components/callcenter/useSoftphone';
 import ChatFunilModal from '@/components/funil/ChatFunilModal';
 import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
 import CampanhasStatusModal from '@/components/funil/CampanhasStatusModal';
@@ -63,6 +64,26 @@ export default function FunilVendas() {
   const [searchCard, setSearchCard] = useState('');
   const [chatFunilOportunidade, setChatFunilOportunidade] = useState(null);
   const [configAlertasOpen, setConfigAlertasOpen] = useState(false);
+
+  // ── Softphone WebRTC (mesmo do BatePapo/CallCenter) ───────────────────────
+  const { data: nvoipConfig } = useQuery({
+    queryKey: ['nvoip-config-usuario', currentUser?.colaborador_id],
+    enabled: !!currentUser?.colaborador_id,
+    queryFn: async () => {
+      const configs = await base44.entities.ConfiguracaoNvoipUsuario.filter({ colaborador_id: currentUser.colaborador_id });
+      return configs.find(c => c.ativo) || null;
+    },
+  });
+  const softphone = useSoftphone(nvoipConfig || null);
+
+  const handleLigarFunil = async (e, telefone) => {
+    e.stopPropagation();
+    if (softphone.chamadaAtiva) {
+      softphone.encerrarChamada();
+    } else {
+      await softphone.realizarChamada(telefone);
+    }
+  };
 
   const { data: currentUserFull } = useQuery({
     queryKey: ['current-user-full', currentUser?.id],
@@ -1424,6 +1445,21 @@ export default function FunilVendas() {
                                         title="WhatsApp"
                                       >
                                         <MessageSquare className="w-4 h-4 text-green-600" />
+                                      </Button>
+                                    )}
+                                    {(oport.telefone_lead || oport.cliente_telefone) && nvoipConfig?.ativo && (
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className={`h-6 w-6 ${softphone.chamadaAtiva?.destino === (oport.telefone_lead || oport.cliente_telefone)?.replace(/\D/g,'') ? 'hover:bg-red-100 animate-pulse' : 'hover:bg-teal-100'}`}
+                                        onClick={(e) => handleLigarFunil(e, oport.telefone_lead || oport.cliente_telefone)}
+                                        title={softphone.chamadaAtiva ? 'Encerrar chamada' : 'Ligar via WebRTC (NVOIP)'}
+                                        disabled={!softphone.chamadaAtiva && softphone.sipStatus !== 'registrado'}
+                                      >
+                                        {softphone.chamadaAtiva?.destino === (oport.telefone_lead || oport.cliente_telefone)?.replace(/\D/g,'').replace(/^55/,'')
+                                          ? <PhoneOff className="w-4 h-4 text-red-600" />
+                                          : <PhoneCall className="w-4 h-4 text-teal-600" />
+                                        }
                                       </Button>
                                     )}
                                     <div className="flex items-center -space-x-2">
