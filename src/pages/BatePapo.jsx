@@ -213,15 +213,16 @@ export default function BatePapo() {
     try {
       let contatoSalvo;
       if (contato?.id) {
-        // Atualizar nome do contato existente
-        contatoSalvo = await base44.entities.ContatoWhatsapp.update(contato.id, { nome: nomeContatoEdit });
-        contatoSalvo = { ...contato, nome: nomeContatoEdit };
+        // Atualizar nome do contato existente — marcar como fixo para não ser sobrescrito por sincronizações
+        await base44.entities.ContatoWhatsapp.update(contato.id, { nome: nomeContatoEdit, nome_fixo: true });
+        contatoSalvo = { ...contato, nome: nomeContatoEdit, nome_fixo: true };
       } else {
-        // Criar novo contato no CRM
+        // Criar novo contato no CRM — marcar como fixo
         contatoSalvo = await base44.entities.ContatoWhatsapp.create({
           empresa_id: empresaId,
           telefone: telefoneLimpo,
           nome: nomeContatoEdit,
+          nome_fixo: true,
         });
       }
       // Atualizar nome na conversa também

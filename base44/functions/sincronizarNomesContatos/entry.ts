@@ -36,9 +36,27 @@ Deno.serve(async (req) => {
       5000
     ).catch(() => []);
 
+    // Buscar contatos CRM com nome fixo (protegidos de sobrescrita)
+    const contatosCRM = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
+      { empresa_id: empresaId },
+      '-created_date',
+      10000
+    ).catch(() => []);
+    const nomesFixosCRM = new Set();
+    for (const c of contatosCRM) {
+      if (c.telefone && c.nome_fixo) {
+        const tel = c.telefone.replace(/\D/g, '');
+        nomesFixosCRM.add(tel);
+        if (tel.startsWith('55') && tel.length === 13) nomesFixosCRM.add(tel.slice(0, 4) + tel.slice(5));
+        if (tel.startsWith('55') && tel.length === 12) nomesFixosCRM.add(tel.slice(0, 4) + '9' + tel.slice(4));
+      }
+    }
+
     const semNome = conversas.filter(c => {
       const nome = (c.cliente_nome || '').trim();
       const tel = (c.cliente_telefone || '').replace(/\D/g, '');
+      // Proteger contatos com nome fixo no CRM
+      if (nomesFixosCRM.has(tel)) return false;
       return !nome || nome === tel || nome.toLowerCase() === 'cliente' || nome.startsWith('Cliente ');
     });
 

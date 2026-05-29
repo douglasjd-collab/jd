@@ -68,6 +68,27 @@ Deno.serve(async (req) => {
       5000
     ).catch(() => []);
 
+    // Buscar contatos CRM com nome fixo (salvo manualmente pelo usuário)
+    const contatosCRM = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
+      { empresa_id: empresaId },
+      '-created_date',
+      10000
+    ).catch(() => []);
+
+    // Mapa de telefone → nome fixo do CRM
+    const nomesFixosCRM = {};
+    for (const c of contatosCRM) {
+      if (c.telefone && c.nome && c.nome_fixo) {
+        const tel = c.telefone.replace(/\D/g, '');
+        nomesFixosCRM[tel] = c.nome;
+        // Também indexar variações (com/sem 9)
+        if (tel.startsWith('55') && tel.length === 13) nomesFixosCRM[tel.slice(0, 4) + tel.slice(5)] = c.nome;
+        if (tel.startsWith('55') && tel.length === 12) nomesFixosCRM[tel.slice(0, 4) + '9' + tel.slice(4)] = c.nome;
+      }
+    }
+
+    console.log(`🔒 ${Object.keys(nomesFixosCRM).length} contatos com nome fixo no CRM (protegidos)`);
+
     // Atualizar conversas com nomes dos contatos
     let atualizadas = 0;
     let erros = 0;
@@ -78,6 +99,12 @@ Deno.serve(async (req) => {
       const promises = batch.map(async (conv) => {
         try {
           const numero = conv.cliente_telefone.replace(/\D/g, '');
+
+          // 🔒 PROTEGER: Se o contato tem nome fixo no CRM, não sobrescrever
+          if (nomesFixosCRM[numero]) {
+            return { conversa: conv.id, sucesso: false, motivo: 'Nome fixo no CRM — protegido' };
+          }
+
           const contatoEvo = contatosMap[numero];
 
           if (!contatoEvo) {

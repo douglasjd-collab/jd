@@ -690,6 +690,8 @@ async function processarWebhook(req, rawBody, base44) {
 
   if (conversa) {
     // Atualizar conversa existente — SEMPRE com número normalizado (12 dígitos)
+    // Verificar se o contato tem nome fixo no CRM para não sobrescrever
+    const nomeProtegido = contatoExistente?.nome_fixo ? contatoExistente.nome : null;
     const updateData = {
       ultima_mensagem: conteudo.substring(0, 200),
       data_ultima_mensagem: new Date().toISOString(),
@@ -699,7 +701,7 @@ async function processarWebhook(req, rawBody, base44) {
       colaborador_id: colaboradorId || conversa.colaborador_id || '',
       cliente_id: clienteId || conversa.cliente_id || '',
       instancia: instanceFinal,
-      cliente_nome: conversa.cliente_nome || pushName || telefoneLimpo,
+      cliente_nome: nomeProtegido || conversa.cliente_nome || pushName || telefoneLimpo,
       cliente_telefone: telefoneLimpo,
       whatsapp_id: conversa.whatsapp_id || `${telefoneLimpo}@s.whatsapp.net`
     };
@@ -797,7 +799,8 @@ async function processarWebhook(req, rawBody, base44) {
 
   if (contatoExistente) {
     const updates = { ultima_atualizacao: new Date().toISOString() };
-    if (!contatoExistente.nome && pushName) updates.nome = pushName;
+    // Só atualizar nome se não foi fixado manualmente pelo usuário
+    if (!contatoExistente.nome_fixo && !contatoExistente.nome && pushName) updates.nome = pushName;
     if (fotoUrl && fotoUrl !== contatoExistente.foto_url) updates.foto_url = fotoUrl;
     base44.asServiceRole.entities.ContatoWhatsapp.update(contatoExistente.id, updates).catch(() => {});
   } else if (!fromMe) {
