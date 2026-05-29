@@ -1807,7 +1807,7 @@ export default function BatePapo() {
                 setFunilModalOpen={setFunilModalOpen}
                 oportunidadeAtual={oportunidadeAtual}
                 tagsDB={tagsDB}
-                onLigar={() => ligarParaContato(conversaSelecionada?.cliente_telefone)}
+                onLigar={() => chamadaAtiva ? encerrarChamada() : ligarParaContato(conversaSelecionada?.cliente_telefone)}
                 sipStatus={sipStatus}
                 chamadaAtiva={chamadaAtiva}
                 erroSip={erroSip}

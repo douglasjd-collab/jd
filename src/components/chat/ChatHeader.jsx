@@ -101,16 +101,16 @@ export default function ChatHeader({
                 <Button
                   variant={chamadaAtiva ? "destructive" : "outline"}
                   size="sm"
-                  className={`gap-1.5 rounded-md text-xs font-medium ${!chamadaAtiva ? 'border-green-300 text-green-700 hover:text-green-800 hover:border-green-400 hover:bg-green-50' : ''}`}
-                  onClick={chamadaAtiva ? undefined : onLigar}
-                  disabled={sipStatus && sipStatus !== 'registrado' && sipStatus !== 'desconectado' && !chamadaAtiva}
+                  className={`gap-1.5 rounded-md text-xs font-semibold ${chamadaAtiva ? 'bg-red-500 hover:bg-red-600 border-red-500 text-white animate-pulse' : 'border-green-300 text-green-700 hover:text-green-800 hover:border-green-400 hover:bg-green-50'}`}
+                  onClick={onLigar}
+                  disabled={!chamadaAtiva && sipStatus && sipStatus !== 'registrado'}
                 >
                   {chamadaAtiva ? <PhoneOff className="h-3.5 w-3.5" /> : <PhoneCall className="h-3.5 w-3.5" />}
                   {chamadaAtiva ? 'Em ligação' : 'Ligar'}
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {chamadaAtiva ? `Chamada ativa com ${chamadaAtiva.destino}` : sipStatus === 'registrado' ? 'Ligar para este contato' : `Ramal SIP: ${sipStatus || 'não configurado'}`}
+                {chamadaAtiva ? `Chamada ativa com ${chamadaAtiva.destino} — clique para encerrar` : sipStatus === 'registrado' ? 'Ligar para este contato' : `Ramal SIP: ${sipStatus || 'não configurado'}`}
               </TooltipContent>
             </Tooltip>
           )}
