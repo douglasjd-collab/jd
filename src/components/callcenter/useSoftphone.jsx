@@ -378,9 +378,15 @@ export default function useSoftphone(config) {
         iceServers: [
           { urls: 'stun:app.nvoip.com.br:3478' },
           { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'stun:stun2.l.google.com:19302' },
+          // TURN público para garantir conectividade em redes NAT restritivas
+          { urls: 'turn:openrelay.metered.ca:80',    username: 'openrelayproject', credential: 'openrelayproject' },
+          { urls: 'turn:openrelay.metered.ca:443',   username: 'openrelayproject', credential: 'openrelayproject' },
+          { urls: 'turns:openrelay.metered.ca:443',  username: 'openrelayproject', credential: 'openrelayproject' },
         ],
         iceTransportPolicy : 'all',
-        bundlePolicy       : 'balanced',
+        bundlePolicy       : 'max-bundle',
         rtcpMuxPolicy      : 'require',
       },
       extraHeaders: [
@@ -495,9 +501,13 @@ export default function useSoftphone(config) {
         iceServers: [
           { urls: 'stun:app.nvoip.com.br:3478' },
           { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun1.l.google.com:19302' },
+          { urls: 'turn:openrelay.metered.ca:80',    username: 'openrelayproject', credential: 'openrelayproject' },
+          { urls: 'turn:openrelay.metered.ca:443',   username: 'openrelayproject', credential: 'openrelayproject' },
+          { urls: 'turns:openrelay.metered.ca:443',  username: 'openrelayproject', credential: 'openrelayproject' },
         ],
         iceTransportPolicy: 'all',
-        bundlePolicy      : 'balanced',
+        bundlePolicy      : 'max-bundle',
         rtcpMuxPolicy     : 'require',
       },
     });
