@@ -54,37 +54,44 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       
       // Processar contactMessage único
       if (obj.contactMessage) {
-        const displayName = obj.contactMessage.displayName || 'Contato Desconhecido';
-        const vcard = obj.contactMessage.vcard || '';
+        const displayName = obj.contactMessage.displayName || 'Contato';
+        const vcardRaw = obj.contactMessage.vcard || '';
         
-        // Extrair todos os telefones (pode haver múltiplos)
+        // Normalizar quebras de linha: \n literal (escaped) → real newline
+        const vcard = vcardRaw.replace(/\\n/g, '\n');
+        
+        // Extrair todos os telefones
         const telefones = [];
-        const waidMatches = vcard.matchAll(/TEL[^:]*:.*?waid=([0-9]+)/g);
+        
+        // Tenta via waid= primeiro
+        const waidMatches = [...vcard.matchAll(/TEL[^:\n]*:[^\n]*waid=([0-9]+)/g)];
         for (const match of waidMatches) {
           telefones.push(match[1]);
         }
         
-        // Se não encontrou via waid, tenta TEL simples
+        // Tenta +55... ou número na linha TEL
         if (telefones.length === 0) {
-          const telMatch = vcard.match(/TEL[^:]*:([+\d\s\-()]+)/);
-          if (telMatch) {
-            telefones.push(telMatch[1].replace(/\D/g, ''));
+          const telLines = vcard.match(/^TEL[^:\n]*:(.+)$/gm) || [];
+          for (const line of telLines) {
+            const val = line.split(':').slice(1).join(':').replace(/\D/g, '');
+            if (val.length >= 8) telefones.push(val);
           }
         }
         
-        if (telefones.length === 0) return [];
+        // Fallback: usar displayName se nenhum telefone encontrado
+        const telefone = telefones[0] || '';
         
         // Extrair foto (base64)
         let fotoUrl = null;
-        const fotoMatch = vcard.match(/PHOTO(?:;[^:]*)?:([a-zA-Z0-9+/=\n]+?)(?:\nFN|\nEND|$)/);
+        const fotoMatch = vcard.match(/PHOTO(?:;[^:\n]*)?:([a-zA-Z0-9+/=\n ]+?)(?:\nFN|\nEND|$)/);
         if (fotoMatch) {
-          const fotoData = fotoMatch[1].replace(/\n/g, '');
+          const fotoData = fotoMatch[1].replace(/[\n ]/g, '');
           if (fotoData.trim()) {
             fotoUrl = `data:image/jpeg;base64,${fotoData}`;
           }
         }
         
-        return [{ displayName, telefone: telefones[0], telefones, fotoUrl, vcard }];
+        return [{ displayName, telefone, telefones, fotoUrl, vcard }];
       }
       
       return [];
@@ -333,32 +340,49 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             return (
               <div className="flex flex-col gap-3">
                 {contatos.map((contato, idx) => {
-                  const telFormatado = contato.telefone.replace(/(\d{2})(\d{5})(\d{4})/, '+$1 $2-$3');
+                  // Formatar telefone: +55 87 99950-5756
+                  const numLimpo = contato.telefone.replace(/\D/g, '');
+                  let telFormatado = contato.telefone;
+                  if (numLimpo.length === 13) {
+                    // +55 DD 9XXXX-XXXX
+                    telFormatado = `+${numLimpo.slice(0,2)} ${numLimpo.slice(2,4)} ${numLimpo.slice(4,9)}-${numLimpo.slice(9)}`;
+                  } else if (numLimpo.length === 12) {
+                    // +55 DD XXXX-XXXX
+                    telFormatado = `+${numLimpo.slice(0,2)} ${numLimpo.slice(2,4)} ${numLimpo.slice(4,8)}-${numLimpo.slice(8)}`;
+                  } else if (numLimpo.length === 11) {
+                    telFormatado = `(${numLimpo.slice(0,2)}) ${numLimpo.slice(2,7)}-${numLimpo.slice(7)}`;
+                  } else if (numLimpo.length === 10) {
+                    telFormatado = `(${numLimpo.slice(0,2)}) ${numLimpo.slice(2,6)}-${numLimpo.slice(6)}`;
+                  }
+
                   return (
-                    <div key={idx} className="flex flex-col gap-2 w-72 bg-gradient-to-b from-green-50 to-green-100 rounded-xl overflow-hidden border border-green-200 shadow-sm">
-                      <div className="flex items-center gap-3 p-3 bg-white border-b border-green-200">
+                    <div key={idx} className={`flex flex-col w-64 rounded-xl overflow-hidden shadow-sm ${isVendedor ? 'bg-blue-400/20 border border-blue-300/40' : 'bg-white border border-slate-200'}`}>
+                      {/* Header do contato — estilo WhatsApp */}
+                      <div className={`flex items-center gap-3 p-3 ${isVendedor ? 'bg-blue-500/30' : 'bg-slate-50 border-b border-slate-100'}`}>
                         {contato.fotoUrl ? (
-                          <img src={contato.fotoUrl} alt={contato.displayName} className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+                          <img src={contato.fotoUrl} alt={contato.displayName} className="w-11 h-11 rounded-full object-cover flex-shrink-0 shadow" />
                         ) : (
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                            👤
+                          <div className="w-11 h-11 rounded-full bg-slate-300 flex items-center justify-center flex-shrink-0">
+                            <svg viewBox="0 0 24 24" className="w-7 h-7 text-slate-500 fill-current"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm text-slate-900 truncate">{contato.displayName}</p>
-                          <p className="text-xs text-slate-600">{telFormatado}</p>
+                          <p className={`font-semibold text-sm truncate ${isVendedor ? 'text-white' : 'text-slate-900'}`}>{contato.displayName}</p>
+                          {telFormatado && (
+                            <p className={`text-xs truncate ${isVendedor ? 'text-white/70' : 'text-slate-500'}`}>{telFormatado}</p>
+                          )}
                         </div>
                       </div>
-                      <div className="flex flex-col gap-2 p-3">
+                      {/* Botão Conversar */}
+                      {contato.telefone && (
                         <button
                           onClick={async () => {
                             try {
-                              const tel = contato.telefone.replace(/\D/g, '');
+                              const tel = numLimpo;
                               const convs = await base44.entities.ConversaWhatsapp.filter({
                                 cliente_telefone: tel,
                                 empresa_id: user?.empresa_id
                               });
-                              
                               if (convs.length > 0) {
                                 window.location.href = `/BatePapo?conversa_id=${convs[0].id}`;
                               } else {
@@ -371,21 +395,14 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                                 window.location.href = `/BatePapo?conversa_id=${novaConv.id}`;
                               }
                             } catch (err) {
-                              console.error('Erro:', err);
                               toast.error('Erro ao abrir conversa');
                             }
                           }}
-                          className="w-full py-2 px-3 bg-white border border-green-300 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium transition-colors"
+                          className={`w-full py-2.5 text-sm font-semibold border-t transition-colors ${isVendedor ? 'border-blue-300/30 text-white/90 hover:bg-white/10' : 'border-slate-100 text-green-600 hover:bg-green-50'}`}
                         >
-                          💬 Conversar
+                          Conversar
                         </button>
-                        <button
-                          onClick={() => toast.info('Adicionar a grupo em breve')}
-                          className="w-full py-2 px-3 bg-white border border-green-300 text-green-600 hover:bg-green-50 rounded-lg text-sm font-medium transition-colors"
-                        >
-                          👥 Adicionar a um grupo
-                        </button>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
