@@ -46,47 +46,67 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.status]);
 
-  // Extrair informações do vCard com suporte a múltiplos contatos
-  const extrairContatosVCard = (texto) => {
+  // Tentar parsear JSON mesmo se vier com caracteres problemáticos
+  const tryParseContactJson = (texto) => {
+    if (!texto) return null;
+    // Tentativa 1: parse direto
+    try { return JSON.parse(texto); } catch {}
+    // Tentativa 2: o texto pode ter \n literal dentro de strings JSON que quebra o parse
+    // Escapar \n e \r dentro de valores de string JSON
     try {
-      const obj = JSON.parse(texto);
-      if (!obj.contactMessage) return [];
-      
+      const sanitized = texto.replace(/[\r\n]+/g, '\\n');
+      return JSON.parse(sanitized);
+    } catch {}
+    // Tentativa 3: extrair displayName e vcard via regex direto no texto cru
+    return null;
+  };
+
+  // Extrair informações do vCard
+  const extrairContatosVCard = (texto) => {
+    const obj = tryParseContactJson(texto);
+    
+    // Se parse funcionou e tem contactMessage
+    if (obj?.contactMessage) {
       const displayName = obj.contactMessage.displayName || 'Contato';
       const vcardRaw = obj.contactMessage.vcard || '';
-      
-      // JSON.parse já converte \n → newline real; garantir também \\n escapado
       const vcard = vcardRaw.replace(/\\n/g, '\n');
       
-      // Extrair telefone — tenta waid primeiro, depois qualquer TEL
       let telefone = '';
       const waidMatch = vcard.match(/waid=([0-9]+)/);
       if (waidMatch) {
         telefone = waidMatch[1];
       } else {
-        // Pega o valor após "TEL..." na linha toda
-        const telMatch = vcard.match(/\nTEL[^\n]*?:([^\n]+)/);
+        const telMatch = vcard.match(/TEL[^:\n]*:([^\n]+)/);
         if (telMatch) {
-          // Extrai parte após último ":" (pode ter "TEL;type=CELL;type=VOICE;waid=55...")
-          const telVal = telMatch[1].trim();
-          // Pega o número que vem com + ou digits
-          const numMatch = telVal.match(/\+?([0-9]{8,})/);
+          const numMatch = telMatch[1].trim().match(/\+?([0-9]{8,})/);
           if (numMatch) telefone = numMatch[1];
         }
       }
       
-      // Extrair foto base64 (opcional)
-      let fotoUrl = null;
-      const fotoMatch = vcard.match(/PHOTO(?:;[^:\n]*)?:([A-Za-z0-9+/=\n ]+?)(?=\n[A-Z]|\nEND)/);
-      if (fotoMatch) {
-        const fotoData = fotoMatch[1].replace(/[\n ]/g, '');
-        if (fotoData.length > 10) fotoUrl = `data:image/jpeg;base64,${fotoData}`;
-      }
-      
-      return [{ displayName, telefone, fotoUrl }];
-    } catch (e) {
-      return [];
+      return [{ displayName, telefone, fotoUrl: null }];
     }
+    
+    // Fallback: extrair via regex direto no texto cru (quando JSON é inválido)
+    if (texto.includes('contactMessage') && texto.includes('displayName')) {
+      try {
+        const displayNameMatch = texto.match(/"displayName"\s*:\s*"([^"]+)"/);
+        const waidMatch = texto.match(/waid=([0-9]+)/);
+        const telLineMatch = texto.match(/TEL[^:]*:([0-9+\s\-().]+?)(?:\\n|\\|")/);
+        
+        const displayName = displayNameMatch ? displayNameMatch[1] : 'Contato';
+        let telefone = '';
+        if (waidMatch) {
+          telefone = waidMatch[1];
+        } else if (telLineMatch) {
+          const numMatch = telLineMatch[1].replace(/\D/g, '');
+          if (numMatch.length >= 8) telefone = numMatch;
+        }
+        
+        return [{ displayName, telefone, fotoUrl: null }];
+      } catch { return []; }
+    }
+    
+    return [];
   };
   
   const queryClient = useQueryClient();
@@ -320,88 +340,59 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
     // PRIMEIRO: Verificar se é contactMessage (pode vir com qualquer tipo_conteudo)
     const textoParaCheck = mensagem.texto || '';
-    if (textoParaCheck.includes('contactMessage') || textoParaCheck.includes('vcard') || textoParaCheck.includes('BEGIN:VCARD')) {
-      try {
-        const obj = JSON.parse(textoParaCheck);
-        if (obj.contactMessage) {
-          const contatos = extrairContatosVCard(textoParaCheck);
-          if (contatos.length > 0) {
-            return (
-              <div className="flex flex-col gap-3">
-                {contatos.map((contato, idx) => {
-                  // Formatar telefone: +55 87 99950-5756
-                  const numLimpo = contato.telefone.replace(/\D/g, '');
-                  let telFormatado = contato.telefone;
-                  if (numLimpo.length === 13) {
-                    // +55 DD 9XXXX-XXXX
-                    telFormatado = `+${numLimpo.slice(0,2)} ${numLimpo.slice(2,4)} ${numLimpo.slice(4,9)}-${numLimpo.slice(9)}`;
-                  } else if (numLimpo.length === 12) {
-                    // +55 DD XXXX-XXXX
-                    telFormatado = `+${numLimpo.slice(0,2)} ${numLimpo.slice(2,4)} ${numLimpo.slice(4,8)}-${numLimpo.slice(8)}`;
-                  } else if (numLimpo.length === 11) {
-                    telFormatado = `(${numLimpo.slice(0,2)}) ${numLimpo.slice(2,7)}-${numLimpo.slice(7)}`;
-                  } else if (numLimpo.length === 10) {
-                    telFormatado = `(${numLimpo.slice(0,2)}) ${numLimpo.slice(2,6)}-${numLimpo.slice(6)}`;
-                  }
-
-                  return (
-                    <div key={idx} className={`flex flex-col w-64 rounded-xl overflow-hidden shadow-sm ${isVendedor ? 'bg-blue-400/20 border border-blue-300/40' : 'bg-white border border-slate-200'}`}>
-                      {/* Header do contato — estilo WhatsApp */}
-                      <div className={`flex items-center gap-3 p-3 ${isVendedor ? 'bg-blue-500/30' : 'bg-slate-50 border-b border-slate-100'}`}>
-                        {contato.fotoUrl ? (
-                          <img src={contato.fotoUrl} alt={contato.displayName} className="w-11 h-11 rounded-full object-cover flex-shrink-0 shadow" />
-                        ) : (
-                          <div className="w-11 h-11 rounded-full bg-slate-300 flex items-center justify-center flex-shrink-0">
-                            <svg viewBox="0 0 24 24" className="w-7 h-7 text-slate-500 fill-current"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className={`font-semibold text-sm truncate ${isVendedor ? 'text-white' : 'text-slate-900'}`}>{contato.displayName}</p>
-                          {telFormatado && (
-                            <p className={`text-xs truncate ${isVendedor ? 'text-white/70' : 'text-slate-500'}`}>{telFormatado}</p>
-                          )}
-                        </div>
-                      </div>
-                      {/* Botão Conversar */}
-                      {contato.telefone && (
-                        <button
-                          onClick={async () => {
-                            try {
-                              const tel = numLimpo;
-                              const convs = await base44.entities.ConversaWhatsapp.filter({
-                                cliente_telefone: tel,
-                                empresa_id: user?.empresa_id
-                              });
-                              if (convs.length > 0) {
-                                window.location.href = `/BatePapo?conversa_id=${convs[0].id}`;
-                              } else {
-                                const novaConv = await base44.entities.ConversaWhatsapp.create({
-                                  empresa_id: user?.empresa_id,
-                                  cliente_telefone: tel,
-                                  cliente_nome: contato.displayName,
-                                  status: 'ativa'
-                                });
-                                window.location.href = `/BatePapo?conversa_id=${novaConv.id}`;
-                              }
-                            } catch (err) {
-                              toast.error('Erro ao abrir conversa');
-                            }
-                          }}
-                          className={`w-full py-2.5 text-sm font-semibold border-t transition-colors ${isVendedor ? 'border-blue-300/30 text-white/90 hover:bg-white/10' : 'border-slate-100 text-green-600 hover:bg-green-50'}`}
-                        >
-                          Conversar
-                        </button>
+    if (textoParaCheck.includes('contactMessage') || textoParaCheck.includes('BEGIN:VCARD')) {
+      const contatos = extrairContatosVCard(textoParaCheck);
+      if (contatos.length > 0) {
+        return (
+          <div className="flex flex-col gap-3">
+            {contatos.map((contato, idx) => {
+              const numLimpo = (contato.telefone || '').replace(/\D/g, '');
+              let telFormatado = contato.telefone || '';
+              if (numLimpo.length === 13) {
+                telFormatado = `+${numLimpo.slice(0,2)} ${numLimpo.slice(2,4)} ${numLimpo.slice(4,9)}-${numLimpo.slice(9)}`;
+              } else if (numLimpo.length === 12) {
+                telFormatado = `+${numLimpo.slice(0,2)} ${numLimpo.slice(2,4)} ${numLimpo.slice(4,8)}-${numLimpo.slice(8)}`;
+              } else if (numLimpo.length === 11) {
+                telFormatado = `(${numLimpo.slice(0,2)}) ${numLimpo.slice(2,7)}-${numLimpo.slice(7)}`;
+              } else if (numLimpo.length === 10) {
+                telFormatado = `(${numLimpo.slice(0,2)}) ${numLimpo.slice(2,6)}-${numLimpo.slice(6)}`;
+              }
+              return (
+                <div key={idx} className={`flex flex-col w-64 rounded-xl overflow-hidden shadow-sm ${isVendedor ? 'bg-blue-400/20 border border-blue-300/40' : 'bg-white border border-slate-200'}`}>
+                  <div className={`flex items-center gap-3 p-3 ${isVendedor ? 'bg-blue-500/30' : 'bg-slate-50 border-b border-slate-100'}`}>
+                    <div className="w-11 h-11 rounded-full bg-slate-300 flex items-center justify-center flex-shrink-0">
+                      <svg viewBox="0 0 24 24" className="w-7 h-7 text-slate-500 fill-current"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`font-semibold text-sm truncate ${isVendedor ? 'text-white' : 'text-slate-900'}`}>{contato.displayName}</p>
+                      {telFormatado && (
+                        <p className={`text-xs truncate ${isVendedor ? 'text-white/70' : 'text-slate-500'}`}>{telFormatado}</p>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            );
-          }
-          return null;
-        }
-      } catch (e) {
-        // Não é JSON, continuar com renderização normal
+                  </div>
+                  {numLimpo && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          const convs = await base44.entities.ConversaWhatsapp.filter({ cliente_telefone: numLimpo, empresa_id: user?.empresa_id });
+                          if (convs.length > 0) {
+                            window.location.href = `/BatePapo?conversa_id=${convs[0].id}`;
+                          } else {
+                            const novaConv = await base44.entities.ConversaWhatsapp.create({ empresa_id: user?.empresa_id, cliente_telefone: numLimpo, cliente_nome: contato.displayName, status: 'ativa' });
+                            window.location.href = `/BatePapo?conversa_id=${novaConv.id}`;
+                          }
+                        } catch { toast.error('Erro ao abrir conversa'); }
+                      }}
+                      className={`w-full py-2.5 text-sm font-semibold border-t transition-colors ${isVendedor ? 'border-blue-300/30 text-white/90 hover:bg-white/10' : 'border-slate-100 text-green-600 hover:bg-green-50'}`}
+                    >
+                      Conversar
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        );
       }
     }
 
