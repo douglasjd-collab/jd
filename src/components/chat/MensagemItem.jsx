@@ -50,51 +50,40 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const extrairContatosVCard = (texto) => {
     try {
       const obj = JSON.parse(texto);
-      if (!obj.contactMessage && !Array.isArray(obj)) return [];
+      if (!obj.contactMessage) return [];
       
-      // Processar contactMessage único
-      if (obj.contactMessage) {
-        const displayName = obj.contactMessage.displayName || 'Contato';
-        const vcardRaw = obj.contactMessage.vcard || '';
-        
-        // Normalizar quebras de linha: \n literal (escaped) → real newline
-        const vcard = vcardRaw.replace(/\\n/g, '\n');
-        
-        // Extrair todos os telefones
-        const telefones = [];
-        
-        // Tenta via waid= primeiro
-        const waidMatches = [...vcard.matchAll(/TEL[^:\n]*:[^\n]*waid=([0-9]+)/g)];
-        for (const match of waidMatches) {
-          telefones.push(match[1]);
+      const displayName = obj.contactMessage.displayName || 'Contato';
+      const vcardRaw = obj.contactMessage.vcard || '';
+      
+      // JSON.parse já converte \n → newline real; garantir também \\n escapado
+      const vcard = vcardRaw.replace(/\\n/g, '\n');
+      
+      // Extrair telefone — tenta waid primeiro, depois qualquer TEL
+      let telefone = '';
+      const waidMatch = vcard.match(/waid=([0-9]+)/);
+      if (waidMatch) {
+        telefone = waidMatch[1];
+      } else {
+        // Pega o valor após "TEL..." na linha toda
+        const telMatch = vcard.match(/\nTEL[^\n]*?:([^\n]+)/);
+        if (telMatch) {
+          // Extrai parte após último ":" (pode ter "TEL;type=CELL;type=VOICE;waid=55...")
+          const telVal = telMatch[1].trim();
+          // Pega o número que vem com + ou digits
+          const numMatch = telVal.match(/\+?([0-9]{8,})/);
+          if (numMatch) telefone = numMatch[1];
         }
-        
-        // Tenta +55... ou número na linha TEL
-        if (telefones.length === 0) {
-          const telLines = vcard.match(/^TEL[^:\n]*:(.+)$/gm) || [];
-          for (const line of telLines) {
-            const val = line.split(':').slice(1).join(':').replace(/\D/g, '');
-            if (val.length >= 8) telefones.push(val);
-          }
-        }
-        
-        // Fallback: usar displayName se nenhum telefone encontrado
-        const telefone = telefones[0] || '';
-        
-        // Extrair foto (base64)
-        let fotoUrl = null;
-        const fotoMatch = vcard.match(/PHOTO(?:;[^:\n]*)?:([a-zA-Z0-9+/=\n ]+?)(?:\nFN|\nEND|$)/);
-        if (fotoMatch) {
-          const fotoData = fotoMatch[1].replace(/[\n ]/g, '');
-          if (fotoData.trim()) {
-            fotoUrl = `data:image/jpeg;base64,${fotoData}`;
-          }
-        }
-        
-        return [{ displayName, telefone, telefones, fotoUrl, vcard }];
       }
       
-      return [];
+      // Extrair foto base64 (opcional)
+      let fotoUrl = null;
+      const fotoMatch = vcard.match(/PHOTO(?:;[^:\n]*)?:([A-Za-z0-9+/=\n ]+?)(?=\n[A-Z]|\nEND)/);
+      if (fotoMatch) {
+        const fotoData = fotoMatch[1].replace(/[\n ]/g, '');
+        if (fotoData.length > 10) fotoUrl = `data:image/jpeg;base64,${fotoData}`;
+      }
+      
+      return [{ displayName, telefone, fotoUrl }];
     } catch (e) {
       return [];
     }
@@ -309,15 +298,14 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   // Detectar se é uma mensagem JSON codificada do WhatsApp (mensagens internas)
   const isJsonEncodedMessage = () => {
     if (!mensagem.texto) return false;
+    // Nunca bloquear mensagens de contato
+    if (mensagem.texto.includes('contactMessage') || mensagem.texto.includes('BEGIN:VCARD')) return false;
     try {
       const obj = JSON.parse(mensagem.texto);
-      // NÃO marcar como sistema se for contactMessage (será renderizado como contato)
       if (obj.contactMessage) return false;
-      // Bloquear outros tipos de mensagens internas do WhatsApp
       if (obj.senderKeyDistributionMessage) return true;
       if (obj.protocolMessage) return true;
       if (obj.ephemeralMessage) return true;
-      // Marcar como sistema para outros tipos de JSON
       return true;
     } catch (e) {
       return false;
@@ -331,11 +319,12 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
 
     // PRIMEIRO: Verificar se é contactMessage (pode vir com qualquer tipo_conteudo)
-    if (mensagem.texto) {
+    const textoParaCheck = mensagem.texto || '';
+    if (textoParaCheck.includes('contactMessage') || textoParaCheck.includes('vcard') || textoParaCheck.includes('BEGIN:VCARD')) {
       try {
-        const obj = JSON.parse(mensagem.texto);
+        const obj = JSON.parse(textoParaCheck);
         if (obj.contactMessage) {
-          const contatos = extrairContatosVCard(mensagem.texto);
+          const contatos = extrairContatosVCard(textoParaCheck);
           if (contatos.length > 0) {
             return (
               <div className="flex flex-col gap-3">
@@ -670,7 +659,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
   // Imagem sem texto = sem balão azul, renderizar direto como bloco limpo
   const textoVazio = !mensagem.texto || mensagem.texto.trim() === '';
-  const isImagemLimpa = mensagem.tipo_conteudo === 'imagem' && textoVazio;
+  const isContatoMsg = !!(mensagem.texto && (mensagem.texto.includes('contactMessage') || mensagem.texto.includes('BEGIN:VCARD')));
+  const isImagemLimpa = mensagem.tipo_conteudo === 'imagem' && textoVazio && !isContatoMsg;
 
   if (isImagemLimpa) {
     return (
