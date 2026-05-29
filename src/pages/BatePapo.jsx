@@ -611,11 +611,27 @@ export default function BatePapo() {
   useEffect(() => {
     if (conversas.length === 0) return;
     if (!conversaSelecionada) {
+      // Verificar se há conversa_id na URL (vindo do botão "Conversar" de contato compartilhado)
+      const urlParams = new URLSearchParams(window.location.search);
+      const conversaIdUrl = urlParams.get('conversa_id');
+      const conversaPorUrl = conversaIdUrl ? conversas.find(c => c.id === conversaIdUrl) : null;
+      
       const ultimaId = localStorage.getItem('ultimaConversaId');
       const ultimaConversa = ultimaId ? conversas.find(c => c.id === ultimaId) : null;
       // No mobile, não abrir chat automaticamente (usuário deve clicar)
       const isMobileDevice = window.innerWidth < 1024;
-      selecionarConversa(ultimaConversa || conversas[0], true, !isMobileDevice);
+      selecionarConversa(conversaPorUrl || ultimaConversa || conversas[0], true, !isMobileDevice);
+      
+      // Se veio por URL mas conversa ainda não está na lista, aguardar refetch
+      if (conversaIdUrl && !conversaPorUrl) {
+        refetchConversas().then(() => {});
+      }
+      // Limpar o parâmetro da URL sem recarregar
+      if (conversaIdUrl) {
+        window.history.replaceState({}, '', window.location.pathname);
+        // Salvar no localStorage para que o próximo ciclo de useEffect pegue
+        localStorage.setItem('ultimaConversaId', conversaIdUrl);
+      }
     } else {
       // Conversa já selecionada: apenas sincronizar dados atualizados sem trocar nem re-selecionar
       const conversaAtualizada = conversas.find(c => c.id === conversaSelecionada.id);
