@@ -4,30 +4,49 @@ import { base44 } from '@/api/base44Client';
 
 /**
  * Hook Softphone WebRTC — NVOIP
- * wss://app.nvoip.com.br:7443 — INVITE SIP direto, WebRTC puro.
- * Suporta chamadas de saída e recebimento de chamadas.
+ * wss://app.nvoip.com.br:7443
+ * Logs SIP completos para diagnóstico.
  */
 
-// Habilita logs SIP completos no console
 JsSIP.debug.enable('JsSIP:*');
 
+// ── SIP logger global — armazena últimos eventos para diagnóstico ──────────
+const SIP_LOG = {
+  events: [],
+  lastInvite: null,
+  lastResponse: null,
+  lastError: null,
+  push(tipo, detalhe, extra = null) {
+    const entry = { ts: new Date().toISOString(), tipo, detalhe, extra };
+    this.events.unshift(entry);
+    if (this.events.length > 100) this.events.pop();
+    console.log(`[SIP] ${tipo}: ${detalhe}`, extra || '');
+    if (tipo === 'INVITE')   this.lastInvite   = entry;
+    if (tipo.match(/^\d{3}/)) this.lastResponse = entry;
+    if (tipo === 'FAILED' || tipo === 'ERROR') this.lastError = entry;
+  },
+  get() { return [...this.events]; },
+};
+
+export { SIP_LOG };
+
 export default function useSoftphone(config) {
-  const [sipStatus, setSipStatus] = useState('desconectado');
-  const [erroMsg, setErroMsg] = useState('');
-  const [chamadaAtiva, setChamadaAtiva] = useState(null);
+  const [sipStatus, setSipStatus]         = useState('desconectado');
+  const [erroMsg, setErroMsg]             = useState('');
+  const [chamadaAtiva, setChamadaAtiva]   = useState(null);
   const [chamadaEntrante, setChamadaEntrante] = useState(null);
 
-  const uaRef = useRef(null);
-  const audioRef = useRef(null);
-  const ringRef = useRef(null);
-  const inicioRef = useRef(null);
-  const callTimeoutRef = useRef(null);
-  const configRef = useRef(config);
-  const colabCacheRef = useRef(null);
+  const uaRef             = useRef(null);
+  const audioRef          = useRef(null);
+  const ringRef           = useRef(null);
+  const inicioRef         = useRef(null);
+  const callTimeoutRef    = useRef(null);
+  const configRef         = useRef(config);
+  const colabCacheRef     = useRef(null);
   const reconnectTimerRef = useRef(null);
-  const mountedRef = useRef(true);
-  const lastConnectedRef = useRef('');
-  const sipStatusRef = useRef('desconectado');
+  const mountedRef        = useRef(true);
+  const lastConnectedRef  = useRef('');
+  const sipStatusRef      = useRef('desconectado');
 
   useEffect(() => { configRef.current = config; }, [config]);
   useEffect(() => { sipStatusRef.current = sipStatus; }, [sipStatus]);
@@ -39,13 +58,10 @@ export default function useSoftphone(config) {
     el.setAttribute('playsinline', '');
     document.body.appendChild(el);
     audioRef.current = el;
-    return () => {
-      el.srcObject = null;
-      el.remove();
-    };
+    return () => { el.srcObject = null; el.remove(); };
   }, []);
 
-  // ── ringtone ─────────────────────────────────────────────────────────────
+  // ── ringtone ───────────────────────────────────────────────────────────────
   const _stopRing = () => { clearInterval(ringRef.current); ringRef.current = null; };
   const _startRing = () => {
     _stopRing();
@@ -65,11 +81,10 @@ export default function useSoftphone(config) {
     ringRef.current = setInterval(beep, 1800);
   };
 
-  // ── áudio ─────────────────────────────────────────────────────────────────
+  // ── áudio ──────────────────────────────────────────────────────────────────
   const _attachAudio = (session) => {
     const pc = session.connection;
     if (!pc) { console.warn('⚠️ _attachAudio: sem peerConnection'); return; }
-
     const tryAttach = () => {
       const receivers = pc.getReceivers?.() || [];
       const audioTrack = receivers.find(r => r.track?.kind === 'audio')?.track;
@@ -79,11 +94,9 @@ export default function useSoftphone(config) {
         audioRef.current.play().catch(e => console.warn('play() err:', e));
       }
     };
-
-    // Tenta imediatamente e também via evento ontrack
     tryAttach();
     pc.addEventListener('track', (e) => {
-      console.log('🔊 ontrack event:', e.track?.kind, 'streams:', e.streams?.length);
+      console.log('🔊 ontrack event:', e.track?.kind);
       if (e.streams?.[0] && audioRef.current) {
         audioRef.current.srcObject = e.streams[0];
         audioRef.current.play().catch(err => console.warn('play() err:', err));
@@ -94,20 +107,17 @@ export default function useSoftphone(config) {
     });
   };
 
-  const _clearAudio = () => {
-    if (audioRef.current) { audioRef.current.srcObject = null; }
-  };
+  const _clearAudio = () => { if (audioRef.current) audioRef.current.srcObject = null; };
 
-  // ── timeout de chamada (60s após INVITE enviado) ──────────────────────────
+  // ── timeout de chamada ────────────────────────────────────────────────────
   const _startCallTimeout = (session, numHistorico) => {
     _clearCallTimeout();
     callTimeoutRef.current = setTimeout(() => {
-      console.warn('⏰ Timeout 60s sem resposta — encerrando sessão');
+      const msg = 'Sem resposta da NVOIP após 30 segundos. Possíveis causas: número inválido, crédito insuficiente, ou rota bloqueada. Verifique o console do navegador (F12) para o log SIP completo.';
+      console.warn('⏰ [SIP] TIMEOUT 30s — INVITE sem resposta');
+      SIP_LOG.push('TIMEOUT', `30s sem resposta para ${numHistorico}`);
       try { session.terminate(); } catch {}
-      if (mountedRef.current) {
-        setErroMsg('Sem resposta após 60 segundos. Verifique o número e tente novamente.');
-        setChamadaAtiva(null);
-      }
+      if (mountedRef.current) { setErroMsg(msg); setChamadaAtiva(null); }
       _clearAudio();
       _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
     }, 30000);
@@ -117,7 +127,7 @@ export default function useSoftphone(config) {
     if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
   };
 
-  // ── buscar colaborador (cache) ────────────────────────────────────────────
+  // ── buscar colaborador (cache) ─────────────────────────────────────────────
   const _getColab = async () => {
     if (colabCacheRef.current) return colabCacheRef.current;
     const me = await base44.auth.me();
@@ -128,7 +138,7 @@ export default function useSoftphone(config) {
     return colab;
   };
 
-  // ── buscar cliente pelo número ────────────────────────────────────────────
+  // ── buscar cliente pelo número ─────────────────────────────────────────────
   const _buscarCliente = async (numero) => {
     try {
       const colab = await _getColab();
@@ -138,16 +148,15 @@ export default function useSoftphone(config) {
       if (numLimpo.startsWith('55') && numLimpo.length >= 12) variantes.push(numLimpo.slice(2));
       if (numLimpo.length === 13) variantes.push(numLimpo.slice(4));
       const clientes = await base44.entities.Cliente.filter({ empresa_id: colab.empresa_id });
-      const match = clientes.find(c => {
+      return clientes.find(c => {
         const t = (c.telefone || '').replace(/\D/g, '');
         const cel = (c.celular || '').replace(/\D/g, '');
         return variantes.some(v => v === t || v === cel);
-      });
-      return match || null;
+      }) || null;
     } catch { return null; }
   };
 
-  // ── salvar histórico ──────────────────────────────────────────────────────
+  // ── salvar histórico ───────────────────────────────────────────────────────
   const _salvarHistorico = async (numero, direcao, status, durSeg = 0, clienteId = null, clienteNome = null) => {
     try {
       const colab = await _getColab();
@@ -161,10 +170,8 @@ export default function useSoftphone(config) {
         empresa_id: colab.empresa_id,
         usuario_id: colab.id,
         usuario_nome: colab.nome,
-        direcao,
-        numero: numLimpo,
-        cliente_id: clienteId,
-        cliente_nome: clienteNome,
+        direcao, numero: numLimpo,
+        cliente_id: clienteId, cliente_nome: clienteNome,
         status,
         inicio: new Date(Date.now() - durSeg * 1000).toISOString(),
         fim: new Date().toISOString(),
@@ -173,20 +180,16 @@ export default function useSoftphone(config) {
     } catch (e) { console.warn('Histórico chamada:', e.message); }
   };
 
-  // ── desconectar (manual) ──────────────────────────────────────────────────
+  // ── desconectar (manual) ───────────────────────────────────────────────────
   const desconectar = useCallback(() => {
     if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
     _clearCallTimeout();
     if (uaRef.current) { try { uaRef.current.stop(); } catch {} uaRef.current = null; }
     _stopRing();
-    if (mountedRef.current) {
-      setSipStatus('desconectado');
-      setChamadaAtiva(null);
-      setChamadaEntrante(null);
-    }
+    if (mountedRef.current) { setSipStatus('desconectado'); setChamadaAtiva(null); setChamadaEntrante(null); }
   }, []);
 
-  // ── conectar / registrar ramal ────────────────────────────────────────────
+  // ── conectar / registrar ramal ─────────────────────────────────────────────
   const conectar = useCallback(() => {
     const cfg = configRef.current;
     if (!cfg?.numbersip || !cfg?.sip_password) {
@@ -198,7 +201,8 @@ export default function useSoftphone(config) {
     setSipStatus('conectando');
     setErroMsg('');
 
-    console.log(`🔌 Conectando SIP: ramal=${cfg.numbersip} → wss://app.nvoip.com.br:7443`);
+    SIP_LOG.push('CONNECT', `Conectando ramal ${cfg.numbersip} → wss://app.nvoip.com.br:7443`);
+    console.log(`🔌 [SIP] REGISTER: ramal=${cfg.numbersip} | wss://app.nvoip.com.br:7443`);
 
     const socket = new JsSIP.WebSocketInterface('wss://app.nvoip.com.br:7443');
     const sipUri = `sip:${cfg.numbersip}@app.nvoip.com.br`;
@@ -222,48 +226,40 @@ export default function useSoftphone(config) {
       log                             : { builtinEnabled: true, level: 'debug' },
     });
 
-    ua.on('connecting',    () => { console.log('🔗 UA: connecting'); if (mountedRef.current) setSipStatus('conectando'); });
-    ua.on('connected',     () => { console.log('✅ UA: connected (WebSocket OK)'); if (mountedRef.current) setSipStatus('conectando'); });
+    ua.on('connecting',    () => { SIP_LOG.push('WS_CONNECTING', 'WebSocket conectando...'); if (mountedRef.current) setSipStatus('conectando'); });
+    ua.on('connected',     () => { SIP_LOG.push('WS_CONNECTED',  'WebSocket OK'); if (mountedRef.current) setSipStatus('conectando'); });
     ua.on('registered',    () => {
       if (!mountedRef.current) return;
-      console.log(`✅ REGISTER OK — ramal ${cfg.numbersip} registrado`);
-      try { console.log('📋 Contact:', ua.contact?.toString?.()); } catch {}
+      SIP_LOG.push('REGISTERED', `Ramal ${cfg.numbersip} registrado com sucesso`);
+      console.log(`✅ [SIP] REGISTER OK — ramal ${cfg.numbersip}`);
       setSipStatus('registrado');
       setErroMsg('');
       if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
     });
     ua.on('unregistered', () => {
-      console.log('⚠️ UA: unregistered');
+      SIP_LOG.push('UNREGISTERED', 'Ramal desregistrado');
       if (mountedRef.current) setSipStatus('conectando');
     });
     ua.on('disconnected', (e) => {
-      console.warn('🔌 UA: disconnected', e?.cause);
+      SIP_LOG.push('WS_DISCONNECTED', `WebSocket desconectou: ${e?.cause || 'desconhecido'}`);
       if (!mountedRef.current) return;
       setSipStatus('conectando');
-      setErroMsg('');
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = setTimeout(() => {
         if (!mountedRef.current) return;
-        if (uaRef.current) {
-          try { uaRef.current.start(); } catch {}
-        } else if (configRef.current?.sip_password) {
-          conectar();
-        }
+        if (uaRef.current) { try { uaRef.current.start(); } catch {} }
+        else if (configRef.current?.sip_password) conectar();
       }, 5000);
     });
     ua.on('registrationFailed', (e) => {
       if (!mountedRef.current) return;
       const code = e?.response?.status_code;
-      console.error(`❌ REGISTER falhou — código: ${code}`, e?.cause);
-      if (code === 401 || code === 403) {
-        setSipStatus('erro');
-        setErroMsg('Senha SIP incorreta. Verifique em "Meu Ramal".');
-      } else if (code === 404) {
-        setSipStatus('erro');
-        setErroMsg('Ramal SIP não encontrado no servidor NVOIP.');
-      } else {
+      SIP_LOG.push('REGISTER_FAILED', `Código ${code} — ${e?.cause || 'sem causa'}`, { code, cause: e?.cause });
+      console.error(`❌ [SIP] REGISTER FAILED — código: ${code}`, e?.cause);
+      if (code === 401 || code === 403) { setSipStatus('erro'); setErroMsg('Senha SIP incorreta. Verifique em "Meu Ramal".'); }
+      else if (code === 404) { setSipStatus('erro'); setErroMsg('Ramal SIP não encontrado no servidor NVOIP.'); }
+      else {
         setSipStatus('conectando');
-        setErroMsg('');
         if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = setTimeout(() => {
           if (mountedRef.current && configRef.current?.sip_password) conectar();
@@ -271,16 +267,14 @@ export default function useSoftphone(config) {
       }
     });
 
-    // ── CHAMADA ENTRANTE ──────────────────────────────────────────────────
+    // ── CHAMADA ENTRANTE ───────────────────────────────────────────────────
     ua.on('newRTCSession', (data) => {
       const { session, originator } = data;
-      console.log(`📞 newRTCSession — originator: ${originator} | direction: ${session?.direction}`);
-      if (originator === 'local') return; // saída tratada em realizarChamada
+      SIP_LOG.push('NEW_SESSION', `originator=${originator} direction=${session?.direction}`);
+      if (originator === 'local') return;
 
-      const origem = session.remote_identity?.uri?.user
-        || session.remote_identity?.display_name
-        || 'Desconhecido';
-      console.log(`📲 Chamada ENTRANTE de: ${origem}`);
+      const origem = session.remote_identity?.uri?.user || session.remote_identity?.display_name || 'Desconhecido';
+      SIP_LOG.push('INCOMING', `Chamada entrante de ${origem}`);
 
       setChamadaEntrante({ session, origem, clienteNome: null, clienteId: null, buscando: true });
       _startRing();
@@ -292,17 +286,8 @@ export default function useSoftphone(config) {
         });
       });
 
-      session.on('failed', () => {
-        _stopRing();
-        _salvarHistorico(origem, 'entrada', 'nao_atendida', 0);
-        setChamadaEntrante(null);
-      });
-      session.on('ended', () => {
-        _stopRing();
-        setChamadaEntrante(null);
-        setChamadaAtiva(null);
-        _clearAudio();
-      });
+      session.on('failed', () => { _stopRing(); _salvarHistorico(origem, 'entrada', 'nao_atendida', 0); setChamadaEntrante(null); });
+      session.on('ended',  () => { _stopRing(); setChamadaEntrante(null); setChamadaAtiva(null); _clearAudio(); });
     });
 
     ua.start();
@@ -320,145 +305,171 @@ export default function useSoftphone(config) {
     };
   }, []);
 
-  // Auto-conecta ao receber config válida (1x por combinação numbersip+senha)
+  // Auto-conecta ao receber config válida
   useEffect(() => {
     if (!config?.numbersip) return;
-    if (!config?.sip_password) {
-      setSipStatus('erro');
-      setErroMsg('Senha SIP não configurada. Acesse "Meu Ramal" → preencha a Senha SIP → Salvar.');
-      return;
-    }
+    if (!config?.sip_password) { setSipStatus('erro'); setErroMsg('Senha SIP não configurada.'); return; }
     const key = `${config.numbersip}|${config.sip_password}`;
     if (lastConnectedRef.current === key && uaRef.current) return;
     lastConnectedRef.current = key;
     conectar();
   }, [config?.numbersip, config?.sip_password]); // eslint-disable-line
 
-  // ── CHAMADA DE SAÍDA — WebRTC puro via WSS ────────────────────────────────
+  // ── CHAMADA DE SAÍDA ───────────────────────────────────────────────────────
   const realizarChamada = useCallback(async (numero) => {
-    // Usa ref para pegar sipStatus sempre atualizado (evita closure stale)
     const statusAtual = sipStatusRef.current;
-    console.log(`📞 realizarChamada — sipStatus atual: ${statusAtual} | UA: ${uaRef.current ? 'OK' : 'null'}`);
+    console.log(`📞 [SIP] realizarChamada — status: ${statusAtual}`);
+
     if (!uaRef.current || statusAtual !== 'registrado') {
-      console.warn(`⚠️ realizarChamada: UA não registrado (status=${statusAtual})`);
-      if (mountedRef.current) setErroMsg(`Ramal não registrado (${statusAtual}). Aguarde a conexão e tente novamente.`);
+      const msg = `Ramal não registrado (${statusAtual}). Aguarde o status "Pronto".`;
+      SIP_LOG.push('ERROR', msg);
+      if (mountedRef.current) setErroMsg(msg);
       return false;
     }
 
-    // Limpa erro anterior
     setErroMsg('');
 
-    // Solicita permissão de microfone ANTES de tentar a chamada
+    // Permissão de microfone
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       stream.getTracks().forEach(t => t.stop());
-      console.log('🎤 Permissão de microfone OK');
+      SIP_LOG.push('MIC_OK', 'Permissão de microfone concedida');
     } catch (err) {
-      console.warn('🎤 Permissão de microfone negada:', err.message);
-      setErroMsg('Permissão de microfone negada. Permita o microfone no navegador e tente novamente.');
+      const msg = 'Permissão de microfone negada. Permita o microfone e tente novamente.';
+      SIP_LOG.push('MIC_DENIED', err.message);
+      setErroMsg(msg);
       return false;
     }
 
     const cfg = configRef.current;
-    let numLimpo = numero.replace(/\D/g, '');
-    const numHistorico = numLimpo;
 
-    // Garante DDI 55 para chamadas brasileiras
+    // ── Formatação e log de todos os formatos testados ─────────────────────
+    let numLimpo = numero.replace(/\D/g, '');
+    const numOriginal = numLimpo;
+
+    // Se já começa com 55 e tem 13 dígitos (55 + DDD 2 + 9 + número 8) — tudo OK
+    // Se não tem 55, adiciona
     if (!numLimpo.startsWith('55') && numLimpo.length <= 11) {
       numLimpo = '55' + numLimpo;
     }
 
-    const destino = `sip:${numLimpo}@app.nvoip.com.br`;
-    console.log(`📞 INVITE SIP → ${destino} | ramal: ${cfg?.numbersip} | DID: ${cfg?.numero_did}`);
+    const formatosSIP = [
+      `sip:${numLimpo}@app.nvoip.com.br`,
+      `sip:${numOriginal}@app.nvoip.com.br`,
+    ];
+    const numHistorico = numOriginal;
+    const destino = formatosSIP[0];
+
+    SIP_LOG.push('DIAL', `Discando: original=${numOriginal} | com DDI=${numLimpo}`, {
+      formatos_testados: formatosSIP,
+      ramal_origem: cfg?.numbersip,
+      did_saida: cfg?.numero_did || 'não configurado',
+    });
+
+    console.log(`📞 [SIP] INVITE → ${destino}`);
+    console.log(`📞 [SIP] Ramal origem: ${cfg?.numbersip} | DID saída: ${cfg?.numero_did || 'N/A'}`);
+    console.log(`📞 [SIP] Formatos testados:`, formatosSIP);
 
     let session;
     try {
       session = uaRef.current.call(destino, {
-        mediaConstraints     : { audio: true, video: false },
-        rtcOfferConstraints  : { offerToReceiveAudio: true, offerToReceiveVideo: false },
-        pcConfig             : {
+        mediaConstraints    : { audio: true, video: false },
+        rtcOfferConstraints : { offerToReceiveAudio: true, offerToReceiveVideo: false },
+        pcConfig: {
           iceServers: [
             { urls: 'stun:app.nvoip.com.br:3478' },
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
             { urls: 'stun:stun2.l.google.com:19302' },
-            { urls: 'turn:openrelay.metered.ca:80',    username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443',   username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turns:openrelay.metered.ca:443',  username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:80',   username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443',  username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turns:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
           ],
-          iceTransportPolicy : 'all',
-          bundlePolicy       : 'max-bundle',
-          rtcpMuxPolicy      : 'require',
+          iceTransportPolicy: 'all',
+          bundlePolicy      : 'max-bundle',
+          rtcpMuxPolicy     : 'require',
         },
         extraHeaders: [
           ...(cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : []),
         ],
       });
     } catch (err) {
-      console.error('❌ Erro ao iniciar chamada SIP:', err);
+      SIP_LOG.push('ERROR', `Erro ao criar sessão SIP: ${err.message}`);
+      console.error('❌ [SIP] Erro ao criar sessão:', err);
       if (mountedRef.current) setErroMsg('Erro ao iniciar chamada. Verifique a configuração do ramal.');
-      setChamadaAtiva(null);
       return false;
     }
 
-    // Só marca chamada ativa APÓS session criada com sucesso
+    // Marca chamada ativa e inicia timeout imediatamente
     inicioRef.current = null;
     setChamadaAtiva({ session, destino: numHistorico, direcao: 'saida', status: 'chamando' });
-
-    // Inicia timeout de 90s imediatamente (independente do evento 'sending')
     _startCallTimeout(session, numHistorico);
 
+    // ── Eventos da sessão com logs completos ────────────────────────────────
     session.on('sending', (e) => {
       try {
         const req = e?.request;
-        console.log('📤 SIP INVITE enviado:', {
+        const sdp = req?.body || '';
+        SIP_LOG.push('INVITE', `INVITE → ${destino}`, {
           to     : req?.to?.toString?.(),
           from   : req?.from?.toString?.(),
           contact: req?.contact?.[0]?.toString?.(),
           ruri   : req?.ruri?.toString?.(),
+          sdp_linhas: sdp.split('\n').length,
+          sdp_preview: sdp.substring(0, 200),
         });
+        console.log('📤 [SIP] INVITE enviado:', {
+          to: req?.to?.toString?.(), from: req?.from?.toString?.(),
+          ruri: req?.ruri?.toString?.(),
+        });
+        console.log('📄 [SIP] SDP offer (primeiras linhas):\n', sdp.split('\n').slice(0, 10).join('\n'));
       } catch {}
     });
 
-    // ── ICE / PeerConnection diagnóstico ──────────────────────────────────
     session.on('peerconnection', (data) => {
       const pc = data.peerconnection;
       if (!pc) return;
-      console.log('🔗 PeerConnection criado');
+      SIP_LOG.push('PEERCONNECTION', 'PeerConnection WebRTC criado');
+
       pc.oniceconnectionstatechange = () => {
-        console.log(`🧊 ICE state: ${pc.iceConnectionState}`);
-        if (pc.iceConnectionState === 'failed') {
-          console.error('❌ ICE connection failed — encerrando chamada');
+        const state = pc.iceConnectionState;
+        SIP_LOG.push('ICE_STATE', state);
+        console.log(`🧊 [SIP] ICE: ${state}`);
+        if (state === 'failed') {
+          SIP_LOG.push('ICE_FAILED', 'ICE connection failed — problema de NAT/TURN');
           _clearCallTimeout();
           try { session.terminate(); } catch {}
           if (mountedRef.current) {
-            setErroMsg('Falha de conectividade WebRTC (ICE failed). Verifique sua rede e tente novamente.');
+            setErroMsg('Falha WebRTC (ICE failed): sem conectividade de mídia. Verifique firewall/NAT.');
             setChamadaAtiva(null);
           }
           _clearAudio();
           _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
         }
       };
-      pc.onicegatheringstatechange   = () => console.log(`🧊 ICE gathering: ${pc.iceGatheringState}`);
-      pc.onconnectionstatechange     = () => {
-        console.log(`🔗 Connection state: ${pc.connectionState}`);
+      pc.onicegatheringstatechange = () => {
+        SIP_LOG.push('ICE_GATHERING', pc.iceGatheringState);
+        console.log(`🧊 [SIP] ICE gathering: ${pc.iceGatheringState}`);
+      };
+      pc.onconnectionstatechange = () => {
+        SIP_LOG.push('PC_STATE', pc.connectionState);
+        console.log(`🔗 [SIP] PC state: ${pc.connectionState}`);
         if (pc.connectionState === 'failed') {
-          console.error('❌ PeerConnection failed — encerrando chamada');
           _clearCallTimeout();
           try { session.terminate(); } catch {}
-          if (mountedRef.current) {
-            setErroMsg('Falha de conexão WebRTC. Verifique sua rede e tente novamente.');
-            setChamadaAtiva(null);
-          }
+          if (mountedRef.current) { setErroMsg('Falha de conexão WebRTC.'); setChamadaAtiva(null); }
           _clearAudio();
         }
       };
       pc.onicecandidate = (e) => {
-        if (e.candidate) console.log(`🧊 Candidate: ${e.candidate.type} ${e.candidate.protocol} ${e.candidate.address}`);
-        else             console.log('🧊 ICE gathering complete (null candidate)');
+        if (e.candidate) {
+          console.log(`🧊 [SIP] Candidate: ${e.candidate.type} ${e.candidate.protocol} ${e.candidate.address}`);
+        } else {
+          SIP_LOG.push('ICE_COMPLETE', 'ICE gathering completo');
+          console.log('🧊 [SIP] ICE gathering complete');
+        }
       };
       pc.addEventListener('track', (e) => {
-        console.log('🔊 PC track event (peerconnection handler):', e.track?.kind);
         if (e.streams?.[0] && audioRef.current) {
           audioRef.current.srcObject = e.streams[0];
           audioRef.current.play().catch(() => {});
@@ -466,20 +477,22 @@ export default function useSoftphone(config) {
       });
     });
 
-    // Timeout iniciado dentro do evento 'sending' (após INVITE efetivamente enviado)
     session.on('progress', (e) => {
       const code = e?.response?.status_code;
-      console.log(`📞 SIP ${code} ${e?.response?.reason_phrase || ''}`);
-      // 180 Ringing = tocando, 183 Session Progress = conectando mídia
-      if (code === 180) {
-        setChamadaAtiva(p => p ? { ...p, status: 'tocando' } : null);
-      } else {
-        setChamadaAtiva(p => p ? { ...p, status: 'chamando' } : null);
-      }
+      const sdpResp = e?.response?.body || '';
+      SIP_LOG.push(`${code}`, `${code} ${e?.response?.reason_phrase || ''}`, {
+        sdp_preview: sdpResp.substring(0, 200),
+      });
+      console.log(`📞 [SIP] ${code} ${e?.response?.reason_phrase || ''}`);
+      if (sdpResp) console.log('📄 [SIP] SDP answer preview:\n', sdpResp.split('\n').slice(0, 8).join('\n'));
+      if (code === 180) setChamadaAtiva(p => p ? { ...p, status: 'tocando' } : null);
+      else setChamadaAtiva(p => p ? { ...p, status: 'chamando' } : null);
     });
 
     session.on('accepted', (e) => {
-      console.log('✅ SIP 200 OK — chamada aceita (accepted)');
+      const sdpResp = e?.response?.body || '';
+      SIP_LOG.push('200_OK', '200 OK — chamada aceita', { sdp_preview: sdpResp.substring(0, 200) });
+      console.log('✅ [SIP] 200 OK — chamada aceita');
       _clearCallTimeout();
       inicioRef.current = Date.now();
       setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null);
@@ -487,7 +500,8 @@ export default function useSoftphone(config) {
     });
 
     session.on('confirmed', (e) => {
-      console.log('✅ SIP ACK enviado — chamada confirmada (confirmed)');
+      SIP_LOG.push('ACK', 'ACK enviado — chamada confirmada');
+      console.log('✅ [SIP] ACK — chamada confirmada');
       _clearCallTimeout();
       if (!inicioRef.current) inicioRef.current = Date.now();
       setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null);
@@ -495,9 +509,10 @@ export default function useSoftphone(config) {
     });
 
     session.on('ended', (e) => {
-      console.log('📞 Chamada encerrada:', e?.cause);
-      _clearCallTimeout();
       const dur = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0;
+      SIP_LOG.push('ENDED', `Chamada encerrada — duração ${dur}s | causa: ${e?.cause || 'N/A'}`);
+      console.log('📞 [SIP] ENDED:', e?.cause);
+      _clearCallTimeout();
       _salvarHistorico(numHistorico, 'saida', dur > 0 ? 'atendida' : 'nao_atendida', dur);
       setChamadaAtiva(null);
       _clearAudio();
@@ -506,60 +521,69 @@ export default function useSoftphone(config) {
     session.on('failed', (e) => {
       const code = e?.response?.status_code;
       const cause = e?.cause;
-      console.warn(`❌ INVITE falhou — código: ${code}, causa: ${cause}`, e?.response?.reason_phrase || '');
+      const phrase = e?.response?.reason_phrase || '';
+      SIP_LOG.push('FAILED', `${code || cause} ${phrase}`, {
+        code, cause, phrase,
+        response_headers: e?.response?.headers ? Object.keys(e.response.headers) : null,
+      });
+      console.warn(`❌ [SIP] FAILED — código: ${code} | causa: ${cause} | motivo: ${phrase}`);
       _clearCallTimeout();
       _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
-      const msgErro = code === 486 ? 'Ocupado.'
-        : code === 404 ? 'Número não encontrado.'
-        : code === 403 ? 'Chamada não autorizada.'
-        : cause === 'Canceled' ? 'Chamada cancelada.'
-        : `Falha na chamada (${code || cause || 'erro desconhecido'})`;
+
+      // Mensagem de erro específica por código SIP
+      const msgErro =
+        code === 486 ? `486 Busy Here — número ocupado`
+        : code === 603 ? `603 Decline — chamada recusada`
+        : code === 404 ? `404 Not Found — número "${numLimpo}" não encontrado na NVOIP. Tente sem DDI ou verifique o formato.`
+        : code === 480 ? `480 Temporarily Unavailable — destino temporariamente indisponível`
+        : code === 408 ? `408 Timeout — servidor NVOIP não respondeu a tempo`
+        : code === 403 ? `403 Forbidden — chamada não autorizada (saldo insuficiente ou rota bloqueada?)`
+        : code === 503 ? `503 Service Unavailable — servidor NVOIP sobrecarregado`
+        : code === 487 ? `Chamada cancelada`
+        : cause === 'Canceled' ? `Chamada cancelada`
+        : cause === 'No Answer' ? `Sem resposta (timeout)`
+        : code ? `Erro SIP ${code} ${phrase}`
+        : `Falha SIP: ${cause || 'desconhecido'} — abra o console (F12) para detalhes`;
+
       if (mountedRef.current) setErroMsg(msgErro);
       setChamadaAtiva(null);
       _clearAudio();
     });
 
     return true;
-  }, []); // sipStatus lido via sipStatusRef — sem dependência de closure
+  }, []);
 
-  // ── ATENDER chamada entrante ──────────────────────────────────────────────
+  // ── ATENDER chamada entrante ───────────────────────────────────────────────
   const atenderChamada = useCallback(() => {
     if (!chamadaEntrante?.session) return;
     _stopRing();
     const { session, origem, clienteId, clienteNome } = chamadaEntrante;
-
     session.answer({
       mediaConstraints: { audio: true, video: false },
       pcConfig: {
         iceServers: [
           { urls: 'stun:app.nvoip.com.br:3478' },
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'turn:openrelay.metered.ca:80',    username: 'openrelayproject', credential: 'openrelayproject' },
-          { urls: 'turn:openrelay.metered.ca:443',   username: 'openrelayproject', credential: 'openrelayproject' },
-          { urls: 'turns:openrelay.metered.ca:443',  username: 'openrelayproject', credential: 'openrelayproject' },
+          { urls: 'turn:openrelay.metered.ca:80',   username: 'openrelayproject', credential: 'openrelayproject' },
+          { urls: 'turn:openrelay.metered.ca:443',  username: 'openrelayproject', credential: 'openrelayproject' },
+          { urls: 'turns:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
         ],
-        iceTransportPolicy: 'all',
-        bundlePolicy      : 'max-bundle',
-        rtcpMuxPolicy     : 'require',
+        iceTransportPolicy: 'all', bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require',
       },
     });
-
     inicioRef.current = Date.now();
     setChamadaEntrante(null);
     setChamadaAtiva({ session, destino: origem, clienteNome, clienteId, direcao: 'entrada', status: 'em_ligacao' });
-
     session.on('confirmed', () => _attachAudio(session));
     session.on('ended', () => {
       const dur = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0;
       _salvarHistorico(origem, 'entrada', 'atendida', dur, clienteId, clienteNome);
-      setChamadaAtiva(null);
-      _clearAudio();
+      setChamadaAtiva(null); _clearAudio();
     });
     session.on('failed', () => { setChamadaAtiva(null); _clearAudio(); });
   }, [chamadaEntrante]);
 
-  // ── REJEITAR chamada entrante ─────────────────────────────────────────────
+  // ── REJEITAR chamada entrante ──────────────────────────────────────────────
   const rejeitarChamada = useCallback(() => {
     _stopRing();
     if (chamadaEntrante?.session) {
@@ -569,7 +593,7 @@ export default function useSoftphone(config) {
     setChamadaEntrante(null);
   }, [chamadaEntrante]);
 
-  // ── ENCERRAR chamada ativa ────────────────────────────────────────────────
+  // ── ENCERRAR chamada ativa ─────────────────────────────────────────────────
   const encerrarChamada = useCallback(() => {
     _clearCallTimeout();
     if (chamadaAtiva?.session) { try { chamadaAtiva.session.terminate(); } catch {} }
