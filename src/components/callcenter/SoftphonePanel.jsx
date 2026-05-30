@@ -285,46 +285,68 @@ export default function SoftphonePanel({ softphone, numbersip }) {
           </button>
 
           {showDiag && (
-            <div className="bg-slate-900 px-3 py-2 max-h-52 overflow-y-auto">
-              {/* Status rápido */}
-              <div className="flex gap-2 flex-wrap mb-2">
-                <span className={cn('text-xs px-2 py-0.5 rounded font-mono', sipStatus === 'registrado' ? 'bg-green-800 text-green-200' : 'bg-amber-800 text-amber-200')}>
-                  WSS: {sipStatus === 'registrado' ? 'OK' : sipStatus}
-                </span>
-                <span className={cn('text-xs px-2 py-0.5 rounded font-mono', sipStatus === 'registrado' ? 'bg-green-800 text-green-200' : 'bg-red-800 text-red-200')}>
-                  SIP: {sipStatus === 'registrado' ? 'REGISTRADO' : sipStatus.toUpperCase()}
-                </span>
-                {SIP_LOG.lastInvite && (
-                  <span className="text-xs px-2 py-0.5 rounded font-mono bg-blue-800 text-blue-200">
-                    INVITE: enviado
-                  </span>
-                )}
+            <div className="bg-slate-900 px-3 py-2 max-h-72 overflow-y-auto space-y-2">
+
+              {/* Cards de status */}
+              <div className="grid grid-cols-2 gap-1 pt-1">
+                <div className={cn('rounded px-2 py-1 text-xs font-mono', sipStatus === 'registrado' ? 'bg-green-900 text-green-300' : 'bg-amber-900 text-amber-300')}>
+                  <div className="text-slate-400 text-[10px]">WebSocket</div>
+                  <div className="font-bold">{sipStatus === 'registrado' ? '✅ CONECTADO' : `⟳ ${sipStatus.toUpperCase()}`}</div>
+                </div>
+                <div className={cn('rounded px-2 py-1 text-xs font-mono', sipStatus === 'registrado' ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300')}>
+                  <div className="text-slate-400 text-[10px]">Registro SIP</div>
+                  <div className="font-bold">{sipStatus === 'registrado' ? '✅ REGISTRADO' : '❌ NÃO REGISTRADO'}</div>
+                </div>
+                <div className={cn('rounded px-2 py-1 text-xs font-mono col-span-2', SIP_LOG.lastUri ? 'bg-blue-900 text-blue-300' : 'bg-slate-800 text-slate-500')}>
+                  <div className="text-slate-400 text-[10px]">URI da chamada</div>
+                  <div className="font-bold truncate">{SIP_LOG.lastUri ? SIP_LOG.lastUri.detalhe : '— nenhuma chamada ainda —'}</div>
+                </div>
                 {SIP_LOG.lastResponse && (
-                  <span className="text-xs px-2 py-0.5 rounded font-mono bg-purple-800 text-purple-200">
-                    RSP: {SIP_LOG.lastResponse.tipo}
-                  </span>
+                  <div className={cn('rounded px-2 py-1 text-xs font-mono col-span-2',
+                    SIP_LOG.lastResponse.tipo === '200_OK' ? 'bg-green-900 text-green-300'
+                    : SIP_LOG.lastResponse.tipo.startsWith('4') || SIP_LOG.lastResponse.tipo.startsWith('5') || SIP_LOG.lastResponse.tipo.startsWith('6') ? 'bg-red-900 text-red-300'
+                    : 'bg-purple-900 text-purple-300'
+                  )}>
+                    <div className="text-slate-400 text-[10px]">Última resposta SIP</div>
+                    <div className="font-bold">{SIP_LOG.lastResponse.tipo} — {SIP_LOG.lastResponse.detalhe}</div>
+                  </div>
                 )}
                 {SIP_LOG.lastError && (
-                  <span className="text-xs px-2 py-0.5 rounded font-mono bg-red-800 text-red-200">
-                    ERR: {SIP_LOG.lastError.detalhe?.substring(0, 30)}
-                  </span>
+                  <div className="rounded px-2 py-1 text-xs font-mono bg-red-900 text-red-300 col-span-2">
+                    <div className="text-slate-400 text-[10px]">Último erro</div>
+                    <div className="font-bold break-all">{SIP_LOG.lastError.detalhe}</div>
+                    {SIP_LOG.lastError.extra?.www_auth && (
+                      <div className="text-red-400 text-[10px] mt-0.5 break-all">Auth: {SIP_LOG.lastError.extra.www_auth}</div>
+                    )}
+                    {SIP_LOG.lastError.extra?.uri_usada && (
+                      <div className="text-red-400 text-[10px] break-all">URI: {SIP_LOG.lastError.extra.uri_usada}</div>
+                    )}
+                  </div>
                 )}
+              </div>
+
+              {/* Separador */}
+              <div className="border-t border-slate-700 pt-1">
+                <p className="text-slate-500 text-[10px] mb-1 font-mono">— eventos SIP ({sipLogs.length}) —</p>
               </div>
 
               {/* Log stream */}
               {sipLogs.length === 0
-                ? <p className="text-xs text-slate-500 italic">Nenhum evento SIP registrado ainda. Tente fazer uma chamada.</p>
+                ? <p className="text-xs text-slate-500 italic font-mono">Nenhum evento ainda. Faça uma chamada para ver o diagnóstico.</p>
                 : sipLogs.map((entry, i) => (
-                  <div key={i} className="flex gap-2 text-xs font-mono leading-5">
-                    <span className="text-slate-600 shrink-0 w-8">{entry.ts?.split('T')[1]?.substring(0,5) || ''}</span>
-                    <span className={cn('shrink-0 font-bold w-20 truncate',
-                      entry.tipo === 'FAILED' || entry.tipo === 'ERROR' || entry.tipo === 'ICE_FAILED' || entry.tipo === 'TIMEOUT' ? 'text-red-400'
-                      : entry.tipo === 'REGISTERED' || entry.tipo === '200_OK' || entry.tipo === 'ACK' ? 'text-green-400'
-                      : entry.tipo === 'INVITE' || entry.tipo === 'INVITE_SENT' || entry.tipo === 'DIAL' ? 'text-yellow-400'
-                      : entry.tipo.match(/^1\d\d$/) ? 'text-blue-400'
+                  <div key={i} className="flex gap-1.5 text-xs font-mono leading-5 border-b border-slate-800 pb-0.5">
+                    <span className="text-slate-600 shrink-0 w-10 text-[10px]">
+                      {entry.ts?.split('T')[1]?.substring(0,8) || ''}
+                    </span>
+                    <span className={cn('shrink-0 font-bold w-24 truncate text-[10px]',
+                      ['FAILED','ERROR','ICE_FAILED','TIMEOUT'].includes(entry.tipo)    ? 'text-red-400'
+                      : ['REGISTERED','200_OK','ACK'].includes(entry.tipo)              ? 'text-green-400'
+                      : ['INVITE','DIAL','MIC_OK'].includes(entry.tipo)                 ? 'text-yellow-400'
+                      : ['100','180','183'].includes(entry.tipo)                        ? 'text-blue-400'
+                      : ['RETRY','WS_CONNECTED','CONNECT'].includes(entry.tipo)         ? 'text-cyan-400'
                       : 'text-slate-400'
                     )}>[{entry.tipo}]</span>
-                    <span className="text-slate-200 break-all leading-5">{entry.detalhe}</span>
+                    <span className="text-slate-200 break-all text-[11px] leading-4 flex-1">{entry.detalhe}</span>
                   </div>
                 ))
               }
