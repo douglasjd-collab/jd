@@ -340,43 +340,42 @@ export default function ComissoesEmprestimos() {
     doc.roundedRect(pageWidth - 52, 4, 48, 7, 1, 1, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(6.5); doc.setFont('helvetica', 'bold');
-    doc.text('✓  Pagamento realizado', pageWidth - 50, 8);
+    doc.text('Pagamento realizado', pageWidth - 50, 8);
 
-    // ===== BLOCO DE INFORMAÇÕES (4 colunas com ícones) =====
+    // ===== BLOCO DE INFORMAÇÕES (4 colunas) =====
     doc.setTextColor(0, 0, 0);
-    const infoY = 35;
-    const colW = 70;
+    const infoY = 26;
+    const colW = (pageWidth - 20) / 4;
     const cols = [
-      { x: 10, icon: '👤', label: 'VENDEDOR', value: vendedorInfo?.vendedor_nome || '-' },
-      { x: 10 + colW, icon: '📅', label: 'DATA PAGAMENTO', value: moment(dataPagamento, 'YYYY-MM-DD').format('DD/MM/YYYY') },
-      { x: 10 + colW * 2, icon: '💳', label: 'FORMA PAGAMENTO', value: formaPagto || '-' },
-      { x: 10 + colW * 3, icon: '📦', label: 'QTD. ITENS', value: String(propostasLista.length) },
+      { label: 'VENDEDOR', value: vendedorInfo?.vendedor_nome || '-' },
+      { label: 'DATA PAGAMENTO', value: moment(dataPagamento, 'YYYY-MM-DD').format('DD/MM/YYYY') },
+      { label: 'FORMA PAGAMENTO', value: formaPagto || '-' },
+      { label: 'QTD. ITENS', value: String(propostasLista.length) },
     ];
 
-    cols.forEach(col => {
+    cols.forEach((col, i) => {
+      const x = 10 + colW * i;
       doc.setFillColor(245, 247, 250);
-      doc.rect(col.x, infoY - 9, colW - 2, 15, 'F');
+      doc.rect(x, infoY, colW - 2, 16, 'F');
       doc.setDrawColor(200, 215, 230);
-      doc.setLineWidth(0.5);
-      doc.rect(col.x, infoY - 9, colW - 2, 15);
-
-      // Ícone
-      doc.setFontSize(8);
-      doc.text(col.icon, col.x + 2, infoY - 4);
+      doc.setLineWidth(0.4);
+      doc.rect(x, infoY, colW - 2, 16);
 
       // Label
       doc.setFontSize(6); doc.setFont('helvetica', 'bold');
       doc.setTextColor(100, 120, 140);
-      doc.text(col.label, col.x + 2, infoY - 2);
+      doc.text(col.label, x + 3, infoY + 5);
 
       // Valor
       doc.setFontSize(9); doc.setFont('helvetica', 'bold');
       doc.setTextColor(16, 53, 60);
-      doc.text(col.value, col.x + 2, infoY + 5);
+      const maxWidth = colW - 6;
+      const displayValue = doc.splitTextToSize(col.value, maxWidth)[0] || col.value;
+      doc.text(displayValue, x + 3, infoY + 12);
     });
 
     // ===== TABELA PRINCIPAL =====
-    const tableStartY = 54;
+    const tableStartY = 47;
     doc.autoTable({
       startY: tableStartY,
       head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
@@ -494,7 +493,7 @@ export default function ComissoesEmprestimos() {
     doc.line(10, footerY, pageWidth - 10, footerY);
     doc.setFontSize(6.2); doc.setTextColor(100, 100, 100);
     doc.setFont('helvetica', 'normal');
-    doc.text('🔒 Comprovante emitido eletronicamente.', 10, footerY + 3.5);
+    doc.text('Comprovante emitido eletronicamente.', 10, footerY + 3.5);
     doc.text('JD PROMOTORA', 148, footerY + 3.5, { align: 'center' });
     doc.text('CNPJ: 45.123.789/0001-40', 148, footerY + 6, { align: 'center' });
     doc.text('www.promotora.com.br', pageWidth - 10, footerY + 3.5, { align: 'right' });
