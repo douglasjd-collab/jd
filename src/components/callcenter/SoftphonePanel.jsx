@@ -4,10 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   Phone, PhoneOff, PhoneIncoming,
-  Mic, MicOff, Radio, AlertTriangle, RefreshCw
+  Mic, MicOff, Radio, AlertTriangle, RefreshCw, Terminal, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ChamadaEntrantePopup from './ChamadaEntrantePopup';
+import { SIP_LOG } from './useSoftphone';
 
 /**
  * Softphone Panel — EXCLUSIVAMENTE WebRTC via wss://app.nvoip.com.br:7443
@@ -37,7 +38,26 @@ export default function SoftphonePanel({ softphone, numbersip }) {
   const [numero, setNumero] = useState('');
   const [mutado, setMutado] = useState(false);
   const [duracao, setDuracao] = useState(0);
+  const [showDiag, setShowDiag] = useState(false);
+  const [sipLogs, setSipLogs] = useState([]);
   const timerRef = useRef(null);
+  const diagTimerRef = useRef(null);
+
+  // Atualiza logs SIP a cada 500ms quando painel aberto
+  useEffect(() => {
+    if (showDiag) {
+      setSipLogs(SIP_LOG.get());
+      diagTimerRef.current = setInterval(() => setSipLogs(SIP_LOG.get()), 500);
+    } else {
+      clearInterval(diagTimerRef.current);
+    }
+    return () => clearInterval(diagTimerRef.current);
+  }, [showDiag]);
+
+  // Abre diagnóstico automaticamente quando há erro
+  useEffect(() => {
+    if (erroMsg) setShowDiag(true);
+  }, [erroMsg]);
 
   // Timer de duração da chamada
   useEffect(() => {
@@ -250,8 +270,70 @@ export default function SoftphonePanel({ softphone, numbersip }) {
           </div>
         )}
 
+        {/* Botão + Painel de Diagnóstico SIP */}
+        <div className="border-t">
+          <button
+            onClick={() => { setShowDiag(d => !d); if (!showDiag) setSipLogs(SIP_LOG.get()); }}
+            className="w-full flex items-center justify-between px-4 py-2 bg-slate-50 hover:bg-slate-100 text-xs text-slate-500 transition-colors"
+          >
+            <span className="flex items-center gap-1.5">
+              <Terminal className="w-3.5 h-3.5" />
+              Diagnóstico SIP
+              {SIP_LOG.lastError && <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />}
+            </span>
+            {showDiag ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+
+          {showDiag && (
+            <div className="bg-slate-900 px-3 py-2 max-h-52 overflow-y-auto">
+              {/* Status rápido */}
+              <div className="flex gap-2 flex-wrap mb-2">
+                <span className={cn('text-xs px-2 py-0.5 rounded font-mono', sipStatus === 'registrado' ? 'bg-green-800 text-green-200' : 'bg-amber-800 text-amber-200')}>
+                  WSS: {sipStatus === 'registrado' ? 'OK' : sipStatus}
+                </span>
+                <span className={cn('text-xs px-2 py-0.5 rounded font-mono', sipStatus === 'registrado' ? 'bg-green-800 text-green-200' : 'bg-red-800 text-red-200')}>
+                  SIP: {sipStatus === 'registrado' ? 'REGISTRADO' : sipStatus.toUpperCase()}
+                </span>
+                {SIP_LOG.lastInvite && (
+                  <span className="text-xs px-2 py-0.5 rounded font-mono bg-blue-800 text-blue-200">
+                    INVITE: enviado
+                  </span>
+                )}
+                {SIP_LOG.lastResponse && (
+                  <span className="text-xs px-2 py-0.5 rounded font-mono bg-purple-800 text-purple-200">
+                    RSP: {SIP_LOG.lastResponse.tipo}
+                  </span>
+                )}
+                {SIP_LOG.lastError && (
+                  <span className="text-xs px-2 py-0.5 rounded font-mono bg-red-800 text-red-200">
+                    ERR: {SIP_LOG.lastError.detalhe?.substring(0, 30)}
+                  </span>
+                )}
+              </div>
+
+              {/* Log stream */}
+              {sipLogs.length === 0
+                ? <p className="text-xs text-slate-500 italic">Nenhum evento SIP registrado ainda. Tente fazer uma chamada.</p>
+                : sipLogs.map((entry, i) => (
+                  <div key={i} className="flex gap-2 text-xs font-mono leading-5">
+                    <span className="text-slate-600 shrink-0 w-8">{entry.ts?.split('T')[1]?.substring(0,5) || ''}</span>
+                    <span className={cn('shrink-0 font-bold w-20 truncate',
+                      entry.tipo === 'FAILED' || entry.tipo === 'ERROR' || entry.tipo === 'ICE_FAILED' || entry.tipo === 'TIMEOUT' ? 'text-red-400'
+                      : entry.tipo === 'REGISTERED' || entry.tipo === '200_OK' || entry.tipo === 'ACK' ? 'text-green-400'
+                      : entry.tipo === 'INVITE' || entry.tipo === 'INVITE_SENT' || entry.tipo === 'DIAL' ? 'text-yellow-400'
+                      : entry.tipo.match(/^1\d\d$/) ? 'text-blue-400'
+                      : 'text-slate-400'
+                    )}>[{entry.tipo}]</span>
+                    <span className="text-slate-200 break-all leading-5">{entry.detalhe}</span>
+                  </div>
+                ))
+              }
+            </div>
+          )}
+        </div>
+
         {/* Rodapé */}
-        <div className="px-4 py-2 border-t bg-slate-50 text-xs text-slate-400 text-center">
+        <div className="px-4 py-1.5 border-t bg-slate-50 text-xs text-slate-400 text-center">
           WebRTC exclusivo via <span className="font-mono">wss://app.nvoip.com.br:7443</span>
         </div>
       </div>
