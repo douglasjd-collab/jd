@@ -371,28 +371,39 @@ export default function useSoftphone(config) {
     const destino = `sip:${numLimpo}@app.nvoip.com.br`;
     console.log(`📞 INVITE SIP → ${destino} | ramal: ${cfg?.numbersip} | DID: ${cfg?.numero_did}`);
 
-    const session = uaRef.current.call(destino, {
-      mediaConstraints     : { audio: true, video: false },
-      rtcOfferConstraints  : { offerToReceiveAudio: true, offerToReceiveVideo: false },
-      pcConfig             : {
-        iceServers: [
-          { urls: 'stun:app.nvoip.com.br:3478' },
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' },
-          { urls: 'stun:stun2.l.google.com:19302' },
-          // TURN público para garantir conectividade em redes NAT restritivas
-          { urls: 'turn:openrelay.metered.ca:80',    username: 'openrelayproject', credential: 'openrelayproject' },
-          { urls: 'turn:openrelay.metered.ca:443',   username: 'openrelayproject', credential: 'openrelayproject' },
-          { urls: 'turns:openrelay.metered.ca:443',  username: 'openrelayproject', credential: 'openrelayproject' },
+    let session;
+    try {
+      session = uaRef.current.call(destino, {
+        mediaConstraints     : { audio: true, video: false },
+        rtcOfferConstraints  : { offerToReceiveAudio: true, offerToReceiveVideo: false },
+        pcConfig             : {
+          iceServers: [
+            { urls: 'stun:app.nvoip.com.br:3478' },
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' },
+            { urls: 'turn:openrelay.metered.ca:80',    username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turn:openrelay.metered.ca:443',   username: 'openrelayproject', credential: 'openrelayproject' },
+            { urls: 'turns:openrelay.metered.ca:443',  username: 'openrelayproject', credential: 'openrelayproject' },
+          ],
+          iceTransportPolicy : 'all',
+          bundlePolicy       : 'max-bundle',
+          rtcpMuxPolicy      : 'require',
+        },
+        extraHeaders: [
+          ...(cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : []),
         ],
-        iceTransportPolicy : 'all',
-        bundlePolicy       : 'max-bundle',
-        rtcpMuxPolicy      : 'require',
-      },
-      extraHeaders: [
-        ...(cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : []),
-      ],
-    });
+      });
+    } catch (err) {
+      console.error('❌ Erro ao iniciar chamada SIP:', err);
+      if (mountedRef.current) setErroMsg('Erro ao iniciar chamada. Verifique a configuração do ramal.');
+      setChamadaAtiva(null);
+      return false;
+    }
+
+    // Só marca chamada ativa APÓS session criada com sucesso
+    inicioRef.current = null;
+    setChamadaAtiva({ session, destino: numHistorico, direcao: 'saida', status: 'chamando' });
 
     // ── Log SIP detalhado + inicia timeout SOMENTE após INVITE enviado ───────
     session.on('sending', (e) => {
@@ -429,9 +440,6 @@ export default function useSoftphone(config) {
         }
       });
     });
-
-    inicioRef.current = null;
-    setChamadaAtiva({ session, destino: numHistorico, direcao: 'saida', status: 'chamando' });
 
     // Timeout iniciado dentro do evento 'sending' (após INVITE efetivamente enviado)
     session.on('progress', (e) => {

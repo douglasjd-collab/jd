@@ -92,8 +92,10 @@ export default function ChamadaAtivaBar({ chamadaAtiva, onEncerrar }) {
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 gap-1.5 text-white hover:bg-white/20 hover:text-white"
-          onClick={onEncerrar}
+          className="h-7 gap-1.5 text-white hover:bg-red-500/40 hover:text-white"
+          onClick={() => {
+            try { onEncerrar(); } catch (e) { console.error('Erro ao encerrar:', e); }
+          }}
         >
           <PhoneOff className="h-3.5 w-3.5" />
           <span className="text-xs">Encerrar</span>
