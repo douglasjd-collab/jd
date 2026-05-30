@@ -65,6 +65,8 @@ export default function useSoftphone(config) {
   const mountedRef        = useRef(true);
   const lastConnectedRef  = useRef('');
   const sipStatusRef      = useRef('desconectado');
+  // Guard: impede que eventos antigos/atrasados sobrescrevam o estado "registrado"
+  const registradoAt      = useRef(0);
 
   useEffect(() => { configRef.current = config; }, [config]);
   useEffect(() => { sipStatusRef.current = sipStatus; }, [sipStatus]);
@@ -243,33 +245,43 @@ export default function useSoftphone(config) {
       log                             : { builtinEnabled: true, level: 'debug' },
     });
 
+    // Helper: só sobrescreve o estado se não estiver no estado "registrado" recentemente
+    // Isso evita que eventos atrasados (unregistered, disconnected) desfaçam o estado registrado
+    const setStatusSeFraco = (novoStatus) => {
+      if (!mountedRef.current) return;
+      // Se foi registrado há menos de 3s, ignorar eventos de downgrade
+      if (registradoAt.current && (Date.now() - registradoAt.current) < 3000) return;
+      setSipStatus(novoStatus);
+    };
+
     ua.on('connecting', () => {
       SIP_LOG.push('WS_CONNECTING', `Conectando ao WebSocket ${wssUri}`);
-      if (mountedRef.current) setSipStatus('conectando');
+      setStatusSeFraco('conectando');
     });
 
     ua.on('connected', () => {
       SIP_LOG.push('WS_CONNECTED', `WebSocket conectado — enviando REGISTER`);
-      if (mountedRef.current) setSipStatus('conectando');
+      setStatusSeFraco('conectando');
     });
 
     ua.on('registered', () => {
       if (!mountedRef.current) return;
+      registradoAt.current = Date.now(); // marca timestamp do registro
       SIP_LOG.push('REGISTERED', `✅ Ramal ${ramal} registrado com sucesso em ${sipDomain}`);
-      setSipStatus('registrado');
+      setSipStatus('registrado');        // força direto, sem guard
       setErroMsg('');
       if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null; }
     });
 
     ua.on('unregistered', () => {
       SIP_LOG.push('UNREGISTERED', 'Ramal desregistrado — tentando novamente');
-      if (mountedRef.current) setSipStatus('conectando');
+      setStatusSeFraco('conectando');
     });
 
     ua.on('disconnected', (e) => {
       SIP_LOG.push('WS_DISCONNECTED', `WebSocket desconectou: ${e?.cause || 'desconhecido'}`);
       if (!mountedRef.current) return;
-      setSipStatus('conectando');
+      setStatusSeFraco('conectando');
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = setTimeout(() => {
         if (!mountedRef.current) return;
@@ -286,13 +298,15 @@ export default function useSoftphone(config) {
       console.error(`❌ [SIP] REGISTER FAILED — ${code} | ${cause}`);
 
       if (code === 401 || code === 403 || code === 407) {
+        registradoAt.current = 0; // limpa guard em erro de autenticação
         setSipStatus('erro');
         setErroMsg(`Erro ${code}: Senha SIP incorreta ou ramal não autorizado. Verifique em "Meu Ramal".`);
       } else if (code === 404) {
+        registradoAt.current = 0;
         setSipStatus('erro');
         setErroMsg(`Erro 404: Ramal ${ramal} não encontrado no servidor NVOIP.`);
       } else {
-        setSipStatus('conectando');
+        setStatusSeFraco('conectando');
         if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
         reconnectTimerRef.current = setTimeout(() => {
           if (mountedRef.current && configRef.current?.sip_password) conectar();
