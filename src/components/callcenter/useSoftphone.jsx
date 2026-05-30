@@ -360,13 +360,15 @@ export default function useSoftphone(config) {
     }
 
     setErroMsg('');
-    SIP_LOG.clear(); // limpa log anterior para novo diagnóstico limpo
+    SIP_LOG.clear();
 
-    // Permissão de microfone
+    // ── Obter microfone ANTES de criar a sessão ─────────────────────────────
+    // CRÍTICO: Se getUserMedia for chamado APÓS uaRef.current.call(), o JsSIP
+    // pode cancelar o INVITE (causa "Canceled") por não ter stream disponível.
+    let micStream = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      stream.getTracks().forEach(t => t.stop());
-      SIP_LOG.push('MIC_OK', 'Permissão de microfone concedida');
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      SIP_LOG.push('MIC_OK', 'Stream de microfone obtido — pronto para INVITE');
     } catch (err) {
       const msg = 'Permissão de microfone negada. Permita o microfone e tente novamente.';
       SIP_LOG.push('MIC_DENIED', err.message);
@@ -378,31 +380,27 @@ export default function useSoftphone(config) {
     const sipDomain = 'app.nvoip.com.br';
 
     // ── Preparar formatos de URI ────────────────────────────────────────────
-    let numLimpo = numero.replace(/\D/g, '');
-
-    // Garante DDI 55 para chamadas nacionais
+    const numLimpo = numero.replace(/\D/g, '');
     let numComDDI = numLimpo;
     if (!numLimpo.startsWith('55')) numComDDI = '55' + numLimpo;
     const numSemDDI = numLimpo.startsWith('55') ? numLimpo.slice(2) : numLimpo;
 
-    // Tenta primeiro SEM DDI (formato local), depois COM DDI
+    // Tenta primeiro SEM DDI, depois COM DDI se receber 404
     const uriFormatos = [
       `sip:${numSemDDI}@${sipDomain}`,
       `sip:${numComDDI}@${sipDomain}`,
     ];
 
     const numHistorico = numSemDDI;
-    const destino = uriFormatos[0]; // começa sem DDI
+    const destino = uriFormatos[0];
 
-    SIP_LOG.push('DIAL', `Discando número: ${numSemDDI} (com DDI: ${numComDDI})`, {
-      uri_principal: uriFormatos[0],
+    SIP_LOG.push('DIAL', `Discando: ${numSemDDI} | com DDI: ${numComDDI}`, {
+      uri_principal  : uriFormatos[0],
       uri_alternativa: uriFormatos[1],
-      ramal_origem: cfg?.numbersip,
-      did_saida: cfg?.numero_did || 'não configurado',
+      ramal_origem   : cfg?.numbersip,
+      did_saida      : cfg?.numero_did || 'não configurado',
     });
-
     console.log(`📞 [SIP] DIAL → ${uriFormatos[0]} | alt: ${uriFormatos[1]}`);
-    console.log(`📞 [SIP] Ramal: ${cfg?.numbersip} | DID: ${cfg?.numero_did || 'N/A'}`);
 
     const pcConfig = {
       iceServers: [
@@ -418,7 +416,9 @@ export default function useSoftphone(config) {
       rtcpMuxPolicy     : 'require',
     };
 
+    // Passa o stream já capturado para evitar "Canceled" por getUserMedia tardio
     const callOptions = {
+      mediaStream         : micStream,                          // ← stream já obtido
       mediaConstraints    : { audio: true, video: false },
       rtcOfferConstraints : { offerToReceiveAudio: true, offerToReceiveVideo: false },
       pcConfig,
@@ -432,9 +432,16 @@ export default function useSoftphone(config) {
       session = uaRef.current.call(destino, callOptions);
     } catch (err) {
       SIP_LOG.push('ERROR', `Erro ao criar sessão SIP: ${err.message}`);
+      // Libera microfone em caso de erro
+      micStream?.getTracks().forEach(t => t.stop());
       if (mountedRef.current) setErroMsg('Erro ao iniciar chamada. Verifique a configuração do ramal.');
       return false;
     }
+
+    // Libera microfone quando chamada encerrar (o JsSIP cria stream próprio via PeerConnection)
+    const _releaseMic = () => micStream?.getTracks().forEach(t => t.stop());
+    session.on('ended',  _releaseMic);
+    session.on('failed', _releaseMic);
 
     inicioRef.current = null;
     setChamadaAtiva({ session, destino: numHistorico, direcao: 'saida', status: 'chamando' });
