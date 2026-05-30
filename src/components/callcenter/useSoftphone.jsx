@@ -67,6 +67,11 @@ export default function useSoftphone(config) {
   const sipStatusRef      = useRef('desconectado');
   // Guard: impede que eventos antigos/atrasados sobrescrevam o estado "registrado"
   const registradoAt      = useRef(0);
+  // Contador de desconexões WSS para detectar instabilidade
+  const wssDropCount      = useRef(0);
+  const wssDropTimer      = useRef(null);
+  // Sessão ativa de referência para cancelar em caso de queda WSS
+  const sessionAtivaRef   = useRef(null);
 
   useEffect(() => { configRef.current = config; }, [config]);
   useEffect(() => { sipStatusRef.current = sipStatus; }, [sipStatus]);
@@ -241,7 +246,7 @@ export default function useSoftphone(config) {
       hack_ip_in_contact              : false,
       contact_uri                     : `sip:${ramal}@${sipDomain};transport=ws`,
       connection_recovery_min_interval: 2,
-      connection_recovery_max_interval: 30,
+      connection_recovery_max_interval: 10,
       log                             : { builtinEnabled: true, level: 'debug' },
     });
 
@@ -279,14 +284,48 @@ export default function useSoftphone(config) {
     });
 
     ua.on('disconnected', (e) => {
-      SIP_LOG.push('WS_DISCONNECTED', `WebSocket desconectou: ${e?.cause || 'desconhecido'}`);
+      // Captura código e motivo real do WebSocket close
+      const wsCode   = e?.socket?.socket?._ws?.closeCode   || e?.code   || '?';
+      const wsReason = e?.socket?.socket?._ws?.closeReason || e?.reason || e?.cause || 'desconhecido';
+      const wasClean = e?.socket?.socket?._ws?.wasClean    ?? null;
+      SIP_LOG.push('WS_DISCONNECTED', `WebSocket desconectou — code: ${wsCode} | reason: ${wsReason} | wasClean: ${wasClean}`);
+      console.warn(`⚡ [SIP] WS DISCONNECTED code=${wsCode} reason=${wsReason} wasClean=${wasClean}`);
+
       if (!mountedRef.current) return;
+
+      // Cancelar chamada ativa se WSS cair durante a chamada
+      if (sessionAtivaRef.current) {
+        const sessao = sessionAtivaRef.current;
+        sessionAtivaRef.current = null;
+        try { sessao.terminate(); } catch {}
+        SIP_LOG.push('WS_CALL_ABORT', 'Chamada abortada — conexão WSS perdida durante INVITE/chamada');
+        _clearCallTimeout();
+        _clearAudio();
+        if (mountedRef.current) {
+          setErroMsg('Conexão SIP caiu durante a chamada. Reconectando...');
+          setChamadaAtiva(null);
+        }
+      }
+
+      // Contador de instabilidade WSS
+      wssDropCount.current += 1;
+      clearTimeout(wssDropTimer.current);
+      wssDropTimer.current = setTimeout(() => { wssDropCount.current = 0; }, 60000); // reset após 1 min
+      if (wssDropCount.current >= 3) {
+        SIP_LOG.push('WSS_INSTAVEL', `⚠️ WSS caiu ${wssDropCount.current}x em 1 min — rede, firewall ou limite de sessões`);
+        if (mountedRef.current) setErroMsg('Conexão WSS instável com a NVOIP. Verifique rede, firewall ou limite de sessões do ramal.');
+      }
+
       setStatusSeFraco('conectando');
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = setTimeout(() => {
         if (!mountedRef.current) return;
-        if (uaRef.current) { try { uaRef.current.start(); } catch {} }
-        else if (configRef.current?.sip_password) conectar();
+        // Recriar UA somente se o atual for o mesmo (evita múltiplos UAs)
+        if (uaRef.current === ua) {
+          try { uaRef.current.start(); } catch {}
+        } else if (!uaRef.current && configRef.current?.sip_password) {
+          conectar();
+        }
       }, 5000);
     });
 
@@ -366,9 +405,18 @@ export default function useSoftphone(config) {
   const realizarChamada = useCallback(async (numero) => {
     const statusAtual = sipStatusRef.current;
 
-    if (!uaRef.current || statusAtual !== 'registrado') {
-      const msg = `Ramal não registrado (status: ${statusAtual}). Aguarde o status "Pronto".`;
-      SIP_LOG.push('ERROR', msg);
+    // Validação dupla: estado React + estado real do JsSIP UA
+    const uaConectado   = uaRef.current?.isConnected?.()   ?? false;
+    const uaRegistrado  = uaRef.current?.isRegistered?.()  ?? false;
+    const statusEstavel = statusAtual === 'registrado' && uaConectado && uaRegistrado;
+
+    if (!statusEstavel) {
+      const detalhe = !uaRef.current ? 'UA não inicializado'
+        : !uaConectado  ? 'WebSocket desconectado'
+        : !uaRegistrado ? 'SIP não registrado no servidor'
+        : `status: ${statusAtual}`;
+      const msg = `Ramal não está pronto para ligar (${detalhe}). Aguarde o status "Pronto".`;
+      SIP_LOG.push('ERROR', `Chamada bloqueada — ${detalhe}`);
       if (mountedRef.current) setErroMsg(msg);
       return false;
     }
@@ -483,6 +531,7 @@ export default function useSoftphone(config) {
     session.on('failed', _releaseMic);
 
     inicioRef.current = null;
+    sessionAtivaRef.current = session; // registra sessão ativa para cancelar se WSS cair
     setChamadaAtiva({ session, destino: numHistorico, direcao: 'saida', status: 'chamando' });
     _startCallTimeout(session, numHistorico);
 
@@ -579,6 +628,7 @@ export default function useSoftphone(config) {
       const dur = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0;
       SIP_LOG.push('ENDED', `Chamada encerrada — duração ${dur}s | causa: ${e?.cause || 'N/A'}`);
       _clearCallTimeout();
+      sessionAtivaRef.current = null;
       _salvarHistorico(numHistorico, 'saida', dur > 0 ? 'atendida' : 'nao_atendida', dur);
       setChamadaAtiva(null);
       _clearAudio();
@@ -652,6 +702,7 @@ export default function useSoftphone(config) {
         : code ? `Erro SIP ${code} ${phrase} — URI: ${destino}`
         : `Falha SIP: ${cause || 'desconhecido'} — verifique o painel de diagnóstico abaixo.`;
 
+      sessionAtivaRef.current = null;
       if (mountedRef.current) setErroMsg(msgErro);
       setChamadaAtiva(null);
       _clearAudio();
