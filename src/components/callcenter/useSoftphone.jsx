@@ -404,15 +404,19 @@ export default function useSoftphone(config) {
     // Nunca altera a quantidade de dígitos além de remover o "55" do início
     const numSemDDI = numOriginal.startsWith('55') ? numOriginal.slice(2) : numOriginal;
 
-    // Alerta se parece um celular sem o 9 (DDD 2 + 8 dígitos = 10 total sem DDI)
+    // Validação: celular brasileiro com 10 dígitos = falta o 9º dígito → BLOQUEAR
     if (numSemDDI.length === 10) {
-      const ddd = numSemDDI.slice(0, 2);
-      const resto = numSemDDI.slice(2);
-      // Celulares brasileiros têm 9 dígitos após o DDD; fixos têm 8
-      if (!resto.startsWith('9') && !resto.startsWith('8')) {
-        SIP_LOG.push('AVISO', `⚠️ Número com 10 dígitos sem DDI — pode estar sem o 9º dígito. DDD: ${ddd} | Número: ${resto}`);
-      } else {
-        SIP_LOG.push('AVISO', `⚠️ Número com 10 dígitos — celular pode estar sem o 9º dígito (esperado 11 dígitos sem DDI).`);
+      const resto = numSemDDI.slice(2); // remove DDD
+      // Celulares começam com 6, 7, 8 ou 9. Fixos têm 8 dígitos após DDD (total 10 = válido para fixo).
+      // Se começa com 6, 7 ou 9 → claramente celular sem o 9 → bloquear
+      // Se começa com 8 → pode ser celular sem 9 ou fixo → bloquear por precaução
+      const pareceCelular = /^[6-9]/.test(resto);
+      if (pareceCelular) {
+        const msg = `Número incompleto: informe o número completo com DDD e 9º dígito. Exemplo: ${numSemDDI.slice(0,2)}9${resto}`;
+        SIP_LOG.push('BLOCKED', `🚫 Chamada bloqueada — ${numSemDDI} tem 10 dígitos (celular sem o 9). Correto: ${numSemDDI.slice(0,2)}9${resto}`);
+        micStream?.getTracks().forEach(t => t.stop());
+        if (mountedRef.current) setErroMsg(msg);
+        return false;
       }
     }
 
