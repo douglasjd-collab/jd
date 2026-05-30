@@ -318,16 +318,19 @@ export default function ComissoesEmprestimos() {
     const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
     const totalLiquido = Math.max(0, totalBruto - totalAdiantamentos);
 
-    // ===== HEADER VISUAL COM LOGO =====
+    // ===== HEADER VISUAL COM LOGO PNJ =====
     doc.setFillColor(16, 53, 60);
     doc.rect(0, 0, pageWidth, 20, 'F');
 
-    // Logo Promotora hexágono + texto
-    doc.setFillColor(35, 190, 132);
-    doc.roundedRect(10, 5, 6, 10, 0.5, 0.5, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-    doc.text('promotora', 18, 12);
+    // Logo PNJ (imagem)
+    try {
+      doc.addImage('https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/6302dfa4c_LOGO-PNJ.png', 'PNG', 10, 3, 14, 14);
+    } catch (e) {
+      // Fallback se logo não carregar
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+      doc.text('PNJ', 10, 12);
+    }
 
     // Título e informações
     doc.setFontSize(12); doc.setFont('helvetica', 'bold');
