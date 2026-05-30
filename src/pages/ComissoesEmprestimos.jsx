@@ -439,41 +439,36 @@ export default function ComissoesEmprestimos() {
     const rightX = 163;
     const rightW = pageWidth - rightX - 10;
     const rowH = 14;
-    const rowSpacing = 2;
+    const resumoColW = (rightW - 2) / 2; // Divide em 2 colunas com pequeno espaço entre
 
-    // Linha 1: Subtotal Comissões
+    // Linha 1 (esquerda): Subtotal Comissões
     doc.setFillColor(250, 252, 250);
-    doc.roundedRect(rightX, sectionY, rightW, rowH, 0.5, 0.5, 'F');
+    doc.roundedRect(rightX, sectionY, resumoColW, rowH, 0.5, 0.5, 'F');
     doc.setDrawColor(210, 230, 215);
     doc.setLineWidth(0.4);
-    doc.roundedRect(rightX, sectionY, rightW, rowH, 0.5, 0.5);
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.roundedRect(rightX, sectionY, resumoColW, rowH, 0.5, 0.5);
+    doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 120, 140);
-    doc.text('Subtotal Comissões', rightX + 3, sectionY + 5);
-    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text('Subtotal Comissões', rightX + 2, sectionY + 5);
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 100, 180);
-    doc.text(fmt(totalBruto), rightX + rightW - 3, sectionY + 5, { align: 'right' });
+    doc.text(fmt(totalBruto), rightX + resumoColW - 2, sectionY + 5, { align: 'right' });
 
-    // Linha 2: Adiantamentos
-    const linha2Y = sectionY + rowH + rowSpacing;
+    // Linha 1 (direita): Adiantamentos
+    const linha1DirX = rightX + resumoColW + 2;
     doc.setFillColor(250, 252, 250);
-    doc.roundedRect(rightX, linha2Y, rightW, rowH, 0.5, 0.5, 'F');
+    doc.roundedRect(linha1DirX, sectionY, resumoColW, rowH, 0.5, 0.5, 'F');
     doc.setDrawColor(210, 230, 215);
-    doc.roundedRect(rightX, linha2Y, rightW, rowH, 0.5, 0.5);
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.roundedRect(linha1DirX, sectionY, resumoColW, rowH, 0.5, 0.5);
+    doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
     doc.setTextColor(100, 120, 140);
-    doc.text('(−) Adiantamentos', rightX + 3, linha2Y + 5);
-    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text('(−) Adiantamentos', linha1DirX + 2, sectionY + 5);
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
     doc.setTextColor(245, 137, 65);
-    doc.text(fmt(totalAdiantamentos), rightX + rightW - 3, linha2Y + 5, { align: 'right' });
+    doc.text(fmt(totalAdiantamentos), linha1DirX + resumoColW - 2, sectionY + 5, { align: 'right' });
 
-    // Separador visual
-    doc.setDrawColor(200, 215, 230);
-    doc.setLineWidth(0.3);
-    doc.line(rightX + 3, linha2Y + rowH + 1, rightX + rightW - 3, linha2Y + rowH + 1);
-
-    // Linha 3: Valor Líquido (destaque maior)
-    const liqY = linha2Y + rowH + rowSpacing;
+    // Linha 2: Valor Líquido (destaque maior, ocupa toda a largura)
+    const liqY = sectionY + rowH + 2;
     doc.setFillColor(235, 250, 243);
     doc.roundedRect(rightX, liqY, rightW, rowH + 2, 0.5, 0.5, 'F');
     doc.setDrawColor(35, 190, 132);
