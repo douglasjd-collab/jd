@@ -318,32 +318,33 @@ export default function ComissoesEmprestimos() {
     const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
     const totalLiquido = Math.max(0, totalBruto - totalAdiantamentos);
 
-    // ===== HEADER VISUAL COM LOGO PNJ =====
+    // ===== HEADER VISUAL COM LOGO PROMOTORA =====
     doc.setFillColor(16, 53, 60);
-    doc.rect(0, 0, pageWidth, 20, 'F');
+    doc.rect(0, 0, pageWidth, 22, 'F');
 
-    // Logo PNJ (imagem)
+    // Logo completa Promotora (ícone + texto)
     try {
-      doc.addImage('https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/6302dfa4c_LOGO-PNJ.png', 'PNG', 10, 3, 14, 14);
+      doc.addImage('https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/5623c4693_JDPromotoraLOGO5.png', 'PNG', 7, 3, 40, 16);
     } catch (e) {
-      // Fallback se logo não carregar
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-      doc.text('PNJ', 10, 12);
+      doc.text('JD Promotora', 10, 13);
     }
 
-    // Título e informações
+    // Título e informações (texto branco)
+    doc.setTextColor(255, 255, 255);
     doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-    doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO — EMPRÉSTIMOS', 148, 10, { align: 'center' });
+    doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO — EMPRÉSTIMOS', 165, 10, { align: 'center' });
     doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-    doc.text(`Lote: ${loteCode}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 148, 16, { align: 'center' });
+    doc.setTextColor(200, 220, 220);
+    doc.text(`Lote: ${loteCode}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 165, 17, { align: 'center' });
 
     // Status badge (Pagamento realizado)
     doc.setFillColor(35, 190, 132);
-    doc.roundedRect(pageWidth - 52, 4, 48, 7, 1, 1, 'F');
+    doc.roundedRect(pageWidth - 52, 5, 48, 8, 1.5, 1.5, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(6.5); doc.setFont('helvetica', 'bold');
-    doc.text('Pagamento realizado', pageWidth - 50, 8);
+    doc.text('Pagamento realizado', pageWidth - 28, 10, { align: 'center' });
 
     // ===== BLOCO DE INFORMAÇÕES (4 colunas) =====
     doc.setTextColor(0, 0, 0);
