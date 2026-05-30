@@ -3,72 +3,38 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Phone, Loader2 } from 'lucide-react';
+import { Phone, Radio } from 'lucide-react';
 import { toast } from 'sonner';
-import { base44 } from '@/api/base44Client';
 
-export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial = '', onChamadaIniciada, webphoneAtivo = false }) {
-  const [called, setCalled] = useState(numeroInicial);
+/**
+ * Modal de chamada — EXCLUSIVAMENTE WebRTC via wss://app.nvoip.com.br:7443
+ * Sem callback, sem API REST, sem chip, sem MicroSIP.
+ */
+export default function RealizarChamadaModal({
+  open,
+  onOpenChange,
+  numeroInicial = '',
+  softphone,        // hook useSoftphone — obrigatório para WebRTC
+  onChamadaIniciada,
+}) {
+  const [numero, setNumero] = useState(numeroInicial);
   const [nomeContato, setNomeContato] = useState('');
-  const [ligando, setLigando] = useState(false);
 
-  useEffect(() => {
-    if (numeroInicial) setCalled(numeroInicial);
-  }, [numeroInicial]);
+  useEffect(() => { if (numeroInicial) setNumero(numeroInicial); }, [numeroInicial]);
+  useEffect(() => { if (!open) { setNumero(''); setNomeContato(''); } }, [open]);
+
+  const sipRegistrado = softphone?.sipStatus === 'registrado';
 
   const handleLigar = async () => {
-    const numero = called.replace(/\D/g, '');
-    if (!numero || numero.length < 8) {
-      toast.error('Número inválido. Informe DDD + número.');
-      return;
-    }
+    const num = numero.replace(/\D/g, '');
+    if (!num || num.length < 8) { toast.error('Número inválido. Informe DDD + número.'); return; }
+    if (!sipRegistrado) { toast.error('Webphone não registrado. Aguarde o status "Pronto".'); return; }
 
-    setLigando(true);
-    try {
-      const res = await base44.functions.invoke('nvoipCallCenter', {
-        action: 'realizarChamada',
-        called: numero,
-        webphoneAtivo,
-      });
-      
-      console.log('[Modal] Resposta nvoipCallCenter:', res);
-      
-      if (res.status && res.status >= 400) {
-        toast.error('Erro ' + res.status + ': Falha ao iniciar chamada');
-        return;
-      }
-      
-      if (res.data?.error) {
-        const isRateLimit = res.data._error_type === 'rate_limit' || res.data._fallback === 'microsip' || res.data.error?.includes('limit');
-        toast.error(res.data.error);
-        
-        // Se for limite diário, tenta com MicroSIP via protocolo SIP
-        if (isRateLimit) {
-          setTimeout(() => {
-            const usarMicroSIP = window.confirm('NVOIP atingiu o limite diário. Deseja usar o MicroSIP desktop para ligar?');
-            if (usarMicroSIP) {
-              window.location.href = `sip:${numero}@sip.nvoip.com.br`;
-            }
-          }, 500);
-        }
-        return;
-      }
-      
-      const callId = res.data?.callId || res.data?.call_id || res.data?.id || null;
-      if (!callId) {
-        toast.warning('Chamada iniciada, mas ID não foi retornado');
-      } else {
-        toast.success('Chamada iniciada para ' + numero);
-      }
-      onChamadaIniciada?.(callId, numero, nomeContato || 'Contato');
+    console.log(`📞 [Modal] Iniciando chamada WebRTC → ${num} via wss://app.nvoip.com.br:7443`);
+    const ok = await softphone.realizarChamada(num);
+    if (ok !== false) {
+      onChamadaIniciada?.(null, num, nomeContato || 'Contato');
       onOpenChange(false);
-      setCalled('');
-      setNomeContato('');
-    } catch (e) {
-      console.error('[Modal] Erro na chamada:', e);
-      toast.error('Erro ao iniciar chamada: ' + (e.message || 'Erro desconhecido'));
-    } finally {
-      setLigando(false);
     }
   };
 
@@ -94,34 +60,40 @@ export default function RealizarChamadaModal({ open, onOpenChange, numeroInicial
           </div>
 
           <div className="space-y-2">
-            <Label>Número do Cliente *</Label>
+            <Label>Número *</Label>
             <Input
-              placeholder="Ex: 87991426333 (DDD + número)"
-              value={called}
-              onChange={e => setCalled(e.target.value.replace(/\D/g, ''))}
+              placeholder="DDD + número (ex: 87991426333)"
+              value={numero}
+              onChange={e => setNumero(e.target.value.replace(/\D/g, ''))}
               onKeyDown={e => e.key === 'Enter' && handleLigar()}
               autoFocus
             />
-            <p className="text-xs text-slate-400">DDD + número, sem 0 e sem +55</p>
+            <p className="text-xs text-slate-400">DDD + número, sem DDI</p>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
-            <p className="font-semibold">📞 Como funciona:</p>
-            <p className="mt-1">1️⃣ A NVOIP liga para seu <strong>chip/celular</strong> primeiro</p>
-            <p className="mt-1">2️⃣ Quando você atende, ela liga para o <strong>cliente</strong></p>
-            <p className="mt-1">3️⃣ As duas chamadas são conectadas</p>
-            <p className="mt-2 text-red-700"><strong>⚠️ Atenda seu celular rapidamente!</strong> A ligação se encerra se você não atender em ~30 segundos.</p>
+          {/* Status do Webphone */}
+          <div className={`rounded-lg p-3 text-xs flex items-center gap-2 border ${
+            sipRegistrado
+              ? 'bg-green-50 border-green-200 text-green-800'
+              : 'bg-amber-50 border-amber-200 text-amber-800'
+          }`}>
+            <Radio className="w-4 h-4 shrink-0" />
+            <span>
+              {sipRegistrado
+                ? '✓ Webphone pronto — chamada sairá direto pelo navegador (WSS/WebRTC)'
+                : `⚠ Webphone ${softphone?.sipStatus || 'desconectado'} — aguarde o registro SIP`}
+            </span>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button
               onClick={handleLigar}
-              disabled={ligando}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={!numero.trim() || !sipRegistrado}
+              className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-40"
             >
-              {ligando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Phone className="w-4 h-4 mr-2" />}
-              Ligar
+              <Phone className="w-4 h-4 mr-2" />
+              Ligar via WebRTC
             </Button>
           </div>
         </div>

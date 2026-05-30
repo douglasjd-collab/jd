@@ -390,7 +390,7 @@ export default function CallCenter() {
         open={chamadaOpen}
         onOpenChange={(v) => { setChamadaOpen(v); if (!v) setNumeroParaChamar(''); }}
         numeroInicial={numeroParaChamar}
-        webphoneAtivo={softphone?.sipStatus === 'registrado'}
+        softphone={softphone}
         onChamadaIniciada={(callId, destino, nomeContato) => {
           if (callId) setChamadaAtiva({ callId, destino, nomeContato });
         }}
