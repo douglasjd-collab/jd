@@ -298,8 +298,18 @@ export default function SoftphonePanel({ softphone, numbersip }) {
                   <div className="font-bold">{sipStatus === 'registrado' ? '✅ REGISTRADO' : '❌ NÃO REGISTRADO'}</div>
                 </div>
                 <div className={cn('rounded px-2 py-1 text-xs font-mono col-span-2', SIP_LOG.lastUri ? 'bg-blue-900 text-blue-300' : 'bg-slate-800 text-slate-500')}>
-                  <div className="text-slate-400 text-[10px]">URI da chamada</div>
-                  <div className="font-bold truncate">{SIP_LOG.lastUri ? SIP_LOG.lastUri.detalhe : '— nenhuma chamada ainda —'}</div>
+                  <div className="text-slate-400 text-[10px]">Número / URI da chamada</div>
+                  {SIP_LOG.lastUri?.extra ? (
+                    <>
+                      <div className="font-bold truncate">
+                        Original: <span className="text-yellow-300">{SIP_LOG.lastUri.extra.num_original}</span>
+                        {' → '}Com DDI: <span className="text-green-300">{SIP_LOG.lastUri.extra.num_com_ddi}</span>
+                      </div>
+                      <div className="text-blue-300 text-[10px] truncate">{SIP_LOG.lastUri.extra.uri_principal}</div>
+                    </>
+                  ) : (
+                    <div className="font-bold truncate">{SIP_LOG.lastUri ? SIP_LOG.lastUri.detalhe : '— nenhuma chamada ainda —'}</div>
+                  )}
                 </div>
                 {SIP_LOG.lastResponse && (
                   <div className={cn('rounded px-2 py-1 text-xs font-mono col-span-2',

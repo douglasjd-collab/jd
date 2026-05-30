@@ -379,28 +379,49 @@ export default function useSoftphone(config) {
     const cfg = configRef.current;
     const sipDomain = 'app.nvoip.com.br';
 
-    // ── Preparar formatos de URI ────────────────────────────────────────────
-    const numLimpo = numero.replace(/\D/g, '');
-    let numComDDI = numLimpo;
-    if (!numLimpo.startsWith('55')) numComDDI = '55' + numLimpo;
-    const numSemDDI = numLimpo.startsWith('55') ? numLimpo.slice(2) : numLimpo;
+    // ── Normalização do número ──────────────────────────────────────────────
+    // Regra: NÃO remover dígitos. Apenas adicionar DDI 55 se necessário.
+    const numOriginal = numero.replace(/\D/g, '');
 
-    // Tenta primeiro SEM DDI, depois COM DDI se receber 404
+    // Se já tem DDI 55, usar como está. Se não, adicionar 55.
+    const numComDDI = numOriginal.startsWith('55') ? numOriginal : '55' + numOriginal;
+
+    // numSemDDI = número sem o DDI 55 (para histórico e URI alternativa)
+    // Nunca altera a quantidade de dígitos além de remover o "55" do início
+    const numSemDDI = numOriginal.startsWith('55') ? numOriginal.slice(2) : numOriginal;
+
+    // Alerta se parece um celular sem o 9 (DDD 2 + 8 dígitos = 10 total sem DDI)
+    if (numSemDDI.length === 10) {
+      const ddd = numSemDDI.slice(0, 2);
+      const resto = numSemDDI.slice(2);
+      // Celulares brasileiros têm 9 dígitos após o DDD; fixos têm 8
+      if (!resto.startsWith('9') && !resto.startsWith('8')) {
+        SIP_LOG.push('AVISO', `⚠️ Número com 10 dígitos sem DDI — pode estar sem o 9º dígito. DDD: ${ddd} | Número: ${resto}`);
+      } else {
+        SIP_LOG.push('AVISO', `⚠️ Número com 10 dígitos — celular pode estar sem o 9º dígito (esperado 11 dígitos sem DDI).`);
+      }
+    }
+
+    // URI principal: com DDI (formato NVOIP recomendado para chamadas internacionais/nacionais)
+    // URI alternativa: sem DDI (caso a operadora prefira formato local)
     const uriFormatos = [
-      `sip:${numSemDDI}@${sipDomain}`,
-      `sip:${numComDDI}@${sipDomain}`,
+      `sip:${numComDDI}@${sipDomain}`,   // ex: sip:5587991426333@app.nvoip.com.br
+      `sip:${numSemDDI}@${sipDomain}`,   // ex: sip:87991426333@app.nvoip.com.br
     ];
 
     const numHistorico = numSemDDI;
     const destino = uriFormatos[0];
 
-    SIP_LOG.push('DIAL', `Discando: ${numSemDDI} | com DDI: ${numComDDI}`, {
+    SIP_LOG.push('DIAL', `Número original: ${numOriginal} | Normalizado: ${numComDDI}`, {
+      num_original   : numOriginal,
+      num_sem_ddi    : numSemDDI,
+      num_com_ddi    : numComDDI,
       uri_principal  : uriFormatos[0],
       uri_alternativa: uriFormatos[1],
       ramal_origem   : cfg?.numbersip,
       did_saida      : cfg?.numero_did || 'não configurado',
     });
-    console.log(`📞 [SIP] DIAL → ${uriFormatos[0]} | alt: ${uriFormatos[1]}`);
+    console.log(`📞 [SIP] Original: ${numOriginal} → Com DDI: ${numComDDI} → URI: ${uriFormatos[0]}`);
 
     const pcConfig = {
       iceServers: [
