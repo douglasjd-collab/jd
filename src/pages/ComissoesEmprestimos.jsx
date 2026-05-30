@@ -405,29 +405,19 @@ export default function ComissoesEmprestimos() {
     });
 
     const tableEndY = doc.lastAutoTable.finalY;
-
-    doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(8, 57, 66);
-    doc.text('SUBTOTAL COMISSÕES:', pageWidth - 38, tableEndY + 2, { align: 'right' });
-    doc.setTextColor(0, 100, 180);
-    doc.setFontSize(9);
-    doc.text(fmt(totalBruto), pageWidth - 12, tableEndY + 2, { align: 'right' });
-
-    const sectionY = tableEndY + 5.5;
-    const leftW = 148; // largura da coluna esquerda (adiantamentos)
-    const rightX = 163; // início da coluna direita (resumo)
-    const rightW = pageWidth - rightX - 10;
+    const sectionY = tableEndY + 12; // Mais espaço após tabela
 
     // ===== COLUNA ESQUERDA: ADIANTAMENTOS =====
+    let adiantamentosEndY = sectionY;
     if (adiantamentosDesc.length > 0) {
       doc.setFillColor(245, 137, 65);
-      doc.rect(10, sectionY - 2, leftW, 4, 'F');
+      doc.rect(10, sectionY, 148, 4, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-      doc.text('ADIANTAMENTOS DESCONTADOS', 12, sectionY + 0.5);
+      doc.text('ADIANTAMENTOS DESCONTADOS', 12, sectionY + 2.5);
 
       doc.autoTable({
-        startY: sectionY + 2,
+        startY: sectionY + 5,
         head: [['Descrição / Motivo', 'Data', 'Valor']],
         body: adiantamentosDesc.map(a => [a.motivo || 'Adiantamento referente à comissão disponível.', moment(a.data).format('DD/MM/YYYY'), fmt(a.valor)]),
         foot: [['', 'TOTAL ADIANTAMENTOS:', fmt(totalAdiantamentos)]],
@@ -436,60 +426,65 @@ export default function ComissoesEmprestimos() {
         footStyles: { fillColor: [255, 240, 220], textColor: [180, 80, 0], fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [255, 247, 240] },
         columnStyles: { 0: { halign: 'left' }, 1: { halign: 'center' }, 2: { halign: 'right' } },
-        margin: { left: 10, right: pageWidth - 10 - leftW },
-        tableWidth: leftW,
+        margin: { left: 10, right: pageWidth - 158 },
+        tableWidth: 148,
       });
+      adiantamentosEndY = doc.lastAutoTable.finalY;
     }
 
-    // ===== COLUNA DIREITA: 3 LINHAS RESUMO =====
-    const rowH = 13;
-    const rowSpacing = 1.5;
+    // ===== COLUNA DIREITA: RESUMO FINANCEIRO =====
+    const rightX = 163;
+    const rightW = pageWidth - rightX - 10;
+    const rowH = 14;
+    const rowSpacing = 2;
 
-    // Linha 1: Subtotal
+    // Linha 1: Subtotal Comissões
     doc.setFillColor(250, 252, 250);
-    doc.roundedRect(rightX, sectionY - 2, rightW, rowH, 0.5, 0.5, 'F');
-    doc.setDrawColor(210, 230, 215);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(rightX, sectionY - 2, rightW, rowH, 0.5, 0.5);
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(60, 80, 70);
-    doc.text('Subtotal Comissões', rightX + 3, sectionY + 4);
-    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(8, 57, 66);
-    doc.text(fmt(totalBruto), rightX + rightW - 2, sectionY + 4, { align: 'right' });
-
-    // Linha 2: Adiantamentos
-    doc.setFillColor(250, 252, 250);
-    doc.roundedRect(rightX, sectionY - 2 + rowH + rowSpacing, rightW, rowH, 0.5, 0.5, 'F');
-    doc.setDrawColor(210, 230, 215);
-    doc.roundedRect(rightX, sectionY - 2 + rowH + rowSpacing, rightW, rowH, 0.5, 0.5);
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(60, 80, 70);
-    doc.text('(−) Adiantamentos', rightX + 3, sectionY + 4 + rowH + rowSpacing);
-    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(245, 137, 65);
-    doc.text(fmt(totalAdiantamentos), rightX + rightW - 2, sectionY + 4 + rowH + rowSpacing, { align: 'right' });
-
-    // Separador
+    doc.roundedRect(rightX, sectionY, rightW, rowH, 0.5, 0.5, 'F');
     doc.setDrawColor(210, 230, 215);
     doc.setLineWidth(0.4);
-    doc.line(rightX, sectionY - 2 + (rowH + rowSpacing) * 2 - 0.5, rightX + rightW, sectionY - 2 + (rowH + rowSpacing) * 2 - 0.5);
+    doc.roundedRect(rightX, sectionY, rightW, rowH, 0.5, 0.5);
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 120, 140);
+    doc.text('Subtotal Comissões', rightX + 3, sectionY + 5);
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0, 100, 180);
+    doc.text(fmt(totalBruto), rightX + rightW - 3, sectionY + 5, { align: 'right' });
 
-    // Linha 3: Valor Líquido (destaque)
-    const liqY = sectionY - 2 + (rowH + rowSpacing) * 2 + 0.5;
+    // Linha 2: Adiantamentos
+    const linha2Y = sectionY + rowH + rowSpacing;
+    doc.setFillColor(250, 252, 250);
+    doc.roundedRect(rightX, linha2Y, rightW, rowH, 0.5, 0.5, 'F');
+    doc.setDrawColor(210, 230, 215);
+    doc.roundedRect(rightX, linha2Y, rightW, rowH, 0.5, 0.5);
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 120, 140);
+    doc.text('(−) Adiantamentos', rightX + 3, linha2Y + 5);
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(245, 137, 65);
+    doc.text(fmt(totalAdiantamentos), rightX + rightW - 3, linha2Y + 5, { align: 'right' });
+
+    // Separador visual
+    doc.setDrawColor(200, 215, 230);
+    doc.setLineWidth(0.3);
+    doc.line(rightX + 3, linha2Y + rowH + 1, rightX + rightW - 3, linha2Y + rowH + 1);
+
+    // Linha 3: Valor Líquido (destaque maior)
+    const liqY = linha2Y + rowH + rowSpacing;
     doc.setFillColor(235, 250, 243);
-    doc.roundedRect(rightX, liqY, rightW, rowH + 1, 0.5, 0.5, 'F');
+    doc.roundedRect(rightX, liqY, rightW, rowH + 2, 0.5, 0.5, 'F');
     doc.setDrawColor(35, 190, 132);
-    doc.setLineWidth(0.5);
-    doc.roundedRect(rightX, liqY, rightW, rowH + 1, 0.5, 0.5);
+    doc.setLineWidth(0.6);
+    doc.roundedRect(rightX, liqY, rightW, rowH + 2, 0.5, 0.5);
     doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
     doc.setTextColor(8, 57, 66);
-    doc.text('VALOR LÍQUIDO A PAGAR', rightX + 3, liqY + 5);
-    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+    doc.text('VALOR LÍQUIDO A PAGAR', rightX + 3, liqY + 4.5);
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
     doc.setTextColor(35, 190, 132);
-    doc.text(fmt(totalLiquido), rightX + rightW - 2, liqY + 5, { align: 'right' });
+    doc.text(fmt(totalLiquido), rightX + rightW - 3, liqY + 5.5, { align: 'right' });
 
-    const footerY = pageHeight - 12;
+    const resumoEndY = Math.max(adiantamentosEndY, liqY + rowH + 4);
+    const footerY = Math.max(resumoEndY + 8, pageHeight - 12);
     doc.line(10, footerY, pageWidth - 10, footerY);
     doc.setFontSize(6.2); doc.setTextColor(100, 100, 100);
     doc.setFont('helvetica', 'normal');
