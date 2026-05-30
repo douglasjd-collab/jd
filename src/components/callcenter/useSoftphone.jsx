@@ -110,7 +110,7 @@ export default function useSoftphone(config) {
       }
       _clearAudio();
       _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
-    }, 60000);
+    }, 30000);
   };
 
   const _clearCallTimeout = () => {
@@ -405,10 +405,10 @@ export default function useSoftphone(config) {
     inicioRef.current = null;
     setChamadaAtiva({ session, destino: numHistorico, direcao: 'saida', status: 'chamando' });
 
-    // ── Log SIP detalhado + inicia timeout SOMENTE após INVITE enviado ───────
+    // Inicia timeout de 90s imediatamente (independente do evento 'sending')
+    _startCallTimeout(session, numHistorico);
+
     session.on('sending', (e) => {
-      // Inicia timeout de 60s apenas quando o INVITE já saiu pelo WebSocket
-      _startCallTimeout(session, numHistorico);
       try {
         const req = e?.request;
         console.log('📤 SIP INVITE enviado:', {
@@ -425,9 +425,34 @@ export default function useSoftphone(config) {
       const pc = data.peerconnection;
       if (!pc) return;
       console.log('🔗 PeerConnection criado');
-      pc.oniceconnectionstatechange  = () => console.log(`🧊 ICE state: ${pc.iceConnectionState}`);
+      pc.oniceconnectionstatechange = () => {
+        console.log(`🧊 ICE state: ${pc.iceConnectionState}`);
+        if (pc.iceConnectionState === 'failed') {
+          console.error('❌ ICE connection failed — encerrando chamada');
+          _clearCallTimeout();
+          try { session.terminate(); } catch {}
+          if (mountedRef.current) {
+            setErroMsg('Falha de conectividade WebRTC (ICE failed). Verifique sua rede e tente novamente.');
+            setChamadaAtiva(null);
+          }
+          _clearAudio();
+          _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
+        }
+      };
       pc.onicegatheringstatechange   = () => console.log(`🧊 ICE gathering: ${pc.iceGatheringState}`);
-      pc.onconnectionstatechange     = () => console.log(`🔗 Connection state: ${pc.connectionState}`);
+      pc.onconnectionstatechange     = () => {
+        console.log(`🔗 Connection state: ${pc.connectionState}`);
+        if (pc.connectionState === 'failed') {
+          console.error('❌ PeerConnection failed — encerrando chamada');
+          _clearCallTimeout();
+          try { session.terminate(); } catch {}
+          if (mountedRef.current) {
+            setErroMsg('Falha de conexão WebRTC. Verifique sua rede e tente novamente.');
+            setChamadaAtiva(null);
+          }
+          _clearAudio();
+        }
+      };
       pc.onicecandidate = (e) => {
         if (e.candidate) console.log(`🧊 Candidate: ${e.candidate.type} ${e.candidate.protocol} ${e.candidate.address}`);
         else             console.log('🧊 ICE gathering complete (null candidate)');
