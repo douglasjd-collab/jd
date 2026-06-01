@@ -63,6 +63,8 @@ export default function ComissoesEmprestimos() {
   const [modalSelecionados, setModalSelecionados] = useState(new Set());
   const [formaPagamento, setFormaPagamento] = useState('PIX');
   const [observacao, setObservacao] = useState('');
+  const [acrescimoValor, setAcrescimoValor] = useState('');
+  const [acrescimoDescricao, setAcrescimoDescricao] = useState('');
   const [isPaying, setIsPaying] = useState(false);
 
   // Adiantamentos a descontar no modal de pagamento
@@ -234,6 +236,8 @@ export default function ComissoesEmprestimos() {
     setModalSearch('');
     setFormaPagamento('PIX');
     setObservacao('');
+    setAcrescimoValor('');
+    setAcrescimoDescricao('');
     setAdiantamentosSelecionados(new Set());
 
     // Busca adiantamentos pendentes e dados bancários do vendedor em paralelo
@@ -304,7 +308,7 @@ export default function ComissoesEmprestimos() {
     }
   };
 
-  const gerarPDF = async (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}, adiantamentosDesc = [], dadosBancarios = null) => {
+  const gerarPDF = async (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}, adiantamentosDesc = [], dadosBancarios = null, acrescimoVal = 0, acrescimoDesc = '') => {
     const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -325,7 +329,7 @@ export default function ComissoesEmprestimos() {
       return acc + base * (perc / 100);
     }, 0);
     const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
-    const totalLiquido = Math.max(0, totalBruto - totalAdiantamentos);
+    const totalLiquido = Math.max(0, totalBruto - totalAdiantamentos + acrescimoVal);
 
     // ===== HEADER VISUAL COM LOGO PROMOTORA =====
     doc.setFillColor(16, 53, 60);
@@ -426,7 +430,7 @@ export default function ComissoesEmprestimos() {
     const resumoLinhas = [
       { label: 'Subtotal de Comissões', valor: fmt(totalBruto), cor: [0, 100, 180] },
       { label: '(-) Adiantamentos', valor: fmt(totalAdiantamentos), cor: [200, 100, 0] },
-      { label: '(+) Acréscimos', valor: fmt(0), cor: [60, 60, 60] }, // sempre 0 neste fluxo
+      { label: '(+) Acréscimos', valor: fmt(acrescimoVal), cor: [60, 60, 60] },
     ];
     const resumoContentH = 8 + resumoLinhas.length * lineH + 2 + 14; // título + linhas + separador + liquidoH
     doc.setFillColor(255, 255, 255);
@@ -492,11 +496,20 @@ export default function ComissoesEmprestimos() {
     doc.text('Tipo', colDirX + boxPad + 70, tblY + 4);
     doc.text('Valor', colDirX + colDirW - boxPad - 2, tblY + 4, { align: 'right' });
 
-    // Linhas de acréscimos (neste fluxo sempre vazio, mas estrutura pronta)
-    // (sem acréscimos neste módulo)
+    // Linhas de acréscimos
+    if (acrescimoVal > 0) {
+      const acrescimoRowY = tblY + 7;
+      doc.setFontSize(6); doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 60, 60);
+      const descText = acrescimoDesc || 'Acréscimo';
+      doc.text(doc.splitTextToSize(descText, 65)[0], colDirX + boxPad + 2, acrescimoRowY + 3);
+      doc.text('Manual', colDirX + boxPad + 70, acrescimoRowY + 3);
+      doc.setTextColor(0, 100, 0); doc.setFont('helvetica', 'bold');
+      doc.text(fmt(acrescimoVal), colDirX + colDirW - boxPad - 2, acrescimoRowY + 3, { align: 'right' });
+    }
 
     // Rodapé: Total de Acréscimos
-    const totalAcrescimosDir = 0;
+    const totalAcrescimosDir = acrescimoVal;
     const totalAcrescimosY = sectionY + dirContentH - 8;
     doc.setDrawColor(180, 195, 210);
     doc.setLineWidth(0.3);
@@ -547,7 +560,8 @@ export default function ComissoesEmprestimos() {
       });
 
       const valorTotalBruto = itensComValores.reduce((acc, i) => acc + i.valVendedor, 0);
-      const valorTotal = Math.max(0, valorTotalBruto - totalAdiantamentosDesc);
+      const acrescimoVal = parseFloat(acrescimoValor) || 0;
+      const valorTotal = Math.max(0, valorTotalBruto - totalAdiantamentosDesc + acrescimoVal);
 
       // 1. Criar lote
       const lote = await base44.entities.LotePagamentoComissaoEmprestimo.create({
@@ -560,6 +574,8 @@ export default function ComissoesEmprestimos() {
         forma_pagamento: formaPagamento,
         observacao: observacao || '',
         lote_codigo: loteCode,
+        acrescimos: acrescimoVal,
+        acrescimo_descricao: acrescimoDescricao || '',
       });
 
       // 2. Criar snapshot dos itens e atualizar propostas
@@ -675,7 +691,7 @@ export default function ComissoesEmprestimos() {
       // PDF usa os valores já calculados (congelados)
       const percMapFinal = {};
       itensComValores.forEach(({ p, percVendedor }) => { percMapFinal[p.id] = percVendedor; });
-      await gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal, adisDesc, dadosBancariosVendedor);
+      await gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal, adisDesc, dadosBancariosVendedor, acrescimoVal, acrescimoDescricao);
 
       queryClient.invalidateQueries(['propostas-emp-cons-comissoes']);
       const msgAdis = adisDesc.length > 0 ? ` ${adisDesc.length} adiantamento(s) descontado(s).` : '';
@@ -1305,6 +1321,29 @@ export default function ComissoesEmprestimos() {
                 <Input className="mt-1" placeholder="Observação..." value={observacao} onChange={e => setObservacao(e.target.value)} />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3 border border-green-200 bg-green-50 rounded-lg p-3">
+              <div>
+                <Label className="text-xs text-slate-600 font-semibold">(+) Acréscimo — Valor (R$)</Label>
+                <Input
+                  className="mt-1"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={acrescimoValor}
+                  onChange={e => setAcrescimoValor(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-slate-600 font-semibold">Descrição do Acréscimo</Label>
+                <Input
+                  className="mt-1"
+                  placeholder="Ex: Bônus de produção..."
+                  value={acrescimoDescricao}
+                  onChange={e => setAcrescimoDescricao(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
 
           <DialogFooter className="gap-2">
@@ -1314,7 +1353,7 @@ export default function ComissoesEmprestimos() {
               {isPaying ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processando...</>
               ) : (
-                <><CheckCircle2 className="w-4 h-4 mr-2" />Pagar {modalSelecionados.size} contrato(s) ({fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc))})</>
+                <><CheckCircle2 className="w-4 h-4 mr-2" />Pagar {modalSelecionados.size} contrato(s) ({fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc + (parseFloat(acrescimoValor) || 0)))})</>
               )}
             </Button>
           </DialogFooter>
