@@ -1364,20 +1364,24 @@ export default function CampanhaMetaOficial({ empresaId }) {
               <div className="border rounded-xl p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-semibold">Botões (opcional, máx. 3)</Label>
-                  {(formTemplate.botoes || []).length < 3 && (
-                    <div className="flex gap-1.5">
+                  {(formTemplate.botoes || []).length < 10 && (
+                    <div className="flex gap-1.5 flex-wrap">
                       <button
                         onClick={() => setFormTemplate(p => ({ ...p, botoes: [...(p.botoes || []), { tipo: 'QUICK_REPLY', texto: 'Saiba mais' }] }))}
                         className="px-2.5 py-1 text-xs rounded-lg border bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 font-medium"
-                      >↩️ + Resposta Rápida</button>
+                      >↩️ Personalizar</button>
                       <button
-                        onClick={() => setFormTemplate(p => ({ ...p, botoes: [...(p.botoes || []), { tipo: 'URL', texto: 'Acessar site', url: '' }] }))}
+                        onClick={() => setFormTemplate(p => ({ ...p, botoes: [...(p.botoes || []), { tipo: 'URL', texto: 'Aceder ao site', url: '' }] }))}
                         className="px-2.5 py-1 text-xs rounded-lg border bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 font-medium"
-                      >🔗 + Link</button>
+                      >🔗 Aceder ao site</button>
                       <button
                         onClick={() => setFormTemplate(p => ({ ...p, botoes: [...(p.botoes || []), { tipo: 'PHONE_NUMBER', texto: 'Ligar agora', telefone: '' }] }))}
                         className="px-2.5 py-1 text-xs rounded-lg border bg-green-50 hover:bg-green-100 text-green-700 border-green-200 font-medium"
-                      >📞 + Telefone</button>
+                      >📞 Ligar p/ número</button>
+                      <button
+                        onClick={() => setFormTemplate(p => ({ ...p, botoes: [...(p.botoes || []), { tipo: 'COPY_CODE', texto: 'Copiar código', codigo: '' }] }))}
+                        className="px-2.5 py-1 text-xs rounded-lg border bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200 font-medium"
+                      >🎟️ Copiar código</button>
                     </div>
                   )}
                 </div>
@@ -1390,9 +1394,13 @@ export default function CampanhaMetaOficial({ empresaId }) {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
                         btn.tipo === 'QUICK_REPLY' ? 'bg-purple-100 text-purple-700' :
                         btn.tipo === 'URL' ? 'bg-blue-100 text-blue-700' :
+                        btn.tipo === 'COPY_CODE' ? 'bg-amber-100 text-amber-700' :
                         'bg-green-100 text-green-700'
                       }`}>
-                        {btn.tipo === 'QUICK_REPLY' ? '↩️ Resposta Rápida' : btn.tipo === 'URL' ? '🔗 Link' : '📞 Telefone'}
+                        {btn.tipo === 'QUICK_REPLY' ? '↩️ Personalizar' :
+                         btn.tipo === 'URL' ? '🔗 Aceder ao site' :
+                         btn.tipo === 'COPY_CODE' ? '🎟️ Copiar código' :
+                         '📞 Ligar para número'}
                       </span>
                       <button onClick={() => setFormTemplate(p => ({ ...p, botoes: p.botoes.filter((_, i) => i !== idx) }))} className="text-red-400 hover:text-red-600 text-sm">✕ Remover</button>
                     </div>
@@ -1425,6 +1433,18 @@ export default function CampanhaMetaOficial({ empresaId }) {
                           onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, telefone: e.target.value } : b) }))}
                           placeholder="+5511999999999"
                           className="text-sm h-8"
+                        />
+                      </div>
+                    )}
+                    {btn.tipo === 'COPY_CODE' && (
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-1 block">Código de oferta *</Label>
+                        <Input
+                          value={btn.codigo || ''}
+                          onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, codigo: e.target.value } : b) }))}
+                          placeholder="Ex: DESCONTO20"
+                          className="text-sm h-8"
+                          maxLength={15}
                         />
                       </div>
                     )}
@@ -1479,7 +1499,8 @@ export default function CampanhaMetaOficial({ empresaId }) {
                   <div className="max-w-[80%] ml-auto mt-1 space-y-1">
                     {formTemplate.botoes.map((btn, idx) => (
                       <div key={idx} className="bg-white rounded-xl shadow-sm py-2 px-3 text-center text-sm text-blue-600 font-medium border border-white/50">
-                        {btn.tipo === 'URL' ? '🔗 ' : btn.tipo === 'PHONE_NUMBER' ? '📞 ' : '↩️ '}{btn.texto || 'Texto do botão'}
+                        {btn.tipo === 'URL' ? '🔗 ' : btn.tipo === 'PHONE_NUMBER' ? '📞 ' : btn.tipo === 'COPY_CODE' ? '🎟️ ' : '↩️ '}
+                        {btn.tipo === 'COPY_CODE' ? (btn.texto || 'Copiar código') : (btn.texto || 'Texto do botão')}
                       </div>
                     ))}
                   </div>

@@ -61,6 +61,8 @@ Deno.serve(async (req) => {
           return { type: 'URL', text: b.texto, url: b.url };
         } else if (b.tipo === 'PHONE_NUMBER') {
           return { type: 'PHONE_NUMBER', text: b.texto, phone_number: b.telefone };
+        } else if (b.tipo === 'COPY_CODE') {
+          return { type: 'COPY_CODE', example: [b.codigo || ''] };
         } else {
           return { type: 'QUICK_REPLY', text: b.texto };
         }
