@@ -404,78 +404,108 @@ export default function ComissoesEmprestimos() {
     const tableEndY = doc.lastAutoTable.finalY;
     const sectionY = tableEndY + 12; // Mais espaço após tabela
 
-    // ===== COLUNA ESQUERDA: ADIANTAMENTOS =====
-    let adiantamentosEndY = sectionY;
-    if (adiantamentosDesc.length > 0) {
-      doc.setFillColor(245, 137, 65);
-      doc.rect(10, sectionY, 148, 4, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-      doc.text('ADIANTAMENTOS DESCONTADOS', 12, sectionY + 2.5);
+    // Adiantamentos são agora exibidos no resumo financeiro lateral
+    const adiantamentosEndY = sectionY;
 
-      doc.autoTable({
-        startY: sectionY + 5,
-        head: [['Descrição / Motivo', 'Data', 'Valor']],
-        body: adiantamentosDesc.map(a => [a.motivo || 'Adiantamento referente à comissão disponível.', moment(a.data).format('DD/MM/YYYY'), fmt(a.valor)]),
-        foot: [['', 'TOTAL ADIANTAMENTOS:', fmt(totalAdiantamentos)]],
-        styles: { fontSize: 6.2, cellPadding: 2, valign: 'middle' },
-        headStyles: { fillColor: [245, 137, 65], textColor: 255, fontStyle: 'bold' },
-        footStyles: { fillColor: [255, 240, 220], textColor: [180, 80, 0], fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [255, 247, 240] },
-        columnStyles: { 0: { halign: 'left' }, 1: { halign: 'center' }, 2: { halign: 'right' } },
-        margin: { left: 10, right: pageWidth - 158 },
-        tableWidth: 148,
-      });
-      adiantamentosEndY = doc.lastAutoTable.finalY;
-    }
+    // ===== LAYOUT LADO A LADO: RESUMO FINANCEIRO (esq) + DETALHES ACRÉSCIMOS (dir) =====
+    const colEsqX = 10;
+    const colEsqW = 130;
+    const colDirX = 148;
+    const colDirW = pageWidth - colDirX - 10;
+    const boxPad = 4;
+    const lineH = 9;
 
-    // ===== COLUNA DIREITA: RESUMO FINANCEIRO =====
-    const rightX = 163;
-    const rightW = pageWidth - rightX - 10;
-    const rowH = 14;
-    const resumoColW = (rightW - 2) / 2; // Divide em 2 colunas com pequeno espaço entre
-
-    // Linha 1 (esquerda): Subtotal Comissões
-    doc.setFillColor(250, 252, 250);
-    doc.roundedRect(rightX, sectionY, resumoColW, rowH, 0.5, 0.5, 'F');
-    doc.setDrawColor(210, 230, 215);
+    // --- CAIXA ESQUERDA: RESUMO FINANCEIRO ---
+    const resumoLinhas = [
+      { label: 'Subtotal de Comissões', valor: fmt(totalBruto), cor: [0, 100, 180] },
+      { label: '(-) Adiantamentos', valor: fmt(totalAdiantamentos), cor: [200, 100, 0] },
+      { label: '(+) Acréscimos', valor: fmt(0), cor: [60, 60, 60] }, // sempre 0 neste fluxo
+    ];
+    const resumoContentH = 8 + resumoLinhas.length * lineH + 2 + 14; // título + linhas + separador + liquidoH
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(200, 210, 220);
     doc.setLineWidth(0.4);
-    doc.roundedRect(rightX, sectionY, resumoColW, rowH, 0.5, 0.5);
-    doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 120, 140);
-    doc.text('Subtotal Comissões', rightX + 2, sectionY + 5);
-    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 100, 180);
-    doc.text(fmt(totalBruto), rightX + resumoColW - 2, sectionY + 5, { align: 'right' });
+    doc.roundedRect(colEsqX, sectionY, colEsqW, resumoContentH, 1, 1, 'FD');
 
-    // Linha 1 (direita): Adiantamentos
-    const linha1DirX = rightX + resumoColW + 2;
-    doc.setFillColor(250, 252, 250);
-    doc.roundedRect(linha1DirX, sectionY, resumoColW, rowH, 0.5, 0.5, 'F');
-    doc.setDrawColor(210, 230, 215);
-    doc.roundedRect(linha1DirX, sectionY, resumoColW, rowH, 0.5, 0.5);
-    doc.setFontSize(6.5); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(100, 120, 140);
-    doc.text('(−) Adiantamentos', linha1DirX + 2, sectionY + 5);
-    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(245, 137, 65);
-    doc.text(fmt(totalAdiantamentos), linha1DirX + resumoColW - 2, sectionY + 5, { align: 'right' });
+    // Título
+    doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(40, 40, 40);
+    doc.text('RESUMO FINANCEIRO', colEsqX + boxPad, sectionY + 6);
 
-    // Linha 2: Valor Líquido (destaque maior, ocupa toda a largura)
-    const liqY = sectionY + rowH + 2;
+    // Linhas de valores
+    resumoLinhas.forEach((l, i) => {
+      const ly = sectionY + 12 + i * lineH;
+      doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.text(l.label, colEsqX + boxPad, ly);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...l.cor);
+      doc.text(l.valor, colEsqX + colEsqW - boxPad, ly, { align: 'right' });
+    });
+
+    // Separador
+    const sepY = sectionY + 12 + resumoLinhas.length * lineH + 2;
+    doc.setDrawColor(180, 195, 210);
+    doc.setLineWidth(0.3);
+    doc.line(colEsqX + boxPad, sepY, colEsqX + colEsqW - boxPad, sepY);
+
+    // Valor Líquido
+    const liqBoxY = sepY + 3;
     doc.setFillColor(235, 250, 243);
-    doc.roundedRect(rightX, liqY, rightW, rowH + 2, 0.5, 0.5, 'F');
     doc.setDrawColor(35, 190, 132);
-    doc.setLineWidth(0.6);
-    doc.roundedRect(rightX, liqY, rightW, rowH + 2, 0.5, 0.5);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(colEsqX + boxPad, liqBoxY, colEsqW - boxPad * 2, 11, 0.5, 0.5, 'FD');
     doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
     doc.setTextColor(8, 57, 66);
-    doc.text('VALOR LÍQUIDO A PAGAR', rightX + 3, liqY + 4.5);
-    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(35, 190, 132);
-    doc.text(fmt(totalLiquido), rightX + rightW - 3, liqY + 5.5, { align: 'right' });
+    doc.text('VALOR LÍQUIDO A PAGAR', colEsqX + boxPad + 2, liqBoxY + 7);
+    doc.setFontSize(9); doc.setTextColor(35, 190, 132);
+    doc.text(fmt(totalLiquido), colEsqX + colEsqW - boxPad - 2, liqBoxY + 7, { align: 'right' });
 
-    const resumoEndY = Math.max(adiantamentosEndY, liqY + rowH + 4);
+    // --- CAIXA DIREITA: DETALHES DOS ACRÉSCIMOS (sempre visível, mesmo sem acréscimos) ---
+    const acrescimos = adiantamentosDesc.length > 0 ? [] : []; // neste fluxo não há acréscimos
+    const acrescimoLinhas = acrescimos; // placeholder para compatibilidade futura
+    const dirContentH = resumoContentH;
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(200, 210, 220);
+    doc.setLineWidth(0.4);
+    doc.roundedRect(colDirX, sectionY, colDirW, dirContentH, 1, 1, 'FD');
+
+    // Título
+    doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(40, 40, 40);
+    doc.text('DETALHES DOS ACRÉSCIMOS', colDirX + boxPad, sectionY + 6);
+
+    // Subtítulo
+    doc.setFontSize(6); doc.setFont('helvetica', 'normal');
+    doc.setTextColor(130, 130, 130);
+    doc.text('ⓘ Acréscimos lançados manualmente.', colDirX + boxPad, sectionY + 11);
+
+    // Cabeçalho da mini-tabela
+    const tblY = sectionY + 15;
+    doc.setFillColor(240, 242, 245);
+    doc.rect(colDirX + boxPad, tblY, colDirW - boxPad * 2, 6, 'F');
+    doc.setFontSize(6); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(80, 80, 80);
+    doc.text('Descrição do Acréscimo', colDirX + boxPad + 2, tblY + 4);
+    doc.text('Tipo', colDirX + boxPad + 70, tblY + 4);
+    doc.text('Valor', colDirX + colDirW - boxPad - 2, tblY + 4, { align: 'right' });
+
+    // Linhas de acréscimos (neste fluxo sempre vazio, mas estrutura pronta)
+    // (sem acréscimos neste módulo)
+
+    // Rodapé: Total de Acréscimos
+    const totalAcrescimosDir = 0;
+    const totalAcrescimosY = sectionY + dirContentH - 8;
+    doc.setDrawColor(180, 195, 210);
+    doc.setLineWidth(0.3);
+    doc.line(colDirX + boxPad, totalAcrescimosY - 2, colDirX + colDirW - boxPad, totalAcrescimosY - 2);
+    doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(40, 40, 40);
+    doc.text('TOTAL DE ACRÉSCIMOS', colDirX + boxPad, totalAcrescimosY + 3);
+    doc.setTextColor(0, 0, 0);
+    doc.text(fmt(totalAcrescimosDir), colDirX + colDirW - boxPad - 2, totalAcrescimosY + 3, { align: 'right' });
+
+    const resumoEndY = Math.max(adiantamentosEndY, sectionY + resumoContentH + 2);
     const footerY = Math.max(resumoEndY + 8, pageHeight - 12);
     doc.line(10, footerY, pageWidth - 10, footerY);
     doc.setFontSize(6.2); doc.setTextColor(100, 100, 100);
