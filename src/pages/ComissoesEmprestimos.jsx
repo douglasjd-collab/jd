@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Search, Loader2, CheckCircle2, Clock, BarChart2,
-  ChevronDown, ChevronUp, DollarSign, AlertCircle
+  ChevronDown, ChevronUp, DollarSign, AlertCircle,
+  TrendingUp, TrendingDown, FileText, Download, FileSpreadsheet
 } from 'lucide-react';
 import PropostaDetalhesModal from '@/components/comissoes/PropostaDetalhesModal';
 import { toast } from 'react-hot-toast';
@@ -87,6 +88,9 @@ export default function ComissoesEmprestimos() {
 
   // Modal detalhes proposta (duplo clique)
   const [propostaDetalhes, setPropostaDetalhes] = useState(null);
+
+  // Dashboard financeiro
+  const [relatorioAtivo, setRelatorioAtivo] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -186,10 +190,80 @@ export default function ComissoesEmprestimos() {
     .map(p => parseMes(p.emprestimo_data_liberacao || p.data_venda))
     .filter(Boolean))].sort().reverse();
 
-  // Stats
-  const totalValorComissao = propostasPagas.reduce((a, p) => a + (p.valor_comissao || 0), 0);
-  const totalRecebidoBanco = propostasPagas.filter(p => p.comissao_banco_recebida).reduce((a, p) => a + (p.valor_comissao || 0), 0);
-  const totalPendentePagar = propostasPagas.filter(p => p.comissao_banco_recebida && !p.comissao_vendedor_paga).reduce((a, p) => a + (p.valor_comissao || 0), 0);
+  // Stats — filtradas pelo mês selecionado para o dashboard
+  const propostasMes = mesFilter === 'todos'
+    ? propostasPagas
+    : propostasPagas.filter(p => {
+        const d = p.emprestimo_data_liberacao || p.data_venda || '';
+        return d.startsWith(mesFilter);
+      });
+
+  const totalRecebidoBanco = propostasMes.filter(p => p.comissao_banco_recebida).reduce((a, p) => a + (p.valor_comissao || 0), 0);
+  const totalPagoVendedor = propostasMes.filter(p => p.comissao_vendedor_paga).reduce((a, p) => a + (p.valor_comissao_vendedor_pago || p.valor_comissao || 0), 0);
+  const totalProgramado = propostasMes.filter(p => p.comissao_banco_recebida && !p.comissao_vendedor_paga).reduce((a, p) => a + (p.valor_comissao || 0), 0);
+  const saldoAPagar = Math.max(0, totalRecebidoBanco - totalPagoVendedor);
+
+  // Indicadores operacionais
+  const qtdPropostasPagas = propostasMes.length;
+  const qtdComissoesBanco = propostasMes.filter(p => p.comissao_banco_recebida).length;
+  const qtdComissoesPagasVendedor = propostasMes.filter(p => p.comissao_vendedor_paga).length;
+  const qtdProgramadas = propostasMes.filter(p => p.comissao_banco_recebida && !p.comissao_vendedor_paga).length;
+
+  // Relatório por vendedor (comissões pagas)
+  const relPorVendedor = Object.values(
+    propostasMes.filter(p => p.comissao_vendedor_paga).reduce((acc, p) => {
+      const key = p.vendedor_nome || 'Sem vendedor';
+      if (!acc[key]) acc[key] = { nome: key, total: 0 };
+      acc[key].total += p.valor_comissao_vendedor_pago || p.valor_comissao || 0;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.total - a.total);
+
+  // Relatório por banco (comissões recebidas)
+  const relPorBanco = Object.values(
+    propostasMes.filter(p => p.comissao_banco_recebida).reduce((acc, p) => {
+      const key = p.administradora_nome || 'Sem banco';
+      if (!acc[key]) acc[key] = { nome: key, total: 0 };
+      acc[key].total += p.valor_comissao || 0;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.total - a.total);
+
+  // Relatório programadas por vendedor
+  const relProgramadas = Object.values(
+    propostasMes.filter(p => p.comissao_banco_recebida && !p.comissao_vendedor_paga).reduce((acc, p) => {
+      const key = p.vendedor_nome || 'Sem vendedor';
+      if (!acc[key]) acc[key] = { nome: key, total: 0 };
+      acc[key].total += p.valor_comissao || 0;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.total - a.total);
+
+  const exportarExcelDashboard = () => {
+    const rows = [
+      ['Relatório de Comissões — ' + (mesFilter === 'todos' ? 'Todos os meses' : moment(mesFilter).format('MMMM/YYYY'))],
+      [],
+      ['RESUMO'],
+      ['Comissões Recebidas do Banco', totalRecebidoBanco.toFixed(2)],
+      ['Comissões Pagas aos Vendedores', totalPagoVendedor.toFixed(2)],
+      ['Comissões Programadas', totalProgramado.toFixed(2)],
+      ['Saldo a Pagar', saldoAPagar.toFixed(2)],
+      [],
+      ['POR VENDEDOR (PAGAS)'],
+      ...relPorVendedor.map(r => [r.nome, r.total.toFixed(2)]),
+      [],
+      ['POR BANCO (RECEBIDAS)'],
+      ...relPorBanco.map(r => [r.nome, r.total.toFixed(2)]),
+    ];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `comissoes_${mesFilter || 'todos'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Percentual da empresa (comissão recebida do banco) = valor_comissao / base de cálculo
   const getPercentualEmpresa = (p) => {
@@ -750,38 +824,166 @@ export default function ComissoesEmprestimos() {
         <p className="text-slate-500 text-sm mt-1">Gerencie pagamentos de comissões das propostas de empréstimos pagas.</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="p-4 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-            <DollarSign className="w-6 h-6 text-blue-600" />
+      {/* ===== DASHBOARD FINANCEIRO ===== */}
+      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide">COMISSÕES — DASHBOARD FINANCEIRO</h2>
+          <div className="flex flex-wrap gap-2">
+            <Select value={mesFilter} onValueChange={setMesFilter}>
+              <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="Mês/Ano" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os meses</SelectItem>
+                {mesesDisponiveis.map(mes => (
+                  <SelectItem key={mes} value={mes}>{moment(mes).format('MMMM/YYYY')}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 text-xs w-36"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos</SelectItem>
+                <SelectItem value="a_pagar">A Pagar</SelectItem>
+                <SelectItem value="paga">Pagos</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={comissaoBancoFilter} onValueChange={setComissaoBancoFilter}>
+              <SelectTrigger className="h-8 text-xs w-44"><SelectValue placeholder="Banco" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os bancos</SelectItem>
+                <SelectItem value="recebida">✅ Com. Recebida</SelectItem>
+                <SelectItem value="nao_recebida">⏳ Não Recebida</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div>
-            <p className="text-xs text-slate-500 font-medium">Total Comissões (Propostas Pagas)</p>
-            <p className="text-xl font-bold text-slate-800">{fmt(totalValorComissao)}</p>
+        </div>
+
+        {/* Linha 1: 4 cards grandes */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="rounded-lg border-l-4 border-green-500 bg-green-50 p-4">
+            <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Recebidas no Mês</p>
+            <p className="text-2xl font-bold text-green-800 mt-1">{fmt(totalRecebidoBanco)}</p>
+            <p className="text-xs text-green-600 mt-0.5">Comissões do banco</p>
           </div>
-        </Card>
-        <Card className="p-4 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-            <CheckCircle2 className="w-6 h-6 text-green-600" />
+          <div className="rounded-lg border-l-4 border-blue-500 bg-blue-50 p-4">
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Pagas no Mês</p>
+            <p className="text-2xl font-bold text-blue-800 mt-1">{fmt(totalPagoVendedor)}</p>
+            <p className="text-xs text-blue-600 mt-0.5">Pagas aos vendedores</p>
           </div>
-          <div>
-            <p className="text-xs text-slate-500 font-medium">Comissão Recebida do Banco</p>
-            <p className="text-xl font-bold text-green-700">{fmt(totalRecebidoBanco)}</p>
+          <div className="rounded-lg border-l-4 border-orange-400 bg-orange-50 p-4">
+            <p className="text-xs font-semibold text-orange-700 uppercase tracking-wide">Programadas</p>
+            <p className="text-2xl font-bold text-orange-800 mt-1">{fmt(totalProgramado)}</p>
+            <p className="text-xs text-orange-600 mt-0.5">Banco recebeu, aguarda pagamento</p>
           </div>
-        </Card>
-        <Card className="p-4 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
-            <Clock className="w-6 h-6 text-orange-500" />
+          <div className="rounded-lg border-l-4 border-red-500 bg-red-50 p-4">
+            <p className="text-xs font-semibold text-red-700 uppercase tracking-wide">Saldo a Pagar</p>
+            <p className="text-2xl font-bold text-red-800 mt-1">{fmt(saldoAPagar)}</p>
+            <p className="text-xs text-red-600 mt-0.5">Recebido − Pago</p>
           </div>
-          <div>
-            <p className="text-xs text-slate-500 font-medium">Pendente Pagar Vendedor</p>
-            <p className="text-xl font-bold text-orange-600">{fmt(totalPendentePagar)}</p>
+        </div>
+
+        {/* Linha 2: Indicadores operacionais */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: 'Propostas Pagas', val: qtdPropostasPagas, color: 'text-slate-700' },
+            { label: 'Com. Recebidas Banco', val: qtdComissoesBanco, color: 'text-green-700' },
+            { label: 'Com. Pagas Vendedor', val: qtdComissoesPagasVendedor, color: 'text-blue-700' },
+            { label: 'Programadas', val: qtdProgramadas, color: 'text-orange-700' },
+          ].map(({ label, val, color }) => (
+            <div key={label} className="bg-slate-50 rounded-lg p-3 text-center border border-slate-100">
+              <p className={`text-2xl font-bold ${color}`}>{val}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Linha 3: Botões de relatório */}
+        <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100">
+          <Button size="sm" variant={relatorioAtivo === 'pagas' ? 'default' : 'outline'} className="text-xs h-8 gap-1.5"
+            onClick={() => setRelatorioAtivo(relatorioAtivo === 'pagas' ? null : 'pagas')}>
+            <FileText className="w-3.5 h-3.5" /> Comissões Pagas
+          </Button>
+          <Button size="sm" variant={relatorioAtivo === 'recebidas' ? 'default' : 'outline'} className="text-xs h-8 gap-1.5"
+            onClick={() => setRelatorioAtivo(relatorioAtivo === 'recebidas' ? null : 'recebidas')}>
+            <FileText className="w-3.5 h-3.5" /> Comissões Recebidas
+          </Button>
+          <Button size="sm" variant={relatorioAtivo === 'programadas' ? 'default' : 'outline'} className="text-xs h-8 gap-1.5"
+            onClick={() => setRelatorioAtivo(relatorioAtivo === 'programadas' ? null : 'programadas')}>
+            <FileText className="w-3.5 h-3.5" /> Programadas
+          </Button>
+          <Button size="sm" variant="outline" className="text-xs h-8 gap-1.5 ml-auto" onClick={exportarExcelDashboard}>
+            <FileSpreadsheet className="w-3.5 h-3.5 text-green-600" /> Exportar Excel
+          </Button>
+        </div>
+
+        {/* Relatórios inline */}
+        {relatorioAtivo === 'pagas' && (
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="bg-slate-700 text-white px-4 py-2 text-xs font-bold">
+              Relatório de Comissões Pagas — {mesFilter === 'todos' ? 'Todos os meses' : moment(mesFilter).format('MMMM/YYYY')}
+            </div>
+            <div className="divide-y divide-slate-100">
+              {relPorVendedor.length === 0 ? (
+                <p className="text-center text-slate-400 text-xs p-4">Nenhuma comissão paga no período</p>
+              ) : relPorVendedor.map(r => (
+                <div key={r.nome} className="flex items-center justify-between px-4 py-2 hover:bg-slate-50">
+                  <span className="text-sm text-slate-700">{r.nome}</span>
+                  <span className="font-semibold text-sm text-blue-700">{fmt(r.total)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="bg-slate-50 px-4 py-2 flex justify-between border-t border-slate-200">
+              <span className="text-xs font-bold text-slate-600">TOTAL PAGO</span>
+              <span className="text-sm font-bold text-blue-700">{fmt(totalPagoVendedor)}</span>
+            </div>
           </div>
-        </Card>
+        )}
+
+        {relatorioAtivo === 'recebidas' && (
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="bg-green-700 text-white px-4 py-2 text-xs font-bold">
+              Relatório de Comissões Recebidas — {mesFilter === 'todos' ? 'Todos os meses' : moment(mesFilter).format('MMMM/YYYY')}
+            </div>
+            <div className="divide-y divide-slate-100">
+              {relPorBanco.length === 0 ? (
+                <p className="text-center text-slate-400 text-xs p-4">Nenhuma comissão recebida no período</p>
+              ) : relPorBanco.map(r => (
+                <div key={r.nome} className="flex items-center justify-between px-4 py-2 hover:bg-slate-50">
+                  <span className="text-sm text-slate-700">{r.nome}</span>
+                  <span className="font-semibold text-sm text-green-700">{fmt(r.total)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="bg-slate-50 px-4 py-2 flex justify-between border-t border-slate-200">
+              <span className="text-xs font-bold text-slate-600">TOTAL RECEBIDO</span>
+              <span className="text-sm font-bold text-green-700">{fmt(totalRecebidoBanco)}</span>
+            </div>
+          </div>
+        )}
+
+        {relatorioAtivo === 'programadas' && (
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="bg-orange-600 text-white px-4 py-2 text-xs font-bold">
+              Relatório de Comissões Programadas — {mesFilter === 'todos' ? 'Todos os meses' : moment(mesFilter).format('MMMM/YYYY')}
+            </div>
+            <div className="divide-y divide-slate-100">
+              {relProgramadas.length === 0 ? (
+                <p className="text-center text-slate-400 text-xs p-4">Nenhuma comissão programada no período</p>
+              ) : relProgramadas.map(r => (
+                <div key={r.nome} className="flex items-center justify-between px-4 py-2 hover:bg-slate-50">
+                  <span className="text-sm text-slate-700">{r.nome}</span>
+                  <span className="font-semibold text-sm text-orange-700">{fmt(r.total)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="bg-slate-50 px-4 py-2 flex justify-between border-t border-slate-200">
+              <span className="text-xs font-bold text-slate-600">TOTAL PROGRAMADO</span>
+              <span className="text-sm font-bold text-orange-700">{fmt(totalProgramado)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Filtros */}
+      {/* Filtros da lista */}
       <div className="flex flex-col md:flex-row gap-3">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -792,52 +994,12 @@ export default function ComissoesEmprestimos() {
             className="pl-10"
           />
         </div>
-
-        {/* Filtro: Comissão do Banco */}
-        <Select value={comissaoBancoFilter} onValueChange={setComissaoBancoFilter}>
-          <SelectTrigger className="w-52">
-            <SelectValue placeholder="Comissão do Banco" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os contratos</SelectItem>
-            <SelectItem value="recebida">✅ Comissão Recebida do Banco</SelectItem>
-            <SelectItem value="nao_recebida">⏳ Comissão NÃO Recebida</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Filtro: Status comissão vendedor */}
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Status Vendedor" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="a_pagar">A Pagar Vendedor</SelectItem>
-            <SelectItem value="paga">Pago ao Vendedor</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Filtro: Mês */}
-        <Select value={mesFilter} onValueChange={setMesFilter}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Mês / Período" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os meses</SelectItem>
-            {mesesDisponiveis.map(mes => (
-              <SelectItem key={mes} value={mes}>{moment(mes).format('MMMM [de] YYYY')}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Aviso sobre fluxo */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-        <div className="text-sm text-blue-800">
-          <p className="font-semibold">Fluxo de Comissões</p>
-          <p className="mt-1">1. Marque os contratos como "Comissão recebida do banco" quando o banco te pagar. 2. Em seguida, selecione e pague a comissão ao vendedor.</p>
-        </div>
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 flex items-start gap-2 text-xs text-slate-600">
+        <AlertCircle className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+        <span><strong>Fluxo:</strong> 1. Marque os contratos como "Comissão recebida do banco". 2. Pague a comissão ao vendedor.</span>
       </div>
 
       {/* Lista por vendedor */}
