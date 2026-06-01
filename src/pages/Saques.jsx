@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip, FileSpreadsheet, FileText, ExternalLink } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip, FileSpreadsheet, FileText, ExternalLink, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -355,7 +355,7 @@ function ModalAnexarComprovante({ lote, onClose, onConfirm, loading }) {
   );
 }
 
-function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar, mostrarQuitacao, isMaster, onAnexarComprovante, podeQuitar }) {
+function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar, mostrarQuitacao, isMaster, onAnexarComprovante, podeQuitar, onExcluir }) {
   const total = lotes.reduce((acc, l) => ({
     valor: acc.valor + (l._valor || 0),
     acrescimos: acc.acrescimos + (l.acrescimos || 0),
@@ -447,6 +447,11 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                       <button title="Baixar PDF" onClick={() => exportarLinhaPDF(l)} className="p-1 rounded hover:bg-red-100 text-red-700 transition-colors">
                         <FileText className="w-3.5 h-3.5" />
                       </button>
+                      {onExcluir && l.status !== 'quitado' && !l.isLegado && (
+                        <button title="Excluir lote" onClick={() => onExcluir(l)} className="p-1 rounded hover:bg-red-100 text-red-500 hover:text-red-700 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -466,6 +471,8 @@ export default function Saques() {
   const [loteParaQuitar, setLoteParaQuitar] = useState(null);
   const [loteParaReprogramar, setLoteParaReprogramar] = useState(null);
   const [loteParaComprovante, setLoteParaComprovante] = useState(null);
+  const [loteParaExcluir, setLoteParaExcluir] = useState(null);
+  const [excluindo, setExcluindo] = useState(false);
   const [quitando, setQuitando] = useState(false);
   const [reprogramando, setReprogramando] = useState(false);
   const [anexandoComprovante, setAnexandoComprovante] = useState(false);
@@ -600,6 +607,26 @@ export default function Saques() {
       toast.error('Erro ao anexar comprovante');
     } finally {
       setAnexandoComprovante(false);
+    }
+  };
+
+  const handleExcluirLote = async () => {
+    if (!loteParaExcluir) return;
+    setExcluindo(true);
+    try {
+      if (loteParaExcluir._tipo === 'emp') {
+        await base44.entities.LotePagamentoComissaoEmprestimo.delete(loteParaExcluir.id);
+        queryClient.invalidateQueries({ queryKey: ['lotes-emp'] });
+      } else {
+        await base44.entities.PagamentoComissaoLote.delete(loteParaExcluir.id);
+        queryClient.invalidateQueries({ queryKey: ['lotes-consorcio'] });
+      }
+      toast.success('Lote excluído com sucesso!');
+      setLoteParaExcluir(null);
+    } catch {
+      toast.error('Erro ao excluir lote');
+    } finally {
+      setExcluindo(false);
     }
   };
 
@@ -769,6 +796,7 @@ export default function Saques() {
             mostrarQuitacao={false}
             isMaster={isMaster}
             podeQuitar={isMaster}
+            onExcluir={isMaster ? setLoteParaExcluir : undefined}
           />
           <TabelaLotes
             titulo="Comissões Quitadas"
@@ -805,6 +833,34 @@ export default function Saques() {
         onConfirm={handleAnexarComprovante}
         loading={anexandoComprovante}
       />
+
+      {/* Modal confirmação exclusão */}
+      <Dialog open={!!loteParaExcluir} onOpenChange={(v) => { if (!v) setLoteParaExcluir(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" /> Excluir Lote Programado
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-3 space-y-3">
+            <p className="text-slate-700 text-sm">Tem certeza que deseja excluir este lote?</p>
+            {loteParaExcluir && (
+              <div className="bg-slate-50 rounded-lg p-3 text-sm space-y-1">
+                <p><span className="font-semibold">Protocolo:</span> {loteParaExcluir._protocolo}</p>
+                <p><span className="font-semibold">Data:</span> {fmtDate(loteParaExcluir.data_pagamento)}</p>
+                <p><span className="font-semibold">Valor:</span> {fmt(loteParaExcluir._total)}</p>
+              </div>
+            )}
+            <p className="text-red-600 text-xs font-medium">⚠️ Esta ação não pode ser desfeita.</p>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setLoteParaExcluir(null)} disabled={excluindo}>Cancelar</Button>
+              <Button onClick={handleExcluirLote} disabled={excluindo} className="bg-red-600 hover:bg-red-700 text-white">
+                {excluindo ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Excluindo...</> : <><Trash2 className="w-4 h-4 mr-2" />Confirmar Exclusão</>}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
