@@ -1126,7 +1126,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
 
       {/* ─── Modal Criar/Editar Template ──────────────────────────────────────── */}
       <Dialog open={!!modalTemplate} onOpenChange={v => { if (!v) { setModalTemplate(null); setFormTemplate({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', tipo_cabecalho: 'TEXT', botoes: [] }); } }}>
-        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl w-[95vw] max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-green-600" />
