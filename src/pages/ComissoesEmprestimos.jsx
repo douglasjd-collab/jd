@@ -304,10 +304,19 @@ export default function ComissoesEmprestimos() {
     }
   };
 
-  const gerarPDF = (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}, adiantamentosDesc = [], dadosBancarios = null) => {
+  const gerarPDF = async (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}, adiantamentosDesc = [], dadosBancarios = null) => {
     const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
+
+    // Buscar logo configurada
+    let logoConfigurada = null;
+    try {
+      const configs = await base44.entities.ConfiguracaoSistema.filter({ chave: 'logo_url' });
+      if (configs && configs.length > 0 && configs[0].valor) {
+        logoConfigurada = configs[0].valor;
+      }
+    } catch (e) { /* sem logo */ }
 
     // Cálculo correto: usa percMap congelado no momento do pagamento
     const totalBruto = propostasLista.reduce((acc, p) => {
@@ -322,13 +331,11 @@ export default function ComissoesEmprestimos() {
     doc.setFillColor(16, 53, 60);
     doc.rect(0, 0, pageWidth, 22, 'F');
 
-    // Logo completa Promotora (ícone + texto)
-    try {
-      doc.addImage('https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/5623c4693_JDPromotoraLOGO5.png', 'PNG', 7, 3, 40, 16);
-    } catch (e) {
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-      doc.text('JD Promotora', 10, 13);
+    // Logo configurada pelo sistema
+    if (logoConfigurada) {
+      try {
+        doc.addImage(logoConfigurada, 'PNG', 7, 3, 40, 16);
+      } catch (e) { /* silencioso */ }
     }
 
     // Título e informações (texto branco)
@@ -668,7 +675,7 @@ export default function ComissoesEmprestimos() {
       // PDF usa os valores já calculados (congelados)
       const percMapFinal = {};
       itensComValores.forEach(({ p, percVendedor }) => { percMapFinal[p.id] = percVendedor; });
-      gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal, adisDesc, dadosBancariosVendedor);
+      await gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal, adisDesc, dadosBancariosVendedor);
 
       queryClient.invalidateQueries(['propostas-emp-cons-comissoes']);
       const msgAdis = adisDesc.length > 0 ? ` ${adisDesc.length} adiantamento(s) descontado(s).` : '';
