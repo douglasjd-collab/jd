@@ -30,8 +30,16 @@ Deno.serve(async (req) => {
       if (tipoHeader === 'TEXT' && cabecalho && cabecalho.trim()) {
         components.push({ type: 'HEADER', format: 'TEXT', text: cabecalho });
       } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(tipoHeader)) {
-        // Para mídias, a Meta aceita o header sem example (mídia será definida no envio)
-        components.push({ type: 'HEADER', format: tipoHeader });
+        const headerComp = { type: 'HEADER', format: tipoHeader };
+        if (cabecalho_midia_url && cabecalho_midia_url.trim()) {
+          // A Meta exige example com a URL pública da mídia
+          // header_image, header_video ou header_document conforme o tipo
+          const exampleKey = tipoHeader === 'IMAGE' ? 'header_image'
+            : tipoHeader === 'VIDEO' ? 'header_video'
+            : 'header_document';
+          headerComp.example = { [exampleKey]: [cabecalho_midia_url] };
+        }
+        components.push(headerComp);
       }
     }
 
@@ -71,6 +79,8 @@ Deno.serve(async (req) => {
       language: idioma || 'pt_BR',
       components,
     };
+
+    console.log('[criarTemplateMetaWhatsApp] Payload enviado à Meta:', JSON.stringify(payload));
 
     // Chamar API da Meta para criar o template
     const metaUrl = `https://graph.facebook.com/v18.0/${businessAccountId}/message_templates`;
