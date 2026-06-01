@@ -449,13 +449,12 @@ export default function ComissoesEmprestimos() {
     doc.setLineWidth(0.3);
     doc.line(colEsqX + boxPad, sepY, colEsqX + colEsqW - boxPad, sepY);
 
-    // Valor Líquido
-    const liqBoxY = sepY + 3;
-    doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
+    // Valor Líquido — separador + linha igual ao TOTAL DE ACRÉSCIMOS
+    const liqBoxY = sepY + 4;
+    doc.setFontSize(7); doc.setFont('helvetica', 'bold');
     doc.setTextColor(40, 40, 40);
-    doc.text('VALOR LÍQUIDO A PAGAR', colEsqX + boxPad, liqBoxY + 5);
-    doc.setTextColor(40, 40, 40);
-    doc.text(fmt(totalLiquido), colEsqX + colEsqW - boxPad, liqBoxY + 5, { align: 'right' });
+    doc.text('VALOR LÍQUIDO A PAGAR', colEsqX + boxPad, liqBoxY + 4);
+    doc.text(fmt(totalLiquido), colEsqX + colEsqW - boxPad, liqBoxY + 4, { align: 'right' });
 
     // --- CAIXA DIREITA: DETALHES DOS ACRÉSCIMOS (sempre visível, mesmo sem acréscimos) ---
     const acrescimos = adiantamentosDesc.length > 0 ? [] : []; // neste fluxo não há acréscimos
