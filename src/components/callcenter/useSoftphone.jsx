@@ -405,9 +405,8 @@ export default function useSoftphone(config) {
   const realizarChamada = useCallback(async (numero) => {
     const statusAtual = sipStatusRef.current;
 
-    // Validação dupla: estado React + estado real do JsSIP UA
-    const uaConectado   = uaRef.current?.isConnected?.()   ?? false;
-    const uaRegistrado  = uaRef.current?.isRegistered?.()  ?? false;
+    const uaConectado  = uaRef.current?.isConnected?.()  ?? false;
+    const uaRegistrado = uaRef.current?.isRegistered?.() ?? false;
     const statusEstavel = statusAtual === 'registrado' && uaConectado && uaRegistrado;
 
     if (!statusEstavel) {
@@ -415,85 +414,66 @@ export default function useSoftphone(config) {
         : !uaConectado  ? 'WebSocket desconectado'
         : !uaRegistrado ? 'SIP não registrado no servidor'
         : `status: ${statusAtual}`;
-      const msg = `Ramal não está pronto para ligar (${detalhe}). Aguarde o status "Pronto".`;
       SIP_LOG.push('ERROR', `Chamada bloqueada — ${detalhe}`);
-      if (mountedRef.current) setErroMsg(msg);
+      if (mountedRef.current) setErroMsg(`Ramal não está pronto (${detalhe}). Aguarde o status "Pronto".`);
       return false;
     }
 
     setErroMsg('');
     SIP_LOG.clear();
 
-    // ── Obter microfone ANTES de criar a sessão ─────────────────────────────
-    // CRÍTICO: Se getUserMedia for chamado APÓS uaRef.current.call(), o JsSIP
-    // pode cancelar o INVITE (causa "Canceled") por não ter stream disponível.
+    // ── Microfone ANTES do call() para evitar "Canceled" ──────────────────
     let micStream = null;
     try {
       micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      SIP_LOG.push('MIC_OK', 'Stream de microfone obtido — pronto para INVITE');
+      SIP_LOG.push('MIC_OK', 'Microfone OK — pronto para INVITE');
     } catch (err) {
-      const msg = 'Permissão de microfone negada. Permita o microfone e tente novamente.';
       SIP_LOG.push('MIC_DENIED', err.message);
-      if (mountedRef.current) setErroMsg(msg);
+      if (mountedRef.current) setErroMsg('Permissão de microfone negada. Permita o microfone e tente novamente.');
       return false;
     }
 
     const cfg = configRef.current;
-    const sipDomain = 'app.nvoip.com.br';
 
-    // ── Normalização do número ──────────────────────────────────────────────
-    // Regra: NÃO remover dígitos. Apenas adicionar DDI 55 se necessário.
+    // ── Normalização ───────────────────────────────────────────────────────
     const numOriginal = numero.replace(/\D/g, '');
+    const numComDDI   = numOriginal.startsWith('55') ? numOriginal : '55' + numOriginal;
+    const numSemDDI   = numOriginal.startsWith('55') ? numOriginal.slice(2) : numOriginal;
 
-    // Se já tem DDI 55, usar como está. Se não, adicionar 55.
-    const numComDDI = numOriginal.startsWith('55') ? numOriginal : '55' + numOriginal;
-
-    // numSemDDI = número sem o DDI 55 (para histórico e URI alternativa)
-    // Nunca altera a quantidade de dígitos além de remover o "55" do início
-    const numSemDDI = numOriginal.startsWith('55') ? numOriginal.slice(2) : numOriginal;
-
-    // Validação: celular brasileiro com 10 dígitos = falta o 9º dígito → BLOQUEAR
-    if (numSemDDI.length === 10) {
-      const resto = numSemDDI.slice(2); // remove DDD
-      // Celulares começam com 6, 7, 8 ou 9. Fixos têm 8 dígitos após DDD (total 10 = válido para fixo).
-      // Se começa com 6, 7 ou 9 → claramente celular sem o 9 → bloquear
-      // Se começa com 8 → pode ser celular sem 9 ou fixo → bloquear por precaução
-      const pareceCelular = /^[6-9]/.test(resto);
-      if (pareceCelular) {
-        const msg = `Número incompleto: informe o número completo com DDD e 9º dígito. Exemplo: ${numSemDDI.slice(0,2)}9${resto}`;
-        SIP_LOG.push('BLOCKED', `🚫 Chamada bloqueada — ${numSemDDI} tem 10 dígitos (celular sem o 9). Correto: ${numSemDDI.slice(0,2)}9${resto}`);
-        micStream?.getTracks().forEach(t => t.stop());
-        if (mountedRef.current) setErroMsg(msg);
-        return false;
-      }
+    // Bloquear celular sem 9º dígito
+    if (numSemDDI.length === 10 && /^[6-9]/.test(numSemDDI.slice(2))) {
+      const msg = `Número incompleto — informe com 9º dígito. Ex: ${numSemDDI.slice(0,2)}9${numSemDDI.slice(2)}`;
+      SIP_LOG.push('BLOCKED', msg);
+      micStream?.getTracks().forEach(t => t.stop());
+      if (mountedRef.current) setErroMsg(msg);
+      return false;
     }
 
-    // URI principal: com DDI (formato NVOIP recomendado para chamadas internacionais/nacionais)
-    // URI alternativa: sem DDI (caso a operadora prefira formato local)
-    const uriFormatos = [
-      `sip:${numComDDI}@${sipDomain}`,   // ex: sip:5587991426333@app.nvoip.com.br
-      `sip:${numSemDDI}@${sipDomain}`,   // ex: sip:87991426333@app.nvoip.com.br
+    // ── 4 URIs a tentar em sequência (item 5) ─────────────────────────────
+    const URI_QUEUE = [
+      `sip:${numComDDI}@app.nvoip.com.br`,
+      `sip:${numSemDDI}@app.nvoip.com.br`,
+      `sip:${numComDDI}@sip.nvoip.com.br`,
+      `sip:${numSemDDI}@sip.nvoip.com.br`,
     ];
 
     const numHistorico = numSemDDI;
-    const destino = uriFormatos[0];
 
-    SIP_LOG.push('DIAL', `Número original: ${numOriginal} | Normalizado: ${numComDDI}`, {
-      num_original   : numOriginal,
-      num_sem_ddi    : numSemDDI,
-      num_com_ddi    : numComDDI,
-      uri_principal  : uriFormatos[0],
-      uri_alternativa: uriFormatos[1],
-      ramal_origem   : cfg?.numbersip,
-      did_saida      : cfg?.numero_did || 'não configurado',
+    SIP_LOG.push('DIAL', `${numOriginal} → ${numComDDI}`, {
+      num_original: numOriginal,
+      num_com_ddi : numComDDI,
+      num_sem_ddi : numSemDDI,
+      uri_queue   : URI_QUEUE,
+      ramal       : cfg?.numbersip,
+      did         : cfg?.numero_did || '—',
     });
-    console.log(`📞 [SIP] Original: ${numOriginal} → Com DDI: ${numComDDI} → URI: ${uriFormatos[0]}`);
+    console.log(`📞 [SIP] DIAL → URIs a tentar:`, URI_QUEUE);
 
     const pcConfig = {
       iceServers: [
-        { urls: 'stun:app.nvoip.com.br:3478' },
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:app.nvoip.com.br:3478' },
         { urls: 'turn:openrelay.metered.ca:80',   username: 'openrelayproject', credential: 'openrelayproject' },
         { urls: 'turn:openrelay.metered.ca:443',  username: 'openrelayproject', credential: 'openrelayproject' },
         { urls: 'turns:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
@@ -503,264 +483,266 @@ export default function useSoftphone(config) {
       rtcpMuxPolicy     : 'require',
     };
 
-    // Passa o stream já capturado para evitar "Canceled" por getUserMedia tardio
-    const callOptions = {
-      mediaStream         : micStream,                          // ← stream já obtido
+    const baseCallOptions = {
+      mediaStream         : micStream,
       mediaConstraints    : { audio: true, video: false },
       rtcOfferConstraints : { offerToReceiveAudio: true, offerToReceiveVideo: false },
       pcConfig,
-      extraHeaders: [
-        ...(cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : []),
-      ],
+      extraHeaders: cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : [],
     };
 
-    let session;
-    try {
-      session = uaRef.current.call(destino, callOptions);
-    } catch (err) {
-      SIP_LOG.push('ERROR', `Erro ao criar sessão SIP: ${err.message}`);
-      // Libera microfone em caso de erro
-      micStream?.getTracks().forEach(t => t.stop());
-      if (mountedRef.current) setErroMsg('Erro ao iniciar chamada. Verifique a configuração do ramal.');
-      return false;
-    }
+    // ── Tenta cada URI em sequência ────────────────────────────────────────
+    let uriIdx    = 0;
+    let session   = null;
+    let inviteEnviado = false;          // item 1: rastrear se INVITE saiu
+    let respostaRecebida = false;       // item 7: rastrear se houve resposta
 
-    // Libera microfone quando chamada encerrar (o JsSIP cria stream próprio via PeerConnection)
     const _releaseMic = () => micStream?.getTracks().forEach(t => t.stop());
-    session.on('ended',  _releaseMic);
-    session.on('failed', _releaseMic);
 
-    inicioRef.current = null;
-    sessionAtivaRef.current = session; // registra sessão ativa para cancelar se WSS cair
-    setChamadaAtiva({ session, destino: numHistorico, direcao: 'saida', status: 'chamando' });
-    _startCallTimeout(session, numHistorico);
-
-    // ── Eventos da sessão ─────────────────────────────────────────────────
-    session.on('sending', (e) => {
-      try {
-        const req = e?.request;
-        const sdp = req?.body || '';
-        SIP_LOG.push('INVITE', `INVITE → ${destino}`, {
-          to     : req?.to?.toString?.(),
-          from   : req?.from?.toString?.(),
-          ruri   : req?.ruri?.toString?.(),
-          sdp_linhas: sdp.split('\n').length,
-          sdp_preview: sdp.substring(0, 300),
-        });
-        console.log('📤 [SIP] INVITE enviado:', { to: req?.to?.toString?.(), ruri: req?.ruri?.toString?.() });
-        console.log('📄 [SIP] SDP offer:\n', sdp.split('\n').slice(0, 12).join('\n'));
-      } catch {}
-    });
-
-    session.on('peerconnection', (data) => {
-      const pc = data.peerconnection;
-      if (!pc) return;
-      SIP_LOG.push('PEERCONNECTION', 'PeerConnection WebRTC criado');
-
-      pc.oniceconnectionstatechange = () => {
-        const state = pc.iceConnectionState;
-        SIP_LOG.push('ICE_STATE', `ICE: ${state}`);
-        if (state === 'failed') {
-          SIP_LOG.push('ICE_FAILED', 'ICE failed — problema NAT/TURN');
-          _clearCallTimeout();
-          try { session.terminate(); } catch {}
-          if (mountedRef.current) { setErroMsg('Falha WebRTC: ICE failed — sem conectividade de mídia.'); setChamadaAtiva(null); }
-          _clearAudio();
-          _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
-        }
-      };
-      pc.onicegatheringstatechange = () => SIP_LOG.push('ICE_GATHERING', pc.iceGatheringState);
-      pc.onconnectionstatechange   = () => {
-        SIP_LOG.push('PC_STATE', pc.connectionState);
-        if (pc.connectionState === 'failed') {
-          _clearCallTimeout();
-          try { session.terminate(); } catch {}
-          if (mountedRef.current) { setErroMsg('Falha de conexão WebRTC.'); setChamadaAtiva(null); }
-          _clearAudio();
-        }
-      };
-      pc.addEventListener('track', (e) => {
-        if (e.streams?.[0] && audioRef.current) {
-          audioRef.current.srcObject = e.streams[0];
-          audioRef.current.play().catch(() => {});
-        }
-      });
-    });
-
-    session.on('progress', (e) => {
-      const code = e?.response?.status_code;
-      const phrase = e?.response?.reason_phrase || '';
-      const sdpResp = e?.response?.body || '';
-
-      SIP_LOG.push(`${code}`, `${code} ${phrase}`, {
-        uri_usada: destino,
-        sdp_preview: sdpResp.substring(0, 300),
-      });
-      console.log(`📞 [SIP] ${code} ${phrase} — URI: ${destino}`);
-      if (sdpResp) console.log('📄 [SIP] SDP resposta:\n', sdpResp.split('\n').slice(0, 8).join('\n'));
-
-      if (code === 180 || code === 183) {
-        setChamadaAtiva(p => p ? { ...p, status: 'tocando' } : null);
-      } else {
-        setChamadaAtiva(p => p ? { ...p, status: 'chamando' } : null);
+    const tentarProximaURI = () => {
+      uriIdx++;
+      if (uriIdx >= URI_QUEUE.length) {
+        // Esgotou todas as URIs
+        _clearCallTimeout();
+        _releaseMic();
+        sessionAtivaRef.current = null;
+        const msg = inviteEnviado && !respostaRecebida
+          ? `NVOIP não respondeu ao INVITE em nenhuma das ${URI_QUEUE.length} URIs. Verifique: saldo, rota de saída e DID no painel NVOIP.`
+          : `Falha SIP em todas as URIs tentadas. Verifique o diagnóstico.`;
+        SIP_LOG.push('ALL_FAILED', msg);
+        if (mountedRef.current) { setErroMsg(msg); setChamadaAtiva(null); }
+        _clearAudio();
+        _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
+        return;
       }
-    });
+      SIP_LOG.push('RETRY_URI', `Tentando próxima URI (${uriIdx + 1}/${URI_QUEUE.length}): ${URI_QUEUE[uriIdx]}`);
+      setTimeout(() => fazerChamada(URI_QUEUE[uriIdx]), 500);
+    };
 
-    session.on('accepted', (e) => {
-      const sdpResp = e?.response?.body || '';
-      SIP_LOG.push('200_OK', `200 OK — chamada aceita pela NVOIP`, { sdp_preview: sdpResp.substring(0, 300) });
-      console.log('✅ [SIP] 200 OK — chamada aceita');
-      _clearCallTimeout();
-      inicioRef.current = Date.now();
-      setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null);
-      _attachAudio(session);
-    });
+    const fazerChamada = (destino) => {
+      SIP_LOG.push('TRYING', `▶ INVITE para: ${destino}`);
+      console.log(`📤 [SIP] Tentando URI: ${destino}`);
+      inviteEnviado = false;
 
-    session.on('confirmed', () => {
-      SIP_LOG.push('ACK', 'ACK — chamada confirmada');
-      _clearCallTimeout();
-      if (!inicioRef.current) inicioRef.current = Date.now();
-      setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null);
-      _attachAudio(session);
-    });
-
-    session.on('ended', (e) => {
-      const dur = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0;
-      SIP_LOG.push('ENDED', `Chamada encerrada — duração ${dur}s | causa: ${e?.cause || 'N/A'}`);
-      _clearCallTimeout();
-      sessionAtivaRef.current = null;
-      _salvarHistorico(numHistorico, 'saida', dur > 0 ? 'atendida' : 'nao_atendida', dur);
-      setChamadaAtiva(null);
-      _clearAudio();
-    });
-
-    session.on('failed', (e) => {
-      const code   = e?.response?.status_code;
-      const cause  = e?.cause;
-      const phrase = e?.response?.reason_phrase || '';
-
-      // Capturar cabeçalhos de autenticação
-      const headers  = e?.response?.headers || {};
-      const wwwAuth  = headers['WWW-Authenticate']?.[0]?.raw  || null;
-      const proxyAuth = headers['Proxy-Authenticate']?.[0]?.raw || null;
-      const sdpFailed = e?.response?.body || '';
-
-      SIP_LOG.push('FAILED', `${code || cause} ${phrase}`, {
-        code,
-        cause,
-        phrase,
-        uri_usada    : destino,
-        www_auth     : wwwAuth,
-        proxy_auth   : proxyAuth,
-        sdp_preview  : sdpFailed.substring(0, 200),
-        headers_keys : Object.keys(headers),
-      });
-
-      console.warn(`❌ [SIP] FAILED — ${code} ${phrase} | causa: ${cause} | URI: ${destino}`);
-      if (wwwAuth)   console.warn(`❌ [SIP] WWW-Authenticate: ${wwwAuth}`);
-      if (proxyAuth) console.warn(`❌ [SIP] Proxy-Authenticate: ${proxyAuth}`);
-      console.warn(`❌ [SIP] Headers recebidos:`, Object.keys(headers));
-
-      _clearCallTimeout();
-      _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
-
-      // Se 404 com o primeiro formato (sem DDI), tenta com DDI automaticamente
-      if (code === 404 && destino === uriFormatos[0]) {
-        SIP_LOG.push('RETRY', `404 no formato sem DDI — tentando com DDI: ${uriFormatos[1]}`);
-        console.log(`🔄 [SIP] Tentando formato alternativo: ${uriFormatos[1]}`);
-
-        let session2;
-        try {
-          session2 = uaRef.current.call(uriFormatos[1], callOptions);
-        } catch (err) {
-          SIP_LOG.push('ERROR', `Erro na tentativa alternativa: ${err.message}`);
-          if (mountedRef.current) setErroMsg(`Erro SIP 404: número não encontrado em nenhum formato.`);
-          setChamadaAtiva(null);
-          return;
-        }
-
-        setChamadaAtiva({ session: session2, destino: numHistorico, direcao: 'saida', status: 'chamando' });
-        _startCallTimeout(session2, numHistorico);
-        _bindSessionEvents(session2, uriFormatos[1], numHistorico);
+      let s;
+      try {
+        s = uaRef.current.call(destino, { ...baseCallOptions });
+      } catch (err) {
+        SIP_LOG.push('ERROR', `Erro ao criar sessão para ${destino}: ${err.message}`);
+        tentarProximaURI();
         return;
       }
 
-      // Mensagem de erro específica e clara
-      const msgErro =
-        code === 407 ? `Erro SIP 407: Autenticação do INVITE exigida pelo proxy NVOIP. Verifique a senha SIP do ramal ${cfg?.numbersip}.`
-        : code === 401 ? `Erro SIP 401: Credenciais rejeitadas pela NVOIP. Verifique a senha SIP em "Meu Ramal".`
-        : code === 403 ? `Erro SIP 403: Chamada proibida — saldo insuficiente ou rota bloqueada na NVOIP.`
-        : code === 404 ? `Erro SIP 404: Número "${numSemDDI}" / "${numComDDI}" não encontrado na NVOIP.`
-        : code === 480 ? `Erro SIP 480: Destino temporariamente indisponível.`
-        : code === 486 ? `Erro SIP 486: Número ocupado.`
-        : code === 603 ? `Erro SIP 603: Chamada recusada pelo destino.`
-        : code === 408 ? `Erro SIP 408: NVOIP não respondeu ao INVITE (timeout do servidor).`
-        : code === 503 ? `Erro SIP 503: Servidor NVOIP sobrecarregado ou indisponível.`
-        : code === 487 ? `Chamada cancelada.`
-        : cause === 'Canceled' ? `Chamada cancelada pelo usuário.`
-        : cause === 'No Answer' ? `Sem resposta após timeout.`
-        : code ? `Erro SIP ${code} ${phrase} — URI: ${destino}`
-        : `Falha SIP: ${cause || 'desconhecido'} — verifique o painel de diagnóstico abaixo.`;
+      session = s;
+      sessionAtivaRef.current = s;
+      if (uriIdx === 0) {
+        setChamadaAtiva({ session: s, destino: numHistorico, direcao: 'saida', status: 'chamando' });
+        _startCallTimeout(s, numHistorico);
+      } else {
+        setChamadaAtiva(p => p ? { ...p, session: s } : { session: s, destino: numHistorico, direcao: 'saida', status: 'chamando' });
+      }
 
-      sessionAtivaRef.current = null;
-      if (mountedRef.current) setErroMsg(msgErro);
-      setChamadaAtiva(null);
-      _clearAudio();
-    });
+      // ── Item 2 + 3: logar INVITE bruto e todos os eventos ──────────────
+      s.on('sending', (ev) => {
+        inviteEnviado = true;
+        const req = ev?.request;
+        const sdp = req?.body || '';
+        const logData = {
+          '1_request_uri' : req?.ruri?.toString?.()    || destino,
+          '2_from'        : req?.from?.toString?.()    || '?',
+          '3_to'          : req?.to?.toString?.()      || destino,
+          '4_contact'     : req?.contact?.toString?.() || '?',
+          '5_call_id'     : req?.call_id               || '?',
+          '6_cseq'        : req?.cseq                  || '?',
+          '7_sdp_linhas'  : sdp.split('\n').length,
+        };
+        SIP_LOG.push('INVITE_SENT', `✅ INVITE enviado → ${destino}`, logData);
+        console.log('📤 [SIP] INVITE BRUTO:', logData);
+        console.log('📄 [SIP] SDP completo:\n', sdp);
 
+        // Item 8: se não chegar 100 Trying em 5s, alertar
+        setTimeout(() => {
+          if (!respostaRecebida && session === s) {
+            SIP_LOG.push('NO_100_TRYING', `⚠️ Sem 100 Trying após 5s — NVOIP pode estar ignorando o INVITE para ${destino}. Verifique se o endpoint WSS permite originação direta.`);
+            console.warn(`⚠️ [SIP] Sem 100 Trying em 5s — URI: ${destino}`);
+          }
+        }, 5000);
+      });
+
+      s.on('connecting', () => {
+        SIP_LOG.push('CONNECTING', `Sessão conectando → ${destino}`);
+      });
+
+      s.on('peerconnection', (data) => {
+        const pc = data.peerconnection;
+        if (!pc) return;
+        SIP_LOG.push('PEERCONNECTION', 'PeerConnection WebRTC criado');
+        pc.oniceconnectionstatechange = () => {
+          const state = pc.iceConnectionState;
+          SIP_LOG.push('ICE_STATE', `ICE: ${state}`);
+          if (state === 'failed') {
+            SIP_LOG.push('ICE_FAILED', '⚠️ ICE failed — problema NAT/TURN (item D: erro WebRTC)');
+            _clearCallTimeout();
+            try { s.terminate(); } catch {}
+            if (mountedRef.current) { setErroMsg('Falha WebRTC: ICE failed — sem conectividade de mídia.'); setChamadaAtiva(null); }
+            _clearAudio();
+            _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
+          }
+        };
+        pc.onicegatheringstatechange = () => SIP_LOG.push('ICE_GATHERING', pc.iceGatheringState);
+        pc.onconnectionstatechange   = () => {
+          SIP_LOG.push('PC_STATE', pc.connectionState);
+          if (pc.connectionState === 'failed') {
+            _clearCallTimeout();
+            try { s.terminate(); } catch {}
+            if (mountedRef.current) { setErroMsg('Falha de conexão WebRTC.'); setChamadaAtiva(null); }
+            _clearAudio();
+          }
+        };
+        pc.addEventListener('track', (ev) => {
+          if (ev.streams?.[0] && audioRef.current) {
+            audioRef.current.srcObject = ev.streams[0];
+            audioRef.current.play().catch(() => {});
+          }
+        });
+      });
+
+      // ── Item 3: progress captura 100/180/183 ───────────────────────────
+      s.on('progress', (ev) => {
+        respostaRecebida = true;
+        const code   = ev?.response?.status_code;
+        const phrase = ev?.response?.reason_phrase || '';
+        const sdpRsp = ev?.response?.body || '';
+        SIP_LOG.push(`SIP_${code}`, `✅ Resposta SIP: ${code} ${phrase} — URI: ${destino}`, {
+          code, phrase, uri: destino,
+          sdp_rsp: sdpRsp ? sdpRsp.substring(0, 300) : null,
+        });
+        console.log(`📞 [SIP] ${code} ${phrase} — URI: ${destino}`);
+        if (code === 180 || code === 183) setChamadaAtiva(p => p ? { ...p, status: 'tocando' } : null);
+        else setChamadaAtiva(p => p ? { ...p, status: 'chamando' } : null);
+      });
+
+      s.on('accepted', (ev) => {
+        respostaRecebida = true;
+        const sdpRsp = ev?.response?.body || '';
+        SIP_LOG.push('200_OK', `✅ 200 OK — chamada aceita`, { uri: destino, sdp_preview: sdpRsp.substring(0, 200) });
+        console.log('✅ [SIP] 200 OK');
+        _clearCallTimeout();
+        inicioRef.current = Date.now();
+        setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null);
+        _attachAudio(s);
+      });
+
+      s.on('confirmed', () => {
+        SIP_LOG.push('ACK', 'ACK — chamada confirmada');
+        _clearCallTimeout();
+        if (!inicioRef.current) inicioRef.current = Date.now();
+        setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null);
+        _attachAudio(s);
+      });
+
+      s.on('ended', (ev) => {
+        const dur = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0;
+        SIP_LOG.push('ENDED', `Chamada encerrada — ${dur}s | causa: ${ev?.cause || 'N/A'}`);
+        _clearCallTimeout();
+        sessionAtivaRef.current = null;
+        _releaseMic();
+        _salvarHistorico(numHistorico, 'saida', dur > 0 ? 'atendida' : 'nao_atendida', dur);
+        setChamadaAtiva(null);
+        _clearAudio();
+      });
+
+      // ── Item 4: failed com causa + code + phrase completos ─────────────
+      s.on('failed', (ev) => {
+        const code   = ev?.response?.status_code;
+        const cause  = ev?.cause  || '';
+        const phrase = ev?.response?.reason_phrase || '';
+        const hdrs   = ev?.response?.headers || {};
+        const wwwAuth   = hdrs['WWW-Authenticate']?.[0]?.raw  || null;
+        const proxyAuth = hdrs['Proxy-Authenticate']?.[0]?.raw || null;
+
+        SIP_LOG.push('FAILED', `❌ ${code || cause} ${phrase} — URI: ${destino}`, {
+          code, cause, phrase, uri: destino,
+          invite_enviado   : inviteEnviado,
+          resposta_recebida: respostaRecebida,
+          www_authenticate : wwwAuth,
+          proxy_authenticate: proxyAuth,
+          headers_recebidos: Object.keys(hdrs),
+          diagnostico:
+            !inviteEnviado         ? 'A) INVITE não saiu do CRM'
+            : !respostaRecebida    ? 'B) NVOIP ignorou o INVITE'
+            : code === 403         ? 'C) Saldo/rota bloqueada'
+            : code === 404         ? 'C) Formato URI errado'
+            : cause === 'Canceled' ? 'SDP/WebRTC cancelado antes de enviar'
+            : 'Veja código SIP acima',
+        });
+
+        console.warn(`❌ [SIP] FAILED — code=${code} cause=${cause} phrase="${phrase}" uri=${destino}`);
+        console.warn(`❌ [SIP] INVITE enviado: ${inviteEnviado} | Resposta recebida: ${respostaRecebida}`);
+        if (wwwAuth)   console.warn(`❌ [SIP] WWW-Authenticate: ${wwwAuth}`);
+        if (proxyAuth) console.warn(`❌ [SIP] Proxy-Authenticate: ${proxyAuth}`);
+
+        _clearCallTimeout();
+
+        // Se "Canceled" e INVITE não saiu: problema de SDP/WebRTC (item D), não tentar outra URI
+        if (cause === 'Canceled' && !inviteEnviado) {
+          SIP_LOG.push('CANCELED_NO_INVITE', '⚠️ Chamada cancelada antes do INVITE sair — problema de SDP ou WebRTC (item D). Verifique getUserMedia e geração do SDP.');
+          _releaseMic();
+          sessionAtivaRef.current = null;
+          if (mountedRef.current) setErroMsg('Chamada cancelada antes do INVITE sair — possível problema de SDP/WebRTC. Veja log para diagnóstico.');
+          setChamadaAtiva(null);
+          _clearAudio();
+          _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
+          return;
+        }
+
+        // 487 = cancelado pelo usuário, não tentar outras URIs
+        if (code === 487) {
+          _releaseMic();
+          sessionAtivaRef.current = null;
+          if (mountedRef.current) setErroMsg('Chamada cancelada.');
+          setChamadaAtiva(null);
+          _clearAudio();
+          return;
+        }
+
+        // Autenticação exigida
+        if (code === 401 || code === 407) {
+          _releaseMic();
+          sessionAtivaRef.current = null;
+          if (mountedRef.current) setErroMsg(`Erro SIP ${code}: Autenticação exigida — verifique a senha SIP do ramal ${cfg?.numbersip}.`);
+          setChamadaAtiva(null);
+          _clearAudio();
+          _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
+          return;
+        }
+
+        // Para erros definitivos (403 saldo, 486 ocupado, 603 recusado) não tentar outras URIs
+        if (code === 403 || code === 486 || code === 603) {
+          _releaseMic();
+          sessionAtivaRef.current = null;
+          const msg =
+            code === 403 ? 'Erro SIP 403: Chamada proibida — saldo insuficiente ou rota bloqueada na NVOIP.'
+            : code === 486 ? 'Erro SIP 486: Número ocupado.'
+            : 'Erro SIP 603: Chamada recusada pelo destino.';
+          if (mountedRef.current) setErroMsg(msg);
+          setChamadaAtiva(null);
+          _clearAudio();
+          _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
+          return;
+        }
+
+        // Para 404 / timeout / sem resposta → tenta próxima URI
+        tentarProximaURI();
+      });
+    };
+
+    // Inicia pela primeira URI
+    fazerChamada(URI_QUEUE[0]);
     return true;
   }, []);
 
-  // ── Bind eventos para sessão de retry ─────────────────────────────────────
-  const _bindSessionEvents = (session, destino, numHistorico) => {
-    session.on('sending', (e) => {
-      try {
-        const req = e?.request;
-        SIP_LOG.push('INVITE', `INVITE (retry) → ${destino}`, { ruri: req?.ruri?.toString?.() });
-      } catch {}
-    });
-    session.on('progress', (e) => {
-      const code = e?.response?.status_code;
-      SIP_LOG.push(`${code}`, `${code} ${e?.response?.reason_phrase || ''} (retry)`, { uri_usada: destino });
-      if (code === 180 || code === 183) setChamadaAtiva(p => p ? { ...p, status: 'tocando' } : null);
-    });
-    session.on('accepted', (e) => {
-      SIP_LOG.push('200_OK', `200 OK (retry) — URI: ${destino}`);
-      _clearCallTimeout();
-      inicioRef.current = Date.now();
-      setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null);
-      _attachAudio(session);
-    });
-    session.on('confirmed', () => {
-      SIP_LOG.push('ACK', `ACK (retry) — URI: ${destino}`);
-      _clearCallTimeout();
-      if (!inicioRef.current) inicioRef.current = Date.now();
-      setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null);
-      _attachAudio(session);
-    });
-    session.on('ended', (e) => {
-      const dur = inicioRef.current ? Math.round((Date.now() - inicioRef.current) / 1000) : 0;
-      SIP_LOG.push('ENDED', `Chamada encerrada (retry) — duração ${dur}s`);
-      _clearCallTimeout();
-      _salvarHistorico(numHistorico, 'saida', dur > 0 ? 'atendida' : 'nao_atendida', dur);
-      setChamadaAtiva(null);
-      _clearAudio();
-    });
-    session.on('failed', (e) => {
-      const code = e?.response?.status_code;
-      const cause = e?.cause;
-      const phrase = e?.response?.reason_phrase || '';
-      SIP_LOG.push('FAILED', `${code || cause} ${phrase} (retry) — URI: ${destino}`, { code, cause });
-      _clearCallTimeout();
-      _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
-      const msg = code
-        ? `Erro SIP ${code} ${phrase} (também falhou com DDI alternativo — URI: ${destino})`
-        : `Falha SIP: ${cause} — verifique o diagnóstico abaixo.`;
-      if (mountedRef.current) setErroMsg(msg);
-      setChamadaAtiva(null);
-      _clearAudio();
-    });
-  };
+
 
   // ── ATENDER chamada entrante ──────────────────────────────────────────────
   const atenderChamada = useCallback(() => {
