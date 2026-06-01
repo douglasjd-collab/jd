@@ -292,7 +292,10 @@ export default function CampanhaMetaOficial({ empresaId }) {
         cabecalho_midia_url: dados.cabecalho_midia_url || '',
         botoes: dados.botoes || [],
       });
-      if (!resp?.data?.ok) throw new Error(resp?.data?.error || 'Erro ao criar template na Meta');
+      if (!resp?.data?.ok) {
+        const errDetail = resp?.data?.details?.error?.error_user_msg || resp?.data?.error || 'Erro ao criar template na Meta';
+        throw new Error(errDetail);
+      }
       return resp.data;
     },
     onSuccess: (data) => {

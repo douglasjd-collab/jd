@@ -30,13 +30,8 @@ Deno.serve(async (req) => {
       if (tipoHeader === 'TEXT' && cabecalho && cabecalho.trim()) {
         components.push({ type: 'HEADER', format: 'TEXT', text: cabecalho });
       } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(tipoHeader)) {
-        // Para mídias, a Meta exige um "example" com a URL pública
-        const headerComp = { type: 'HEADER', format: tipoHeader };
-        if (cabecalho_midia_url && cabecalho_midia_url.trim()) {
-          const mediaKey = tipoHeader === 'IMAGE' ? 'header_image' : tipoHeader === 'VIDEO' ? 'header_video' : 'header_document';
-          headerComp.example = { [mediaKey]: [cabecalho_midia_url] };
-        }
-        components.push(headerComp);
+        // Para mídias, a Meta aceita o header sem example (mídia será definida no envio)
+        components.push({ type: 'HEADER', format: tipoHeader });
       }
     }
 
@@ -91,8 +86,10 @@ Deno.serve(async (req) => {
     const metaData = await metaResp.json();
 
     if (!metaResp.ok || metaData.error) {
+      const errMsg = metaData.error?.error_user_msg || metaData.error?.message || 'Erro ao criar template na Meta';
+      console.error('[criarTemplateMetaWhatsApp] Erro Meta:', JSON.stringify(metaData));
       return Response.json({
-        error: metaData.error?.message || 'Erro ao criar template na Meta',
+        error: errMsg,
         details: metaData,
       }, { status: 400 });
     }
