@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { empresa_id, nome, categoria, idioma, cabecalho, corpo, rodape, botoes, tipo_cabecalho, cabecalho_midia_url } = body;
+    const { empresa_id, nome, categoria, idioma, cabecalho, corpo, rodape, botoes, tipo_cabecalho, cabecalho_midia_url, cabecalho_media_id } = body;
 
     // Buscar configuração da empresa para pegar o access token e phone_number_id
     const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: empresa_id });
@@ -31,13 +31,9 @@ Deno.serve(async (req) => {
         components.push({ type: 'HEADER', format: 'TEXT', text: cabecalho });
       } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(tipoHeader)) {
         const headerComp = { type: 'HEADER', format: tipoHeader };
-        if (cabecalho_midia_url && cabecalho_midia_url.trim()) {
-          // A Meta exige example com a URL pública da mídia
-          // header_image, header_video ou header_document conforme o tipo
-          const exampleKey = tipoHeader === 'IMAGE' ? 'header_image'
-            : tipoHeader === 'VIDEO' ? 'header_video'
-            : 'header_document';
-          headerComp.example = { [exampleKey]: [cabecalho_midia_url] };
+        // A Meta exige example.header_handle com o media_id obtido via upload na API da Meta
+        if (cabecalho_media_id) {
+          headerComp.example = { header_handle: [cabecalho_media_id] };
         }
         components.push(headerComp);
       }

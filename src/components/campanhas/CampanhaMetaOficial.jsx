@@ -279,6 +279,23 @@ export default function CampanhaMetaOficial({ empresaId }) {
         };
         return base44.entities.CampanhaLog.update(dados.id, payload);
       }
+
+      // Se tem mídia, primeiro fazer upload para a Meta para obter o media_id (handle)
+      let cabecalho_media_id = null;
+      const tipoHeader = (dados.tipo_cabecalho || 'TEXT').toUpperCase();
+      if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(tipoHeader) && dados.cabecalho_midia_url) {
+        const uploadResp = await base44.functions.invoke('uploadMidiaMetaTemplate', {
+          empresa_id: empresaId,
+          midia_url: dados.cabecalho_midia_url,
+          tipo_midia: tipoHeader,
+        });
+        if (!uploadResp?.data?.ok || !uploadResp?.data?.media_id) {
+          const errMsg = uploadResp?.data?.error || 'Erro ao fazer upload da mídia para a Meta';
+          throw new Error(errMsg);
+        }
+        cabecalho_media_id = uploadResp.data.media_id;
+      }
+
       // Novo template: enviar direto para a Meta via API
       const resp = await base44.functions.invoke('criarTemplateMetaWhatsApp', {
         empresa_id: empresaId,
@@ -290,6 +307,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
         rodape: dados.rodape,
         tipo_cabecalho: dados.tipo_cabecalho || 'TEXT',
         cabecalho_midia_url: dados.cabecalho_midia_url || '',
+        cabecalho_media_id,
         botoes: dados.botoes || [],
       });
       if (!resp?.data?.ok) {
