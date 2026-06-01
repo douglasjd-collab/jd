@@ -1,0 +1,52 @@
+{
+  "name": "ComentarioTarefa",
+  "type": "object",
+  "properties": {
+    "tarefa_id": {
+      "type": "string"
+    },
+    "empresa_id": {
+      "type": "string"
+    },
+    "usuario_id": {
+      "type": "string"
+    },
+    "usuario_nome": {
+      "type": "string"
+    },
+    "mensagem": {
+      "type": "string"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "comentario",
+        "ligacao",
+        "reuniao",
+        "email",
+        "movimentacao"
+      ],
+      "default": "comentario"
+    }
+  },
+  "required": [
+    "tarefa_id",
+    "empresa_id",
+    "usuario_id",
+    "mensagem"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return true;"
+    },
+    "delete": {
+      "rule": "return user.perfil === 'admin' || user.perfil === 'super_admin';"
+    }
+  }
+}

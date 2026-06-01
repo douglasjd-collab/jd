@@ -1,0 +1,108 @@
+{
+  "name": "VendaConsorcio",
+  "type": "object",
+  "properties": {
+    "venda_base_id": {
+      "type": "string",
+      "description": "ID da VendaBase (relacionamento 1:1)"
+    },
+    "administradora_id": {
+      "type": "string",
+      "description": "ID da administradora"
+    },
+    "administradora_nome": {
+      "type": "string",
+      "description": "Nome da administradora"
+    },
+    "tabela_id": {
+      "type": "string",
+      "description": "ID da tabela de cons\u00f3rcio"
+    },
+    "tabela_nome": {
+      "type": "string",
+      "description": "Nome da tabela"
+    },
+    "plano_id": {
+      "type": "string",
+      "description": "ID do plano"
+    },
+    "tipo_bem": {
+      "type": "string",
+      "enum": [
+        "automovel",
+        "imovel",
+        "motocicleta",
+        "servico",
+        "bens_moveis"
+      ],
+      "description": "Tipo do bem"
+    },
+    "grupo": {
+      "type": "string",
+      "description": "C\u00f3digo do grupo"
+    },
+    "cota": {
+      "type": "string",
+      "description": "N\u00famero da cota"
+    },
+    "contrato": {
+      "type": "string",
+      "description": "N\u00famero do contrato"
+    },
+    "prazo": {
+      "type": "number",
+      "description": "Prazo em meses"
+    },
+    "valorCredito": {
+      "type": "number",
+      "description": "Valor do cr\u00e9dito"
+    },
+    "taxaAdministracao": {
+      "type": "number",
+      "description": "Taxa de administra\u00e7\u00e3o %"
+    },
+    "percentualComissao": {
+      "type": "number",
+      "description": "Percentual de comiss\u00e3o"
+    },
+    "valorComissao": {
+      "type": "number",
+      "description": "Valor da comiss\u00e3o"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativa",
+        "pendente",
+        "cancelada",
+        "em_atraso",
+        "aguardando_aprovacao",
+        "doc_pendentes",
+        "contemplada"
+      ],
+      "default": "ativa",
+      "description": "Status do cons\u00f3rcio"
+    }
+  },
+  "required": [
+    "venda_base_id",
+    "administradora_id",
+    "grupo",
+    "valorCredito",
+    "prazo"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return true;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return ['admin', 'gerente', 'vendedor'].includes(user.perfil);"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return ['admin', 'gerente', 'vendedor'].includes(user.perfil);"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return user.perfil === 'admin';"
+    }
+  }
+}

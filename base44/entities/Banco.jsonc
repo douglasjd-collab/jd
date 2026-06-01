@@ -1,0 +1,45 @@
+{
+  "name": "Banco",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome do banco"
+    },
+    "codigo": {
+      "type": "string",
+      "description": "C\u00f3digo do banco (opcional)"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "URL da logo do banco"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se o banco est\u00e1 ativo"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "nome"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente', 'vendedor'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

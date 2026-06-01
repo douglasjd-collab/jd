@@ -1,0 +1,54 @@
+{
+  "name": "MapeamentoStatusBanco",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "banco_id": {
+      "type": "string"
+    },
+    "configuracao_api_id": {
+      "type": "string"
+    },
+    "status_externo": {
+      "type": "string",
+      "description": "Status retornado pela API do banco"
+    },
+    "status_interno": {
+      "type": "string",
+      "description": "Status padr\u00e3o interno"
+    },
+    "cor_status": {
+      "type": "string",
+      "description": "Cor para exibi\u00e7\u00e3o (hex ou nome)"
+    },
+    "ordem": {
+      "type": "number"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "empresa_id",
+    "banco_id",
+    "status_externo",
+    "status_interno"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

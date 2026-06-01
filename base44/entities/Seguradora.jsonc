@@ -1,0 +1,55 @@
+{
+  "name": "Seguradora",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome da seguradora"
+    },
+    "cnpj": {
+      "type": "string",
+      "description": "CNPJ"
+    },
+    "comissao_percentual": {
+      "type": "number",
+      "description": "Comiss\u00e3o padr\u00e3o em %"
+    },
+    "tipo_cobranca": {
+      "type": "string",
+      "enum": [
+        "mensal",
+        "anual",
+        "ambos"
+      ],
+      "default": "anual"
+    },
+    "telefone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativa",
+        "inativa"
+      ],
+      "default": "ativa"
+    },
+    "observacoes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "nome"
+  ]
+}

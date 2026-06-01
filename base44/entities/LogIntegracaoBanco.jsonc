@@ -1,0 +1,63 @@
+{
+  "name": "LogIntegracaoBanco",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "banco_id": {
+      "type": "string"
+    },
+    "configuracao_api_id": {
+      "type": "string"
+    },
+    "proposta_id": {
+      "type": "string"
+    },
+    "tipo_acao": {
+      "type": "string",
+      "description": "login, criar_proposta, consultar_status, importar_propostas, sincronizar_historico"
+    },
+    "request_json": {
+      "type": "string",
+      "description": "Payload enviado"
+    },
+    "response_json": {
+      "type": "string",
+      "description": "Resposta recebida"
+    },
+    "status_http": {
+      "type": "number"
+    },
+    "sucesso": {
+      "type": "boolean",
+      "default": false
+    },
+    "mensagem_erro": {
+      "type": "string"
+    },
+    "executado_em": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "banco_id",
+    "tipo_acao"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return false;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return false;"
+    }
+  }
+}

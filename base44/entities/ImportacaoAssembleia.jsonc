@@ -1,0 +1,97 @@
+{
+  "name": "ImportacaoAssembleia",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "assembleia_data": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da assembleia"
+    },
+    "chamada": {
+      "type": "string",
+      "enum": [
+        "Primeira",
+        "Segunda",
+        "Terceira",
+        "Quarta",
+        "Quinta",
+        "Sexta",
+        "S\u00e9tima"
+      ],
+      "description": "Chamada da assembleia"
+    },
+    "arquivo_nome": {
+      "type": "string",
+      "description": "Nome do arquivo PDF"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL do arquivo PDF"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "PARSE_OK",
+        "PROCESSANDO",
+        "CONCLUIDO",
+        "ERRO"
+      ],
+      "default": "PARSE_OK",
+      "description": "Status do processamento"
+    },
+    "payload_json": {
+      "type": "string",
+      "description": "JSON com os registros parseados"
+    },
+    "total_registros": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de registros no payload"
+    },
+    "registros_processados": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade processada at\u00e9 agora"
+    },
+    "historico_id": {
+      "type": "string",
+      "description": "ID do HistoricoLanceGrupo criado"
+    },
+    "erro_mensagem": {
+      "type": "string",
+      "description": "Mensagem de erro se houver"
+    },
+    "usuario_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que iniciou"
+    },
+    "usuario_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "assembleia_data",
+    "chamada",
+    "arquivo_nome"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

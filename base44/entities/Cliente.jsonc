@@ -1,0 +1,647 @@
+{
+  "name": "Cliente",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "external_id": {
+      "type": "string",
+      "description": "ID do sistema de origem (Venda Web)"
+    },
+    "cliente_code": {
+      "type": "string",
+      "description": "C\u00f3digo \u00fanico do cliente (CLI001, CLI002...)"
+    },
+    "senha_gov": {
+      "type": "string",
+      "description": "Senha GOV do cliente"
+    },
+    "tipo_pessoa": {
+      "type": "string",
+      "enum": [
+        "F\u00edsica",
+        "Jur\u00eddica"
+      ],
+      "description": "Tipo de pessoa"
+    },
+    "nome_completo": {
+      "type": "string",
+      "description": "Nome completo do cliente (PF)"
+    },
+    "cpf": {
+      "type": "string",
+      "description": "CPF do cliente (PF)"
+    },
+    "data_nascimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de nascimento (PF)"
+    },
+    "valor_patrimonial": {
+      "type": "number",
+      "description": "Valor patrimonial (PF)"
+    },
+    "rg": {
+      "type": "string",
+      "description": "RG (PF)"
+    },
+    "rg_data_emissao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de emiss\u00e3o do RG (PF)"
+    },
+    "rg_orgao_emissor": {
+      "type": "string",
+      "description": "\u00d3rg\u00e3o emissor do RG (PF)"
+    },
+    "estado_civil": {
+      "type": "string",
+      "description": "Estado civil (PF)"
+    },
+    "profissao": {
+      "type": "string",
+      "description": "Profiss\u00e3o (PF)"
+    },
+    "sexo": {
+      "type": "string",
+      "enum": [
+        "Masculino",
+        "Feminino",
+        "Outro",
+        "Prefiro n\u00e3o informar"
+      ],
+      "description": "Sexo (PF)"
+    },
+    "politicamente_exposto": {
+      "type": "string",
+      "enum": [
+        "Sim",
+        "N\u00e3o"
+      ],
+      "description": "Politicamente exposto (PF)"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email (PF)"
+    },
+    "celular": {
+      "type": "string",
+      "description": "Celular (PF)"
+    },
+    "telefone_fixo": {
+      "type": "string",
+      "description": "Telefone fixo (PF)"
+    },
+    "res_cep": {
+      "type": "string",
+      "description": "CEP residencial (PF)"
+    },
+    "res_tipo_logradouro": {
+      "type": "string",
+      "description": "Tipo de logradouro residencial (PF)"
+    },
+    "res_endereco": {
+      "type": "string",
+      "description": "Endere\u00e7o residencial (PF)"
+    },
+    "res_numero": {
+      "type": "string",
+      "description": "N\u00famero residencial (PF)"
+    },
+    "res_complemento": {
+      "type": "string",
+      "description": "Complemento residencial (PF)"
+    },
+    "res_bairro": {
+      "type": "string",
+      "description": "Bairro residencial (PF)"
+    },
+    "res_cidade": {
+      "type": "string",
+      "description": "Cidade residencial (PF)"
+    },
+    "res_uf": {
+      "type": "string",
+      "description": "UF residencial (PF)"
+    },
+    "com_cep": {
+      "type": "string",
+      "description": "CEP comercial (PF)"
+    },
+    "com_tipo_logradouro": {
+      "type": "string",
+      "description": "Tipo de logradouro comercial (PF)"
+    },
+    "com_endereco": {
+      "type": "string",
+      "description": "Endere\u00e7o comercial (PF)"
+    },
+    "com_numero": {
+      "type": "string",
+      "description": "N\u00famero comercial (PF)"
+    },
+    "com_complemento": {
+      "type": "string",
+      "description": "Complemento comercial (PF)"
+    },
+    "com_bairro": {
+      "type": "string",
+      "description": "Bairro comercial (PF)"
+    },
+    "com_cidade": {
+      "type": "string",
+      "description": "Cidade comercial (PF)"
+    },
+    "com_uf": {
+      "type": "string",
+      "description": "UF comercial (PF)"
+    },
+    "nome_pai": {
+      "type": "string",
+      "description": "Nome do pai (PF)"
+    },
+    "nome_mae": {
+      "type": "string",
+      "description": "Nome da m\u00e3e (PF)"
+    },
+    "nacionalidade": {
+      "type": "string",
+      "description": "Nacionalidade (PF)"
+    },
+    "uf_nascimento": {
+      "type": "string",
+      "description": "UF de nascimento (PF)"
+    },
+    "local_nascimento": {
+      "type": "string",
+      "description": "Local de nascimento (PF)"
+    },
+    "renda": {
+      "type": "number",
+      "description": "Renda (PF)"
+    },
+    "ocupou_cargo_publico_ultimos_anos": {
+      "type": "string",
+      "enum": [
+        "Sim",
+        "N\u00e3o"
+      ],
+      "description": "Ocupou cargo p\u00fablico nos \u00faltimos anos (PF)"
+    },
+    "parente_cargo_publico_ultimos_5_anos": {
+      "type": "string",
+      "enum": [
+        "Sim",
+        "N\u00e3o"
+      ],
+      "description": "Parente ocupou cargo p\u00fablico nos \u00faltimos 5 anos (PF)"
+    },
+    "doc_documento_testemunhas": {
+      "type": "boolean",
+      "default": false,
+      "description": "Documento de testemunhas entregue (PF)"
+    },
+    "doc_documento_testemunhas_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs dos documentos de testemunhas anexados (PF)"
+    },
+    "doc_identidade": {
+      "type": "boolean",
+      "default": false,
+      "description": "Documento identidade entregue (PF)"
+    },
+    "doc_identidade_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs dos documentos de identidade anexados (PF)"
+    },
+    "doc_comprovante_endereco": {
+      "type": "boolean",
+      "default": false,
+      "description": "Comprovante de endere\u00e7o entregue (PF)"
+    },
+    "doc_comprovante_endereco_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs dos comprovantes de endere\u00e7o anexados (PF)"
+    },
+    "doc_comprovante_renda": {
+      "type": "boolean",
+      "default": false,
+      "description": "Comprovante de renda entregue (PF)"
+    },
+    "doc_comprovante_renda_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs dos comprovantes de renda anexados (PF)"
+    },
+    "doc_proposta_assinada": {
+      "type": "boolean",
+      "default": false,
+      "description": "Proposta assinada entregue (PF)"
+    },
+    "doc_proposta_assinada_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs das propostas assinadas anexadas (PF)"
+    },
+    "doc_observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre documentos (PF)"
+    },
+    "banco_nao_deseja_informar": {
+      "type": "boolean",
+      "default": false,
+      "description": "N\u00e3o deseja informar dados banc\u00e1rios"
+    },
+    "banco_nao_possui_conta": {
+      "type": "boolean",
+      "default": false,
+      "description": "N\u00e3o possui conta banc\u00e1ria"
+    },
+    "banco_nome": {
+      "type": "string",
+      "description": "Nome do banco"
+    },
+    "banco_codigo": {
+      "type": "string",
+      "description": "C\u00f3digo do banco"
+    },
+    "agencia": {
+      "type": "string",
+      "description": "Ag\u00eancia"
+    },
+    "conta": {
+      "type": "string",
+      "description": "Conta"
+    },
+    "tipo_conta": {
+      "type": "string",
+      "enum": [
+        "Corrente",
+        "Poupan\u00e7a",
+        "Sal\u00e1rio",
+        "Pix"
+      ],
+      "description": "Tipo de conta"
+    },
+    "pix_chave": {
+      "type": "string",
+      "description": "Chave PIX"
+    },
+    "pj_razao_social": {
+      "type": "string",
+      "description": "Raz\u00e3o social da empresa (PJ)"
+    },
+    "pj_nome_fantasia": {
+      "type": "string",
+      "description": "Nome fantasia (PJ)"
+    },
+    "pj_cnpj": {
+      "type": "string",
+      "description": "CNPJ da empresa (PJ)"
+    },
+    "pj_inscricao_estadual": {
+      "type": "string",
+      "description": "Inscri\u00e7\u00e3o estadual (PJ)"
+    },
+    "pj_valor_patrimonial": {
+      "type": "number",
+      "description": "Valor patrimonial (PJ)"
+    },
+    "pj_ramo_atividade": {
+      "type": "string",
+      "description": "Ramo de atividade (PJ)"
+    },
+    "pj_capital_social": {
+      "type": "number",
+      "description": "Capital social (PJ)"
+    },
+    "pj_faturamento_medio": {
+      "type": "number",
+      "description": "Faturamento m\u00e9dio (PJ)"
+    },
+    "pj_data_fundacao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de funda\u00e7\u00e3o (PJ)"
+    },
+    "pj_percent_participacao_socio": {
+      "type": "number",
+      "description": "Percentual de participa\u00e7\u00e3o do s\u00f3cio (PJ)"
+    },
+    "pj_socio_majoritario_nome": {
+      "type": "string",
+      "description": "Nome do s\u00f3cio majorit\u00e1rio (PJ)"
+    },
+    "pj_socio_majoritario_cpf": {
+      "type": "string",
+      "description": "CPF do s\u00f3cio majorit\u00e1rio (PJ)"
+    },
+    "pj_socio_majoritario_rg": {
+      "type": "string",
+      "description": "RG do s\u00f3cio majorit\u00e1rio (PJ)"
+    },
+    "pj_socio_majoritario_data_nascimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de nascimento do s\u00f3cio (PJ)"
+    },
+    "pj_socio_majoritario_orgao_emissor": {
+      "type": "string",
+      "description": "\u00d3rg\u00e3o emissor do RG do s\u00f3cio (PJ)"
+    },
+    "pj_socio_majoritario_estado_civil": {
+      "type": "string",
+      "description": "Estado civil do s\u00f3cio (PJ)"
+    },
+    "pj_socio_majoritario_politicamente_exposto": {
+      "type": "string",
+      "enum": [
+        "Sim",
+        "N\u00e3o"
+      ],
+      "description": "S\u00f3cio \u00e9 politicamente exposto (PJ)"
+    },
+    "pj_socio_majoritario_sexo": {
+      "type": "string",
+      "enum": [
+        "Masculino",
+        "Feminino",
+        "Outro",
+        "Prefiro n\u00e3o informar"
+      ],
+      "description": "Sexo do s\u00f3cio (PJ)"
+    },
+    "pj_telefone_fixo": {
+      "type": "string",
+      "description": "Telefone fixo da empresa (PJ)"
+    },
+    "pj_celular": {
+      "type": "string",
+      "description": "Celular da empresa (PJ)"
+    },
+    "pj_email": {
+      "type": "string",
+      "description": "Email da empresa (PJ)"
+    },
+    "pj_cep": {
+      "type": "string",
+      "description": "CEP da empresa (PJ)"
+    },
+    "pj_tipo_logradouro": {
+      "type": "string",
+      "description": "Tipo de logradouro (PJ)"
+    },
+    "pj_endereco": {
+      "type": "string",
+      "description": "Endere\u00e7o da empresa (PJ)"
+    },
+    "pj_numero": {
+      "type": "string",
+      "description": "N\u00famero (PJ)"
+    },
+    "pj_complemento": {
+      "type": "string",
+      "description": "Complemento (PJ)"
+    },
+    "pj_bairro": {
+      "type": "string",
+      "description": "Bairro (PJ)"
+    },
+    "pj_cidade": {
+      "type": "string",
+      "description": "Cidade (PJ)"
+    },
+    "pj_uf": {
+      "type": "string",
+      "description": "UF (PJ)"
+    },
+    "pj_atividade_principal": {
+      "type": "string",
+      "description": "Atividade principal (PJ)"
+    },
+    "pj_forma_constituicao": {
+      "type": "string",
+      "description": "Forma de constitui\u00e7\u00e3o (PJ)"
+    },
+    "pj_data_constituicao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de constitui\u00e7\u00e3o (PJ)"
+    },
+    "pj_nacionalidade": {
+      "type": "string",
+      "description": "Nacionalidade do s\u00f3cio (PJ)"
+    },
+    "pj_uf_nascimento": {
+      "type": "string",
+      "description": "UF de nascimento do s\u00f3cio (PJ)"
+    },
+    "pj_local_nascimento": {
+      "type": "string",
+      "description": "Local de nascimento do s\u00f3cio (PJ)"
+    },
+    "pj_nome_pai": {
+      "type": "string",
+      "description": "Nome do pai do s\u00f3cio (PJ)"
+    },
+    "pj_nome_mae": {
+      "type": "string",
+      "description": "Nome da m\u00e3e do s\u00f3cio (PJ)"
+    },
+    "pj_doc_cpf": {
+      "type": "string",
+      "description": "CPF do documento (PJ)"
+    },
+    "pj_doc_tipo": {
+      "type": "string",
+      "description": "Tipo de documento (PJ)"
+    },
+    "pj_doc_numero": {
+      "type": "string",
+      "description": "N\u00famero do documento (PJ)"
+    },
+    "pj_doc_data_emissao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de emiss\u00e3o do documento (PJ)"
+    },
+    "pj_doc_orgao_expedidor": {
+      "type": "string",
+      "description": "\u00d3rg\u00e3o expedidor do documento (PJ)"
+    },
+    "pj_socios_cargo_publico_ultimos_5_anos": {
+      "type": "string",
+      "enum": [
+        "Sim",
+        "N\u00e3o"
+      ],
+      "description": "S\u00f3cios exerceram cargo p\u00fablico nos \u00faltimos 5 anos (PJ)"
+    },
+    "pj_socios_parentes_cargo_publico_ultimos_5_anos": {
+      "type": "string",
+      "enum": [
+        "Sim",
+        "N\u00e3o"
+      ],
+      "description": "Parentes de s\u00f3cios exerceram cargo p\u00fablico nos \u00faltimos 5 anos (PJ)"
+    },
+    "pj_doc_contrato_ou_estatuto_social": {
+      "type": "boolean",
+      "default": false,
+      "description": "Contrato ou estatuto social entregue (PJ)"
+    },
+    "pj_doc_contrato_ou_estatuto_social_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs dos contratos/estatutos anexados (PJ)"
+    },
+    "pj_doc_cartao_cnpj": {
+      "type": "boolean",
+      "default": false,
+      "description": "Cart\u00e3o CNPJ entregue (PJ)"
+    },
+    "pj_doc_cartao_cnpj_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs dos cart\u00f5es CNPJ anexados (PJ)"
+    },
+    "pj_doc_documento_socios_ou_representante": {
+      "type": "boolean",
+      "default": false,
+      "description": "Documentos dos s\u00f3cios/representante entregues (PJ)"
+    },
+    "pj_doc_documento_socios_ou_representante_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs dos documentos de s\u00f3cios/representantes anexados (PJ)"
+    },
+    "pj_doc_relacao_faturamento": {
+      "type": "boolean",
+      "default": false,
+      "description": "Rela\u00e7\u00e3o de faturamento entregue (PJ)"
+    },
+    "pj_doc_relacao_faturamento_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs das rela\u00e7\u00f5es de faturamento anexadas (PJ)"
+    },
+    "pj_doc_proposta_assinada": {
+      "type": "boolean",
+      "default": false,
+      "description": "Proposta assinada entregue (PJ)"
+    },
+    "pj_doc_proposta_assinada_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs das propostas assinadas anexadas (PJ)"
+    },
+    "pj_doc_observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre documentos (PJ)"
+    },
+    "pj_banco_nao_deseja_informar": {
+      "type": "boolean",
+      "default": false,
+      "description": "N\u00e3o deseja informar dados banc\u00e1rios (PJ)"
+    },
+    "pj_banco_nao_possui_conta": {
+      "type": "boolean",
+      "default": false,
+      "description": "N\u00e3o possui conta banc\u00e1ria (PJ)"
+    },
+    "pj_banco": {
+      "type": "string",
+      "description": "Banco (PJ)"
+    },
+    "pj_agencia": {
+      "type": "string",
+      "description": "Ag\u00eancia (PJ)"
+    },
+    "pj_agencia_digito": {
+      "type": "string",
+      "description": "D\u00edgito da ag\u00eancia (PJ)"
+    },
+    "pj_conta": {
+      "type": "string",
+      "description": "Conta (PJ)"
+    },
+    "pj_conta_digito": {
+      "type": "string",
+      "description": "D\u00edgito da conta (PJ)"
+    },
+    "pj_variacao": {
+      "type": "string",
+      "description": "Varia\u00e7\u00e3o (PJ)"
+    },
+    "pj_tipo_conta": {
+      "type": "string",
+      "enum": [
+        "Corrente",
+        "Poupan\u00e7a",
+        "Sal\u00e1rio",
+        "Pix",
+        "Outros"
+      ],
+      "description": "Tipo de conta (PJ)"
+    },
+    "vendedor_id": {
+      "type": "string",
+      "description": "ID do vendedor respons\u00e1vel"
+    },
+    "vendedor_nome": {
+      "type": "string",
+      "description": "Nome do vendedor respons\u00e1vel"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "inativo"
+      ],
+      "default": "ativo"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "tipo_pessoa"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; if (user.perfil === 'colaborador' || user.perfil === 'funcionario') return record.empresa_id === user.empresa_id; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente', 'vendedor', 'colaborador', 'funcionario'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente', 'vendedor', 'colaborador', 'funcionario'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

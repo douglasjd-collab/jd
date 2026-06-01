@@ -1,0 +1,50 @@
+{
+  "name": "LogAuditoria",
+  "type": "object",
+  "properties": {
+    "usuario_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que realizou a a\u00e7\u00e3o"
+    },
+    "usuario_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio"
+    },
+    "acao": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o da a\u00e7\u00e3o realizada"
+    },
+    "entidade": {
+      "type": "string",
+      "description": "Nome da entidade afetada"
+    },
+    "entidade_id": {
+      "type": "string",
+      "description": "ID do registro afetado"
+    },
+    "dados_anteriores": {
+      "type": "string",
+      "description": "Dados antes da altera\u00e7\u00e3o (JSON)"
+    },
+    "dados_novos": {
+      "type": "string",
+      "description": "Dados ap\u00f3s a altera\u00e7\u00e3o (JSON)"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "criacao",
+        "edicao",
+        "exclusao",
+        "recebimento"
+      ],
+      "description": "Tipo de a\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "usuario_id",
+    "acao",
+    "entidade",
+    "tipo"
+  ]
+}

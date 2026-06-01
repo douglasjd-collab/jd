@@ -1,0 +1,48 @@
+{
+  "name": "Convenio",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome do conv\u00eanio (INSS, Governo PE, etc)"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "INSS",
+        "GOVERNO_ESTADUAL",
+        "GOVERNO_MUNICIPAL",
+        "PRIVADO"
+      ],
+      "description": "Tipo do conv\u00eanio"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se o conv\u00eanio est\u00e1 ativo"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "nome",
+    "tipo"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

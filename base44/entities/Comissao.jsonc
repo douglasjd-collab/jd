@@ -1,0 +1,92 @@
+{
+  "name": "Comissao",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "external_id": {
+      "type": "string",
+      "description": "ID do sistema de origem (Venda Web)"
+    },
+    "venda_id": {
+      "type": "string",
+      "description": "ID da venda"
+    },
+    "parcela_id": {
+      "type": "string",
+      "description": "ID da parcela relacionada (apenas para comiss\u00e3o por parcela)"
+    },
+    "usuario_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio (vendedor ou gerente)"
+    },
+    "usuario_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio"
+    },
+    "usuario_perfil": {
+      "type": "string",
+      "description": "Perfil do usu\u00e1rio (vendedor/gerente)"
+    },
+    "tipo_comissao": {
+      "type": "string",
+      "enum": [
+        "parcela",
+        "faturamento"
+      ],
+      "description": "Tipo da comiss\u00e3o: parcela ou faturamento"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "receber",
+        "pagar"
+      ],
+      "description": "Tipo: receber (da administradora) ou pagar (ao vendedor/gerente)"
+    },
+    "valor": {
+      "type": "number",
+      "description": "Valor da comiss\u00e3o"
+    },
+    "percentual": {
+      "type": "number",
+      "description": "Percentual aplicado"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "prevista",
+        "confirmada",
+        "paga"
+      ],
+      "default": "prevista"
+    },
+    "data_pagamento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de pagamento"
+    },
+    "data_recebimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de recebimento manual"
+    },
+    "administradora_id": {
+      "type": "string",
+      "description": "ID da administradora"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre o recebimento"
+    }
+  },
+  "required": [
+    "venda_id",
+    "usuario_id",
+    "tipo",
+    "valor",
+    "tipo_comissao"
+  ]
+}

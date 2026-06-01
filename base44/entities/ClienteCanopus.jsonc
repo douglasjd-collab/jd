@@ -1,0 +1,77 @@
+{
+  "name": "ClienteCanopus",
+  "type": "object",
+  "properties": {
+    "origem": {
+      "type": "string",
+      "default": "CANOPUS",
+      "description": "Origem do cliente"
+    },
+    "cpf_cnpj": {
+      "type": "string",
+      "description": "CPF ou CNPJ do cliente"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome completo do cliente"
+    },
+    "grupo": {
+      "type": "string",
+      "description": "C\u00f3digo do grupo"
+    },
+    "cota": {
+      "type": "string",
+      "description": "N\u00famero da cota"
+    },
+    "contrato": {
+      "type": "string",
+      "description": "N\u00famero do contrato"
+    },
+    "endereco": {
+      "type": "string",
+      "description": "Endere\u00e7o completo"
+    },
+    "numero": {
+      "type": "string",
+      "description": "N\u00famero da resid\u00eancia"
+    },
+    "cep": {
+      "type": "string",
+      "description": "CEP"
+    },
+    "cidade": {
+      "type": "string",
+      "description": "Cidade"
+    },
+    "estado": {
+      "type": "string",
+      "description": "Estado (UF)"
+    },
+    "status_canopus": {
+      "type": "string",
+      "description": "Status no sistema Canopus"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID do cliente vinculado no CRM"
+    },
+    "sincronizado": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se foi sincronizado com sucesso"
+    },
+    "data_sincronizacao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data da \u00faltima sincroniza\u00e7\u00e3o"
+    },
+    "integracao_id": {
+      "type": "string",
+      "description": "ID da integra\u00e7\u00e3o que importou"
+    }
+  },
+  "required": [
+    "nome",
+    "cpf_cnpj"
+  ]
+}

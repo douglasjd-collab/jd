@@ -1,0 +1,167 @@
+{
+  "name": "VendaConsignado",
+  "type": "object",
+  "properties": {
+    "venda_base_id": {
+      "type": "string",
+      "description": "ID da VendaBase (relacionamento 1:1)"
+    },
+    "tipo_consignado": {
+      "type": "string",
+      "enum": [
+        "NOVO",
+        "REFINANCIAMENTO",
+        "PORTABILIDADE_PURA",
+        "REFIN_PORTABILIDADE"
+      ],
+      "description": "Tipo de consignado"
+    },
+    "numero_ade": {
+      "type": "string",
+      "description": "N\u00famero ADE"
+    },
+    "numero_contrato": {
+      "type": "string",
+      "description": "N\u00famero do contrato"
+    },
+    "convenio_id": {
+      "type": "string",
+      "description": "ID do conv\u00eanio"
+    },
+    "convenio_nome": {
+      "type": "string",
+      "description": "Nome do conv\u00eanio"
+    },
+    "numero_beneficio": {
+      "type": "string",
+      "description": "N\u00famero do benef\u00edcio"
+    },
+    "matriculas": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Lista de matr\u00edculas"
+    },
+    "banco": {
+      "type": "string",
+      "description": "Banco (para NOVO e REFIN)"
+    },
+    "valor_liberado": {
+      "type": "number",
+      "description": "Valor liberado (para NOVO e REFIN)"
+    },
+    "valor_bruto": {
+      "type": "number",
+      "description": "Valor bruto (para NOVO e REFIN)"
+    },
+    "prazo": {
+      "type": "number",
+      "description": "Prazo em meses (para NOVO e REFIN)"
+    },
+    "parcela": {
+      "type": "number",
+      "description": "Valor da parcela (para NOVO e REFIN)"
+    },
+    "data_liberacao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da libera\u00e7\u00e3o (para NOVO e REFIN)"
+    },
+    "banco_anterior": {
+      "type": "string",
+      "description": "Banco anterior (para PORTABILIDADE)"
+    },
+    "saldo_devedor": {
+      "type": "number",
+      "description": "Saldo devedor (para PORTABILIDADE)"
+    },
+    "prazo_restante": {
+      "type": "number",
+      "description": "Prazo restante (para PORTABILIDADE)"
+    },
+    "prazo_original": {
+      "type": "number",
+      "description": "Prazo original (para PORTABILIDADE)"
+    },
+    "contrato_anterior": {
+      "type": "string",
+      "description": "Contrato anterior (para PORTABILIDADE)"
+    },
+    "data_inicio": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de in\u00edcio (para PORTABILIDADE)"
+    },
+    "vendedor_parceiro_id": {
+      "type": "string",
+      "description": "ID do vendedor/parceiro respons\u00e1vel"
+    },
+    "vendedor_parceiro_nome": {
+      "type": "string",
+      "description": "Nome do vendedor/parceiro"
+    },
+    "tabela_comissao_id": {
+      "type": "string",
+      "description": "ID da tabela de comiss\u00e3o utilizada"
+    },
+    "percentual_comissao_empresa": {
+      "type": "number",
+      "description": "Percentual de comiss\u00e3o da empresa"
+    },
+    "comissao_empresa_prevista": {
+      "type": "number",
+      "description": "Valor da comiss\u00e3o prevista da empresa"
+    },
+    "comissao_empresa_recebida": {
+      "type": "number",
+      "description": "Valor da comiss\u00e3o recebida pela empresa"
+    },
+    "percentual_comissao_vendedor": {
+      "type": "number",
+      "description": "Percentual de comiss\u00e3o do vendedor"
+    },
+    "comissao_vendedor_prevista": {
+      "type": "number",
+      "description": "Valor da comiss\u00e3o prevista do vendedor"
+    },
+    "comissao_vendedor_paga": {
+      "type": "number",
+      "description": "Valor da comiss\u00e3o paga ao vendedor"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "em_andamento",
+        "pendente",
+        "aguardando_formalizacao",
+        "aguardando_cip",
+        "saldo_retornado",
+        "aguardando_pagamento",
+        "pago",
+        "cancelado"
+      ],
+      "default": "em_andamento",
+      "description": "Status do consignado"
+    }
+  },
+  "required": [
+    "venda_base_id",
+    "tipo_consignado",
+    "convenio_id"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return true;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return ['admin', 'gerente', 'vendedor'].includes(user.perfil);"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return ['admin', 'gerente', 'vendedor'].includes(user.perfil);"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return user.perfil === 'admin';"
+    }
+  }
+}

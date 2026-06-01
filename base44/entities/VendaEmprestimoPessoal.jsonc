@@ -1,0 +1,80 @@
+{
+  "name": "VendaEmprestimoPessoal",
+  "type": "object",
+  "properties": {
+    "venda_base_id": {
+      "type": "string",
+      "description": "ID da VendaBase (relacionamento 1:1)"
+    },
+    "tipo_emprestimo": {
+      "type": "string",
+      "enum": [
+        "CREFAZ",
+        "DEBITO_EM_CONTA"
+      ],
+      "description": "Tipo de empr\u00e9stimo pessoal"
+    },
+    "banco": {
+      "type": "string",
+      "description": "Nome do banco"
+    },
+    "valor_liberado": {
+      "type": "number",
+      "description": "Valor liberado"
+    },
+    "valor_bruto": {
+      "type": "number",
+      "description": "Valor bruto"
+    },
+    "prazo": {
+      "type": "number",
+      "description": "Prazo em meses"
+    },
+    "parcela": {
+      "type": "number",
+      "description": "Valor da parcela"
+    },
+    "data_liberacao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da libera\u00e7\u00e3o"
+    },
+    "numero_contrato": {
+      "type": "string",
+      "description": "N\u00famero do contrato"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "em_andamento",
+        "pendente",
+        "aguardando_formalizacao",
+        "aguardando_pagamento",
+        "pago",
+        "cancelado"
+      ],
+      "default": "em_andamento",
+      "description": "Status do empr\u00e9stimo"
+    }
+  },
+  "required": [
+    "venda_base_id",
+    "tipo_emprestimo",
+    "banco",
+    "valor_liberado"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return true;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return ['admin', 'gerente', 'vendedor'].includes(user.perfil);"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return ['admin', 'gerente', 'vendedor'].includes(user.perfil);"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return user.perfil === 'admin';"
+    }
+  }
+}

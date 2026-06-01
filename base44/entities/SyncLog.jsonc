@@ -1,0 +1,82 @@
+{
+  "name": "SyncLog",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "CLIENTES",
+        "VENDAS",
+        "COMISSOES"
+      ],
+      "description": "Tipo de sincroniza\u00e7\u00e3o"
+    },
+    "origem": {
+      "type": "string",
+      "default": "VendaWeb",
+      "description": "Sistema de origem"
+    },
+    "data_desde": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data usada como filtro na sincroniza\u00e7\u00e3o (apenas registros ap\u00f3s esta data)"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora de in\u00edcio"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora de conclus\u00e3o"
+    },
+    "total": {
+      "type": "number",
+      "description": "Total de registros processados"
+    },
+    "success": {
+      "type": "number",
+      "description": "Registros sincronizados com sucesso"
+    },
+    "updated": {
+      "type": "number",
+      "description": "Registros atualizados"
+    },
+    "failed": {
+      "type": "number",
+      "description": "Registros com erro"
+    },
+    "errors_json": {
+      "type": "string",
+      "description": "JSON com lista completa de erros"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que executou"
+    },
+    "created_by_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sucesso",
+        "parcial",
+        "erro"
+      ],
+      "description": "Status geral da sincroniza\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "tipo",
+    "origem",
+    "started_at",
+    "total"
+  ]
+}

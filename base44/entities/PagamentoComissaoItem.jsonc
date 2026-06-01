@@ -1,0 +1,93 @@
+{
+  "name": "PagamentoComissaoItem",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "pagamento_id": {
+      "type": "string",
+      "description": "ID do PagamentoComissao (rela\u00e7\u00e3o)"
+    },
+    "comissao_id": {
+      "type": "string",
+      "description": "ID da ComissaoAPagar"
+    },
+    "venda_id": {
+      "type": "string",
+      "description": "ID da venda (opcional)"
+    },
+    "contrato": {
+      "type": "string",
+      "description": "N\u00famero do contrato"
+    },
+    "cliente_nome": {
+      "type": "string",
+      "description": "Nome do cliente"
+    },
+    "grupo": {
+      "type": "string",
+      "description": "Grupo da venda"
+    },
+    "cota": {
+      "type": "string",
+      "description": "Cota da venda"
+    },
+    "valor_carta": {
+      "type": "number",
+      "description": "Valor da carta/cr\u00e9dito"
+    },
+    "percentual_pago": {
+      "type": "number",
+      "description": "Percentual da comiss\u00e3o paga"
+    },
+    "parcela_recebida": {
+      "type": "string",
+      "description": "N\u00famero da parcela recebida"
+    },
+    "data_programada": {
+      "type": "string",
+      "format": "date",
+      "description": "Data programada para o pagamento"
+    },
+    "data_quitacao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data efetiva da quita\u00e7\u00e3o"
+    },
+    "valor_comissao": {
+      "type": "number",
+      "description": "Valor da comiss\u00e3o"
+    },
+    "total": {
+      "type": "number",
+      "description": "Total (igual a valor_comissao, sem acr\u00e9scimos/descontos)"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "pagamento_id",
+    "comissao_id",
+    "contrato",
+    "cliente_nome",
+    "data_programada",
+    "data_quitacao",
+    "valor_comissao",
+    "total"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "ConfiguracaoSistema",
+  "type": "object",
+  "properties": {
+    "chave": {
+      "type": "string",
+      "description": "Chave da configura\u00e7\u00e3o (ex: logo_url)"
+    },
+    "valor": {
+      "type": "string",
+      "description": "Valor da configura\u00e7\u00e3o"
+    },
+    "descricao": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o da configura\u00e7\u00e3o"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "texto",
+        "url",
+        "numero",
+        "booleano"
+      ],
+      "default": "texto"
+    }
+  },
+  "required": [
+    "chave"
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "name": "ComentarioProposta",
+  "type": "object",
+  "properties": {
+    "proposta_id": {
+      "type": "string",
+      "description": "ID da proposta"
+    },
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "usuario_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio autor"
+    },
+    "usuario_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio autor"
+    },
+    "texto": {
+      "type": "string",
+      "description": "Texto do coment\u00e1rio"
+    }
+  },
+  "required": [
+    "proposta_id",
+    "usuario_id",
+    "texto"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return record.usuario_id === user.id || user.perfil === 'admin' || user.perfil === 'super_admin';"
+    },
+    "delete": {
+      "rule": "return record.usuario_id === user.id || user.perfil === 'admin' || user.perfil === 'super_admin';"
+    }
+  }
+}

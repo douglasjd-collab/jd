@@ -1,0 +1,50 @@
+{
+  "name": "StatusTarefa",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "nome": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "cor": {
+      "type": "string",
+      "default": "blue"
+    },
+    "ordem": {
+      "type": "number",
+      "default": 0
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true
+    },
+    "e_padrao": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "empresa_id",
+    "nome",
+    "slug"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (!user.empresa_id) return false; return ['admin','gerente','super_admin','master'].includes(user.perfil);"
+    },
+    "update": {
+      "rule": "if (!user.empresa_id) return false; return ['admin','gerente','super_admin','master'].includes(user.perfil);"
+    },
+    "delete": {
+      "rule": "return user.perfil === 'admin' || user.perfil === 'super_admin' || user.perfil === 'master';"
+    }
+  }
+}

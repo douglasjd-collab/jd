@@ -1,0 +1,158 @@
+{
+  "name": "Venda",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "external_id": {
+      "type": "string",
+      "description": "ID do sistema de origem (Venda Web)"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "cliente_nome": {
+      "type": "string",
+      "description": "Nome do cliente (denormalizado)"
+    },
+    "cliente_cpf": {
+      "type": "string",
+      "description": "CPF do cliente (denormalizado)"
+    },
+    "administradora_id": {
+      "type": "string",
+      "description": "ID da administradora"
+    },
+    "administradora_nome": {
+      "type": "string",
+      "description": "Nome da administradora (denormalizado)"
+    },
+    "tabela_id": {
+      "type": "string",
+      "description": "ID da tabela de cons\u00f3rcio"
+    },
+    "tabela_nome": {
+      "type": "string",
+      "description": "Nome da tabela (denormalizado)"
+    },
+    "plano_id": {
+      "type": "string",
+      "description": "ID do plano"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "automovel",
+        "imovel",
+        "motocicleta",
+        "servico",
+        "bens_moveis"
+      ],
+      "default": "automovel",
+      "description": "Tipo do bem (autom\u00f3vel, im\u00f3vel, motocicleta, servi\u00e7o, bens m\u00f3veis)"
+    },
+    "grupo": {
+      "type": "string",
+      "description": "C\u00f3digo do grupo"
+    },
+    "cota": {
+      "type": "string",
+      "description": "N\u00famero da cota (pode ficar vazio = pendente)"
+    },
+    "contrato": {
+      "type": "string",
+      "description": "N\u00famero do contrato (opcional)"
+    },
+    "prazo": {
+      "type": "number",
+      "description": "Prazo contratado em meses"
+    },
+    "valorCredito": {
+      "type": "number",
+      "description": "Valor do cr\u00e9dito"
+    },
+    "taxaAdministracao": {
+      "type": "number",
+      "description": "Taxa de administra\u00e7\u00e3o em percentual"
+    },
+    "percentualComissao": {
+      "type": "number",
+      "description": "Percentual de comiss\u00e3o calculado automaticamente"
+    },
+    "valorComissao": {
+      "type": "number",
+      "description": "Valor da comiss\u00e3o calculado automaticamente"
+    },
+    "vendedor_id": {
+      "type": "string",
+      "description": "ID do vendedor"
+    },
+    "vendedor_nome": {
+      "type": "string",
+      "description": "Nome do vendedor"
+    },
+    "gerente_id": {
+      "type": "string",
+      "description": "ID do gerente"
+    },
+    "gerente_nome": {
+      "type": "string",
+      "description": "Nome do gerente"
+    },
+    "data_venda": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da venda"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativa",
+        "pendente",
+        "aguardando_aprovacao",
+        "cancelada",
+        "em_atraso",
+        "contemplada"
+      ],
+      "default": "ativa"
+    },
+    "comissao_total_prevista": {
+      "type": "number",
+      "description": "Valor total de comiss\u00e3o prevista"
+    },
+    "comissao_total_recebida": {
+      "type": "number",
+      "description": "Valor total de comiss\u00e3o recebida",
+      "default": 0
+    }
+  },
+  "required": [
+    "empresa_id",
+    "cliente_id",
+    "administradora_id",
+    "tabela_id",
+    "grupo",
+    "vendedor_id",
+    "data_venda",
+    "valorCredito",
+    "taxaAdministracao",
+    "prazo"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin') return true; if (!record.empresa_id || record.empresa_id !== user.empresa_id) return false; if (user.perfil === 'admin' || user.perfil === 'gerente' || user.perfil === 'colaborador' || user.perfil === 'funcionario') return true; return record.vendedor_id === user.id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin') return true; return ['admin', 'gerente', 'vendedor', 'colaborador', 'funcionario'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin') return true; if (!record.empresa_id || record.empresa_id !== user.empresa_id) return false; if (user.perfil === 'admin' || user.perfil === 'gerente' || user.perfil === 'colaborador' || user.perfil === 'funcionario') return true; return record.vendedor_id === user.id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin') return true; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

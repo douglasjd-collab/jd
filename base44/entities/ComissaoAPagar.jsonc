@@ -1,0 +1,129 @@
+{
+  "name": "ComissaoAPagar",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "recebimento_id": {
+      "type": "string",
+      "description": "ID do RecebimentoComissao (chave \u00fanica para evitar duplicidade)"
+    },
+    "venda_id": {
+      "type": "string",
+      "description": "ID da venda"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "cliente_nome": {
+      "type": "string",
+      "description": "Nome do cliente"
+    },
+    "vendedor_id": {
+      "type": "string",
+      "description": "ID do vendedor"
+    },
+    "vendedor_nome": {
+      "type": "string",
+      "description": "Nome do vendedor"
+    },
+    "administradora_id": {
+      "type": "string",
+      "description": "ID da administradora"
+    },
+    "administradora_nome": {
+      "type": "string",
+      "description": "Nome da administradora"
+    },
+    "grupo": {
+      "type": "string",
+      "description": "Grupo da venda"
+    },
+    "cota": {
+      "type": "string",
+      "description": "Cota da venda"
+    },
+    "contrato": {
+      "type": "string",
+      "description": "Contrato da venda (opcional)"
+    },
+    "parcela_numero": {
+      "type": "number",
+      "description": "N\u00famero da parcela recebida"
+    },
+    "data_recebimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do recebimento da administradora"
+    },
+    "valor_recebido": {
+      "type": "number",
+      "description": "Valor recebido da administradora"
+    },
+    "percentual_comissao": {
+      "type": "number",
+      "default": 100,
+      "description": "Percentual da comiss\u00e3o a pagar (edit\u00e1vel, padr\u00e3o 100%)"
+    },
+    "valor_a_pagar": {
+      "type": "number",
+      "description": "Valor calculado a pagar (valor_recebido * percentual/100)"
+    },
+    "status_pagamento": {
+      "type": "string",
+      "enum": [
+        "a_pagar",
+        "quitada"
+      ],
+      "default": "a_pagar",
+      "description": "Status do pagamento"
+    },
+    "data_pagamento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do pagamento ao vendedor"
+    },
+    "forma_pagamento": {
+      "type": "string",
+      "description": "Forma de pagamento (PIX, TED, Dinheiro, etc)"
+    },
+    "observacao": {
+      "type": "string",
+      "description": "Observa\u00e7\u00e3o sobre o pagamento"
+    },
+    "pagamento_id": {
+      "type": "string",
+      "description": "ID do PagamentoComissao (quando quitada)"
+    },
+    "protocolo": {
+      "type": "string",
+      "description": "Protocolo do lote (quando quitada)"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "recebimento_id",
+    "vendedor_id",
+    "data_recebimento",
+    "valor_recebido",
+    "percentual_comissao",
+    "valor_a_pagar"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; if (['admin', 'gerente', 'colaborador', 'funcionario'].includes(user.perfil)) return record.empresa_id === user.empresa_id; return record.vendedor_id === user.id && record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

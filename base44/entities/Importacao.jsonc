@@ -1,0 +1,77 @@
+{
+  "name": "Importacao",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "Empresa vinculada \u00e0 importa\u00e7\u00e3o"
+    },
+    "produto": {
+      "type": "string",
+      "enum": [
+        "consorcio",
+        "financiamento",
+        "emprestimos"
+      ],
+      "description": "Produto alvo da importa\u00e7\u00e3o"
+    },
+    "administradora_id": {
+      "type": "string",
+      "description": "ID da administradora"
+    },
+    "administradora_nome": {
+      "type": "string",
+      "description": "Nome da administradora"
+    },
+    "usuario_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que importou"
+    },
+    "usuario_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio"
+    },
+    "arquivo_nome": {
+      "type": "string",
+      "description": "Nome do arquivo original"
+    },
+    "arquivo_url": {
+      "type": "string",
+      "description": "URL do arquivo"
+    },
+    "total_registros": {
+      "type": "number",
+      "description": "Total de registros no arquivo"
+    },
+    "registros_processados": {
+      "type": "number",
+      "description": "Registros processados com sucesso",
+      "default": 0
+    },
+    "registros_divergencia": {
+      "type": "number",
+      "description": "Registros com diverg\u00eancia",
+      "default": 0
+    },
+    "valor_total": {
+      "type": "number",
+      "description": "Valor total importado",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "processando",
+        "concluida",
+        "erro"
+      ],
+      "default": "pendente"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "produto",
+    "administradora_id"
+  ]
+}

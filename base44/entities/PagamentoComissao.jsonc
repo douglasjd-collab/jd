@@ -1,0 +1,90 @@
+{
+  "name": "PagamentoComissao",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "protocolo": {
+      "type": "string",
+      "description": "Protocolo \u00fanico (PG000001, PG000002...)"
+    },
+    "data_pagamento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da quita\u00e7\u00e3o"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "QUITADO"
+      ],
+      "default": "QUITADO",
+      "description": "Status do pagamento"
+    },
+    "vendedor_id": {
+      "type": "string",
+      "description": "ID do vendedor (opcional, pode ser m\u00faltiplos)"
+    },
+    "vendedor_nome": {
+      "type": "string",
+      "description": "Nome do vendedor (informativo)"
+    },
+    "qtd_itens": {
+      "type": "number",
+      "description": "Quantidade de contratos/itens no lote"
+    },
+    "total_comissao": {
+      "type": "number",
+      "description": "Total de comiss\u00e3o paga"
+    },
+    "total_pago": {
+      "type": "number",
+      "description": "Total pago (igual ao total_comissao, sem acr\u00e9scimos/descontos)"
+    },
+    "pdf_url": {
+      "type": "string",
+      "description": "URL do PDF gerado para 2\u00aa via"
+    },
+    "forma_pagamento": {
+      "type": "string",
+      "description": "Forma de pagamento (PIX, TED, Dinheiro, etc)"
+    },
+    "observacao": {
+      "type": "string",
+      "description": "Observa\u00e7\u00e3o sobre o pagamento"
+    },
+    "criado_por_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que criou o pagamento"
+    },
+    "criado_por_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio que criou"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "protocolo",
+    "data_pagamento",
+    "status",
+    "qtd_itens",
+    "total_comissao",
+    "total_pago"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

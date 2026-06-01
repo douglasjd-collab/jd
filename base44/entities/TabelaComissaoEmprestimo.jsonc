@@ -1,0 +1,75 @@
+{
+  "name": "TabelaComissaoEmprestimo",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "tipo_operacao": {
+      "type": "string",
+      "enum": [
+        "NOVO",
+        "REFINANCIAMENTO",
+        "PORTABILIDADE_PURA",
+        "REFIN_PORTABILIDADE"
+      ],
+      "description": "Tipo de opera\u00e7\u00e3o"
+    },
+    "convenio_id": {
+      "type": "string",
+      "description": "ID do conv\u00eanio (opcional - null = todos)"
+    },
+    "convenio_nome": {
+      "type": "string",
+      "description": "Nome do conv\u00eanio"
+    },
+    "banco": {
+      "type": "string",
+      "description": "Nome do banco (opcional - vazio = todos)"
+    },
+    "prazo_min": {
+      "type": "number",
+      "description": "Prazo m\u00ednimo em meses"
+    },
+    "prazo_max": {
+      "type": "number",
+      "description": "Prazo m\u00e1ximo em meses"
+    },
+    "percentual_comissao_empresa": {
+      "type": "number",
+      "description": "Percentual de comiss\u00e3o da empresa sobre o valor liberado"
+    },
+    "percentual_comissao_vendedor": {
+      "type": "number",
+      "description": "Percentual de comiss\u00e3o do vendedor sobre o valor liberado"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se a tabela est\u00e1 ativa"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "tipo_operacao",
+    "prazo_min",
+    "prazo_max",
+    "percentual_comissao_empresa",
+    "percentual_comissao_vendedor"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

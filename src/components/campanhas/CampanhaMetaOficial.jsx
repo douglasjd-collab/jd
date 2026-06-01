@@ -98,6 +98,20 @@ export default function CampanhaMetaOficial({ empresaId }) {
   const [adicionarAoFunil, setAdicionarAoFunil] = useState(false);
   const [funilSelecionado, setFunilSelecionado] = useState('');
   const [etapaSelecionada, setEtapaSelecionada] = useState('');
+  const [colaboradorAtual, setColaboradorAtual] = useState(null);
+
+  // Buscar colaborador atual
+  useQuery({
+    queryKey: ['colaborador-atual-campanha', empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const me = await base44.auth.me();
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, empresa_id: empresaId, status: 'ativo' });
+      const colab = colabs[0] || null;
+      setColaboradorAtual(colab);
+      return colab;
+    },
+  });
 
   // ─── Queries ─────────────────────────────────────────────────────────────────
   const { data: templates = [], refetch: refetchTemplates } = useQuery({
@@ -304,8 +318,10 @@ export default function CampanhaMetaOficial({ empresaId }) {
         });
         const data = resp?.data;
         toast.success(`✅ Campanha "${nomeCampanha}" disparada: ${data?.enviados || 0} enviados${data?.erros > 0 ? ` | ⚠️ ${data.erros} erros` : ''}`);
+        // Capturar lista antes de limpar estado
+        const listaParaFunil = [...contatosSelecionadosLista];
         if (adicionarAoFunil && etapaSelecionada) {
-          await adicionarContatosAoFunil();
+          await adicionarContatosAoFunil(listaParaFunil);
         }
         setContatosSelecionados(new Set());
         setNomeCampanha('');
@@ -317,9 +333,11 @@ export default function CampanhaMetaOficial({ empresaId }) {
       const data = resp?.data;
       toast.success(`✅ Campanha "${nomeCampanha}" disparada: ${data?.enviados || 0} enviados${data?.erros > 0 ? ` | ⚠️ ${data.erros} erros` : ''}`);
 
+      // Capturar lista antes de limpar estado
+      const listaParaFunilTemplate = [...contatosSelecionadosLista];
       // Adicionar ao funil se configurado
       if (adicionarAoFunil && etapaSelecionada) {
-        await adicionarContatosAoFunil();
+        await adicionarContatosAoFunil(listaParaFunilTemplate);
       }
 
       setContatosSelecionados(new Set());
@@ -334,11 +352,13 @@ export default function CampanhaMetaOficial({ empresaId }) {
     }
   };
 
-  const adicionarContatosAoFunil = async () => {
+  const adicionarContatosAoFunil = async (listaContatos) => {
     const etapa = etapasDoProduto.find(e => e.id === etapaSelecionada);
     if (!etapa) return;
+    const contatos = listaContatos || contatosSelecionadosLista;
     let criados = 0;
-    for (const contato of contatosSelecionadosLista) {
+    let erros = 0;
+    for (const contato of contatos) {
       try {
         await base44.entities.Oportunidade.create({
           empresa_id: empresaId,
@@ -346,14 +366,21 @@ export default function CampanhaMetaOficial({ empresaId }) {
           cliente_nome: contato.nome || '',
           telefone_lead: contato.telefone || '',
           etapa_id: etapa.id,
+          etapa_nome: etapa.nome,
           produto: funilSelecionado,
           status: 'aberta',
           origem: `Campanha: ${nomeCampanha}`,
+          vendedor_id: colaboradorAtual?.id || '',
+          vendedor_nome: colaboradorAtual?.nome || '',
         });
         criados++;
-      } catch {}
+      } catch (e) {
+        erros++;
+        console.error('Erro ao criar oportunidade:', e);
+      }
     }
     if (criados > 0) toast.success(`🎯 ${criados} contatos adicionados ao funil "${etapa.nome}"`);
+    if (erros > 0) toast.warning(`⚠️ ${erros} contatos não puderam ser adicionados ao funil`);
   };
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';

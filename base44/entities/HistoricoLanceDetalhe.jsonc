@@ -1,0 +1,66 @@
+{
+  "name": "HistoricoLanceDetalhe",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "historico_id": {
+      "type": "string",
+      "description": "ID do HistoricoLanceGrupo"
+    },
+    "grupo": {
+      "type": "string",
+      "description": "N\u00famero do grupo"
+    },
+    "descricao": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o do bem (ex: SERVI\u00c7OS FAIXA I, AUTOM\u00d3VEL M\u00c9DIO)"
+    },
+    "credito": {
+      "type": "number",
+      "description": "Valor do cr\u00e9dito"
+    },
+    "modalidade": {
+      "type": "string",
+      "enum": [
+        "lance_livre",
+        "lance_limitado",
+        "sorteio",
+        "lance_fixo_15",
+        "lance_fixo_30",
+        "lance_fixo_50"
+      ],
+      "description": "Modalidade do lance"
+    },
+    "lance_percent": {
+      "type": "number",
+      "description": "Percentual do lance ofertado"
+    },
+    "qt": {
+      "type": "number",
+      "description": "N\u00famero sequencial da linha (QT)"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "historico_id",
+    "grupo",
+    "modalidade"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

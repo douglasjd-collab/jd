@@ -1,0 +1,55 @@
+{
+  "name": "PlanoConsorcio",
+  "type": "object",
+  "properties": {
+    "administradora_id": {
+      "type": "string",
+      "description": "ID da administradora"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome do plano"
+    },
+    "grupo": {
+      "type": "string",
+      "description": "C\u00f3digo do grupo"
+    },
+    "prazo": {
+      "type": "number",
+      "description": "Prazo em meses"
+    },
+    "valor_carta": {
+      "type": "number",
+      "description": "Valor da carta de cr\u00e9dito"
+    },
+    "tipo_bem": {
+      "type": "string",
+      "enum": [
+        "automovel",
+        "imovel",
+        "motocicleta",
+        "servico",
+        "bens_moveis"
+      ],
+      "description": "Tipo de bem do plano"
+    },
+    "taxa_adm": {
+      "type": "number",
+      "description": "Taxa de administra\u00e7\u00e3o em percentual (ex: 20.8 para 20.8%)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "inativo"
+      ],
+      "default": "ativo"
+    }
+  },
+  "required": [
+    "administradora_id",
+    "grupo",
+    "prazo",
+    "valor_carta"
+  ]
+}

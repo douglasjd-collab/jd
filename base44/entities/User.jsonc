@@ -1,0 +1,100 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa \u00e0 qual o usu\u00e1rio pertence"
+    },
+    "empresa_nome": {
+      "type": "string",
+      "description": "Nome da empresa"
+    },
+    "perfil": {
+      "type": "string",
+      "enum": [
+        "master",
+        "super_admin",
+        "admin",
+        "gerente",
+        "vendedor"
+      ],
+      "default": "vendedor",
+      "description": "Perfil do usu\u00e1rio"
+    },
+    "cpf_cnpj": {
+      "type": "string",
+      "description": "CPF ou CNPJ do usu\u00e1rio"
+    },
+    "razao_social": {
+      "type": "string",
+      "description": "Raz\u00e3o Social"
+    },
+    "nome_perfil": {
+      "type": "string",
+      "description": "Nome de exibi\u00e7\u00e3o"
+    },
+    "telefone": {
+      "type": "string",
+      "description": "Telefone"
+    },
+    "foto_perfil": {
+      "type": "string",
+      "description": "URL da foto de perfil"
+    },
+    "gerente_id": {
+      "type": "string",
+      "description": "ID do gerente"
+    },
+    "gerente_nome": {
+      "type": "string",
+      "description": "Nome do gerente"
+    },
+    "codigo_vendedor": {
+      "type": "string",
+      "description": "C\u00f3digo do vendedor"
+    },
+    "chave_pix": {
+      "type": "string",
+      "description": "Chave PIX"
+    },
+    "tipo_chave_pix": {
+      "type": "string",
+      "enum": [
+        "cpf",
+        "email",
+        "telefone",
+        "aleatoria"
+      ],
+      "description": "Tipo da chave PIX"
+    },
+    "banco": {
+      "type": "string",
+      "description": "Banco"
+    },
+    "saldo_comissao": {
+      "type": "number",
+      "default": 0,
+      "description": "Saldo de comiss\u00f5es"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "inativo"
+      ],
+      "default": "ativo"
+    }
+  },
+  "required": [
+    "perfil"
+  ],
+  "security": {
+    "read": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return true;"
+    }
+  }
+}

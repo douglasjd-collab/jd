@@ -1,0 +1,107 @@
+{
+  "name": "TabelaEmprestimo",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "data": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da tabela"
+    },
+    "convenio_id": {
+      "type": "string",
+      "description": "ID do conv\u00eanio"
+    },
+    "convenio_nome": {
+      "type": "string",
+      "description": "Nome do conv\u00eanio"
+    },
+    "banco": {
+      "type": "string",
+      "description": "Nome do banco"
+    },
+    "codigo_produto": {
+      "type": "string",
+      "description": "C\u00f3digo do produto"
+    },
+    "produto": {
+      "type": "string",
+      "description": "Nome do produto (NOVO, PORTABILIDADE, REFIN/PORTABILIDADE)"
+    },
+    "codigo_tabela": {
+      "type": "string",
+      "description": "C\u00f3digo da tabela"
+    },
+    "tabela": {
+      "type": "string",
+      "description": "Nome/Descri\u00e7\u00e3o completa da tabela"
+    },
+    "prazo_inicial": {
+      "type": "number",
+      "description": "Prazo inicial em meses"
+    },
+    "prazo_final": {
+      "type": "number",
+      "description": "Prazo final em meses"
+    },
+    "valor_inicial": {
+      "type": "number",
+      "description": "Valor inicial"
+    },
+    "valor_final": {
+      "type": "number",
+      "description": "Valor final"
+    },
+    "tipo_agente": {
+      "type": "string",
+      "description": "Tipo de agente (Bronze, Prata, Ouro, Diamante)"
+    },
+    "empresa_nome": {
+      "type": "string",
+      "description": "Nome da empresa/promotora"
+    },
+    "tipo_formalizacao": {
+      "type": "string",
+      "description": "Tipo de formaliza\u00e7\u00e3o (DIGITAL, PRESENCIAL)"
+    },
+    "comissao_empresa": {
+      "type": "number",
+      "description": "Percentual de comiss\u00e3o da empresa"
+    },
+    "empresa_parceira_id": {
+      "type": "string",
+      "description": "ID da empresa parceira (promotora)"
+    },
+    "empresa_parceira_nome": {
+      "type": "string",
+      "description": "Nome da empresa parceira (denormalizado)"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se a tabela est\u00e1 ativa"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "tabela",
+    "comissao_empresa"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente', 'vendedor'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

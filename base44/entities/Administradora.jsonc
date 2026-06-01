@@ -1,0 +1,63 @@
+{
+  "name": "Administradora",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "razao_social": {
+      "type": "string",
+      "description": "Raz\u00e3o social da administradora"
+    },
+    "nome_fantasia": {
+      "type": "string",
+      "description": "Nome fantasia"
+    },
+    "cnpj": {
+      "type": "string",
+      "description": "CNPJ da administradora"
+    },
+    "contato": {
+      "type": "string",
+      "description": "Informa\u00e7\u00f5es de contato"
+    },
+    "tipoEmpresa": {
+      "type": "string",
+      "enum": [
+        "MEI",
+        "ME",
+        "LTDA"
+      ],
+      "description": "Tipo de empresa (MEI, ME ou LTDA)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativa",
+        "inativa"
+      ],
+      "default": "ativa"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "razao_social",
+    "cnpj",
+    "tipoEmpresa"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'master' || user.perfil === 'super_admin') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'master' || user.perfil === 'super_admin') return true; if (!user.empresa_id) return false; if (user.perfil === 'admin') return record.empresa_id === user.empresa_id; return false;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'master' || user.perfil === 'super_admin') return true; if (!user.empresa_id) return false; if (user.perfil === 'admin') return record.empresa_id === user.empresa_id; return false;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'master' || user.perfil === 'super_admin') return true; if (!user.empresa_id) return false; if (user.perfil === 'admin') return record.empresa_id === user.empresa_id; return false;"
+    }
+  }
+}

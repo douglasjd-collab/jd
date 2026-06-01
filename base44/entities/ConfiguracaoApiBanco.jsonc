@@ -1,0 +1,139 @@
+{
+  "name": "ConfiguracaoApiBanco",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "banco_id": {
+      "type": "string",
+      "description": "ID do banco vinculado"
+    },
+    "banco_nome": {
+      "type": "string",
+      "description": "Nome do banco (denormalizado)"
+    },
+    "nome_integracao": {
+      "type": "string",
+      "description": "Nome da integra\u00e7\u00e3o. Ex: API Finanto"
+    },
+    "tipo_integracao": {
+      "type": "string",
+      "enum": [
+        "API",
+        "webhook",
+        "manual"
+      ],
+      "description": "Tipo da integra\u00e7\u00e3o"
+    },
+    "base_url": {
+      "type": "string",
+      "description": "URL base da API"
+    },
+    "login_url": {
+      "type": "string",
+      "description": "URL completa do endpoint de login (ex: https://api.banco.com.br/sign-in)"
+    },
+    "propostas_url": {
+      "type": "string",
+      "description": "URL completa do endpoint de propostas (ex: https://api.banco.com.br/propostas)"
+    },
+    "ambiente": {
+      "type": "string",
+      "enum": [
+        "producao",
+        "homologacao"
+      ],
+      "default": "homologacao"
+    },
+    "auth_type": {
+      "type": "string",
+      "enum": [
+        "Bearer",
+        "Basic",
+        "ApiKey",
+        "OAuth2"
+      ],
+      "description": "Tipo de autentica\u00e7\u00e3o"
+    },
+    "api_key": {
+      "type": "string",
+      "description": "Chave da API se aplic\u00e1vel"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "Client ID se aplic\u00e1vel"
+    },
+    "client_secret": {
+      "type": "string",
+      "description": "Client Secret se aplic\u00e1vel"
+    },
+    "username": {
+      "type": "string",
+      "description": "Usu\u00e1rio de autentica\u00e7\u00e3o"
+    },
+    "password": {
+      "type": "string",
+      "description": "Senha de autentica\u00e7\u00e3o"
+    },
+    "token_atual": {
+      "type": "string",
+      "description": "Token atual obtido da API"
+    },
+    "token_expira_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Expira\u00e7\u00e3o do token"
+    },
+    "integracao_ativa": {
+      "type": "boolean",
+      "default": false
+    },
+    "importar_propostas_auto": {
+      "type": "boolean",
+      "default": true
+    },
+    "atualizar_status_auto": {
+      "type": "boolean",
+      "default": true
+    },
+    "buscar_historico_auto": {
+      "type": "boolean",
+      "default": true
+    },
+    "intervalo_sync_minutos": {
+      "type": "number",
+      "default": 15
+    },
+    "ultima_sincronizacao_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ultimo_erro": {
+      "type": "string"
+    },
+    "observacoes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "banco_id",
+    "nome_integracao"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

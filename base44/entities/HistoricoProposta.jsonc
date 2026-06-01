@@ -1,0 +1,85 @@
+{
+  "name": "HistoricoProposta",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "proposta_id": {
+      "type": "string"
+    },
+    "banco_id": {
+      "type": "string"
+    },
+    "configuracao_api_id": {
+      "type": "string"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "status",
+        "comentario",
+        "alteracao",
+        "criacao",
+        "responsavel"
+      ],
+      "default": "comentario",
+      "description": "Tipo de evento no hist\u00f3rico"
+    },
+    "status": {
+      "type": "string",
+      "description": "Status convertido para o padr\u00e3o interno"
+    },
+    "status_externo": {
+      "type": "string",
+      "description": "Status retornado pela API"
+    },
+    "data_status": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "descricao_evento": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o do evento/coment\u00e1rio"
+    },
+    "usuario_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que gerou o evento"
+    },
+    "usuario_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio"
+    },
+    "origem": {
+      "type": "string",
+      "enum": [
+        "JD",
+        "API_BANCO",
+        "MANUAL"
+      ],
+      "default": "JD"
+    },
+    "payload_evento_json": {
+      "type": "string",
+      "description": "JSON bruto do evento"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "proposta_id"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente','vendedor','colaborador','funcionario'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "return false;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return false;"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "name": "FilaSincronizacaoBanco",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "banco_id": {
+      "type": "string"
+    },
+    "configuracao_api_id": {
+      "type": "string"
+    },
+    "proposta_id": {
+      "type": "string"
+    },
+    "tipo_acao": {
+      "type": "string",
+      "enum": [
+        "enviar_proposta",
+        "consultar_status",
+        "importar_historico"
+      ]
+    },
+    "status_fila": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "processando",
+        "concluido",
+        "erro"
+      ],
+      "default": "pendente"
+    },
+    "tentativas": {
+      "type": "number",
+      "default": 0
+    },
+    "proxima_execucao_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ultimo_erro": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "banco_id",
+    "tipo_acao",
+    "status_fila"
+  ]
+}

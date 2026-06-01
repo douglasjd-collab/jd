@@ -1,0 +1,47 @@
+{
+  "name": "ChecklistTemplate",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome do template"
+    },
+    "itens": {
+      "type": "string",
+      "description": "JSON array de strings com os itens"
+    },
+    "favorito": {
+      "type": "boolean",
+      "default": false,
+      "description": "Template favorito/r\u00e1pido"
+    },
+    "criado_por_id": {
+      "type": "string"
+    },
+    "criado_por_nome": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "nome",
+    "itens"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (!user.empresa_id) return false; return true;"
+    },
+    "update": {
+      "rule": "if (!user.empresa_id) return false; return true;"
+    },
+    "delete": {
+      "rule": "return user.perfil === 'admin' || user.perfil === 'super_admin' || user.perfil === 'master';"
+    }
+  }
+}

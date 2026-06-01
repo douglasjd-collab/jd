@@ -1,0 +1,57 @@
+{
+  "name": "TarefaHistorico",
+  "type": "object",
+  "properties": {
+    "tarefa_id": {
+      "type": "string"
+    },
+    "empresa_id": {
+      "type": "string"
+    },
+    "usuario_id": {
+      "type": "string"
+    },
+    "usuario_nome": {
+      "type": "string"
+    },
+    "acao": {
+      "type": "string",
+      "description": "criou | moveu_status | alterou_prazo | adicionou_responsavel | editou | concluiu | excluiu"
+    },
+    "descricao": {
+      "type": "string"
+    },
+    "status_anterior": {
+      "type": "string"
+    },
+    "status_novo": {
+      "type": "string"
+    },
+    "valor_anterior": {
+      "type": "string"
+    },
+    "valor_novo": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tarefa_id",
+    "empresa_id",
+    "usuario_id",
+    "acao"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return false;"
+    },
+    "delete": {
+      "rule": "return user.perfil === 'admin' || user.perfil === 'super_admin';"
+    }
+  }
+}
