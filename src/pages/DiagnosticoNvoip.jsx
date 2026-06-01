@@ -213,7 +213,7 @@ export default function DiagnosticoNvoip() {
     }
   }
 
-  // ── 8. Teste INVITE WebRTC real ────────────────────────────────────────────
+  // ── 8. Teste INVITE avançado — testa 4 URIs, captura SIP bruto, SDP, erros ─
   async function testarInviteWebRTC(cfg) {
     const num = numTeste.replace(/\D/g, '');
     if (!num || num.length < 8) {
@@ -225,15 +225,21 @@ export default function DiagnosticoNvoip() {
       return;
     }
 
-    set('sip_invite', STATUS.running, `Testando INVITE WebRTC para ${num}...`);
+    set('sip_invite', STATUS.running, `Testando INVITE avançado para ${num}...`);
     setTestInviteRunning(true);
     setTestInviteResult(null);
 
-    const formatosSIP = [];
-    let numDDI = num;
-    if (!numDDI.startsWith('55') && numDDI.length <= 11) numDDI = '55' + numDDI;
-    formatosSIP.push({ label: 'Com DDI 55', uri: `sip:${numDDI}@app.nvoip.com.br` });
-    formatosSIP.push({ label: 'Sem DDI',    uri: `sip:${num}@app.nvoip.com.br` });
+    // Normalização
+    const numSemDDI = num.startsWith('55') ? num.slice(2) : num;
+    const numComDDI = num.startsWith('55') ? num : '55' + num;
+
+    // 4 URIs a testar (item 6 do pedido)
+    const URIS_TESTE = [
+      { label: 'Com DDI + app', uri: `sip:${numComDDI}@app.nvoip.com.br` },
+      { label: 'Com DDI + sip', uri: `sip:${numComDDI}@sip.nvoip.com.br` },
+      { label: 'Sem DDI + app', uri: `sip:${numSemDDI}@app.nvoip.com.br` },
+      { label: 'Sem DDI + sip', uri: `sip:${numSemDDI}@sip.nvoip.com.br` },
+    ];
 
     const logs = [];
     const addLog = (tipo, msg, data = null) => {
@@ -243,12 +249,13 @@ export default function DiagnosticoNvoip() {
       console.log(`[TEST-INVITE] ${tipo}: ${msg}`, data || '');
     };
 
-    addLog('START', `Iniciando UA SIP para ramal ${cfg.numbersip}`);
+    addLog('START', `Ramal ${cfg.numbersip} | Destino: ${numComDDI} / ${numSemDDI}`);
+    addLog('URIS', `4 URIs a testar:`, URIS_TESTE.map(u => u.uri));
 
-    // Obtém microfone antes
+    // Obtém microfone
+    let micStream = null;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      stream.getTracks().forEach(t => t.stop());
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       addLog('MIC', 'Microfone OK');
     } catch (e) {
       addLog('MIC_FAIL', `Microfone negado: ${e.message}`);
@@ -258,159 +265,204 @@ export default function DiagnosticoNvoip() {
     }
 
     return new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        addLog('TIMEOUT', `30s sem resposta SIP para ${numDDI}. O INVITE foi enviado mas a NVOIP não respondeu. Possíveis causas: número inválido, saldo insuficiente, rota não configurada, DID não ativo.`);
-        set('sip_invite', STATUS.fail,
-          `TIMEOUT 30s — INVITE enviado mas sem resposta. Verifique saldo e formato do número.`,
-          { logs }
-        );
+      let uriIdx = 0;         // índice da URI atual
+      let currentSession = null;
+      let resolved = false;
+      let ua = null;
+
+      const finish = (status, label) => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(globalTimeout);
+        micStream?.getTracks().forEach(t => t.stop());
+        try { currentSession?.terminate(); } catch {}
         try { ua?.stop(); } catch {}
+        set('sip_invite', status, label, { logs });
         setTestInviteRunning(false);
         resolve();
-      }, 30000);
+      };
 
-      let ua;
+      // Timeout global de 45s para testar todas as URIs
+      const globalTimeout = setTimeout(() => {
+        addLog('TIMEOUT', `45s — nenhuma das ${URIS_TESTE.length} URIs retornou resposta SIP.`);
+        addLog('TIMEOUT_DETALHE', 'INVITE foi enviado mas NVOIP ignorou. Causas prováveis: saldo zerado, rota de saída não configurada, DID sem permissão de originação, ramal sem webphone, IP bloqueado.');
+        finish(STATUS.fail, `TIMEOUT 45s — INVITE enviado para ${URIS_TESTE.length} URIs, nenhuma resposta recebida`);
+      }, 45000);
+
+      const dispararParaUri = (uriObj) => {
+        addLog('TRYING_URI', `▶ Testando URI ${uriIdx + 1}/${URIS_TESTE.length}: ${uriObj.uri} (${uriObj.label})`);
+
+        let session;
+        try {
+          session = ua.call(uriObj.uri, {
+            mediaStream        : micStream,
+            mediaConstraints   : { audio: true, video: false },
+            rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
+            pcConfig: {
+              iceServers: [
+                { urls: 'stun:app.nvoip.com.br:3478' },
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+                { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+              ],
+              iceTransportPolicy: 'all',
+            },
+            extraHeaders: cfg.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : [],
+          });
+        } catch (e) {
+          addLog('ERROR', `Erro ao criar sessão para ${uriObj.uri}: ${e.message}`);
+          tryNext();
+          return;
+        }
+        currentSession = session;
+
+        // ── Item 1,2,3,4,5: Captura do INVITE bruto + headers + SDP ──
+        session.on('sending', (ev) => {
+          const req = ev?.request;
+          const sdpCompleto = req?.body || '';
+          const requestLine = `${req?.method || 'INVITE'} ${req?.ruri?.toString?.() || uriObj.uri} SIP/2.0`;
+          addLog('SIP_BRUTO', `INVITE bruto enviado:`, {
+            '1_request_line' : requestLine,
+            '2_request_uri'  : req?.ruri?.toString?.() || uriObj.uri,
+            '3_from'         : req?.from?.toString?.() || `sip:${cfg.numbersip}@app.nvoip.com.br`,
+            '4_to'           : req?.to?.toString?.()   || uriObj.uri,
+            '5_contact'      : req?.contact?.toString?.() || `sip:${cfg.numbersip}@app.nvoip.com.br;transport=ws`,
+            'call_id'        : req?.call_id || '?',
+            'cseq'           : req?.cseq || '?',
+            'via'            : req?.getHeader?.('via') || req?.headers?.Via?.[0]?.raw || '?',
+            'content_type'   : req?.getHeader?.('content-type') || 'application/sdp',
+          });
+          // Item 9: SDP completo
+          if (sdpCompleto) {
+            addLog('SDP_ENVIADO', `SDP Offer completo (${sdpCompleto.split('\n').length} linhas):`, sdpCompleto);
+          }
+        });
+
+        // Item 7: qualquer resposta do servidor
+        session.on('progress', (ev) => {
+          const code   = ev?.response?.status_code;
+          const phrase = ev?.response?.reason_phrase || '';
+          const sdpRsp = ev?.response?.body || '';
+          const hdrs   = ev?.response?.headers || {};
+          addLog(`SIP_${code}`, `✅ RESPOSTA DO SERVIDOR: ${code} ${phrase} — URI: ${uriObj.uri}`, {
+            code, phrase,
+            headers : Object.fromEntries(Object.entries(hdrs).map(([k, v]) => [k, v?.[0]?.raw || v])),
+            sdp_rsp : sdpRsp || null,
+          });
+          if (code === 100) addLog('100', '100 Trying — servidor processando INVITE');
+          if (code === 180 || code === 183) {
+            finish(STATUS.ok, `${code} ${phrase} — URI OK: ${uriObj.uri} ✅ INVITE chegou ao destino!`);
+          }
+        });
+
+        session.on('accepted', (ev) => {
+          addLog('200_OK', `✅ 200 OK — chamada aceita! URI: ${uriObj.uri}`);
+          finish(STATUS.ok, `200 OK — chamada aceita! URI: ${uriObj.uri}`);
+        });
+
+        session.on('failed', (ev) => {
+          const code   = ev?.response?.status_code;
+          const cause  = ev?.cause  || '';
+          const phrase = ev?.response?.reason_phrase || '';
+          const hdrs   = ev?.response?.headers || {};
+          const wwwAuth   = hdrs['WWW-Authenticate']?.[0]?.raw || null;
+          const proxyAuth = hdrs['Proxy-Authenticate']?.[0]?.raw || null;
+          const sdpFail   = ev?.response?.body || '';
+
+          // Item 8: todos os tipos de erro especificados
+          if (cause === 'Request Timeout' || code === 408) {
+            addLog('REQUEST_TIMEOUT', `⏱ Request Timeout — servidor não respondeu a este INVITE`, { uri: uriObj.uri, code, cause });
+          } else if (cause === 'Connection Error' || cause === 'Transport Error') {
+            addLog('TRANSPORT_ERROR', `🔌 Transport Error — falha de transporte WebSocket`, { uri: uriObj.uri, cause });
+          } else if (cause === 'Dialog Error') {
+            addLog('DIALOG_ERROR', `💬 Dialog Error — erro de diálogo SIP`, { uri: uriObj.uri, cause });
+          } else if (code === 401 || code === 407 || wwwAuth || proxyAuth) {
+            addLog('AUTH_ERROR', `🔐 Autenticação exigida: ${code} ${phrase}`, { wwwAuth, proxyAuth, uri: uriObj.uri });
+          } else {
+            addLog(`SIP_${code || cause}`, `❌ FAILED: ${code || cause} ${phrase} — URI: ${uriObj.uri}`, {
+              code, cause, phrase,
+              headers: Object.keys(hdrs),
+              www_authenticate: wwwAuth,
+              proxy_authenticate: proxyAuth,
+              sdp_resposta: sdpFail || null,
+            });
+          }
+
+          // 486/480/603 = bom sinal (chegou lá)
+          const chegou = code === 486 || code === 480 || code === 603 || code === 404;
+          if (chegou && (code === 486 || code === 480 || code === 603)) {
+            finish(STATUS.ok, `${code} ${phrase} — INVITE chegou ao destino! URI: ${uriObj.uri}`);
+            return;
+          }
+
+          // Tenta próxima URI
+          tryNext();
+        });
+
+        session.on('ended', (ev) => {
+          addLog('ENDED', `Sessão encerrada: ${ev?.cause || 'N/A'}`);
+        });
+
+        // PeerConnection
+        session.on('peerconnection', (ev) => {
+          const pc = ev.peerconnection;
+          addLog('PEERCONN', 'PeerConnection WebRTC criado');
+          pc.oniceconnectionstatechange = () => addLog('ICE', `ICE state: ${pc.iceConnectionState}`);
+          pc.onicegatheringstatechange  = () => addLog('ICE_GATHER', `ICE gathering: ${pc.iceGatheringState}`);
+          pc.onicecandidate = (e) => { if (!e.candidate) addLog('ICE_DONE', 'ICE gathering completo'); };
+        });
+      };
+
+      const tryNext = () => {
+        if (resolved) return;
+        try { currentSession?.terminate(); } catch {}
+        currentSession = null;
+        uriIdx++;
+        if (uriIdx < URIS_TESTE.length) {
+          addLog('NEXT_URI', `↩ Tentando próxima URI (${uriIdx + 1}/${URIS_TESTE.length})...`);
+          setTimeout(() => { if (!resolved) dispararParaUri(URIS_TESTE[uriIdx]); }, 800);
+        } else {
+          addLog('ALL_FAILED', `Todas as ${URIS_TESTE.length} URIs testadas sem resposta positiva.`);
+          finish(STATUS.fail, `Todas as ${URIS_TESTE.length} URIs falharam — veja log detalhado`);
+        }
+      };
+
+      // Inicializa UA e dispara após registro
       try {
         const socket = new JsSIP.WebSocketInterface('wss://app.nvoip.com.br:7443');
         ua = new JsSIP.UA({
-          sockets: [socket],
-          uri: `sip:${cfg.numbersip}@app.nvoip.com.br`,
-          password: cfg.sip_password,
-          authorization_user: String(cfg.numbersip),
-          display_name: String(cfg.numbersip),
-          register: true, register_expires: 60, session_timers: false,
-          log: { builtinEnabled: true, level: 'debug' },
+          sockets            : [socket],
+          uri                : `sip:${cfg.numbersip}@app.nvoip.com.br`,
+          password           : cfg.sip_password,
+          authorization_user : String(cfg.numbersip),
+          display_name       : String(cfg.numbersip),
+          register           : true,
+          register_expires   : 60,
+          session_timers     : false,
+          log                : { builtinEnabled: true, level: 'debug' },
         });
 
         ua.on('registered', () => {
-          addLog('REGISTERED', `Ramal ${cfg.numbersip} registrado — enviando INVITE para ${formatosSIP[0].uri}`);
-          addLog('INVITE', `INVITE SIP → ${formatosSIP[0].uri}`, { formatos: formatosSIP });
-
-          let session;
-          try {
-            session = ua.call(formatosSIP[0].uri, {
-              mediaConstraints   : { audio: true, video: false },
-              rtcOfferConstraints: { offerToReceiveAudio: true, offerToReceiveVideo: false },
-              pcConfig: {
-                iceServers: [
-                  { urls: 'stun:app.nvoip.com.br:3478' },
-                  { urls: 'stun:stun.l.google.com:19302' },
-                  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-                  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-                ],
-                iceTransportPolicy: 'all',
-              },
-              extraHeaders: cfg.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : [],
-            });
-          } catch (e) {
-            clearTimeout(timeout);
-            addLog('ERROR', `Erro ao criar sessão SIP: ${e.message}`);
-            set('sip_invite', STATUS.fail, `Erro ao criar sessão: ${e.message}`, { logs });
-            try { ua.stop(); } catch {}
-            setTestInviteRunning(false);
-            resolve(); return;
-          }
-
-          session.on('sending', (e) => {
-            const req = e?.request;
-            const sdp = req?.body || '';
-            addLog('INVITE_SENT', `INVITE enviado pelo WebSocket`, {
-              to: req?.to?.toString?.(),
-              from: req?.from?.toString?.(),
-              sdp_linhas: sdp.split('\n').length,
-              sdp_preview: sdp.split('\n').slice(0, 8).join('\n'),
-            });
-          });
-
-          session.on('peerconnection', (data) => {
-            const pc = data.peerconnection;
-            addLog('PEERCONN', 'PeerConnection WebRTC criado');
-            pc.oniceconnectionstatechange = () => addLog('ICE', `ICE state: ${pc.iceConnectionState}`);
-            pc.onicegatheringstatechange = () => addLog('ICE_GATHER', `ICE gathering: ${pc.iceGatheringState}`);
-            pc.onicecandidate = (e) => {
-              if (!e.candidate) addLog('ICE_DONE', 'ICE gathering completo (sem mais candidatos)');
-            };
-          });
-
-          session.on('progress', (e) => {
-            const code = e?.response?.status_code;
-            const phrase = e?.response?.reason_phrase || '';
-            addLog(`${code}`, `${code} ${phrase} — servidor respondeu!`, {
-              sdp: e?.response?.body?.substring(0, 300),
-            });
-            if (code === 180) {
-              clearTimeout(timeout);
-              set('sip_invite', STATUS.ok, `180 Ringing — ${num} está tocando! INVITE funcionando.`, { logs });
-              setTimeout(() => { try { session.terminate(); ua.stop(); } catch {} }, 3000);
-              setTestInviteRunning(false);
-              resolve();
-            }
-          });
-
-          session.on('accepted', (e) => {
-            clearTimeout(timeout);
-            addLog('200_OK', '200 OK — chamada aceita!');
-            set('sip_invite', STATUS.ok, `200 OK — chamada aceita! Webphone 100% funcional.`, { logs });
-            setTimeout(() => { try { session.terminate(); ua.stop(); } catch {} }, 1000);
-            setTestInviteRunning(false);
-            resolve();
-          });
-
-          session.on('failed', (e) => {
-            clearTimeout(timeout);
-            const code = e?.response?.status_code;
-            const cause = e?.cause;
-            const phrase = e?.response?.reason_phrase || '';
-            addLog('FAILED', `FAILED — ${code || cause} ${phrase}`, {
-              code, cause, phrase,
-              dica: code === 404 ? `Número ${numDDI} não encontrado. Tente sem o DDI 55 ou verifique o DID configurado.`
-                : code === 403 ? 'Chamada não autorizada — verifique saldo NVOIP e configuração de rotas.'
-                : code === 486 ? 'Ocupado — número existe e está sendo alcançado (INVITE OK)!'
-                : code === 480 ? 'Temporariamente indisponível — número existe mas sem registro.'
-                : 'Verifique o log completo acima para diagnóstico.',
-            });
-            const isBomSinal = code === 486 || code === 480 || code === 603;
-            set('sip_invite',
-              isBomSinal ? STATUS.ok : STATUS.fail,
-              isBomSinal
-                ? `${code} ${phrase} — INVITE chegou ao destino! (código ${code} = número existe)`
-                : `${code || cause} ${phrase} — INVITE falhou`,
-              { logs }
-            );
-            try { ua.stop(); } catch {}
-            setTestInviteRunning(false);
-            resolve();
-          });
-
-          session.on('ended', (e) => {
-            addLog('ENDED', `Sessão encerrada: ${e?.cause}`);
-          });
+          addLog('REGISTERED', `✅ Ramal ${cfg.numbersip} registrado — iniciando sequência de INVITEs`);
+          dispararParaUri(URIS_TESTE[0]);
         });
 
-        ua.on('registrationFailed', (e) => {
-          clearTimeout(timeout);
-          const code = e?.response?.status_code;
-          addLog('REG_FAIL', `Registro falhou: ${code} ${e?.cause}`);
-          set('sip_invite', STATUS.fail, `Registro SIP falhou (${code}) — sem como enviar INVITE`, { logs });
-          try { ua.stop(); } catch {}
-          setTestInviteRunning(false);
-          resolve();
+        ua.on('registrationFailed', (ev) => {
+          const code = ev?.response?.status_code;
+          addLog('REG_FAIL', `Registro SIP falhou: ${code} ${ev?.cause}`);
+          finish(STATUS.fail, `Registro SIP falhou (${code}) — sem como enviar INVITE`);
         });
 
         ua.on('disconnected', () => {
-          if (testInviteRunning) {
-            clearTimeout(timeout);
-            addLog('DISCONNECTED', 'WebSocket desconectou durante o teste');
+          if (!resolved) {
+            addLog('TRANSPORT_ERROR', '🔌 WebSocket desconectou durante o teste de INVITE');
           }
         });
 
         ua.start();
       } catch (e) {
-        clearTimeout(timeout);
         addLog('ERROR', e.message);
-        set('sip_invite', STATUS.fail, e.message);
-        setTestInviteRunning(false);
-        resolve();
+        finish(STATUS.fail, e.message);
       }
     });
   }
@@ -528,7 +580,7 @@ export default function DiagnosticoNvoip() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
-            <Phone className="w-4 h-4" /> Teste de Chamada INVITE WebRTC
+            <Phone className="w-4 h-4" /> Diagnóstico INVITE SIP Avançado — 4 URIs, SIP Bruto, SDP
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -538,32 +590,34 @@ export default function DiagnosticoNvoip() {
           />
           {/* Log detalhado do INVITE */}
           {testInviteResult && testInviteResult.length > 0 && (
-            <div className="mt-2 bg-slate-900 rounded-lg p-3 overflow-auto max-h-64">
+            <div className="mt-2 bg-slate-900 rounded-lg p-3 overflow-auto max-h-[500px]">
               <p className="text-xs text-slate-400 mb-2 flex items-center gap-1">
-                <Terminal className="w-3 h-3" /> Log SIP do teste de INVITE
+                <Terminal className="w-3 h-3" /> Log SIP Avançado — {testInviteResult.length} eventos
               </p>
-              {testInviteResult.map((entry, i) => (
-                <div key={i} className="flex gap-2 text-xs font-mono">
-                  <span className="text-slate-500 shrink-0">{entry.ts}</span>
-                  <span className={cn(
-                    'shrink-0 font-bold',
-                    entry.tipo === 'FAILED' || entry.tipo === 'TIMEOUT' || entry.tipo === 'ERROR' || entry.tipo === 'MIC_FAIL' ? 'text-red-400'
-                    : entry.tipo === 'REGISTERED' || entry.tipo === 'INVITE_SENT' || entry.tipo === '200_OK' || entry.tipo === '180' ? 'text-green-400'
-                    : entry.tipo.match(/^(183|100)$/) ? 'text-blue-400'
-                    : entry.tipo === 'INVITE' ? 'text-yellow-400'
-                    : 'text-slate-300'
-                  )}>[{entry.tipo}]</span>
-                  <span className="text-slate-200 break-all">{entry.msg}</span>
-                  {entry.data && (
-                    <details className="ml-1">
-                      <summary className="text-slate-500 cursor-pointer">▶</summary>
-                      <pre className="text-slate-300 mt-1 whitespace-pre-wrap">
-                        {JSON.stringify(entry.data, null, 2)}
-                      </pre>
-                    </details>
-                  )}
-                </div>
-              ))}
+              {testInviteResult.map((entry, i) => {
+                const isError = ['FAILED','TIMEOUT','ERROR','MIC_FAIL','ALL_FAILED','REQUEST_TIMEOUT','TRANSPORT_ERROR','DIALOG_ERROR','AUTH_ERROR','REG_FAIL'].includes(entry.tipo) || entry.tipo.startsWith('SIP_4') || entry.tipo.startsWith('SIP_5');
+                const isOk    = ['REGISTERED','200_OK','MIC','NEXT_URI'].includes(entry.tipo) || entry.tipo.startsWith('SIP_18') || entry.tipo.startsWith('SIP_1');
+                const isInvite = ['SIP_BRUTO','SDP_ENVIADO','INVITE','TRYING_URI'].includes(entry.tipo);
+                const isInfo   = ['URIS','START','PEERCONN','ICE','ICE_GATHER','ICE_DONE','ENDED'].includes(entry.tipo);
+                const colorCls = isError ? 'text-red-400' : isOk ? 'text-green-400' : isInvite ? 'text-yellow-300' : isInfo ? 'text-slate-400' : 'text-blue-300';
+                return (
+                  <div key={i} className="mb-1">
+                    <div className="flex gap-2 text-xs font-mono items-start">
+                      <span className="text-slate-500 shrink-0">{entry.ts}</span>
+                      <span className={cn('shrink-0 font-bold', colorCls)}>[{entry.tipo}]</span>
+                      <span className="text-slate-200 break-all flex-1">{entry.msg}</span>
+                      {entry.data && (
+                        <details className="shrink-0">
+                          <summary className="text-slate-500 cursor-pointer hover:text-slate-300">▶ ver</summary>
+                          <pre className="text-slate-300 mt-1 whitespace-pre-wrap text-[10px] max-h-64 overflow-auto">
+                            {typeof entry.data === 'string' ? entry.data : JSON.stringify(entry.data, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
