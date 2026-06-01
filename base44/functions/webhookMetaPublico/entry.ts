@@ -1,29 +1,9 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 const VERIFY_TOKEN = 'WAZE_CRM_WEBHOOK_2024';
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
-
-  // ── GET: Verificação do webhook pela Meta ─────────────────────────────
-  // IMPORTANTE: responder ANTES de criar o cliente Base44
-  if (req.method === 'GET') {
-    const mode      = url.searchParams.get('hub.mode');
-    const token     = url.searchParams.get('hub.verify_token');
-    const challenge = url.searchParams.get('hub.challenge');
-
-    console.log('🔎 Verificação Meta:', { mode, token, challenge });
-
-    if (mode === 'subscribe' && token === VERIFY_TOKEN && challenge) {
-      console.log('✅ Webhook VALIDADO!');
-      return new Response(challenge, {
-        status: 200,
-        headers: { 'Content-Type': 'text/plain' }
-      });
-    }
-    console.log('❌ Token inválido ou parâmetros faltando');
-    return new Response('Forbidden', { status: 403 });
-  }
 
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -35,6 +15,29 @@ Deno.serve(async (req) => {
         'Access-Control-Allow-Headers': '*',
       }
     });
+  }
+
+  // ── GET: Verificação do webhook pela Meta ─────────────────────────────
+  // CRÍTICO: deve ser a PRIMEIRA coisa — sem criar cliente Base44
+  if (req.method === 'GET') {
+    // Tentar ler do body também (alguns proxies convertem GET → body)
+    const mode      = url.searchParams.get('hub.mode');
+    const token     = url.searchParams.get('hub.verify_token');
+    const challenge = url.searchParams.get('hub.challenge');
+
+    console.log('🔎 Verificação Meta GET:', { mode, token, challenge, url: req.url });
+
+    if (mode === 'subscribe' && token === VERIFY_TOKEN && challenge) {
+      console.log('✅ Webhook VALIDADO! Retornando challenge:', challenge);
+      return new Response(challenge, {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+      });
+    }
+
+    // Retornar 200 mesmo em caso de token incorreto para diagnóstico
+    console.log('❌ Verificação falhou — mode:', mode, '| token recebido:', token, '| esperado:', VERIFY_TOKEN);
+    return new Response('Token verification failed', { status: 403 });
   }
 
   // ── POST: Mensagem real enviada pela Meta ─────────────────────────────
