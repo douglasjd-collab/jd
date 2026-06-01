@@ -74,10 +74,11 @@ export default function CampanhaMetaOficial({ empresaId }) {
 
   // ─── Template modal state ───────────────────────────────────────────────────
   const [modalTemplate, setModalTemplate] = useState(null);
-  const [formTemplate, setFormTemplate] = useState({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '' });
+  const [formTemplate, setFormTemplate] = useState({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', tipo_cabecalho: 'TEXT', botoes: [] });
   const [sincronizando, setSincronizando] = useState(false);
   const [searchTemplate, setSearchTemplate] = useState('');
   const [templateVisualizando, setTemplateVisualizando] = useState(null);
+  const [criandoNaMeta, setCriandoNaMeta] = useState(false);
 
   // ─── Disparo em Massa state ─────────────────────────────────────────────────
   const [busca, setBusca] = useState('');
@@ -254,28 +255,50 @@ export default function CampanhaMetaOficial({ empresaId }) {
 
   const salvarTemplateMutation = useMutation({
     mutationFn: async (dados) => {
-      const payload = {
+      // Se é edição de template já existente (apenas local), salvar só no CRM
+      if (dados.id) {
+        const payload = {
+          empresa_id: empresaId,
+          tipo_campanha: 'meta_template_definition',
+          cliente_nome: dados.nome,
+          cliente_telefone: dados.categoria,
+          status: 'pendente',
+          motivo_erro: JSON.stringify({
+            nome: dados.nome,
+            categoria: dados.categoria,
+            idioma: dados.idioma,
+            corpo: dados.corpo,
+            cabecalho: dados.cabecalho,
+            rodape: dados.rodape,
+            tipo_cabecalho: dados.tipo_cabecalho || 'TEXT',
+            status_meta: 'pendente',
+          }),
+        };
+        return base44.entities.CampanhaLog.update(dados.id, payload);
+      }
+      // Novo template: enviar direto para a Meta via API
+      const resp = await base44.functions.invoke('criarTemplateMetaWhatsApp', {
         empresa_id: empresaId,
-        tipo_campanha: 'meta_template_definition',
-        cliente_nome: dados.nome,
-        cliente_telefone: dados.categoria,
-        status: 'pendente',
-        motivo_erro: JSON.stringify({
-          nome: dados.nome,
-          categoria: dados.categoria,
-          idioma: dados.idioma,
-          corpo: dados.corpo,
-          cabecalho: dados.cabecalho,
-          rodape: dados.rodape,
-          status_meta: 'pendente',
-        }),
-      };
-      if (dados.id) return base44.entities.CampanhaLog.update(dados.id, payload);
-      return base44.entities.CampanhaLog.create(payload);
+        nome: dados.nome,
+        categoria: dados.categoria,
+        idioma: dados.idioma,
+        cabecalho: dados.cabecalho,
+        corpo: dados.corpo,
+        rodape: dados.rodape,
+        tipo_cabecalho: dados.tipo_cabecalho || 'TEXT',
+        botoes: dados.botoes || [],
+      });
+      if (!resp?.data?.ok) throw new Error(resp?.data?.error || 'Erro ao criar template na Meta');
+      return resp.data;
     },
-    onSuccess: () => {
-      toast.success('Template salvo!');
+    onSuccess: (data) => {
+      if (data?.template_id) {
+        toast.success(`✅ Template enviado para aprovação da Meta! ID: ${data.template_id}. Aguarde a aprovação (geralmente alguns minutos a horas).`);
+      } else {
+        toast.success('Template salvo!');
+      }
       setModalTemplate(null);
+      setFormTemplate({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', tipo_cabecalho: 'TEXT', botoes: [] });
       refetchTemplates();
     },
     onError: (e) => toast.error('Erro: ' + e.message),
@@ -814,7 +837,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                   <Button
                     size="sm"
                     className="gap-1.5 bg-green-600 hover:bg-green-700"
-                    onClick={() => { setFormTemplate({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '' }); setModalTemplate('novo'); }}
+                    onClick={() => { setFormTemplate({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', tipo_cabecalho: 'TEXT', botoes: [] }); setModalTemplate('novo'); }}
                   >
                     <Plus className="w-4 h-4" /> Novo Template
                   </Button>
@@ -856,7 +879,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                              <Button size="sm" variant="outline" onClick={() => setTemplateVisualizando(t)} title="Visualizar template">
                                <Eye className="w-3.5 h-3.5" />
                              </Button>
-                             <Button size="sm" variant="outline" onClick={() => { setFormTemplate({ ...d, id: t.id }); setModalTemplate(t); }}>
+                             <Button size="sm" variant="outline" onClick={() => { setFormTemplate({ ...d, id: t.id, botoes: d.botoes || [], tipo_cabecalho: d.tipo_cabecalho || 'TEXT' }); setModalTemplate(t); }}>
                                <Pencil className="w-3.5 h-3.5" />
                              </Button>
                              {statusMeta === 'aprovado' ? (
@@ -1102,77 +1125,264 @@ export default function CampanhaMetaOficial({ empresaId }) {
       })()}
 
       {/* ─── Modal Criar/Editar Template ──────────────────────────────────────── */}
-      <Dialog open={!!modalTemplate} onOpenChange={v => !v && setModalTemplate(null)}>
-        <DialogContent className="max-w-lg">
+      <Dialog open={!!modalTemplate} onOpenChange={v => { if (!v) { setModalTemplate(null); setFormTemplate({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', tipo_cabecalho: 'TEXT', botoes: [] }); } }}>
+        <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5 text-green-600" />
-              {modalTemplate === 'novo' ? 'Novo Template' : 'Editar Template'}
+              {modalTemplate === 'novo' ? '✨ Novo Template — Enviar para Meta' : 'Editar Template'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-1">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
-              ⚠️ Templates precisam ser <strong>aprovados pela Meta</strong> antes de usar. Após salvar, envie para revisão no Meta Business Manager.
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+
+          {/* Banner informativo */}
+          {modalTemplate === 'novo' && (
+            <div className="bg-green-50 border border-green-300 rounded-lg p-3 text-xs text-green-800 flex items-start gap-2">
+              <span className="text-base">🚀</span>
               <div>
-                <Label className="text-xs mb-1 block">Nome do template *</Label>
-                <Input
-                  value={formTemplate.nome}
-                  onChange={e => setFormTemplate(p => ({ ...p, nome: e.target.value.toLowerCase().replace(/\s+/g, '_') }))}
-                  placeholder="ex: boas_vindas_consorcio"
-                  className="text-sm"
-                />
-                <p className="text-[10px] text-slate-400 mt-0.5">Apenas minúsculas e underscores</p>
+                <strong>Criação direta via API!</strong> O template será enviado automaticamente para aprovação da Meta.
+                Após aprovado (geralmente em minutos a horas), ele ficará disponível para uso nos disparos em massa.
               </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 py-1">
+            {/* Coluna Esquerda: Formulário */}
+            <div className="space-y-3">
+              {/* Nome e Categoria */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs mb-1 block">Nome do template *</Label>
+                  <Input
+                    value={formTemplate.nome}
+                    onChange={e => setFormTemplate(p => ({ ...p, nome: e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') }))}
+                    placeholder="ex: boas_vindas"
+                    className="text-sm"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">Apenas minúsculas e underscores</p>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">Categoria *</Label>
+                  <Select value={formTemplate.categoria} onValueChange={v => setFormTemplate(p => ({ ...p, categoria: v }))}>
+                    <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIAS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Idioma */}
               <div>
-                <Label className="text-xs mb-1 block">Categoria *</Label>
-                <Select value={formTemplate.categoria} onValueChange={v => setFormTemplate(p => ({ ...p, categoria: v }))}>
+                <Label className="text-xs mb-1 block">Idioma</Label>
+                <Select value={formTemplate.idioma} onValueChange={v => setFormTemplate(p => ({ ...p, idioma: v }))}>
                   <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {CATEGORIAS.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                    {IDIOMAS.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Tipo de Cabeçalho */}
+              <div>
+                <Label className="text-xs mb-1 block">Tipo de Cabeçalho</Label>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: 'NONE', label: '— Nenhum' },
+                    { value: 'TEXT', label: '📝 Texto' },
+                    { value: 'IMAGE', label: '🖼️ Imagem' },
+                    { value: 'VIDEO', label: '🎥 Vídeo' },
+                    { value: 'DOCUMENT', label: '📄 Documento' },
+                  ].map(t => (
+                    <button
+                      key={t.value}
+                      onClick={() => setFormTemplate(p => ({ ...p, tipo_cabecalho: t.value, cabecalho: t.value === 'NONE' ? '' : p.cabecalho }))}
+                      className={`px-3 py-1.5 text-xs rounded-lg border font-medium transition-colors ${
+                        formTemplate.tipo_cabecalho === t.value
+                          ? 'bg-green-600 text-white border-green-600'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Cabeçalho texto */}
+              {formTemplate.tipo_cabecalho === 'TEXT' && (
+                <div>
+                  <Label className="text-xs mb-1 block">Texto do Cabeçalho</Label>
+                  <Input
+                    value={formTemplate.cabecalho}
+                    onChange={e => setFormTemplate(p => ({ ...p, cabecalho: e.target.value }))}
+                    placeholder="Ex: 🎉 Oferta Especial!"
+                    className="text-sm"
+                    maxLength={60}
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">{formTemplate.cabecalho.length}/60 caracteres</p>
+                </div>
+              )}
+              {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(formTemplate.tipo_cabecalho) && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                  ℹ️ Para cabeçalho com mídia ({formTemplate.tipo_cabecalho.toLowerCase()}), o arquivo será enviado no momento do disparo da campanha.
+                </div>
+              )}
+
+              {/* Corpo */}
+              <div>
+                <Label className="text-xs mb-1 block">Corpo da mensagem *</Label>
+                <Textarea
+                  value={formTemplate.corpo}
+                  onChange={e => setFormTemplate(p => ({ ...p, corpo: e.target.value }))}
+                  placeholder={"Olá {{1}}! 👋\n\nTemos uma oferta especial de consórcio para você.\n\nClique abaixo para saber mais!"}
+                  rows={6}
+                  className="text-sm resize-none"
+                />
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Use <code className="bg-slate-100 px-1 rounded">{'{{1}}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{{2}}'}</code> para variáveis. {formTemplate.corpo.length} caracteres.
+                </p>
+              </div>
+
+              {/* Rodapé */}
+              <div>
+                <Label className="text-xs mb-1 block">Rodapé (opcional)</Label>
+                <Input
+                  value={formTemplate.rodape}
+                  onChange={e => setFormTemplate(p => ({ ...p, rodape: e.target.value }))}
+                  placeholder="Ex: Para cancelar, responda SAIR"
+                  className="text-sm"
+                  maxLength={60}
+                />
+              </div>
+
+              {/* Botões */}
+              <div className="border rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold">Botões (opcional, máx. 3)</Label>
+                  {(formTemplate.botoes || []).length < 3 && (
+                    <div className="flex gap-1">
+                      {['QUICK_REPLY', 'URL', 'PHONE_NUMBER'].map(tipo => (
+                        <button
+                          key={tipo}
+                          onClick={() => setFormTemplate(p => ({
+                            ...p,
+                            botoes: [...(p.botoes || []), { tipo, texto: tipo === 'QUICK_REPLY' ? 'Saiba mais' : tipo === 'URL' ? 'Acessar site' : 'Ligar agora', url: '', telefone: '' }]
+                          }))}
+                          className="px-2 py-1 text-[10px] rounded border bg-slate-50 hover:bg-slate-100 text-slate-600"
+                        >
+                          + {tipo === 'QUICK_REPLY' ? 'Resposta' : tipo === 'URL' ? 'Link' : 'Telefone'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {(formTemplate.botoes || []).map((btn, idx) => (
+                  <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
+                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium flex-shrink-0">{btn.tipo}</span>
+                    <Input
+                      value={btn.texto}
+                      onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, texto: e.target.value } : b) }))}
+                      placeholder="Texto do botão"
+                      className="text-xs h-7 flex-1"
+                      maxLength={25}
+                    />
+                    {btn.tipo === 'URL' && (
+                      <Input
+                        value={btn.url}
+                        onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, url: e.target.value } : b) }))}
+                        placeholder="https://..."
+                        className="text-xs h-7 flex-1"
+                      />
+                    )}
+                    {btn.tipo === 'PHONE_NUMBER' && (
+                      <Input
+                        value={btn.telefone}
+                        onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, telefone: e.target.value } : b) }))}
+                        placeholder="+55..."
+                        className="text-xs h-7 flex-1"
+                      />
+                    )}
+                    <button onClick={() => setFormTemplate(p => ({ ...p, botoes: p.botoes.filter((_, i) => i !== idx) }))} className="text-red-400 hover:text-red-600 flex-shrink-0">✕</button>
+                  </div>
+                ))}
+                {(formTemplate.botoes || []).length === 0 && (
+                  <p className="text-[10px] text-slate-400">Nenhum botão adicionado. Clique em + para adicionar.</p>
+                )}
+              </div>
             </div>
-            <div>
-              <Label className="text-xs mb-1 block">Idioma</Label>
-              <Select value={formTemplate.idioma} onValueChange={v => setFormTemplate(p => ({ ...p, idioma: v }))}>
-                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {IDIOMAS.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs mb-1 block">Cabeçalho (opcional)</Label>
-              <Input value={formTemplate.cabecalho} onChange={e => setFormTemplate(p => ({ ...p, cabecalho: e.target.value }))} placeholder="Texto do cabeçalho..." className="text-sm" />
-            </div>
-            <div>
-              <Label className="text-xs mb-1 block">Corpo da mensagem *</Label>
-              <Textarea
-                value={formTemplate.corpo}
-                onChange={e => setFormTemplate(p => ({ ...p, corpo: e.target.value }))}
-                placeholder={"Olá {{1}}! 👋\n\nTemos uma oferta especial para você."}
-                rows={5}
-                className="text-sm resize-none"
-              />
-              <p className="text-[10px] text-slate-400 mt-0.5">Use {'{{1}}'}, {'{{2}}'} para variáveis personalizadas</p>
-            </div>
-            <div>
-              <Label className="text-xs mb-1 block">Rodapé (opcional)</Label>
-              <Input value={formTemplate.rodape} onChange={e => setFormTemplate(p => ({ ...p, rodape: e.target.value }))} placeholder="Ex: Para não receber mais mensagens, responda SAIR" className="text-sm" />
+
+            {/* Coluna Direita: Preview */}
+            <div className="space-y-3">
+              <Label className="text-xs font-semibold text-slate-600 block">📱 Pré-visualização WhatsApp</Label>
+              <div className="bg-[#e5ddd5] rounded-2xl p-4 min-h-[350px] flex flex-col justify-start">
+                <div className="bg-white rounded-2xl shadow-sm max-w-[80%] ml-auto p-3 space-y-2">
+                  {/* Cabeçalho preview */}
+                  {formTemplate.tipo_cabecalho === 'TEXT' && formTemplate.cabecalho && (
+                    <p className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-1.5">{formTemplate.cabecalho}</p>
+                  )}
+                  {formTemplate.tipo_cabecalho === 'IMAGE' && (
+                    <div className="w-full h-24 bg-gradient-to-br from-slate-200 to-slate-300 rounded-lg flex items-center justify-center text-slate-400 text-xs">🖼️ Imagem</div>
+                  )}
+                  {formTemplate.tipo_cabecalho === 'VIDEO' && (
+                    <div className="w-full h-24 bg-gradient-to-br from-slate-200 to-slate-300 rounded-lg flex items-center justify-center text-slate-400 text-xs">🎥 Vídeo</div>
+                  )}
+                  {formTemplate.tipo_cabecalho === 'DOCUMENT' && (
+                    <div className="w-full h-16 bg-gradient-to-br from-red-50 to-red-100 rounded-lg flex items-center justify-center text-red-400 text-xs">📄 Documento PDF</div>
+                  )}
+
+                  {/* Corpo preview */}
+                  {formTemplate.corpo ? (
+                    <p className="text-sm text-slate-800 whitespace-pre-wrap leading-relaxed">{formTemplate.corpo}</p>
+                  ) : (
+                    <p className="text-sm text-slate-300 italic">Corpo da mensagem aparecerá aqui...</p>
+                  )}
+
+                  {/* Rodapé preview */}
+                  {formTemplate.rodape && (
+                    <p className="text-[11px] text-slate-400 border-t border-slate-100 pt-1.5">{formTemplate.rodape}</p>
+                  )}
+
+                  <p className="text-[10px] text-slate-400 text-right">agora ✓✓</p>
+                </div>
+
+                {/* Botões preview */}
+                {(formTemplate.botoes || []).length > 0 && (
+                  <div className="max-w-[80%] ml-auto mt-1 space-y-1">
+                    {formTemplate.botoes.map((btn, idx) => (
+                      <div key={idx} className="bg-white rounded-xl shadow-sm py-2 px-3 text-center text-sm text-blue-600 font-medium border border-white/50">
+                        {btn.tipo === 'URL' ? '🔗 ' : btn.tipo === 'PHONE_NUMBER' ? '📞 ' : '↩️ '}{btn.texto || 'Texto do botão'}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Info nome */}
+              {formTemplate.nome && (
+                <div className="bg-slate-50 border rounded-lg p-3 space-y-1">
+                  <p className="text-[10px] text-slate-500 font-semibold uppercase">Identificação na Meta</p>
+                  <p className="text-sm font-mono text-slate-700">{formTemplate.nome}</p>
+                  <p className="text-[10px] text-slate-400">{formTemplate.categoria.toUpperCase()} · {formTemplate.idioma}</p>
+                </div>
+              )}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setModalTemplate(null)}>Cancelar</Button>
+
+          <DialogFooter className="gap-2 pt-2 border-t">
+            <Button variant="outline" onClick={() => { setModalTemplate(null); setFormTemplate({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', tipo_cabecalho: 'TEXT', botoes: [] }); }}>
+              Cancelar
+            </Button>
             <Button
               className="gap-2 bg-green-600 hover:bg-green-700"
               onClick={() => salvarTemplateMutation.mutate({ ...formTemplate, id: modalTemplate !== 'novo' ? modalTemplate?.id : undefined })}
               disabled={salvarTemplateMutation.isPending || !formTemplate.nome || !formTemplate.corpo}
             >
-              {salvarTemplateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-              Salvar Template
+              {salvarTemplateMutation.isPending
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando para Meta...</>
+                : modalTemplate === 'novo'
+                  ? <><Send className="w-4 h-4" /> Criar e Enviar para Aprovação</>
+                  : <><FileText className="w-4 h-4" /> Salvar Alterações</>
+              }
             </Button>
           </DialogFooter>
         </DialogContent>
