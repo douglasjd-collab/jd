@@ -339,13 +339,6 @@ export default function ComissoesEmprestimos() {
     doc.setTextColor(200, 220, 220);
     doc.text(`Lote: ${loteCode}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 165, 17, { align: 'center' });
 
-    // Status badge (Pagamento realizado)
-    doc.setFillColor(35, 190, 132);
-    doc.roundedRect(pageWidth - 52, 5, 48, 8, 1.5, 1.5, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(6.5); doc.setFont('helvetica', 'bold');
-    doc.text('Pagamento realizado', pageWidth - 28, 10, { align: 'center' });
-
     // ===== BLOCO DE INFORMAÇÕES (4 colunas) =====
     doc.setTextColor(0, 0, 0);
     const infoY = 26;
