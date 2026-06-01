@@ -1335,7 +1335,7 @@ export default function ComissoesEmprestimos() {
 
       {/* Modal: Selecionar Contratos a Pagar */}
       <Dialog open={pagarModal} onOpenChange={setPagarModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-5xl w-[95vw] max-h-[95vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Pagar Comissão ao Vendedor</DialogTitle>
             <p className="text-sm text-slate-500">Apenas contratos com comissão do banco recebida podem ser pagos.</p>
@@ -1347,7 +1347,7 @@ export default function ComissoesEmprestimos() {
               onChange={e => setModalSearch(e.target.value)} className="pl-9" />
           </div>
 
-          <div className="overflow-y-auto flex-1 border rounded-lg">
+          <div className="overflow-y-auto flex-1 border rounded-lg min-h-[300px]">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-white border-b">
                 <tr className="text-slate-600">
