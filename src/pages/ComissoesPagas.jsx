@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Download, ChevronDown, ChevronUp, FileText, User, Hash } from 'lucide-react';
+import ResumoFinanceiroLote from '@/components/comissoes/ResumoFinanceiroLote';
 import moment from 'moment';
 import 'moment/locale/pt-br';
 import { formatDateBR } from '@/components/utils/dateHelpers';
@@ -329,42 +330,45 @@ export default function ComissoesPagas() {
                 </div>
 
                 {isExp && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 border-b">
-                        <tr>
-                          <th className="text-left p-3 font-semibold text-slate-700">Cliente</th>
-                          <th className="text-left p-3 font-semibold text-slate-700">Administradora</th>
-                          <th className="text-left p-3 font-semibold text-slate-700">Grupo/Cota</th>
-                          <th className="text-left p-3 font-semibold text-slate-700">Parcela</th>
-                          <th className="text-right p-3 font-semibold text-slate-700">Vl. Recebido</th>
-                          <th className="text-center p-3 font-semibold text-slate-700">% Com.</th>
-                          <th className="text-right p-3 font-semibold text-slate-700">Vl. Pago</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {lote.comissoes.length === 0 ? (
-                          <tr><td colSpan={7} className="p-4 text-center text-slate-400">Detalhes não disponíveis</td></tr>
-                        ) : lote.comissoes.map(c => (
-                          <tr key={c.id} className="border-b hover:bg-slate-50">
-                            <td className="p-3">{c.cliente_nome || '-'}</td>
-                            <td className="p-3">{c.administradora_nome || '-'}</td>
-                            <td className="p-3">{c.grupo && c.cota ? `${c.grupo}/${c.cota}` : c.contrato || '-'}</td>
-                            <td className="p-3">{c.parcela_numero ? `${c.parcela_numero}º` : '-'}</td>
-                            <td className="p-3 text-right font-semibold text-green-600">{fmt(c.valor_recebido)}</td>
-                            <td className="p-3 text-center">{c.percentual_comissao || 0}%</td>
-                            <td className="p-3 text-right font-bold text-blue-600">{fmt(c.valor_a_pagar)}</td>
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50 border-b">
+                          <tr>
+                            <th className="text-left p-3 font-semibold text-slate-700">Cliente</th>
+                            <th className="text-left p-3 font-semibold text-slate-700">Administradora</th>
+                            <th className="text-left p-3 font-semibold text-slate-700">Grupo/Cota</th>
+                            <th className="text-left p-3 font-semibold text-slate-700">Parcela</th>
+                            <th className="text-right p-3 font-semibold text-slate-700">Vl. Recebido</th>
+                            <th className="text-center p-3 font-semibold text-slate-700">% Com.</th>
+                            <th className="text-right p-3 font-semibold text-slate-700">Vl. Pago</th>
                           </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-slate-50 border-t">
-                        <tr>
-                          <td colSpan={6} className="p-3 text-right font-bold text-slate-700">Total:</td>
-                          <td className="p-3 text-right font-bold text-blue-700">{fmt(totalLote)}</td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {lote.comissoes.length === 0 ? (
+                            <tr><td colSpan={7} className="p-4 text-center text-slate-400">Detalhes não disponíveis</td></tr>
+                          ) : lote.comissoes.map(c => (
+                            <tr key={c.id} className="border-b hover:bg-slate-50">
+                              <td className="p-3">{c.cliente_nome || '-'}</td>
+                              <td className="p-3">{c.administradora_nome || '-'}</td>
+                              <td className="p-3">{c.grupo && c.cota ? `${c.grupo}/${c.cota}` : c.contrato || '-'}</td>
+                              <td className="p-3">{c.parcela_numero ? `${c.parcela_numero}º` : '-'}</td>
+                              <td className="p-3 text-right font-semibold text-green-600">{fmt(c.valor_recebido)}</td>
+                              <td className="p-3 text-center">{c.percentual_comissao || 0}%</td>
+                              <td className="p-3 text-right font-bold text-blue-600">{fmt(c.valor_a_pagar)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-slate-50 border-t">
+                          <tr>
+                            <td colSpan={6} className="p-3 text-right font-bold text-slate-700">Total:</td>
+                            <td className="p-3 text-right font-bold text-blue-700">{fmt(totalLote)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                    <ResumoFinanceiroLote comissoes={lote.comissoes} lote={lote} />
+                  </>
                 )}
               </Card>
             );
