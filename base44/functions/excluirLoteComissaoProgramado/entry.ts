@@ -46,8 +46,7 @@ Deno.serve(async (req) => {
 
     } else if (tipo === 'consorcio') {
       // 1. Buscar o lote para pegar os comissoes_ids
-      const lotes = await base44.asServiceRole.entities.PagamentoComissaoLote.filter({ id: lote_id });
-      const lote = lotes[0];
+      const lote = await base44.asServiceRole.entities.PagamentoComissaoLote.get(lote_id);
       if (!lote) {
         return Response.json({ error: 'Lote não encontrado' }, { status: 404 });
       }
