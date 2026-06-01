@@ -51,6 +51,7 @@ import ConfiguracaoWhatsApp from '@/pages/ConfiguracaoWhatsApp';
 import ConfiguracaoApi from '@/pages/ConfiguracaoApi';
 import IntegracaoFinantoBank from '@/pages/IntegracaoFinantoBank';
 import ConfiguracaoWhatsappPessoal from '@/pages/ConfiguracaoWhatsappPessoal';
+import IntegracaoWhatsAppMeta from '@/components/configuracoes/IntegracaoWhatsAppMeta';
 
 
 export default function Configuracoes() {
@@ -227,6 +228,7 @@ export default function Configuracoes() {
           <TabsTrigger value="whatsapp-pessoal"><MessageSquare className="w-4 h-4 mr-1.5" />Meu WhatsApp Pessoal</TabsTrigger>
           <TabsTrigger value="api"><Plug className="w-4 h-4 mr-1.5" />API</TabsTrigger>
           <TabsTrigger value="finanto"><FileText className="w-4 h-4 mr-1.5" />FinantoBank INSS</TabsTrigger>
+          <TabsTrigger value="meta-wpp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp Oficial Meta</TabsTrigger>
         </TabsList>
 
         <TabsContent value="whatsapp">
@@ -243,6 +245,10 @@ export default function Configuracoes() {
 
         <TabsContent value="finanto">
           <IntegracaoFinantoBank />
+        </TabsContent>
+
+        <TabsContent value="meta-wpp">
+          <IntegracaoWhatsAppMeta empresaId={empresa?.id} />
         </TabsContent>
 
         <TabsContent value="geral" className="space-y-6">
