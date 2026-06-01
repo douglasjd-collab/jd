@@ -31,9 +31,10 @@ Deno.serve(async (req) => {
         components.push({ type: 'HEADER', format: 'TEXT', text: cabecalho });
       } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(tipoHeader)) {
         const headerComp = { type: 'HEADER', format: tipoHeader };
-        // A Meta exige example.header_handle com o media_id obtido via upload na API da Meta
+        // A Meta exige example.header_handle com o media handle no formato "h:MEDIA_ID"
         if (cabecalho_media_id) {
-          headerComp.example = { header_handle: [cabecalho_media_id] };
+          const handle = String(cabecalho_media_id).startsWith('h:') ? cabecalho_media_id : `h:${cabecalho_media_id}`;
+          headerComp.example = { header_handle: [handle] };
         }
         components.push(headerComp);
       }
