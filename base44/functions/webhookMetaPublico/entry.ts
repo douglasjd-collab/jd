@@ -67,19 +67,32 @@ Deno.serve(async (req) => {
 });
 
 async function processarMensagemMeta(body, base44) {
-  console.log('🔄 Iniciando processamento...');
+  console.log('🔄 Iniciando processamento... object:', body?.object);
 
   if (!body.entry || !Array.isArray(body.entry)) {
     console.log('⚠️ Payload sem entry, ignorando');
     return;
   }
 
+  // ── Instagram Direct (object = "instagram") ──────────────────────────
+  if (body.object === 'instagram') {
+    for (const entry of body.entry) {
+      const igAccountId = String(entry.id || '');
+      for (const messaging of (entry.messaging || [])) {
+        await salvarMensagemInstagram(base44, igAccountId, messaging);
+      }
+    }
+    console.log('✅ Instagram processado');
+    return;
+  }
+
+  // ── WhatsApp Business (object = "whatsapp_business_account") ─────────
   for (const entry of body.entry) {
     for (const change of (entry.changes || [])) {
       const value = change.value;
 
       const messages = value.messages || [];
-      console.log(`📬 ${messages.length} mensagem(ns) para processar`);
+      console.log(`📬 ${messages.length} mensagem(ns) WhatsApp para processar`);
       for (const message of messages) {
         await salvarMensagem(base44, value, message);
       }
@@ -266,6 +279,113 @@ async function salvarMensagem(base44, value, message) {
   });
 
   console.log(`✅ Mensagem salva! ID: ${mensagem.id}`);
+}
+
+async function salvarMensagemInstagram(base44, igAccountId, messaging) {
+  // Ignorar echo (mensagem enviada pelo próprio agente)
+  if (messaging.message?.is_echo) return;
+
+  const senderId = String(messaging.sender?.id || '');
+  const recipientId = String(messaging.recipient?.id || '');
+  const msg = messaging.message;
+  if (!msg || !senderId) return;
+
+  const msgId = msg.mid || '';
+  console.log(`📸 Instagram DM de ${senderId} → conta ${recipientId}: ${msg.text || '[mídia]'}`);
+
+  // Detectar tipo de conteúdo
+  let tipoConteudo = 'texto';
+  let texto = msg.text || null;
+  let arquivoUrl = null;
+
+  if (msg.attachments && msg.attachments.length > 0) {
+    const att = msg.attachments[0];
+    if (att.type === 'image') { tipoConteudo = 'imagem'; texto = texto || '[Imagem]'; arquivoUrl = att.payload?.url || null; }
+    else if (att.type === 'video') { tipoConteudo = 'video'; texto = texto || '[Vídeo]'; arquivoUrl = att.payload?.url || null; }
+    else if (att.type === 'audio') { tipoConteudo = 'audio'; texto = texto || '[Áudio]'; arquivoUrl = att.payload?.url || null; }
+    else { texto = texto || `[${att.type}]`; }
+  }
+  if (!texto) texto = '[Mensagem]';
+
+  // Buscar empresa pelo ig_account_id (recipientId = ID da página/conta IG)
+  const todasEmpresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, null, 50);
+  let empresa = todasEmpresas.find(e => String(e.meta_business_id || '').trim() === recipientId);
+  if (!empresa) empresa = todasEmpresas.find(e => e.whatsapp_access_token); // fallback
+  if (!empresa) { console.log('❌ Nenhuma empresa encontrada para IG account:', recipientId); return; }
+
+  const empresaId = empresa.id;
+  console.log(`🏢 Empresa IG: ${empresa.nome} (${empresaId})`);
+
+  // Usar senderId como identificador do contato Instagram
+  const igContactId = `ig_${senderId}`;
+
+  // Buscar ou criar cliente
+  let clientes = await base44.asServiceRole.entities.Cliente.filter({ empresa_id: empresaId, celular: igContactId }, null, 1);
+  let cliente;
+  if (clientes.length === 0) {
+    cliente = await base44.asServiceRole.entities.Cliente.create({
+      empresa_id: empresaId,
+      tipo_pessoa: 'Física',
+      celular: igContactId,
+      nome_completo: `Instagram ${senderId}`,
+      status: 'ativo',
+    });
+  } else {
+    cliente = clientes[0];
+  }
+
+  // Buscar ou criar conversa
+  const todasConversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({ empresa_id: empresaId }, 'created_date', 500);
+  let conversa = todasConversas.find(c => String(c.cliente_telefone || '') === igContactId);
+
+  if (!conversa) {
+    conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+      empresa_id: empresaId,
+      cliente_id: cliente?.id,
+      cliente_nome: `Instagram ${senderId}`,
+      cliente_telefone: igContactId,
+      whatsapp_id: igContactId,
+      status: 'ativa',
+      tipo_conexao: 'instagram',
+      instancia: 'INSTAGRAM',
+    });
+    console.log(`✨ Conversa Instagram criada: ${conversa.id}`);
+  } else {
+    await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
+      status: 'ativa',
+      tipo_conexao: 'instagram',
+      instancia: 'INSTAGRAM',
+    });
+  }
+
+  // Verificar duplicata
+  if (msgId) {
+    const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ conversa_id: conversa.id, whatsapp_message_id: msgId }, null, 1);
+    if (existentes.length > 0) { console.log('⏭️ Duplicata IG ignorada:', msgId); return; }
+  }
+
+  // Salvar mensagem
+  const timestamp = messaging.timestamp || Math.floor(Date.now() / 1000);
+  const mensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
+    conversa_id: conversa.id,
+    empresa_id: empresaId,
+    remetente: 'cliente',
+    tipo_conteudo: tipoConteudo,
+    texto: String(texto).slice(0, 5000),
+    arquivo_url: arquivoUrl,
+    whatsapp_message_id: msgId,
+    data_envio: new Date(Number(timestamp) * 1000).toISOString(),
+    status: 'entregue',
+  });
+
+  await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
+    ultima_mensagem: String(texto).slice(0, 100),
+    data_ultima_mensagem: new Date().toISOString(),
+    ultimo_remetente: 'cliente',
+    instancia: 'INSTAGRAM',
+  });
+
+  console.log(`✅ Mensagem Instagram salva! ID: ${mensagem.id}`);
 }
 
 async function atualizarStatusMensagem(base44, status) {
