@@ -41,7 +41,9 @@ import {
   Building2,
   MessageSquare,
   Plug,
-  FileText
+  FileText,
+  Image,
+  Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 import SincronizacaoCanopus from '@/components/configuracoes/SincronizacaoCanopus';
@@ -64,6 +66,10 @@ export default function Configuracoes() {
   const [editarNomeOpen, setEditarNomeOpen] = useState(false);
   const [novoNome, setNovoNome] = useState('');
   const [salvandoNome, setSalvandoNome] = useState(false);
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoPreview, setLogoPreview] = useState('');
+  const [uploadandoLogo, setUploadandoLogo] = useState(false);
+  const [salvandoLogo, setSalvandoLogo] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -85,8 +91,49 @@ export default function Configuracoes() {
           setNovoNome(emps[0].nome);
         }
       }
+
+      // Carregar logo do PDF
+      const configs = await base44.entities.ConfiguracaoSistema.filter({ chave: 'logo_url' });
+      if (configs && configs.length > 0 && configs[0].valor) {
+        setLogoUrl(configs[0].valor);
+        setLogoPreview(configs[0].valor);
+      }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
+    }
+  };
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadandoLogo(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setLogoUrl(file_url);
+      setLogoPreview(file_url);
+      toast.success('Imagem carregada! Clique em "Salvar Logo" para confirmar.');
+    } catch (err) {
+      toast.error('Erro ao fazer upload: ' + err.message);
+    } finally {
+      setUploadandoLogo(false);
+    }
+  };
+
+  const handleSalvarLogo = async () => {
+    if (!logoUrl) { toast.error('Selecione uma imagem primeiro'); return; }
+    setSalvandoLogo(true);
+    try {
+      const configs = await base44.entities.ConfiguracaoSistema.filter({ chave: 'logo_url' });
+      if (configs && configs.length > 0) {
+        await base44.entities.ConfiguracaoSistema.update(configs[0].id, { valor: logoUrl });
+      } else {
+        await base44.entities.ConfiguracaoSistema.create({ chave: 'logo_url', valor: logoUrl });
+      }
+      toast.success('Logo do PDF salva com sucesso!');
+    } catch (err) {
+      toast.error('Erro ao salvar logo: ' + err.message);
+    } finally {
+      setSalvandoLogo(false);
     }
   };
 
@@ -239,6 +286,42 @@ export default function Configuracoes() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Logo do PDF */}
+      <Card className="border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50 to-white">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-xl bg-purple-600">
+              <Image className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <CardTitle>Logo do PDF</CardTitle>
+              <CardDescription>Imagem exibida no cabeçalho dos relatórios e comprovantes PDF</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {logoPreview && (
+            <div className="border rounded-xl p-4 bg-white flex items-center justify-center" style={{ height: 100 }}>
+              <img src={logoPreview} alt="Logo PDF" className="max-h-16 max-w-xs object-contain" />
+            </div>
+          )}
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="cursor-pointer">
+              <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploadandoLogo} />
+              <div className="flex items-center gap-2 px-4 py-2 border rounded-md text-sm font-medium bg-white hover:bg-slate-50 transition-colors">
+                {uploadandoLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                {uploadandoLogo ? 'Carregando...' : 'Selecionar Imagem'}
+              </div>
+            </label>
+            <Button onClick={handleSalvarLogo} disabled={salvandoLogo || !logoUrl} className="bg-purple-600 hover:bg-purple-700 gap-2">
+              {salvandoLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Salvar Logo
+            </Button>
+          </div>
+          <p className="text-xs text-slate-500">Formatos aceitos: PNG, JPG, SVG. Recomendado: fundo transparente (PNG).</p>
+        </CardContent>
+      </Card>
 
       {/* Informações da Empresa */}
       <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50 to-white">
