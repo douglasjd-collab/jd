@@ -614,17 +614,20 @@ export default function Saques() {
     if (!loteParaExcluir) return;
     setExcluindo(true);
     try {
-      if (loteParaExcluir._tipo === 'emp') {
-        await base44.entities.LotePagamentoComissaoEmprestimo.delete(loteParaExcluir.id);
-        queryClient.invalidateQueries({ queryKey: ['lotes-emp'] });
+      const res = await base44.functions.invoke('excluirLoteComissaoProgramado', {
+        lote_id: loteParaExcluir.id,
+        tipo: loteParaExcluir._tipo,
+      });
+      if (res.data?.success) {
+        toast.success(res.data.message || 'Lote excluído e contratos revertidos com sucesso!');
       } else {
-        await base44.entities.PagamentoComissaoLote.delete(loteParaExcluir.id);
-        queryClient.invalidateQueries({ queryKey: ['lotes-consorcio'] });
+        toast.error(res.data?.error || 'Erro ao excluir lote');
       }
-      toast.success('Lote excluído com sucesso!');
+      queryClient.invalidateQueries({ queryKey: ['lotes-emp'] });
+      queryClient.invalidateQueries({ queryKey: ['lotes-consorcio'] });
       setLoteParaExcluir(null);
-    } catch {
-      toast.error('Erro ao excluir lote');
+    } catch (e) {
+      toast.error('Erro ao excluir lote: ' + (e.message || ''));
     } finally {
       setExcluindo(false);
     }
