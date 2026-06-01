@@ -1347,7 +1347,7 @@ export default function ComissoesEmprestimos() {
               onChange={e => setModalSearch(e.target.value)} className="pl-9" />
           </div>
 
-          <div className="overflow-y-auto flex-1 border rounded-lg min-h-[300px]">
+          <div className="overflow-y-auto border rounded-lg" style={{maxHeight: '40vh'}}>
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-white border-b">
                 <tr className="text-slate-600">
