@@ -102,39 +102,71 @@ Deno.serve(async (req) => {
       const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
       const totalLiquido = lote.valor_total ?? Math.max(0, subtotal - totalAdiantamentos);
 
-      // Gerar PDF idêntico ao ComissoesPagasEmprestimos.jsx
-      const doc = new jsPDF({ orientation: 'landscape' });
+      // Buscar logo configurada
+      let logoConfigurada = null;
+      try {
+        const configs = await base44.asServiceRole.entities.ConfiguracaoSistema.filter({ chave: 'logo_url' });
+        if (configs && configs.length > 0 && configs[0].valor) logoConfigurada = configs[0].valor;
+      } catch (_) {}
 
+      // Gerar PDF com mesmo layout visual da 1ª via
+      const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      // ===== HEADER =====
       doc.setFillColor(16, 53, 60);
-      doc.rect(0, 0, 297, 22, 'F');
+      doc.rect(0, 0, pageWidth, 22, 'F');
+
+      if (logoConfigurada) {
+        try { doc.addImage(logoConfigurada, 'PNG', 7, 3, 40, 16); } catch (_) {}
+      }
+
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-      doc.text('COMPROVANTE DE PAGAMENTO DE COMISSAO - EMPRESTIMOS', 148, 10, { align: 'center' });
-      doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-      doc.text(`Lote: ${lote.lote_codigo || lote_id}  |  Gerado em: ${fmtDateTime(new Date())}`, 148, 17, { align: 'center' });
+      doc.setFontSize(12); doc.setFont('helvetica', 'bold');
+      doc.text('COMPROVANTE DE PAGAMENTO DE COMISSAO — EMPRESTIMOS', 165, 10, { align: 'center' });
+      doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+      doc.setTextColor(200, 220, 220);
+      doc.text(`Lote: ${lote.lote_codigo || lote_id}  |  Gerado em: ${fmtDateTime(new Date())}`, 165, 17, { align: 'center' });
 
       // Marca 2ª VIA
-      doc.setFontSize(8); doc.setTextColor(180, 0, 0);
+      doc.setFontSize(8); doc.setTextColor(255, 180, 180);
       doc.setFont('helvetica', 'bold');
-      doc.text('2a VIA', 280, 10, { align: 'right' });
+      doc.text('2a VIA', pageWidth - 8, 10, { align: 'right' });
 
+      // ===== BLOCO DE INFORMAÇÕES (4 colunas) =====
       doc.setTextColor(0, 0, 0);
-      doc.setFillColor(245, 247, 250);
-      doc.roundedRect(10, 26, 277, 22, 2, 2, 'F');
-      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-      doc.text('Vendedor:', 14, 33); doc.text('Data Pagamento:', 90, 33);
-      doc.text('Forma Pagamento:', 160, 33); doc.text('Qtd. Itens:', 230, 33);
-      doc.setFont('helvetica', 'normal');
-      doc.text(lote.vendedor_nome || '-', 14, 39);
-      doc.text(fmtDate(lote.data_pagamento), 90, 39);
-      doc.text(lote.forma_pagamento || '-', 160, 39);
-      doc.text(String(loteItens.length || lote.quantidade_propostas || 0), 230, 39);
+      const infoY = 26;
+      const colW = (pageWidth - 20) / 4;
+      const cols = [
+        { label: 'VENDEDOR', value: lote.vendedor_nome || '-' },
+        { label: 'DATA PAGAMENTO', value: fmtDate(lote.data_pagamento) },
+        { label: 'FORMA PAGAMENTO', value: lote.forma_pagamento || '-' },
+        { label: 'QTD. ITENS', value: String(loteItens.length || lote.quantidade_propostas || 0) },
+      ];
+      cols.forEach((col, i) => {
+        const x = 10 + colW * i;
+        doc.setFillColor(245, 247, 250);
+        doc.rect(x, infoY, colW - 2, 16, 'F');
+        doc.setDrawColor(200, 215, 230);
+        doc.setLineWidth(0.4);
+        doc.rect(x, infoY, colW - 2, 16);
+        doc.setFontSize(6); doc.setFont('helvetica', 'bold');
+        doc.setTextColor(100, 120, 140);
+        doc.text(col.label, x + 3, infoY + 5);
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+        doc.setTextColor(16, 53, 60);
+        const displayValue = doc.splitTextToSize(col.value, colW - 6)[0] || col.value;
+        doc.text(displayValue, x + 3, infoY + 12);
+      });
 
+      // ===== TABELA PRINCIPAL =====
       doc.autoTable({
-        startY: 54,
-        head: [['Cliente', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Liquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
+        startY: 47,
+        head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Liquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
         body: loteItens.map(item => [
           item.cliente_nome || '-',
+          item.cliente_cpf || '-',
           item.contrato || '-',
           getTipoLabel(item.emprestimo_tipo),
           item.banco || '-',
@@ -145,62 +177,98 @@ Deno.serve(async (req) => {
           `${Number(item.percentual_vendedor_pago || 0).toFixed(2)}%`,
           fmt(item.valor_vendedor_pago),
         ]),
-        foot: [['', '', '', '', '', '', '', '', 'Subtotal Comissoes:', fmt(subtotal)]],
         styles: { fontSize: 7, cellPadding: 2 },
         headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
-        footStyles: { fillColor: [230, 240, 255], fontStyle: 'bold', textColor: [0, 0, 0] },
         alternateRowStyles: { fillColor: [248, 250, 252] },
-        columnStyles: { 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right', textColor: [0, 80, 180] } },
+        columnStyles: {
+          6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' },
+          9: { halign: 'right' }, 10: { halign: 'right', textColor: [0, 100, 180], fontStyle: 'bold' }
+        },
+        margin: { left: 10, right: 10 },
       });
 
-      let cursorY = doc.lastAutoTable.finalY + 6;
+      const tableEndY = doc.lastAutoTable.finalY;
+      const sectionY = tableEndY + 12;
 
-      // Adiantamentos descontados
-      if (adiantamentosDesc.length > 0) {
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-        doc.setTextColor(180, 80, 0);
-        doc.text('Adiantamentos Descontados:', 14, cursorY + 5);
-        cursorY += 3;
+      // ===== LAYOUT LADO A LADO: RESUMO FINANCEIRO (esq) + DETALHES ACRÉSCIMOS (dir) =====
+      const colEsqX = 10;
+      const colEsqW = 130;
+      const colDirX = 148;
+      const colDirW = pageWidth - colDirX - 10;
+      const boxPad = 4;
+      const lineH = 6;
 
-        doc.autoTable({
-          startY: cursorY + 4,
-          head: [['Descricao / Motivo', 'Data Adiantamento', 'Valor Descontado']],
-          body: adiantamentosDesc.map(a => [
-            a.motivo || 'Adiantamento de Salario',
-            fmtDate(a.data_desconto || a.data),
-            fmt(a.valor),
-          ]),
-          foot: [['', 'Total Adiantamentos:', fmt(totalAdiantamentos)]],
-          styles: { fontSize: 7, cellPadding: 2 },
-          headStyles: { fillColor: [180, 90, 0], textColor: 255, fontStyle: 'bold' },
-          footStyles: { fillColor: [255, 240, 220], fontStyle: 'bold', textColor: [150, 60, 0] },
-          columnStyles: { 2: { halign: 'right' } },
-          margin: { left: 14, right: 14 },
-        });
+      const resumoLinhas = [
+        { label: 'Subtotal de Comissoes', valor: fmt(subtotal), cor: [0, 100, 180] },
+        { label: '(-) Adiantamentos', valor: fmt(totalAdiantamentos), cor: [200, 100, 0] },
+        { label: '(+) Acrescimos', valor: fmt(0), cor: [60, 60, 60] },
+      ];
+      const resumoContentH = 8 + resumoLinhas.length * lineH + 2 + 14;
 
-        cursorY = doc.lastAutoTable.finalY + 4;
-      }
+      // Caixa esquerda: Resumo Financeiro
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(200, 210, 220);
+      doc.setLineWidth(0.4);
+      doc.roundedRect(colEsqX, sectionY, colEsqW, resumoContentH, 1, 1, 'FD');
+      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('RESUMO FINANCEIRO', colEsqX + boxPad, sectionY + 6);
 
-      // Resumo final
-      const boxH = adiantamentosDesc.length > 0 ? 22 : 12;
-      doc.setFillColor(16, 53, 60);
-      doc.roundedRect(10, cursorY, 277, boxH, 2, 2, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
-      if (adiantamentosDesc.length > 0) {
-        doc.setFontSize(10);
-        doc.text(`Subtotal: ${fmt(subtotal)}`, 16, cursorY + 7);
-        doc.text(`(-) Adiantamentos: ${fmt(totalAdiantamentos)}`, 110, cursorY + 7);
-        doc.setFontSize(11);
-        doc.text(`VALOR LIQUIDO A PAGAR: ${fmt(totalLiquido)}`, 16, cursorY + 17);
-      } else {
-        doc.setFontSize(10);
-        doc.text(`TOTAL A PAGAR: ${fmt(totalLiquido)}`, 16, cursorY + 8);
-      }
+      resumoLinhas.forEach((l, i) => {
+        const ly = sectionY + 12 + i * lineH;
+        doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 80, 80);
+        doc.text(l.label, colEsqX + boxPad, ly);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...l.cor);
+        doc.text(l.valor, colEsqX + colEsqW - boxPad, ly, { align: 'right' });
+      });
 
-      const ph = doc.internal.pageSize.height;
-      doc.setFontSize(7); doc.setTextColor(100, 100, 100);
-      doc.text(`Gerado em ${fmtDateTime(new Date())}`, 148, ph - 5, { align: 'center' });
+      const sepY = sectionY + 12 + resumoLinhas.length * lineH + 2;
+      doc.setDrawColor(180, 195, 210); doc.setLineWidth(0.3);
+      doc.line(colEsqX + boxPad, sepY, colEsqX + colEsqW - boxPad, sepY);
+      const liqBoxY = sepY + 4;
+      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('VALOR LIQUIDO A PAGAR', colEsqX + boxPad, liqBoxY + 4);
+      doc.text(fmt(totalLiquido), colEsqX + colEsqW - boxPad, liqBoxY + 4, { align: 'right' });
+
+      // Caixa direita: Detalhes Acréscimos
+      const dirContentH = resumoContentH;
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(200, 210, 220); doc.setLineWidth(0.4);
+      doc.roundedRect(colDirX, sectionY, colDirW, dirContentH, 1, 1, 'FD');
+      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('DETALHES DOS ACRESCIMOS', colDirX + boxPad, sectionY + 6);
+      doc.setFontSize(6); doc.setFont('helvetica', 'normal');
+      doc.setTextColor(130, 130, 130);
+      doc.text('Acrescimos lancados manualmente.', colDirX + boxPad, sectionY + 11);
+
+      const tblY = sectionY + 15;
+      doc.setFillColor(240, 242, 245);
+      doc.rect(colDirX + boxPad, tblY, colDirW - boxPad * 2, 6, 'F');
+      doc.setFontSize(6); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(80, 80, 80);
+      doc.text('Descricao do Acrescimo', colDirX + boxPad + 2, tblY + 4);
+      doc.text('Tipo', colDirX + boxPad + 70, tblY + 4);
+      doc.text('Valor', colDirX + colDirW - boxPad - 2, tblY + 4, { align: 'right' });
+
+      const totalAcrescimosY = sectionY + dirContentH - 8;
+      doc.setDrawColor(180, 195, 210); doc.setLineWidth(0.3);
+      doc.line(colDirX + boxPad, totalAcrescimosY - 2, colDirX + colDirW - boxPad, totalAcrescimosY - 2);
+      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('TOTAL DE ACRESCIMOS', colDirX + boxPad, totalAcrescimosY + 3);
+      doc.text(fmt(0), colDirX + colDirW - boxPad - 2, totalAcrescimosY + 3, { align: 'right' });
+
+      const footerY = Math.max(sectionY + resumoContentH + 8, pageHeight - 12);
+      doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3);
+      doc.line(10, footerY, pageWidth - 10, footerY);
+      doc.setFontSize(6.2); doc.setTextColor(100, 100, 100); doc.setFont('helvetica', 'normal');
+      doc.text('Comprovante emitido eletronicamente.', 10, footerY + 3.5);
+      doc.text('JD PROMOTORA', 148, footerY + 3.5, { align: 'center' });
+      doc.text(`Gerado em: ${fmtDateTime(new Date())}`, pageWidth - 10, footerY + 3.5, { align: 'right' });
 
       // Se houver comprovante de pagamento, adicionar como página seguinte
       if (lote.comprovante_url) {
