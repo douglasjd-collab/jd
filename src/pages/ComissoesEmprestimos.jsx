@@ -452,8 +452,8 @@ export default function ComissoesEmprestimos() {
     // Valor Líquido
     const liqBoxY = sepY + 3;
     doc.setFillColor(235, 250, 243);
-    doc.setDrawColor(35, 190, 132);
-    doc.setLineWidth(0.5);
+    doc.setDrawColor(200, 210, 220);
+    doc.setLineWidth(0.4);
     doc.roundedRect(colEsqX + boxPad, liqBoxY, colEsqW - boxPad * 2, 11, 0.5, 0.5, 'FD');
     doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
     doc.setTextColor(8, 57, 66);
