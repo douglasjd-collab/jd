@@ -52,6 +52,7 @@ import ConfiguracaoApi from '@/pages/ConfiguracaoApi';
 import IntegracaoFinantoBank from '@/pages/IntegracaoFinantoBank';
 import ConfiguracaoWhatsappPessoal from '@/pages/ConfiguracaoWhatsappPessoal';
 import IntegracaoWhatsAppMeta from '@/components/configuracoes/IntegracaoWhatsAppMeta';
+import IntegracaoInstagram from '@/components/configuracoes/IntegracaoInstagram';
 
 
 export default function Configuracoes() {
@@ -229,6 +230,7 @@ export default function Configuracoes() {
           <TabsTrigger value="api"><Plug className="w-4 h-4 mr-1.5" />API</TabsTrigger>
           <TabsTrigger value="finanto"><FileText className="w-4 h-4 mr-1.5" />FinantoBank INSS</TabsTrigger>
           <TabsTrigger value="meta-wpp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp Oficial Meta</TabsTrigger>
+          <TabsTrigger value="instagram"><span className="mr-1.5">📸</span>Instagram</TabsTrigger>
         </TabsList>
 
         <TabsContent value="whatsapp">
@@ -249,6 +251,10 @@ export default function Configuracoes() {
 
         <TabsContent value="meta-wpp">
           <IntegracaoWhatsAppMeta empresaId={empresa?.id} />
+        </TabsContent>
+
+        <TabsContent value="instagram">
+          <IntegracaoInstagram />
         </TabsContent>
 
         <TabsContent value="geral" className="space-y-6">
