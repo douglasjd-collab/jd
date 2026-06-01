@@ -451,15 +451,11 @@ export default function ComissoesEmprestimos() {
 
     // Valor Líquido
     const liqBoxY = sepY + 3;
-    doc.setFillColor(235, 250, 243);
-    doc.setDrawColor(200, 210, 220);
-    doc.setLineWidth(0.4);
-    doc.roundedRect(colEsqX + boxPad, liqBoxY, colEsqW - boxPad * 2, 11, 0.5, 0.5, 'FD');
     doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(8, 57, 66);
-    doc.text('VALOR LÍQUIDO A PAGAR', colEsqX + boxPad + 2, liqBoxY + 7);
-    doc.setFontSize(9); doc.setTextColor(35, 190, 132);
-    doc.text(fmt(totalLiquido), colEsqX + colEsqW - boxPad - 2, liqBoxY + 7, { align: 'right' });
+    doc.setTextColor(40, 40, 40);
+    doc.text('VALOR LÍQUIDO A PAGAR', colEsqX + boxPad, liqBoxY + 5);
+    doc.setTextColor(40, 40, 40);
+    doc.text(fmt(totalLiquido), colEsqX + colEsqW - boxPad, liqBoxY + 5, { align: 'right' });
 
     // --- CAIXA DIREITA: DETALHES DOS ACRÉSCIMOS (sempre visível, mesmo sem acréscimos) ---
     const acrescimos = adiantamentosDesc.length > 0 ? [] : []; // neste fluxo não há acréscimos
