@@ -413,7 +413,7 @@ export default function ComissoesEmprestimos() {
     const colDirX = 148;
     const colDirW = pageWidth - colDirX - 10;
     const boxPad = 4;
-    const lineH = 9;
+    const lineH = 6;
 
     // --- CAIXA ESQUERDA: RESUMO FINANCEIRO ---
     const resumoLinhas = [
