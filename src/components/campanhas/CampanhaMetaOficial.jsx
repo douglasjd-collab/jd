@@ -47,6 +47,8 @@ import {
   Mic,
   File,
   MessageSquare,
+  Upload,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -76,6 +78,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
   const [modalTemplate, setModalTemplate] = useState(null);
   const [formTemplate, setFormTemplate] = useState({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', tipo_cabecalho: 'TEXT', cabecalho_midia_url: '', botoes: [] });
   const [sincronizando, setSincronizando] = useState(false);
+  const [uploadingMidia, setUploadingMidia] = useState(false);
   const [searchTemplate, setSearchTemplate] = useState('');
   const [templateVisualizando, setTemplateVisualizando] = useState(null);
   const [criandoNaMeta, setCriandoNaMeta] = useState(false);
@@ -1224,55 +1227,88 @@ export default function CampanhaMetaOficial({ empresaId }) {
                 </div>
               )}
 
-              {/* Cabeçalho Imagem */}
-              {formTemplate.tipo_cabecalho === 'IMAGE' && (
+              {/* Upload de Mídia (Imagem / Vídeo / Documento) */}
+              {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(formTemplate.tipo_cabecalho) && (
                 <div className="space-y-2">
-                  <Label className="text-sm mb-1 block font-semibold">🖼️ URL da Imagem do Cabeçalho</Label>
-                  <Input
-                    value={formTemplate.cabecalho_midia_url || ''}
-                    onChange={e => setFormTemplate(p => ({ ...p, cabecalho_midia_url: e.target.value }))}
-                    placeholder="https://... (link público da imagem JPG/PNG)"
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-slate-500">Cole a URL pública da imagem (JPG ou PNG). A imagem deve ser acessível publicamente.</p>
-                  {formTemplate.cabecalho_midia_url && (
-                    <img src={formTemplate.cabecalho_midia_url} alt="Preview" className="w-full h-32 object-cover rounded-lg border" onError={e => e.target.style.display='none'} />
-                  )}
-                </div>
-              )}
+                  <Label className="text-sm mb-1 block font-semibold">
+                    {formTemplate.tipo_cabecalho === 'IMAGE' && '🖼️ Imagem do Cabeçalho'}
+                    {formTemplate.tipo_cabecalho === 'VIDEO' && '🎥 Vídeo do Cabeçalho'}
+                    {formTemplate.tipo_cabecalho === 'DOCUMENT' && '📄 Documento PDF'}
+                  </Label>
 
-              {/* Cabeçalho Vídeo */}
-              {formTemplate.tipo_cabecalho === 'VIDEO' && (
-                <div className="space-y-2">
-                  <Label className="text-sm mb-1 block font-semibold">🎥 URL do Vídeo do Cabeçalho</Label>
-                  <Input
-                    value={formTemplate.cabecalho_midia_url || ''}
-                    onChange={e => setFormTemplate(p => ({ ...p, cabecalho_midia_url: e.target.value }))}
-                    placeholder="https://... (link público do vídeo MP4)"
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-slate-500">Cole a URL pública do vídeo (MP4). O vídeo deve ser acessível publicamente.</p>
-                  {formTemplate.cabecalho_midia_url && (
-                    <div className="flex items-center gap-2 p-2 bg-slate-50 border rounded-lg">
-                      <span className="text-lg">🎥</span>
-                      <span className="text-xs text-slate-600 truncate flex-1">{formTemplate.cabecalho_midia_url}</span>
-                      <span className="text-xs text-green-600 font-medium">✓ URL definida</span>
+                  {formTemplate.cabecalho_midia_url ? (
+                    <div className="space-y-2">
+                      {/* Preview */}
+                      {formTemplate.tipo_cabecalho === 'IMAGE' && (
+                        <img src={formTemplate.cabecalho_midia_url} alt="Preview" className="w-full h-32 object-cover rounded-lg border" onError={e => e.target.style.display='none'} />
+                      )}
+                      {formTemplate.tipo_cabecalho === 'VIDEO' && (
+                        <div className="w-full h-20 bg-black rounded-lg flex items-center justify-center text-white gap-2">
+                          <span className="text-xl">▶️</span>
+                          <span className="text-xs opacity-70">Vídeo carregado</span>
+                        </div>
+                      )}
+                      {formTemplate.tipo_cabecalho === 'DOCUMENT' && (
+                        <div className="w-full h-14 bg-red-50 border border-red-200 rounded-lg flex items-center justify-center gap-2 text-red-600">
+                          <span className="text-lg">📄</span>
+                          <span className="text-xs font-medium">Documento carregado</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs text-green-600 flex-1 truncate">✓ Arquivo enviado com sucesso</p>
+                        <button
+                          onClick={() => setFormTemplate(p => ({ ...p, cabecalho_midia_url: '' }))}
+                          className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 px-2 py-1 border border-red-200 rounded-lg hover:bg-red-50"
+                        >
+                          <X className="w-3 h-3" /> Remover
+                        </button>
+                      </div>
                     </div>
+                  ) : (
+                    <label className={`flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-5 cursor-pointer transition-colors ${uploadingMidia ? 'border-blue-300 bg-blue-50' : 'border-slate-200 hover:border-green-400 hover:bg-green-50'}`}>
+                      {uploadingMidia ? (
+                        <>
+                          <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                          <span className="text-sm text-blue-600 font-medium">Enviando arquivo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-6 h-6 text-slate-400" />
+                          <span className="text-sm text-slate-600 font-medium">Clique para selecionar o arquivo</span>
+                          <span className="text-xs text-slate-400">
+                            {formTemplate.tipo_cabecalho === 'IMAGE' && 'JPG, PNG (máx. 5MB)'}
+                            {formTemplate.tipo_cabecalho === 'VIDEO' && 'MP4 (máx. 16MB)'}
+                            {formTemplate.tipo_cabecalho === 'DOCUMENT' && 'PDF (máx. 100MB)'}
+                          </span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept={
+                          formTemplate.tipo_cabecalho === 'IMAGE' ? 'image/jpeg,image/png' :
+                          formTemplate.tipo_cabecalho === 'VIDEO' ? 'video/mp4' :
+                          'application/pdf'
+                        }
+                        disabled={uploadingMidia}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setUploadingMidia(true);
+                          try {
+                            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                            setFormTemplate(p => ({ ...p, cabecalho_midia_url: file_url }));
+                            toast.success('Arquivo enviado com sucesso!');
+                          } catch (err) {
+                            toast.error('Erro ao enviar arquivo: ' + err.message);
+                          } finally {
+                            setUploadingMidia(false);
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                    </label>
                   )}
-                </div>
-              )}
-
-              {/* Cabeçalho Documento */}
-              {formTemplate.tipo_cabecalho === 'DOCUMENT' && (
-                <div className="space-y-2">
-                  <Label className="text-sm mb-1 block font-semibold">📄 URL do Documento PDF</Label>
-                  <Input
-                    value={formTemplate.cabecalho_midia_url || ''}
-                    onChange={e => setFormTemplate(p => ({ ...p, cabecalho_midia_url: e.target.value }))}
-                    placeholder="https://... (link público do PDF)"
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-slate-500">Cole a URL pública do documento PDF.</p>
                 </div>
               )}
 
@@ -1387,19 +1423,16 @@ export default function CampanhaMetaOficial({ empresaId }) {
                   )}
                   {formTemplate.tipo_cabecalho === 'IMAGE' && (
                     formTemplate.cabecalho_midia_url
-                      ? <img src={formTemplate.cabecalho_midia_url} alt="Imagem" className="w-full h-32 object-cover rounded-lg" onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
-                      : <div className="w-full h-28 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center text-blue-500 text-sm gap-2">🖼️ Imagem (cole a URL)</div>
-                  )}
-                  {formTemplate.tipo_cabecalho === 'IMAGE' && formTemplate.cabecalho_midia_url && (
-                    <div className="w-full h-28 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg items-center justify-center text-blue-500 text-sm gap-2 hidden">🖼️ Imagem inválida</div>
+                      ? <img src={formTemplate.cabecalho_midia_url} alt="Imagem" className="w-full h-32 object-cover rounded-lg" />
+                      : <div className="w-full h-28 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center text-blue-500 text-sm gap-2">🖼️ Envie uma imagem</div>
                   )}
                   {formTemplate.tipo_cabecalho === 'VIDEO' && (
                     formTemplate.cabecalho_midia_url
-                      ? <div className="w-full h-28 bg-black rounded-lg flex flex-col items-center justify-center text-white gap-1">
+                      ? <div className="w-full h-28 bg-black rounded-lg flex items-center justify-center text-white gap-1">
                           <span className="text-2xl">▶️</span>
-                          <span className="text-[10px] opacity-60 truncate max-w-full px-2">{formTemplate.cabecalho_midia_url}</span>
+                          <span className="text-xs opacity-60">Vídeo carregado</span>
                         </div>
-                      : <div className="w-full h-28 bg-gradient-to-br from-slate-700 to-slate-900 rounded-lg flex items-center justify-center text-slate-300 text-sm gap-2">🎥 Vídeo (cole a URL)</div>
+                      : <div className="w-full h-28 bg-gradient-to-br from-slate-700 to-slate-900 rounded-lg flex items-center justify-center text-slate-300 text-sm gap-2">🎥 Envie um vídeo</div>
                   )}
                   {formTemplate.tipo_cabecalho === 'DOCUMENT' && (
                     <div className="w-full h-16 bg-gradient-to-br from-red-50 to-red-100 rounded-lg flex items-center justify-center text-red-400 text-sm gap-1">📄 Documento PDF</div>
