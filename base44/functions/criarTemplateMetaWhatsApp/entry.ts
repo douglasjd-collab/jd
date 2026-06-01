@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { empresa_id, nome, categoria, idioma, cabecalho, corpo, rodape, botoes, tipo_cabecalho } = body;
+    const { empresa_id, nome, categoria, idioma, cabecalho, corpo, rodape, botoes, tipo_cabecalho, cabecalho_midia_url } = body;
 
     // Buscar configuração da empresa para pegar o access token e phone_number_id
     const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: empresa_id });
@@ -16,7 +16,6 @@ Deno.serve(async (req) => {
     if (!empresa) return Response.json({ error: 'Empresa não encontrada' }, { status: 404 });
 
     const accessToken = empresa.whatsapp_access_token || Deno.env.get('META_WHATSAPP_ACCESS_TOKEN');
-    const phoneNumberId = empresa.whatsapp_phone_number_id;
     const businessAccountId = empresa.whatsapp_business_account_id;
 
     if (!accessToken) return Response.json({ error: 'Access token da Meta não configurado' }, { status: 400 });
@@ -26,13 +25,19 @@ Deno.serve(async (req) => {
     const components = [];
 
     // Cabeçalho (opcional)
-    if (cabecalho && cabecalho.trim()) {
-      const tipoHeader = tipo_cabecalho || 'TEXT';
-      components.push({
-        type: 'HEADER',
-        format: tipoHeader.toUpperCase(),
-        text: tipoHeader.toUpperCase() === 'TEXT' ? cabecalho : undefined,
-      });
+    const tipoHeader = (tipo_cabecalho || 'TEXT').toUpperCase();
+    if (tipoHeader !== 'NONE') {
+      if (tipoHeader === 'TEXT' && cabecalho && cabecalho.trim()) {
+        components.push({ type: 'HEADER', format: 'TEXT', text: cabecalho });
+      } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(tipoHeader)) {
+        // Para mídias, a Meta exige um "example" com a URL pública
+        const headerComp = { type: 'HEADER', format: tipoHeader };
+        if (cabecalho_midia_url && cabecalho_midia_url.trim()) {
+          const mediaKey = tipoHeader === 'IMAGE' ? 'header_image' : tipoHeader === 'VIDEO' ? 'header_video' : 'header_document';
+          headerComp.example = { [mediaKey]: [cabecalho_midia_url] };
+        }
+        components.push(headerComp);
+      }
     }
 
     // Corpo (obrigatório)
@@ -107,6 +112,7 @@ Deno.serve(async (req) => {
         corpo: corpo || '',
         rodape: rodape || '',
         tipo_cabecalho: tipo_cabecalho || 'TEXT',
+        cabecalho_midia_url: cabecalho_midia_url || '',
         status_meta: 'pendente',
         meta_template_id: metaData.id,
         meta_status: metaData.status,

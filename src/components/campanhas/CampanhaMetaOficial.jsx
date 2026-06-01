@@ -74,7 +74,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
 
   // ─── Template modal state ───────────────────────────────────────────────────
   const [modalTemplate, setModalTemplate] = useState(null);
-  const [formTemplate, setFormTemplate] = useState({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', tipo_cabecalho: 'TEXT', botoes: [] });
+  const [formTemplate, setFormTemplate] = useState({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', tipo_cabecalho: 'TEXT', cabecalho_midia_url: '', botoes: [] });
   const [sincronizando, setSincronizando] = useState(false);
   const [searchTemplate, setSearchTemplate] = useState('');
   const [templateVisualizando, setTemplateVisualizando] = useState(null);
@@ -286,6 +286,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
         corpo: dados.corpo,
         rodape: dados.rodape,
         tipo_cabecalho: dados.tipo_cabecalho || 'TEXT',
+        cabecalho_midia_url: dados.cabecalho_midia_url || '',
         botoes: dados.botoes || [],
       });
       if (!resp?.data?.ok) throw new Error(resp?.data?.error || 'Erro ao criar template na Meta');
@@ -298,7 +299,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
         toast.success('Template salvo!');
       }
       setModalTemplate(null);
-      setFormTemplate({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', tipo_cabecalho: 'TEXT', botoes: [] });
+      setFormTemplate({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', tipo_cabecalho: 'TEXT', cabecalho_midia_url: '', botoes: [] });
       refetchTemplates();
     },
     onError: (e) => toast.error('Erro: ' + e.message),
@@ -1222,9 +1223,56 @@ export default function CampanhaMetaOficial({ empresaId }) {
                   <p className="text-xs text-slate-400 mt-0.5">{formTemplate.cabecalho.length}/60 caracteres</p>
                 </div>
               )}
-              {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(formTemplate.tipo_cabecalho) && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
-                  ℹ️ Para cabeçalho com mídia ({formTemplate.tipo_cabecalho.toLowerCase()}), o arquivo será enviado no momento do disparo da campanha.
+
+              {/* Cabeçalho Imagem */}
+              {formTemplate.tipo_cabecalho === 'IMAGE' && (
+                <div className="space-y-2">
+                  <Label className="text-sm mb-1 block font-semibold">🖼️ URL da Imagem do Cabeçalho</Label>
+                  <Input
+                    value={formTemplate.cabecalho_midia_url || ''}
+                    onChange={e => setFormTemplate(p => ({ ...p, cabecalho_midia_url: e.target.value }))}
+                    placeholder="https://... (link público da imagem JPG/PNG)"
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-slate-500">Cole a URL pública da imagem (JPG ou PNG). A imagem deve ser acessível publicamente.</p>
+                  {formTemplate.cabecalho_midia_url && (
+                    <img src={formTemplate.cabecalho_midia_url} alt="Preview" className="w-full h-32 object-cover rounded-lg border" onError={e => e.target.style.display='none'} />
+                  )}
+                </div>
+              )}
+
+              {/* Cabeçalho Vídeo */}
+              {formTemplate.tipo_cabecalho === 'VIDEO' && (
+                <div className="space-y-2">
+                  <Label className="text-sm mb-1 block font-semibold">🎥 URL do Vídeo do Cabeçalho</Label>
+                  <Input
+                    value={formTemplate.cabecalho_midia_url || ''}
+                    onChange={e => setFormTemplate(p => ({ ...p, cabecalho_midia_url: e.target.value }))}
+                    placeholder="https://... (link público do vídeo MP4)"
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-slate-500">Cole a URL pública do vídeo (MP4). O vídeo deve ser acessível publicamente.</p>
+                  {formTemplate.cabecalho_midia_url && (
+                    <div className="flex items-center gap-2 p-2 bg-slate-50 border rounded-lg">
+                      <span className="text-lg">🎥</span>
+                      <span className="text-xs text-slate-600 truncate flex-1">{formTemplate.cabecalho_midia_url}</span>
+                      <span className="text-xs text-green-600 font-medium">✓ URL definida</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Cabeçalho Documento */}
+              {formTemplate.tipo_cabecalho === 'DOCUMENT' && (
+                <div className="space-y-2">
+                  <Label className="text-sm mb-1 block font-semibold">📄 URL do Documento PDF</Label>
+                  <Input
+                    value={formTemplate.cabecalho_midia_url || ''}
+                    onChange={e => setFormTemplate(p => ({ ...p, cabecalho_midia_url: e.target.value }))}
+                    placeholder="https://... (link público do PDF)"
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-slate-500">Cole a URL pública do documento PDF.</p>
                 </div>
               )}
 
@@ -1256,58 +1304,75 @@ export default function CampanhaMetaOficial({ empresaId }) {
               </div>
 
               {/* Botões */}
-              <div className="border rounded-xl p-3 space-y-2">
+              <div className="border rounded-xl p-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-semibold">Botões (opcional, máx. 3)</Label>
                   {(formTemplate.botoes || []).length < 3 && (
-                    <div className="flex gap-1">
-                      {['QUICK_REPLY', 'URL', 'PHONE_NUMBER'].map(tipo => (
-                        <button
-                          key={tipo}
-                          onClick={() => setFormTemplate(p => ({
-                            ...p,
-                            botoes: [...(p.botoes || []), { tipo, texto: tipo === 'QUICK_REPLY' ? 'Saiba mais' : tipo === 'URL' ? 'Acessar site' : 'Ligar agora', url: '', telefone: '' }]
-                          }))}
-                          className="px-2 py-1 text-xs rounded border bg-slate-50 hover:bg-slate-100 text-slate-600"
-                        >
-                          + {tipo === 'QUICK_REPLY' ? 'Resposta' : tipo === 'URL' ? 'Link' : 'Telefone'}
-                        </button>
-                      ))}
+                    <div className="flex gap-1.5">
+                      <button
+                        onClick={() => setFormTemplate(p => ({ ...p, botoes: [...(p.botoes || []), { tipo: 'QUICK_REPLY', texto: 'Saiba mais' }] }))}
+                        className="px-2.5 py-1 text-xs rounded-lg border bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 font-medium"
+                      >↩️ + Resposta Rápida</button>
+                      <button
+                        onClick={() => setFormTemplate(p => ({ ...p, botoes: [...(p.botoes || []), { tipo: 'URL', texto: 'Acessar site', url: '' }] }))}
+                        className="px-2.5 py-1 text-xs rounded-lg border bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 font-medium"
+                      >🔗 + Link</button>
+                      <button
+                        onClick={() => setFormTemplate(p => ({ ...p, botoes: [...(p.botoes || []), { tipo: 'PHONE_NUMBER', texto: 'Ligar agora', telefone: '' }] }))}
+                        className="px-2.5 py-1 text-xs rounded-lg border bg-green-50 hover:bg-green-100 text-green-700 border-green-200 font-medium"
+                      >📞 + Telefone</button>
                     </div>
                   )}
                 </div>
+                {(formTemplate.botoes || []).length === 0 && (
+                  <p className="text-xs text-slate-400 text-center py-2 border border-dashed rounded-lg">Nenhum botão adicionado. Clique em + para adicionar.</p>
+                )}
                 {(formTemplate.botoes || []).map((btn, idx) => (
-                  <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium flex-shrink-0">{btn.tipo}</span>
-                    <Input
-                      value={btn.texto}
-                      onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, texto: e.target.value } : b) }))}
-                      placeholder="Texto do botão"
-                      className="text-sm h-8 flex-1"
-                      maxLength={25}
-                    />
-                    {btn.tipo === 'URL' && (
+                  <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                        btn.tipo === 'QUICK_REPLY' ? 'bg-purple-100 text-purple-700' :
+                        btn.tipo === 'URL' ? 'bg-blue-100 text-blue-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>
+                        {btn.tipo === 'QUICK_REPLY' ? '↩️ Resposta Rápida' : btn.tipo === 'URL' ? '🔗 Link' : '📞 Telefone'}
+                      </span>
+                      <button onClick={() => setFormTemplate(p => ({ ...p, botoes: p.botoes.filter((_, i) => i !== idx) }))} className="text-red-400 hover:text-red-600 text-sm">✕ Remover</button>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-slate-500 mb-1 block">Texto do botão *</Label>
                       <Input
-                        value={btn.url}
-                        onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, url: e.target.value } : b) }))}
-                        placeholder="https://..."
-                        className="text-sm h-8 flex-1"
+                        value={btn.texto}
+                        onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, texto: e.target.value } : b) }))}
+                        placeholder="Ex: Saiba mais, Acessar, Ligar"
+                        className="text-sm h-8"
+                        maxLength={25}
                       />
+                    </div>
+                    {btn.tipo === 'URL' && (
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-1 block">URL de destino *</Label>
+                        <Input
+                          value={btn.url || ''}
+                          onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, url: e.target.value } : b) }))}
+                          placeholder="https://seusite.com.br"
+                          className="text-sm h-8"
+                        />
+                      </div>
                     )}
                     {btn.tipo === 'PHONE_NUMBER' && (
-                      <Input
-                        value={btn.telefone}
-                        onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, telefone: e.target.value } : b) }))}
-                        placeholder="+55..."
-                        className="text-sm h-8 flex-1"
-                      />
+                      <div>
+                        <Label className="text-xs text-slate-500 mb-1 block">Número de telefone *</Label>
+                        <Input
+                          value={btn.telefone || ''}
+                          onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, telefone: e.target.value } : b) }))}
+                          placeholder="+5511999999999"
+                          className="text-sm h-8"
+                        />
+                      </div>
                     )}
-                    <button onClick={() => setFormTemplate(p => ({ ...p, botoes: p.botoes.filter((_, i) => i !== idx) }))} className="text-red-400 hover:text-red-600 flex-shrink-0">✕</button>
                   </div>
                 ))}
-                {(formTemplate.botoes || []).length === 0 && (
-                  <p className="text-xs text-slate-400">Nenhum botão adicionado. Clique em + para adicionar.</p>
-                )}
               </div>
             </div>
 
@@ -1321,13 +1386,23 @@ export default function CampanhaMetaOficial({ empresaId }) {
                     <p className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-1.5">{formTemplate.cabecalho}</p>
                   )}
                   {formTemplate.tipo_cabecalho === 'IMAGE' && (
-                    <div className="w-full h-24 bg-gradient-to-br from-slate-200 to-slate-300 rounded-lg flex items-center justify-center text-slate-400 text-xs">🖼️ Imagem</div>
+                    formTemplate.cabecalho_midia_url
+                      ? <img src={formTemplate.cabecalho_midia_url} alt="Imagem" className="w-full h-32 object-cover rounded-lg" onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+                      : <div className="w-full h-28 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center text-blue-500 text-sm gap-2">🖼️ Imagem (cole a URL)</div>
+                  )}
+                  {formTemplate.tipo_cabecalho === 'IMAGE' && formTemplate.cabecalho_midia_url && (
+                    <div className="w-full h-28 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg items-center justify-center text-blue-500 text-sm gap-2 hidden">🖼️ Imagem inválida</div>
                   )}
                   {formTemplate.tipo_cabecalho === 'VIDEO' && (
-                    <div className="w-full h-24 bg-gradient-to-br from-slate-200 to-slate-300 rounded-lg flex items-center justify-center text-slate-400 text-xs">🎥 Vídeo</div>
+                    formTemplate.cabecalho_midia_url
+                      ? <div className="w-full h-28 bg-black rounded-lg flex flex-col items-center justify-center text-white gap-1">
+                          <span className="text-2xl">▶️</span>
+                          <span className="text-[10px] opacity-60 truncate max-w-full px-2">{formTemplate.cabecalho_midia_url}</span>
+                        </div>
+                      : <div className="w-full h-28 bg-gradient-to-br from-slate-700 to-slate-900 rounded-lg flex items-center justify-center text-slate-300 text-sm gap-2">🎥 Vídeo (cole a URL)</div>
                   )}
                   {formTemplate.tipo_cabecalho === 'DOCUMENT' && (
-                    <div className="w-full h-16 bg-gradient-to-br from-red-50 to-red-100 rounded-lg flex items-center justify-center text-red-400 text-xs">📄 Documento PDF</div>
+                    <div className="w-full h-16 bg-gradient-to-br from-red-50 to-red-100 rounded-lg flex items-center justify-center text-red-400 text-sm gap-1">📄 Documento PDF</div>
                   )}
 
                   {/* Corpo preview */}
