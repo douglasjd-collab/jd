@@ -1151,17 +1151,17 @@ export default function CampanhaMetaOficial({ empresaId }) {
               {/* Nome e Categoria */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs mb-1 block">Nome do template *</Label>
+                  <Label className="text-sm mb-1 block font-semibold">Nome do template *</Label>
                   <Input
                     value={formTemplate.nome}
                     onChange={e => setFormTemplate(p => ({ ...p, nome: e.target.value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '') }))}
                     placeholder="ex: boas_vindas"
                     className="text-sm"
                   />
-                  <p className="text-[10px] text-slate-400 mt-0.5">Apenas minúsculas e underscores</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Apenas minúsculas e underscores</p>
                 </div>
                 <div>
-                  <Label className="text-xs mb-1 block">Categoria *</Label>
+                  <Label className="text-sm mb-1 block font-semibold">Categoria *</Label>
                   <Select value={formTemplate.categoria} onValueChange={v => setFormTemplate(p => ({ ...p, categoria: v }))}>
                     <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -1173,7 +1173,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
 
               {/* Idioma */}
               <div>
-                <Label className="text-xs mb-1 block">Idioma</Label>
+                <Label className="text-sm mb-1 block font-semibold">Idioma</Label>
                 <Select value={formTemplate.idioma} onValueChange={v => setFormTemplate(p => ({ ...p, idioma: v }))}>
                   <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -1184,7 +1184,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
 
               {/* Tipo de Cabeçalho */}
               <div>
-                <Label className="text-xs mb-1 block">Tipo de Cabeçalho</Label>
+                <Label className="text-sm mb-1 block font-semibold">Tipo de Cabeçalho</Label>
                 <div className="flex gap-2 flex-wrap">
                   {[
                     { value: 'NONE', label: '— Nenhum' },
@@ -1196,7 +1196,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                     <button
                       key={t.value}
                       onClick={() => setFormTemplate(p => ({ ...p, tipo_cabecalho: t.value, cabecalho: t.value === 'NONE' ? '' : p.cabecalho }))}
-                      className={`px-3 py-1.5 text-xs rounded-lg border font-medium transition-colors ${
+                      className={`px-3 py-1.5 text-sm rounded-lg border font-medium transition-colors ${
                         formTemplate.tipo_cabecalho === t.value
                           ? 'bg-green-600 text-white border-green-600'
                           : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
@@ -1211,7 +1211,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
               {/* Cabeçalho texto */}
               {formTemplate.tipo_cabecalho === 'TEXT' && (
                 <div>
-                  <Label className="text-xs mb-1 block">Texto do Cabeçalho</Label>
+                  <Label className="text-sm mb-1 block font-semibold">Texto do Cabeçalho</Label>
                   <Input
                     value={formTemplate.cabecalho}
                     onChange={e => setFormTemplate(p => ({ ...p, cabecalho: e.target.value }))}
@@ -1219,18 +1219,18 @@ export default function CampanhaMetaOficial({ empresaId }) {
                     className="text-sm"
                     maxLength={60}
                   />
-                  <p className="text-[10px] text-slate-400 mt-0.5">{formTemplate.cabecalho.length}/60 caracteres</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{formTemplate.cabecalho.length}/60 caracteres</p>
                 </div>
               )}
               {['IMAGE', 'VIDEO', 'DOCUMENT'].includes(formTemplate.tipo_cabecalho) && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
                   ℹ️ Para cabeçalho com mídia ({formTemplate.tipo_cabecalho.toLowerCase()}), o arquivo será enviado no momento do disparo da campanha.
                 </div>
               )}
 
               {/* Corpo */}
               <div>
-                <Label className="text-xs mb-1 block">Corpo da mensagem *</Label>
+                <Label className="text-sm mb-1 block font-semibold">Corpo da mensagem *</Label>
                 <Textarea
                   value={formTemplate.corpo}
                   onChange={e => setFormTemplate(p => ({ ...p, corpo: e.target.value }))}
@@ -1238,14 +1238,14 @@ export default function CampanhaMetaOficial({ empresaId }) {
                   rows={6}
                   className="text-sm resize-none"
                 />
-                <p className="text-[10px] text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Use <code className="bg-slate-100 px-1 rounded">{'{{1}}'}</code>, <code className="bg-slate-100 px-1 rounded">{'{{2}}'}</code> para variáveis. {formTemplate.corpo.length} caracteres.
                 </p>
               </div>
 
               {/* Rodapé */}
               <div>
-                <Label className="text-xs mb-1 block">Rodapé (opcional)</Label>
+                <Label className="text-sm mb-1 block font-semibold">Rodapé (opcional)</Label>
                 <Input
                   value={formTemplate.rodape}
                   onChange={e => setFormTemplate(p => ({ ...p, rodape: e.target.value }))}
@@ -1258,7 +1258,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
               {/* Botões */}
               <div className="border rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-semibold">Botões (opcional, máx. 3)</Label>
+                  <Label className="text-sm font-semibold">Botões (opcional, máx. 3)</Label>
                   {(formTemplate.botoes || []).length < 3 && (
                     <div className="flex gap-1">
                       {['QUICK_REPLY', 'URL', 'PHONE_NUMBER'].map(tipo => (
@@ -1268,7 +1268,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                             ...p,
                             botoes: [...(p.botoes || []), { tipo, texto: tipo === 'QUICK_REPLY' ? 'Saiba mais' : tipo === 'URL' ? 'Acessar site' : 'Ligar agora', url: '', telefone: '' }]
                           }))}
-                          className="px-2 py-1 text-[10px] rounded border bg-slate-50 hover:bg-slate-100 text-slate-600"
+                          className="px-2 py-1 text-xs rounded border bg-slate-50 hover:bg-slate-100 text-slate-600"
                         >
                           + {tipo === 'QUICK_REPLY' ? 'Resposta' : tipo === 'URL' ? 'Link' : 'Telefone'}
                         </button>
@@ -1278,12 +1278,12 @@ export default function CampanhaMetaOficial({ empresaId }) {
                 </div>
                 {(formTemplate.botoes || []).map((btn, idx) => (
                   <div key={idx} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
-                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium flex-shrink-0">{btn.tipo}</span>
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium flex-shrink-0">{btn.tipo}</span>
                     <Input
                       value={btn.texto}
                       onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, texto: e.target.value } : b) }))}
                       placeholder="Texto do botão"
-                      className="text-xs h-7 flex-1"
+                      className="text-sm h-8 flex-1"
                       maxLength={25}
                     />
                     {btn.tipo === 'URL' && (
@@ -1291,7 +1291,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                         value={btn.url}
                         onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, url: e.target.value } : b) }))}
                         placeholder="https://..."
-                        className="text-xs h-7 flex-1"
+                        className="text-sm h-8 flex-1"
                       />
                     )}
                     {btn.tipo === 'PHONE_NUMBER' && (
@@ -1299,14 +1299,14 @@ export default function CampanhaMetaOficial({ empresaId }) {
                         value={btn.telefone}
                         onChange={e => setFormTemplate(p => ({ ...p, botoes: p.botoes.map((b, i) => i === idx ? { ...b, telefone: e.target.value } : b) }))}
                         placeholder="+55..."
-                        className="text-xs h-7 flex-1"
+                        className="text-sm h-8 flex-1"
                       />
                     )}
                     <button onClick={() => setFormTemplate(p => ({ ...p, botoes: p.botoes.filter((_, i) => i !== idx) }))} className="text-red-400 hover:text-red-600 flex-shrink-0">✕</button>
                   </div>
                 ))}
                 {(formTemplate.botoes || []).length === 0 && (
-                  <p className="text-[10px] text-slate-400">Nenhum botão adicionado. Clique em + para adicionar.</p>
+                  <p className="text-xs text-slate-400">Nenhum botão adicionado. Clique em + para adicionar.</p>
                 )}
               </div>
             </div>
