@@ -311,7 +311,11 @@ export default function CampanhaMetaOficial({ empresaId }) {
         botoes: dados.botoes || [],
       });
       if (!resp?.data?.ok) {
-        const errDetail = resp?.data?.details?.error?.error_user_msg || resp?.data?.error || 'Erro ao criar template na Meta';
+        const errDetail = resp?.data?.details?.error?.error_user_msg
+          || resp?.data?.details?.error?.error_data?.details
+          || resp?.data?.details?.error?.message
+          || resp?.data?.error
+          || 'Erro ao criar template na Meta';
         throw new Error(errDetail);
       }
       return resp.data;
@@ -326,7 +330,11 @@ export default function CampanhaMetaOficial({ empresaId }) {
       setFormTemplate({ nome: '', categoria: 'marketing', idioma: 'pt_BR', corpo: '', cabecalho: '', rodape: '', tipo_cabecalho: 'TEXT', cabecalho_midia_url: '', botoes: [] });
       refetchTemplates();
     },
-    onError: (e) => toast.error('Erro: ' + e.message),
+    onError: (e) => {
+      // Tentar extrair mensagem real da Meta do erro de rede
+      const msg = e?.response?.data?.error || e?.response?.data?.details?.error?.error_user_msg || e.message;
+      toast.error('Erro: ' + msg);
+    },
   });
 
   const dispararCampanha = async () => {

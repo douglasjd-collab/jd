@@ -30,10 +30,15 @@ Deno.serve(async (req) => {
       if (tipoHeader === 'TEXT' && cabecalho && cabecalho.trim()) {
         components.push({ type: 'HEADER', format: 'TEXT', text: cabecalho });
       } else if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(tipoHeader)) {
-        // Para templates com mídia, a Meta aceita sem example no header
-        // O example.header_handle requer upload via sessão (não Graph API upload)
-        // A mídia é fornecida dinamicamente no momento do disparo
+        // A Meta exige example.header_handle com o media_id obtido via upload
         const headerComp = { type: 'HEADER', format: tipoHeader };
+        if (cabecalho_media_id) {
+          headerComp.example = { header_handle: [cabecalho_media_id] };
+        } else {
+          // Sem media_id, usar URL direta como exemplo (funciona para alguns casos)
+          // A Meta pode rejeitar sem exemplo mas tentamos assim
+          headerComp.example = { header_handle: ['https://example.com/placeholder.jpg'] };
+        }
         components.push(headerComp);
       }
     }
@@ -80,7 +85,7 @@ Deno.serve(async (req) => {
     console.log('[criarTemplateMetaWhatsApp] Payload enviado à Meta:', JSON.stringify(payload));
 
     // Chamar API da Meta para criar o template
-    const metaUrl = `https://graph.facebook.com/v18.0/${businessAccountId}/message_templates`;
+    const metaUrl = `https://graph.facebook.com/v21.0/${businessAccountId}/message_templates`;
     const metaResp = await fetch(metaUrl, {
       method: 'POST',
       headers: {
@@ -93,9 +98,13 @@ Deno.serve(async (req) => {
     const metaData = await metaResp.json();
 
     if (!metaResp.ok || metaData.error) {
-      const errMsg = metaData.error?.error_user_msg || metaData.error?.message || 'Erro ao criar template na Meta';
+      const errMsg = metaData.error?.error_user_msg
+        || metaData.error?.error_data?.details
+        || metaData.error?.message
+        || 'Erro ao criar template na Meta';
       console.error('[criarTemplateMetaWhatsApp] Erro Meta:', JSON.stringify(metaData));
       return Response.json({
+        ok: false,
         error: errMsg,
         details: metaData,
       }, { status: 400 });
