@@ -348,7 +348,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
               variant="ghost"
               size="icon"
               onClick={() => setMenuPlusOpen(prev => !prev)}
-              className={`rounded-full w-9 h-9 transition-all ${menuPlusOpen ? 'bg-blue-100 text-blue-600 rotate-45' : 'hover:bg-slate-100 text-slate-500'}`}
+              className={`rounded-full w-10 h-10 transition-all ${menuPlusOpen ? 'bg-blue-100 text-blue-600 rotate-45' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'}`}
               title="Mais opções"
             >
               <Plus className="w-5 h-5" />
