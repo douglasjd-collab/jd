@@ -67,7 +67,8 @@ export default function MeusDados() {
       };
 
       setUser(userData);
-      setNomeCompleto(userData.full_name || '');
+      // Prioriza o nome do Colaborador (editável), fallback para full_name do auth
+      setNomeCompleto(colab?.nome || userData.full_name || '');
       setDadosBancarios({
         chave_pix: userData.chave_pix || '',
         tipo_chave_pix: userData.tipo_chave_pix || '',
@@ -112,7 +113,14 @@ export default function MeusDados() {
   };
 
   const updateNomeMutation = useMutation({
-    mutationFn: (nome) => base44.auth.updateMe({ full_name: nome }),
+    mutationFn: async (nome) => {
+      // Atualiza no auth (full_name)
+      await base44.auth.updateMe({ full_name: nome });
+      // Atualiza também no Colaborador (nome) para refletir no layout
+      if (user?.colaborador_id) {
+        await base44.entities.Colaborador.update(user.colaborador_id, { nome });
+      }
+    },
     onSuccess: () => {
       toast.success('Nome atualizado com sucesso!');
       loadUser();
