@@ -15,16 +15,18 @@ import { cn } from '@/lib/utils';
 
 // Estrutura de menus/submenus — espelha o Layout
 const MENU_ESTRUTURA = [
-  { key: 'dashboard',           label: 'Dashboard',             descricao: 'Painel principal com resumos e indicadores' },
-  { key: 'nova_venda',          label: 'Nova Venda',            descricao: 'Cadastrar novas vendas' },
+  { key: 'dashboard',    label: 'Dashboard',    descricao: 'Painel principal com resumos e indicadores' },
+  { key: 'bate_papo',   label: 'Bate - Papo',  descricao: 'Chat via WhatsApp/Instagram com clientes' },
+  { key: 'funil_vendas', label: 'Funil de Vendas', descricao: 'Acompanhar oportunidades no funil' },
+  { key: 'call_center',  label: 'Call Center',  descricao: 'Central de chamadas e ramal SIP' },
   {
     key: 'emprestimos',
     label: 'Empréstimos',
     descricao: 'Gerenciar propostas de empréstimos',
     submenu: [
+      { key: 'emprestimos:NovaVendaConsignado', label: 'Nova Venda' },
       { key: 'emprestimos:VendasEmprestimos',    label: 'Propostas' },
       { key: 'emprestimos:PropostasSemVendedor', label: 'Propostas sem Vendedor' },
-      { key: 'emprestimos:ImportacaoProducao',   label: 'Importar Propostas' },
     ],
   },
   {
@@ -32,12 +34,14 @@ const MENU_ESTRUTURA = [
     label: 'Consórcio',
     descricao: 'Propostas, planos e simulações de consórcio',
     submenu: [
-      { key: 'consorcio:NovaVenda',                       label: '+ Nova Venda' },
-      { key: 'consorcio:Vendas',                          label: 'Propostas' },
-      { key: 'consorcio:PlanosCanopus',                   label: 'Planos Canopus' },
-      { key: 'consorcio:SimuladorEscolha',                label: 'Simulador' },
-      { key: 'consorcio:HistoricoResultadoAssembleia',    label: 'Resultado de Assembleia' },
-      { key: 'consorcio:OfertaLance',                     label: 'Oferta de Lance' },
+      { key: 'consorcio:NovaVenda',                    label: '+ Nova Venda' },
+      { key: 'consorcio:Vendas',                       label: 'Propostas' },
+      { key: 'consorcio:PlanosCanopus',                label: 'Planos Canopus' },
+      { key: 'consorcio:SimuladorEscolha',             label: 'Simulador' },
+      { key: 'consorcio:SimuladorInteligente',         label: 'Simulador Inteligente' },
+      { key: 'consorcio:HistoricoResultadoAssembleia', label: 'Resultado de Assembleia' },
+      { key: 'consorcio:OfertaLance',                  label: 'Oferta de Lance' },
+      { key: 'consorcio:CartasContempladas',           label: 'Cartas Contempladas' },
     ],
   },
   {
@@ -53,17 +57,14 @@ const MENU_ESTRUTURA = [
     ],
   },
   { key: 'financiamento_veiculos', label: 'Financiamento de Veículos', descricao: 'Propostas de financiamento de veículos' },
-  { key: 'funil_vendas',        label: 'Funil de Vendas',       descricao: 'Acompanhar oportunidades no funil' },
-  { key: 'tarefas',             label: 'Tarefas',               descricao: 'Gerenciamento de tarefas e atividades' },
-  { key: 'clientes',            label: 'Clientes',              descricao: 'Cadastro e gerenciamento de clientes' },
-  { key: 'cartas_contempladas', label: 'Cartas Contempladas',   descricao: 'Gestão de cartas contempladas' },
-  { key: 'agenda',              label: 'Agenda',                descricao: 'Compromissos e lembretes' },
-  { key: 'bate_papo',           label: 'Bate-papo',             descricao: 'Chat via WhatsApp com clientes' },
-  { key: 'contatos_crm',        label: 'Contatos CRM',          descricao: 'Contatos e leads do CRM' },
-  { key: 'campanhas',           label: 'Campanhas',             descricao: 'Campanhas de marketing e mensagens' },
-  { key: 'saques',              label: 'Minhas Comissões',      descricao: 'Solicitação e gerenciamento de saques' },
-  { key: 'relatorios',          label: 'Relatórios',            descricao: 'Relatórios de vendas e comissões' },
-  { key: 'finanto_bank',        label: 'FinantoBank INSS',      descricao: 'Integração com FinantoBank para propostas INSS' },
+  { key: 'tarefas',      label: 'Tarefas',          descricao: 'Gerenciamento de tarefas e atividades' },
+  { key: 'clientes',     label: 'Clientes',         descricao: 'Cadastro e gerenciamento de clientes' },
+  { key: 'agenda',       label: 'Agenda',           descricao: 'Compromissos e lembretes' },
+  { key: 'contatos_crm', label: 'Contatos CRM',     descricao: 'Contatos e leads do CRM' },
+  { key: 'campanhas',    label: 'Campanhas',        descricao: 'Campanhas de marketing e mensagens em massa' },
+  { key: 'saques',       label: 'Minhas Comissões', descricao: 'Solicitação e gerenciamento de saques' },
+  { key: 'relatorios',   label: 'Relatórios',       descricao: 'Relatórios de vendas e comissões' },
+  { key: 'finanto_bank', label: 'FinantoBank INSS', descricao: 'Integração com FinantoBank para propostas INSS' },
 ];
 
 // Todas as chaves "folha" (menus simples + submenus)

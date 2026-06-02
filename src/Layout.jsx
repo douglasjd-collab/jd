@@ -419,6 +419,7 @@ export default function Layout({ children, currentPageName }) {
     'Cartas Contempladas': 'cartas_contempladas',
     'Agenda': 'agenda',
     'Bate - Papo': 'bate_papo',
+    'Call Center': 'call_center',
     'Contatos CRM': 'contatos_crm',
     'Campanhas': 'campanhas',
     'JD Messenger (Central de conversas)': 'bate_papo',
