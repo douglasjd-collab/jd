@@ -1064,8 +1064,17 @@ export default function CampanhaMetaOficial({ empresaId }) {
           { tipo: 'audio', icon: <Mic className="w-5 h-5 text-amber-500" />, label: 'Áudio', desc: 'Mensagem de voz ou arquivo de áudio.' },
           { tipo: 'documento', icon: <File className="w-5 h-5 text-red-500" />, label: 'Documento PDF', desc: 'Cabeçalho com arquivo PDF/documento + corpo de texto.' },
         ];
+        // Ocultar a seção de tipos quando o tipo já é conhecido (template tem mídia real)
+        const ocultarTipos = tipoAtual !== 'texto' && d.cabecalho_midia_url;
 
-        const tipoAtual = d.tipo_midia || 'texto';
+        // Detectar tipo: usar tipo_cabecalho salvo, ou inferir pela presença de mídia
+        const tipoCabRaw = (d.tipo_cabecalho || d.tipo_midia || '').toUpperCase();
+        const tipoAtual = tipoCabRaw === 'IMAGE' ? 'imagem'
+          : tipoCabRaw === 'VIDEO' ? 'video'
+          : tipoCabRaw === 'DOCUMENT' ? 'documento'
+          : tipoCabRaw === 'AUDIO' ? 'audio'
+          : d.cabecalho_midia_url ? 'imagem'
+          : 'texto';
 
         return (
           <Dialog open={!!templateVisualizando} onOpenChange={v => !v && setTemplateVisualizando(null)}>
@@ -1091,13 +1100,16 @@ export default function CampanhaMetaOficial({ empresaId }) {
                   <p className="text-[10px] text-slate-500 mb-2 font-medium uppercase tracking-wide">Prévia da mensagem</p>
                   <div className="bg-white rounded-xl shadow-sm max-w-xs ml-auto p-3 space-y-1.5">
                     {/* Cabeçalho com mídia */}
-                    {(d.tipo_cabecalho === 'IMAGE' || (!d.tipo_cabecalho && d.cabecalho_midia_url && /\.(jpg|jpeg|png|gif|webp)/i.test(d.cabecalho_midia_url))) && d.cabecalho_midia_url && (
+                    {tipoAtual === 'imagem' && d.cabecalho_midia_url && (
                       <img src={d.cabecalho_midia_url} alt="Imagem do template" className="w-full rounded-lg object-cover max-h-48" onError={e => { e.target.style.display='none'; }} />
                     )}
-                    {d.tipo_cabecalho === 'VIDEO' && d.cabecalho_midia_url && (
+                    {tipoAtual === 'imagem' && !d.cabecalho_midia_url && (
+                      <div className="w-full h-28 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center text-blue-500 text-sm gap-2">🖼️ Imagem do template</div>
+                    )}
+                    {tipoAtual === 'video' && d.cabecalho_midia_url && (
                       <video src={d.cabecalho_midia_url} controls className="w-full rounded-lg max-h-48" />
                     )}
-                    {d.tipo_cabecalho === 'DOCUMENT' && d.cabecalho_midia_url && (
+                    {tipoAtual === 'documento' && d.cabecalho_midia_url && (
                       <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-600">
                         <span className="text-xl">📄</span>
                         <span className="text-xs font-medium">Documento PDF</span>
@@ -1105,7 +1117,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                       </div>
                     )}
                     {/* Cabeçalho texto */}
-                    {(d.tipo_cabecalho === 'TEXT' || (!d.tipo_cabecalho && d.cabecalho && !d.cabecalho_midia_url)) && d.cabecalho && (
+                    {tipoAtual === 'texto' && d.cabecalho && (
                       <p className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-1.5">{d.cabecalho}</p>
                     )}
                     {d.corpo && (
@@ -1129,42 +1141,44 @@ export default function CampanhaMetaOficial({ empresaId }) {
                   )}
                 </div>
 
-                {/* Tipos de mídia suportados */}
-                <div className="border rounded-xl p-4 space-y-3">
-                  <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-slate-500" />
-                    Tipos de Template Suportados pela Meta
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Os templates Meta Oficial suportam os seguintes tipos de conteúdo para o <strong>cabeçalho</strong>:
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {TIPOS_MIDIA.map(m => (
-                      <div
-                        key={m.tipo}
-                        className={`flex items-start gap-3 p-3 rounded-lg border-2 transition-colors ${
-                          tipoAtual === m.tipo
-                            ? 'border-green-400 bg-green-50'
-                            : 'border-slate-100 bg-slate-50'
-                        }`}
-                      >
-                        <div className="flex-shrink-0 mt-0.5">{m.icon}</div>
-                        <div>
-                          <p className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
-                            {m.label}
-                            {tipoAtual === m.tipo && (
-                              <span className="text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded-full">Este template</span>
-                            )}
-                          </p>
-                          <p className="text-[10px] text-slate-500 mt-0.5">{m.desc}</p>
+                {/* Tipos de mídia suportados — só exibe se não há mídia real */}
+                {!ocultarTipos && (
+                  <div className="border rounded-xl p-4 space-y-3">
+                    <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-slate-500" />
+                      Tipos de Template Suportados pela Meta
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Os templates Meta Oficial suportam os seguintes tipos de conteúdo para o <strong>cabeçalho</strong>:
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {TIPOS_MIDIA.map(m => (
+                        <div
+                          key={m.tipo}
+                          className={`flex items-start gap-3 p-3 rounded-lg border-2 transition-colors ${
+                            tipoAtual === m.tipo
+                              ? 'border-green-400 bg-green-50'
+                              : 'border-slate-100 bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex-shrink-0 mt-0.5">{m.icon}</div>
+                          <div>
+                            <p className="text-xs font-semibold text-slate-800 flex items-center gap-1.5">
+                              {m.label}
+                              {tipoAtual === m.tipo && (
+                                <span className="text-[9px] bg-green-500 text-white px-1.5 py-0.5 rounded-full">Este template</span>
+                              )}
+                            </p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">{m.desc}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                      ⚠️ Para criar templates com mídia (imagem, vídeo, documento), acesse o <strong>Meta Business Manager</strong> e selecione o tipo de cabeçalho ao criar o modelo.
+                    </div>
                   </div>
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
-                    ⚠️ Para criar templates com mídia (imagem, vídeo, documento), acesse o <strong>Meta Business Manager</strong> e selecione o tipo de cabeçalho ao criar o modelo.
-                  </div>
-                </div>
+                )}
               </div>
 
               <DialogFooter className="gap-2">
