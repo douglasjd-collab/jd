@@ -322,25 +322,31 @@ async function salvarMensagemInstagram(base44, igAccountId, messaging) {
   // Usar senderId como identificador do contato Instagram
   const igContactId = `ig_${senderId}`;
 
-  // Buscar nome e foto real do usuário via Graph API do Instagram
-  let igNome = `Instagram ${senderId}`;
+  // Buscar nome, foto e username real do usuário via Graph API do Instagram
+  let igNome = null;
   let igFoto = null;
+  let igUsername = null;
   try {
     const igToken = empresa.instagram_access_token;
     if (igToken) {
-      const profileResp = await fetch(`https://graph.facebook.com/v21.0/${senderId}?fields=name,profile_pic&access_token=${igToken}`);
+      const profileResp = await fetch(`https://graph.facebook.com/v21.0/${senderId}?fields=name,profile_pic,username&access_token=${igToken}`);
       if (profileResp.ok) {
         const profileData = await profileResp.json();
         if (profileData.name) igNome = profileData.name;
         if (profileData.profile_pic) igFoto = profileData.profile_pic;
-        console.log(`👤 Perfil IG: ${igNome} | foto: ${igFoto ? 'sim' : 'não'}`);
+        if (profileData.username) igUsername = profileData.username;
+        console.log(`👤 Perfil IG: ${igNome} (@${igUsername}) | foto: ${igFoto ? 'sim' : 'não'}`);
       } else {
-        console.log(`⚠️ Falha ao buscar perfil IG: ${profileResp.status}`);
+        const errTxt = await profileResp.text().catch(() => '');
+        console.log(`⚠️ Falha ao buscar perfil IG: ${profileResp.status} ${errTxt}`);
       }
     }
   } catch (profileErr) {
     console.log('⚠️ Erro ao buscar perfil Instagram:', profileErr.message);
   }
+
+  // Fallback: usar ID como nome apenas se não conseguiu nome real
+  if (!igNome) igNome = `Instagram ${senderId}`;
 
   // Buscar ou criar cliente
   let clientes = await base44.asServiceRole.entities.Cliente.filter({ empresa_id: empresaId, celular: igContactId }, null, 1);
@@ -355,11 +361,38 @@ async function salvarMensagemInstagram(base44, igAccountId, messaging) {
     });
   } else {
     cliente = clientes[0];
-    // Atualizar nome se ainda for o padrão
-    if (cliente.nome_completo?.startsWith('Instagram ') && igNome !== `Instagram ${senderId}`) {
+    // Atualizar nome se ainda for o padrão (ID numérico) e agora temos o nome real
+    const nomeEhPadrao = cliente.nome_completo?.startsWith('Instagram ') || cliente.nome_completo === senderId;
+    if (nomeEhPadrao && igNome && !igNome.startsWith('Instagram ')) {
       await base44.asServiceRole.entities.Cliente.update(cliente.id, { nome_completo: igNome });
       cliente.nome_completo = igNome;
     }
+  }
+
+  // Atualizar ou criar ContatoWhatsapp com dados do Instagram
+  try {
+    const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, telefone: igContactId }, null, 1);
+    const contatoUpdate = {
+      ultima_atualizacao: new Date().toISOString(),
+      ...(igFoto ? { foto_url: igFoto } : {}),
+      ...(igUsername ? { observacoes: `@${igUsername}` } : {}),
+    };
+    if (contatos.length > 0) {
+      const cont = contatos[0];
+      if (!cont.nome_fixo && igNome && !igNome.startsWith('Instagram ')) contatoUpdate.nome = igNome;
+      await base44.asServiceRole.entities.ContatoWhatsapp.update(cont.id, contatoUpdate);
+    } else {
+      await base44.asServiceRole.entities.ContatoWhatsapp.create({
+        empresa_id: empresaId,
+        telefone: igContactId,
+        nome: igNome,
+        foto_url: igFoto,
+        observacoes: igUsername ? `@${igUsername}` : null,
+        ultima_atualizacao: new Date().toISOString(),
+      });
+    }
+  } catch (contErr) {
+    console.log('⚠️ Erro ao salvar ContatoWhatsapp IG:', contErr.message);
   }
 
   // Buscar ou criar conversa

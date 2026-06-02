@@ -77,8 +77,8 @@ export default function BatePapo() {
   const [empresaId, setEmpresaId] = useState(null);
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
 
-  // Definir conversaSelecionadaId ANTES de qualquer hook que o use
   const conversaSelecionadaId = conversaSelecionada?.id || null;
+  const isInstagram = (c) => c?.cliente_telefone?.startsWith('ig_') || c?.instancia === 'INSTAGRAM' || c?.tipo_conexao === 'instagram';
 
   const selecionarConversa = async (conversa, forcarSync = true, abrirMobile = true) => {
      setConversaSelecionada(conversa);
@@ -116,6 +116,26 @@ export default function BatePapo() {
       }
     } catch (_) {
       setOportunidadeAtual(null);
+    }
+
+    // Instagram: sincronizar perfil (nome/foto/username) automaticamente
+    if (isInstagram(conversa)) {
+      const sid = (conversa.cliente_telefone || '').replace('ig_', '');
+      if (sid && empresaId) {
+        const ck = `ig_ps_${sid}`;
+        const ls = localStorage.getItem(ck);
+        const temFoto = contatosWhatsapp[conversa.id]?.foto_url || conversa.foto_url;
+        if (!ls || (Date.now() - Number(ls)) > 604800000 || !temFoto) {
+          base44.functions.invoke('sincronizarPerfilInstagram', { empresa_id: empresaId, sender_id: sid }).then(r => {
+            if (r?.data?.success) {
+              localStorage.setItem(ck, String(Date.now()));
+              const { nome, foto_url, username } = r.data;
+              setContatosWhatsapp(prev => ({ ...prev, [conversa.id]: { ...(prev[conversa.id] || {}), nome: nome || prev[conversa.id]?.nome || conversa.cliente_nome, telefone: conversa.cliente_telefone, foto_url: foto_url || prev[conversa.id]?.foto_url || conversa.foto_url, username } }));
+            }
+          }).catch(() => {});
+        }
+      }
+      return;
     }
 
     // Buscar foto com múltiplas tentativas — rigoroso
@@ -296,16 +316,12 @@ export default function BatePapo() {
     try {
       const todos = await base44.entities.ConversaWhatsapp.filter({ empresa_id: empresaId, bloqueado: true }, '-updated_date', 200);
       setGruposBloqueadosLista(todos);
-    } catch (e) {
-      toast.error('Erro ao carregar grupos bloqueados');
-    } finally {
-      setLoadingGruposBloqueados(false);
-    }
+    } catch (e) { toast.error('Erro ao carregar grupos bloqueados'); }
+    finally { setLoadingGruposBloqueados(false); }
   };
 
   const handleTransferir = async (conversa, colaborador) => {
     try {
-      // Atualiza responsável e marca status como encerrada (filtro Transferidos)
       await base44.entities.ConversaWhatsapp.update(conversa.id, {
         responsavel_id: colaborador.id,
         responsavel_nome: colaborador.nome,
@@ -352,24 +368,6 @@ export default function BatePapo() {
       toast.error('Erro ao limpar: ' + e.message);
     } finally {
       setLimpandoTudo(false);
-    }
-  };
-
-  const sincronizarChats = async () => {
-    setSincronizando(true);
-    try {
-      const resp = await base44.functions.invoke('sincronizarTodosChats', {});
-      const data = resp?.data;
-      if (data?.ok) {
-        toast.success(`Sincronizado: ${data.conversas_criadas} novas conversas`);
-        refetchConversas();
-      } else {
-        toast.error('Erro ao sincronizar: ' + (data?.erro || 'Desconhecido'));
-      }
-    } catch (e) {
-      toast.error('Erro: ' + e.message);
-    } finally {
-      setSincronizando(false);
     }
   };
 
@@ -1643,7 +1641,10 @@ export default function BatePapo() {
                       const naoLidas = naoLidasPorConversa[c.id] ?? 0;
                        const isSelecionada = conversaSelecionada?.id === c.id;
                        const mostrarBadge = !isSelecionada && c.status !== 'encerrada' && (naoLidas > 0 || estaEmEspera(c));
-                      const nome = contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.cliente_telefone;
+                      const cache = contatosWhatsapp[c.id];
+                      const nomeEhId = !cache?.nome || cache?.nome?.startsWith('Instagram ') || cache?.nome === c.cliente_telefone;
+                      const nome = (!nomeEhId && cache?.nome) || c.cliente_nome || c.cliente_telefone;
+                      const igUsername = isInstagram(c) ? (cache?.username || (cache?.observacoes?.startsWith('@') ? cache.observacoes.slice(1) : null)) : null;
                       const ultimaMsg = c.ultima_mensagem && c.ultima_mensagem !== 'Carregando histórico...' ? c.ultima_mensagem : '';
                       const hora = c.data_ultima_mensagem
                         ? format(new Date(c.data_ultima_mensagem), "HH:mm", { locale: ptBR })
@@ -1685,6 +1686,7 @@ export default function BatePapo() {
                               <span className="jd-chat-name">{nome}</span>
                               <span className="jd-chat-time">{hora}</span>
                             </div>
+                            {igUsername && <span style={{fontSize:'11px',color:'#9333ea',fontWeight:500}}>@{igUsername}</span>}
                             {(() => {
                               const tagIds = contatosWhatsapp[c.id]?.tags_ids || [];
                               const tagsContato = tagsDB.filter(t => tagIds.includes(t.id));
