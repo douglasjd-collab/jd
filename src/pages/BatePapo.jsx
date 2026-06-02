@@ -1503,9 +1503,9 @@ export default function BatePapo() {
           </DialogContent>
         </Dialog>
 
-        <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', width: '100%' }}>
           {/* Coluna esquerda - Conversas */}
-          <Card className={`jd-messenger-sidebar flex shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-scrollbar]]:hidden ${mobileViewChat ? 'hidden' : 'flex'} lg:flex`} style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100vh', boxSizing: 'border-box' }}>
+          <Card className={`jd-messenger-sidebar shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-scrollbar]]:hidden ${mobileViewChat ? 'hidden' : 'flex w-full'} lg:flex lg:w-auto`} style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100vh', boxSizing: 'border-box' }}>
             <CardHeader className="jd-messenger-top flex flex-row items-center justify-between gap-2 pb-2 px-4 py-3 flex-shrink-0">
               <p className="text-lg font-semibold">Conversas</p>
               <div className="flex items-center gap-1">
@@ -1755,7 +1755,7 @@ export default function BatePapo() {
           </Card>
 
           {/* Coluna central - Chat + painel lead */}
-          <Card className={`flex flex-1 flex-col overflow-hidden rounded-none rounded-r-xl h-full ${!mobileViewChat ? 'hidden' : 'flex'} lg:flex`}>
+          <Card className={`flex-col overflow-hidden rounded-none rounded-r-xl h-full ${!mobileViewChat ? 'hidden lg:flex' : 'flex w-full'} lg:flex lg:flex-1`}>
             {conversaSelecionada ? (
               <>
                 {/* Botão voltar mobile - integrado ao ChatHeader no mobile */}
