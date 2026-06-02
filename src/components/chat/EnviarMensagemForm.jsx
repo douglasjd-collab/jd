@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText } from 'lucide-react';
+import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Plus } from 'lucide-react';
 import MensagensRapidasModal from './MensagensRapidasModal';
 import TemplateMetaModal from './TemplateMetaModal';
 
@@ -22,6 +22,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const [tempoGravacao, setTempoGravacao] = useState(0);
   const [mensagensRapidasOpen, setMensagensRapidasOpen] = useState(false);
   const [templateMetaOpen, setTemplateMetaOpen] = useState(false);
+  const [menuPlusOpen, setMenuPlusOpen] = useState(false);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -41,6 +42,15 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!menuPlusOpen) return;
+    const handler = (e) => {
+      if (!e.target.closest('.menu-plus-container')) setMenuPlusOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuPlusOpen]);
 
   const iniciarGravacao = async () => {
     setErro(null);
@@ -331,62 +341,72 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
         </div>
       ) : (
         <div className="flex items-end gap-2">
-          {/* Botões esquerda */}
-          <div className="flex items-center gap-1 pb-1">
+          {/* Botão + com menu popup */}
+          <div className="relative pb-1 menu-plus-container">
             <Button
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              className={`rounded-full hover:bg-slate-100 w-9 h-9 ${arquivos.length > 0 ? 'text-blue-500' : ''}`}
-              title="Anexar arquivo(s)"
+              onClick={() => setMenuPlusOpen(prev => !prev)}
+              className={`rounded-full w-9 h-9 transition-all ${menuPlusOpen ? 'bg-blue-100 text-blue-600 rotate-45' : 'hover:bg-slate-100 text-slate-500'}`}
+              title="Mais opções"
             >
-              <Paperclip className="w-5 h-5" />
+              <Plus className="w-5 h-5" />
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="rounded-full hover:bg-slate-100 w-9 h-9"
-            >
-              <Smile className="w-5 h-5 text-slate-500" />
-            </Button>
-            {nomeUsuario && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                title={assinaturaAtiva ? `Assinatura ativa: Atendente - ${nomeUsuario}` : 'Ativar assinatura na mensagem'}
-                onClick={() => {
-                  const novo = !assinaturaAtiva;
-                  setAssinaturaAtiva(novo);
-                  localStorage.setItem('chat_assinatura', String(novo));
-                }}
-                className={`rounded-full w-9 h-9 ${assinaturaAtiva ? 'bg-blue-100 text-blue-600 hover:bg-blue-200' : 'hover:bg-slate-100 text-slate-500'}`}
-              >
-                <PenLine className="w-4 h-4" />
-              </Button>
+
+            {/* Menu popup */}
+            {menuPlusOpen && (
+              <div className="absolute bottom-full left-0 mb-2 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden z-20 min-w-[200px]">
+                <button
+                  type="button"
+                  onClick={() => { fileInputRef.current?.click(); setMenuPlusOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <Paperclip className={`w-4 h-4 ${arquivos.length > 0 ? 'text-blue-500' : 'text-slate-500'}`} />
+                  <span>Anexar arquivo</span>
+                  {arquivos.length > 0 && <span className="ml-auto text-xs text-blue-500 font-medium">{arquivos.length}</span>}
+                </button>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
+                >
+                  <Smile className="w-4 h-4 text-slate-500" />
+                  <span>Emoji</span>
+                </button>
+                {nomeUsuario && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const novo = !assinaturaAtiva;
+                      setAssinaturaAtiva(novo);
+                      localStorage.setItem('chat_assinatura', String(novo));
+                      setMenuPlusOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
+                  >
+                    <PenLine className={`w-4 h-4 ${assinaturaAtiva ? 'text-blue-500' : 'text-slate-500'}`} />
+                    <span>Assinatura</span>
+                    {assinaturaAtiva && <span className="ml-auto text-xs text-blue-500 font-medium">Ativa</span>}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setMensagensRapidasOpen(true); setMenuPlusOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
+                >
+                  <Zap className="w-4 h-4 text-yellow-500" />
+                  <span>Mensagens Rápidas</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setTemplateMetaOpen(true); setMenuPlusOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
+                >
+                  <FileText className="w-4 h-4 text-green-500" />
+                  <span>Template Meta</span>
+                </button>
+              </div>
             )}
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              title="Mensagens Rápidas"
-              onClick={() => setMensagensRapidasOpen(true)}
-              className="rounded-full w-9 h-9 hover:bg-yellow-100 text-slate-500 hover:text-yellow-600"
-            >
-              <Zap className="w-4 h-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              title="Enviar Template Meta Oficial"
-              onClick={() => setTemplateMetaOpen(true)}
-              className="rounded-full w-9 h-9 hover:bg-green-100 text-slate-500 hover:text-green-600"
-            >
-              <FileText className="w-4 h-4" />
-            </Button>
           </div>
 
           {/* Textarea */}
