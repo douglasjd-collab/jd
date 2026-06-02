@@ -307,11 +307,14 @@ async function salvarMensagemInstagram(base44, igAccountId, messaging) {
   }
   if (!texto) texto = '[Mensagem]';
 
-  // Buscar empresa pelo ig_account_id (recipientId = ID da página/conta IG)
+  // Buscar empresa pelo instagram_user_id (recipientId = ID da conta IG) ou meta_business_id
   const todasEmpresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, null, 50);
-  let empresa = todasEmpresas.find(e => String(e.meta_business_id || '').trim() === recipientId);
-  if (!empresa) empresa = todasEmpresas.find(e => e.whatsapp_access_token); // fallback
+  let empresa = todasEmpresas.find(e => String(e.instagram_user_id || '').trim() === recipientId);
+  if (!empresa) empresa = todasEmpresas.find(e => String(e.meta_business_id || '').trim() === recipientId);
+  if (!empresa) empresa = todasEmpresas.find(e => e.instagram_access_token); // fallback por token IG
+  if (!empresa) empresa = todasEmpresas.find(e => e.whatsapp_access_token); // fallback geral
   if (!empresa) { console.log('❌ Nenhuma empresa encontrada para IG account:', recipientId); return; }
+  console.log(`🏢 Empresa IG encontrada: ${empresa.nome} | instagram_user_id: ${empresa.instagram_user_id} | recipientId: ${recipientId}`);
 
   const empresaId = empresa.id;
   console.log(`🏢 Empresa IG: ${empresa.nome} (${empresaId})`);

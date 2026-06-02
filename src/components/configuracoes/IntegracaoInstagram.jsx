@@ -22,13 +22,15 @@ export default function IntegracaoInstagram({ empresaId }) {
 
   useEffect(() => {
     if (!empresaId) return;
-    base44.entities.Empresa.filter({ id: empresaId }).then(res => {
-      if (res?.[0]) {
-        setEmpresa(res[0]);
+    // Buscar todas empresas e filtrar pelo id manualmente (filter por id não funciona no SDK)
+    base44.entities.Empresa.list().then(res => {
+      const emp = res?.find(e => e.id === empresaId);
+      if (emp) {
+        setEmpresa(emp);
         setForm({
-          instagram_user_id: res[0].instagram_user_id || '',
-          instagram_access_token: res[0].instagram_access_token || '',
-          instagram_username: res[0].instagram_username || '',
+          instagram_user_id: emp.instagram_user_id || '',
+          instagram_access_token: emp.instagram_access_token || '',
+          instagram_username: emp.instagram_username || '',
         });
       }
     });
