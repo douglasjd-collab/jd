@@ -389,7 +389,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Minhas Comissões', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor', 'colaborador', 'funcionario'] },
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
-    { name: 'Campanhas', icon: Send, page: 'Campanhas', roles: ['master', 'super_admin', 'admin', 'gerente'] },
+    { name: 'Campanhas', icon: Send, page: 'Campanhas', roles: ALL_ROLES },
     {
       name: 'Funcionários',
       icon: Users,
@@ -439,7 +439,9 @@ export default function Layout({ children, currentPageName }) {
   // Verifica se uma chave de submenu está liberada (formato 'menuKey:page')
   const isSubmenuPermitido = (menuKey, subPage) => {
     if (!temPermissoesCustomizadas) return true;
-    const subKey = `${menuKey}:${subPage}`;
+    // Normaliza: remove query string (ex: 'NovaVenda?tipo=consorcio' → 'NovaVenda')
+    const pageNormalizado = subPage.split('?')[0];
+    const subKey = `${menuKey}:${pageNormalizado}`;
     return menus_permitidos.includes(subKey);
   };
 
