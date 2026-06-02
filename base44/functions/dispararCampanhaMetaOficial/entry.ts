@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url } = await req.json();
+    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url, template_botoes = [] } = await req.json();
 
     if (!empresa_id || !template_name || contatos.length === 0) {
       return Response.json({ error: 'empresa_id, template_name e contatos são obrigatórios' }, { status: 400 });
@@ -43,10 +43,12 @@ Deno.serve(async (req) => {
       const headerType = (template_header_type || '').toUpperCase();
       if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && template_header_url) {
         const mediaKey = headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document';
-        components.push({
-          type: 'header',
-          parameters: [{ type: mediaKey, [mediaKey]: { link: template_header_url } }],
-        });
+        // Se for um handle da Meta (string numérica longa), usar como id; caso contrário usar link
+        const isHandle = /^\d{10,}$/.test(String(template_header_url).trim());
+        const mediaParam = isHandle
+          ? { type: mediaKey, [mediaKey]: { id: template_header_url } }
+          : { type: mediaKey, [mediaKey]: { link: template_header_url } };
+        components.push({ type: 'header', parameters: [mediaParam] });
       }
 
       // Body variables
@@ -54,6 +56,20 @@ Deno.serve(async (req) => {
       if (varsKeys.length > 0) {
         const parametros = varsKeys.map(k => ({ type: 'text', text: variaveis[k] || '' }));
         components.push({ type: 'body', parameters: parametros });
+      }
+
+      // Botões QUICK_REPLY (índice de cada botão)
+      if (Array.isArray(template_botoes) && template_botoes.length > 0) {
+        template_botoes.forEach((btn, idx) => {
+          if (btn.tipo === 'QUICK_REPLY') {
+            components.push({
+              type: 'button',
+              sub_type: 'quick_reply',
+              index: String(idx),
+              parameters: [{ type: 'payload', payload: btn.texto || String(idx) }],
+            });
+          }
+        });
       }
 
       const payload = {
@@ -80,7 +96,9 @@ Deno.serve(async (req) => {
         const data = await resp.json();
 
         if (!resp.ok) {
-          throw new Error(data?.error?.message || `HTTP ${resp.status}`);
+          const errDetail = data?.error?.error_data?.details || data?.error?.message || `HTTP ${resp.status}`;
+          console.error(`❌ Meta API error para ${numeroLimpo}:`, JSON.stringify(data?.error));
+          throw new Error(errDetail);
         }
 
         // Registrar no CampanhaLog

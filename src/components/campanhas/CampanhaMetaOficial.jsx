@@ -363,6 +363,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
           duracao_pausa: Number(duracaoPausa),
           template_header_type: templateDados.tipo_cabecalho || '',
           template_header_url: templateDados.cabecalho_midia_url || '',
+          template_botoes: templateDados.botoes || [],
         });
       } else {
         // Modo texto: usar função dedicada de disparo em massa
