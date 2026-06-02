@@ -82,9 +82,11 @@ Deno.serve(async (req) => {
     const tipoConexaoConversa = conversaDoBanco?.tipo_conexao || '';
 
     // ── INSTAGRAM DIRECT ──────────────────────────────────────────────────
+    // Detectar Instagram independente do forcar_api enviado pelo frontend
     const conversaEhInstagram =
       tipoConexaoConversa === 'instagram' ||
-      instanciaConversa === 'INSTAGRAM';
+      instanciaConversa === 'INSTAGRAM' ||
+      String(payload.numero_cliente || '').startsWith('ig_');
 
     if (conversaEhInstagram) {
       console.log('📸 Conversa é Instagram Direct — usando API do Instagram');
