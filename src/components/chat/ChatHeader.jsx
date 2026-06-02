@@ -72,22 +72,22 @@ export default function ChatHeader({
   const tagsDoContato = tagsDB.filter(t => (contatoAtual?.tags_ids || []).includes(t.id));
 
   return (
-    <div className="flex flex-col border-b bg-white px-5 py-2.5 shrink-0">
+    <div className="flex flex-col border-b bg-white px-3 sm:px-5 py-2 sm:py-2.5 shrink-0">
       {/* Linha 1: avatar + nome + botões */}
-      <div className="flex flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="relative">
+      <div className="flex flex-row items-center justify-between gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          <div className="relative flex-shrink-0">
             <AvatarContato
               contato={contatoAtual || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_telefone, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.foto_url }}
-              className="h-11 w-11"
+              className="h-9 w-9 sm:h-11 sm:w-11"
             />
             <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
           </div>
-          <div>
-            <p className="text-sm font-semibold leading-tight">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold leading-tight truncate">
               {contatoAtual?.nome || conversaSelecionada.cliente_telefone}
             </p>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-1 sm:gap-2 mt-0.5 flex-wrap">
               {ehInstagram ? (
                 <span className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm bg-gradient-to-r from-purple-500 to-pink-500">
                   <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
@@ -103,24 +103,24 @@ export default function ChatHeader({
                   {ehMeta ? 'Meta Oficial' : 'Evolution'}
                 </button>
               )}
-              <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
+              <p className="text-[11px] text-slate-500 truncate max-w-[120px] sm:max-w-none">{conversaSelecionada.cliente_telefone}</p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {onLigar && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant={chamadaAtiva ? "destructive" : "outline"}
                   size="sm"
-                  className={`gap-1.5 rounded-md text-xs font-semibold ${chamadaAtiva ? 'bg-red-500 hover:bg-red-600 border-red-500 text-white animate-pulse' : 'border-green-300 text-green-700 hover:text-green-800 hover:border-green-400 hover:bg-green-50'}`}
+                  className={`gap-1 sm:gap-1.5 rounded-md text-xs font-semibold px-2 sm:px-3 ${chamadaAtiva ? 'bg-red-500 hover:bg-red-600 border-red-500 text-white animate-pulse' : 'border-green-300 text-green-700 hover:text-green-800 hover:border-green-400 hover:bg-green-50'}`}
                   onClick={onLigar}
                   disabled={!chamadaAtiva && sipStatus && sipStatus !== 'registrado'}
                 >
                   {chamadaAtiva ? <PhoneOff className="h-3.5 w-3.5" /> : <PhoneCall className="h-3.5 w-3.5" />}
-                  {chamadaAtiva ? 'Em ligação' : 'Ligar'}
+                  <span className="hidden sm:inline">{chamadaAtiva ? 'Em ligação' : 'Ligar'}</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
@@ -131,7 +131,7 @@ export default function ChatHeader({
           <Button
             variant="outline"
             size="sm"
-            className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-red-600 hover:text-red-700 hover:border-red-300"
+            className="gap-1 sm:gap-1.5 rounded-md border-slate-200 text-xs font-medium text-red-600 hover:text-red-700 hover:border-red-300 px-2 sm:px-3"
           onClick={async () => {
             const idFinalizar = conversaSelecionada.id;
             queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
@@ -143,17 +143,17 @@ export default function ChatHeader({
           }}
         >
           <Check className="h-3.5 w-3.5" />
-          Finalizar Conversa
+          <span className="hidden sm:inline">Finalizar</span>
         </Button>
 
         <Button
           variant="outline"
           size="sm"
-          className="gap-1.5 rounded-md border-slate-200 text-xs font-medium text-purple-600 hover:text-purple-700 hover:border-purple-300"
+          className="gap-1 sm:gap-1.5 rounded-md border-slate-200 text-xs font-medium text-purple-600 hover:text-purple-700 hover:border-purple-300 px-2 sm:px-3"
           onClick={() => setTransferirModal(conversaSelecionada)}
         >
           <ArrowRightLeft className="h-3.5 w-3.5" />
-          Transferir
+          <span className="hidden sm:inline">Transferir</span>
         </Button>
 
         <DropdownMenu>
