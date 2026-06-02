@@ -80,7 +80,9 @@ export default function ChatMessageFooter({
         telefoneDestino={conversaSelecionada?.cliente_telefone}
         conversaId={conversaSelecionada?.id}
         onTemplateEnviado={() => {
-          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada?.id] });
+          const qKey = ['mensagens-whatsapp', conversaSelecionada?.id];
+          queryClient.invalidateQueries({ queryKey: qKey });
+          setTimeout(() => queryClient.refetchQueries({ queryKey: qKey }), 1000);
         }}
       />
     </>

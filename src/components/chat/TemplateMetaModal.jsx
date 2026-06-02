@@ -83,12 +83,15 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
         toast.error('Erro ao enviar: ' + motivo);
       } else {
         toast.success(`✅ Template "${d.nome}" enviado!`);
-        // Forçar atualização das mensagens no chat
+        onOpenChange(false);
+        // Aguardar 800ms para o banco processar e então forçar refetch
         if (conversaId) {
-          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaId] });
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaId] });
+            queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaId] });
+          }, 800);
         }
         onEnviado?.();
-        onOpenChange(false);
       }
     } catch (e) {
       toast.error('Erro: ' + e.message);
