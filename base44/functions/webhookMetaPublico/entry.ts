@@ -322,6 +322,26 @@ async function salvarMensagemInstagram(base44, igAccountId, messaging) {
   // Usar senderId como identificador do contato Instagram
   const igContactId = `ig_${senderId}`;
 
+  // Buscar nome e foto real do usuário via Graph API do Instagram
+  let igNome = `Instagram ${senderId}`;
+  let igFoto = null;
+  try {
+    const igToken = empresa.instagram_access_token;
+    if (igToken) {
+      const profileResp = await fetch(`https://graph.facebook.com/v21.0/${senderId}?fields=name,profile_pic&access_token=${igToken}`);
+      if (profileResp.ok) {
+        const profileData = await profileResp.json();
+        if (profileData.name) igNome = profileData.name;
+        if (profileData.profile_pic) igFoto = profileData.profile_pic;
+        console.log(`👤 Perfil IG: ${igNome} | foto: ${igFoto ? 'sim' : 'não'}`);
+      } else {
+        console.log(`⚠️ Falha ao buscar perfil IG: ${profileResp.status}`);
+      }
+    }
+  } catch (profileErr) {
+    console.log('⚠️ Erro ao buscar perfil Instagram:', profileErr.message);
+  }
+
   // Buscar ou criar cliente
   let clientes = await base44.asServiceRole.entities.Cliente.filter({ empresa_id: empresaId, celular: igContactId }, null, 1);
   let cliente;
@@ -330,11 +350,16 @@ async function salvarMensagemInstagram(base44, igAccountId, messaging) {
       empresa_id: empresaId,
       tipo_pessoa: 'Física',
       celular: igContactId,
-      nome_completo: `Instagram ${senderId}`,
+      nome_completo: igNome,
       status: 'ativo',
     });
   } else {
     cliente = clientes[0];
+    // Atualizar nome se ainda for o padrão
+    if (cliente.nome_completo?.startsWith('Instagram ') && igNome !== `Instagram ${senderId}`) {
+      await base44.asServiceRole.entities.Cliente.update(cliente.id, { nome_completo: igNome });
+      cliente.nome_completo = igNome;
+    }
   }
 
   // Buscar ou criar conversa
@@ -345,9 +370,10 @@ async function salvarMensagemInstagram(base44, igAccountId, messaging) {
     conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
       empresa_id: empresaId,
       cliente_id: cliente?.id,
-      cliente_nome: `Instagram ${senderId}`,
+      cliente_nome: igNome,
       cliente_telefone: igContactId,
       whatsapp_id: igContactId,
+      foto_url: igFoto,
       status: 'ativa',
       tipo_conexao: 'instagram',
       instancia: 'INSTAGRAM',
@@ -358,6 +384,8 @@ async function salvarMensagemInstagram(base44, igAccountId, messaging) {
       status: 'ativa',
       tipo_conexao: 'instagram',
       instancia: 'INSTAGRAM',
+      cliente_nome: igNome,
+      ...(igFoto ? { foto_url: igFoto } : {}),
     });
   }
 
