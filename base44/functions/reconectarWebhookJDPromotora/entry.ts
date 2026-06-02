@@ -42,8 +42,8 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    // URL base FIXA — formato correto Base44
-    const WEBHOOK_BASE_URL = 'https://app--appjdpromorora.base44.app/api/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
+    // URL base FIXA — formato correto Base44 (URL de produção da API)
+    const WEBHOOK_BASE_URL = 'https://api.base44.com/apps/6950a9860c8af0e2ff10fc9e/functions/receberWebhookWhatsApp';
     const webhookUrl = `${WEBHOOK_BASE_URL}?instance=${encodeURIComponent(instanceName)}`;
     console.log(`🔗 URL do webhook configurada: ${webhookUrl}`);
     
@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
       webhook: {
         url: webhookUrl,
         enabled: true,
-        webhookBase64: false,
+        webhookBase64: true,
         webhookByEvents: false,
         events: [
           'QRCODE_UPDATED',
