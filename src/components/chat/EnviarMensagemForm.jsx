@@ -9,7 +9,7 @@ const LINE_HEIGHT = 24;
 
 const quickReplies = ["/boasvindas", "/consorcio", "/financiamento", "/documentos"];
 
-export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUsuario = '', empresaId = null, telefoneDestino = null, conversaId = null }) {
+export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUsuario = '', empresaId = null, telefoneDestino = null, conversaId = null, onTemplateEnviado = null }) {
   const [texto, setTexto] = useState('');
   const [assinaturaAtiva, setAssinaturaAtiva] = useState(() => {
     return localStorage.getItem('chat_assinatura') === 'true';
@@ -245,6 +245,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       empresaId={empresaId}
       telefoneDestino={telefoneDestino}
       conversaId={conversaId}
+      onEnviado={onTemplateEnviado}
     />
     <form onSubmit={handleEnviar} className="bg-white border-t p-3 relative">
       {erro && (

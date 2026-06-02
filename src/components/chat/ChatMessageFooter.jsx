@@ -79,6 +79,9 @@ export default function ChatMessageFooter({
         empresaId={empresaId}
         telefoneDestino={conversaSelecionada?.cliente_telefone}
         conversaId={conversaSelecionada?.id}
+        onTemplateEnviado={() => {
+          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada?.id] });
+        }}
       />
     </>
   );

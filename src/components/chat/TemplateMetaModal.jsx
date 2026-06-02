@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,11 @@ import { Search, Send, Loader2, RefreshCw, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-export default function TemplateMetaModal({ open, onOpenChange, empresaId, telefoneDestino, conversaId }) {
+export default function TemplateMetaModal({ open, onOpenChange, empresaId, telefoneDestino, conversaId, onEnviado }) {
   const [search, setSearch] = useState('');
   const [enviando, setEnviando] = useState(null); // id do template sendo enviado
   const [sincronizando, setSincronizando] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: templates = [], refetch } = useQuery({
     queryKey: ['meta-templates', empresaId],
@@ -82,6 +83,11 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
         toast.error('Erro ao enviar: ' + motivo);
       } else {
         toast.success(`✅ Template "${d.nome}" enviado!`);
+        // Forçar atualização das mensagens no chat
+        if (conversaId) {
+          queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaId] });
+        }
+        onEnviado?.();
         onOpenChange(false);
       }
     } catch (e) {
