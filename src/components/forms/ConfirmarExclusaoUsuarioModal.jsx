@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import {
+import React, { useState } from 'react';import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,6 +21,20 @@ export default function ConfirmarExclusaoUsuarioModal({
 }) {
   const [senha, setSenha] = useState('');
   const [isValidating, setIsValidating] = useState(false);
+  const [enviandoReset, setEnviandoReset] = useState(false);
+
+  const handleEsqueciSenha = async () => {
+    setEnviandoReset(true);
+    try {
+      const user = await base44.auth.me();
+      await base44.functions.invoke('enviarResetSenha', { email: user.email });
+      toast.success(`Email de redefinição enviado para ${user.email}`);
+    } catch (e) {
+      toast.error('Erro ao enviar email de redefinição');
+    } finally {
+      setEnviandoReset(false);
+    }
+  };
 
   const handleConfirm = async () => {
     if (!senha) {
@@ -108,6 +121,14 @@ export default function ConfirmarExclusaoUsuarioModal({
               className="border-red-300 focus:border-red-500 focus:ring-red-500"
               autoFocus
             />
+            <button
+              type="button"
+              onClick={handleEsqueciSenha}
+              disabled={enviandoReset}
+              className="text-xs text-blue-600 hover:underline disabled:opacity-50 text-left mt-1"
+            >
+              {enviandoReset ? 'Enviando...' : 'Esqueci minha senha — enviar email de redefinição'}
+            </button>
           </div>
         </div>
 
