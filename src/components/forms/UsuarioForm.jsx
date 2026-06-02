@@ -70,7 +70,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
         banco: '', banco_codigo: '', tipo_conta: 'corrente', agencia: '', digito_agencia: '',
         conta: '', digito_conta: '', operacao: '', favorecido_nome: '', favorecido_cpf: '',
         pix_tipo: 'cpf', pix_chave: '',
-        perfil: 'vendedor', empresa_id: '', gerente_id: '', tipo_agente: 'agente_loja',
+        perfil: 'vendedor', empresa_id: currentUser?.empresa_id || '', gerente_id: '', tipo_agente: 'agente_loja',
         percentual_comissao_agente: null, evolution_instance_name: '', status: 'ativo'
       });
     }
@@ -363,7 +363,8 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
               {/* ABA 4 — ACESSO E PERMISSÕES */}
               <TabsContent value="acesso" className="mt-0">
                 <div className="grid grid-cols-2 gap-3 pt-2">
-                  {isMasterAdmin && perfil !== 'super_admin' && (
+                  {/* Seleção de empresa APENAS para master/super_admin sem empresa_id própria */}
+                  {['master', 'super_admin'].includes(currentUser?.perfil) && !currentUser?.empresa_id && perfil !== 'super_admin' && (
                     <FormField label="Empresa" col2 required>
                       <Select
                         value={watch('empresa_id') || ''}

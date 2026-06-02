@@ -341,9 +341,14 @@ export default function Usuarios() {
           return;
         }
         
-        // Se o convite precisa de empresa (exceto master/super_admin)
+        // Preencher empresa automaticamente com a empresa do usuário logado se não informada
+        if (!normalizedData.empresa_id && currentUser?.empresa_id) {
+          normalizedData.empresa_id = currentUser.empresa_id;
+        }
+
+        // Bloquear apenas se ainda não tiver empresa e não for perfil global
         if (!normalizedData.empresa_id && !['master', 'super_admin'].includes(normalizedData.perfil)) {
-          toast.error('Selecione uma empresa para enviar o convite');
+          toast.error('Empresa não identificada. Verifique seu cadastro.');
           setIsSubmitting(false);
           return;
         }
