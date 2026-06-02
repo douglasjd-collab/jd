@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [] } = await req.json();
+    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url } = await req.json();
 
     if (!empresa_id || !template_name || contatos.length === 0) {
       return Response.json({ error: 'empresa_id, template_name e contatos são obrigatórios' }, { status: 400 });
@@ -36,8 +36,20 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Montar componentes de variáveis
+      // Montar componentes de variáveis e header de mídia
       const components = [];
+
+      // Header com imagem/vídeo/documento (quando template tem mídia)
+      const headerType = (template_header_type || '').toUpperCase();
+      if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && template_header_url) {
+        const mediaKey = headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document';
+        components.push({
+          type: 'header',
+          parameters: [{ type: mediaKey, [mediaKey]: { link: template_header_url } }],
+        });
+      }
+
+      // Body variables
       const varsKeys = Object.keys(variaveis);
       if (varsKeys.length > 0) {
         const parametros = varsKeys.map(k => ({ type: 'text', text: variaveis[k] || '' }));
