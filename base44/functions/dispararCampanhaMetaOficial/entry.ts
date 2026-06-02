@@ -36,20 +36,10 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Montar componentes de variáveis e header de mídia
+      // Montar componentes de variáveis
+      // Nota: para templates com imagem/vídeo fixos, a Meta não exige componente header no envio —
+      // a mídia já está registrada no template. Só body variables e botões são necessários.
       const components = [];
-
-      // Header com imagem/vídeo/documento (quando template tem mídia)
-      const headerType = (template_header_type || '').toUpperCase();
-      if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && template_header_url) {
-        const mediaKey = headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document';
-        // Se for um handle da Meta (string numérica longa), usar como id; caso contrário usar link
-        const isHandle = /^\d{10,}$/.test(String(template_header_url).trim());
-        const mediaParam = isHandle
-          ? { type: mediaKey, [mediaKey]: { id: template_header_url } }
-          : { type: mediaKey, [mediaKey]: { link: template_header_url } };
-        components.push({ type: 'header', parameters: [mediaParam] });
-      }
 
       // Body variables
       const varsKeys = Object.keys(variaveis);
