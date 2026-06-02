@@ -3,6 +3,24 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 // Garantir que o app ID está disponível para service role
 const APP_ID = Deno.env.get('BASE44_APP_ID') || '6950a9860c8af0e2ff10fc9e';
 
+// Cache de empresas por instância (evita rate limit em rajadas de webhooks)
+const empresaCache = new Map(); // instanceName → { empresa, expiresAt }
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+
+async function buscarEmpresaPorInstancia(base44, instanceName) {
+  const agora = Date.now();
+  const cached = empresaCache.get(instanceName);
+  if (cached && cached.expiresAt > agora) {
+    return cached.empresa;
+  }
+  const empresas = await base44.asServiceRole.entities.Empresa.filter(
+    { evolution_instance_name: instanceName }, null, 5
+  );
+  const empresa = empresas.length > 0 ? empresas[0] : null;
+  empresaCache.set(instanceName, { empresa, expiresAt: agora + CACHE_TTL_MS });
+  return empresa;
+}
+
 async function registrarLog(base44, empresaId, tipoEvento, dados) {
   try {
     await base44.asServiceRole.entities.LogRecebimentoWebhook.create({
@@ -381,14 +399,10 @@ async function processarWebhook(req, rawBody, base44) {
   // 🔥 LOG: Buscando empresa pela instância
   console.log(`🔍 Buscando empresa com evolution_instance_name = "${instanceFinal}"...`);
 
-  // Buscar empresa que possui esta instância configurada
+  // Buscar empresa que possui esta instância configurada (com cache para evitar rate limit)
   try {
-    const empresasPorInstancia = await base44.asServiceRole.entities.Empresa.filter(
-      { evolution_instance_name: instanceFinal }, null, 5
-    );
-    
-    if (empresasPorInstancia.length > 0) {
-      const emp = empresasPorInstancia[0];
+    const emp = await buscarEmpresaPorInstancia(base44, instanceFinal);
+    if (emp) {
       empresaId = emp.id;
       empresaEvolutionUrl = emp.evolution_url || Deno.env.get('EVOLUTION_API_URL');
       empresaEvolutionKey = emp.evolution_api_key || Deno.env.get('EVOLUTION_API_KEY');
