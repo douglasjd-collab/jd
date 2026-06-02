@@ -781,37 +781,10 @@ export default function BatePapo() {
           ultimo_remetente: 'cliente',
         }).catch(() => {});
 
-        // Verificar se a conversa está encerrada e perguntar se quer reabrir
-        const conversaEncerrada = conversasRef.current.find(
-          c => c.id === msgData.conversa_id && c.status === 'encerrada'
-        );
+        const conversaEncerrada = conversasRef.current.find(c => c.id === msgData.conversa_id && c.status === 'encerrada');
         if (conversaEncerrada) {
-          const nomeContato = conversaEncerrada.cliente_nome || conversaEncerrada.cliente_telefone || 'Cliente';
-          toast.message(`📩 Nova mensagem de ${nomeContato}`, {
-            description: 'Esta conversa está finalizada. Deseja reabri-la?',
-            duration: 15000,
-            action: {
-              label: 'Abrir conversa',
-              onClick: async () => {
-                // Reativar conversa
-                const eid = empresaIdRef.current;
-                queryClient.setQueryData(['conversas-whatsapp', eid], (old = []) =>
-                  old.map(c => c.id === conversaEncerrada.id
-                    ? { ...c, status: 'ativa', ultimo_remetente: 'cliente', responsavel_id: null, responsavel_expira_em: null }
-                    : c
-                  )
-                );
-                selecionarConversa({ ...conversaEncerrada, status: 'ativa' });
-                base44.entities.ConversaWhatsapp.update(conversaEncerrada.id, {
-                  status: 'ativa',
-                  ultimo_remetente: 'cliente',
-                  responsavel_id: null,
-                  responsavel_expira_em: null,
-                }).catch(() => {});
-                toast.success('Conversa reaberta!');
-              },
-            },
-          });
+        const nomeContato = conversaEncerrada.cliente_nome || conversaEncerrada.cliente_telefone || 'Cliente';
+        toast.message(`📩 Nova mensagem de ${nomeContato}`, { description: 'Esta conversa está finalizada. Deseja reabri-la?', duration: 15000, action: { label: 'Abrir conversa', onClick: async () => { const eid = empresaIdRef.current; queryClient.setQueryData(['conversas-whatsapp', eid], (old = []) => old.map(c => c.id === conversaEncerrada.id ? { ...c, status: 'ativa', ultimo_remetente: 'cliente', responsavel_id: null, responsavel_expira_em: null } : c)); selecionarConversa({ ...conversaEncerrada, status: 'ativa' }); base44.entities.ConversaWhatsapp.update(conversaEncerrada.id, { status: 'ativa', ultimo_remetente: 'cliente', responsavel_id: null, responsavel_expira_em: null }).catch(() => {}); toast.success('Conversa reaberta!'); } } });
         }
       }
 
@@ -1207,6 +1180,9 @@ export default function BatePapo() {
             }
             #batepapo-root { padding: 0 !important; }
             #batepapo-root > div { border-radius: 0 !important; }
+            .jd-chat-card { min-height: 64px; padding: 8px 10px; }
+            .jd-chat-name { font-size: 14px; }
+            .jd-chat-avatar { width: 46px; height: 46px; min-width: 46px; }
           }
           .jd-messenger-top {
             flex-shrink: 0;
@@ -1529,7 +1505,7 @@ export default function BatePapo() {
 
         <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           {/* Coluna esquerda - Conversas */}
-          <Card className={`jd-messenger-sidebar flex shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-scrollbar]]:hidden ${mobileViewChat ? 'hidden lg:flex' : 'flex'}`} style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100vh', boxSizing: 'border-box' }}>
+          <Card className={`jd-messenger-sidebar flex shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-scrollbar]]:hidden ${mobileViewChat ? 'hidden' : 'flex'} lg:flex`} style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100vh', boxSizing: 'border-box' }}>
             <CardHeader className="jd-messenger-top flex flex-row items-center justify-between gap-2 pb-2 px-4 py-3 flex-shrink-0">
               <p className="text-lg font-semibold">Conversas</p>
               <div className="flex items-center gap-1">
@@ -1779,15 +1755,15 @@ export default function BatePapo() {
           </Card>
 
           {/* Coluna central - Chat + painel lead */}
-          <Card className={`flex flex-1 flex-col overflow-hidden rounded-none rounded-r-xl h-full ${!mobileViewChat ? 'hidden lg:flex' : 'flex'}`}>
+          <Card className={`flex flex-1 flex-col overflow-hidden rounded-none rounded-r-xl h-full ${!mobileViewChat ? 'hidden' : 'flex'} lg:flex`}>
             {conversaSelecionada ? (
               <>
-                {/* Botão voltar mobile */}
-                <div className="flex lg:hidden items-center gap-2 px-3 py-2 bg-[#10353C] text-white shrink-0">
-                  <button onClick={() => setMobileViewChat(false)} className="p-1.5 rounded-full hover:bg-white/10">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+                {/* Botão voltar mobile - integrado ao ChatHeader no mobile */}
+                <div className="flex lg:hidden items-center gap-2 px-2 py-2 bg-[#10353C] text-white shrink-0 z-10">
+                  <button onClick={() => { setMobileViewChat(false); setConversaSelecionada(prev => prev); }} className="p-1.5 rounded-full hover:bg-white/10 active:bg-white/20 touch-manipulation">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
                   </button>
-                  <span className="text-sm font-medium">Voltar</span>
+                  <span className="text-sm font-semibold">Conversas</span>
                 </div>
                 {/* Header do chat - fixo */}
                 <ChatHeader
