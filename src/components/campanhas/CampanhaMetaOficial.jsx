@@ -1057,16 +1057,6 @@ export default function CampanhaMetaOficial({ empresaId }) {
         const statusMeta = d.status_meta || 'pendente';
         const statusInfo = STATUS_TEMPLATE[statusMeta] || STATUS_TEMPLATE.pendente;
 
-        const TIPOS_MIDIA = [
-          { tipo: 'texto', icon: <MessageSquare className="w-5 h-5 text-blue-500" />, label: 'Texto', desc: 'Mensagem somente com texto e variáveis personalizadas.' },
-          { tipo: 'imagem', icon: <Image className="w-5 h-5 text-emerald-500" />, label: 'Imagem', desc: 'Cabeçalho com imagem (JPG, PNG) + corpo de texto.' },
-          { tipo: 'video', icon: <Video className="w-5 h-5 text-purple-500" />, label: 'Vídeo', desc: 'Cabeçalho com vídeo (MP4) + corpo de texto.' },
-          { tipo: 'audio', icon: <Mic className="w-5 h-5 text-amber-500" />, label: 'Áudio', desc: 'Mensagem de voz ou arquivo de áudio.' },
-          { tipo: 'documento', icon: <File className="w-5 h-5 text-red-500" />, label: 'Documento PDF', desc: 'Cabeçalho com arquivo PDF/documento + corpo de texto.' },
-        ];
-        // Ocultar a seção de tipos quando o tipo já é conhecido (template tem mídia real)
-        const ocultarTipos = tipoAtual !== 'texto' && d.cabecalho_midia_url;
-
         // Detectar tipo: usar tipo_cabecalho salvo, ou inferir pela presença de mídia
         const tipoCabRaw = (d.tipo_cabecalho || d.tipo_midia || '').toUpperCase();
         const tipoAtual = tipoCabRaw === 'IMAGE' ? 'imagem'
@@ -1075,6 +1065,17 @@ export default function CampanhaMetaOficial({ empresaId }) {
           : tipoCabRaw === 'AUDIO' ? 'audio'
           : d.cabecalho_midia_url ? 'imagem'
           : 'texto';
+
+        // Ocultar a seção de tipos quando o tipo já é conhecido (template tem mídia real)
+        const ocultarTipos = tipoAtual !== 'texto' && d.cabecalho_midia_url;
+
+        const TIPOS_MIDIA = [
+          { tipo: 'texto', icon: <MessageSquare className="w-5 h-5 text-blue-500" />, label: 'Texto', desc: 'Mensagem somente com texto e variáveis personalizadas.' },
+          { tipo: 'imagem', icon: <Image className="w-5 h-5 text-emerald-500" />, label: 'Imagem', desc: 'Cabeçalho com imagem (JPG, PNG) + corpo de texto.' },
+          { tipo: 'video', icon: <Video className="w-5 h-5 text-purple-500" />, label: 'Vídeo', desc: 'Cabeçalho com vídeo (MP4) + corpo de texto.' },
+          { tipo: 'audio', icon: <Mic className="w-5 h-5 text-amber-500" />, label: 'Áudio', desc: 'Mensagem de voz ou arquivo de áudio.' },
+          { tipo: 'documento', icon: <File className="w-5 h-5 text-red-500" />, label: 'Documento PDF', desc: 'Cabeçalho com arquivo PDF/documento + corpo de texto.' },
+        ];
 
         return (
           <Dialog open={!!templateVisualizando} onOpenChange={v => !v && setTemplateVisualizando(null)}>
