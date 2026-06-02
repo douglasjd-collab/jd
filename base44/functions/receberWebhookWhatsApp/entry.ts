@@ -602,13 +602,16 @@ async function processarWebhook(req, rawBody, base44) {
         }).catch(() => {});
         console.log(`✅ @lid resolvido e salvo no cache: ${remoteJidOriginal} → ${telefoneLimpo}`);
       } else {
-        console.warn(`⚠️ @lid não resolvido: "${remoteJidOriginal}" (${pushName}) — mensagem ignorada`);
-        return;
+        // @lid não resolvido → usar LID numérico como identificador temporário
+        // Assim a conversa aparece no CRM em vez de ser descartada
+        telefoneLimpo = `lid_${lidNumerico}`;
+        console.warn(`⚠️ @lid não resolvido: "${remoteJidOriginal}" (${pushName}) — usando identificador temporário: ${telefoneLimpo}`);
       }
     }
   }
 
-  if (!telefoneLimpo || !validarTelefone(telefoneLimpo)) {
+  // Permitir identificadores lid_ temporários (criados quando @lid não resolve)
+  if (!telefoneLimpo || (!validarTelefone(telefoneLimpo) && !telefoneLimpo.startsWith('lid_'))) {
     console.warn(`⚠️ Número inválido: remoteJid="${remoteJidOriginal}" | tel="${telefoneLimpo}" | pushName="${pushName}" — ignorado`);
     return;
   }
