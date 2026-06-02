@@ -1,4 +1,5 @@
-import React, { useState } from 'react';import {
+import React, { useState } from 'react';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -19,57 +20,44 @@ export default function ConfirmarExclusaoUsuarioModal({
   usuario,
   onConfirm 
 }) {
-  const [senha, setSenha] = useState('');
+  const [confirmacao, setConfirmacao] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [enviandoReset, setEnviandoReset] = useState(false);
+
+  const emailEsperado = usuario?.email || '';
+  const confirmacaoCorreta = confirmacao.trim().toLowerCase() === emailEsperado.trim().toLowerCase();
 
   const handleEsqueciSenha = async () => {
     setEnviandoReset(true);
     try {
       const user = await base44.auth.me();
       await base44.auth.resetPasswordRequest(user.email);
-      toast.success(`Email de redefinição de senha enviado para ${user.email}. Verifique sua caixa de entrada (e spam).`);
+      toast.success(`Email de redefinição enviado para ${user.email}. Verifique sua caixa de entrada.`);
     } catch (e) {
-      toast.error('Erro ao enviar email de recuperação: ' + (e.message || ''));
+      toast.error('Erro ao enviar email: ' + (e.message || ''));
     } finally {
       setEnviandoReset(false);
     }
   };
 
   const handleConfirm = async () => {
-    if (!senha) {
-      toast.error('Digite sua senha para confirmar');
+    if (!confirmacaoCorreta) {
+      toast.error('O email digitado não confere');
       return;
     }
 
     setIsValidating(true);
-
     try {
-      const user = await base44.auth.me();
-      
-      // Tentar fazer login com a senha fornecida para validar
-      const validation = await base44.auth.login(user.email, senha);
-      
-      if (!validation) {
-        toast.error('Senha incorreta');
-        setIsValidating(false);
-        return;
-      }
-
-      // Senha correta, confirmar exclusão
       onConfirm();
-      setSenha('');
+      setConfirmacao('');
       onOpenChange(false);
-    } catch (error) {
-      console.error('Erro ao validar senha:', error);
-      toast.error('Senha incorreta');
     } finally {
       setIsValidating(false);
     }
   };
 
   const handleCancel = () => {
-    setSenha('');
+    setConfirmacao('');
     onOpenChange(false);
   };
 
@@ -104,31 +92,24 @@ export default function ConfirmarExclusaoUsuarioModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="senha" className="text-slate-700">
-              Digite sua senha para confirmar
+            <Label htmlFor="confirmacao" className="text-slate-700">
+              Digite o email do usuário para confirmar
             </Label>
+            <p className="text-xs text-slate-500">
+              Para confirmar, digite: <strong>{emailEsperado}</strong>
+            </p>
             <Input
-              id="senha"
-              type="password"
-              placeholder="Sua senha"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
+              id="confirmacao"
+              type="text"
+              placeholder={emailEsperado}
+              value={confirmacao}
+              onChange={(e) => setConfirmacao(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleConfirm();
-                }
+                if (e.key === 'Enter') handleConfirm();
               }}
               className="border-red-300 focus:border-red-500 focus:ring-red-500"
               autoFocus
             />
-            <button
-              type="button"
-              onClick={handleEsqueciSenha}
-              disabled={enviandoReset}
-              className="text-xs text-blue-600 hover:underline disabled:opacity-50 text-left mt-1"
-            >
-              {enviandoReset ? 'Enviando...' : 'Esqueci minha senha — enviar email de redefinição'}
-            </button>
           </div>
         </div>
 
@@ -145,9 +126,9 @@ export default function ConfirmarExclusaoUsuarioModal({
             type="button"
             variant="destructive"
             onClick={handleConfirm}
-            disabled={isValidating || !senha}
+            disabled={isValidating || !confirmacaoCorreta}
           >
-            {isValidating ? 'Validando...' : 'Confirmar Exclusão'}
+            {isValidating ? 'Excluindo...' : 'Confirmar Exclusão'}
           </Button>
         </DialogFooter>
       </DialogContent>
