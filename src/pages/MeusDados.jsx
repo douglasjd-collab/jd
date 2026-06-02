@@ -42,9 +42,9 @@ export default function MeusDados() {
         return;
       }
 
-      // Buscar Colaborador para pegar dados bancários
+      // Buscar Colaborador para pegar dados bancários (sem filtro de status)
       const colabs = await base44.entities.Colaborador.filter(
-        { user_id: me.id, status: 'ativo' },
+        { user_id: me.id },
         '-created_date'
       );
 
@@ -114,16 +114,18 @@ export default function MeusDados() {
 
   const updateNomeMutation = useMutation({
     mutationFn: async (nome) => {
-      // Atualiza no auth (full_name)
-      await base44.auth.updateMe({ full_name: nome });
-      // Atualiza também no Colaborador (nome) para refletir no layout
-      if (user?.colaborador_id) {
-        await base44.entities.Colaborador.update(user.colaborador_id, { nome });
+      if (!user?.colaborador_id) {
+        throw new Error('Colaborador não encontrado. Contate o administrador.');
       }
+      // Salva nome no Colaborador — é de lá que o sistema exibe o nome
+      await base44.entities.Colaborador.update(user.colaborador_id, { nome });
     },
     onSuccess: () => {
       toast.success('Nome atualizado com sucesso!');
       loadUser();
+    },
+    onError: (err) => {
+      toast.error(err.message || 'Erro ao salvar nome');
     },
   });
 
@@ -240,7 +242,7 @@ export default function MeusDados() {
                     }
                     updateNomeMutation.mutate(nomeCompleto);
                   }}
-                  disabled={updateNomeMutation.isPending || nomeCompleto === user.full_name}
+                  disabled={updateNomeMutation.isPending || !nomeCompleto.trim()}
                   size="icon"
                   className="bg-[#1e3a5f] hover:bg-[#2a4a73]"
                 >
