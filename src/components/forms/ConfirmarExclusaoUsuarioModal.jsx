@@ -27,9 +27,8 @@ export default function ConfirmarExclusaoUsuarioModal({
     setEnviandoReset(true);
     try {
       const user = await base44.auth.me();
-      // Reenvia o email de acesso ao app, que permite redefinir a senha
-      await base44.users.inviteUser(user.email, user.role || 'user');
-      toast.success(`Email de acesso enviado para ${user.email}. Use o link para redefinir sua senha.`);
+      await base44.auth.resetPasswordRequest(user.email);
+      toast.success(`Email de redefinição de senha enviado para ${user.email}. Verifique sua caixa de entrada (e spam).`);
     } catch (e) {
       toast.error('Erro ao enviar email de recuperação: ' + (e.message || ''));
     } finally {
