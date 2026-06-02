@@ -43,10 +43,17 @@ export default function ChatHeader({
 }) {
   if (!conversaSelecionada) return null;
 
+  const ehInstagram =
+    conversaSelecionada.tipo_conexao === 'instagram' ||
+    conversaSelecionada.instancia === 'INSTAGRAM' ||
+    String(conversaSelecionada.cliente_telefone || '').startsWith('ig_');
+
   const ehMeta =
-    conversaSelecionada.tipo_conexao === 'meta_oficial' ||
-    conversaSelecionada.instancia === 'META_OFICIAL' ||
-    conversaSelecionada.instancia === 'meta_oficial';
+    !ehInstagram && (
+      conversaSelecionada.tipo_conexao === 'meta_oficial' ||
+      conversaSelecionada.instancia === 'META_OFICIAL' ||
+      conversaSelecionada.instancia === 'meta_oficial'
+    );
 
   const alternarApi = async () => {
     if (ehMeta) {
@@ -81,14 +88,21 @@ export default function ChatHeader({
               {contatoAtual?.nome || conversaSelecionada.cliente_telefone}
             </p>
             <div className="flex items-center gap-2 mt-0.5">
-              <button
-                onClick={alternarApi}
-                title={ehMeta ? 'Meta Oficial — clique para alternar para Evolution' : 'Evolution — clique para alternar para Meta Oficial'}
-                className={`inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-opacity hover:opacity-80 ${ehMeta ? 'bg-green-500' : 'bg-blue-500'}`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
-                {ehMeta ? 'Meta Oficial' : 'Evolution'}
-              </button>
+              {ehInstagram ? (
+                <span className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm bg-gradient-to-r from-purple-500 to-pink-500">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
+                  Instagram
+                </span>
+              ) : (
+                <button
+                  onClick={alternarApi}
+                  title={ehMeta ? 'Meta Oficial — clique para alternar para Evolution' : 'Evolution — clique para alternar para Meta Oficial'}
+                  className={`inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-opacity hover:opacity-80 ${ehMeta ? 'bg-green-500' : 'bg-blue-500'}`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
+                  {ehMeta ? 'Meta Oficial' : 'Evolution'}
+                </button>
+              )}
               <p className="text-[11px] text-slate-500">{conversaSelecionada.cliente_telefone}</p>
             </div>
           </div>
@@ -208,11 +222,15 @@ export default function ChatHeader({
               <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
               Reabrir conversa
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => alternarApi()}>
-              <RefreshCw className="mr-2 h-3.5 w-3.5" />
-              {ehMeta ? 'Usar Evolution nesta conversa' : 'Usar Meta Oficial nesta conversa'}
-            </DropdownMenuItem>
+            {!ehInstagram && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => alternarApi()}>
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                  {ehMeta ? 'Usar Evolution nesta conversa' : 'Usar Meta Oficial nesta conversa'}
+                </DropdownMenuItem>
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
               <BellOff className="mr-2 h-3.5 w-3.5" />
