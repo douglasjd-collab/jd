@@ -13,7 +13,7 @@ const VERIFY_TOKEN = 'WAZE_CRM_WEBHOOK_2024';
 export default function IntegracaoInstagram({ empresaId }) {
   const [copied, setCopied] = useState(null);
   const [salvando, setSalvando] = useState(false);
-  const [empresa, setEmpresa] = useState(null);
+  const [conectado, setConectado] = useState(false);
   const [form, setForm] = useState({
     instagram_user_id: '',
     instagram_access_token: '',
@@ -22,16 +22,17 @@ export default function IntegracaoInstagram({ empresaId }) {
 
   useEffect(() => {
     if (!empresaId) return;
-    // Buscar todas empresas e filtrar pelo id manualmente (filter por id não funciona no SDK)
     base44.entities.Empresa.list().then(res => {
       const emp = res?.find(e => e.id === empresaId);
       if (emp) {
-        setEmpresa(emp);
+        const uid = emp.instagram_user_id || '';
+        const token = emp.instagram_access_token || '';
         setForm({
-          instagram_user_id: emp.instagram_user_id || '',
-          instagram_access_token: emp.instagram_access_token || '',
+          instagram_user_id: uid,
+          instagram_access_token: token,
           instagram_username: emp.instagram_username || '',
         });
+        setConectado(!!(uid && token));
       }
     });
   }, [empresaId]);
@@ -55,6 +56,7 @@ export default function IntegracaoInstagram({ empresaId }) {
         ...form,
         instagram_conectado: true,
       });
+      setConectado(true);
       toast.success('Configuração do Instagram salva com sucesso!');
     } catch (err) {
       toast.error('Erro ao salvar: ' + err.message);
@@ -62,8 +64,6 @@ export default function IntegracaoInstagram({ empresaId }) {
       setSalvando(false);
     }
   };
-
-  const isConectado = empresa?.instagram_conectado && empresa?.instagram_user_id;
 
   return (
     <div className="space-y-6">
@@ -81,18 +81,18 @@ export default function IntegracaoInstagram({ empresaId }) {
           </div>
         </CardHeader>
         <CardContent>
-          {isConectado ? (
+          {conectado ? (
             <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
               <CheckCircle2 className="w-5 h-5 text-green-600" />
               <span className="text-sm font-medium text-green-800">
-                Instagram conectado — @{empresa.instagram_username || empresa.instagram_user_id}
+                Instagram conectado — @{form.instagram_username || form.instagram_user_id}
               </span>
             </div>
           ) : (
             <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <Info className="w-5 h-5 text-amber-600" />
               <span className="text-sm font-medium text-amber-800">
-                Instagram não configurado. Preencha os dados abaixo.
+                Instagram não configurado. Preencha os dados abaixo e clique em Salvar.
               </span>
             </div>
           )}
