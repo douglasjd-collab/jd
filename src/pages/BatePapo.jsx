@@ -1161,13 +1161,14 @@ export default function BatePapo() {
     <TooltipProvider>
       <div id="batepapo-root" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 30, display: 'flex', flexDirection: 'column', padding: '8px', boxSizing: 'border-box', backgroundColor: '#F0EBE0' }}>
         <style>{`
-          @media (min-width: 1024px) { #batepapo-root { left: 18rem !important; }  }
-          @media (max-width: 1023px) { #batepapo-root { top: 3.5rem !important; } }
+          @media (min-width: 1024px) { #batepapo-root { left: 18rem !important; } }
+          @media (max-width: 1023px) { #batepapo-root { top: 3.5rem !important; padding: 0 !important; } }
+          #batepapo-root > div > div { border-radius: 0 !important; }
           .jd-messenger-sidebar {
             width: 100%;
             max-width: 340px;
             min-width: 300px;
-            height: 100vh;
+            height: 100%;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -1179,7 +1180,6 @@ export default function BatePapo() {
               width: 100% !important;
             }
             #batepapo-root { padding: 0 !important; }
-            #batepapo-root > div { border-radius: 0 !important; }
             .jd-chat-card { min-height: 64px; padding: 8px 10px; }
             .jd-chat-name { font-size: 14px; }
             .jd-chat-avatar { width: 46px; height: 46px; min-width: 46px; }
@@ -1505,7 +1505,7 @@ export default function BatePapo() {
 
         <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', width: '100%' }}>
           {/* Coluna esquerda - Conversas */}
-          <Card className={`jd-messenger-sidebar shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-scrollbar]]:hidden ${mobileViewChat ? 'hidden' : 'flex w-full'} lg:flex lg:w-auto`} style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100vh', boxSizing: 'border-box' }}>
+          <Card className={`jd-messenger-sidebar shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-scrollbar]]:hidden lg:flex lg:w-auto ${mobileViewChat ? '!hidden' : 'flex w-full'}`} style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100%', boxSizing: 'border-box' }}>
             <CardHeader className="jd-messenger-top flex flex-row items-center justify-between gap-2 pb-2 px-4 py-3 flex-shrink-0">
               <p className="text-lg font-semibold">Conversas</p>
               <div className="flex items-center gap-1">
@@ -1755,7 +1755,7 @@ export default function BatePapo() {
           </Card>
 
           {/* Coluna central - Chat + painel lead */}
-          <Card className={`flex-col overflow-hidden rounded-none rounded-r-xl h-full ${!mobileViewChat ? 'hidden lg:flex' : 'flex w-full'} lg:flex lg:flex-1`}>
+          <Card className={`flex-col overflow-hidden rounded-none rounded-r-xl h-full lg:flex lg:flex-1 ${!mobileViewChat ? 'hidden lg:flex' : '!flex w-full'}`}>
             {conversaSelecionada ? (
               <>
                 {/* Botão voltar mobile - integrado ao ChatHeader no mobile */}
@@ -1796,7 +1796,7 @@ export default function BatePapo() {
                 <div className="flex flex-1 overflow-hidden">
                   {/* Mensagens */}
                   <div className="flex flex-1 flex-col overflow-hidden">
-                    <ScrollArea ref={scrollAreaRef} className="flex-1 px-6 pt-4" style={{
+                    <ScrollArea ref={scrollAreaRef} className="flex-1 px-2 sm:px-6 pt-4" style={{
                       backgroundColor: '#F5F0E8',
                       backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' opacity='0.18'%3E%3Cg fill='none' stroke='%23a0896a' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'%3E%3C!-- envelope --%3E%3Crect x='8' y='12' width='20' height='14' rx='2'/%3E%3Cpath d='M8 14l10 8 10-8'/%3E%3C!-- chat bubble --%3E%3Crect x='45' y='8' width='22' height='15' rx='4'/%3E%3Cpath d='M50 23v5l5-5'/%3E%3C!-- heart --%3E%3Cpath d='M90 14c0-3 4-6 7-3s7 0 7 3c0 4-7 9-7 9s-7-5-7-9z'/%3E%3C!-- smiley --%3E%3Ccircle cx='140' cy='16' r='8'/%3E%3Ccircle cx='137' cy='14' r='1' fill='%23a0896a'/%3E%3Ccircle cx='143' cy='14' r='1' fill='%23a0896a'/%3E%3Cpath d='M137 18q3 3 6 0'/%3E%3C!-- star --%3E%3Cpolygon points='175,8 177,14 183,14 178,18 180,24 175,20 170,24 172,18 167,14 173,14'/%3E%3C!-- check --%3E%3Cpath d='M12 65l5 5 10-10'/%3E%3C!-- phone --%3E%3Crect x='50' y='52' width='14' height='22' rx='3'/%3E%3Cpath d='M55 70h4'/%3E%3C!-- camera --%3E%3Crect x='88' y='55' width='24' height='18' rx='3'/%3E%3Ccircle cx='100' cy='64' r='5'/%3E%3Cpath d='M96 55l2-4h4l2 4'/%3E%3C!-- bell --%3E%3Cpath d='M140 52c0-3 2-5 5-5s5 2 5 5v8h-10z'/%3E%3Cpath d='M138 60h14'/%3E%3Ccircle cx='145' cy='63' r='2'/%3E%3C!-- map pin --%3E%3Ccircle cx='175' cy='58' r='5'/%3E%3Cpath d='M175 63v10'/%3E%3C!-- envelope 2 --%3E%3Crect x='8' y='110' width='20' height='14' rx='2'/%3E%3Cpath d='M8 112l10 8 10-8'/%3E%3C!-- chat 2 --%3E%3Crect x='45' y='106' width='22' height='15' rx='4'/%3E%3Cpath d='M50 121v5l5-5'/%3E%3C!-- paper plane --%3E%3Cpath d='M90 108l30 10-18 5-5 15z'/%3E%3Cpath d='M102 123l8-5'/%3E%3C!-- smiley 2 --%3E%3Ccircle cx='140' cy='114' r='8'/%3E%3Ccircle cx='137' cy='112' r='1' fill='%23a0896a'/%3E%3Ccircle cx='143' cy='112' r='1' fill='%23a0896a'/%3E%3Cpath d='M137 116q3 3 6 0'/%3E%3C!-- lock --%3E%3Crect x='170' y='112' width='14' height='11' rx='2'/%3E%3Cpath d='M173 112v-3a4 4 0 018 0v3'/%3E%3Ccircle cx='177' cy='117' r='1.5' fill='%23a0896a'/%3E%3C!-- check 2 --%3E%3Cpath d='M12 163l5 5 10-10'/%3E%3C!-- envelope 3 --%3E%3Crect x='48' y='158' width='20' height='14' rx='2'/%3E%3Cpath d='M48 160l10 8 10-8'/%3E%3C!-- heart 2 --%3E%3Cpath d='M94 162c0-3 4-6 7-3s7 0 7 3c0 4-7 9-7 9s-7-5-7-9z'/%3E%3C!-- star 2 --%3E%3Cpolygon points='140,158 142,164 148,164 143,168 145,174 140,170 135,174 137,168 132,164 138,164'/%3E%3C!-- phone 2 --%3E%3Crect x='170' y='158' width='14' height='22' rx='3'/%3E%3Cpath d='M175 176h4'/%3E%3C/g%3E%3C/svg%3E")`,
                       backgroundSize: '200px 200px',
@@ -1839,9 +1839,9 @@ export default function BatePapo() {
                     />
                   </div>
 
-                  {/* Painel Informações do Lead - dentro do mesmo Card */}
+                  {/* Painel Informações do Lead - dentro do mesmo Card — oculto no mobile */}
                   {infoLeadAberto && (
-                    <div className="flex w-[260px] shrink-0 flex-col border-l overflow-hidden">
+                    <div className="hidden lg:flex w-[260px] shrink-0 flex-col border-l overflow-hidden">
                       <div className="border-b bg-white px-3 py-2 shrink-0">
                         <p className="text-xs font-semibold">Informações do Lead</p>
                         <p className="text-[10px] text-slate-500">Detalhes e histórico</p>
