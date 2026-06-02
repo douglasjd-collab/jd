@@ -57,26 +57,43 @@ Deno.serve(async (req) => {
     let empresaId = payload.empresa_id || user.empresa_id;
     let empresa = null;
 
-    if (empresaId) {
-      empresa = await base44.asServiceRole.entities.Empresa.get(empresaId);
-      if (empresa) {
-        instanceName = empresa.evolution_instance_name;
-        evolutionApiKey = empresa.evolution_api_key;
-        evolutionApiUrl = empresa.evolution_url;
-        console.log('📦 Credenciais da empresa carregadas:', { instanceName });
-      }
-    }
-
-    // Fallback para variáveis de ambiente
-    if (!evolutionApiKey) evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
-    if (!evolutionApiUrl) evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
-    if (!instanceName) instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
-
-    // Buscar dados da conversa no banco para determinar a API correta
+    // Buscar dados da conversa PRIMEIRO para poder usar o empresa_id da conversa como fallback
     let conversaDoBanco = null;
     try {
       conversaDoBanco = await base44.asServiceRole.entities.ConversaWhatsapp.get(conversa_id);
     } catch (_) {}
+
+    // Garantir empresaId — usar da conversa se não veio no payload nem no user
+    if (!empresaId && conversaDoBanco?.empresa_id) {
+      empresaId = conversaDoBanco.empresa_id;
+      console.log('📦 empresaId obtido da conversa:', empresaId);
+    }
+
+    if (empresaId) {
+      try {
+        empresa = await base44.asServiceRole.entities.Empresa.get(empresaId);
+      } catch (e) {
+        console.warn('⚠️ Erro ao buscar empresa:', e.message);
+      }
+      if (empresa) {
+        instanceName = empresa.evolution_instance_name;
+        evolutionApiKey = empresa.evolution_api_key;
+        evolutionApiUrl = empresa.evolution_url;
+        console.log('📦 Credenciais da empresa carregadas:', { instanceName, url: evolutionApiUrl });
+      } else {
+        console.warn('⚠️ Empresa não encontrada para id:', empresaId);
+      }
+    } else {
+      console.warn('⚠️ empresaId não disponível');
+    }
+
+    // Fallback para variáveis de ambiente APENAS se empresa não tiver config própria
+    if (!evolutionApiKey) evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
+    if (!evolutionApiUrl) evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
+    if (!instanceName) instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
+
+    console.log('🔧 URL Evolution final:', evolutionApiUrl);
+    console.log('🔧 Instance final:', instanceName);
 
     const instanciaConversa = conversaDoBanco?.instancia || '';
     const tipoConexaoConversa = conversaDoBanco?.tipo_conexao || '';
@@ -415,9 +432,10 @@ Deno.serve(async (req) => {
 
     let novaMensagem;
     try {
+      const empresaIdParaSalvar = empresaIdFinal || conversa?.empresa_id;
       novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
         conversa_id: conversa_id,
-        empresa_id: empresaIdFinal,
+        empresa_id: empresaIdParaSalvar,
         remetente: 'vendedor',
         usuario_id: user.id,
         usuario_nome: user.full_name,
