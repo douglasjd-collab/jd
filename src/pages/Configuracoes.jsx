@@ -254,7 +254,7 @@ export default function Configuracoes() {
         </TabsContent>
 
         <TabsContent value="instagram">
-          <IntegracaoInstagram />
+          <IntegracaoInstagram empresaId={empresa?.id} />
         </TabsContent>
 
         <TabsContent value="geral" className="space-y-6">

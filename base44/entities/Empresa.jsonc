@@ -218,6 +218,23 @@
     "meta_phone_status": {
       "type": "string",
       "description": "[META] Status do n\u00famero: CONNECTED, DISCONNECTED, etc"
+    },
+    "instagram_user_id": {
+      "type": "string",
+      "description": "[INSTAGRAM] ID do usu\u00e1rio Instagram (IGSID / Page-scoped ID)"
+    },
+    "instagram_access_token": {
+      "type": "string",
+      "description": "[INSTAGRAM] Access Token da conta Instagram Business"
+    },
+    "instagram_username": {
+      "type": "string",
+      "description": "[INSTAGRAM] Nome de usu\u00e1rio Instagram (@username)"
+    },
+    "instagram_conectado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se a integra\u00e7\u00e3o Instagram est\u00e1 configurada"
     }
   },
   "required": [
