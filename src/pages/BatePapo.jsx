@@ -82,7 +82,8 @@ export default function BatePapo() {
 
   const selecionarConversa = async (conversa, forcarSync = true, abrirMobile = true) => {
      setConversaSelecionada(conversa);
-     if (abrirMobile) setMobileViewChat(true);
+     // Só ativar mobileViewChat se for dispositivo mobile E abrirMobile for true
+     if (abrirMobile && window.innerWidth < 1024) setMobileViewChat(true);
      localStorage.setItem('ultimaConversaId', conversa.id);
      // Zerar contador de não lidas ao abrir a conversa — garantir que não reapareça
      setNaoLidasPorConversa(prev => {
@@ -619,7 +620,9 @@ export default function BatePapo() {
       const ultimaConversa = ultimaId ? conversas.find(c => c.id === ultimaId) : null;
       // No mobile, não abrir chat automaticamente (usuário deve clicar)
       const isMobileDevice = window.innerWidth < 1024;
-      selecionarConversa(conversaPorUrl || ultimaConversa || conversas[0], true, !isMobileDevice);
+      const conversaParaAbrir = conversaPorUrl || ultimaConversa || conversas[0];
+      // No desktop, não ativar mobileViewChat (coluna esquerda deve permanecer visível)
+      selecionarConversa(conversaParaAbrir, true, isMobileDevice ? true : false);
       
       // Se veio por URL mas conversa ainda não está na lista, aguardar refetch
       if (conversaIdUrl && !conversaPorUrl) {
