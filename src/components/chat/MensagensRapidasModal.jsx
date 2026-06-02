@@ -119,12 +119,11 @@ export default function MensagensRapidasModal({ open, onOpenChange, empresaId, o
     if (!novaCategoria.trim()) return;
     const nomeCat = novaCategoria.trim();
     setNovaCategoria('');
-    // Redireciona para criação de mensagem com a categoria já preenchida
     setForm({ categoria: nomeCat, titulo: '', tipo: 'texto', conteudo: '' });
     setEditando(null);
     setCriandoNova(true);
     setAbaAtiva('mensagens');
-    toast.info(`Categoria "${nomeCat}" criada! Agora adicione uma mensagem para ela.`);
+    toast.info(`Categoria "${nomeCat}" pronta! Preencha o título e conteúdo para salvar.`);
   };
 
   return (
@@ -145,13 +144,23 @@ export default function MensagensRapidasModal({ open, onOpenChange, empresaId, o
 
           <TabsContent value="mensagens" className="flex-1 flex flex-col min-h-0 mt-3">
             {/* Botão Criar Nova */}
-            <Button
-              className="w-full gap-2 bg-green-600 hover:bg-green-700 mb-4 flex-shrink-0"
-              onClick={() => { setCriandoNova(!criandoNova); setEditando(null); setForm({ categoria: '', titulo: '', tipo: 'texto', conteudo: '' }); }}
-            >
-              <Plus className="w-4 h-4" />
-              {criandoNova ? 'Cancelar' : 'Criar Nova Mensagem'}
-            </Button>
+            <div className="flex gap-2 mb-4 flex-shrink-0">
+              <Button
+                className="flex-1 gap-2 bg-green-600 hover:bg-green-700"
+                onClick={() => { setCriandoNova(true); setEditando(null); setForm({ categoria: '', titulo: '', tipo: 'texto', conteudo: '' }); }}
+              >
+                <Plus className="w-4 h-4" />
+                Criar Nova Mensagem
+              </Button>
+              {criandoNova && (
+                <Button
+                  variant="outline"
+                  onClick={() => { setCriandoNova(false); setEditando(null); setForm({ categoria: '', titulo: '', tipo: 'texto', conteudo: '' }); }}
+                >
+                  Cancelar
+                </Button>
+              )}
+            </div>
 
             {/* Formulário de criação/edição */}
             {criandoNova && (
