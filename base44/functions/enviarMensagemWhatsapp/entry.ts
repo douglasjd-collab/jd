@@ -81,6 +81,73 @@ Deno.serve(async (req) => {
     const instanciaConversa = conversaDoBanco?.instancia || '';
     const tipoConexaoConversa = conversaDoBanco?.tipo_conexao || '';
 
+    // ── INSTAGRAM DIRECT ──────────────────────────────────────────────────
+    const conversaEhInstagram =
+      tipoConexaoConversa === 'instagram' ||
+      instanciaConversa === 'INSTAGRAM';
+
+    if (conversaEhInstagram) {
+      console.log('📸 Conversa é Instagram Direct — usando API do Instagram');
+
+      const igToken = empresa?.instagram_access_token;
+      if (!igToken) {
+        return Response.json({ error: 'Access Token do Instagram não configurado. Configure na aba Instagram das Configurações.' }, { status: 400 });
+      }
+
+      // numero_cliente para Instagram é no formato "ig_SENDER_ID"
+      const recipientId = numero_cliente.replace(/^ig_/, '');
+
+      let igPayload;
+      if (mensagem_texto?.trim()) {
+        igPayload = { recipient: { id: recipientId }, message: { text: mensagem_texto.trim() } };
+      } else {
+        return Response.json({ error: 'Apenas texto é suportado no Instagram Direct por enquanto.' }, { status: 400 });
+      }
+
+      console.log('📤 Enviando via Instagram API — recipientId:', recipientId);
+      const igResp = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${igToken}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(igPayload)
+      });
+
+      const igText = await igResp.text();
+      console.log('📥 Instagram API status:', igResp.status, igText.substring(0, 300));
+
+      if (!igResp.ok) {
+        let errMsg = 'Erro ao enviar mensagem via Instagram';
+        try { errMsg = JSON.parse(igText)?.error?.message || errMsg; } catch (_) {}
+        return Response.json({ error: errMsg, details: igText, success: false }, { status: 400 });
+      }
+
+      const igData = JSON.parse(igText);
+      const msgId = igData.message_id || `ig_${Date.now()}`;
+
+      // Salvar mensagem no banco
+      const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
+        conversa_id: conversa_id,
+        empresa_id: empresaId,
+        remetente: 'vendedor',
+        usuario_id: user.id,
+        usuario_nome: user.full_name,
+        tipo_conteudo: 'texto',
+        texto: mensagem_texto.trim(),
+        whatsapp_message_id: msgId,
+        data_envio: new Date().toISOString(),
+        status: 'enviada',
+      });
+
+      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+        ultima_mensagem: mensagem_texto.trim().substring(0, 100),
+        data_ultima_mensagem: new Date().toISOString(),
+        ultimo_remetente: 'vendedor',
+      });
+
+      console.log('✅ Mensagem Instagram enviada e salva:', novaMensagem.id);
+      return Response.json({ success: true, message_id: novaMensagem.id, whatsapp_id: msgId });
+    }
+    // ── FIM INSTAGRAM ──────────────────────────────────────────────────────
+
     // Detectar se a conversa veio pela Meta Oficial
     const conversaEhMetaOficial =
       tipoConexaoConversa === 'meta_oficial' ||
