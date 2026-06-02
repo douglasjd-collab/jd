@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url, template_botoes = [] } = await req.json();
+    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url, template_botoes = [], conversa_id, texto_preview } = await req.json();
 
     if (!empresa_id || !template_name || contatos.length === 0) {
       return Response.json({ error: 'empresa_id, template_name e contatos são obrigatórios' }, { status: 400 });
@@ -100,6 +100,31 @@ Deno.serve(async (req) => {
           status: 'enviada',
           numero_sequencia: 1,
         });
+
+        // Salvar como MensagemWhatsapp para aparecer no chat
+        if (conversa_id) {
+          const whatsappMsgId = data?.messages?.[0]?.id;
+          const textoMensagem = texto_preview || `📋 Template enviado: ${template_name}`;
+          await base44.asServiceRole.entities.MensagemWhatsapp.create({
+            conversa_id,
+            empresa_id,
+            remetente: 'vendedor',
+            usuario_id: user.id,
+            usuario_nome: user.full_name || '',
+            tipo_conteudo: 'texto',
+            texto: textoMensagem,
+            whatsapp_message_id: whatsappMsgId || null,
+            data_envio: new Date().toISOString(),
+            status: 'enviada',
+          });
+
+          // Atualizar última mensagem da conversa
+          await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+            ultima_mensagem: textoMensagem,
+            data_ultima_mensagem: new Date().toISOString(),
+            ultimo_remetente: 'vendedor',
+          }).catch(() => {});
+        }
 
         enviados++;
         resultados.push({ telefone: numeroLimpo, status: 'enviada', message_id: data?.messages?.[0]?.id });

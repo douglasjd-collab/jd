@@ -66,12 +66,15 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
 
     setEnviando(t.id);
     try {
+      const textoPreview = d.corpo || `📋 Template: ${d.nome}`;
       const resp = await base44.functions.invoke('dispararCampanhaMetaOficial', {
         empresa_id: empresaId,
         template_name: d.nome,
         template_language: d.idioma || 'pt_BR',
         variaveis: {},
         contatos: [numLimpo],
+        conversa_id: conversaId || null,
+        texto_preview: textoPreview,
       });
 
       if (resp?.data?.erros > 0 && resp?.data?.enviados === 0) {
