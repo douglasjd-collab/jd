@@ -1839,12 +1839,17 @@ export default function BatePapo() {
                     />
                   </div>
 
-                  {/* Painel Informações do Lead - dentro do mesmo Card — oculto no mobile */}
+                  {/* Painel Informações do Lead */}
                   {infoLeadAberto && (
-                    <div className="hidden lg:flex w-[260px] shrink-0 flex-col border-l overflow-hidden">
-                      <div className="border-b bg-white px-3 py-2 shrink-0">
-                        <p className="text-xs font-semibold">Informações do Lead</p>
-                        <p className="text-[10px] text-slate-500">Detalhes e histórico</p>
+                    <div className="flex w-[260px] shrink-0 flex-col border-l overflow-hidden lg:relative absolute right-0 top-0 bottom-0 z-40 bg-white shadow-xl lg:shadow-none">
+                      <div className="border-b bg-white px-3 py-2 shrink-0 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-semibold">Informações do Lead</p>
+                          <p className="text-[10px] text-slate-500">Detalhes e histórico</p>
+                        </div>
+                        <button onClick={() => setInfoLeadAberto(false)} className="lg:hidden p-1 rounded-full hover:bg-slate-100">
+                          <X className="w-4 h-4 text-slate-500" />
+                        </button>
                       </div>
 
                       <ScrollArea className="flex-1">
