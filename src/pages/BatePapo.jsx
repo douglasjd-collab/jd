@@ -1505,7 +1505,7 @@ export default function BatePapo() {
 
         <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', width: '100%' }}>
           {/* Coluna esquerda - Conversas */}
-          <Card className={`jd-messenger-sidebar shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-scrollbar]]:hidden lg:flex lg:w-auto ${mobileViewChat ? '!hidden' : 'flex w-full'}`} style={{ width: '420px', maxWidth: '420px', minWidth: '380px', height: '100%', boxSizing: 'border-box' }}>
+          <Card className={`jd-messenger-sidebar shrink-0 flex-col overflow-hidden rounded-none rounded-l-xl border-r-0 [&_[data-radix-scroll-area-scrollbar]]:hidden lg:flex lg:w-auto ${mobileViewChat ? '!hidden' : 'flex w-full'}`} style={{ width: '420px', maxWidth: '420px', minWidth: '380px', flexShrink: 0, flexGrow: 0, height: '100%', boxSizing: 'border-box' }}>
             <CardHeader className="jd-messenger-top flex flex-row items-center justify-between gap-2 pb-2 px-4 py-3 flex-shrink-0">
               <p className="text-lg font-semibold">Conversas</p>
               <div className="flex items-center gap-1">
