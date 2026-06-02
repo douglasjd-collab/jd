@@ -9,7 +9,8 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { email, perfil, nome, cpf_cnpj, telefone, codigo_vendedor, gerente_id, empresa_id, status } = await req.json();
+        const payload = await req.json();
+        const { email, perfil, nome, cpf_cnpj, telefone, codigo_vendedor, gerente_id, empresa_id, status } = payload;
 
         if (!email || !perfil || !nome) {
             return Response.json({ error: 'email, perfil e nome são obrigatórios' }, { status: 400 });
@@ -52,7 +53,7 @@ Deno.serve(async (req) => {
             }
         }
 
-        // Criar dados do Colaborador
+        // Criar dados do Colaborador — incluir TODOS os campos preenchidos no formulário
         let colaboradorData = {
             user_id: invitedUser.id,
             nome: nome || invitedUser.full_name,
@@ -62,6 +63,41 @@ Deno.serve(async (req) => {
             telefone: telefone || null,
             codigo_vendedor: codigo_vendedor || null,
             status: status || 'ativo',
+            // Dados pessoais
+            rg: payload.rg || null,
+            data_nascimento: payload.data_nascimento || null,
+            sexo: payload.sexo || null,
+            estado_civil: payload.estado_civil || null,
+            nome_mae: payload.nome_mae || null,
+            // Endereço
+            cep: payload.cep || null,
+            logradouro: payload.logradouro || null,
+            numero: payload.numero || null,
+            complemento: payload.complemento || null,
+            bairro: payload.bairro || null,
+            cidade: payload.cidade || null,
+            estado: payload.estado || null,
+            // Banco
+            banco: payload.banco || null,
+            banco_codigo: payload.banco_codigo || null,
+            tipo_conta: payload.tipo_conta || null,
+            agencia: payload.agencia || null,
+            digito_agencia: payload.digito_agencia || null,
+            conta: payload.conta || null,
+            digito_conta: payload.digito_conta || null,
+            operacao: payload.operacao || null,
+            favorecido_nome: payload.favorecido_nome || null,
+            favorecido_cpf: payload.favorecido_cpf || null,
+            // PIX
+            pix_tipo: payload.pix_tipo || null,
+            pix_chave: payload.pix_chave || null,
+            chave_pix: payload.pix_chave || null,
+            tipo_chave_pix: payload.pix_tipo || null,
+            // Outros
+            usuario_canopus: payload.usuario_canopus || null,
+            tipo_agente: payload.tipo_agente || 'agente_loja',
+            percentual_comissao_agente: payload.percentual_comissao_agente || null,
+            evolution_instance_name: payload.evolution_instance_name || null,
         };
 
         // Adicionar gerente se for vendedor
