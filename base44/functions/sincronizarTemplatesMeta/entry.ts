@@ -40,6 +40,27 @@ Deno.serve(async (req) => {
       const header = tmpl.components?.find(c => c.type === 'HEADER');
       const body = tmpl.components?.find(c => c.type === 'BODY');
       const footer = tmpl.components?.find(c => c.type === 'FOOTER');
+      const buttonsComp = tmpl.components?.find(c => c.type === 'BUTTONS');
+
+      // Tipo de cabeçalho (TEXT, IMAGE, VIDEO, DOCUMENT, NONE)
+      const tipoCabecalho = header?.format || (header ? 'TEXT' : 'NONE');
+
+      // URL da mídia do cabeçalho (quando disponível via example)
+      let cabecalhoMidiaUrl = '';
+      if (header?.example?.header_handle?.[0]) {
+        cabecalhoMidiaUrl = header.example.header_handle[0];
+      } else if (header?.example?.header_url?.[0]) {
+        cabecalhoMidiaUrl = header.example.header_url[0];
+      }
+
+      // Botões
+      const botoes = (buttonsComp?.buttons || []).map(btn => {
+        if (btn.type === 'QUICK_REPLY') return { tipo: 'QUICK_REPLY', texto: btn.text };
+        if (btn.type === 'URL') return { tipo: 'URL', texto: btn.text, url: btn.url };
+        if (btn.type === 'PHONE_NUMBER') return { tipo: 'PHONE_NUMBER', texto: btn.text, telefone: btn.phone_number };
+        if (btn.type === 'COPY_CODE') return { tipo: 'COPY_CODE', texto: btn.text, codigo: btn.example?.[0] || '' };
+        return { tipo: btn.type, texto: btn.text };
+      });
 
       const templateDados = {
         nome: tmpl.name,
@@ -48,6 +69,9 @@ Deno.serve(async (req) => {
         corpo: body?.text || '',
         cabecalho: header?.text || '',
         rodape: footer?.text || '',
+        tipo_cabecalho: tipoCabecalho,
+        cabecalho_midia_url: cabecalhoMidiaUrl,
+        botoes,
         status_meta: (tmpl.status || 'PENDING').toLowerCase() === 'approved' ? 'aprovado' :
                      (tmpl.status || '').toLowerCase() === 'rejected' ? 'rejeitado' : 'pendente',
         meta_id: tmpl.id,

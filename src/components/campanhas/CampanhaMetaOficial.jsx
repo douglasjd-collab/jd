@@ -1090,7 +1090,22 @@ export default function CampanhaMetaOficial({ empresaId }) {
                 <div className="bg-[#e5ddd5] rounded-xl p-4">
                   <p className="text-[10px] text-slate-500 mb-2 font-medium uppercase tracking-wide">Prévia da mensagem</p>
                   <div className="bg-white rounded-xl shadow-sm max-w-xs ml-auto p-3 space-y-1.5">
-                    {d.cabecalho && (
+                    {/* Cabeçalho com mídia */}
+                    {(d.tipo_cabecalho === 'IMAGE' || (!d.tipo_cabecalho && d.cabecalho_midia_url && /\.(jpg|jpeg|png|gif|webp)/i.test(d.cabecalho_midia_url))) && d.cabecalho_midia_url && (
+                      <img src={d.cabecalho_midia_url} alt="Imagem do template" className="w-full rounded-lg object-cover max-h-48" onError={e => { e.target.style.display='none'; }} />
+                    )}
+                    {d.tipo_cabecalho === 'VIDEO' && d.cabecalho_midia_url && (
+                      <video src={d.cabecalho_midia_url} controls className="w-full rounded-lg max-h-48" />
+                    )}
+                    {d.tipo_cabecalho === 'DOCUMENT' && d.cabecalho_midia_url && (
+                      <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-600">
+                        <span className="text-xl">📄</span>
+                        <span className="text-xs font-medium">Documento PDF</span>
+                        <a href={d.cabecalho_midia_url} target="_blank" rel="noreferrer" className="ml-auto text-xs text-blue-500 underline">Abrir</a>
+                      </div>
+                    )}
+                    {/* Cabeçalho texto */}
+                    {(d.tipo_cabecalho === 'TEXT' || (!d.tipo_cabecalho && d.cabecalho && !d.cabecalho_midia_url)) && d.cabecalho && (
                       <p className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-1.5">{d.cabecalho}</p>
                     )}
                     {d.corpo && (
@@ -1101,6 +1116,17 @@ export default function CampanhaMetaOficial({ empresaId }) {
                     )}
                     <p className="text-[10px] text-slate-400 text-right">agora ✓✓</p>
                   </div>
+                  {/* Botões do template */}
+                  {Array.isArray(d.botoes) && d.botoes.length > 0 && (
+                    <div className="max-w-xs ml-auto mt-1 space-y-1">
+                      {d.botoes.map((btn, idx) => (
+                        <div key={idx} className="bg-white rounded-xl shadow-sm py-2 px-3 text-center text-sm text-blue-600 font-medium border border-white/50">
+                          {btn.tipo === 'URL' ? '🔗 ' : btn.tipo === 'PHONE_NUMBER' ? '📞 ' : btn.tipo === 'COPY_CODE' ? '🎟️ ' : '↩️ '}
+                          {btn.tipo === 'COPY_CODE' ? (btn.texto || 'Copiar código') : (btn.texto || 'Botão')}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Tipos de mídia suportados */}
