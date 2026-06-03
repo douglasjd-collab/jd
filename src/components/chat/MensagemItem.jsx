@@ -145,9 +145,10 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         })
           .then(res => {
             const data = res?.data;
-            if (data?.arquivo_url) {
-              setMediaUrl(data.arquivo_url);
-              mediaUrlRef.current = data.arquivo_url;
+            const url = data?.arquivo_url;
+            if (url && url !== 'indisponivel' && isUrlValida(url)) {
+              setMediaUrl(url);
+              mediaUrlRef.current = url;
             }
           })
           .catch(err => console.error('Erro ao baixar mídia auto:', err))
@@ -210,8 +211,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     })
       .then(res => {
         const data = res?.data;
-        if (data?.arquivo_url) {
-          setMediaUrl(data.arquivo_url);
+        const url = data?.arquivo_url;
+        if (url && url !== 'indisponivel' && isUrlValida(url)) {
+          setMediaUrl(url);
         }
       })
       .catch(err => console.error('Erro ao baixar mídia:', err))

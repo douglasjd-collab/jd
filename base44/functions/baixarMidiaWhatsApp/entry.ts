@@ -139,8 +139,37 @@ Deno.serve(async (req) => {
         ? `${conversa.cliente_telefone.replace(/\D/g, '')}@s.whatsapp.net`
         : '';
 
-      // Método 1: getBase64FromMediaMessage (descriptografa CDN do WhatsApp)
-      if (whatsappMessageId && remoteJid) {
+      // Método 1a: getBase64FromMediaMessage direto com whatsappMessageId (sem findMessages)
+      // Tenta construir o key mínimo exigido pela Evolution
+      if (whatsappMessageId && remoteJid && !base64Data) {
+        try {
+          const isGroup = remoteJid.includes('@g.us');
+          const keyDireto = {
+            remoteJid,
+            fromMe: false,
+            id: whatsappMessageId,
+            ...(isGroup ? { participant: `${conversa?.cliente_telefone?.replace(/\D/g, '') || ''}@s.whatsapp.net` } : {})
+          };
+          const b64ResDireto = await fetch(`${evolutionUrl}/chat/getBase64FromMediaMessage/${instanceName}`, {
+            method: 'POST',
+            headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: { key: keyDireto }, convertToMp4: false })
+          });
+          if (b64ResDireto.ok) {
+            const b64DataDireto = await b64ResDireto.json();
+            if (b64DataDireto?.base64) {
+              base64Data = b64DataDireto.base64;
+              mimeType = b64DataDireto.mimetype || mimeType;
+              console.log(`✅ base64 via key direto | tipo: ${mimeType}`);
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ getBase64FromMediaMessage direto falhou:', e.message);
+        }
+      }
+
+      // Método 1b: findMessages + getBase64FromMediaMessage (fallback com busca)
+      if (whatsappMessageId && remoteJid && !base64Data) {
         try {
           const findRes = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
             method: 'POST',
@@ -163,13 +192,13 @@ Deno.serve(async (req) => {
                 if (b64Data?.base64) {
                   base64Data = b64Data.base64;
                   mimeType = b64Data.mimetype || mimeType;
-                  console.log(`✅ base64 via getBase64FromMediaMessage | tipo: ${mimeType}`);
+                  console.log(`✅ base64 via findMessages | tipo: ${mimeType}`);
                 }
               }
             }
           }
         } catch (e) {
-          console.warn('⚠️ getBase64FromMediaMessage falhou:', e.message);
+          console.warn('⚠️ findMessages falhou:', e.message);
         }
       }
 
@@ -203,11 +232,16 @@ Deno.serve(async (req) => {
     }
 
     if (!base64Data) {
-      console.warn('⚠️ Não conseguiu baixar via Evolution - retornando URL temporária');
-      return Response.json({ 
-        ok: true, 
-        arquivo_url: urlAtual || 'indisponivel'
+      console.warn('⚠️ Não conseguiu baixar mídia', {
+        tipo: mensagem.tipo_conteudo,
+        whatsapp_message_id: whatsappMessageId,
+        arquivo_url: urlAtual,
+        is_meta: isMetaOficial,
+        conversa_tipo: conversa?.tipo_conexao,
+        instancia: conversa?.instancia,
+        remoteJid: conversa?.cliente_telefone,
       });
+      return Response.json({ ok: false, error: 'Mídia não disponível' }, { status: 400 });
     }
 
     // Converter base64 → Blob → File e fazer upload no backend (via service role)
