@@ -507,6 +507,14 @@ Deno.serve(async (req) => {
         status: 'enviada'
       });
 
+      // Atualizar última mensagem da conversa mantendo o tipo_conexao correto
+      // CRÍTICO: não alterar tipo_conexao aqui — ele só deve mudar via ação manual do usuário
+      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+        ultima_mensagem: (mensagem_texto || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
+        data_ultima_mensagem: new Date().toISOString(),
+        ultimo_remetente: 'vendedor',
+      });
+
       console.log('✅ Mensagem salva:', novaMensagem.id);
 
       console.log('='.repeat(80));

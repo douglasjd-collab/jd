@@ -707,11 +707,11 @@ async function processarWebhook(req, rawBody, base44) {
 
   if (conversa) {
     // Atualizar conversa existente — SEMPRE com número normalizado (12 dígitos)
-    // IMPORTANTE: Se a conversa já é meta_oficial, NÃO sobrescrever com 'empresa'
-    // O tipo_conexao só muda se a última mensagem veio da Evolution (não-meta)
+    // IMPORTANTE: NUNCA sobrescrever tipo_conexao se já está definido como meta_oficial ou instagram
+    // O tipo_conexao só deve mudar via ação manual do usuário no ChatHeader
     const tipoConexaoAtualizar = (conversa.tipo_conexao === 'meta_oficial' || conversa.tipo_conexao === 'instagram')
-      ? conversa.tipo_conexao  // preservar meta/instagram
-      : tipoConexao;           // evolution = empresa
+      ? conversa.tipo_conexao  // preservar meta_oficial/instagram — nunca sobrescrever automaticamente
+      : tipoConexao;           // evolution = empresa (apenas se ainda não era meta/instagram)
 
     const updateData = {
       ultima_mensagem: conteudo.substring(0, 200),
@@ -721,7 +721,7 @@ async function processarWebhook(req, rawBody, base44) {
       tipo_conexao: tipoConexaoAtualizar,
       colaborador_id: colaboradorId || conversa.colaborador_id || '',
       cliente_id: clienteId || conversa.cliente_id || '',
-      instancia: instanceFinal,  // sempre atualizar instância da Evolution
+      instancia: conversa.tipo_conexao === 'meta_oficial' ? (conversa.instancia || instanceFinal) : instanceFinal,  // preservar instância META se já é meta_oficial
       cliente_nome: conversa.cliente_nome || pushName || telefoneLimpo,
       cliente_telefone: telefoneLimpo,
       whatsapp_id: conversa.whatsapp_id || `${telefoneLimpo}@s.whatsapp.net`
