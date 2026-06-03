@@ -542,6 +542,13 @@ export default function useSoftphone(config) {
       extraHeaders.push(`X-Caller-ID: ${didLimpo}`);
     }
 
+    // [FIX-CALLER-ID] Se DID configurado, usá-lo como From URI da chamada.
+    // O JsSIP usa o campo `fromUserName` (ou `anonymous_from`) para sobrescrever
+    // o usuário no header From sem alterar as credenciais de autenticação.
+    // Isso faz o INVITE sair com: From: <sip:558132998470@app.nvoip.com.br>
+    // mas ainda autentica com ramal 137715001 + senha SIP.
+    const fromUri = didLimpo ? `sip:${didLimpo}@${sipDomain}` : undefined;
+
     // [FIX-CANCELED] Não passar mediaStream manual.
     // JsSIP gerencia getUserMedia internamente via mediaConstraints.
     const baseCallOptions = {
@@ -549,6 +556,7 @@ export default function useSoftphone(config) {
       rtcOfferConstraints : { offerToReceiveAudio: true, offerToReceiveVideo: false },
       pcConfig,
       extraHeaders,
+      ...(fromUri ? { fromUserName: didLimpo, fromDisplayName: didLimpo } : {}),
     };
 
     // ── Tenta cada URI em sequência ────────────────────────────────────────
