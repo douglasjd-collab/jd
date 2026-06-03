@@ -328,6 +328,7 @@ export default function ContatosCRM() {
       const dados = resp.data;
       toast.success(`✅ ${dados.criados} salvos | ${dados.duplicados || 0} duplicados | ${dados.rejeitados || 0} ignorados`);
       queryClient.invalidateQueries({ queryKey: ['contatos-crm', empresaId] });
+      queryClient.invalidateQueries({ queryKey: ['contatos-crm-total', empresaId] });
       setColartextoOpen(false);
       setContatosPasta('');
       setTagImportacao('');
@@ -353,10 +354,21 @@ export default function ContatosCRM() {
     } catch (e) { console.error(e); }
   };
 
+  const { data: totalContatos = 0 } = useQuery({
+    queryKey: ['contatos-crm-total', empresaId],
+    enabled: !!empresaId,
+    staleTime: 30000,
+    queryFn: async () => {
+      // Busca apenas para contar o total real
+      const todos = await base44.entities.ContatoWhatsapp.filter({ empresa_id: empresaId }, null, 9999);
+      return todos.length;
+    },
+  });
+
   const { data: contatos = [], isLoading, refetch } = useQuery({
     queryKey: ['contatos-crm', empresaId],
     enabled: !!empresaId,
-    queryFn: () => base44.entities.ContatoWhatsapp.filter({ empresa_id: empresaId }, 'nome', 500),
+    queryFn: () => base44.entities.ContatoWhatsapp.filter({ empresa_id: empresaId }, 'nome', 9999),
   });
 
   const { data: tags = [] } = useQuery({
@@ -478,6 +490,7 @@ export default function ContatosCRM() {
       const dados = resp.data;
       toast.success(`✅ ${dados.criados} importados | ⏭️ ${dados.duplicados || 0} duplicados | ❌ ${dados.rejeitados || 0} ignorados`, { id: toastId });
       queryClient.invalidateQueries({ queryKey: ['contatos-crm', empresaId] });
+      queryClient.invalidateQueries({ queryKey: ['contatos-crm-total', empresaId] });
     } catch (err) {
       toast.error('Erro ao importar CSV: ' + err.message, { id: toastId });
     }
@@ -508,7 +521,7 @@ export default function ContatosCRM() {
             <Users className="w-8 h-8 text-blue-600" />
             Contatos do CRM
           </h1>
-          <p className="text-slate-500 mt-1">{contatos.length} contatos cadastrados</p>
+          <p className="text-slate-500 mt-1">{contatos.length > 0 ? contatos.length : totalContatos} contatos cadastrados</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
            <Button variant="outline" size="sm" className="gap-1.5 text-sm" onClick={() => setGerenciarTagsOpen(true)}>
@@ -544,7 +557,7 @@ export default function ContatosCRM() {
           </div>
           <div>
             <p className="text-xs text-slate-500">Total</p>
-            <p className="text-xl font-bold text-slate-900">{contatos.length}</p>
+            <p className="text-xl font-bold text-slate-900">{contatos.length > 0 ? contatos.length : totalContatos}</p>
           </div>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
