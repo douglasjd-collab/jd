@@ -1,65 +1,82 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 function normalizarTelefone(raw) {
+  // Remove tudo que não é dígito
   let tel = String(raw || '').replace(/\D/g, '');
   if (!tel) return null;
-  if (tel.startsWith('55') && tel.length >= 12 && tel.length <= 13) return tel;
-  if (!tel.startsWith('55')) tel = '55' + tel;
-  if (tel.length < 12 || tel.length > 13) return null;
-  return tel;
-}
 
-function parseLinha(linha) {
-  const raw = linha.trim();
-  if (!raw) return null;
-
-  // Tab-separated (planilha colada)
-  if (raw.includes('\t')) {
-    const partes = raw.split('\t');
-    const nome = partes[0].trim();
-    const tel = normalizarTelefone(partes[1]?.trim() || '');
-    if (tel) return { nome: nome || null, telefone: tel };
-    // Tentar inverso
-    const tel2 = normalizarTelefone(partes[0]?.trim() || '');
-    if (tel2) return { nome: partes[1]?.trim() || null, telefone: tel2 };
-    return null;
+  // Já tem DDI 55
+  if (tel.startsWith('55')) {
+    // 55 + DDD(2) + 9(digito extra) + numero(8) = 13 dígitos  ✓
+    // 55 + DDD(2) + numero(8) = 12 dígitos  ✓
+    if (tel.length === 12 || tel.length === 13) return tel;
+    // Tenta sem DDI
+    tel = tel.slice(2);
   }
 
-  // Com parênteses: "(87)9820-41146" em qualquer posição
-  const matchParens = raw.match(/\((\d{2})\)\s*(\d[\d\s\-]{6,})/);
-  if (matchParens) {
-    const nome = raw.slice(0, matchParens.index).trim();
-    const tel = normalizarTelefone(matchParens[0]);
-    if (tel) return { nome: nome || null, telefone: tel };
-  }
-
-  // Múltiplos espaços como separador
-  const matchEspacos = raw.match(/\s{2,}([\d\(\)\-\s]{10,})$/);
-  if (matchEspacos) {
-    const nome = raw.slice(0, matchEspacos.index).trim();
-    const tel = normalizarTelefone(matchEspacos[1]);
-    if (tel) return { nome: nome || null, telefone: tel };
-  }
-
-  // Só dígitos
-  const apenasDigitos = raw.replace(/\D/g, '');
-  if (apenasDigitos.length >= 10 && apenasDigitos.length <= 13) {
-    const tel = normalizarTelefone(apenasDigitos);
-    if (tel) return { nome: null, telefone: tel };
-  }
-
-  // Número no final sem separador claro
-  const matchFinal = raw.match(/(\d[\d\-]{8,})$/);
-  if (matchFinal) {
-    const nome = raw.slice(0, matchFinal.index).trim();
-    const tel = normalizarTelefone(matchFinal[1]);
-    if (tel) return { nome: nome || null, telefone: tel };
+  // Sem DDI: DDD(2) + 9 + numero = 11 dígitos ou DDD(2) + numero = 10 dígitos
+  if (tel.length === 11 || tel.length === 10) {
+    // Celulares com 9 dígitos: garante o 9 na frente
+    if (tel.length === 10) {
+      const ddd = tel.slice(0, 2);
+      const numero = tel.slice(2);
+      // Adiciona 9 se necessário
+      tel = ddd + '9' + numero;
+    }
+    return '55' + tel;
   }
 
   return null;
 }
 
-// Aguarda N ms
+function parseLinha(linha) {
+  // Remove caracteres invisíveis e espaços extras
+  const raw = linha.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+  if (!raw) return null;
+
+  // Tab-separated (planilha colada: "Nome\tTelefone" ou "Telefone\tNome")
+  if (raw.includes('\t')) {
+    const partes = raw.split('\t');
+    const tel1 = normalizarTelefone(partes[0]?.trim());
+    const tel2 = normalizarTelefone(partes[1]?.trim());
+    if (tel2) return { nome: partes[0]?.trim() || null, telefone: tel2 };
+    if (tel1) return { nome: partes[1]?.trim() || null, telefone: tel1 };
+    return null;
+  }
+
+  // Extrair dígitos da linha inteira (ignora letras no final tipo "d", "a")
+  const apenasDigitos = raw.replace(/\D/g, '');
+  if (!apenasDigitos) return null;
+
+  const tel = normalizarTelefone(apenasDigitos);
+  if (!tel) return null;
+
+  // Nome é a parte antes dos dígitos/parênteses
+  const matchNome = raw.match(/^([A-Za-zÀ-ÿ\s]+?)[\s]*[\(\d]/);
+  const nome = matchNome ? matchNome[1].trim() : null;
+
+  return { nome: nome || null, telefone: tel };
+}
+
+// Busca todos os contatos com paginação automática
+async function buscarTodosContatos(base44, empresa_id) {
+  const todos = [];
+  const PAGE = 1000;
+  let skip = 0;
+  while (true) {
+    const lote = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
+      { empresa_id },
+      null,
+      PAGE,
+      skip
+    ).catch(() => []);
+    todos.push(...lote);
+    if (lote.length < PAGE) break;
+    skip += PAGE;
+  }
+  return todos;
+}
+
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 Deno.serve(async (req) => {
@@ -78,22 +95,19 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'empresa_id required' }, { status: 400 });
     }
 
-    // 1. Parsear todas as linhas primeiro
+    // 1. Parsear todas as linhas
     const parsed = [];
     let rejeitados = 0;
     for (const item of contatos) {
       const linhaRaw = typeof item === 'string' ? item : String(item.telefone || item.numero || item || '');
       const p = parseLinha(linhaRaw);
-      if (!p) { rejeitados++; continue; }
+      if (!p) { rejeitados++; console.log(`⏭️ Ignorado (não reconhecido): ${linhaRaw}`); continue; }
       parsed.push(p);
     }
 
-    // 2. Buscar TODOS os contatos existentes da empresa de uma vez (evita N queries)
-    const existentesAll = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
-      { empresa_id },
-      null,
-      5000
-    ).catch(() => []);
+    // 2. Buscar TODOS os contatos existentes com paginação
+    const existentesAll = await buscarTodosContatos(base44, empresa_id);
+    console.log(`📋 Total existentes na base: ${existentesAll.length}`);
 
     const telefonesExistentes = new Set(existentesAll.map(c => c.telefone));
     const existentesMap = {};
@@ -101,7 +115,7 @@ Deno.serve(async (req) => {
 
     // 3. Separar novos de duplicados
     const novos = [];
-    const paraAtualizar = []; // duplicados que precisam de tag
+    const paraAtualizar = [];
     let duplicados = 0;
 
     for (const p of parsed) {
@@ -116,12 +130,13 @@ Deno.serve(async (req) => {
         }
       } else {
         novos.push(p);
-        // Marcar como existente para evitar duplicata dentro do próprio lote
-        telefonesExistentes.add(p.telefone);
+        telefonesExistentes.add(p.telefone); // Evitar duplicata dentro do lote
       }
     }
 
-    // 4. Criar novos em lotes de 20 com pequeno delay
+    console.log(`🆕 Novos: ${novos.length} | ⏭️ Duplicados: ${duplicados} | ❌ Rejeitados: ${rejeitados}`);
+
+    // 4. Criar novos em lotes de 20
     let criados = 0;
     const BATCH = 20;
     for (let i = 0; i < novos.length; i += BATCH) {
@@ -133,14 +148,15 @@ Deno.serve(async (req) => {
           nome: p.nome || `Contato ${p.telefone}`,
           ultima_atualizacao: new Date().toISOString(),
           ...(tag_id ? { tags_ids: [tag_id] } : {}),
-        }).catch(e => { console.error(`Erro criar ${p.telefone}:`, e.message); return null; })
+        }).then(r => { console.log(`✅ Criado: ${p.telefone} | ${p.nome || ''}`); return r; })
+          .catch(e => { console.error(`❌ Erro criar ${p.telefone}: ${e.message}`); return null; })
       );
       const resultados = await Promise.all(promises);
       criados += resultados.filter(Boolean).length;
       if (i + BATCH < novos.length) await sleep(300);
     }
 
-    // 5. Atualizar tags dos duplicados em lotes
+    // 5. Atualizar tags dos duplicados
     for (let i = 0; i < paraAtualizar.length; i += BATCH) {
       const lote = paraAtualizar.slice(i, i + BATCH);
       await Promise.all(lote.map(c =>
