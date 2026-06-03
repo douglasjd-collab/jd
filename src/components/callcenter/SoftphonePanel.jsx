@@ -352,6 +352,37 @@ export default function SoftphonePanel({ softphone, numbersip }) {
                     )}
                   </div>
                 )}
+
+                {/* Card Caller ID / Originação SIP */}
+                {(() => {
+                  const callerLog = SIP_LOG.events.find(e => e.tipo === 'CALLER_ID_ENVIADO');
+                  const cfgLog    = SIP_LOG.events.find(e => e.tipo === 'CALLER_ID_CONFIG');
+                  const extra     = callerLog?.extra || cfgLog?.extra;
+                  if (!extra) return null;
+                  const temDid = extra.did && extra.did !== '';
+                  return (
+                    <div className={`rounded px-2 py-1.5 text-xs font-mono col-span-2 ${temDid ? 'bg-indigo-900 text-indigo-200' : 'bg-amber-900 text-amber-200'}`}>
+                      <div className="text-slate-400 text-[10px] mb-0.5">Originação SIP (Caller ID)</div>
+                      <div className="space-y-0.5">
+                        <div><span className="text-slate-400">Ramal SIP:  </span><span className="font-bold text-white">{extra.ramal_sip || extra.ramal || '—'}</span></div>
+                        <div><span className="text-slate-400">DID/Número: </span><span className={`font-bold ${temDid ? 'text-green-300' : 'text-amber-300'}`}>{temDid ? extra.did : '⚠️ não configurado'}</span></div>
+                        <div><span className="text-slate-400">Destino:    </span><span className="font-bold text-white">{extra.destino || '—'}</span></div>
+                        {callerLog && (
+                          <>
+                            <div className="border-t border-slate-700 mt-0.5 pt-0.5">
+                              <span className="text-slate-400">From: </span><span className="text-yellow-300 break-all">{extra.from || '—'}</span>
+                            </div>
+                            <div><span className="text-slate-400">PAI:  </span><span className={`break-all ${extra.pai && extra.pai !== '(não enviado)' ? 'text-green-300' : 'text-red-400'}`}>{extra.pai || '—'}</span></div>
+                            <div><span className="text-slate-400">RPI:  </span><span className={`break-all ${extra.rpi && extra.rpi !== '(não enviado)' ? 'text-green-300' : 'text-slate-500'}`}>{extra.rpi || '—'}</span></div>
+                          </>
+                        )}
+                        {!temDid && (
+                          <div className="text-amber-300 text-[10px] mt-0.5">Configure o número virtual em "Meu Ramal" → campo DID.</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Separador */}

@@ -514,13 +514,41 @@ export default function useSoftphone(config) {
       ],
     };
 
+    // ── Caller ID / DID de saída ──────────────────────────────────────────
+    // A NVOIP usa P-Asserted-Identity e Remote-Party-ID para determinar
+    // qual DID/número virtual aparece como origem da chamada sainte.
+    // Sem esses headers, a chamada sai apenas com o ramal SIP (137715001)
+    // e pode ser rejeitada se a rota de saída exigir o DID vinculado.
+    const ramalSIP  = String(cfg?.numbersip || '');
+    const didLimpo  = cfg?.numero_did ? cfg.numero_did.replace(/\D/g, '') : '';
+    const sipDomain = 'app.nvoip.com.br';
+
+    // [CALLER-ID] Log do Caller ID configurado para diagnóstico
+    SIP_LOG.push('CALLER_ID_CONFIG', `Ramal: ${ramalSIP} | DID: ${didLimpo || '(não configurado)'} | Destino: ${numSemDDI}`, {
+      ramal_sip  : ramalSIP,
+      did        : didLimpo || null,
+      destino    : numSemDDI,
+      alerta     : !didLimpo ? '⚠️ DID não configurado — chamada sairá apenas com ramal SIP. Configure o número virtual em "Meu Ramal".' : null,
+    });
+    console.log(`📋 [SIP] Caller ID — Ramal: ${ramalSIP} | DID: ${didLimpo || 'não configurado'} | Destino: ${numSemDDI}`);
+
+    const extraHeaders = [];
+    if (didLimpo) {
+      // P-Asserted-Identity: identidade verificada pelo proxy — usada pela NVOIP para rotear pelo DID
+      extraHeaders.push(`P-Asserted-Identity: <sip:${didLimpo}@${sipDomain}>`);
+      // Remote-Party-ID: compatibilidade com proxies mais antigos
+      extraHeaders.push(`Remote-Party-ID: <sip:${didLimpo}@${sipDomain}>;privacy=off;screen=yes`);
+      // X-Caller-ID: campo legado NVOIP
+      extraHeaders.push(`X-Caller-ID: ${didLimpo}`);
+    }
+
     // [FIX-CANCELED] Não passar mediaStream manual.
     // JsSIP gerencia getUserMedia internamente via mediaConstraints.
     const baseCallOptions = {
       mediaConstraints    : { audio: true, video: false },
       rtcOfferConstraints : { offerToReceiveAudio: true, offerToReceiveVideo: false },
       pcConfig,
-      extraHeaders: cfg?.numero_did ? [`X-Caller-ID: ${cfg.numero_did.replace(/\D/g, '')}`] : [],
+      extraHeaders,
     };
 
     // ── Tenta cada URI em sequência ────────────────────────────────────────
@@ -583,17 +611,39 @@ export default function useSoftphone(config) {
         inviteEnviado = true;
         const req = ev?.request;
         const sdp = req?.body || '';
+        // Extrair cabeçalhos SIP relevantes para diagnóstico Caller ID
+        const hdrsInvite = req?.headers || {};
+        const fromHdr    = req?.from?.toString?.()    || hdrsInvite['From']?.[0]?.raw     || '?';
+        const paiHdr     = hdrsInvite['P-Asserted-Identity']?.[0]?.raw                   || '(não enviado)';
+        const rpiHdr     = hdrsInvite['Remote-Party-ID']?.[0]?.raw                       || '(não enviado)';
+        const contactHdr = req?.contact?.toString?.() || hdrsInvite['Contact']?.[0]?.raw || '?';
+        const toHdr      = req?.to?.toString?.()      || destino;
+
         const logData = {
-          '1_request_uri' : req?.ruri?.toString?.()    || destino,
-          '2_from'        : req?.from?.toString?.()    || '?',
-          '3_to'          : req?.to?.toString?.()      || destino,
-          '4_contact'     : req?.contact?.toString?.() || '?',
-          '5_call_id'     : req?.call_id               || '?',
-          '6_cseq'        : req?.cseq                  || '?',
-          '7_sdp_linhas'  : sdp.split('\n').length,
+          '1_request_uri'         : req?.ruri?.toString?.() || destino,
+          '2_from'                : fromHdr,
+          '3_to'                  : toHdr,
+          '4_contact'             : contactHdr,
+          '5_p_asserted_identity' : paiHdr,
+          '6_remote_party_id'     : rpiHdr,
+          '7_x_caller_id'         : hdrsInvite['X-Caller-ID']?.[0]?.raw || '(não enviado)',
+          '8_call_id'             : req?.call_id || '?',
+          '9_sdp_linhas'          : sdp.split('\n').length,
+          // Diagnóstico rápido do Caller ID
+          diagnostico_caller_id   :
+            paiHdr !== '(não enviado)' ? `✅ DID enviado via P-Asserted-Identity: ${paiHdr}`
+            : rpiHdr !== '(não enviado)' ? `⚠️ DID apenas via Remote-Party-ID (sem PAI): ${rpiHdr}`
+            : `❌ Sem DID nos headers — chamada sai apenas com ramal SIP. Configure o número virtual em "Meu Ramal".`,
         };
         SIP_LOG.push('INVITE_SENT', `✅ INVITE enviado → ${destino}`, logData);
-        console.log('📤 [SIP] INVITE BRUTO:', logData);
+        SIP_LOG.push('CALLER_ID_ENVIADO', `From: ${fromHdr} | PAI: ${paiHdr} | DID: ${didLimpo || 'não configurado'}`, {
+          from: fromHdr, pai: paiHdr, rpi: rpiHdr, did: didLimpo, ramal: ramalSIP, destino: numSemDDI,
+        });
+        console.log('📤 [SIP] INVITE CABEÇALHOS CALLER ID:', logData);
+        console.log(`📋 [SIP] From: ${fromHdr}`);
+        console.log(`📋 [SIP] P-Asserted-Identity: ${paiHdr}`);
+        console.log(`📋 [SIP] Remote-Party-ID: ${rpiHdr}`);
+        console.log(`📋 [SIP] Contact: ${contactHdr}`);
         console.log('📄 [SIP] SDP completo:\n', sdp);
 
         // [FIX-7] Timeout só começa APÓS o INVITE sair pelo WSS
