@@ -201,7 +201,7 @@ export default function useSoftphone(config) {
     } catch { return null; }
   };
 
-  const _salvarHistorico = async (numero, direcao, status, durSeg = 0, clienteId = null, clienteNome = null) => {
+  const _salvarHistorico = async (numero, direcao, status, durSeg = 0, clienteId = null, clienteNome = null, observacoes = null) => {
     try {
       const colab = await _getColab();
       if (!colab?.empresa_id) return;
@@ -220,6 +220,7 @@ export default function useSoftphone(config) {
         inicio: new Date(Date.now() - durSeg * 1000).toISOString(),
         fim: new Date().toISOString(),
         duracao_segundos: durSeg,
+        ...(observacoes ? { observacoes } : {}),
       });
     } catch (e) { console.warn('[SIP] Histórico:', e.message); }
   };
@@ -497,8 +498,12 @@ export default function useSoftphone(config) {
       uri_queue   : URI_QUEUE,
       ramal       : cfg?.numbersip,
       did         : cfg?.numero_did || '—',
+      // [FIX-4] URIs de teste para diagnóstico manual
+      teste_com_ddi : `sip:${numComDDI}@app.nvoip.com.br`,
+      teste_sem_ddi : `sip:${numSemDDI}@app.nvoip.com.br`,
     });
     console.log(`📞 [SIP] DIAL → URIs a tentar:`, URI_QUEUE);
+    console.log(`🧪 [SIP] Teste manual no Webphone NVOIP: sip:${numComDDI}@app.nvoip.com.br | sip:${numSemDDI}@app.nvoip.com.br`);
 
     // [FIX-CANCELED] pcConfig simplificado: remover TURN público openrelay e STUNs extras.
     // TURN/openrelay causava travamento na geração do SDP antes do INVITE sair.
@@ -810,12 +815,33 @@ export default function useSoftphone(config) {
           return;
         }
 
-        // [FIX-6] Se já recebeu 183/180, NÃO tentar outra URI — a chamada entrou na rota NVOIP
+        // [FIX-UNAVAILABLE] "Unavailable" após 183 = NVOIP recebeu mas não completou para o destino
+        // Isso é falha da rota/destino na NVOIP, NÃO erro do CRM
+        const isUnavailable = cause === 'Unavailable' || phrase?.toLowerCase().includes('unavailable') || code === 480 || code === 503;
+
+        if (recebeu183 && isUnavailable) {
+          sessionAtivaRef.current = null;
+          _releaseMic();
+          const msg = 'A NVOIP recebeu a chamada, mas não conseguiu completar para o destino. Verifique saldo, permissão de chamadas externas, rota de saída e número do cliente.';
+          SIP_LOG.push('NVOIP_UNAVAILABLE', `❌ Unavailable após 183 — falha de rota NVOIP (código: ${code || cause})`, {
+            code, cause, phrase, uri: destino,
+            diagnostico: 'D) NVOIP recebeu o INVITE (183) mas não conseguiu completar para o destino. Verifique saldo, rotas de saída e permissões no painel NVOIP. Teste o mesmo número pelo Webphone oficial em https://app.nvoip.com.br',
+            sugestao: `Teste manual: sip:${numComDDI}@app.nvoip.com.br e sip:${numSemDDI}@app.nvoip.com.br`,
+          });
+          console.warn(`❌ [SIP] UNAVAILABLE após 183 — falha de rota NVOIP, não do CRM.`);
+          console.warn(`💡 [SIP] Sugestão: teste o número ${numComDDI} pelo Webphone oficial NVOIP: https://app.nvoip.com.br`);
+          if (mountedRef.current) { setErroMsg(msg); setChamadaAtiva(null); }
+          _clearAudio();
+          _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0, null, null, `Unavailable após 183 — falha de rota NVOIP (${code || cause})`);
+          return;
+        }
+
+        // [FIX-6] Se já recebeu 183/180 (sem Unavailable), NÃO tentar outra URI
         if (recebeu183) {
           sessionAtivaRef.current = null;
           _releaseMic();
-          const msg = `Chamada não atendida — destino não respondeu após 183 Session Progress.`;
-          SIP_LOG.push('NO_ANSWER_AFTER_183', msg);
+          const msg = `Chamada não atendida — destino não respondeu após 183 Session Progress (${code || cause}).`;
+          SIP_LOG.push('NO_ANSWER_AFTER_183', msg, { code, cause, phrase });
           if (mountedRef.current) { setErroMsg(msg); setChamadaAtiva(null); }
           _clearAudio();
           _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
