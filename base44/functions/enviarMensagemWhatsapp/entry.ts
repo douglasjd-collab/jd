@@ -202,10 +202,29 @@ Deno.serve(async (req) => {
 
     // Formatar número
     const isGrupo = numero_cliente.includes('@g.us');
-    const numeroFormatado = isGrupo ? numero_cliente : numero_cliente.replace(/\D/g, '');
+    const isLid = numero_cliente.startsWith('lid_') || numero_cliente.includes('@lid');
+    let numeroFormatado;
+    if (isGrupo) {
+      numeroFormatado = numero_cliente;
+    } else if (isLid) {
+      // Contatos @lid: usar JID completo com @lid para a Evolution
+      // Buscar whatsapp_id da conversa para obter o JID exato
+      const lidNum = numero_cliente.replace('lid_', '').replace('@lid', '').replace(/\D/g, '');
+      // Tentar buscar o whatsapp_id da conversa
+      let whatsappJid = `${lidNum}@lid`;
+      try {
+        const conv = await base44.asServiceRole.entities.ConversaWhatsapp.get(conversa_id);
+        if (conv?.whatsapp_id && conv.whatsapp_id.includes('@lid')) {
+          whatsappJid = conv.whatsapp_id;
+        }
+      } catch (_) {}
+      numeroFormatado = whatsappJid;
+    } else {
+      numeroFormatado = numero_cliente.replace(/\D/g, '');
+    }
     console.log('📱 Número formatado:', numeroFormatado);
 
-    if (!isGrupo && numeroFormatado.length < 10) {
+    if (!isGrupo && !isLid && numeroFormatado.length < 10) {
       return Response.json({ error: 'Número de telefone inválido', success: false }, { status: 400 });
     }
 
