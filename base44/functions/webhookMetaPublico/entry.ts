@@ -131,6 +131,16 @@ async function salvarMensagem(base44, value, message) {
     tipoConteudo = 'documento';
     arquivoNome = message.document?.filename || 'documento';
     texto = message.document?.caption || `[Documento: ${arquivoNome}]`;
+  } else if (message.type === 'button') {
+    // Resposta de botão de template (quick_reply)
+    tipoConteudo = 'texto';
+    texto = message.button?.text || message.button?.payload || '[Botão]';
+  } else if (message.type === 'interactive') {
+    // Resposta de mensagem interativa (list reply, button reply)
+    tipoConteudo = 'texto';
+    texto = message.interactive?.button_reply?.title
+         || message.interactive?.list_reply?.title
+         || '[Interativo]';
   } else {
     texto = `[${message.type || 'Mensagem'}]`;
   }
