@@ -13,7 +13,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   // Não auto-carregar arquivos .enc (criptografados do WhatsApp — causam download indesejado no browser)
   const isUrlValida = (url) => {
     if (!url) return false;
-    if (url.endsWith('.enc') || url.includes('.enc?') || url.includes('media/') && !url.includes('base44') && !url.includes('supabase') && !url.includes('amazonaws')) return false;
+    if (url.endsWith('.enc') || url.includes('.enc?')) return false;
+    // media_id numérico da Meta (ainda não é URL de download)
+    if (/^\d+$/.test(url.trim())) return false;
+    // URL de media interna Evolution sem storage permanente
+    if (url.includes('media/') && !url.includes('base44') && !url.includes('supabase') && !url.includes('amazonaws')) return false;
     return true;
   };
   const [mediaUrl, setMediaUrl] = useState(isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);

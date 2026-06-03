@@ -116,16 +116,19 @@ async function processarMensagem(body) {
   } else if (message.type === 'image') {
     tipo_conteudo = 'imagem';
     texto = message.image?.caption || '';
-    arquivo_url = message.image?.url || null;
+    arquivo_url = message.image?.id || null; // media_id da Meta (não é URL direta)
   } else if (message.type === 'audio') {
     tipo_conteudo = 'audio';
     texto = 'Áudio';
+    arquivo_url = message.audio?.id || null; // media_id da Meta
   } else if (message.type === 'video') {
     tipo_conteudo = 'video';
     texto = message.video?.caption || 'Vídeo';
+    arquivo_url = message.video?.id || null; // media_id da Meta
   } else if (message.type === 'document') {
     tipo_conteudo = 'documento';
     texto = message.document?.filename || 'Documento';
+    arquivo_url = message.document?.id || null; // media_id da Meta
   } else if (message.type === 'button') {
     // Resposta de botão de template (quick_reply)
     tipo_conteudo = 'texto';
