@@ -431,6 +431,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                   <Download className="w-4 h-4" /> Carregar imagem
                 </button>
               )}
+              {mensagem.texto && mensagem.texto.trim() && (
+                <p className="text-xs mt-1 break-words whitespace-pre-wrap opacity-90">{mensagem.texto}</p>
+              )}
             </div>
             {imagemAberta && mediaUrl && (
               <div
@@ -532,6 +535,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 <Download className="w-4 h-4" /> Carregar vídeo
               </button>
             )}
+            {mensagem.texto && mensagem.texto.trim() && (
+              <p className="text-xs mt-1 break-words whitespace-pre-wrap opacity-90">{mensagem.texto}</p>
+            )}
           </div>
         );
 
@@ -585,6 +591,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                   </button>
                 )}
               </div>
+              {mensagem.texto && mensagem.texto.trim() && (
+                <div className={`px-3 pb-2 text-xs break-words whitespace-pre-wrap ${isVendedor ? 'text-white/90' : 'text-slate-700'}`}>
+                  {mensagem.texto}
+                </div>
+              )}
             </div>
 
             <Dialog open={pdfAberto} onOpenChange={(v) => { setPdfAberto(v); if (!v) setPdfCarregado(false); }}>
@@ -649,6 +660,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   );
 
   // Imagem sem texto = sem balão azul, renderizar direto como bloco limpo
+  // Se tiver texto (legenda), cai no bloco padrão com balão para mostrar a legenda
   const textoVazio = !mensagem.texto || mensagem.texto.trim() === '';
   const isContatoMsg = !!(mensagem.texto && (mensagem.texto.includes('contactMessage') || mensagem.texto.includes('BEGIN:VCARD')));
   const isImagemLimpa = mensagem.tipo_conteudo === 'imagem' && textoVazio && !isContatoMsg;

@@ -240,15 +240,13 @@ Deno.serve(async (req) => {
       let metaPayload;
 
       if (arquivo && arquivo.base64) {
-        // Para mídia via API Oficial, precisamos de uma URL pública
-        // Fazer upload primeiro e usar a URL
+        // Para mídia via API Oficial, fazer upload para obter URL pública
         const tipo = arquivo.tipo || '';
         let mediaType = 'document';
         if (tipo.startsWith('image')) mediaType = 'image';
         else if (tipo.startsWith('video')) mediaType = 'video';
         else if (tipo.startsWith('audio')) mediaType = 'audio';
 
-        // Upload para obter URL pública
         const binaryStr = atob(arquivo.base64);
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
@@ -258,16 +256,34 @@ Deno.serve(async (req) => {
 
         if (!fileUrl) throw new Error('Falha ao fazer upload do arquivo para envio via Meta');
 
+        // Validar que a URL é HTTPS pública
+        if (!fileUrl.startsWith('https://')) {
+          throw new Error('URL da mídia não é pública HTTPS. Não é possível enviar via API Meta Oficial.');
+        }
+
+        console.log('📎 Mídia para Meta:', mediaType, fileUrl);
+
+        // Montar payload correto por tipo:
+        // - image e video: suportam caption (texto da legenda)
+        // - audio: NÃO suporta caption
+        // - document: suporta caption e filename
+        const mediaObj = { link: fileUrl };
+        if (mediaType === 'image' || mediaType === 'video') {
+          if (mensagem_texto?.trim()) mediaObj.caption = mensagem_texto.trim();
+        } else if (mediaType === 'document') {
+          if (mensagem_texto?.trim()) mediaObj.caption = mensagem_texto.trim();
+          if (arquivo.nome) mediaObj.filename = arquivo.nome;
+        }
+        // áudio: sem caption, sem filename
+
         metaPayload = {
           messaging_product: 'whatsapp',
           to: numeroFormatado,
           type: mediaType,
-          [mediaType]: {
-            link: fileUrl,
-            caption: mensagem_texto || undefined,
-            filename: arquivo.nome || undefined
-          }
+          [mediaType]: mediaObj
         };
+
+        console.log('📤 Meta payload mídia:', JSON.stringify(metaPayload).substring(0, 400));
       } else {
         metaPayload = {
           messaging_product: 'whatsapp',
