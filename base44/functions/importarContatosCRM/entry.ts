@@ -1,4 +1,74 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+
+/**
+ * Normaliza um telefone brasileiro para o formato 55 + DDD + número (12 ou 13 dígitos).
+ * Aceita formatos: (87)9820-41146, (82)9812-32133, (47)99132-1997, etc.
+ * Retorna null se inválido.
+ */
+function normalizarTelefone(raw) {
+  // Só dígitos
+  let tel = String(raw || '').replace(/\D/g, '');
+
+  if (!tel) return null;
+
+  // Se já começa com 55 e tem tamanho correto (12-13), usar
+  if (tel.startsWith('55') && tel.length >= 12 && tel.length <= 13) {
+    return tel;
+  }
+
+  // Se não começa com 55, adicionar o prefixo 55
+  if (!tel.startsWith('55')) {
+    tel = '55' + tel;
+  }
+
+  // Validar: 55 + DDD (2 dígitos) + número (8 ou 9 dígitos) = 12 ou 13 total
+  if (tel.length < 12 || tel.length > 13) {
+    return null;
+  }
+
+  return tel;
+}
+
+/**
+ * Tenta extrair nome e telefone de uma linha.
+ * Suporta:
+ *   - "Nome\tTelefone" (formato planilha)
+ *   - "Nome  Telefone" (espaços)
+ *   - Só número
+ *   - Número com nome embutido
+ */
+function parseLinha(linha) {
+  const raw = linha.trim();
+  if (!raw) return null;
+
+  // Tab-separated (planilha colada)
+  if (raw.includes('\t')) {
+    const partes = raw.split('\t');
+    const nome = partes[0].trim();
+    const telefoneRaw = partes[1]?.trim() || '';
+    const tel = normalizarTelefone(telefoneRaw);
+    if (tel) return { nome: nome || null, telefone: tel };
+    return null;
+  }
+
+  // Tentar extrair telefone do final da linha (padrão "(XX)XXXX-XXXXX" ou sequência de dígitos)
+  // Regex: qualquer padrão de telefone brasileiro com parênteses e hífen
+  const matchTel = raw.match(/\((\d{2})\)\s*(\d[\d\s\-]+)$/);
+  if (matchTel) {
+    const nome = raw.slice(0, matchTel.index).trim();
+    const tel = normalizarTelefone(matchTel[0]);
+    if (tel) return { nome: nome || null, telefone: tel };
+  }
+
+  // Linha é apenas dígitos/formatação de número
+  const apenasDigitos = raw.replace(/\D/g, '');
+  if (apenasDigitos.length >= 10) {
+    const tel = normalizarTelefone(apenasDigitos);
+    if (tel) return { nome: null, telefone: tel };
+  }
+
+  return null;
+}
 
 Deno.serve(async (req) => {
   try {
@@ -7,7 +77,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { contatos, empresa_id } = body;
+    const { contatos, empresa_id, tag_id } = body;
 
     if (!contatos || !Array.isArray(contatos) || contatos.length === 0) {
       return Response.json({ error: 'contatos array required' }, { status: 400 });
@@ -18,70 +88,59 @@ Deno.serve(async (req) => {
     }
 
     let criados = 0;
-    let erros = [];
+    let duplicados = 0;
     let rejeitados = 0;
+    const erros = [];
 
     for (const item of contatos) {
       try {
-        const telefone = typeof item === 'string' ? item.trim() : (item.telefone || item.numero || '').trim();
-        
-        if (!telefone) continue;
+        const linhaRaw = typeof item === 'string' ? item : String(item.telefone || item.numero || item || '');
 
-        // Rejeitar texto puro (não é número)
-        if (!/^\d/.test(telefone)) {
+        const parsed = parseLinha(linhaRaw);
+        if (!parsed) {
           rejeitados++;
-          console.log(`⏭️ Ignorado (texto): ${telefone}`);
+          console.log(`⏭️ Ignorado (não reconhecido): ${linhaRaw.slice(0, 60)}`);
           continue;
         }
 
-        // Extrair apenas números
-        const tel = telefone.replace(/\D/g, '');
-        
-        // Aceitar número BR válido: 55 + 10-11 dígitos = 12-13 dígitos total
-        if (!tel.startsWith('55')) {
-          rejeitados++;
-          console.log(`⏭️ Rejeitado (sem 55): ${tel}`);
-          continue;
-        }
-
-        if (tel.length < 12 || tel.length > 13) {
-          rejeitados++;
-          console.log(`⏭️ Rejeitado (comprimento ${tel.length}): ${tel}`);
-          continue;
-        }
-
-        // Normalizar: 55 + DDD + número (sem 9 extra)
-        let telNorm = tel;
-        if (tel.length === 13) {
-          // Verificar se tem 9 extra no meio (55 99 XXXXX)
-          if (tel.charAt(2) === '9') {
-            telNorm = tel.slice(0, 2) + tel.slice(3); // Remove o 9 extra
-          }
-        }
+        const { nome, telefone } = parsed;
 
         // Verificar duplicata
-        const existente = await base44.asServiceRole.entities.ContatoWhatsapp.filter({
+        const existentes = await base44.asServiceRole.entities.ContatoWhatsapp.filter({
           empresa_id,
-          telefone: telNorm
+          telefone,
         }).catch(() => []);
 
-        if (existente.length > 0) {
-          console.log(`⏭️ Já existe: ${telNorm}`);
+        if (existentes.length > 0) {
+          // Se tem tag para adicionar, atualiza o existente
+          if (tag_id) {
+            const existente = existentes[0];
+            const tagsAtuais = existente.tags_ids || [];
+            if (!tagsAtuais.includes(tag_id)) {
+              await base44.asServiceRole.entities.ContatoWhatsapp.update(existente.id, {
+                tags_ids: [...tagsAtuais, tag_id],
+              });
+            }
+          }
+          duplicados++;
+          console.log(`⏭️ Já existe (tag atualizada): ${telefone}`);
           continue;
         }
 
         // Criar contato
-        await base44.asServiceRole.entities.ContatoWhatsapp.create({
+        const dados = {
           empresa_id,
-          telefone: telNorm,
-          nome: `Cliente ${telNorm}`,
-          ultima_atualizacao: new Date().toISOString()
-        });
+          telefone,
+          nome: nome || `Contato ${telefone}`,
+          ultima_atualizacao: new Date().toISOString(),
+          ...(tag_id ? { tags_ids: [tag_id] } : {}),
+        };
 
+        await base44.asServiceRole.entities.ContatoWhatsapp.create(dados);
         criados++;
-        console.log(`✅ Criado: ${telNorm}`);
+        console.log(`✅ Criado: ${telefone} | ${nome || '(sem nome)'}`);
       } catch (e) {
-        erros.push(`Erro em ${item}: ${e.message}`);
+        erros.push(`Erro: ${e.message}`);
         console.error(`❌ ${item}: ${e.message}`);
       }
     }
@@ -89,10 +148,11 @@ Deno.serve(async (req) => {
     return Response.json({
       ok: true,
       criados,
+      duplicados,
       rejeitados,
       erros: erros.length > 0 ? erros : null,
       total: contatos.length,
-      mensagem: `✅ ${criados} salvos | ⏭️ ${rejeitados} ignorados`
+      mensagem: `✅ ${criados} salvos | ⏭️ ${duplicados} duplicados | ❌ ${rejeitados} ignorados`,
     });
   } catch (error) {
     console.error('Erro:', error.message);

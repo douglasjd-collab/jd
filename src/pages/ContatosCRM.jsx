@@ -290,6 +290,7 @@ export default function ContatosCRM() {
   const [colartextoOpen, setColartextoOpen] = useState(false);
   const [contatosPasta, setContatosPasta] = useState('');
   const [salvandoPasta, setSalvandoPasta] = useState(false);
+  const [tagImportacao, setTagImportacao] = useState('');
   const fileInputRef = useRef(null);
 
   const criarNovoContato = async () => {
@@ -321,13 +322,15 @@ export default function ContatosCRM() {
     try {
       const resp = await base44.functions.invoke('importarContatosCRM', {
         contatos: linhas,
-        empresa_id: empresaId
+        empresa_id: empresaId,
+        tag_id: tagImportacao || undefined,
       });
       const dados = resp.data;
-      toast.success(`✅ ${dados.criados} salvos`);
+      toast.success(`✅ ${dados.criados} salvos | ${dados.duplicados || 0} duplicados | ${dados.rejeitados || 0} ignorados`);
       queryClient.invalidateQueries({ queryKey: ['contatos-crm', empresaId] });
       setColartextoOpen(false);
       setContatosPasta('');
+      setTagImportacao('');
     } catch (e) {
       toast.error('Erro: ' + e.message);
     } finally {
@@ -733,17 +736,33 @@ export default function ContatosCRM() {
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label>Números/Contatos</Label>
+              <Label>Lista de Contatos</Label>
               <textarea
-                placeholder="Cole aqui, um por linha:&#10;555197884921&#10;JD PROMOTORA&#10;558721510008&#10;..."
+                placeholder="Cole aqui a lista (Nome + Telefone separados por tab, ou só números):&#10;JOÃO SILVA	(87)9820-41146&#10;MARIA SOUZA	(82)9812-32133&#10;..."
                 value={contatosPasta}
                 onChange={e => setContatosPasta(e.target.value)}
                 className="w-full h-48 p-3 border border-slate-200 rounded-lg font-mono text-sm mt-1 resize-none"
               />
-              <p className="text-xs text-slate-400 mt-2">Aceita números, nomes, ou linhas mistas. Números serão normalizados automaticamente.</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Aceita formato de planilha (Nome + Tab + Telefone), números com parênteses ou puros. 
+                Telefones sem DDI 55 serão completados automaticamente.
+              </p>
+            </div>
+            <div>
+              <Label>Tag para marcar os contatos importados <span className="text-slate-400 text-xs">(opcional)</span></Label>
+              <select
+                value={tagImportacao}
+                onChange={e => setTagImportacao(e.target.value)}
+                className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+              >
+                <option value="">— Sem tag —</option>
+                {tags.map(tag => (
+                  <option key={tag.id} value={tag.id}>{tag.nome}</option>
+                ))}
+              </select>
             </div>
             <div className="flex justify-end gap-2 pt-1">
-              <Button variant="outline" onClick={() => setColartextoOpen(false)}>Cancelar</Button>
+              <Button variant="outline" onClick={() => { setColartextoOpen(false); setTagImportacao(''); }}>Cancelar</Button>
               <Button 
                 onClick={colarContatosPasta} 
                 disabled={salvandoPasta || !contatosPasta.trim()} 
