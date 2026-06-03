@@ -44,7 +44,14 @@ Deno.serve(async (req) => {
     let mimeType = tipoParaMime[mensagem.tipo_conteudo] || 'application/octet-stream';
 
     const whatsappMessageId = mensagem.whatsapp_message_id;
-    const isMetaOficial = conversa?.tipo_conexao === 'meta_oficial';
+
+    // Detectar se é Meta Oficial:
+    // 1. tipo_conexao da conversa é meta_oficial
+    // 2. OU o whatsapp_message_id começa com "wamid." (padrão Meta)
+    // 3. OU o arquivo_url é um media_id numérico (padrão Meta)
+    const isWamid = whatsappMessageId && whatsappMessageId.startsWith('wamid.');
+    const isMediaIdNumerico = urlAtual && /^\d{10,}$/.test(urlAtual.trim());
+    const isMetaOficial = conversa?.tipo_conexao === 'meta_oficial' || isWamid || isMediaIdNumerico;
 
     // ── META OFICIAL ──────────────────────────────────────────────────────────
     if (isMetaOficial) {
@@ -237,6 +244,51 @@ Deno.serve(async (req) => {
           }
         } catch (e) {
           console.warn('⚠️ Download direto falhou:', e.message);
+        }
+      }
+
+      // Fallback: tentar via Meta Oficial se empresa tiver token configurado
+      if (!base64Data && empresa?.whatsapp_access_token && (isWamid || isMediaIdNumerico)) {
+        console.log('🔄 Tentando fallback Meta Oficial para mensagem com ID Meta...');
+        const metaToken = empresa.whatsapp_access_token;
+        try {
+          let mediaId = isMediaIdNumerico ? urlAtual.trim() : null;
+          if (!mediaId && whatsappMessageId) {
+            const msgRes = await fetch(`https://graph.facebook.com/v19.0/${whatsappMessageId}`, {
+              headers: { 'Authorization': `Bearer ${metaToken}` }
+            });
+            if (msgRes.ok) {
+              const msgData = await msgRes.json();
+              mediaId = msgData?.audio?.id || msgData?.image?.id || msgData?.video?.id || msgData?.document?.id;
+              if (mediaId) mimeType = msgData?.audio?.mime_type || msgData?.image?.mime_type || mimeType;
+            }
+          }
+          if (mediaId) {
+            const mediaRes = await fetch(`https://graph.facebook.com/v19.0/${mediaId}`, {
+              headers: { 'Authorization': `Bearer ${metaToken}` }
+            });
+            if (mediaRes.ok) {
+              const mediaData = await mediaRes.json();
+              if (mediaData?.url) {
+                const fileRes = await fetch(mediaData.url, {
+                  headers: { 'Authorization': `Bearer ${metaToken}`, 'User-Agent': 'Base44-WhatsApp-CRM' }
+                });
+                if (fileRes.ok) {
+                  mimeType = mediaData.mime_type || mimeType;
+                  const arrayBuffer = await fileRes.arrayBuffer();
+                  const uint8Array = new Uint8Array(arrayBuffer);
+                  let binary = '';
+                  for (let i = 0; i < uint8Array.length; i += 8192) {
+                    binary += String.fromCharCode(...uint8Array.slice(i, i + 8192));
+                  }
+                  base64Data = btoa(binary);
+                  console.log(`✅ Fallback Meta funcionou | media_id: ${mediaId}`);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ Fallback Meta falhou:', e.message);
         }
       }
 
