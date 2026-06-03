@@ -28,6 +28,28 @@ Deno.serve(async (req) => {
     let erros = 0;
     const resultados = [];
 
+    // Buscar definição do template para obter header type e URL da mídia
+    let templateHeaderType = template_header_type || null;
+    let templateHeaderUrl = template_header_url || null;
+    try {
+      const defs = await base44.asServiceRole.entities.CampanhaLog.filter({
+        empresa_id,
+        tipo_campanha: 'meta_template_definition',
+      }, '-created_date', 200);
+      const def = defs.find(d => {
+        try { return JSON.parse(d.motivo_erro || '{}').nome === template_name; } catch { return false; }
+      });
+      if (def) {
+        const parsed = JSON.parse(def.motivo_erro || '{}');
+        // Chaves salvas pelo sincronizarTemplatesMeta: tipo_cabecalho e cabecalho_midia_url
+        if (!templateHeaderType) templateHeaderType = parsed.tipo_cabecalho || parsed.header_type || null;
+        if (!templateHeaderUrl) templateHeaderUrl = parsed.cabecalho_midia_url || parsed.header_url || null;
+        console.log('📋 Template def encontrado — tipo_cabecalho:', templateHeaderType, '| cabecalho_midia_url:', templateHeaderUrl?.substring(0, 80));
+      }
+    } catch (e) {
+      console.warn('⚠️ Erro ao buscar definição do template:', e.message);
+    }
+
     for (const telefone of contatos) {
       const numeroLimpo = String(telefone).replace(/\D/g, '');
       if (numeroLimpo.length < 10) {
@@ -36,10 +58,26 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Montar componentes de variáveis
-      // Nota: para templates com imagem/vídeo fixos, a Meta não exige componente header no envio —
-      // a mídia já está registrada no template. Só body variables e botões são necessários.
       const components = [];
+
+      // Header com mídia — obrigatório quando template tem header IMAGE/VIDEO/DOCUMENT
+      const headerType = (templateHeaderType || '').toUpperCase();
+      if (headerType === 'IMAGE' && templateHeaderUrl) {
+        components.push({
+          type: 'header',
+          parameters: [{ type: 'image', image: { link: templateHeaderUrl } }],
+        });
+      } else if (headerType === 'VIDEO' && templateHeaderUrl) {
+        components.push({
+          type: 'header',
+          parameters: [{ type: 'video', video: { link: templateHeaderUrl } }],
+        });
+      } else if (headerType === 'DOCUMENT' && templateHeaderUrl) {
+        components.push({
+          type: 'header',
+          parameters: [{ type: 'document', document: { link: templateHeaderUrl } }],
+        });
+      }
 
       // Body variables
       const varsKeys = Object.keys(variaveis);
