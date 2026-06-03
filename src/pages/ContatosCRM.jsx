@@ -438,48 +438,49 @@ export default function ContatosCRM() {
   const importarCSV = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // Remove BOM UTF-8 se presente
-    const text = (await file.text()).replace(/^\uFEFF/, '');
-    const lines = text.split('\n').filter(l => l.trim());
-    if (lines.length < 2) return toast.error('CSV vazio ou sem dados');
 
-    const header = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/[^a-záàãâéêíóôõúç\s]/gi, '').trim());
+    const toastId = toast.loading('Lendo arquivo CSV...');
+    try {
+      const text = (await file.text()).replace(/^\uFEFF/, '');
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) { toast.dismiss(toastId); return toast.error('CSV vazio ou sem dados'); }
 
-    let criados = 0;
-    let duplicados = 0;
-    let rejeitados = 0;
+      const header = parseCSVLine(lines[0]).map(h => h.toLowerCase().replace(/"/g, '').trim());
 
-    for (let i = 1; i < lines.length; i++) {
-      const vals = parseCSVLine(lines[i]);
-      const obj = {};
-      header.forEach((h, idx) => { obj[h] = (vals[idx] || '').trim(); });
+      // Montar lista de linhas "Nome\tTelefone" para reusar o backend importarContatosCRM
+      const contatosLinhas = [];
+      for (let i = 1; i < lines.length; i++) {
+        const vals = parseCSVLine(lines[i]);
+        const obj = {};
+        header.forEach((h, idx) => { obj[h] = (vals[idx] || '').trim(); });
 
-      const nome = obj['nome'] || obj['name'] || '';
-      const telefoneRaw = (obj['telefone'] || obj['phone'] || obj['celular'] || '').replace(/\D/g, '');
+        const nome = obj['nome'] || obj['name'] || '';
+        const tel = obj['telefone'] || obj['phone'] || obj['celular'] || '';
 
-      // Ignorar números de Instagram (ig_...)
-      const telOriginal = obj['telefone'] || '';
-      if (telOriginal.startsWith('ig_')) { rejeitados++; continue; }
+        // Ignorar Instagram
+        if (tel.startsWith('ig_')) continue;
+        if (!tel) continue;
 
-      if (!telefoneRaw || telefoneRaw.length < 10) { rejeitados++; continue; }
+        contatosLinhas.push(`${nome}\t${tel}`);
+      }
 
-      // Validar comprimento — rejeitar números muito longos (> 13 dígitos)
-      if (telefoneRaw.length > 13) { rejeitados++; continue; }
+      if (contatosLinhas.length === 0) {
+        toast.dismiss(toastId);
+        return toast.error('Nenhum contato válido encontrado no CSV');
+      }
 
-      // Verificar duplicata
-      const existentes = await base44.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, telefone: telefoneRaw }, null, 1).catch(() => []);
-      if (existentes.length > 0) { duplicados++; continue; }
+      toast.loading(`Importando ${contatosLinhas.length} contatos...`, { id: toastId });
 
-      await base44.entities.ContatoWhatsapp.create({
+      const resp = await base44.functions.invoke('importarContatosCRM', {
+        contatos: contatosLinhas,
         empresa_id: empresaId,
-        nome: nome || `Contato ${telefoneRaw}`,
-        telefone: telefoneRaw,
       });
-      criados++;
+      const dados = resp.data;
+      toast.success(`✅ ${dados.criados} importados | ⏭️ ${dados.duplicados || 0} duplicados | ❌ ${dados.rejeitados || 0} ignorados`, { id: toastId });
+      queryClient.invalidateQueries({ queryKey: ['contatos-crm', empresaId] });
+    } catch (err) {
+      toast.error('Erro ao importar CSV: ' + err.message, { id: toastId });
     }
-
-    queryClient.invalidateQueries({ queryKey: ['contatos-crm', empresaId] });
-    toast.success(`✅ ${criados} importados | ⏭️ ${duplicados} duplicados | ❌ ${rejeitados} ignorados`);
     e.target.value = '';
   };
 
