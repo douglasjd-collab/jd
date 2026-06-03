@@ -48,23 +48,44 @@ function parseLinha(linha) {
     const telefoneRaw = partes[1]?.trim() || '';
     const tel = normalizarTelefone(telefoneRaw);
     if (tel) return { nome: nome || null, telefone: tel };
+    // Se primeira parte não deu, tentar inverso
+    const tel2 = normalizarTelefone(partes[0]?.trim() || '');
+    if (tel2) return { nome: partes[1]?.trim() || null, telefone: tel2 };
     return null;
   }
 
-  // Tentar extrair telefone do final da linha (padrão "(XX)XXXX-XXXXX" ou sequência de dígitos)
-  // Regex: qualquer padrão de telefone brasileiro com parênteses e hífen
-  const matchTel = raw.match(/\((\d{2})\)\s*(\d[\d\s\-]+)$/);
-  if (matchTel) {
-    const nome = raw.slice(0, matchTel.index).trim();
-    const tel = normalizarTelefone(matchTel[0]);
+  // Tentar extrair telefone com parênteses (ex: "(87)9820-41146" ou "(87) 9820-41146")
+  // Pode estar em qualquer posição da linha
+  const matchTelParens = raw.match(/\((\d{2})\)\s*(\d[\d\s\-]{6,})/);
+  if (matchTelParens) {
+    const nome = raw.slice(0, matchTelParens.index).trim();
+    const tel = normalizarTelefone(matchTelParens[0]);
+    if (tel) return { nome: nome || null, telefone: tel };
+  }
+
+  // Linha com múltiplos espaços: "NOME SOBRENOME   55XXXXXXXXXX" ou "NOME   XXXXXXXXXX"
+  // Tentar separar pelo último bloco de dígitos contíguos com 10+ chars
+  const matchNumeroFinal = raw.match(/\s{2,}([\d\(\)\-\s]{10,})$/);
+  if (matchNumeroFinal) {
+    const nome = raw.slice(0, matchNumeroFinal.index).trim();
+    const tel = normalizarTelefone(matchNumeroFinal[1]);
     if (tel) return { nome: nome || null, telefone: tel };
   }
 
   // Linha é apenas dígitos/formatação de número
   const apenasDigitos = raw.replace(/\D/g, '');
-  if (apenasDigitos.length >= 10) {
+  if (apenasDigitos.length >= 10 && apenasDigitos.length <= 13) {
     const tel = normalizarTelefone(apenasDigitos);
     if (tel) return { nome: null, telefone: tel };
+  }
+
+  // Última tentativa: a linha toda pode ser nome + número sem separador claro
+  // Pegar sequência final de dígitos (sem espaço)
+  const matchFinalDigits = raw.match(/(\d[\d\-]{8,})$/);
+  if (matchFinalDigits) {
+    const nome = raw.slice(0, matchFinalDigits.index).trim();
+    const tel = normalizarTelefone(matchFinalDigits[1]);
+    if (tel) return { nome: nome || null, telefone: tel };
   }
 
   return null;
