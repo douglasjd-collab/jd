@@ -135,48 +135,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
-  // Auto-carregar mídia ao montar: apenas áudio — com delay escalonado para evitar rate limit
-  useEffect(() => {
-    // Só auto-carrega áudio (imagem e vídeo ficam sob demanda para não sobrecarregar)
-    if (mensagem.tipo_conteudo !== 'audio') return;
-    // Já tem URL válida
-    if (mediaUrlRef.current && isUrlValida(mediaUrlRef.current)) return;
-    if (loadingMediaRef.current) return;
-
-    // Delay baseado no ID para escalonar requisições e evitar 429
-    const idNum = parseInt(mensagem.id?.slice(-4) || '0', 16) % 5000;
-    const delay = 500 + idNum;
-
-    const timer = setTimeout(() => {
-      if (mediaUrlRef.current && isUrlValida(mediaUrlRef.current)) return;
-      if (loadingMediaRef.current) return;
-      loadingMediaRef.current = true;
-      setLoadingMedia(true);
-      base44.functions.invoke('baixarMidiaWhatsApp', {
-        mensagem_id: mensagem.id,
-        arquivo_url: mensagem.arquivo_url || null,
-        conversa_id: conversaId || mensagem.conversa_id
-      })
-        .then(res => {
-          const data = res?.data;
-          const url = data?.arquivo_url;
-          if (url && isUrlValida(url)) {
-            setMediaUrl(url);
-            mediaUrlRef.current = url;
-          }
-        })
-        .catch(() => {
-          // Falha silenciosa — usuário pode clicar manualmente
-        })
-        .finally(() => {
-          setLoadingMedia(false);
-          loadingMediaRef.current = false;
-        });
-    }, delay);
-
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mensagem.id]);
+  // Sem auto-download: usuário clica para carregar cada áudio individualmente
+  // Isso evita sobrecarga quando há muitos áudios na conversa
 
   const handleDeletar = async () => {
     if (mensagem.id?.startsWith('temp_')) {
@@ -506,10 +466,10 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                     src={mediaUrl} 
                     preload="metadata"
                     style={{ minWidth: '180px' }}
-                    onError={() => {
-                      // URL inválida — limpar para mostrar botão de carregar novamente
-                      setMediaUrl(null);
-                      mediaUrlRef.current = null;
+                    onError={(e) => {
+                      // Não limpar a URL automaticamente para evitar loop
+                      // Apenas logar o erro — o usuário pode clicar no botão de baixar
+                      console.warn('Erro ao reproduzir áudio:', mediaUrl?.substring(0, 80));
                     }}
                   >
                     <source src={mediaUrl} type="audio/ogg" />
