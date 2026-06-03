@@ -133,20 +133,44 @@ export default function useSoftphone(config) {
   const _clearAudio = () => { if (audioRef.current) audioRef.current.srcObject = null; };
 
   // ── timeout de chamada ───────────────────────────────────────────────────
+  // [FIX-3/4] Timeout duplo:
+  //   sem183Ref = false → 10s sem NENHUMA resposta SIP → cancelar
+  //   sem183Ref = true  → 60s total (183/180 já recebido) → cancelar se sem 200 OK
+  const sem183Ref = useRef(false); // rastreia se já recebeu 183/180
+
   const _clearCallTimeout = () => {
     if (callTimeoutRef.current) { clearTimeout(callTimeoutRef.current); callTimeoutRef.current = null; }
   };
 
   const _startCallTimeout = (session, numHistorico) => {
     _clearCallTimeout();
+    sem183Ref.current = false;
+    // Fase 1: 10s sem NENHUMA resposta SIP
     callTimeoutRef.current = setTimeout(() => {
-      const msg = 'Timeout 30s — sem resposta SIP após INVITE. Verifique crédito NVOIP, formato do número e configuração do ramal.';
-      SIP_LOG.push('TIMEOUT', `30s sem resposta — URI: ${SIP_LOG.lastUri?.detalhe || numHistorico}`);
+      if (sem183Ref.current) return; // já recebeu 183/180 → não cancelar aqui
+      const msg = 'Timeout 10s — NVOIP não respondeu ao INVITE. Verifique crédito, número e rota no painel NVOIP.';
+      SIP_LOG.push('TIMEOUT_NO_RESPONSE', `10s sem resposta SIP — URI: ${numHistorico}`);
       try { session.terminate(); } catch {}
       if (mountedRef.current) { setErroMsg(msg); setChamadaAtiva(null); }
       _clearAudio();
       _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
-    }, 30000);
+    }, 10000);
+  };
+
+  // Chamado quando recebe 183/180: troca para timeout longo de 60s
+  const _extenderTimeoutApos183 = (session, numHistorico) => {
+    if (sem183Ref.current) return; // já extendido
+    sem183Ref.current = true;
+    _clearCallTimeout();
+    SIP_LOG.push('TIMEOUT_EXTENDIDO', '183/180 recebido — timeout extendido para 60s');
+    callTimeoutRef.current = setTimeout(() => {
+      const msg = 'Timeout 60s — chamada não foi atendida (sem 200 OK após 183 Session Progress).';
+      SIP_LOG.push('TIMEOUT_60S', `60s sem 200 OK após 183 — URI: ${numHistorico}`);
+      try { session.terminate(); } catch {}
+      if (mountedRef.current) { setErroMsg(msg); setChamadaAtiva(null); }
+      _clearAudio();
+      _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
+    }, 60000);
   };
 
   // ── colaborador cache ────────────────────────────────────────────────────
@@ -434,10 +458,19 @@ export default function useSoftphone(config) {
 
     const cfg = configRef.current;
 
-    // ── Normalização ───────────────────────────────────────────────────────
+    // ── Normalização e validação ───────────────────────────────────────────
     const numOriginal = numero.replace(/\D/g, '');
     const numComDDI   = numOriginal.startsWith('55') ? numOriginal : '55' + numOriginal;
     const numSemDDI   = numOriginal.startsWith('55') ? numOriginal.slice(2) : numOriginal;
+
+    // [FIX-5] Bloquear número brasileiro com dígitos a mais (ex: 879914626333 = 12 dígitos)
+    // Válido: celular 11 dígitos (DDD+9+8), fixo 10 dígitos (DDD+8)
+    if (numSemDDI.length > 11) {
+      const msg = `Número inválido — dígitos a mais (${numSemDDI.length} dígitos). Verifique e corrija. Ex correto: ${numSemDDI.slice(0, 11)}`;
+      SIP_LOG.push('BLOCKED', msg, { num: numSemDDI, tamanho: numSemDDI.length });
+      if (mountedRef.current) setErroMsg(msg);
+      return false;
+    }
 
     // Bloquear celular sem 9º dígito
     if (numSemDDI.length === 10 && /^[6-9]/.test(numSemDDI.slice(2))) {
@@ -488,8 +521,9 @@ export default function useSoftphone(config) {
     // ── Tenta cada URI em sequência ────────────────────────────────────────
     let uriIdx    = 0;
     let session   = null;
-    let inviteEnviado = false;          // item 1: rastrear se INVITE saiu
-    let respostaRecebida = false;       // item 7: rastrear se houve resposta
+    let inviteEnviado    = false;  // rastrear se INVITE saiu
+    let respostaRecebida = false;  // rastrear se houve qualquer resposta SIP
+    let recebeu183       = false;  // [FIX-6] impede retry se 183 já chegou
 
     // Mic é gerenciado pelo JsSIP — _releaseMic é no-op aqui (mantido por compatibilidade)
     const _releaseMic = () => {};
@@ -635,7 +669,7 @@ export default function useSoftphone(config) {
         });
       });
 
-      // ── Item 3: progress captura 100/180/183 ───────────────────────────
+      // ── [FIX-1/2/3/6/7] progress: 100 Trying / 180 Ringing / 183 Session Progress ──
       s.on('progress', (ev) => {
         respostaRecebida = true;
         const code   = ev?.response?.status_code;
@@ -646,15 +680,31 @@ export default function useSoftphone(config) {
           sdp_rsp: sdpRsp ? sdpRsp.substring(0, 300) : null,
         });
         console.log(`📞 [SIP] ${code} ${phrase} — URI: ${destino}`);
-        if (code === 180 || code === 183) setChamadaAtiva(p => p ? { ...p, status: 'tocando' } : null);
-        else setChamadaAtiva(p => p ? { ...p, status: 'chamando' } : null);
+
+        if (code === 180) {
+          // 180 Ringing: chamando no destino
+          recebeu183 = true;
+          _extenderTimeoutApos183(s, numHistorico);
+          setChamadaAtiva(p => p ? { ...p, status: 'tocando' } : null);
+          SIP_LOG.push('tocando', '📳 180 Ringing — chamando no destino');
+        } else if (code === 183) {
+          // [FIX-1] 183 Session Progress: em processamento na NVOIP, NÃO é atendida
+          recebeu183 = true;
+          _extenderTimeoutApos183(s, numHistorico);
+          setChamadaAtiva(p => p ? { ...p, status: 'tocando' } : null);
+          SIP_LOG.push('tocando', '🔄 183 Session Progress — aguardando 200 OK (timeout: 60s)');
+        } else {
+          // 100 Trying ou outros
+          setChamadaAtiva(p => p ? { ...p, status: 'chamando' } : null);
+        }
       });
 
+      // [FIX-2] Só considera conectada ao receber 200 OK / accepted
       s.on('accepted', (ev) => {
         respostaRecebida = true;
         const sdpRsp = ev?.response?.body || '';
-        SIP_LOG.push('200_OK', `✅ 200 OK — chamada aceita`, { uri: destino, sdp_preview: sdpRsp.substring(0, 200) });
-        console.log('✅ [SIP] 200 OK');
+        SIP_LOG.push('200_OK', `✅ 200 OK — chamada ATENDIDA`, { uri: destino, sdp_preview: sdpRsp.substring(0, 200) });
+        console.log('✅ [SIP] 200 OK — chamada atendida');
         _clearCallTimeout();
         inicioRef.current = Date.now();
         setChamadaAtiva(p => p ? { ...p, status: 'em_ligacao' } : null);
@@ -755,6 +805,18 @@ export default function useSoftphone(config) {
             : 'Erro SIP 603: Chamada recusada pelo destino.';
           if (mountedRef.current) setErroMsg(msg);
           setChamadaAtiva(null);
+          _clearAudio();
+          _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
+          return;
+        }
+
+        // [FIX-6] Se já recebeu 183/180, NÃO tentar outra URI — a chamada entrou na rota NVOIP
+        if (recebeu183) {
+          sessionAtivaRef.current = null;
+          _releaseMic();
+          const msg = `Chamada não atendida — destino não respondeu após 183 Session Progress.`;
+          SIP_LOG.push('NO_ANSWER_AFTER_183', msg);
+          if (mountedRef.current) { setErroMsg(msg); setChamadaAtiva(null); }
           _clearAudio();
           _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
           return;
