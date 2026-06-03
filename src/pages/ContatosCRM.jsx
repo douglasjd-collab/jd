@@ -524,6 +524,18 @@ export default function ContatosCRM() {
           <p className="text-slate-500 mt-1">{contatos.length > 0 ? contatos.length : totalContatos} contatos cadastrados</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+           <Button variant="outline" size="sm" className="gap-1.5 text-sm text-orange-600 border-orange-200 hover:bg-orange-50" onClick={async () => {
+             if (!confirm('Remover todos os contatos duplicados (mesmo telefone)? Será mantido apenas 1 por número.')) return;
+             const tid = toast.loading('Removendo duplicatas...');
+             try {
+               const resp = await base44.functions.invoke('deduplicarContatosCRM', { empresa_id: empresaId });
+               toast.success(resp.data.mensagem, { id: tid });
+               queryClient.invalidateQueries({ queryKey: ['contatos-crm', empresaId] });
+               queryClient.invalidateQueries({ queryKey: ['contatos-crm-total', empresaId] });
+             } catch(e) { toast.error('Erro: ' + e.message, { id: tid }); }
+           }}>
+             <RefreshCw className="w-4 h-4" /> Remover Duplicatas
+           </Button>
            <Button variant="outline" size="sm" className="gap-1.5 text-sm" onClick={() => setGerenciarTagsOpen(true)}>
              <Tag className="w-4 h-4" /> Gerenciar Tags
            </Button>
