@@ -96,8 +96,8 @@ export default function ChatHeader({
               ) : (
                 <button
                   onClick={alternarApi}
-                  title={ehMeta ? 'Meta Oficial — clique para alternar para Evolution' : 'Evolution — clique para alternar para Meta Oficial'}
-                  className={`inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-opacity hover:opacity-80 ${ehMeta ? 'bg-green-500' : 'bg-blue-500'}`}
+                  title={ehMeta ? 'Respondendo via Meta Oficial — clique para trocar para Evolution' : 'Respondendo via Evolution — clique para trocar para Meta Oficial'}
+                  className={`inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 ${ehMeta ? 'bg-green-500' : 'bg-blue-500'}`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
                   {ehMeta ? 'Meta Oficial' : 'Evolution'}

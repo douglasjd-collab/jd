@@ -84,9 +84,11 @@ async function processarMensagem(body) {
   let conversa;
   if (conversas.length > 0) {
     conversa = conversas[0];
-    // Garantir que tipo_conexao está correto
-    if (conversa.tipo_conexao !== 'meta_oficial') {
-      await base44.entities.ConversaWhatsapp.update(conversa.id, { tipo_conexao: 'meta_oficial' });
+    // Garantir que tipo_conexao e instancia estão corretos
+    if (conversa.tipo_conexao !== 'meta_oficial' || conversa.instancia !== 'META_OFICIAL') {
+      await base44.entities.ConversaWhatsapp.update(conversa.id, { tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL' });
+      conversa.tipo_conexao = 'meta_oficial';
+      conversa.instancia = 'META_OFICIAL';
     }
   } else {
     conversa = await base44.entities.ConversaWhatsapp.create({
@@ -96,6 +98,7 @@ async function processarMensagem(body) {
       whatsapp_id: `meta_${telefone}`,
       status: 'ativa',
       tipo_conexao: 'meta_oficial',
+      instancia: 'META_OFICIAL',
       ultima_mensagem: '',
       data_ultima_mensagem: new Date().toISOString(),
       ultimo_remetente: 'cliente',
