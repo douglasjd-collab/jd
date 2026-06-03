@@ -481,18 +481,23 @@ export default function useSoftphone(config) {
       return false;
     }
 
+    // ── Caller ID / DID de saída (deve vir ANTES da URI_QUEUE) ───────────
+    const ramalSIP  = String(cfg?.numbersip || '');
+    const didLimpo  = cfg?.numero_did ? cfg.numero_did.replace(/\D/g, '') : '';
+    const sipDomain = 'app.nvoip.com.br';
+
     // [FIX-DID] Quando DID configurado (ex: 558132998470), a NVOIP espera o destino
     // SEM DDI 55, pois o próprio DID já carrega o contexto de saída nacional.
     // Com DDI → Rejected. Sem DDI → aceito pela rota de saída do DID.
     // Ordem: sem DDI primeiro (funciona com DID configurado), com DDI como fallback.
     const URI_QUEUE = didLimpo
       ? [
-          `sip:${numSemDDI}@app.nvoip.com.br`,
-          `sip:${numComDDI}@app.nvoip.com.br`,
+          `sip:${numSemDDI}@${sipDomain}`,
+          `sip:${numComDDI}@${sipDomain}`,
         ]
       : [
-          `sip:${numComDDI}@app.nvoip.com.br`,
-          `sip:${numSemDDI}@app.nvoip.com.br`,
+          `sip:${numComDDI}@${sipDomain}`,
+          `sip:${numSemDDI}@${sipDomain}`,
         ];
 
     const numHistorico = numSemDDI;
@@ -503,37 +508,19 @@ export default function useSoftphone(config) {
       num_sem_ddi   : numSemDDI,
       uri_queue     : URI_QUEUE,
       uri_principal : URI_QUEUE[0],
-      ramal         : cfg?.numbersip,
-      did           : cfg?.numero_did || '—',
+      ramal         : ramalSIP,
+      did           : didLimpo || '—',
       estrategia    : didLimpo ? 'sem DDI primeiro (DID configurado)' : 'com DDI primeiro (sem DID)',
     });
     console.log(`📞 [SIP] DIAL → URIs a tentar:`, URI_QUEUE);
-    console.log(`🧪 [SIP] Teste manual no Webphone NVOIP: sip:${numComDDI}@app.nvoip.com.br | sip:${numSemDDI}@app.nvoip.com.br`);
 
-    // [FIX-CANCELED] pcConfig simplificado: remover TURN público openrelay e STUNs extras.
-    // TURN/openrelay causava travamento na geração do SDP antes do INVITE sair.
-    // Usar apenas stun.google como baseline — suficiente para rede local/corporativa.
     const pcConfig = {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-      ],
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
     };
-
-    // ── Caller ID / DID de saída ──────────────────────────────────────────
-    // A NVOIP usa P-Asserted-Identity e Remote-Party-ID para determinar
-    // qual DID/número virtual aparece como origem da chamada sainte.
-    // Sem esses headers, a chamada sai apenas com o ramal SIP (137715001)
-    // e pode ser rejeitada se a rota de saída exigir o DID vinculado.
-    const ramalSIP  = String(cfg?.numbersip || '');
-    const didLimpo  = cfg?.numero_did ? cfg.numero_did.replace(/\D/g, '') : '';
-    const sipDomain = 'app.nvoip.com.br';
 
     // [CALLER-ID] Log do Caller ID configurado para diagnóstico
     SIP_LOG.push('CALLER_ID_CONFIG', `Ramal: ${ramalSIP} | DID: ${didLimpo || '(não configurado)'} | Destino: ${numSemDDI}`, {
-      ramal_sip  : ramalSIP,
-      did        : didLimpo || null,
-      destino    : numSemDDI,
-      alerta     : !didLimpo ? '⚠️ DID não configurado — chamada sairá apenas com ramal SIP. Configure o número virtual em "Meu Ramal".' : null,
+      ramal_sip: ramalSIP, did: didLimpo || null, destino: numSemDDI,
     });
     console.log(`📋 [SIP] Caller ID — Ramal: ${ramalSIP} | DID: ${didLimpo || 'não configurado'} | Destino: ${numSemDDI}`);
 
