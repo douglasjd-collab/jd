@@ -13,12 +13,19 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   // Não auto-carregar arquivos .enc (criptografados do WhatsApp — causam download indesejado no browser)
   const isUrlValida = (url) => {
     if (!url) return false;
-    if (url.endsWith('.enc') || url.includes('.enc?')) return false;
-    // media_id numérico da Meta (ainda não é URL de download)
+    if (typeof url !== 'string') return false;
+    // Bloquear media_id numérico da Meta
     if (/^\d+$/.test(url.trim())) return false;
-    // URL de media interna Evolution sem storage permanente
-    if (url.includes('media/') && !url.includes('base44') && !url.includes('supabase') && !url.includes('amazonaws')) return false;
-    return true;
+    // Bloquear arquivos .enc (criptografados)
+    if (url.includes('.enc')) return false;
+    // Bloquear URLs internas da Evolution que não são do nosso storage
+    if (url.includes('/media/') && !url.includes('base44') && !url.includes('supabase') && !url.includes('amazonaws')) return false;
+    // Deve ser uma URL válida começando com http
+    if (!url.startsWith('http')) return false;
+    // Deve ser URL do nosso storage ou URL pública conhecida
+    const isPermanente = url.includes('base44') || url.includes('supabase') || url.includes('amazonaws');
+    const isUrlPublica = url.startsWith('https://') && !url.includes('localhost');
+    return isPermanente || isUrlPublica;
   };
   const [mediaUrl, setMediaUrl] = useState(isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);
   const [loadingMedia, setLoadingMedia] = useState(false);
@@ -499,6 +506,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                     src={mediaUrl} 
                     preload="metadata"
                     style={{ minWidth: '180px' }}
+                    onError={() => {
+                      // URL inválida — limpar para mostrar botão de carregar novamente
+                      setMediaUrl(null);
+                      mediaUrlRef.current = null;
+                    }}
                   >
                     <source src={mediaUrl} type="audio/ogg" />
                     <source src={mediaUrl} type="audio/webm" />
