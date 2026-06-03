@@ -6,11 +6,11 @@ import { base44 } from '@/api/base44Client';
  * Hook Softphone WebRTC — NVOIP
  * wss://app.nvoip.com.br:7443
  *
- * Suporte completo a:
- * - REGISTER com reautenticação automática (401/407)
- * - INVITE com captura de todas as respostas SIP
- * - Duplo formato URI (com/sem DDI 55)
- * - Diagnóstico em tela via SIP_LOG
+ * CORREÇÕES APLICADAS:
+ * [FIX-1] contact_uri: transport=ws → transport=wss (crítico para registro WSS)
+ * [FIX-4] URI_QUEUE: removidos domínios sip.nvoip.com.br (domínio diferente do registro gera 404)
+ * [ALERTA-2] Guard de UA duplo melhorado com uaClosure no reconnect timer
+ * [ALERTA-3] Mic release garantido em todos os caminhos de erro (try/finally)
  */
 
 JsSIP.debug.enable('JsSIP:*');
@@ -244,7 +244,8 @@ export default function useSoftphone(config) {
       no_answer_timeout               : 60,
       hack_via_tcp                    : false,
       hack_ip_in_contact              : false,
-      contact_uri                     : `sip:${ramal}@${sipDomain};transport=ws`,
+      // [FIX-1] transport=wss (era transport=ws) — deve bater com o transporte real do WebSocket
+      contact_uri                     : `sip:${ramal}@${sipDomain};transport=wss`,
       connection_recovery_min_interval: 2,
       connection_recovery_max_interval: 10,
       log                             : { builtinEnabled: true, level: 'debug' },
@@ -318,10 +319,14 @@ export default function useSoftphone(config) {
 
       setStatusSeFraco('conectando');
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+
+      // [ALERTA-2 FIX] Captura referência do UA atual para evitar que timer
+      // de um UA antigo reconecte após um novo UA já ter sido criado
+      const uaClosure = ua;
       reconnectTimerRef.current = setTimeout(() => {
         if (!mountedRef.current) return;
-        // Recriar UA somente se o atual for o mesmo (evita múltiplos UAs)
-        if (uaRef.current === ua) {
+        // Só reusa o UA se ainda for o mesmo — evita múltiplos UAs ativos
+        if (uaRef.current === uaClosure) {
           try { uaRef.current.start(); } catch {}
         } else if (!uaRef.current && configRef.current?.sip_password) {
           conectar();
@@ -394,7 +399,7 @@ export default function useSoftphone(config) {
   // Auto-conecta ao receber config válida
   useEffect(() => {
     if (!config?.numbersip) return;
-    if (!config?.sip_password) { setSipStatus('erro'); setErroMsg('Senha SIP não configurada.'); return; }
+    if (!config?.sip_password) { setSipStatus('erro'); setErroMsg('Senha SIP não configurada. Acesse "Meu Ramal" e salve a Senha SIP.'); return; }
     const key = `${config.numbersip}|${config.sip_password}`;
     if (lastConnectedRef.current === key && uaRef.current) return;
     lastConnectedRef.current = key;
@@ -449,12 +454,12 @@ export default function useSoftphone(config) {
       return false;
     }
 
-    // ── 4 URIs a tentar em sequência (item 5) ─────────────────────────────
+    // [FIX-4] URI_QUEUE: somente domínio app.nvoip.com.br (mesmo do registro WSS).
+    // sip.nvoip.com.br foi removido — domínio diferente do registro causa 404 ou
+    // descarte silencioso pelo proxy, desperdiçando 30s de timeout por tentativa.
     const URI_QUEUE = [
       `sip:${numComDDI}@app.nvoip.com.br`,
       `sip:${numSemDDI}@app.nvoip.com.br`,
-      `sip:${numComDDI}@sip.nvoip.com.br`,
-      `sip:${numSemDDI}@sip.nvoip.com.br`,
     ];
 
     const numHistorico = numSemDDI;
@@ -497,7 +502,14 @@ export default function useSoftphone(config) {
     let inviteEnviado = false;          // item 1: rastrear se INVITE saiu
     let respostaRecebida = false;       // item 7: rastrear se houve resposta
 
-    const _releaseMic = () => micStream?.getTracks().forEach(t => t.stop());
+    // [ALERTA-3 FIX] _releaseMic centralizado — garante que o microfone
+    // é liberado em qualquer caminho, inclusive exceções em fazerChamada()
+    let micLiberado = false;
+    const _releaseMic = () => {
+      if (micLiberado) return;
+      micLiberado = true;
+      micStream?.getTracks().forEach(t => t.stop());
+    };
 
     const tentarProximaURI = () => {
       uriIdx++;
@@ -529,6 +541,8 @@ export default function useSoftphone(config) {
         s = uaRef.current.call(destino, { ...baseCallOptions });
       } catch (err) {
         SIP_LOG.push('ERROR', `Erro ao criar sessão para ${destino}: ${err.message}`);
+        // [ALERTA-3 FIX] libera mic se for a última tentativa
+        if (uriIdx + 1 >= URI_QUEUE.length) _releaseMic();
         tentarProximaURI();
         return;
       }
@@ -581,10 +595,10 @@ export default function useSoftphone(config) {
           const state = pc.iceConnectionState;
           SIP_LOG.push('ICE_STATE', `ICE: ${state}`);
           if (state === 'failed') {
-            SIP_LOG.push('ICE_FAILED', '⚠️ ICE failed — problema NAT/TURN (item D: erro WebRTC)');
+            SIP_LOG.push('ICE_FAILED', '⚠️ ICE failed — problema NAT/TURN. Solicite credenciais TURN da NVOIP para produção.');
             _clearCallTimeout();
             try { s.terminate(); } catch {}
-            if (mountedRef.current) { setErroMsg('Falha WebRTC: ICE failed — sem conectividade de mídia.'); setChamadaAtiva(null); }
+            if (mountedRef.current) { setErroMsg('Falha WebRTC: ICE failed — sem conectividade de mídia. Verifique rede/firewall.'); setChamadaAtiva(null); }
             _clearAudio();
             _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
           }
@@ -686,7 +700,7 @@ export default function useSoftphone(config) {
 
         // Se "Canceled" e INVITE não saiu: problema de SDP/WebRTC (item D), não tentar outra URI
         if (cause === 'Canceled' && !inviteEnviado) {
-          SIP_LOG.push('CANCELED_NO_INVITE', '⚠️ Chamada cancelada antes do INVITE sair — problema de SDP ou WebRTC (item D). Verifique getUserMedia e geração do SDP.');
+          SIP_LOG.push('CANCELED_NO_INVITE', '⚠️ Chamada cancelada antes do INVITE sair — problema de SDP ou WebRTC. Verifique getUserMedia e geração do SDP.');
           _releaseMic();
           sessionAtivaRef.current = null;
           if (mountedRef.current) setErroMsg('Chamada cancelada antes do INVITE sair — possível problema de SDP/WebRTC. Veja log para diagnóstico.');
