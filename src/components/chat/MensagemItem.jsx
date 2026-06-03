@@ -128,36 +128,36 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
-  // Auto-carregar mídia ao montar: imagem, vídeo e áudio para todos — usa refs para evitar stale closure
+  // Auto-carregar mídia ao montar: imagem, vídeo e áudio — não exige arquivo_url pois backend busca pelo mensagem_id
   useEffect(() => {
     const tiposAuto = ['imagem', 'audio', 'video'];
-    if (tiposAuto.includes(mensagem.tipo_conteudo) && mensagem.arquivo_url) {
-      const urlAtualInvalida = !mediaUrlRef.current || !isUrlValida(mediaUrlRef.current);
-      if (urlAtualInvalida && !loadingMediaRef.current) {
-        // Chamar diretamente sem depender do estado em closure
-        if (loadingMediaRef.current) return;
-        loadingMediaRef.current = true;
-        setLoadingMedia(true);
-        base44.functions.invoke('baixarMidiaWhatsApp', {
-          mensagem_id: mensagem.id,
-          arquivo_url: mensagem.arquivo_url,
-          conversa_id: conversaId || mensagem.conversa_id
-        })
-          .then(res => {
-            const data = res?.data;
-            const url = data?.arquivo_url;
-            if (url && url !== 'indisponivel' && isUrlValida(url)) {
-              setMediaUrl(url);
-              mediaUrlRef.current = url;
-            }
-          })
-          .catch(err => console.error('Erro ao baixar mídia auto:', err))
-          .finally(() => {
-            setLoadingMedia(false);
-            loadingMediaRef.current = false;
-          });
-      }
-    }
+    if (!tiposAuto.includes(mensagem.tipo_conteudo)) return;
+    // Só auto-carrega se não tem URL válida ainda
+    if (mediaUrlRef.current && isUrlValida(mediaUrlRef.current)) return;
+    if (loadingMediaRef.current) return;
+
+    loadingMediaRef.current = true;
+    setLoadingMedia(true);
+    base44.functions.invoke('baixarMidiaWhatsApp', {
+      mensagem_id: mensagem.id,
+      arquivo_url: mensagem.arquivo_url || null,
+      conversa_id: conversaId || mensagem.conversa_id
+    })
+      .then(res => {
+        const data = res?.data;
+        const url = data?.arquivo_url;
+        if (url && url !== 'indisponivel' && isUrlValida(url)) {
+          setMediaUrl(url);
+          mediaUrlRef.current = url;
+        }
+      })
+      .catch(() => {
+        // Falha silenciosa — usuário pode clicar manualmente
+      })
+      .finally(() => {
+        setLoadingMedia(false);
+        loadingMediaRef.current = false;
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mensagem.id]);
 
@@ -201,12 +201,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
   const handleCarregarMidia = () => {
     if (loadingMedia) return;
-    // Permitir recarregar se a URL atual for inválida (enc ou similar)
     if (mediaUrl && isUrlValida(mediaUrl)) return;
     setLoadingMedia(true);
     base44.functions.invoke('baixarMidiaWhatsApp', {
       mensagem_id: mensagem.id,
-      arquivo_url: mensagem.arquivo_url,
+      arquivo_url: mensagem.arquivo_url || null,
       conversa_id: conversaId || mensagem.conversa_id
     })
       .then(res => {
@@ -214,9 +213,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         const url = data?.arquivo_url;
         if (url && url !== 'indisponivel' && isUrlValida(url)) {
           setMediaUrl(url);
+        } else {
+          toast.error('Não foi possível carregar a mídia. Tente novamente.');
         }
       })
-      .catch(err => console.error('Erro ao baixar mídia:', err))
+      .catch(() => toast.error('Erro ao carregar mídia.'))
       .finally(() => setLoadingMedia(false));
   };
 
