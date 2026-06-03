@@ -126,6 +126,17 @@ async function processarMensagem(body) {
   } else if (message.type === 'document') {
     tipo_conteudo = 'documento';
     texto = message.document?.filename || 'Documento';
+  } else if (message.type === 'button') {
+    // Resposta de botão de template (quick_reply)
+    tipo_conteudo = 'texto';
+    texto = message.button?.text || message.button?.payload || 'Botão';
+  } else if (message.type === 'interactive') {
+    // Resposta de mensagem interativa (list reply, button reply)
+    tipo_conteudo = 'texto';
+    texto = message.interactive?.button_reply?.title
+         || message.interactive?.list_reply?.title
+         || message.interactive?.nfm_reply?.response_json
+         || 'Interativo';
   } else {
     texto = message.type || 'Mensagem';
   }
