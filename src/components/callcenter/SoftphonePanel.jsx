@@ -223,8 +223,27 @@ export default function SoftphonePanel({ softphone, numbersip }) {
 
               {/* Mensagem de erro SIP real */}
               {erroMsg && (
-                <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
-                  ⚠️ {erroMsg}
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800 space-y-1.5">
+                  {erroMsg.split('\n').map((linha, i) => {
+                    if (linha.includes('https://app.nvoip.com.br')) {
+                      const parts = linha.split('https://app.nvoip.com.br');
+                      return (
+                        <p key={i} className="text-red-700">
+                          {parts[0]}
+                          <a
+                            href="https://app.nvoip.com.br"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 underline font-semibold hover:text-blue-800"
+                          >
+                            https://app.nvoip.com.br
+                          </a>
+                          {parts[1]}
+                        </p>
+                      );
+                    }
+                    return <p key={i} className={i === 0 ? 'font-semibold' : 'text-red-700'}>{linha}</p>;
+                  })}
                 </div>
               )}
 
@@ -349,11 +368,11 @@ export default function SoftphonePanel({ softphone, numbersip }) {
                       {entry.ts?.split('T')[1]?.substring(0,8) || ''}
                     </span>
                     <span className={cn('shrink-0 font-bold w-24 truncate text-[10px]',
-                      ['FAILED','ERROR','ICE_FAILED','TIMEOUT'].includes(entry.tipo)    ? 'text-red-400'
+                      ['FAILED','ERROR','ICE_FAILED','TIMEOUT','NVOIP_UNAVAILABLE','NO_ANSWER_AFTER_183','CANCELED_NO_INVITE','ALL_FAILED'].includes(entry.tipo) ? 'text-red-400'
                       : ['REGISTERED','200_OK','ACK'].includes(entry.tipo)              ? 'text-green-400'
                       : ['INVITE','DIAL','MIC_OK'].includes(entry.tipo)                 ? 'text-yellow-400'
-                      : ['100','180','183'].includes(entry.tipo)                        ? 'text-blue-400'
-                      : ['RETRY','WS_CONNECTED','CONNECT'].includes(entry.tipo)         ? 'text-cyan-400'
+                      : ['SIP_100','SIP_180','SIP_183','tocando'].includes(entry.tipo)  ? 'text-blue-400'
+                      : ['RETRY_URI','WS_CONNECTED','CONNECT'].includes(entry.tipo)     ? 'text-cyan-400'
                       : 'text-slate-400'
                     )}>[{entry.tipo}]</span>
                     <span className="text-slate-200 break-all text-[11px] leading-4 flex-1">{entry.detalhe}</span>

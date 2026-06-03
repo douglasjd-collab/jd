@@ -815,24 +815,30 @@ export default function useSoftphone(config) {
           return;
         }
 
-        // [FIX-UNAVAILABLE] "Unavailable" após 183 = NVOIP recebeu mas não completou para o destino
+        // [FIX-UNAVAILABLE] "Unavailable" = NVOIP recebeu mas não completou para o destino
         // Isso é falha da rota/destino na NVOIP, NÃO erro do CRM
+        // Ocorre tanto após 183 quanto quando não há resposta prévia (INVITE aceito mas sem ringback)
         const isUnavailable = cause === 'Unavailable' || phrase?.toLowerCase().includes('unavailable') || code === 480 || code === 503;
 
-        if (recebeu183 && isUnavailable) {
+        if (isUnavailable) {
           sessionAtivaRef.current = null;
           _releaseMic();
-          const msg = 'A NVOIP recebeu a chamada, mas não conseguiu completar para o destino. Verifique saldo, permissão de chamadas externas, rota de saída e número do cliente.';
-          SIP_LOG.push('NVOIP_UNAVAILABLE', `❌ Unavailable após 183 — falha de rota NVOIP (código: ${code || cause})`, {
+          const etapa = recebeu183 ? 'após 183 Session Progress' : 'sem resposta intermediária (INVITE ignorado ou rota sem ringback)';
+          const msg = `A NVOIP recebeu a chamada, mas não conseguiu completar para o destino (${etapa}). Verifique: saldo, permissão de chamadas externas, rota de saída e número do cliente.\n\n💡 Teste o mesmo número pelo Webphone oficial NVOIP: https://app.nvoip.com.br`;
+          SIP_LOG.push('NVOIP_UNAVAILABLE', `❌ Unavailable — falha de rota NVOIP (${code || cause}) — ${etapa}`, {
             code, cause, phrase, uri: destino,
-            diagnostico: 'D) NVOIP recebeu o INVITE (183) mas não conseguiu completar para o destino. Verifique saldo, rotas de saída e permissões no painel NVOIP. Teste o mesmo número pelo Webphone oficial em https://app.nvoip.com.br',
-            sugestao: `Teste manual: sip:${numComDDI}@app.nvoip.com.br e sip:${numSemDDI}@app.nvoip.com.br`,
+            recebeu_183: recebeu183,
+            etapa,
+            diagnostico: 'D) NVOIP recebeu o INVITE mas não conseguiu completar para o destino. Verifique saldo, rotas de saída e permissões no painel NVOIP.',
+            sugestao_webphone: 'https://app.nvoip.com.br',
+            teste_com_ddi: `sip:${numComDDI}@app.nvoip.com.br`,
+            teste_sem_ddi: `sip:${numSemDDI}@app.nvoip.com.br`,
           });
-          console.warn(`❌ [SIP] UNAVAILABLE após 183 — falha de rota NVOIP, não do CRM.`);
-          console.warn(`💡 [SIP] Sugestão: teste o número ${numComDDI} pelo Webphone oficial NVOIP: https://app.nvoip.com.br`);
+          console.warn(`❌ [SIP] UNAVAILABLE — falha de rota NVOIP, não do CRM. Etapa: ${etapa}`);
+          console.warn(`💡 [SIP] Teste: ${numComDDI} pelo Webphone oficial NVOIP: https://app.nvoip.com.br`);
           if (mountedRef.current) { setErroMsg(msg); setChamadaAtiva(null); }
           _clearAudio();
-          _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0, null, null, `Unavailable após 183 — falha de rota NVOIP (${code || cause})`);
+          _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0, null, null, `Unavailable — falha de rota NVOIP (${etapa})`);
           return;
         }
 
