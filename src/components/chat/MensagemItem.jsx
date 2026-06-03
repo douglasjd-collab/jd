@@ -128,36 +128,46 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
-  // Auto-carregar mídia ao montar: imagem, vídeo e áudio — não exige arquivo_url pois backend busca pelo mensagem_id
+  // Auto-carregar mídia ao montar: apenas áudio — com delay escalonado para evitar rate limit
   useEffect(() => {
-    const tiposAuto = ['imagem', 'audio', 'video'];
-    if (!tiposAuto.includes(mensagem.tipo_conteudo)) return;
-    // Só auto-carrega se não tem URL válida ainda
+    // Só auto-carrega áudio (imagem e vídeo ficam sob demanda para não sobrecarregar)
+    if (mensagem.tipo_conteudo !== 'audio') return;
+    // Já tem URL válida
     if (mediaUrlRef.current && isUrlValida(mediaUrlRef.current)) return;
     if (loadingMediaRef.current) return;
 
-    loadingMediaRef.current = true;
-    setLoadingMedia(true);
-    base44.functions.invoke('baixarMidiaWhatsApp', {
-      mensagem_id: mensagem.id,
-      arquivo_url: mensagem.arquivo_url || null,
-      conversa_id: conversaId || mensagem.conversa_id
-    })
-      .then(res => {
-        const data = res?.data;
-        const url = data?.arquivo_url;
-        if (url && url !== 'indisponivel' && isUrlValida(url)) {
-          setMediaUrl(url);
-          mediaUrlRef.current = url;
-        }
+    // Delay baseado no ID para escalonar requisições e evitar 429
+    const idNum = parseInt(mensagem.id?.slice(-4) || '0', 16) % 5000;
+    const delay = 500 + idNum;
+
+    const timer = setTimeout(() => {
+      if (mediaUrlRef.current && isUrlValida(mediaUrlRef.current)) return;
+      if (loadingMediaRef.current) return;
+      loadingMediaRef.current = true;
+      setLoadingMedia(true);
+      base44.functions.invoke('baixarMidiaWhatsApp', {
+        mensagem_id: mensagem.id,
+        arquivo_url: mensagem.arquivo_url || null,
+        conversa_id: conversaId || mensagem.conversa_id
       })
-      .catch(() => {
-        // Falha silenciosa — usuário pode clicar manualmente
-      })
-      .finally(() => {
-        setLoadingMedia(false);
-        loadingMediaRef.current = false;
-      });
+        .then(res => {
+          const data = res?.data;
+          const url = data?.arquivo_url;
+          if (url && isUrlValida(url)) {
+            setMediaUrl(url);
+            mediaUrlRef.current = url;
+          }
+        })
+        .catch(() => {
+          // Falha silenciosa — usuário pode clicar manualmente
+        })
+        .finally(() => {
+          setLoadingMedia(false);
+          loadingMediaRef.current = false;
+        });
+    }, delay);
+
+    return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mensagem.id]);
 

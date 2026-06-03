@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.21';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 Deno.serve(async (req) => {
   try {
@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'mensagem_id obrigatório' }, { status: 400 });
     }
 
-    // Buscar mensagem via service role para garantir acesso
+    // Buscar mensagem
     const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ id: mensagem_id });
     const mensagem = mensagens?.[0];
     if (!mensagem) return Response.json({ error: 'Mensagem não encontrada' }, { status: 404 });
@@ -24,17 +24,15 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, arquivo_url: urlAtual });
     }
 
-    // Buscar conversa para determinar tipo de conexão (Meta Oficial ou Evolution)
+    // Buscar conversa e empresa
     const conversaId = conversa_id || mensagem.conversa_id;
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({ id: conversaId });
     const conversa = conversas?.[0];
 
-    // Buscar empresa
-    const JD_ID = mensagem.empresa_id || '699696c2c9f5bffc2e67402b';
-    const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: JD_ID });
+    const empresaId = mensagem.empresa_id || '699696c2c9f5bffc2e67402b';
+    const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: empresaId });
     const empresa = empresas?.[0];
 
-    // Mime type padrão pelo tipo da mensagem
     const tipoParaMime = {
       'audio': 'audio/ogg',
       'imagem': 'image/jpeg',
@@ -48,42 +46,35 @@ Deno.serve(async (req) => {
     const whatsappMessageId = mensagem.whatsapp_message_id;
     const isMetaOficial = conversa?.tipo_conexao === 'meta_oficial';
 
-    // ── META OFICIAL: buscar mídia via Graph API ──────────────────────────────
+    // ── META OFICIAL ──────────────────────────────────────────────────────────
     if (isMetaOficial) {
-      // Obter access token: pode ser da empresa ou do colaborador
-      let metaToken = empresa?.whatsapp_access_token;
+      const metaToken = empresa?.whatsapp_access_token;
       if (!metaToken) {
-        return Response.json({ error: 'Token Meta não configurado para esta empresa' }, { status: 400 });
+        return Response.json({ error: 'Token Meta não configurado' }, { status: 400 });
       }
 
-      // O whatsapp_message_id da Meta pode ser o ID da mensagem ou o media_id diretamente
-      // Para mensagens da Meta, o arquivo_url geralmente vem vazio ou com media_id
-      // Primeiro tentar extrair media_id da URL ou usar o whatsapp_message_id
       let mediaId = null;
 
-      // Verificar se arquivo_url já contém um media_id válido (formato numérico longo)
+      // arquivo_url pode conter o media_id numérico diretamente
       if (urlAtual && /^\d{10,}$/.test(urlAtual.trim())) {
         mediaId = urlAtual.trim();
       } else if (whatsappMessageId) {
-        // Buscar detalhes da mensagem via Graph API para obter o media_id
         try {
           const msgRes = await fetch(`https://graph.facebook.com/v19.0/${whatsappMessageId}`, {
             headers: { 'Authorization': `Bearer ${metaToken}` }
           });
           if (msgRes.ok) {
             const msgData = await msgRes.json();
-            // A mensagem retorna campos como audio.id, image.id, video.id, document.id
             mediaId = msgData?.audio?.id || msgData?.image?.id || msgData?.video?.id || msgData?.document?.id || msgData?.sticker?.id;
             if (mediaId) {
               mimeType = msgData?.audio?.mime_type || msgData?.image?.mime_type || msgData?.video?.mime_type || msgData?.document?.mime_type || mimeType;
             }
           }
         } catch (e) {
-          console.warn('⚠️ Busca detalhes mensagem Meta falhou:', e.message);
+          console.warn('⚠️ Busca Meta falhou:', e.message);
         }
       }
 
-      // Se temos media_id, buscar URL de download via Graph API
       if (mediaId) {
         try {
           const mediaRes = await fetch(`https://graph.facebook.com/v19.0/${mediaId}`, {
@@ -95,7 +86,6 @@ Deno.serve(async (req) => {
             mimeType = mediaData?.mime_type || mimeType;
 
             if (downloadUrl) {
-              // Baixar o arquivo usando o token Meta
               const fileRes = await fetch(downloadUrl, {
                 headers: { 'Authorization': `Bearer ${metaToken}`, 'User-Agent': 'Base44-WhatsApp-CRM' }
               });
@@ -104,7 +94,6 @@ Deno.serve(async (req) => {
                 if (ct && ct !== 'application/octet-stream') mimeType = ct.split(';')[0].trim();
                 const arrayBuffer = await fileRes.arrayBuffer();
                 const uint8Array = new Uint8Array(arrayBuffer);
-                // btoa em chunks para evitar stack overflow em arquivos grandes
                 let binary = '';
                 const chunkSize = 8192;
                 for (let i = 0; i < uint8Array.length; i += chunkSize) {
@@ -116,17 +105,17 @@ Deno.serve(async (req) => {
             }
           }
         } catch (e) {
-          console.warn('⚠️ Download mídia Meta falhou:', e.message);
+          console.warn('⚠️ Download Meta falhou:', e.message);
         }
       }
 
       if (!base64Data) {
-        console.warn('⚠️ Não conseguiu baixar mídia da Meta Oficial');
+        console.warn('⚠️ Não conseguiu baixar mídia da Meta Oficial', { mediaId, whatsappMessageId });
         return Response.json({ ok: false, error: 'Não foi possível baixar a mídia da API Meta Oficial' }, { status: 400 });
       }
 
     } else {
-      // ── EVOLUTION API ──────────────────────────────────────────────────────
+      // ── EVOLUTION API ─────────────────────────────────────────────────────────
       if (!empresa?.evolution_url || !empresa?.evolution_api_key) {
         return Response.json({ error: 'Credenciais Evolution não configuradas' }, { status: 400 });
       }
@@ -135,21 +124,18 @@ Deno.serve(async (req) => {
       const evolutionKey = empresa.evolution_api_key;
       const instanceName = empresa.evolution_instance_name;
 
-      const remoteJid = conversa?.cliente_telefone
-        ? `${conversa.cliente_telefone.replace(/\D/g, '')}@s.whatsapp.net`
-        : '';
+      // Verificar se URL atual já é externa/estável (não enc)
+      const isUrlEstavel = urlAtual && !urlAtual.endsWith('.enc') && !urlAtual.includes('.enc?') &&
+        (urlAtual.startsWith('https://') || urlAtual.startsWith('http://')) &&
+        !urlAtual.includes('supabase') && !urlAtual.includes('base44') && !urlAtual.includes('amazonaws');
 
-      // Método 1a: getBase64FromMediaMessage direto com whatsappMessageId (sem findMessages)
-      // Tenta construir o key mínimo exigido pela Evolution
+      const telefoneLimpo = conversa?.cliente_telefone?.replace(/\D/g, '') || '';
+      const remoteJid = telefoneLimpo ? `${telefoneLimpo}@s.whatsapp.net` : '';
+
+      // Método 1a: getBase64FromMediaMessage com key direto (sem findMessages)
       if (whatsappMessageId && remoteJid && !base64Data) {
         try {
-          const isGroup = remoteJid.includes('@g.us');
-          const keyDireto = {
-            remoteJid,
-            fromMe: false,
-            id: whatsappMessageId,
-            ...(isGroup ? { participant: `${conversa?.cliente_telefone?.replace(/\D/g, '') || ''}@s.whatsapp.net` } : {})
-          };
+          const keyDireto = { remoteJid, fromMe: false, id: whatsappMessageId };
           const b64ResDireto = await fetch(`${evolutionUrl}/chat/getBase64FromMediaMessage/${instanceName}`, {
             method: 'POST',
             headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
@@ -164,12 +150,34 @@ Deno.serve(async (req) => {
             }
           }
         } catch (e) {
-          console.warn('⚠️ getBase64FromMediaMessage direto falhou:', e.message);
+          console.warn('⚠️ getBase64 direto falhou:', e.message);
         }
       }
 
-      // Método 1b: findMessages + getBase64FromMediaMessage (fallback com busca)
+      // Método 1b: fromMe=true (mensagem enviada pelo vendedor)
       if (whatsappMessageId && remoteJid && !base64Data) {
+        try {
+          const keyFromMe = { remoteJid, fromMe: true, id: whatsappMessageId };
+          const b64ResFromMe = await fetch(`${evolutionUrl}/chat/getBase64FromMediaMessage/${instanceName}`, {
+            method: 'POST',
+            headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: { key: keyFromMe }, convertToMp4: false })
+          });
+          if (b64ResFromMe.ok) {
+            const b64DataFromMe = await b64ResFromMe.json();
+            if (b64DataFromMe?.base64) {
+              base64Data = b64DataFromMe.base64;
+              mimeType = b64DataFromMe.mimetype || mimeType;
+              console.log(`✅ base64 via key fromMe=true | tipo: ${mimeType}`);
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ getBase64 fromMe falhou:', e.message);
+        }
+      }
+
+      // Método 1c: findMessages + getBase64FromMediaMessage
+      if (whatsappMessageId && !base64Data) {
         try {
           const findRes = await fetch(`${evolutionUrl}/chat/findMessages/${instanceName}`, {
             method: 'POST',
@@ -202,15 +210,13 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Se URL externa estável, retornar direto
-      const isUrlExternaEstavel = urlAtual && !urlAtual.includes('.enc') && 
-        (urlAtual.includes('supabase') || urlAtual.includes('amazonaws') || urlAtual.includes('base44'));
-      if (!base64Data && isUrlExternaEstavel) {
-        console.log(`✅ URL permanente retornada: ${urlAtual}`);
+      // Método 2: URL estável que não seja enc — retornar diretamente
+      if (!base64Data && isUrlEstavel) {
+        console.log(`✅ URL estável retornada diretamente: ${urlAtual}`);
         return Response.json({ ok: true, arquivo_url: urlAtual });
       }
 
-      // Método 2: Download direto da URL com apikey (para arquivos .enc)
+      // Método 3: Download direto da URL (enc ou outra)
       if (!base64Data && urlAtual) {
         try {
           const fetchRes = await fetch(urlAtual, {
@@ -221,30 +227,31 @@ Deno.serve(async (req) => {
             if (ct && ct !== 'application/octet-stream') mimeType = ct.split(';')[0].trim();
             const arrayBuffer = await fetchRes.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
-            base64Data = btoa(String.fromCharCode.apply(null, uint8Array));
-            console.log(`✅ Download direto | tipo: ${mimeType}`);
+            let binary = '';
+            const chunkSize = 8192;
+            for (let i = 0; i < uint8Array.length; i += chunkSize) {
+              binary += String.fromCharCode(...uint8Array.slice(i, i + chunkSize));
+            }
+            base64Data = btoa(binary);
+            console.log(`✅ Download direto da URL | tipo: ${mimeType}`);
           }
         } catch (e) {
           console.warn('⚠️ Download direto falhou:', e.message);
-          return Response.json({ ok: true, arquivo_url: urlAtual });
         }
+      }
+
+      if (!base64Data) {
+        console.warn('⚠️ Todos os métodos falharam', {
+          whatsapp_message_id: whatsappMessageId,
+          arquivo_url: urlAtual,
+          remoteJid,
+          instancia: instanceName,
+        });
+        return Response.json({ ok: false, error: 'Mídia não disponível no servidor Evolution' }, { status: 400 });
       }
     }
 
-    if (!base64Data) {
-      console.warn('⚠️ Não conseguiu baixar mídia', {
-        tipo: mensagem.tipo_conteudo,
-        whatsapp_message_id: whatsappMessageId,
-        arquivo_url: urlAtual,
-        is_meta: isMetaOficial,
-        conversa_tipo: conversa?.tipo_conexao,
-        instancia: conversa?.instancia,
-        remoteJid: conversa?.cliente_telefone,
-      });
-      return Response.json({ ok: false, error: 'Mídia não disponível' }, { status: 400 });
-    }
-
-    // Converter base64 → Blob → File e fazer upload no backend (via service role)
+    // Converter base64 → upload permanente
     const binaryStr = atob(base64Data);
     const bytes = new Uint8Array(binaryStr.length);
     for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
