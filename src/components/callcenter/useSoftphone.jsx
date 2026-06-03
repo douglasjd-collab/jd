@@ -481,26 +481,31 @@ export default function useSoftphone(config) {
       return false;
     }
 
-    // [FIX-4] URI_QUEUE: somente domínio app.nvoip.com.br (mesmo do registro WSS).
-    // sip.nvoip.com.br foi removido — domínio diferente do registro causa 404 ou
-    // descarte silencioso pelo proxy, desperdiçando 30s de timeout por tentativa.
-    const URI_QUEUE = [
-      `sip:${numComDDI}@app.nvoip.com.br`,
-      `sip:${numSemDDI}@app.nvoip.com.br`,
-    ];
+    // [FIX-DID] Quando DID configurado (ex: 558132998470), a NVOIP espera o destino
+    // SEM DDI 55, pois o próprio DID já carrega o contexto de saída nacional.
+    // Com DDI → Rejected. Sem DDI → aceito pela rota de saída do DID.
+    // Ordem: sem DDI primeiro (funciona com DID configurado), com DDI como fallback.
+    const URI_QUEUE = didLimpo
+      ? [
+          `sip:${numSemDDI}@app.nvoip.com.br`,
+          `sip:${numComDDI}@app.nvoip.com.br`,
+        ]
+      : [
+          `sip:${numComDDI}@app.nvoip.com.br`,
+          `sip:${numSemDDI}@app.nvoip.com.br`,
+        ];
 
     const numHistorico = numSemDDI;
 
-    SIP_LOG.push('DIAL', `${numOriginal} → ${numComDDI}`, {
-      num_original: numOriginal,
-      num_com_ddi : numComDDI,
-      num_sem_ddi : numSemDDI,
-      uri_queue   : URI_QUEUE,
-      ramal       : cfg?.numbersip,
-      did         : cfg?.numero_did || '—',
-      // [FIX-4] URIs de teste para diagnóstico manual
-      teste_com_ddi : `sip:${numComDDI}@app.nvoip.com.br`,
-      teste_sem_ddi : `sip:${numSemDDI}@app.nvoip.com.br`,
+    SIP_LOG.push('DIAL', `${numOriginal} → URI: ${URI_QUEUE[0]}`, {
+      num_original  : numOriginal,
+      num_com_ddi   : numComDDI,
+      num_sem_ddi   : numSemDDI,
+      uri_queue     : URI_QUEUE,
+      uri_principal : URI_QUEUE[0],
+      ramal         : cfg?.numbersip,
+      did           : cfg?.numero_did || '—',
+      estrategia    : didLimpo ? 'sem DDI primeiro (DID configurado)' : 'com DDI primeiro (sem DID)',
     });
     console.log(`📞 [SIP] DIAL → URIs a tentar:`, URI_QUEUE);
     console.log(`🧪 [SIP] Teste manual no Webphone NVOIP: sip:${numComDDI}@app.nvoip.com.br | sip:${numSemDDI}@app.nvoip.com.br`);
