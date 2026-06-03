@@ -612,16 +612,29 @@ export default function CampanhaMetaOficial({ empresaId }) {
                       <strong>{contatosSelecionados.size}</strong> selecionados
                     </span>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                    onClick={selecionarTodos}
-                  >
-                    {contatosSelecionados.size === contatosFiltrados.length && contatosFiltrados.length > 0
-                      ? 'Desmarcar Todos'
-                      : 'Selecionar Todos'}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      {[10, 30, 50, 100].map(n => (
+                        <button
+                          key={n}
+                          onClick={() => setContatosSelecionados(new Set(contatosFiltrados.slice(0, n).map(c => c.id)))}
+                          className="px-2 py-1 text-xs rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-medium transition-colors"
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={selecionarTodos}
+                    >
+                      {contatosSelecionados.size === contatosFiltrados.length && contatosFiltrados.length > 0
+                        ? 'Desmarcar Todos'
+                        : 'Selecionar Todos'}
+                    </Button>
+                  </div>
                 </div>
 
                 <p className="text-xs font-semibold text-slate-600 mb-2 px-1">Selecionar Leads</p>
