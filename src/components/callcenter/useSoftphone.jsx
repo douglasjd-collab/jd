@@ -427,16 +427,10 @@ export default function useSoftphone(config) {
     setErroMsg('');
     SIP_LOG.clear();
 
-    // ── Microfone ANTES do call() para evitar "Canceled" ──────────────────
-    let micStream = null;
-    try {
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      SIP_LOG.push('MIC_OK', 'Microfone OK — pronto para INVITE');
-    } catch (err) {
-      SIP_LOG.push('MIC_DENIED', err.message);
-      if (mountedRef.current) setErroMsg('Permissão de microfone negada. Permita o microfone e tente novamente.');
-      return false;
-    }
+    // [FIX-CANCELED] NÃO chamar getUserMedia manualmente.
+    // Deixar o JsSIP capturar o microfone via mediaConstraints.
+    // Passar mediaStream manual causava CANCELED_NO_INVITE em alguns navegadores
+    // porque o SDP era gerado antes do PeerConnection estar pronto.
 
     const cfg = configRef.current;
 
@@ -449,7 +443,6 @@ export default function useSoftphone(config) {
     if (numSemDDI.length === 10 && /^[6-9]/.test(numSemDDI.slice(2))) {
       const msg = `Número incompleto — informe com 9º dígito. Ex: ${numSemDDI.slice(0,2)}9${numSemDDI.slice(2)}`;
       SIP_LOG.push('BLOCKED', msg);
-      micStream?.getTracks().forEach(t => t.stop());
       if (mountedRef.current) setErroMsg(msg);
       return false;
     }
@@ -474,22 +467,18 @@ export default function useSoftphone(config) {
     });
     console.log(`📞 [SIP] DIAL → URIs a tentar:`, URI_QUEUE);
 
+    // [FIX-CANCELED] pcConfig simplificado: remover TURN público openrelay e STUNs extras.
+    // TURN/openrelay causava travamento na geração do SDP antes do INVITE sair.
+    // Usar apenas stun.google como baseline — suficiente para rede local/corporativa.
     const pcConfig = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:app.nvoip.com.br:3478' },
-        { urls: 'turn:openrelay.metered.ca:80',   username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:openrelay.metered.ca:443',  username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turns:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
       ],
-      iceTransportPolicy: 'all',
-      bundlePolicy      : 'max-bundle',
-      rtcpMuxPolicy     : 'require',
     };
 
+    // [FIX-CANCELED] Não passar mediaStream manual.
+    // JsSIP gerencia getUserMedia internamente via mediaConstraints.
     const baseCallOptions = {
-      mediaStream         : micStream,
       mediaConstraints    : { audio: true, video: false },
       rtcOfferConstraints : { offerToReceiveAudio: true, offerToReceiveVideo: false },
       pcConfig,
@@ -502,14 +491,8 @@ export default function useSoftphone(config) {
     let inviteEnviado = false;          // item 1: rastrear se INVITE saiu
     let respostaRecebida = false;       // item 7: rastrear se houve resposta
 
-    // [ALERTA-3 FIX] _releaseMic centralizado — garante que o microfone
-    // é liberado em qualquer caminho, inclusive exceções em fazerChamada()
-    let micLiberado = false;
-    const _releaseMic = () => {
-      if (micLiberado) return;
-      micLiberado = true;
-      micStream?.getTracks().forEach(t => t.stop());
-    };
+    // Mic é gerenciado pelo JsSIP — _releaseMic é no-op aqui (mantido por compatibilidade)
+    const _releaseMic = () => {};
 
     const tentarProximaURI = () => {
       uriIdx++;
@@ -540,9 +523,8 @@ export default function useSoftphone(config) {
       try {
         s = uaRef.current.call(destino, { ...baseCallOptions });
       } catch (err) {
-        SIP_LOG.push('ERROR', `Erro ao criar sessão para ${destino}: ${err.message}`);
-        // [ALERTA-3 FIX] libera mic se for a última tentativa
-        if (uriIdx + 1 >= URI_QUEUE.length) _releaseMic();
+        SIP_LOG.push('ERROR', `Erro local ao criar sessão WebRTC para ${destino}: ${err.message}`, { stack: err.stack?.substring(0, 300) });
+        console.error(`❌ [SIP] Erro ua.call():`, err);
         tentarProximaURI();
         return;
       }
@@ -551,7 +533,8 @@ export default function useSoftphone(config) {
       sessionAtivaRef.current = s;
       if (uriIdx === 0) {
         setChamadaAtiva({ session: s, destino: numHistorico, direcao: 'saida', status: 'chamando' });
-        _startCallTimeout(s, numHistorico);
+        // [FIX-7] Timeout só começa após INVITE_SENT = true (evento 'sending')
+        // _startCallTimeout é chamado dentro do evento 'sending' abaixo
       } else {
         setChamadaAtiva(p => p ? { ...p, session: s } : { session: s, destino: numHistorico, direcao: 'saida', status: 'chamando' });
       }
@@ -574,10 +557,13 @@ export default function useSoftphone(config) {
         console.log('📤 [SIP] INVITE BRUTO:', logData);
         console.log('📄 [SIP] SDP completo:\n', sdp);
 
-        // Item 8: se não chegar 100 Trying em 5s, alertar
+        // [FIX-7] Timeout só começa APÓS o INVITE sair pelo WSS
+        _startCallTimeout(s, numHistorico);
+
+        // Alerta se NVOIP não responder em 5s
         setTimeout(() => {
           if (!respostaRecebida && session === s) {
-            SIP_LOG.push('NO_100_TRYING', `⚠️ Sem 100 Trying após 5s — NVOIP pode estar ignorando o INVITE para ${destino}. Verifique se o endpoint WSS permite originação direta.`);
+            SIP_LOG.push('NO_100_TRYING', `⚠️ Sem 100 Trying após 5s — NVOIP pode estar ignorando o INVITE para ${destino}.`);
             console.warn(`⚠️ [SIP] Sem 100 Trying em 5s — URI: ${destino}`);
           }
         }, 5000);
@@ -591,6 +577,34 @@ export default function useSoftphone(config) {
         const pc = data.peerconnection;
         if (!pc) return;
         SIP_LOG.push('PEERCONNECTION', 'PeerConnection WebRTC criado');
+
+        // [FIX-CANCELED] Logar erros internos de createOffer / setLocalDescription
+        const origCreateOffer = pc.createOffer.bind(pc);
+        pc.createOffer = async (...args) => {
+          try {
+            const offer = await origCreateOffer(...args);
+            SIP_LOG.push('CREATE_OFFER_OK', `SDP offer criado (${offer.sdp?.split('\n').length || 0} linhas)`);
+            return offer;
+          } catch (err) {
+            SIP_LOG.push('CREATE_OFFER_FAIL', `❌ createOffer falhou: ${err.message}`);
+            console.error('❌ [SIP] createOffer ERRO:', err);
+            throw err;
+          }
+        };
+
+        const origSetLocal = pc.setLocalDescription.bind(pc);
+        pc.setLocalDescription = async (...args) => {
+          try {
+            const result = await origSetLocal(...args);
+            SIP_LOG.push('SET_LOCAL_DESC_OK', 'setLocalDescription OK');
+            return result;
+          } catch (err) {
+            SIP_LOG.push('SET_LOCAL_DESC_FAIL', `❌ setLocalDescription falhou: ${err.message}`);
+            console.error('❌ [SIP] setLocalDescription ERRO:', err);
+            throw err;
+          }
+        };
+
         pc.oniceconnectionstatechange = () => {
           const state = pc.iceConnectionState;
           SIP_LOG.push('ICE_STATE', `ICE: ${state}`);
@@ -698,12 +712,12 @@ export default function useSoftphone(config) {
 
         _clearCallTimeout();
 
-        // Se "Canceled" e INVITE não saiu: problema de SDP/WebRTC (item D), não tentar outra URI
+        // [FIX-8] Se "Canceled" e INVITE não saiu: erro LOCAL (WebRTC/SDP/getUserMedia)
         if (cause === 'Canceled' && !inviteEnviado) {
-          SIP_LOG.push('CANCELED_NO_INVITE', '⚠️ Chamada cancelada antes do INVITE sair — problema de SDP ou WebRTC. Verifique getUserMedia e geração do SDP.');
+          SIP_LOG.push('CANCELED_NO_INVITE', '❌ Erro local WebRTC: INVITE não saiu do navegador. Verifique createOffer, setLocalDescription e getUserMedia nos logs acima.');
           _releaseMic();
           sessionAtivaRef.current = null;
-          if (mountedRef.current) setErroMsg('Chamada cancelada antes do INVITE sair — possível problema de SDP/WebRTC. Veja log para diagnóstico.');
+          if (mountedRef.current) setErroMsg('Erro local WebRTC: INVITE não saiu do navegador. Verifique permissão de microfone e logs de createOffer/SDP.');
           setChamadaAtiva(null);
           _clearAudio();
           _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
@@ -766,14 +780,7 @@ export default function useSoftphone(config) {
     session.answer({
       mediaConstraints: { audio: true, video: false },
       pcConfig: {
-        iceServers: [
-          { urls: 'stun:app.nvoip.com.br:3478' },
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'turn:openrelay.metered.ca:80',   username: 'openrelayproject', credential: 'openrelayproject' },
-          { urls: 'turn:openrelay.metered.ca:443',  username: 'openrelayproject', credential: 'openrelayproject' },
-          { urls: 'turns:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-        ],
-        iceTransportPolicy: 'all', bundlePolicy: 'max-bundle', rtcpMuxPolicy: 'require',
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
       },
     });
     inicioRef.current = Date.now();
