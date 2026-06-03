@@ -87,6 +87,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
   const [busca, setBusca] = useState('');
   const [filtroTag, setFiltroTag] = useState('todas');
   const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [filtroHistoricoDisparo, setFiltroHistoricoDisparo] = useState('todos');
   const [contatosSelecionados, setContatosSelecionados] = useState(new Set());
   const [nomeCampanha, setNomeCampanha] = useState('');
   const [marcarProspeccao, setMarcarProspeccao] = useState(true);
@@ -200,13 +201,50 @@ export default function CampanhaMetaOficial({ empresaId }) {
     try { return JSON.parse(t.motivo_erro || '{}'); } catch { return {}; }
   };
 
+  // Mapa: telefone -> último log de disparo (para filtro de histórico)
+  const ultimoDisparoPorTelefone = useMemo(() => {
+    const mapa = {};
+    logsDisparo.forEach(l => {
+      if (!l.cliente_telefone || l.status === 'erro') return;
+      const tel = l.cliente_telefone;
+      if (!mapa[tel] || l.created_date > mapa[tel].created_date) {
+        mapa[tel] = l;
+      }
+    });
+    return mapa;
+  }, [logsDisparo]);
+
   const contatosFiltrados = useMemo(() => {
+    const agora = new Date();
     return contatosWhatsapp.filter(c => {
       const matchBusca = !busca || (c.nome || '').toLowerCase().includes(busca.toLowerCase()) || (c.telefone || '').includes(busca);
       const matchTag = filtroTag === 'todas' || (c.tags_ids || []).includes(filtroTag);
-      return matchBusca && matchTag;
+
+      const ultimoLog = ultimoDisparoPorTelefone[c.telefone];
+      let matchHistorico = true;
+      if (filtroHistoricoDisparo === 'nunca') {
+        matchHistorico = !ultimoLog;
+      } else if (filtroHistoricoDisparo === 'ja_recebeu') {
+        matchHistorico = !!ultimoLog;
+      } else if (filtroHistoricoDisparo === 'sem_7dias') {
+        if (ultimoLog) {
+          const diasPassados = (agora - new Date(ultimoLog.created_date)) / (1000 * 60 * 60 * 24);
+          matchHistorico = diasPassados >= 7;
+        } else {
+          matchHistorico = true;
+        }
+      } else if (filtroHistoricoDisparo === 'sem_30dias') {
+        if (ultimoLog) {
+          const diasPassados = (agora - new Date(ultimoLog.created_date)) / (1000 * 60 * 60 * 24);
+          matchHistorico = diasPassados >= 30;
+        } else {
+          matchHistorico = true;
+        }
+      }
+
+      return matchBusca && matchTag && matchHistorico;
     });
-  }, [contatosWhatsapp, busca, filtroTag]);
+  }, [contatosWhatsapp, busca, filtroTag, filtroHistoricoDisparo, ultimoDisparoPorTelefone]);
 
   const templatesFiltrados = useMemo(() => templates.filter(t => {
     const d = parseTemplateDados(t);
@@ -492,7 +530,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
                     <Label className="text-xs text-slate-500 mb-1 block">Buscar</Label>
                     <div className="relative">
@@ -504,6 +542,17 @@ export default function CampanhaMetaOficial({ empresaId }) {
                         className="pl-8 text-sm"
                       />
                     </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-1 block">Status</Label>
+                    <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="novo">Novo</SelectItem>
+                        <SelectItem value="ativo">Ativo</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label className="text-xs text-slate-500 mb-1 block">Tag</Label>
@@ -519,12 +568,28 @@ export default function CampanhaMetaOficial({ empresaId }) {
                   </div>
                   <div>
                     <Label className="text-xs text-slate-500 mb-1 block">Segmentação</Label>
-                    <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                    <Select value={filtroTag} onValueChange={setFiltroTag}>
                       <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="todos">Todas</SelectItem>
-                        <SelectItem value="novo">Novo</SelectItem>
-                        <SelectItem value="ativo">Ativo</SelectItem>
+                        <SelectItem value="todas">Todas</SelectItem>
+                        {tags.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.nome}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mt-1">
+                  <div>
+                    <Label className="text-xs text-slate-500 mb-1 block">Histórico de disparo</Label>
+                    <Select value={filtroHistoricoDisparo} onValueChange={setFiltroHistoricoDisparo}>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="todos">Todos</SelectItem>
+                        <SelectItem value="nunca">Nunca recebeu disparo</SelectItem>
+                        <SelectItem value="ja_recebeu">Já recebeu disparo</SelectItem>
+                        <SelectItem value="sem_7dias">Sem disparo há +7 dias</SelectItem>
+                        <SelectItem value="sem_30dias">Sem disparo há +30 dias</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -537,17 +602,15 @@ export default function CampanhaMetaOficial({ empresaId }) {
               <CardContent className="pt-4 pb-0">
                 {/* Barra de contagem e seleção total */}
                 <div className="flex items-center justify-between mb-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <div className="flex items-center gap-4 text-sm text-slate-600">
+                  <div className="flex items-center gap-4 text-sm text-slate-600 flex-wrap">
                     <span className="flex items-center gap-1.5">
                       <Users className="w-4 h-4 text-slate-400" />
                       <strong className="text-slate-800">{contatosFiltrados.length}</strong> leads encontrados
                     </span>
-                    {contatosSelecionados.size > 0 && (
-                      <span className="flex items-center gap-1.5 text-green-700">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <strong>{contatosSelecionados.size}</strong> selecionados
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1.5 text-green-700">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <strong>{contatosSelecionados.size}</strong> selecionados
+                    </span>
                   </div>
                   <Button
                     variant="outline"
@@ -574,6 +637,10 @@ export default function CampanhaMetaOficial({ empresaId }) {
                       contatosFiltrados.map(c => {
                         const selecionado = contatosSelecionados.has(c.id);
                         const contatoTags = (c.tags_ids || []).map(tid => tags.find(t => t.id === tid)).filter(Boolean);
+                        const ultimoLog = ultimoDisparoPorTelefone[c.telefone];
+                        const diasUltimoDis = ultimoLog
+                          ? Math.floor((new Date() - new Date(ultimoLog.created_date)) / (1000 * 60 * 60 * 24))
+                          : null;
                         return (
                           <div
                             key={c.id}
@@ -586,8 +653,17 @@ export default function CampanhaMetaOficial({ empresaId }) {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-slate-900 truncate">{c.nome || c.telefone}</p>
                               <p className="text-xs text-slate-400">{c.telefone}</p>
+                              {ultimoLog && (
+                                <p className="text-[10px] text-amber-600 mt-0.5 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {ultimoLog.nome_campanha
+                                    ? `Campanha: ${ultimoLog.nome_campanha} · `
+                                    : ''}
+                                  {diasUltimoDis === 0 ? 'hoje' : `há ${diasUltimoDis}d`}
+                                </p>
+                              )}
                             </div>
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
                               {contatoTags.map(t => (
                                 <span
                                   key={t.id}
@@ -597,9 +673,15 @@ export default function CampanhaMetaOficial({ empresaId }) {
                                   {t.nome}
                                 </span>
                               ))}
-                              <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                                {c.status || 'novo'}
-                              </span>
+                              {ultimoLog ? (
+                                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                                  já disparado
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                                  novo
+                                </span>
+                              )}
                             </div>
                           </div>
                         );

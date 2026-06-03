@@ -26,17 +26,12 @@
       "type": "string",
       "description": "ID da oportunidade (para campanhas de planejamento)"
     },
+    "nome_campanha": {
+      "type": "string",
+      "description": "Nome da campanha disparada"
+    },
     "tipo_campanha": {
       "type": "string",
-      "enum": [
-        "aniversario_emprestimo",
-        "aniversario_consorcio",
-        "reengajamento",
-        "planejamento_compra_1",
-        "planejamento_compra_2",
-        "planejamento_compra_3",
-        "planejamento_compra_4"
-      ],
       "description": "Tipo de campanha"
     },
     "numero_sequencia": {
@@ -52,7 +47,9 @@
       "enum": [
         "enviada",
         "nao_enviada",
-        "erro"
+        "erro",
+        "lida",
+        "respondida"
       ],
       "default": "enviada",
       "description": "Status do envio"
