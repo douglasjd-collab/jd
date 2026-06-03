@@ -83,10 +83,12 @@
       "type": "string",
       "enum": [
         "empresa",
-        "usuario"
+        "usuario",
+        "meta_oficial",
+        "instagram"
       ],
       "default": "empresa",
-      "description": "Se a inst\u00e2ncia \u00e9 da empresa ou de um colaborador"
+      "description": "Canal/provedor ativo da conversa: empresa=Evolution inst\u00e2ncia empresa, usuario=Evolution inst\u00e2ncia colaborador, meta_oficial=API Oficial Meta, instagram=Instagram Direct"
     },
     "colaborador_id": {
       "type": "string",
@@ -94,7 +96,11 @@
     },
     "instancia": {
       "type": "string",
-      "description": "Nome da inst\u00e2ncia Evolution que originou a conversa"
+      "description": "Nome da inst\u00e2ncia Evolution que originou a conversa (ex: JD_PROMOTORA). Para Meta: META_OFICIAL"
+    },
+    "phone_number_id_meta": {
+      "type": "string",
+      "description": "Phone Number ID da API Meta Oficial que recebeu/enviou a \u00faltima mensagem desta conversa"
     }
   },
   "required": [

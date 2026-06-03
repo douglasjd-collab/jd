@@ -860,13 +860,13 @@ export default function BatePapo() {
       const destinatario = isGrupo(conversaSelecionada)
         ? conversaSelecionada.whatsapp_id
         : conversaSelecionada.cliente_telefone;
+      // NÃO passar forcar_api — o backend decide automaticamente pelo tipo_conexao da conversa
       const resp = await base44.functions.invoke('enviarMensagemWhatsapp', {
         conversa_id: conversaSelecionada.id,
         mensagem_texto: texto,
         numero_cliente: destinatario,
         empresa_id: empresaId,
         arquivo: arquivo,
-        forcar_api: (conversaSelecionada.tipo_conexao === 'meta_oficial' || conversaSelecionada.instancia === 'META_OFICIAL') ? 'meta_oficial' : 'evolution'
       });
       if (!resp?.data?.success) {
         throw new Error(resp?.data?.error || 'Erro ao enviar mensagem');

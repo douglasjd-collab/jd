@@ -167,26 +167,47 @@ Deno.serve(async (req) => {
     }
     // ── FIM INSTAGRAM ──────────────────────────────────────────────────────
 
-    // Detectar se a conversa veio pela Meta Oficial
+    // ── DETERMINAR PROVEDOR PELO CANAL DA CONVERSA (automático) ──────────────
+    // A regra é simples: usar o mesmo canal pelo qual a última mensagem foi recebida.
+    // tipo_conexao da conversa é a fonte de verdade — atualizado a cada mensagem recebida.
     const conversaEhMetaOficial =
       tipoConexaoConversa === 'meta_oficial' ||
       instanciaConversa === 'META_OFICIAL' ||
-      instanciaConversa === 'meta_oficial' ||
-      forcar_api === 'meta_oficial';
+      instanciaConversa === 'meta_oficial';
 
-    // Determinar qual API usar
-    const temCredenciaisMeta = !!(empresa?.whatsapp_access_token && empresa?.whatsapp_phone_number_id);
+    // Credenciais Meta: preferir phone_number_id da conversa (número específico que recebeu)
+    const phoneNumberIdMeta = conversaDoBanco?.phone_number_id_meta || empresa?.whatsapp_phone_number_id;
+    const accessTokenMeta = empresa?.whatsapp_access_token;
+
+    const temCredenciaisMeta = !!(accessTokenMeta && phoneNumberIdMeta);
     const temCredenciaisEvolution = !!(evolutionApiKey && evolutionApiUrl && instanceName);
 
     let usaMetaOficial;
     if (conversaEhMetaOficial) {
+      // Canal da conversa = Meta Oficial
+      if (!temCredenciaisMeta) {
+        return Response.json({
+          error: 'Esta conversa é da API Oficial Meta, mas as credenciais Meta (token/phone_number_id) não estão configuradas. Configure em Configurações > WhatsApp Meta.',
+          success: false
+        }, { status: 400 });
+      }
       usaMetaOficial = true;
-      console.log('🟢 API Oficial Meta (conversa iniciada pela Meta — tipo_conexao:', tipoConexaoConversa, ', instancia:', instanciaConversa, ')');
-    } else if (forcar_api === 'evolution' || tipoConexaoConversa === 'empresa' || tipoConexaoConversa === 'usuario') {
+      console.log('🟢 Provedor automático: API Oficial Meta (tipo_conexao:', tipoConexaoConversa, ' | phone_number_id:', phoneNumberIdMeta, ')');
+    } else if (tipoConexaoConversa === 'empresa' || tipoConexaoConversa === 'usuario' || instanciaConversa) {
+      // Canal da conversa = Evolution API
+      if (!temCredenciaisEvolution) {
+        return Response.json({
+          error: 'Esta conversa é da Evolution API, mas as credenciais Evolution não estão configuradas. Configure em Configurações > WhatsApp.',
+          success: false
+        }, { status: 400 });
+      }
       usaMetaOficial = false;
-      console.log('🟣 Evolution API (conversa iniciada pela Evolution)');
+      console.log('🟣 Provedor automático: Evolution API (instancia:', instanciaConversa || instanceName, ')');
+    } else if (forcar_api === 'meta_oficial') {
+      // Fallback explícito do frontend (legado)
+      usaMetaOficial = temCredenciaisMeta;
     } else {
-      // fallback: preferência da empresa
+      // Fallback: preferência da empresa
       const apiPreferida = empresa?.whatsapp_api_preferida || 'auto';
       if (apiPreferida === 'meta_oficial') {
         usaMetaOficial = temCredenciaisMeta;
@@ -195,7 +216,7 @@ Deno.serve(async (req) => {
       } else {
         usaMetaOficial = !temCredenciaisEvolution && temCredenciaisMeta;
       }
-      console.log('⚙️ API por preferência da empresa:', usaMetaOficial ? 'Meta' : 'Evolution');
+      console.log('⚙️ Provedor por preferência da empresa:', usaMetaOficial ? 'Meta' : 'Evolution');
     }
 
     console.log('🔌 Modo de envio:', usaMetaOficial ? '🟢 API Oficial Meta' : '🟣 Evolution API');
@@ -233,9 +254,11 @@ Deno.serve(async (req) => {
 
     if (usaMetaOficial) {
       // ── ENVIO VIA API OFICIAL META ──────────────────────────────────────
-      const accessToken = empresa.whatsapp_access_token;
-      const phoneNumberId = empresa.whatsapp_phone_number_id;
+      // Usar phone_number_id da CONVERSA (número específico que recebeu a msg) ou fallback da empresa
+      const accessToken = accessTokenMeta;
+      const phoneNumberId = phoneNumberIdMeta;
       const metaUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`;
+      console.log('📤 Meta — phone_number_id:', phoneNumberId, '| origem conversa:', conversaDoBanco?.phone_number_id_meta ? 'conversa' : 'empresa');
 
       let metaPayload;
 

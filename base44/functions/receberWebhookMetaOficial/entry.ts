@@ -143,12 +143,16 @@ async function processarMensagem(body) {
     status: 'entregue',
   });
 
-  // Atualizar última mensagem da conversa
+  // Atualizar última mensagem da conversa — e garantir que tipo_conexao = meta_oficial
+  // pois esta mensagem chegou pela Meta Oficial (última origem vence)
   await base44.entities.ConversaWhatsapp.update(conversa.id, {
     ultima_mensagem: texto,
     data_ultima_mensagem: new Date().toISOString(),
     ultimo_remetente: 'cliente',
     cliente_nome: nomeContato,
+    tipo_conexao: 'meta_oficial',
+    instancia: 'META_OFICIAL',
+    phone_number_id_meta: phoneNumberId,
   });
 
   console.log('✅ Mensagem Meta Oficial salva para conversa:', conversa.id);
