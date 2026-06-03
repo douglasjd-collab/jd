@@ -795,16 +795,38 @@ export default function ContatosCRM() {
             </div>
             <div>
               <Label>Tag para marcar os contatos importados <span className="text-slate-400 text-xs">(opcional)</span></Label>
-              <select
-                value={tagImportacao}
-                onChange={e => setTagImportacao(e.target.value)}
-                className="w-full mt-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
-              >
-                <option value="">— Sem tag —</option>
-                {tags.map(tag => (
-                  <option key={tag.id} value={tag.id}>{tag.nome}</option>
-                ))}
-              </select>
+              <div className="flex gap-2 mt-1">
+                <select
+                  value={tagImportacao}
+                  onChange={e => setTagImportacao(e.target.value)}
+                  className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white"
+                >
+                  <option value="">— Sem tag —</option>
+                  {tags.map(tag => (
+                    <option key={tag.id} value={tag.id}>{tag.nome}</option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="whitespace-nowrap gap-1"
+                  onClick={async () => {
+                    const nome = window.prompt('Nome da nova tag:');
+                    if (!nome?.trim()) return;
+                    const nova = await base44.entities.ContatoTag.create({
+                      empresa_id: empresaId,
+                      nome: nome.trim(),
+                      cor: '#3b82f6',
+                    });
+                    queryClient.invalidateQueries({ queryKey: ['tags-crm', empresaId] });
+                    setTagImportacao(nova.id);
+                    toast.success(`Tag "${nome.trim()}" criada!`);
+                  }}
+                >
+                  <Plus className="w-3.5 h-3.5" /> Nova tag
+                </Button>
+              </div>
             </div>
             <div className="flex justify-end gap-2 pt-1">
               <Button variant="outline" onClick={() => { setColartextoOpen(false); setTagImportacao(''); }}>Cancelar</Button>
