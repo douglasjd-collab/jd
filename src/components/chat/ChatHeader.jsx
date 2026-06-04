@@ -48,11 +48,14 @@ export default function ChatHeader({
     conversaSelecionada.instancia === 'INSTAGRAM' ||
     String(conversaSelecionada.cliente_telefone || '').startsWith('ig_');
 
+  // Se a conversa tem phone_number_id_meta preenchido, o canal real é Meta Oficial
+  // independente do tipo_conexao salvo (que pode estar desatualizado)
   const ehMeta =
     !ehInstagram && (
       conversaSelecionada.tipo_conexao === 'meta_oficial' ||
       conversaSelecionada.instancia === 'META_OFICIAL' ||
-      conversaSelecionada.instancia === 'meta_oficial'
+      conversaSelecionada.instancia === 'meta_oficial' ||
+      !!conversaSelecionada.phone_number_id_meta
     );
 
   const alternarApi = async () => {
