@@ -311,9 +311,8 @@ Deno.serve(async (req) => {
         let nomeArquivo = arquivo.nome || `arquivo_${Date.now()}`;
 
         if (mediaType === 'audio') {
-          // A API da Meta é restritiva. Idealmente, o frontend deve enviar audio/ogg com opus.
-          // Por segurança, vamos sempre tentar enviar como audio/ogg.
-          mimeType = 'audio/ogg';
+          // Meta exige audio/mp4 ou audio/ogg; codecs=opus
+          mimeType = 'audio/mp4';
         }
 
         const uploadFormData = new FormData();
@@ -352,6 +351,9 @@ Deno.serve(async (req) => {
         if (mediaType === 'document') {
           if (mensagem_texto?.trim()) mediaObj.caption = mensagem_texto.trim();
           mediaObj.filename = nomeArquivo;
+        }
+        if (mediaType === 'audio') {
+          // Áudio não suporta caption na Meta
         }
 
         metaPayload = {
