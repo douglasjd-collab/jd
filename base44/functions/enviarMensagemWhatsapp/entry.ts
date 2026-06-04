@@ -299,8 +299,10 @@ Deno.serve(async (req) => {
         const binaryStr = atob(arquivo.base64);
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-        const blob = new Blob([bytes], { type: arquivo.tipo || 'application/octet-stream' });
-        const uploadRes = await base44.integrations.Core.UploadFile({ file: blob });
+        const mimeType = arquivo.tipo || 'application/octet-stream';
+        const nomeArquivo = arquivo.nome || `arquivo_${Date.now()}`;
+        const fileObj = new File([bytes], nomeArquivo, { type: mimeType });
+        const uploadRes = await base44.integrations.Core.UploadFile({ file: fileObj });
         const fileUrl = uploadRes?.file_url;
 
         if (!fileUrl) throw new Error('Falha ao fazer upload do arquivo para envio via Meta');
