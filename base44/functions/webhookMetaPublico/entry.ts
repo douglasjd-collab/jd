@@ -269,27 +269,33 @@ async function salvarMensagemMeta(base44, value, message) {
 
   // Buscar todas as conversas da empresa para filtrar
   const todasConvs = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
-    { empresa_id: empresaId }, 'created_date', 500
+    { empresa_id: empresaId }, '-data_ultima_mensagem', 500
   );
 
-  // 1ª prioridade: conversa Meta com o mesmo phone_number_id (canal correto + telefone)
+  // Todas as conversas deste número (qualquer canal)
   const conversasDoNumero = todasConvs.filter(c => {
     const t = String(c.cliente_telefone || '').replace(/\D/g, '');
     return variacoes.includes(t);
   });
 
-  // Buscar conversa que pertence a este canal Meta especificamente
-  let conversa = conversasDoNumero.find(c =>
-    (c.canal_origem === 'meta' || c.provider === 'whatsapp_meta' || c.tipo_conexao === 'meta_oficial') &&
-    (c.phone_number_id_meta === phoneNumberId || !c.phone_number_id_meta)
-  );
+  // 1ª prioridade: conversa já marcada como Meta com este phone_number_id
+  let conversa = conversasDoNumero.find(c => c.phone_number_id_meta === phoneNumberId);
 
-  // Se não encontrou conversa Meta, verificar se existe alguma com phone_number_id igual
+  // 2ª prioridade: qualquer conversa Meta deste número (sem phone_number_id ou com outro)
   if (!conversa) {
-    conversa = conversasDoNumero.find(c => c.phone_number_id_meta === phoneNumberId);
+    conversa = conversasDoNumero.find(c =>
+      c.canal_origem === 'meta' || c.provider === 'whatsapp_meta' || c.tipo_conexao === 'meta_oficial'
+    );
   }
 
-  console.log(`🔍 [META] Busca conversa | phone_number_id=${phoneNumberId} | variacoes=${variacoes.join(',')} | total conversas número=${conversasDoNumero.length} | conversa Meta encontrada=${conversa?.id || 'NENHUMA'}`);
+  // 3ª prioridade: qualquer conversa existente deste número (Evolution ou outra) — converter para Meta
+  // Isso garante que a conversa já aberta com o cliente seja migrada para Meta em vez de criar uma duplicata
+  if (!conversa && conversasDoNumero.length > 0) {
+    conversa = conversasDoNumero[0]; // mais recente (ordenado por -data_ultima_mensagem)
+    console.log(`🔄 [META] Conversa Evolution encontrada — convertendo para Meta: ${conversa.id}`);
+  }
+
+  console.log(`🔍 [META] Busca conversa | phone_number_id=${phoneNumberId} | variacoes=${variacoes.join(',')} | total conversas número=${conversasDoNumero.length} | conversa encontrada=${conversa?.id || 'NENHUMA'}`);
 
   let conversa_id_final = null;
 
