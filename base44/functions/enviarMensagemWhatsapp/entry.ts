@@ -318,9 +318,10 @@ Deno.serve(async (req) => {
 
         const uploadFormData = new FormData();
         uploadFormData.append('messaging_product', 'whatsapp');
-        const fileBlob = new Blob([bytes], { type: mimeType });
+        
+        // Deno: criar Blob de forma compatível
+        const fileBlob = new Blob([bytes.buffer], { type: mimeType });
         uploadFormData.append('file', fileBlob, nomeArquivo);
-        uploadFormData.append('type', mimeType);
 
         const metaUploadUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/media`;
         console.log('📤 Upload mídia Meta:', { 
