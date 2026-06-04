@@ -193,8 +193,16 @@ Deno.serve(async (req) => {
       }, null, 10);
 
       if (conversasExistentes.length > 0) {
-        conversaId = conversasExistentes[0].id;
+        const conv = conversasExistentes[0];
+        conversaId = conv.id;
         console.log(`[CONVERSA] Encontrada: ${conversaId}`);
+        // Não sobrescrever conversa Meta Oficial com tipo_conexao de Evolution
+        if (conv.tipo_conexao !== 'meta_oficial' && conv.instancia !== 'META_OFICIAL') {
+          await base44.asServiceRole.entities.ConversaWhatsapp.update(conversaId, {
+            ultima_mensagem: mensagemTexto.slice(0, 100),
+            data_ultima_mensagem: new Date().toISOString(),
+          });
+        }
       } else {
         // Criar nova conversa
         const novaConversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
