@@ -1,10 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Lock, Unlock, X } from 'lucide-react';
+import { Lock, Unlock, X, ChevronDown } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import EnviarMensagemForm from './EnviarMensagemForm';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function ChatMessageFooter({
   conversaSelecionada,
@@ -16,36 +22,72 @@ export default function ChatMessageFooter({
   selecionarConversa,
 }) {
   const queryClient = useQueryClient();
+  const [canalReabrir, setCanalReabrir] = useState(conversaSelecionada?.tipo_conexao || 'meta_oficial');
+
+  // Sincronizar canal ao trocar de conversa
+  React.useEffect(() => {
+    setCanalReabrir(conversaSelecionada?.tipo_conexao || 'meta_oficial');
+  }, [conversaSelecionada?.id]);
+
+  const canaisDisponiveis = [
+    { value: 'meta_oficial', label: '📱 Meta Oficial (API)' },
+    { value: 'empresa', label: '🏢 Evolution Empresa' },
+    { value: 'usuario', label: '👤 Evolution Colaborador' },
+  ];
 
   if (conversaSelecionada?.status === 'encerrada') {
+    const canalLabel = canaisDisponiveis.find(c => c.value === canalReabrir)?.label || canalReabrir;
+
     return (
-      <div className="bg-emerald-50 border-t border-emerald-200 px-5 py-4 flex items-center justify-between gap-3">
+      <div className="bg-emerald-50 border-t border-emerald-200 px-5 py-4 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <Lock className="w-5 h-5 text-emerald-600" />
           <p className="text-sm font-medium text-emerald-700">Conversa finalizada</p>
         </div>
-        <Button
-          size="sm"
-          className="bg-emerald-600 hover:bg-emerald-700 gap-1.5 text-white"
-          onClick={async () => {
-            await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
-              status: 'ativa',
-              responsavel_id: null,
-              responsavel_expira_em: null,
-            });
-            queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-            selecionarConversa({
-              ...conversaSelecionada,
-              status: 'ativa',
-              responsavel_id: null,
-              responsavel_expira_em: null,
-            });
-            toast.success('✅ Conversa reaberta!');
-          }}
-        >
-          <Unlock className="w-4 h-4" />
-          Reabrir conversa
-        </Button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="text-xs text-emerald-700 whitespace-nowrap">Canal ao reabrir:</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-300 bg-white">
+                  {canalLabel}
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {canaisDisponiveis.map(c => (
+                  <DropdownMenuItem key={c.value} onClick={() => setCanalReabrir(c.value)}>
+                    {c.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <Button
+            size="sm"
+            className="bg-emerald-600 hover:bg-emerald-700 gap-1.5 text-white shrink-0"
+            onClick={async () => {
+              await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
+                status: 'ativa',
+                tipo_conexao: canalReabrir,
+                responsavel_id: null,
+                responsavel_expira_em: null,
+              });
+              queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+              selecionarConversa({
+                ...conversaSelecionada,
+                status: 'ativa',
+                tipo_conexao: canalReabrir,
+                responsavel_id: null,
+                responsavel_expira_em: null,
+              });
+              toast.success('✅ Conversa reaberta!');
+            }}
+          >
+            <Unlock className="w-4 h-4" />
+            Reabrir conversa
+          </Button>
+        </div>
       </div>
     );
   }
