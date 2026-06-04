@@ -316,12 +316,13 @@ Deno.serve(async (req) => {
           nomeArquivo = nomeArquivo.replace(/\.[^.]+$/, '') + '.ogg';
         }
 
+        // Montar FormData corretamente para Deno
         const uploadFormData = new FormData();
         uploadFormData.append('messaging_product', 'whatsapp');
         
-        // Deno: criar Blob de forma compatível
-        const fileBlob = new Blob([bytes.buffer], { type: mimeType });
-        uploadFormData.append('file', fileBlob, nomeArquivo);
+        // Criar File (não Blob) para que o FormData funcione corretamente
+        const file = new File([bytes], nomeArquivo, { type: mimeType });
+        uploadFormData.append('file', file);
 
         const metaUploadUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/media`;
         console.log('📤 Upload mídia Meta:', { 
@@ -329,7 +330,7 @@ Deno.serve(async (req) => {
           mimeType, 
           nomeArquivo, 
           tamanho: bytes.length,
-          fileSize: fileBlob.size
+          fileSize: file.size
         });
 
         const uploadResp = await fetch(metaUploadUrl, {
