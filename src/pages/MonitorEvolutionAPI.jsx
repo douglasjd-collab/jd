@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, CheckCircle, XCircle, AlertTriangle, Wifi, WifiOff, Play, Clock, Zap } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle, AlertTriangle, Wifi, WifiOff, Play, Clock, Zap, Server, TestTube2, Shield } from 'lucide-react';
 
 export default function MonitorEvolutionAPI() {
   const [user, setUser] = useState(null);
@@ -12,6 +12,9 @@ export default function MonitorEvolutionAPI() {
   const [loading, setLoading] = useState(false);
   const [loadingAtualizar, setLoadingAtualizar] = useState(false);
   const [loadingReiniciar, setLoadingReiniciar] = useState(false);
+  const [loadingEasyPanel, setLoadingEasyPanel] = useState(false);
+  const [loadingTesteEP, setLoadingTesteEP] = useState(false);
+  const [resultadoEasyPanel, setResultadoEasyPanel] = useState(null);
   const [ultimaVerificacao, setUltimaVerificacao] = useState(null);
   const [erro, setErro] = useState(null);
 
@@ -92,6 +95,38 @@ export default function MonitorEvolutionAPI() {
       setErro(e.message || 'Erro ao reiniciar instâncias');
     } finally {
       setLoadingReiniciar(false);
+    }
+  };
+
+  const atualizarViaEasyPanel = async (forcar = false) => {
+    if (!confirm(`Atualizar CONFIG_SESSION_PHONE_VERSION no EasyPanel e reiniciar o serviço Evolution API?`)) return;
+    setLoadingEasyPanel(true);
+    setResultadoEasyPanel(null);
+    try {
+      const res = await base44.functions.invoke('atualizarVersaoEasyPanel', {
+        versao_nova: status?.versao_mais_recente || null,
+        forcar
+      });
+      setResultadoEasyPanel(res.data);
+      await verificarAgora(false);
+      carregarLogs();
+    } catch (e) {
+      setResultadoEasyPanel({ success: false, error: e.message });
+    } finally {
+      setLoadingEasyPanel(false);
+    }
+  };
+
+  const testarEasyPanel = async () => {
+    setLoadingTesteEP(true);
+    setResultadoEasyPanel(null);
+    try {
+      const res = await base44.functions.invoke('testarEasyPanelAPI', {});
+      setResultadoEasyPanel({ tipo: 'teste', ...res.data });
+    } catch (e) {
+      setResultadoEasyPanel({ success: false, error: e.message });
+    } finally {
+      setLoadingTesteEP(false);
     }
   };
 
@@ -244,15 +279,77 @@ export default function MonitorEvolutionAPI() {
         </CardContent>
       </Card>
 
-      {/* Aviso sobre atualização manual VPS */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-600">
-        <p className="font-semibold text-slate-700 mb-1">ℹ️ Sobre a atualização automática</p>
-        <p>
-          O CRM salva a versão no banco e tenta atualizar via API da Evolution. Porém, para aplicar
-          definitivamente no servidor, você também deve atualizar a variável <code className="bg-slate-100 px-1 rounded font-mono text-xs">CONFIG_SESSION_PHONE_VERSION</code> no EasyPanel/VPS com o valor:
-          <code className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono ml-1">{status?.versao_mais_recente || '...'}</code>
-        </p>
-      </div>
+      {/* Card EasyPanel - Atualização Automática Completa */}
+      <Card className="border-2 border-blue-200 bg-blue-50">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2 text-blue-800">
+            <Server className="w-4 h-4" />
+            Atualização Automática via EasyPanel
+            <Badge className="bg-blue-100 text-blue-700 text-xs">Novo</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-blue-700">
+            Atualiza <code className="bg-blue-100 px-1 rounded font-mono text-xs">CONFIG_SESSION_PHONE_VERSION</code> diretamente no EasyPanel e reinicia apenas o serviço da Evolution API. Não apaga instâncias nem sessões.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => atualizarViaEasyPanel(false)}
+              disabled={loadingEasyPanel || loadingTesteEP}
+              className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+            >
+              <Zap className={`w-4 h-4 ${loadingEasyPanel ? 'animate-spin' : ''}`} />
+              {loadingEasyPanel ? 'Atualizando EasyPanel...' : 'Atualizar EasyPanel + Reiniciar'}
+            </Button>
+            <Button
+              onClick={() => atualizarViaEasyPanel(true)}
+              disabled={loadingEasyPanel || loadingTesteEP}
+              variant="outline"
+              className="gap-2 border-orange-300 text-orange-700 hover:bg-orange-50"
+            >
+              <Shield className="w-4 h-4" />
+              Forçar (ignorar proteção 15min)
+            </Button>
+            <Button
+              onClick={testarEasyPanel}
+              disabled={loadingEasyPanel || loadingTesteEP}
+              variant="outline"
+              className="gap-2 border-slate-300 text-slate-600 hover:bg-slate-50"
+            >
+              <TestTube2 className={`w-4 h-4 ${loadingTesteEP ? 'animate-spin' : ''}`} />
+              {loadingTesteEP ? 'Testando...' : 'Testar Conexão EasyPanel'}
+            </Button>
+          </div>
+
+          {/* Resultado do EasyPanel */}
+          {resultadoEasyPanel && (
+            <div className={`mt-3 p-3 rounded-lg border text-xs font-mono overflow-auto max-h-48 ${resultadoEasyPanel.success === false ? 'bg-red-50 border-red-200 text-red-800' : 'bg-green-50 border-green-200 text-green-800'}`}>
+              {resultadoEasyPanel.tipo === 'teste' ? (
+                <div className="space-y-1">
+                  <p className="font-bold text-sm mb-2">🔬 Resultado do Teste EasyPanel:</p>
+                  {resultadoEasyPanel.testes?.map((t, i) => (
+                    <div key={i} className={`p-1.5 rounded ${t.ok ? 'bg-green-100' : 'bg-red-100'}`}>
+                      <span className="font-semibold">{t.ok ? '✅' : '❌'} {t.endpoint}</span>
+                      <span className="ml-2 text-slate-600">[{t.status}]</span>
+                      <pre className="mt-1 whitespace-pre-wrap break-all text-xs">{JSON.stringify(t.resposta, null, 2).substring(0, 300)}</pre>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div>
+                  <p className="font-bold text-sm mb-1">{resultadoEasyPanel.success ? '✅ Sucesso!' : '❌ Falhou'}</p>
+                  {resultadoEasyPanel.versao_nova && <p>Versão aplicada: <strong>{resultadoEasyPanel.versao_nova}</strong></p>}
+                  {resultadoEasyPanel.reiniciou !== undefined && <p>Serviço reiniciado: {resultadoEasyPanel.reiniciou ? '✅ Sim' : '❌ Não'}</p>}
+                  {resultadoEasyPanel.instancias_conectadas !== undefined && <p>Instâncias online: {resultadoEasyPanel.instancias_conectadas}/{resultadoEasyPanel.instancias?.length || 0}</p>}
+                  {resultadoEasyPanel.error && <p className="text-red-600 mt-1">Erro: {resultadoEasyPanel.error}</p>}
+                  {resultadoEasyPanel.aviso && <p className="text-orange-600 mt-1">⚠️ {resultadoEasyPanel.aviso}</p>}
+                  {resultadoEasyPanel.bloqueado && <p className="text-orange-700 mt-1">🔒 Protegido: próximo reinício em {resultadoEasyPanel.proximo_restart_em} min</p>}
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Lista de Instâncias */}
       {status?.instancias?.length > 0 && (
