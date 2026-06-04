@@ -300,7 +300,8 @@ async function salvarMensagemMeta(base44, value, message) {
   let conversa_id_final = null;
 
   if (conversa) {
-    // Conversa Meta já existe — atualizar mantendo canal fixo
+    const foiEncerrada = conversa.status === 'encerrada';
+    // Atualizar conversa — sempre reforçar canal Meta e reabrir se encerrada
     const updateData = {
       ultima_mensagem: String(texto || '').slice(0, 200),
       data_ultima_mensagem: new Date().toISOString(),
@@ -308,7 +309,7 @@ async function salvarMensagemMeta(base44, value, message) {
       status: 'ativa',
       phone_number_id_meta: phoneNumberId,
       last_inbound_provider: 'whatsapp_meta',
-      // Reforçar campos Meta sempre (nunca deixar vazio)
+      // Forçar canal Meta — especialmente importante na reabertura de conversa encerrada
       canal_origem: 'meta',
       provider: 'whatsapp_meta',
       locked_provider: true,
@@ -316,10 +317,11 @@ async function salvarMensagemMeta(base44, value, message) {
       instancia: 'META_OFICIAL',
       canal_atendimento: 'meta_oficial',
       canal_preferencial: 'meta_oficial',
+      instance_id: null, // limpar qualquer instance Evolution que possa ter ficado
     };
     await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, updateData);
     conversa_id_final = conversa.id;
-    console.log(`💬 [META] Conversa Meta atualizada: ${conversa.id}`);
+    console.log(`💬 [META] Conversa atualizada: ${conversa.id} | foiEncerrada=${foiEncerrada} → canal=Meta`);
   } else {
     // Não existe conversa Meta para este phone_number_id + telefone — criar nova
     // NUNCA reusar uma conversa Evolution existente para responder via Meta

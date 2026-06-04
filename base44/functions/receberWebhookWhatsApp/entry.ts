@@ -733,30 +733,46 @@ async function processarWebhook(req, rawBody, base44) {
 
     const conversaDevePreservarCanal = conversaEhMetaOficial || conversaEhInstagram;
 
-    // Se a conversa é Meta/Instagram, apenas atualizar campos seguros (última mensagem, remetente)
-    // NUNCA alterar telefone, canal, instância, provider ou qualquer campo de roteamento
+    // Se a conversa é Meta/Instagram: webhook Evolution NÃO deve interferir no canal.
+    // Apenas atualizar última mensagem + status (reabrir se encerrada).
+    // NUNCA alterar canal, instância, provider ou qualquer campo de roteamento.
     if (conversaDevePreservarCanal) {
+      const providerReal = conversaEhInstagram ? 'instagram' : 'whatsapp_meta';
       const updateDataMeta = {
         ultima_mensagem: conteudo.substring(0, 200),
         data_ultima_mensagem: new Date().toISOString(),
         ultimo_remetente: ultimoRemetente,
+        // Reabrir conversa encerrada mantendo canal Meta/Instagram
+        ...(conversa.status === 'encerrada' ? {
+          status: 'ativa',
+          canal_origem: conversaEhInstagram ? 'instagram' : 'meta',
+          provider: providerReal,
+          tipo_conexao: conversaEhInstagram ? 'instagram' : 'meta_oficial',
+          instancia: conversaEhInstagram ? 'INSTAGRAM' : 'META_OFICIAL',
+          locked_provider: true,
+          last_inbound_provider: providerReal,
+          ...(conversa.phone_number_id_meta ? { phone_number_id_meta: conversa.phone_number_id_meta } : {}),
+        } : {}),
       };
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, updateDataMeta);
-      console.log(`🛡️ Conversa Meta/Instagram ${conversa.id} — apenas última mensagem atualizada, canal preservado`);
-      // Salvar mensagem e sair
-      const remetenteProt = fromMe ? 'vendedor' : 'cliente';
-      await base44.asServiceRole.entities.MensagemWhatsapp.create({
-        conversa_id: conversa.id, empresa_id: empresaId,
-        remetente: remetenteProt, tipo_conteudo: tipo, texto: conteudo,
-        arquivo_url: arquivo_url || null,
-        arquivo_nome: arquivo_nome || null,
-        arquivo_tamanho: arquivo_tamanho || 0,
-        provider: 'evolution',
-        download_status: arquivo_url ? 'baixado' : 'nao_aplicavel',
-        whatsapp_message_id: messageId,
-        data_envio: new Date().toISOString(),
-        status: remetenteProt === 'vendedor' ? 'enviada' : 'pendente'
-      });
+      console.log(`🛡️ Conversa Meta/Instagram ${conversa.id} — canal preservado (status: ${conversa.status === 'encerrada' ? 'reaberta→ativa' : 'mantido'})`);
+      // Não salvar mensagem duplicada — o webhook Meta já salvou com provider correto
+      // Só salvar se for mensagem enviada pelo vendedor (fromMe) que a Meta não captura
+      if (fromMe) {
+        const remetenteProt = 'vendedor';
+        await base44.asServiceRole.entities.MensagemWhatsapp.create({
+          conversa_id: conversa.id, empresa_id: empresaId,
+          remetente: remetenteProt, tipo_conteudo: tipo, texto: conteudo,
+          arquivo_url: arquivo_url || null,
+          arquivo_nome: arquivo_nome || null,
+          arquivo_tamanho: arquivo_tamanho || 0,
+          provider: providerReal,
+          download_status: arquivo_url ? 'baixado' : 'nao_aplicavel',
+          whatsapp_message_id: messageId,
+          data_envio: new Date().toISOString(),
+          status: 'enviada'
+        });
+      }
       return;
     }
 
