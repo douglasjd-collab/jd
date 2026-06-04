@@ -560,8 +560,10 @@ Deno.serve(async (req) => {
         const binaryStr = atob(arquivo.base64);
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-        const blob = new Blob([bytes], { type: arquivo.tipo || 'application/octet-stream' });
-        const uploadRes = await base44.integrations.Core.UploadFile({ file: blob });
+        const mimeUpload = arquivo.tipo || 'application/octet-stream';
+        const nomeUpload = arquivo.nome || `arquivo_${Date.now()}`;
+        const fileUpload = new File([bytes], nomeUpload, { type: mimeUpload });
+        const uploadRes = await base44.integrations.Core.UploadFile({ file: fileUpload });
         if (uploadRes?.file_url) {
           arquivo_url_permanente = uploadRes.file_url;
           console.log('✅ Arquivo salvo permanentemente:', arquivo_url_permanente);

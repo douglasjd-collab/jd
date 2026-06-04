@@ -57,7 +57,13 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     setErro(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      // Tentar ogg/opus (aceito pela Meta), fallback para webm
+      const mimeType = MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+        ? 'audio/ogg;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -96,14 +102,17 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop());
     });
 
-    const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
+    const blob = new Blob(audioChunksRef.current, { type: mimeType });
     const url = URL.createObjectURL(blob);
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result.split(',')[1];
       setGravando(false);
       setTempoGravacao(0);
-      setAudioPreview({ url, blob, base64 });
+      // Extensão baseada no mimeType real
+      const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
+      setAudioPreview({ url, blob, base64, mimeType, ext });
     };
     reader.readAsDataURL(blob);
   };
@@ -117,13 +126,15 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const confirmarEnvioAudio = async () => {
     if (!audioPreview) return;
     setErro(null);
-    const { base64, url } = audioPreview;
+    const { url } = audioPreview;
+    const preview = { ...audioPreview };
     setAudioPreview(null);
     URL.revokeObjectURL(url);
+    const { base64, mimeType = 'audio/webm', ext = 'webm' } = preview;
     try {
       await onEnviar({
         texto: '',
-        arquivo: { base64, nome: 'audio.webm', tipo: 'audio/webm' }
+        arquivo: { base64, nome: `audio.${ext}`, tipo: mimeType }
       });
     } catch (err) {
       setErro(err.message || 'Erro ao enviar áudio.');
