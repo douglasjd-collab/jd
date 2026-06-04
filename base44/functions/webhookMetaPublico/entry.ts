@@ -270,11 +270,43 @@ async function salvarMensagem(base44, value, message) {
   const empresaId = empresa.id;
   console.log(`🏢 Empresa: ${empresa.nome} (${empresaId})`);
 
-  // Garantir cliente
+  // Buscar ou criar cliente com foto de perfil permanente
+  const nomePerfil = value.contacts?.[0]?.profile?.name || null;
+  
+  // Buscar foto de perfil via Meta Graph API e fazer upload permanente
+  let fotoUrlPermanente = null;
+  try {
+    const accessTokenTemp = empresa.whatsapp_access_token;
+    if (accessTokenTemp) {
+      // Buscar perfil do contato via Meta
+      const profileResp = await fetch(`https://graph.facebook.com/v19.0/${telefoneLimpo}?fields=profile_pic&access_token=${accessTokenTemp}`);
+      if (profileResp.ok) {
+        const profileData = await profileResp.json();
+        const fotoTempUrl = profileData?.profile_pic;
+        if (fotoTempUrl) {
+          // Download e upload permanente
+          const fotoRes = await fetch(fotoTempUrl);
+          if (fotoRes.ok) {
+            const arrayBuffer = await fotoRes.arrayBuffer();
+            const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
+            const file = new File([blob], `foto_${telefoneLimpo}.jpg`, { type: 'image/jpeg' });
+            const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file });
+            if (uploadRes?.file_url) {
+              fotoUrlPermanente = uploadRes.file_url;
+              console.log(`✅ Foto perfil upload permanente: ${uploadRes.file_url}`);
+            }
+          }
+        }
+      }
+    }
+  } catch (fotoErr) {
+    console.warn('⚠️ Erro ao buscar foto perfil Meta:', fotoErr.message);
+  }
+
   let clientes = await base44.asServiceRole.entities.Cliente.filter({ empresa_id: empresaId, celular: telefoneLimpo }, null, 1);
   let cliente;
   if (clientes.length === 0) {
-    const nomeContato = value.contacts?.[0]?.profile?.name || `Contato ${telefoneLimpo}`;
+    const nomeContato = nomePerfil || `Contato ${telefoneLimpo}`;
     cliente = await base44.asServiceRole.entities.Cliente.create({
       empresa_id: empresaId,
       tipo_pessoa: 'Física',
@@ -288,6 +320,32 @@ async function salvarMensagem(base44, value, message) {
     console.log(`👤 Cliente: ${cliente.id} (${cliente.nome_completo})`);
   }
 
+  // Buscar/atualizar ContatoWhatsapp com foto permanente
+  const contatosExistentes = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
+    { empresa_id: empresaId, telefone: telefoneLimpo }, null, 1
+  );
+  
+  if (contatosExistentes.length > 0) {
+    const contatoUpdate = { ultima_atualizacao: new Date().toISOString() };
+    if (!contatosExistentes[0].nome_fixo && nomePerfil && !contatosExistentes[0].nome) {
+      contatoUpdate.nome = nomePerfil;
+    }
+    if (fotoUrlPermanente && fotoUrlPermanente !== contatosExistentes[0].foto_url) {
+      contatoUpdate.foto_url = fotoUrlPermanente;
+    }
+    await base44.asServiceRole.entities.ContatoWhatsapp.update(contatosExistentes[0].id, contatoUpdate);
+    console.log(`✅ Contato atualizado: ${contatosExistentes[0].id}`);
+  } else {
+    await base44.asServiceRole.entities.ContatoWhatsapp.create({
+      empresa_id: empresaId,
+      telefone: telefoneLimpo,
+      nome: nomePerfil || telefoneLimpo,
+      foto_url: fotoUrlPermanente,
+      ultima_atualizacao: new Date().toISOString()
+    });
+    console.log(`✨ Contato criado com foto permanente`);
+  }
+
   // Variações do telefone (com/sem nono dígito)
   const tel12 = telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13
     ? telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5) : null;
@@ -298,7 +356,7 @@ async function salvarMensagem(base44, value, message) {
   // Buscar TODAS as conversas do número (pode ter duplicatas) — pegar a mais ANTIGA (primeira criada)
   const todasConversasEmpresa = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
     empresa_id: empresaId,
-  }, 'created_date', 500); // ordem crescente = mais antigas primeiro
+  }, 'created_date', 500);
 
   const conversasDoNumero = todasConversasEmpresa.filter(c => {
     const t = String(c.cliente_telefone || '').replace(/\D/g, '');
@@ -308,33 +366,27 @@ async function salvarMensagem(base44, value, message) {
   let conversa = null;
 
   if (conversasDoNumero.length > 0) {
-    // Usar a conversa mais ANTIGA como principal
     conversa = conversasDoNumero[0];
 
-    // Se houver duplicatas, migrar mensagens para a mais antiga e arquivar as outras
     if (conversasDoNumero.length > 1) {
-      console.log(`⚠️ ${conversasDoNumero.length} conversas duplicadas encontradas para ${telefoneLimpo} — consolidando...`);
+      console.log(`⚠️ ${conversasDoNumero.length} conversas duplicadas para ${telefoneLimpo} — consolidando...`);
       for (const dup of conversasDoNumero.slice(1)) {
-        // Migrar mensagens
-        const msgsDup = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-          { conversa_id: dup.id }, null, 500
-        );
+        const msgsDup = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ conversa_id: dup.id }, null, 500);
         for (const m of msgsDup) {
           await base44.asServiceRole.entities.MensagemWhatsapp.update(m.id, { conversa_id: conversa.id });
         }
-        // Arquivar duplicata
         await base44.asServiceRole.entities.ConversaWhatsapp.update(dup.id, { status: 'arquivada' });
-        console.log(`🗄️ Conversa ${dup.id} arquivada (${msgsDup.length} msgs migradas)`);
+        console.log(`🗄️ Conversa ${dup.id} arquivada (${msgsDup.length} msgs)`);
       }
     }
 
-    // Garantir dados atualizados na conversa principal — forçar meta_oficial
     const update = {
       instancia: 'META_OFICIAL',
       tipo_conexao: 'meta_oficial',
       canal_atendimento: 'meta_oficial',
       canal_preferencial: 'meta_oficial',
-      status: 'ativa'
+      status: 'ativa',
+      ...(fotoUrlPermanente && !conversa.foto_url ? { foto_url: fotoUrlPermanente } : {})
     };
     if (!conversa.cliente_telefone || conversa.cliente_telefone !== telefoneLimpo) update.cliente_telefone = telefoneLimpo;
     if (!conversa.cliente_id && cliente?.id) update.cliente_id = cliente.id;
@@ -342,7 +394,6 @@ async function salvarMensagem(base44, value, message) {
     await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, update);
     console.log(`💬 Conversa principal: ${conversa.id}`);
   } else {
-    // Nenhuma conversa — criar
     conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
       empresa_id: empresaId,
       cliente_id: cliente?.id,
@@ -352,6 +403,7 @@ async function salvarMensagem(base44, value, message) {
       status: 'ativa',
       tipo_conexao: 'meta_oficial',
       instancia: 'META_OFICIAL',
+      foto_url: fotoUrlPermanente,
     });
     console.log(`✨ Conversa criada: ${conversa.id}`);
   }
