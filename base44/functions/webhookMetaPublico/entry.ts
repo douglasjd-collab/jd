@@ -1,11 +1,10 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 const VERIFY_TOKEN = 'WAZE_CRM_WEBHOOK_2024';
 
 Deno.serve(async (req) => {
   const url = new URL(req.url);
 
-  // CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -17,30 +16,19 @@ Deno.serve(async (req) => {
     });
   }
 
-  // ── GET: Verificação do webhook pela Meta ─────────────────────────────
-  // CRÍTICO: deve ser a PRIMEIRA coisa — sem criar cliente Base44
   if (req.method === 'GET') {
-    // Tentar ler do body também (alguns proxies convertem GET → body)
     const mode      = url.searchParams.get('hub.mode');
     const token     = url.searchParams.get('hub.verify_token');
     const challenge = url.searchParams.get('hub.challenge');
-
-    console.log('🔎 Verificação Meta GET:', { mode, token, challenge, url: req.url });
-
+    console.log('🔎 Verificação Meta GET:', { mode, token, challenge });
     if (mode === 'subscribe' && token === VERIFY_TOKEN && challenge) {
-      console.log('✅ Webhook VALIDADO! Retornando challenge:', challenge);
-      return new Response(challenge, {
-        status: 200,
-        headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-      });
+      console.log('✅ Webhook VALIDADO! challenge:', challenge);
+      return new Response(challenge, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
     }
-
-    // Retornar 200 mesmo em caso de token incorreto para diagnóstico
-    console.log('❌ Verificação falhou — mode:', mode, '| token recebido:', token, '| esperado:', VERIFY_TOKEN);
+    console.log('❌ Verificação falhou — token recebido:', token, '| esperado:', VERIFY_TOKEN);
     return new Response('Token verification failed', { status: 403 });
   }
 
-  // ── POST: Mensagem real enviada pela Meta ─────────────────────────────
   if (req.method === 'POST') {
     let body;
     try {
@@ -50,14 +38,12 @@ Deno.serve(async (req) => {
     }
 
     console.log('📨 Webhook Meta POST recebido. Entries:', body?.entry?.length || 0);
-
-    // Criar cliente apenas para o POST (precisa salvar no banco)
     const base44 = createClientFromRequest(req);
 
     try {
       await processarMensagemMeta(body, base44);
     } catch (err) {
-      console.error('❌ Erro ao processar:', err.message);
+      console.error('❌ Erro ao processar:', err.message, err.stack);
     }
 
     return new Response('EVENT_RECEIVED', { status: 200, headers: { 'Content-Type': 'text/plain' } });
@@ -67,14 +53,13 @@ Deno.serve(async (req) => {
 });
 
 async function processarMensagemMeta(body, base44) {
-  console.log('🔄 Iniciando processamento... object:', body?.object);
+  console.log('🔄 Processando... object:', body?.object);
 
   if (!body.entry || !Array.isArray(body.entry)) {
     console.log('⚠️ Payload sem entry, ignorando');
     return;
   }
 
-  // ── Instagram Direct (object = "instagram") ──────────────────────────
   if (body.object === 'instagram') {
     for (const entry of body.entry) {
       const igAccountId = String(entry.id || '');
@@ -82,254 +67,211 @@ async function processarMensagemMeta(body, base44) {
         await salvarMensagemInstagram(base44, igAccountId, messaging);
       }
     }
-    console.log('✅ Instagram processado');
     return;
   }
 
-  // ── WhatsApp Business (object = "whatsapp_business_account") ─────────
+  // WhatsApp Business
   for (const entry of body.entry) {
     for (const change of (entry.changes || [])) {
       const value = change.value;
-
-      const messages = value.messages || [];
-      console.log(`📬 ${messages.length} mensagem(ns) WhatsApp para processar`);
-      for (const message of messages) {
-        await salvarMensagem(base44, value, message);
+      for (const message of (value.messages || [])) {
+        await salvarMensagemMeta(base44, value, message);
       }
-
-      const statuses = value.statuses || [];
-      for (const status of statuses) {
+      for (const status of (value.statuses || [])) {
         await atualizarStatusMensagem(base44, status);
       }
     }
   }
-  console.log('✅ Processamento concluído');
 }
 
+// ── Download de mídia da Meta ─────────────────────────────────────────────────
 async function baixarMidiaMeta(base44, mediaId, accessToken, nomeArquivoPadrao = 'arquivo') {
   if (!mediaId || !accessToken) {
     return { arquivo_url: null, arquivo_nome: null, mime_type: null, erro: 'mediaId ou accessToken ausente' };
   }
   try {
-    console.log('📎 Buscando mídia Meta:', mediaId);
-    const metaInfoResp = await fetch(`https://graph.facebook.com/v19.0/${mediaId}`, {
+    console.log(`📎 [META-DOWNLOAD] Buscando mídia id=${mediaId}`);
+
+    const infoResp = await fetch(`https://graph.facebook.com/v19.0/${mediaId}`, {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
-    const metaInfoText = await metaInfoResp.text();
-    console.log('📎 Info mídia Meta status:', metaInfoResp.status, metaInfoText.substring(0, 300));
-    if (!metaInfoResp.ok) return { arquivo_url: null, arquivo_nome: null, mime_type: null, erro: `Erro ao buscar info da mídia: ${metaInfoText}` };
+    const infoText = await infoResp.text();
+    console.log(`📎 [META-DOWNLOAD] Info status=${infoResp.status} | ${infoText.substring(0, 300)}`);
 
-    const metaInfo = JSON.parse(metaInfoText);
+    if (!infoResp.ok) {
+      return { arquivo_url: null, arquivo_nome: null, mime_type: null, erro: `Erro info mídia: ${infoText}` };
+    }
+
+    const metaInfo = JSON.parse(infoText);
     const mediaUrl = metaInfo.url;
     const mimeType = metaInfo.mime_type || 'application/octet-stream';
-    if (!mediaUrl) return { arquivo_url: null, arquivo_nome: null, mime_type: mimeType, erro: 'URL da mídia não retornada pela Meta' };
 
+    if (!mediaUrl) {
+      return { arquivo_url: null, arquivo_nome: null, mime_type: mimeType, erro: 'URL da mídia não retornada' };
+    }
+
+    console.log(`📥 [META-DOWNLOAD] Baixando de ${mediaUrl.substring(0, 80)}... mime=${mimeType}`);
     const arquivoResp = await fetch(mediaUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
-    console.log('📥 Download mídia status:', arquivoResp.status);
+
     if (!arquivoResp.ok) {
       const erroDownload = await arquivoResp.text().catch(() => '');
-      return { arquivo_url: null, arquivo_nome: null, mime_type: mimeType, erro: `Erro ao baixar mídia: ${erroDownload}` };
+      return { arquivo_url: null, arquivo_nome: null, mime_type: mimeType, erro: `Erro download: ${erroDownload}` };
     }
 
     const arrayBuffer = await arquivoResp.arrayBuffer();
     const blob = new Blob([arrayBuffer], { type: mimeType });
 
     let extensao = 'bin';
-    if (mimeType.includes('jpeg')) extensao = 'jpg';
+    if (mimeType.includes('jpeg') || mimeType.includes('jpg')) extensao = 'jpg';
     else if (mimeType.includes('png')) extensao = 'png';
     else if (mimeType.includes('webp')) extensao = 'webp';
     else if (mimeType.includes('ogg')) extensao = 'ogg';
     else if (mimeType.includes('mpeg')) extensao = 'mp3';
     else if (mimeType.includes('mp4')) extensao = 'mp4';
+    else if (mimeType.includes('aac')) extensao = 'aac';
     else if (mimeType.includes('pdf')) extensao = 'pdf';
 
-    const arquivoNomeGerado = `${nomeArquivoPadrao}_${Date.now()}.${extensao}`;
-    const uploadRes = await base44.integrations.Core.UploadFile({
-      file: new File([blob], arquivoNomeGerado, { type: mimeType })
+    const nomeGerado = `${nomeArquivoPadrao}_${Date.now()}.${extensao}`;
+    const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({
+      file: new File([blob], nomeGerado, { type: mimeType })
     });
-    console.log('✅ Upload Base44 mídia:', uploadRes?.file_url);
-    return { arquivo_url: uploadRes?.file_url || null, arquivo_nome: arquivoNomeGerado, mime_type: mimeType, erro: null };
+
+    console.log(`✅ [META-DOWNLOAD] Upload OK: ${uploadRes?.file_url}`);
+    return { arquivo_url: uploadRes?.file_url || null, arquivo_nome: nomeGerado, mime_type: mimeType, erro: null };
   } catch (e) {
-    console.error('❌ Erro baixarMidiaMeta:', e.message);
+    console.error(`❌ [META-DOWNLOAD] Erro: ${e.message}`);
     return { arquivo_url: null, arquivo_nome: null, mime_type: null, erro: e.message };
   }
 }
 
-async function salvarMensagem(base44, value, message) {
+async function salvarMensagemMeta(base44, value, message) {
   const telefoneLimpo = String(message.from || '').replace(/\D/g, '');
   const msgId = message.id;
   const timestamp = message.timestamp;
+  const phoneNumberId = String(value.metadata?.phone_number_id || '').trim();
 
+  console.log(`\n${'─'.repeat(60)}`);
+  console.log(`📱 [META] De: ${telefoneLimpo} | tipo: ${message.type} | msgId: ${msgId}`);
+  console.log(`🏷️ [META] phone_number_id: ${phoneNumberId}`);
+
+  // Buscar empresa pelo phone_number_id
+  const todasEmpresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, null, 50);
+  let empresa = todasEmpresas.find(e => String(e.whatsapp_phone_number_id || '').trim() === phoneNumberId);
+  if (!empresa) {
+    const comToken = todasEmpresas.filter(e => e.whatsapp_access_token && e.whatsapp_phone_number_id);
+    empresa = comToken[0] || todasEmpresas[0];
+    console.log(`⚠️ [META] Empresa não encontrada por phone_number_id=${phoneNumberId}, usando fallback: ${empresa?.nome}`);
+  } else {
+    console.log(`✅ [META] Empresa: ${empresa.nome} (${empresa.id})`);
+  }
+
+  if (!empresa) { console.log('❌ [META] Nenhuma empresa encontrada'); return; }
+
+  const empresaId = empresa.id;
+  const accessToken = empresa.whatsapp_access_token;
+
+  // Processar tipo de mensagem e baixar mídia se necessário
   let tipoConteudo = 'texto';
   let texto = null;
   let arquivoUrl = null;
   let arquivoNome = null;
-
-  // Buscar empresa primeiro para ter o accessToken disponível para download de mídia
-  const phoneNumberId = String(value.metadata?.phone_number_id || '').trim();
-  let empresaTemp = null;
-  try {
-    const todasEmpTemp = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, null, 50);
-    empresaTemp = todasEmpTemp.find(e => String(e.whatsapp_phone_number_id || '').trim() === phoneNumberId)
-      || todasEmpTemp.find(e => e.whatsapp_access_token && e.whatsapp_phone_number_id)
-      || todasEmpTemp[0];
-  } catch (_) {}
-  const accessTokenTemp = empresaTemp?.whatsapp_access_token || null;
+  let mimeType = null;
+  let mediaId = null;
+  let downloadStatus = 'nao_aplicavel';
 
   if (message.type === 'text') {
     texto = message.text?.body || '';
   } else if (message.type === 'image') {
     tipoConteudo = 'imagem';
-    texto = message.image?.caption || '';
-    arquivoUrl = message.image?.id || null;
-    arquivoNome = `imagem_${telefoneLimpo}.jpg`;
+    texto = message.image?.caption || '[Imagem]';
+    mediaId = message.image?.id;
+    mimeType = message.image?.mime_type || 'image/jpeg';
+    if (mediaId && accessToken) {
+      console.log(`📸 [META] Baixando imagem media_id=${mediaId}`);
+      const res = await baixarMidiaMeta(base44, mediaId, accessToken, `img_${telefoneLimpo}`);
+      arquivoUrl = res.arquivo_url;
+      arquivoNome = res.arquivo_nome;
+      mimeType = res.mime_type || mimeType;
+      downloadStatus = arquivoUrl ? 'baixado' : 'erro';
+      if (res.erro) console.warn(`⚠️ [META] Erro download imagem: ${res.erro}`);
+    }
   } else if (message.type === 'audio' || message.type === 'voice') {
     tipoConteudo = 'audio';
     texto = '[Áudio]';
-    arquivoUrl = message.audio?.id || message.voice?.id || null;
-    arquivoNome = `audio_${telefoneLimpo}.ogg`;
+    mediaId = message.audio?.id || message.voice?.id;
+    mimeType = message.audio?.mime_type || message.voice?.mime_type || 'audio/ogg';
+    if (mediaId && accessToken) {
+      console.log(`🎵 [META] Baixando áudio media_id=${mediaId} mime=${mimeType}`);
+      const res = await baixarMidiaMeta(base44, mediaId, accessToken, `audio_${telefoneLimpo}`);
+      arquivoUrl = res.arquivo_url;
+      arquivoNome = res.arquivo_nome;
+      mimeType = res.mime_type || mimeType;
+      downloadStatus = arquivoUrl ? 'baixado' : 'erro';
+      if (res.erro) console.warn(`⚠️ [META] Erro download áudio: ${res.erro}`);
+      console.log(`🎵 [META] Áudio: status=${downloadStatus} | url=${arquivoUrl?.substring(0, 60)}`);
+    } else {
+      downloadStatus = 'pendente';
+      console.warn(`⚠️ [META] Áudio sem mediaId ou accessToken — marcado como pendente`);
+    }
   } else if (message.type === 'video') {
     tipoConteudo = 'video';
     texto = message.video?.caption || '[Vídeo]';
-    arquivoUrl = message.video?.id || null;
-    arquivoNome = `video_${telefoneLimpo}.mp4`;
+    mediaId = message.video?.id;
+    mimeType = message.video?.mime_type || 'video/mp4';
+    if (mediaId && accessToken) {
+      const res = await baixarMidiaMeta(base44, mediaId, accessToken, `video_${telefoneLimpo}`);
+      arquivoUrl = res.arquivo_url;
+      arquivoNome = res.arquivo_nome;
+      downloadStatus = arquivoUrl ? 'baixado' : 'erro';
+    }
   } else if (message.type === 'document') {
     tipoConteudo = 'documento';
     texto = message.document?.caption || message.document?.filename || '[Documento]';
-    arquivoUrl = message.document?.id || null;
-    arquivoNome = message.document?.filename || `documento_${telefoneLimpo}`;
+    mediaId = message.document?.id;
+    mimeType = message.document?.mime_type || 'application/octet-stream';
+    arquivoNome = message.document?.filename;
+    if (mediaId && accessToken) {
+      const res = await baixarMidiaMeta(base44, mediaId, accessToken, `doc_${telefoneLimpo}`);
+      arquivoUrl = res.arquivo_url;
+      if (!arquivoNome) arquivoNome = res.arquivo_nome;
+      downloadStatus = arquivoUrl ? 'baixado' : 'erro';
+    }
   } else if (message.type === 'button') {
-    tipoConteudo = 'texto';
     texto = message.button?.text || message.button?.payload || '[Botão]';
   } else if (message.type === 'interactive') {
-    tipoConteudo = 'texto';
-    texto = message.interactive?.button_reply?.title
-         || message.interactive?.list_reply?.title
-         || '[Interativo]';
+    texto = message.interactive?.button_reply?.title || message.interactive?.list_reply?.title || '[Interativo]';
   } else {
     texto = `[${message.type || 'Mensagem'}]`;
   }
 
-  console.log(`📱 Mensagem de ${telefoneLimpo}: "${(texto || '').slice(0, 60)}"`);
-
-  // phoneNumberId já foi declarado acima — reutilizar
-  let empresas = [];
-
-  if (phoneNumberId) {
-    // Buscar todas empresas com access_token configurado e comparar phone_number_id
-    const todasEmpresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, null, 50);
-    const match = todasEmpresas.filter(e => String(e.whatsapp_phone_number_id || '').trim() === phoneNumberId);
-    if (match.length > 0) {
-      empresas = match;
-      console.log(`🏢 Empresa encontrada por phone_number_id (${phoneNumberId}): ${match[0].nome}`);
-    } else {
-      console.log(`⚠️ Nenhuma empresa com phone_number_id=${phoneNumberId}. IDs cadastrados: ${todasEmpresas.map(e => e.whatsapp_phone_number_id).join(', ')}`);
-      // fallback: pegar a que tem access_token configurado
-      const comToken = todasEmpresas.filter(e => e.whatsapp_access_token && e.whatsapp_phone_number_id);
-      empresas = comToken.length > 0 ? [comToken[0]] : [todasEmpresas[0]];
-      console.log(`🏢 Fallback empresa: ${empresas[0]?.nome}`);
-    }
-  } else {
-    empresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, null, 1);
-    console.log(`🏢 Empresa por status ativa (sem phone_number_id no payload): ${empresas?.length || 0}`);
-  }
-  if (!empresas || empresas.length === 0) {
-    console.log('❌ Nenhuma empresa encontrada');
-    return;
-  }
-  const empresa = empresas[0];
-  const empresaId = empresa.id;
-  console.log(`🏢 Empresa: ${empresa.nome} (${empresaId})`);
-
-  // Buscar ou criar cliente com foto de perfil permanente
   const nomePerfil = value.contacts?.[0]?.profile?.name || null;
-  
-  // Buscar foto de perfil via Meta Graph API e fazer upload permanente
-  let fotoUrlPermanente = null;
-  try {
-    const accessTokenTemp = empresa.whatsapp_access_token;
-    if (accessTokenTemp) {
-      // Buscar perfil do contato via Meta
-      const profileResp = await fetch(`https://graph.facebook.com/v19.0/${telefoneLimpo}?fields=profile_pic&access_token=${accessTokenTemp}`);
-      if (profileResp.ok) {
-        const profileData = await profileResp.json();
-        const fotoTempUrl = profileData?.profile_pic;
-        if (fotoTempUrl) {
-          // Download e upload permanente
-          const fotoRes = await fetch(fotoTempUrl);
-          if (fotoRes.ok) {
-            const arrayBuffer = await fotoRes.arrayBuffer();
-            const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
-            const file = new File([blob], `foto_${telefoneLimpo}.jpg`, { type: 'image/jpeg' });
-            const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file });
-            if (uploadRes?.file_url) {
-              fotoUrlPermanente = uploadRes.file_url;
-              console.log(`✅ Foto perfil upload permanente: ${uploadRes.file_url}`);
-            }
-          }
-        }
-      }
-    }
-  } catch (fotoErr) {
-    console.warn('⚠️ Erro ao buscar foto perfil Meta:', fotoErr.message);
-  }
 
-  let clientes = await base44.asServiceRole.entities.Cliente.filter({ empresa_id: empresaId, celular: telefoneLimpo }, null, 1);
-  let cliente;
-  if (clientes.length === 0) {
-    const nomeContato = nomePerfil || `Contato ${telefoneLimpo}`;
-    cliente = await base44.asServiceRole.entities.Cliente.create({
-      empresa_id: empresaId,
-      tipo_pessoa: 'Física',
-      celular: telefoneLimpo,
-      nome_completo: nomeContato,
-      status: 'ativo',
-    });
-    console.log(`✨ Cliente criado: ${cliente.id}`);
-  } else {
-    cliente = clientes[0];
-    console.log(`👤 Cliente: ${cliente.id} (${cliente.nome_completo})`);
-  }
-
-  // Buscar/atualizar ContatoWhatsapp com foto permanente
+  // Buscar/criar ContatoWhatsapp
   const contatosExistentes = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
     { empresa_id: empresaId, telefone: telefoneLimpo }, null, 1
   );
-  
   if (contatosExistentes.length > 0) {
-    const contatoUpdate = { ultima_atualizacao: new Date().toISOString() };
-    if (!contatosExistentes[0].nome_fixo && nomePerfil && !contatosExistentes[0].nome) {
-      contatoUpdate.nome = nomePerfil;
-    }
-    if (fotoUrlPermanente && fotoUrlPermanente !== contatosExistentes[0].foto_url) {
-      contatoUpdate.foto_url = fotoUrlPermanente;
-    }
-    await base44.asServiceRole.entities.ContatoWhatsapp.update(contatosExistentes[0].id, contatoUpdate);
-    console.log(`✅ Contato atualizado: ${contatosExistentes[0].id}`);
-  } else {
+    const upd = { ultima_atualizacao: new Date().toISOString() };
+    if (!contatosExistentes[0].nome_fixo && nomePerfil && !contatosExistentes[0].nome) upd.nome = nomePerfil;
+    await base44.asServiceRole.entities.ContatoWhatsapp.update(contatosExistentes[0].id, upd).catch(() => {});
+  } else if (telefoneLimpo) {
     await base44.asServiceRole.entities.ContatoWhatsapp.create({
-      empresa_id: empresaId,
-      telefone: telefoneLimpo,
-      nome: nomePerfil || telefoneLimpo,
-      foto_url: fotoUrlPermanente,
-      ultima_atualizacao: new Date().toISOString()
-    });
-    console.log(`✨ Contato criado com foto permanente`);
+      empresa_id: empresaId, telefone: telefoneLimpo,
+      nome: nomePerfil || telefoneLimpo, ultima_atualizacao: new Date().toISOString()
+    }).catch(() => {});
   }
 
-  // Variações do telefone (com/sem nono dígito)
-  const tel12 = telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13
-    ? telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5) : null;
-  const tel13 = telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12
-    ? telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4) : null;
+  // Variações do telefone
+  const tel12 = telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13 ? telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5) : null;
+  const tel13 = telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12 ? telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4) : null;
   const variacoes = [telefoneLimpo, tel12, tel13].filter(Boolean);
 
-  // Buscar TODAS as conversas do número (pode ter duplicatas) — pegar a mais ANTIGA (primeira criada)
-  const todasConversasEmpresa = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-    empresa_id: empresaId,
-  }, 'created_date', 500);
+  // Buscar conversa existente
+  const todasConvs = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
+    { empresa_id: empresaId }, 'created_date', 500
+  );
 
-  const conversasDoNumero = todasConversasEmpresa.filter(c => {
+  const conversasDoNumero = todasConvs.filter(c => {
     const t = String(c.cliente_telefone || '').replace(/\D/g, '');
     return variacoes.includes(t);
   });
@@ -337,59 +279,87 @@ async function salvarMensagem(base44, value, message) {
   let conversa = null;
 
   if (conversasDoNumero.length > 0) {
+    // Consolidar duplicatas — manter a mais antiga
     conversa = conversasDoNumero[0];
-
-    if (conversasDoNumero.length > 1) {
-      console.log(`⚠️ ${conversasDoNumero.length} conversas duplicadas para ${telefoneLimpo} — consolidando...`);
-      for (const dup of conversasDoNumero.slice(1)) {
-        const msgsDup = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ conversa_id: dup.id }, null, 500);
-        for (const m of msgsDup) {
-          await base44.asServiceRole.entities.MensagemWhatsapp.update(m.id, { conversa_id: conversa.id });
-        }
-        await base44.asServiceRole.entities.ConversaWhatsapp.update(dup.id, { status: 'arquivada' });
-        console.log(`🗄️ Conversa ${dup.id} arquivada (${msgsDup.length} msgs)`);
+    for (const dup of conversasDoNumero.slice(1)) {
+      const msgsDup = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ conversa_id: dup.id }, null, 500);
+      for (const m of msgsDup) {
+        await base44.asServiceRole.entities.MensagemWhatsapp.update(m.id, { conversa_id: conversa.id });
       }
+      await base44.asServiceRole.entities.ConversaWhatsapp.update(dup.id, { status: 'arquivada' });
+      console.log(`🗄️ [META] Duplicata ${dup.id} arquivada`);
     }
 
-    const update = {
-      instancia: 'META_OFICIAL',
-      tipo_conexao: 'meta_oficial',
-      canal_atendimento: 'meta_oficial',
-      canal_preferencial: 'meta_oficial',
+    // REGRA CRÍTICA: só atualizar canal_origem se ainda não está definido
+    // Se já está meta → manter meta. Se era evolution e chegou mensagem Meta → não trocar automaticamente.
+    const canalOrigemAtual = conversa.canal_origem;
+    const updateData = {
+      ultima_mensagem: String(texto || '').slice(0, 200),
+      data_ultima_mensagem: new Date().toISOString(),
+      ultimo_remetente: 'cliente',
       status: 'ativa',
-      ...(fotoUrlPermanente && !conversa.foto_url ? { foto_url: fotoUrlPermanente } : {})
+      // Sempre atualizar phone_number_id da Meta
+      phone_number_id_meta: phoneNumberId,
+      // last_inbound_provider é sempre atualizado (só diagnóstico)
+      last_inbound_provider: 'whatsapp_meta',
     };
-    if (!conversa.cliente_telefone || conversa.cliente_telefone !== telefoneLimpo) update.cliente_telefone = telefoneLimpo;
-    if (!conversa.cliente_id && cliente?.id) update.cliente_id = cliente.id;
-    if (!conversa.cliente_nome && cliente?.nome_completo) update.cliente_nome = cliente.nome_completo;
-    await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, update);
-    console.log(`💬 Conversa principal: ${conversa.id}`);
+
+    // Campos de canal: só definir se ainda não têm valor travado
+    if (!canalOrigemAtual) {
+      // Primeira mensagem Meta — travar como meta
+      updateData.canal_origem = 'meta';
+      updateData.provider = 'whatsapp_meta';
+      updateData.locked_provider = true;
+      updateData.tipo_conexao = 'meta_oficial';
+      updateData.instancia = 'META_OFICIAL';
+      updateData.canal_atendimento = 'meta_oficial';
+      updateData.canal_preferencial = 'meta_oficial';
+      console.log(`🔒 [META] Canal travado como META para conversa ${conversa.id}`);
+    } else if (canalOrigemAtual === 'meta') {
+      // Já é meta — apenas confirmar tipo_conexao
+      updateData.tipo_conexao = 'meta_oficial';
+      updateData.instancia = 'META_OFICIAL';
+    } else {
+      // Era evolution mas chegou mensagem Meta — NÃO trocar automaticamente
+      console.log(`⚠️ [META] Conversa ${conversa.id} tem canal_origem=${canalOrigemAtual} — não sobrescrevendo com Meta automaticamente`);
+    }
+
+    await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, updateData);
+    console.log(`💬 [META] Conversa atualizada: ${conversa.id} | canal_origem=${canalOrigemAtual || 'meta (novo)'}`);
   } else {
+    // Criar nova conversa — canal_origem=meta travado imediatamente
     conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
       empresa_id: empresaId,
-      cliente_id: cliente?.id,
-      cliente_nome: cliente?.nome_completo || telefoneLimpo,
+      cliente_nome: nomePerfil || telefoneLimpo,
       cliente_telefone: telefoneLimpo,
       whatsapp_id: telefoneLimpo,
       status: 'ativa',
       tipo_conexao: 'meta_oficial',
       instancia: 'META_OFICIAL',
-      foto_url: fotoUrlPermanente,
+      canal_origem: 'meta',
+      provider: 'whatsapp_meta',
+      locked_provider: true,
+      phone_number_id_meta: phoneNumberId,
+      canal_atendimento: 'meta_oficial',
+      canal_preferencial: 'meta_oficial',
+      last_inbound_provider: 'whatsapp_meta',
+      ultima_mensagem: String(texto || '').slice(0, 200),
+      data_ultima_mensagem: new Date().toISOString(),
+      ultimo_remetente: 'cliente',
     });
-    console.log(`✨ Conversa criada: ${conversa.id}`);
+    console.log(`✨ [META] Conversa criada (canal=meta travado): ${conversa.id}`);
   }
 
   // Verificar duplicata
-  const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
-    conversa_id: conversa.id,
-    whatsapp_message_id: String(msgId),
-  }, null, 1);
+  const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+    { conversa_id: conversa.id, whatsapp_message_id: String(msgId) }, null, 1
+  );
   if (existentes.length > 0) {
-    console.log('⏭️ Duplicata ignorada:', msgId);
+    console.log(`⏭️ [META] Duplicata ignorada: ${msgId}`);
     return;
   }
 
-  // Salvar mensagem — garantir que mídia é salva com tipo_conteudo correto
+  // Salvar mensagem
   const mensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
     conversa_id: conversa.id,
     empresa_id: empresaId,
@@ -399,34 +369,19 @@ async function salvarMensagem(base44, value, message) {
     arquivo_url: arquivoUrl,
     arquivo_nome: arquivoNome,
     arquivo_tamanho: 0,
+    provider: 'whatsapp_meta',
+    media_id: mediaId || null,
+    mime_type: mimeType || null,
+    download_status: downloadStatus,
     whatsapp_message_id: String(msgId),
     data_envio: new Date(Number(timestamp) * 1000).toISOString(),
     status: 'entregue',
   });
 
-  if (arquivoUrl) {
-    console.log(`✅ Mídia salva: tipo=${tipoConteudo} | nome=${arquivoNome} | url=${arquivoUrl?.substring(0, 80)}...`);
-  }
-
-  // Atualizar última mensagem da conversa — SEMPRE forçar canal meta_oficial
-  const updateConversaPublico = {
-    ultima_mensagem: String(texto || '').slice(0, 100),
-    data_ultima_mensagem: new Date().toISOString(),
-    tipo_conexao: 'meta_oficial',
-    ultima_origem_recebida: 'meta_oficial',
-    instancia: 'META_OFICIAL',
-    canal_atendimento: 'meta_oficial',
-    canal_preferencial: 'meta_oficial',
-    phone_number_id_meta: phoneNumberId,
-  };
-
-  await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, updateConversaPublico);
-
-  console.log(`✅ Mensagem salva! ID: ${mensagem.id}`);
+  console.log(`✅ [META] Mensagem salva: ${mensagem.id} | tipo=${tipoConteudo} | download=${downloadStatus}`);
 }
 
 async function salvarMensagemInstagram(base44, igAccountId, messaging) {
-  // Ignorar echo (mensagem enviada pelo próprio agente)
   if (messaging.message?.is_echo) return;
 
   const senderId = String(messaging.sender?.id || '');
@@ -435,14 +390,13 @@ async function salvarMensagemInstagram(base44, igAccountId, messaging) {
   if (!msg || !senderId) return;
 
   const msgId = msg.mid || '';
-  console.log(`📸 Instagram DM de ${senderId} → conta ${recipientId}: ${msg.text || '[mídia]'}`);
+  console.log(`📸 [IG] De ${senderId} → conta ${recipientId}`);
 
-  // Detectar tipo de conteúdo
   let tipoConteudo = 'texto';
   let texto = msg.text || null;
   let arquivoUrl = null;
 
-  if (msg.attachments && msg.attachments.length > 0) {
+  if (msg.attachments?.length > 0) {
     const att = msg.attachments[0];
     if (att.type === 'image') { tipoConteudo = 'imagem'; texto = texto || '[Imagem]'; arquivoUrl = att.payload?.url || null; }
     else if (att.type === 'video') { tipoConteudo = 'video'; texto = texto || '[Vídeo]'; arquivoUrl = att.payload?.url || null; }
@@ -451,102 +405,35 @@ async function salvarMensagemInstagram(base44, igAccountId, messaging) {
   }
   if (!texto) texto = '[Mensagem]';
 
-  // Buscar empresa pelo instagram_user_id (recipientId = ID da conta IG) ou meta_business_id
   const todasEmpresas = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, null, 50);
   let empresa = todasEmpresas.find(e => String(e.instagram_user_id || '').trim() === recipientId);
   if (!empresa) empresa = todasEmpresas.find(e => String(e.meta_business_id || '').trim() === recipientId);
-  if (!empresa) empresa = todasEmpresas.find(e => e.instagram_access_token); // fallback por token IG
-  if (!empresa) empresa = todasEmpresas.find(e => e.whatsapp_access_token); // fallback geral
-  if (!empresa) { console.log('❌ Nenhuma empresa encontrada para IG account:', recipientId); return; }
-  console.log(`🏢 Empresa IG encontrada: ${empresa.nome} | instagram_user_id: ${empresa.instagram_user_id} | recipientId: ${recipientId}`);
+  if (!empresa) empresa = todasEmpresas.find(e => e.instagram_access_token);
+  if (!empresa) { console.log('❌ [IG] Nenhuma empresa encontrada para account:', recipientId); return; }
 
   const empresaId = empresa.id;
-  console.log(`🏢 Empresa IG: ${empresa.nome} (${empresaId})`);
-
-  // Usar senderId como identificador do contato Instagram
   const igContactId = `ig_${senderId}`;
 
-  // Buscar nome, foto e username real do usuário via Graph API do Instagram
-  let igNome = null;
-  let igFoto = null;
-  let igUsername = null;
+  let igNome = null, igFoto = null, igUsername = null;
   try {
     const igToken = empresa.instagram_access_token;
     if (igToken) {
       const profileResp = await fetch(`https://graph.facebook.com/v21.0/${senderId}?fields=name,profile_pic,username&access_token=${igToken}`);
       if (profileResp.ok) {
         const profileData = await profileResp.json();
-        if (profileData.name) igNome = profileData.name;
-        if (profileData.profile_pic) igFoto = profileData.profile_pic;
-        if (profileData.username) igUsername = profileData.username;
-        console.log(`👤 Perfil IG: ${igNome} (@${igUsername}) | foto: ${igFoto ? 'sim' : 'não'}`);
-      } else {
-        const errTxt = await profileResp.text().catch(() => '');
-        console.log(`⚠️ Falha ao buscar perfil IG: ${profileResp.status} ${errTxt}`);
+        igNome = profileData.name; igFoto = profileData.profile_pic; igUsername = profileData.username;
       }
     }
-  } catch (profileErr) {
-    console.log('⚠️ Erro ao buscar perfil Instagram:', profileErr.message);
-  }
-
-  // Fallback: usar ID como nome apenas se não conseguiu nome real
+  } catch (_) {}
   if (!igNome) igNome = `Instagram ${senderId}`;
 
-  // Buscar ou criar cliente
-  let clientes = await base44.asServiceRole.entities.Cliente.filter({ empresa_id: empresaId, celular: igContactId }, null, 1);
-  let cliente;
-  if (clientes.length === 0) {
-    cliente = await base44.asServiceRole.entities.Cliente.create({
-      empresa_id: empresaId,
-      tipo_pessoa: 'Física',
-      celular: igContactId,
-      nome_completo: igNome,
-      status: 'ativo',
-    });
-  } else {
-    cliente = clientes[0];
-    // Atualizar nome se ainda for o padrão (ID numérico) e agora temos o nome real
-    const nomeEhPadrao = cliente.nome_completo?.startsWith('Instagram ') || cliente.nome_completo === senderId;
-    if (nomeEhPadrao && igNome && !igNome.startsWith('Instagram ')) {
-      await base44.asServiceRole.entities.Cliente.update(cliente.id, { nome_completo: igNome });
-      cliente.nome_completo = igNome;
-    }
-  }
-
-  // Atualizar ou criar ContatoWhatsapp com dados do Instagram
-  try {
-    const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, telefone: igContactId }, null, 1);
-    const contatoUpdate = {
-      ultima_atualizacao: new Date().toISOString(),
-      ...(igFoto ? { foto_url: igFoto } : {}),
-      ...(igUsername ? { observacoes: `@${igUsername}` } : {}),
-    };
-    if (contatos.length > 0) {
-      const cont = contatos[0];
-      if (!cont.nome_fixo && igNome && !igNome.startsWith('Instagram ')) contatoUpdate.nome = igNome;
-      await base44.asServiceRole.entities.ContatoWhatsapp.update(cont.id, contatoUpdate);
-    } else {
-      await base44.asServiceRole.entities.ContatoWhatsapp.create({
-        empresa_id: empresaId,
-        telefone: igContactId,
-        nome: igNome,
-        foto_url: igFoto,
-        observacoes: igUsername ? `@${igUsername}` : null,
-        ultima_atualizacao: new Date().toISOString(),
-      });
-    }
-  } catch (contErr) {
-    console.log('⚠️ Erro ao salvar ContatoWhatsapp IG:', contErr.message);
-  }
-
-  // Buscar ou criar conversa
-  const todasConversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({ empresa_id: empresaId }, 'created_date', 500);
-  let conversa = todasConversas.find(c => String(c.cliente_telefone || '') === igContactId);
+  // Buscar/criar conversa Instagram
+  const todasConvs = await base44.asServiceRole.entities.ConversaWhatsapp.filter({ empresa_id: empresaId }, 'created_date', 500);
+  let conversa = todasConvs.find(c => String(c.cliente_telefone || '') === igContactId);
 
   if (!conversa) {
     conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
       empresa_id: empresaId,
-      cliente_id: cliente?.id,
       cliente_nome: igNome,
       cliente_telefone: igContactId,
       whatsapp_id: igContactId,
@@ -554,8 +441,10 @@ async function salvarMensagemInstagram(base44, igAccountId, messaging) {
       status: 'ativa',
       tipo_conexao: 'instagram',
       instancia: 'INSTAGRAM',
+      canal_origem: 'instagram',
+      provider: 'instagram',
+      locked_provider: true,
     });
-    console.log(`✨ Conversa Instagram criada: ${conversa.id}`);
   } else {
     await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
       status: 'ativa',
@@ -566,21 +455,21 @@ async function salvarMensagemInstagram(base44, igAccountId, messaging) {
     });
   }
 
-  // Verificar duplicata
   if (msgId) {
-    const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ conversa_id: conversa.id, whatsapp_message_id: msgId }, null, 1);
-    if (existentes.length > 0) { console.log('⏭️ Duplicata IG ignorada:', msgId); return; }
+    const existentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+      { conversa_id: conversa.id, whatsapp_message_id: msgId }, null, 1
+    );
+    if (existentes.length > 0) { console.log('⏭️ [IG] Duplicata ignorada:', msgId); return; }
   }
 
-  // Salvar mensagem
   const timestamp = messaging.timestamp || Math.floor(Date.now() / 1000);
   const mensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
-    conversa_id: conversa.id,
-    empresa_id: empresaId,
-    remetente: 'cliente',
-    tipo_conteudo: tipoConteudo,
+    conversa_id: conversa.id, empresa_id: empresaId,
+    remetente: 'cliente', tipo_conteudo: tipoConteudo,
     texto: String(texto).slice(0, 5000),
     arquivo_url: arquivoUrl,
+    provider: 'instagram',
+    download_status: 'nao_aplicavel',
     whatsapp_message_id: msgId,
     data_envio: new Date(Number(timestamp) * 1000).toISOString(),
     status: 'entregue',
@@ -590,26 +479,22 @@ async function salvarMensagemInstagram(base44, igAccountId, messaging) {
     ultima_mensagem: String(texto).slice(0, 100),
     data_ultima_mensagem: new Date().toISOString(),
     ultimo_remetente: 'cliente',
-    instancia: 'INSTAGRAM',
   });
 
-  console.log(`✅ Mensagem Instagram salva! ID: ${mensagem.id}`);
+  console.log(`✅ [IG] Mensagem salva: ${mensagem.id}`);
 }
 
 async function atualizarStatusMensagem(base44, status) {
   const msgId = status.id;
   if (!msgId) return;
-
   const statusMap = { sent: 'enviada', delivered: 'entregue', read: 'lida', failed: 'erro' };
   const novoStatus = statusMap[status.status];
   if (!novoStatus) return;
-
-  const msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
-    whatsapp_message_id: String(msgId),
-  }, null, 1);
-
+  const msgs = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+    { whatsapp_message_id: String(msgId) }, null, 1
+  );
   if (msgs.length > 0) {
     await base44.asServiceRole.entities.MensagemWhatsapp.update(msgs[0].id, { status: novoStatus });
-    console.log(`📬 Status: ${msgId} → ${novoStatus}`);
+    console.log(`📬 [META] Status: ${msgId} → ${novoStatus}`);
   }
 }

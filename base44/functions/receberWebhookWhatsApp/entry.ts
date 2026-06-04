@@ -755,6 +755,16 @@ async function processarWebhook(req, rawBody, base44) {
         updateData.canal_atendimento = 'evolution';
         updateData.canal_preferencial = 'evolution';
       }
+      // Se ainda não tem canal_origem definido, travar como evolution
+      if (!conversa.canal_origem) {
+        updateData.canal_origem = 'evolution';
+        updateData.provider = 'evolution';
+        updateData.locked_provider = true;
+        updateData.instance_id = instanceFinal;
+        console.log(`🔒 [EVO] Canal travado como EVOLUTION para conversa ${conversa.id}`);
+      }
+      // Sempre atualizar last_inbound_provider para diagnóstico
+      updateData.last_inbound_provider = 'evolution';
     }
 
     // Se a mensagem foi enviada pelo vendedor (fora do CRM), marcar como em atendimento por 10 min
@@ -801,7 +811,12 @@ async function processarWebhook(req, rawBody, base44) {
       ultimo_remetente: ultimoRemetente,
       ultima_mensagem: conteudo.substring(0, 200),
       data_ultima_mensagem: new Date().toISOString(),
-      tipo_conexao: tipoConexao, 
+      tipo_conexao: tipoConexao,
+      canal_origem: 'evolution',
+      provider: 'evolution',
+      locked_provider: true,
+      instance_id: instanceFinal,
+      last_inbound_provider: 'evolution',
       colaborador_id: colaboradorId || '',
       instancia: instanceFinal
     };
@@ -886,6 +901,8 @@ async function processarWebhook(req, rawBody, base44) {
     arquivo_url: arquivo_url || null,
     arquivo_nome: arquivo_nome || null,
     arquivo_tamanho: arquivo_tamanho || 0,
+    provider: 'evolution',
+    download_status: arquivo_url ? 'baixado' : 'nao_aplicavel',
     whatsapp_message_id: messageId,
     data_envio: new Date().toISOString(),
     status: remetente === 'vendedor' ? 'enviada' : 'pendente'

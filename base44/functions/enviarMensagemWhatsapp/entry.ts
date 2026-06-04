@@ -102,18 +102,28 @@ Deno.serve(async (req) => {
     const instanciaConversa = conversaDoBanco?.instancia || '';
     const tipoConexaoConversa = conversaDoBanco?.tipo_conexao || '';
 
-    // CANAL FIXO DO ATENDIMENTO
-    // Esse campo define por onde a resposta deve sair.
-    // Não deve ser alterado automaticamente por webhook.
+    // ── FONTE DE VERDADE DO CANAL ────────────────────────────────────────────
+    // Ordem de prioridade (da mais confiável para menos):
+    // 1. canal_origem (novo campo travado)
+    // 2. provider (novo campo travado)
+    // 3. canal_atendimento (legado)
+    // 4. tipo_conexao (legado)
+    const canalOrigem = conversaDoBanco?.canal_origem || null;
+    const providerSalvo = conversaDoBanco?.provider || null;
+
     const canalAtendimento =
+      canalOrigem === 'meta' ? 'meta_oficial' :
+      canalOrigem === 'instagram' ? 'instagram' :
+      canalOrigem === 'evolution' ? 'evolution' :
+      providerSalvo === 'whatsapp_meta' ? 'meta_oficial' :
+      providerSalvo === 'instagram' ? 'instagram' :
       conversaDoBanco?.canal_atendimento ||
       conversaDoBanco?.canal_preferencial ||
-      conversaDoBanco?.provider_ativo ||
       tipoConexaoConversa ||
       'evolution';
 
-    console.log('🧭 Canal atendimento fixo:', canalAtendimento);
-    console.log('📥 Última origem/tipo_conexao:', tipoConexaoConversa);
+    console.log(`🧭 [ENVIO] canal_origem=${canalOrigem} | provider=${providerSalvo} | canalAtendimento resolvido=${canalAtendimento}`);
+    console.log(`📥 [ENVIO] tipo_conexao=${tipoConexaoConversa} | instancia=${instanciaConversa}`);
 
     // ── INSTAGRAM DIRECT ──────────────────────────────────────────────────
     // Detectar Instagram independente do forcar_api enviado pelo frontend
@@ -315,9 +325,22 @@ Deno.serve(async (req) => {
         let nomeArquivo = arquivo.nome || `arquivo_${Date.now()}`;
 
         if (mediaType === 'audio') {
-          // Meta exige audio/mp4 ou audio/ogg; codecs=opus
-          mimeType = 'audio/ogg';
-          nomeArquivo = nomeArquivo.replace(/\.[^.]+$/, '') + '.ogg';
+          // Meta aceita: audio/aac, audio/mp4, audio/mpeg, audio/amr, audio/ogg (codecs=opus apenas)
+          // O CRM grava em webm/ogg. Enviar como audio/ogg que é aceito pela Meta.
+          // NÃO usar audio/webm pois a Meta rejeita.
+          if (mimeType.includes('webm') || mimeType.includes('ogg') || mimeType === 'audio/opus') {
+            mimeType = 'audio/ogg; codecs=opus';
+          } else if (mimeType.includes('mp3') || mimeType.includes('mpeg')) {
+            mimeType = 'audio/mpeg';
+          } else if (mimeType.includes('mp4') || mimeType.includes('m4a') || mimeType.includes('aac')) {
+            mimeType = 'audio/aac';
+          } else {
+            // Fallback seguro
+            mimeType = 'audio/ogg; codecs=opus';
+          }
+          const ext = mimeType.includes('mpeg') ? 'mp3' : mimeType.includes('aac') ? 'aac' : 'ogg';
+          nomeArquivo = nomeArquivo.replace(/\.[^.]+$/, '') + '.' + ext;
+          console.log(`🎵 [META-UPLOAD-AUDIO] mimeType original=${tipoOriginal} → enviando como ${mimeType} | nome=${nomeArquivo}`);
         }
 
         // Montar FormData corretamente para Deno
@@ -618,6 +641,8 @@ Deno.serve(async (req) => {
         arquivo_url: arquivo_url_permanente,
         arquivo_nome: arquivo?.nome || null,
         arquivo_tamanho: 0,
+        provider: usaMetaOficial ? 'whatsapp_meta' : 'evolution',
+        download_status: 'nao_aplicavel',
         resposta_para_texto: resposta_para_texto || null,
         resposta_para_nome: resposta_para_nome || null,
         whatsapp_message_id: (usaMetaOficial ? null : messageIdEvolution) || result?.key?.id || result?.messageId || result?.id || `temp_${Date.now()}`,

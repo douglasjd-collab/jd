@@ -56,29 +56,50 @@ export default function ChatHeader({
     conversaSelecionada.instancia === 'INSTAGRAM' ||
     String(conversaSelecionada.cliente_telefone || '').startsWith('ig_');
 
-  // Canal efetivo: prioriza override local, depois dados da conversa
+  // ── CANAL FIXO: lido do banco, NÃO recalculado ──────────────────────────
+  // Ordem de prioridade: novo campo canal_origem > provider > campos legados
+  const canalOrigemBanco = conversaSelecionada.canal_origem || null;
+  const providerBanco = conversaSelecionada.provider || null;
+  
+  // Override local só se usuário trocou manualmente — NÃO afeta canal_origem do banco
   const tipoConexaoEfetivo = canalOverride || conversaSelecionada.tipo_conexao;
-  const instanciaEfetiva = canalOverride === 'meta_oficial' ? 'META_OFICIAL' : (canalOverride === 'empresa' ? '' : conversaSelecionada.instancia);
 
   const ehMeta =
     !ehInstagram && (
-      tipoConexaoEfetivo === 'meta_oficial' ||
-      instanciaEfetiva === 'META_OFICIAL' ||
-      instanciaEfetiva === 'meta_oficial' ||
-      !!conversaSelecionada.phone_number_id_meta
+      canalOverride === 'meta_oficial' ||
+      canalOrigemBanco === 'meta' ||
+      providerBanco === 'whatsapp_meta' ||
+      (!canalOverride && (
+        tipoConexaoEfetivo === 'meta_oficial' ||
+        conversaSelecionada.instancia === 'META_OFICIAL' ||
+        !!conversaSelecionada.phone_number_id_meta
+      ))
     );
 
+  // Troca MANUAL de canal — única forma legítima de alterar canal_origem
   const alternarApi = async () => {
     if (ehMeta) {
       setCanalOverride('empresa');
-      await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { tipo_conexao: 'empresa', instancia: '' });
-      setConversaSelecionada(prev => ({ ...prev, tipo_conexao: 'empresa', instancia: '' }));
-      toast.success('Alterado para Evolution');
+      await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
+        tipo_conexao: 'empresa', instancia: '',
+        canal_origem: 'evolution', provider: 'evolution', locked_provider: true
+      });
+      setConversaSelecionada(prev => ({
+        ...prev, tipo_conexao: 'empresa', instancia: '',
+        canal_origem: 'evolution', provider: 'evolution'
+      }));
+      toast.success('Alterado para Evolution API');
     } else {
       setCanalOverride('meta_oficial');
-      await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL' });
-      setConversaSelecionada(prev => ({ ...prev, tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL' }));
-      toast.success('Alterado para Meta Oficial');
+      await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
+        tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL',
+        canal_origem: 'meta', provider: 'whatsapp_meta', locked_provider: true
+      });
+      setConversaSelecionada(prev => ({
+        ...prev, tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL',
+        canal_origem: 'meta', provider: 'whatsapp_meta'
+      }));
+      toast.success('Alterado para API Oficial Meta');
     }
     queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
   };

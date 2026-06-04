@@ -48,7 +48,7 @@
     },
     "arquivo_url": {
       "type": "string",
-      "description": "URL do arquivo (imagem, \u00e1udio, v\u00eddeo, PDF)"
+      "description": "URL p\u00fablica/permanente do arquivo (imagem, \u00e1udio, v\u00eddeo, PDF) \u2014 ap\u00f3s download e upload no storage"
     },
     "arquivo_nome": {
       "type": "string",
@@ -58,9 +58,41 @@
       "type": "number",
       "description": "Tamanho do arquivo em bytes"
     },
+    "provider": {
+      "type": "string",
+      "enum": [
+        "whatsapp_meta",
+        "evolution",
+        "instagram"
+      ],
+      "description": "Provider pelo qual esta mensagem foi enviada ou recebida"
+    },
+    "media_id": {
+      "type": "string",
+      "description": "ID da m\u00eddia na Meta API (para mensagens recebidas via Meta que ainda precisam de download)"
+    },
+    "mime_type": {
+      "type": "string",
+      "description": "Tipo MIME da m\u00eddia (ex: audio/ogg, image/jpeg)"
+    },
+    "download_status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "baixado",
+        "erro",
+        "nao_aplicavel"
+      ],
+      "default": "nao_aplicavel",
+      "description": "Status do download de m\u00eddia recebida. pendente=aguardando download, baixado=arquivo_url populado, erro=falha no download"
+    },
+    "download_erro": {
+      "type": "string",
+      "description": "Mensagem de erro do download de m\u00eddia, se houver"
+    },
     "whatsapp_message_id": {
       "type": "string",
-      "description": "ID da mensagem no WhatsApp/Evolution"
+      "description": "ID da mensagem no WhatsApp/Evolution/Meta"
     },
     "data_envio": {
       "type": "string",
