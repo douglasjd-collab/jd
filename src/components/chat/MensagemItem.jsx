@@ -771,17 +771,18 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             <p className="text-xs font-semibold opacity-75">
               {mensagem.atendente_nome || mensagem.usuario_nome || 'Atendente'}
             </p>
-            {mensagem.provider === 'whatsapp_meta' ? (
-              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-green-500/30 text-green-100 border border-green-400/30 leading-none">
-                <span className="w-1 h-1 rounded-full bg-green-300 inline-block" />
+            {mensagem.provider === 'whatsapp_meta' && (
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20 text-white leading-none">
+                <span className="w-1 h-1 rounded-full bg-white inline-block opacity-90" />
                 Meta
               </span>
-            ) : mensagem.provider === 'evolution' || mensagem.provider === 'whatsapp' ? (
-              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-400/30 text-blue-100 border border-blue-300/30 leading-none">
-                <span className="w-1 h-1 rounded-full bg-blue-200 inline-block" />
+            )}
+            {mensagem.provider === 'evolution' && (
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20 text-white leading-none">
+                <span className="w-1 h-1 rounded-full bg-white inline-block opacity-90" />
                 Evolution
               </span>
-            ) : null}
+            )}
           </div>
         )}
         {!isGrupo && !isVendedor && mensagem.usuario_nome && (
