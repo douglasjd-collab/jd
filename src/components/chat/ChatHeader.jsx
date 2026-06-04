@@ -96,14 +96,22 @@ export default function ChatHeader({
                   <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
                   Instagram
                 </span>
+              ) : ehMeta ? (
+                <span
+                  title="Respondendo via Meta Oficial"
+                  className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm bg-green-500 cursor-default"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
+                  Meta Oficial
+                </span>
               ) : (
                 <button
                   onClick={alternarApi}
-                  title={ehMeta ? 'Respondendo via Meta Oficial — clique para trocar para Evolution' : 'Respondendo via Evolution — clique para trocar para Meta Oficial'}
-                  className={`inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 ${ehMeta ? 'bg-green-500' : 'bg-blue-500'}`}
+                  title="Respondendo via Evolution — clique para trocar para Meta Oficial"
+                  className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 bg-blue-500"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
-                  {ehMeta ? 'Meta Oficial' : 'Evolution'}
+                  Evolution
                 </button>
               )}
               <p className="text-[11px] text-slate-500 truncate max-w-[120px] sm:max-w-none">{conversaSelecionada.cliente_telefone}</p>
@@ -225,12 +233,12 @@ export default function ChatHeader({
               <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
               Reabrir conversa
             </DropdownMenuItem>
-            {!ehInstagram && (
+            {!ehInstagram && !ehMeta && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => alternarApi()}>
                   <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                  {ehMeta ? 'Usar Evolution nesta conversa' : 'Usar Meta Oficial nesta conversa'}
+                  Usar Meta Oficial nesta conversa
                 </DropdownMenuItem>
               </>
             )}
