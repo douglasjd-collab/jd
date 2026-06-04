@@ -64,15 +64,16 @@ export default function ChatHeader({
   // Override local só se usuário trocou manualmente — NÃO afeta canal_origem do banco
   const tipoConexaoEfetivo = canalOverride || conversaSelecionada.tipo_conexao;
 
+  // phone_number_id_meta preenchido = canal Meta com certeza, independente de canal_origem legado
   const ehMeta =
     !ehInstagram && (
       canalOverride === 'meta_oficial' ||
       canalOrigemBanco === 'meta' ||
       providerBanco === 'whatsapp_meta' ||
+      !!conversaSelecionada.phone_number_id_meta ||
       (!canalOverride && (
         tipoConexaoEfetivo === 'meta_oficial' ||
-        conversaSelecionada.instancia === 'META_OFICIAL' ||
-        !!conversaSelecionada.phone_number_id_meta
+        conversaSelecionada.instancia === 'META_OFICIAL'
       ))
     );
 
