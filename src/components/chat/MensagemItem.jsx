@@ -14,6 +14,12 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const isUrlValida = (url) => {
     if (!url) return false;
     if (typeof url !== 'string') return false;
+
+    // Bloquear URLs temporárias/privadas do WhatsApp/Meta
+    if (url.includes('pps.whatsapp.net')) return false;
+    if (url.includes('mmg.whatsapp.net')) return false;
+    if (url.includes('lookaside.fbsbx.com')) return false;
+
     // Bloquear media_id numérico da Meta
     if (/^\d+$/.test(url.trim())) return false;
     // Bloquear arquivos .enc (criptografados)
@@ -22,9 +28,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     if (url.includes('/media/') && !url.includes('base44') && !url.includes('supabase') && !url.includes('amazonaws')) return false;
     // Deve ser uma URL válida começando com http
     if (!url.startsWith('http')) return false;
+
     // Deve ser URL do nosso storage ou URL pública conhecida
     const isPermanente = url.includes('base44') || url.includes('supabase') || url.includes('amazonaws');
     const isUrlPublica = url.startsWith('https://') && !url.includes('localhost');
+
     return isPermanente || isUrlPublica;
   };
   const [mediaUrl, setMediaUrl] = useState(isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);

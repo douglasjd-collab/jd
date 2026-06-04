@@ -51,7 +51,21 @@ Deno.serve(async (req) => {
     // 3. OU o arquivo_url é um media_id numérico (padrão Meta)
     const isWamid = whatsappMessageId && whatsappMessageId.startsWith('wamid.');
     const isMediaIdNumerico = urlAtual && /^\d{10,}$/.test(urlAtual.trim());
-    const isMetaOficial = conversa?.tipo_conexao === 'meta_oficial' || isWamid || isMediaIdNumerico;
+    const isUrlPrivadaMeta =
+      urlAtual &&
+      (
+        urlAtual.includes('pps.whatsapp.net') ||
+        urlAtual.includes('mmg.whatsapp.net') ||
+        urlAtual.includes('lookaside.fbsbx.com')
+      );
+
+    const isMetaOficial =
+      conversa?.tipo_conexao === 'meta_oficial' ||
+      conversa?.ultima_origem_recebida === 'meta_oficial' ||
+      conversa?.instancia === 'META_OFICIAL' ||
+      isWamid ||
+      isMediaIdNumerico ||
+      isUrlPrivadaMeta;
 
     // ── META OFICIAL ──────────────────────────────────────────────────────────
     if (isMetaOficial) {
@@ -103,6 +117,41 @@ Deno.serve(async (req) => {
           }
         } catch (e) {
           console.warn('⚠️ Download Meta falhou:', e.message);
+        }
+      }
+
+      // Se já temos uma URL privada da Meta/WhatsApp, baixar direto com Bearer Token
+      if (!base64Data && isUrlPrivadaMeta && urlAtual) {
+        try {
+          const fileRes = await fetch(urlAtual, {
+            headers: {
+              Authorization: `Bearer ${metaToken}`,
+              'User-Agent': 'Base44-WhatsApp-CRM'
+            }
+          });
+
+          console.log('📥 Download direto URL privada Meta:', fileRes.status);
+
+          if (fileRes.ok) {
+            const ct = fileRes.headers.get('content-type') || '';
+            if (ct && ct !== 'application/octet-stream') {
+              mimeType = ct.split(';')[0].trim();
+            }
+
+            const arrayBuffer = await fileRes.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            let binary = '';
+            const chunkSize = 8192;
+            for (let i = 0; i < uint8Array.length; i += chunkSize) {
+              binary += String.fromCharCode(...uint8Array.slice(i, i + chunkSize));
+            }
+
+            base64Data = btoa(binary);
+            console.log(`✅ Mídia privada Meta baixada direto | tipo: ${mimeType}`);
+          }
+        } catch (e) {
+          console.warn('⚠️ Download direto URL privada Meta falhou:', e.message);
         }
       }
 
