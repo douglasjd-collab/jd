@@ -106,6 +106,55 @@ async function processarMensagemMeta(body, base44) {
   console.log('✅ Processamento concluído');
 }
 
+async function baixarMidiaMeta(base44, mediaId, accessToken, nomeArquivoPadrao = 'arquivo') {
+  if (!mediaId || !accessToken) {
+    return { arquivo_url: null, arquivo_nome: null, mime_type: null, erro: 'mediaId ou accessToken ausente' };
+  }
+  try {
+    console.log('📎 Buscando mídia Meta:', mediaId);
+    const metaInfoResp = await fetch(`https://graph.facebook.com/v19.0/${mediaId}`, {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+    const metaInfoText = await metaInfoResp.text();
+    console.log('📎 Info mídia Meta status:', metaInfoResp.status, metaInfoText.substring(0, 300));
+    if (!metaInfoResp.ok) return { arquivo_url: null, arquivo_nome: null, mime_type: null, erro: `Erro ao buscar info da mídia: ${metaInfoText}` };
+
+    const metaInfo = JSON.parse(metaInfoText);
+    const mediaUrl = metaInfo.url;
+    const mimeType = metaInfo.mime_type || 'application/octet-stream';
+    if (!mediaUrl) return { arquivo_url: null, arquivo_nome: null, mime_type: mimeType, erro: 'URL da mídia não retornada pela Meta' };
+
+    const arquivoResp = await fetch(mediaUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+    console.log('📥 Download mídia status:', arquivoResp.status);
+    if (!arquivoResp.ok) {
+      const erroDownload = await arquivoResp.text().catch(() => '');
+      return { arquivo_url: null, arquivo_nome: null, mime_type: mimeType, erro: `Erro ao baixar mídia: ${erroDownload}` };
+    }
+
+    const arrayBuffer = await arquivoResp.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: mimeType });
+
+    let extensao = 'bin';
+    if (mimeType.includes('jpeg')) extensao = 'jpg';
+    else if (mimeType.includes('png')) extensao = 'png';
+    else if (mimeType.includes('webp')) extensao = 'webp';
+    else if (mimeType.includes('ogg')) extensao = 'ogg';
+    else if (mimeType.includes('mpeg')) extensao = 'mp3';
+    else if (mimeType.includes('mp4')) extensao = 'mp4';
+    else if (mimeType.includes('pdf')) extensao = 'pdf';
+
+    const arquivoNomeGerado = `${nomeArquivoPadrao}_${Date.now()}.${extensao}`;
+    const uploadRes = await base44.integrations.Core.UploadFile({
+      file: new File([blob], arquivoNomeGerado, { type: mimeType })
+    });
+    console.log('✅ Upload Base44 mídia:', uploadRes?.file_url);
+    return { arquivo_url: uploadRes?.file_url || null, arquivo_nome: arquivoNomeGerado, mime_type: mimeType, erro: null };
+  } catch (e) {
+    console.error('❌ Erro baixarMidiaMeta:', e.message);
+    return { arquivo_url: null, arquivo_nome: null, mime_type: null, erro: e.message };
+  }
+}
+
 async function salvarMensagem(base44, value, message) {
   const telefoneLimpo = String(message.from || '').replace(/\D/g, '');
   const msgId = message.id;
@@ -116,27 +165,66 @@ async function salvarMensagem(base44, value, message) {
   let arquivoUrl = null;
   let arquivoNome = null;
 
+  // Buscar empresa primeiro para ter o accessToken disponível para download de mídia
+  const phoneNumberId = String(value.metadata?.phone_number_id || '').trim();
+  let empresaTemp = null;
+  try {
+    const todasEmpTemp = await base44.asServiceRole.entities.Empresa.filter({ status: 'ativa' }, null, 50);
+    empresaTemp = todasEmpTemp.find(e => String(e.whatsapp_phone_number_id || '').trim() === phoneNumberId)
+      || todasEmpTemp.find(e => e.whatsapp_access_token && e.whatsapp_phone_number_id)
+      || todasEmpTemp[0];
+  } catch (_) {}
+  const accessTokenTemp = empresaTemp?.whatsapp_access_token || null;
+
   if (message.type === 'text') {
     texto = message.text?.body || '';
   } else if (message.type === 'image') {
     tipoConteudo = 'imagem';
-    texto = message.image?.caption || '[Imagem]';
+    texto = message.image?.caption || null;
+    const mediaId = message.image?.id;
+    if (mediaId && accessTokenTemp) {
+      const midia = await baixarMidiaMeta(base44, mediaId, accessTokenTemp, 'imagem');
+      arquivoUrl = midia.arquivo_url;
+      arquivoNome = midia.arquivo_nome;
+      if (midia.erro) console.warn('⚠️ Mídia imagem:', midia.erro);
+    }
+    if (!texto) texto = '[Imagem]';
   } else if (message.type === 'audio' || message.type === 'voice') {
     tipoConteudo = 'audio';
     texto = '[Áudio]';
+    const mediaId = (message.audio || message.voice)?.id;
+    if (mediaId && accessTokenTemp) {
+      const midia = await baixarMidiaMeta(base44, mediaId, accessTokenTemp, 'audio');
+      arquivoUrl = midia.arquivo_url;
+      arquivoNome = midia.arquivo_nome;
+      if (midia.erro) console.warn('⚠️ Mídia áudio:', midia.erro);
+    }
   } else if (message.type === 'video') {
     tipoConteudo = 'video';
-    texto = message.video?.caption || '[Vídeo]';
+    texto = message.video?.caption || null;
+    const mediaId = message.video?.id;
+    if (mediaId && accessTokenTemp) {
+      const midia = await baixarMidiaMeta(base44, mediaId, accessTokenTemp, 'video');
+      arquivoUrl = midia.arquivo_url;
+      arquivoNome = midia.arquivo_nome;
+      if (midia.erro) console.warn('⚠️ Mídia vídeo:', midia.erro);
+    }
+    if (!texto) texto = '[Vídeo]';
   } else if (message.type === 'document') {
     tipoConteudo = 'documento';
     arquivoNome = message.document?.filename || 'documento';
     texto = message.document?.caption || `[Documento: ${arquivoNome}]`;
+    const mediaId = message.document?.id;
+    if (mediaId && accessTokenTemp) {
+      const midia = await baixarMidiaMeta(base44, mediaId, accessTokenTemp, arquivoNome.replace(/\.[^.]+$/, '') || 'documento');
+      arquivoUrl = midia.arquivo_url;
+      if (midia.arquivo_nome) arquivoNome = midia.arquivo_nome;
+      if (midia.erro) console.warn('⚠️ Mídia documento:', midia.erro);
+    }
   } else if (message.type === 'button') {
-    // Resposta de botão de template (quick_reply)
     tipoConteudo = 'texto';
     texto = message.button?.text || message.button?.payload || '[Botão]';
   } else if (message.type === 'interactive') {
-    // Resposta de mensagem interativa (list reply, button reply)
     tipoConteudo = 'texto';
     texto = message.interactive?.button_reply?.title
          || message.interactive?.list_reply?.title
@@ -147,8 +235,7 @@ async function salvarMensagem(base44, value, message) {
 
   console.log(`📱 Mensagem de ${telefoneLimpo}: "${(texto || '').slice(0, 60)}"`);
 
-  // Buscar empresa pelo phone_number_id
-  const phoneNumberId = String(value.metadata?.phone_number_id || '').trim();
+  // phoneNumberId já foi declarado acima — reutilizar
   let empresas = [];
 
   if (phoneNumberId) {
