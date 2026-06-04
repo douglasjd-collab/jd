@@ -733,8 +733,31 @@ async function processarWebhook(req, rawBody, base44) {
 
     const conversaDevePreservarCanal = conversaEhMetaOficial || conversaEhInstagram;
 
+    // Se a conversa é Meta/Instagram, apenas atualizar campos seguros (última mensagem, remetente)
+    // NUNCA alterar telefone, canal, instância, provider ou qualquer campo de roteamento
     if (conversaDevePreservarCanal) {
-      console.log(`🛡️ Conversa protegida (canal: ${conversa.tipo_conexao} / instancia: ${conversa.instancia}) — ignorando webhook Evolution que mudaria o canal`);
+      const updateDataMeta = {
+        ultima_mensagem: conteudo.substring(0, 200),
+        data_ultima_mensagem: new Date().toISOString(),
+        ultimo_remetente: ultimoRemetente,
+      };
+      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, updateDataMeta);
+      console.log(`🛡️ Conversa Meta/Instagram ${conversa.id} — apenas última mensagem atualizada, canal preservado`);
+      // Salvar mensagem e sair
+      const remetenteProt = fromMe ? 'vendedor' : 'cliente';
+      await base44.asServiceRole.entities.MensagemWhatsapp.create({
+        conversa_id: conversa.id, empresa_id: empresaId,
+        remetente: remetenteProt, tipo_conteudo: tipo, texto: conteudo,
+        arquivo_url: arquivo_url || null,
+        arquivo_nome: arquivo_nome || null,
+        arquivo_tamanho: arquivo_tamanho || 0,
+        provider: 'evolution',
+        download_status: arquivo_url ? 'baixado' : 'nao_aplicavel',
+        whatsapp_message_id: messageId,
+        data_envio: new Date().toISOString(),
+        status: remetenteProt === 'vendedor' ? 'enviada' : 'pendente'
+      });
+      return;
     }
 
     const updateData = {
@@ -747,29 +770,24 @@ async function processarWebhook(req, rawBody, base44) {
       cliente_nome: conversa.cliente_nome || pushName || telefoneLimpo,
       cliente_telefone: telefoneLimpo,
       whatsapp_id: conversa.whatsapp_id || (telefoneLimpo + '@s.whatsapp.net'),
-      // Preservar canal/instância se for Meta Oficial ou Instagram
-      instancia: conversaDevePreservarCanal ? conversa.instancia : instanceFinal,
-      tipo_conexao: conversaDevePreservarCanal ? conversa.tipo_conexao : 'empresa',
-      ultima_origem_recebida: conversaDevePreservarCanal ? conversa.ultima_origem_recebida : 'evolution',
+      instancia: instanceFinal,
+      tipo_conexao: 'empresa',
+      ultima_origem_recebida: 'evolution',
     };
 
-    // Só define canal se a conversa NÃO é Meta/Instagram e ainda não tem canal travado
-    if (!conversaDevePreservarCanal) {
-      if (!canalAtual) {
-        updateData.canal_atendimento = 'evolution';
-        updateData.canal_preferencial = 'evolution';
-      }
-      // Se ainda não tem canal_origem definido, travar como evolution
-      if (!conversa.canal_origem) {
-        updateData.canal_origem = 'evolution';
-        updateData.provider = 'evolution';
-        updateData.locked_provider = true;
-        updateData.instance_id = instanceFinal;
-        console.log(`🔒 [EVO] Canal travado como EVOLUTION para conversa ${conversa.id}`);
-      }
-      // Sempre atualizar last_inbound_provider para diagnóstico
-      updateData.last_inbound_provider = 'evolution';
+    // Definir canal se ainda não tem
+    if (!canalAtual) {
+      updateData.canal_atendimento = 'evolution';
+      updateData.canal_preferencial = 'evolution';
     }
+    if (!conversa.canal_origem) {
+      updateData.canal_origem = 'evolution';
+      updateData.provider = 'evolution';
+      updateData.locked_provider = true;
+      updateData.instance_id = instanceFinal;
+      console.log(`🔒 [EVO] Canal travado como EVOLUTION para conversa ${conversa.id}`);
+    }
+    updateData.last_inbound_provider = 'evolution';
 
     // Se a mensagem foi enviada pelo vendedor (fora do CRM), marcar como em atendimento por 10 min
     if (fromMe) {
