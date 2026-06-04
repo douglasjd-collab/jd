@@ -282,11 +282,24 @@ async function salvarMensagem(base44, value, message) {
   });
 
   // Atualizar última mensagem da conversa
-  await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
+  // tipo_conexao registra a última origem recebida; canal_atendimento é fixo
+  const canalAtualPublico = conversa.canal_atendimento || conversa.canal_preferencial || null;
+
+  const updateConversaPublico = {
     ultima_mensagem: String(texto || '').slice(0, 100),
     data_ultima_mensagem: new Date().toISOString(),
+    tipo_conexao: 'meta_oficial',
+    ultima_origem_recebida: 'meta_oficial',
     instancia: 'META_OFICIAL',
-  });
+    phone_number_id_meta: phoneNumberId,
+  };
+
+  if (!canalAtualPublico) {
+    updateConversaPublico.canal_atendimento = 'meta_oficial';
+    updateConversaPublico.canal_preferencial = 'meta_oficial';
+  }
+
+  await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, updateConversaPublico);
 
   console.log(`✅ Mensagem salva! ID: ${mensagem.id}`);
 }

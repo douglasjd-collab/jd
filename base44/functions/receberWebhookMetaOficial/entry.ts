@@ -157,17 +157,29 @@ async function processarMensagem(body) {
     status: 'entregue',
   });
 
-  // Atualizar última mensagem da conversa — e garantir que tipo_conexao = meta_oficial
-  // pois esta mensagem chegou pela Meta Oficial (última origem vence)
-  await base44.entities.ConversaWhatsapp.update(conversa.id, {
+  // Atualizar última mensagem da conversa
+  // tipo_conexao registra a última origem recebida
+  // canal_atendimento é o canal fixo de resposta — não sobrescrever se já definido
+  const canalAtualMeta = conversa.canal_atendimento || conversa.canal_preferencial || null;
+
+  const updateConversaMeta = {
     ultima_mensagem: texto,
     data_ultima_mensagem: new Date().toISOString(),
     ultimo_remetente: 'cliente',
     cliente_nome: nomeContato,
-    tipo_conexao: 'meta_oficial',
+    tipo_conexao: 'meta_oficial',       // última origem recebida
+    ultima_origem_recebida: 'meta_oficial',
     instancia: 'META_OFICIAL',
     phone_number_id_meta: phoneNumberId,
-  });
+  };
+
+  // Só define canal se ainda não tem canal travado
+  if (!canalAtualMeta) {
+    updateConversaMeta.canal_atendimento = 'meta_oficial';
+    updateConversaMeta.canal_preferencial = 'meta_oficial';
+  }
+
+  await base44.entities.ConversaWhatsapp.update(conversa.id, updateConversaMeta);
 
   console.log('✅ Mensagem Meta Oficial salva para conversa:', conversa.id);
 }

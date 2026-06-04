@@ -707,25 +707,30 @@ async function processarWebhook(req, rawBody, base44) {
 
   if (conversa) {
     // Atualizar conversa existente — SEMPRE com número normalizado (12 dígitos)
-    // IMPORTANTE: NUNCA sobrescrever tipo_conexao se já está definido como meta_oficial ou instagram
-    // O tipo_conexao só deve mudar via ação manual do usuário no ChatHeader
-    const tipoConexaoAtualizar = (conversa.tipo_conexao === 'meta_oficial' || conversa.tipo_conexao === 'instagram')
-      ? conversa.tipo_conexao  // preservar meta_oficial/instagram — nunca sobrescrever automaticamente
-      : tipoConexao;           // evolution = empresa (apenas se ainda não era meta/instagram)
+    // tipo_conexao registra a última origem recebida
+    // canal_atendimento é o canal fixo de resposta — só definido na criação ou manualmente
+    const canalAtual = conversa.canal_atendimento || conversa.canal_preferencial || null;
 
     const updateData = {
       ultima_mensagem: conteudo.substring(0, 200),
       data_ultima_mensagem: new Date().toISOString(),
       status: 'ativa',
       ultimo_remetente: ultimoRemetente,
-      tipo_conexao: tipoConexaoAtualizar,
+      tipo_conexao: 'empresa',          // última origem recebida = evolution
+      ultima_origem_recebida: 'evolution',
       colaborador_id: colaboradorId || conversa.colaborador_id || '',
       cliente_id: clienteId || conversa.cliente_id || '',
-      instancia: conversa.tipo_conexao === 'meta_oficial' ? (conversa.instancia || instanceFinal) : instanceFinal,  // preservar instância META se já é meta_oficial
+      instancia: instanceFinal,
       cliente_nome: conversa.cliente_nome || pushName || telefoneLimpo,
       cliente_telefone: telefoneLimpo,
-      whatsapp_id: conversa.whatsapp_id || `${telefoneLimpo}@s.whatsapp.net`
+      whatsapp_id: conversa.whatsapp_id || (telefoneLimpo + '@s.whatsapp.net')
     };
+
+    // Só define canal se ainda não tem canal travado
+    if (!canalAtual) {
+      updateData.canal_atendimento = 'evolution';
+      updateData.canal_preferencial = 'evolution';
+    }
 
     // Se a mensagem foi enviada pelo vendedor (fora do CRM), marcar como em atendimento por 10 min
     if (fromMe) {

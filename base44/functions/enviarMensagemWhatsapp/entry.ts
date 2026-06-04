@@ -98,6 +98,19 @@ Deno.serve(async (req) => {
     const instanciaConversa = conversaDoBanco?.instancia || '';
     const tipoConexaoConversa = conversaDoBanco?.tipo_conexao || '';
 
+    // CANAL FIXO DO ATENDIMENTO
+    // Esse campo define por onde a resposta deve sair.
+    // Não deve ser alterado automaticamente por webhook.
+    const canalAtendimento =
+      conversaDoBanco?.canal_atendimento ||
+      conversaDoBanco?.canal_preferencial ||
+      conversaDoBanco?.provider_ativo ||
+      tipoConexaoConversa ||
+      'evolution';
+
+    console.log('🧭 Canal atendimento fixo:', canalAtendimento);
+    console.log('📥 Última origem/tipo_conexao:', tipoConexaoConversa);
+
     // ── INSTAGRAM DIRECT ──────────────────────────────────────────────────
     // Detectar Instagram independente do forcar_api enviado pelo frontend
     const conversaEhInstagram =
@@ -167,13 +180,11 @@ Deno.serve(async (req) => {
     }
     // ── FIM INSTAGRAM ──────────────────────────────────────────────────────
 
-    // ── DETERMINAR PROVEDOR PELO CANAL DA CONVERSA (automático) ──────────────
-    // A regra é simples: usar o mesmo canal pelo qual a última mensagem foi recebida.
-    // tipo_conexao da conversa é a fonte de verdade — atualizado a cada mensagem recebida.
+    // ── DETERMINAR PROVEDOR PELO CANAL FIXO DO ATENDIMENTO ──────────────────
+    // canalAtendimento é a fonte de verdade para envio — não muda automaticamente por webhook.
     const conversaEhMetaOficial =
-      tipoConexaoConversa === 'meta_oficial' ||
-      instanciaConversa === 'META_OFICIAL' ||
-      instanciaConversa === 'meta_oficial';
+      canalAtendimento === 'meta_oficial' ||
+      canalAtendimento === 'META_OFICIAL';
 
     // Credenciais Meta: preferir phone_number_id da conversa (número específico que recebeu)
     const phoneNumberIdMeta = conversaDoBanco?.phone_number_id_meta || empresa?.whatsapp_phone_number_id;
@@ -193,7 +204,14 @@ Deno.serve(async (req) => {
       }
       usaMetaOficial = true;
       console.log('🟢 Provedor automático: API Oficial Meta (tipo_conexao:', tipoConexaoConversa, ' | phone_number_id:', phoneNumberIdMeta, ')');
-    } else if (tipoConexaoConversa === 'empresa' || tipoConexaoConversa === 'usuario' || instanciaConversa) {
+    } else if (
+      canalAtendimento === 'evolution' ||
+      canalAtendimento === 'empresa' ||
+      canalAtendimento === 'usuario' ||
+      tipoConexaoConversa === 'empresa' ||
+      tipoConexaoConversa === 'usuario' ||
+      instanciaConversa
+    ) {
       // Canal da conversa = Evolution API
       if (!temCredenciaisEvolution) {
         return Response.json({
@@ -451,7 +469,9 @@ Deno.serve(async (req) => {
         status: 'ativa',
         ultima_mensagem: '',
         data_ultima_mensagem: new Date().toISOString(),
-        tipo_conexao: 'empresa'
+        tipo_conexao: 'empresa',
+        canal_atendimento: usaMetaOficial ? 'meta_oficial' : 'evolution',
+        canal_preferencial: usaMetaOficial ? 'meta_oficial' : 'evolution',
       });
       console.log('✅ Conversa criada:', conversa.id);
     }
