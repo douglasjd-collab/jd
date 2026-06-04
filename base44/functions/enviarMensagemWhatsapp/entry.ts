@@ -4,8 +4,12 @@ Deno.serve(async (req) => {
   console.log('='.repeat(80));
   console.log('📤 ENVIAR MENSAGEM WHATSAPP');
   console.log('='.repeat(80));
-  
+
   try {
+    // Log do payload bruto para debug
+    const rawBody = await req.clone().text();
+    console.log('📥 Payload BRUTO:', rawBody.substring(0, 500));
+
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
 
