@@ -311,20 +311,9 @@ Deno.serve(async (req) => {
         let nomeArquivo = arquivo.nome || `arquivo_${Date.now()}`;
 
         if (mediaType === 'audio') {
-          const audioPermitido =
-            mimeType.includes('ogg') ||
-            mimeType.includes('mpeg') ||
-            mimeType.includes('mp3') ||
-            mimeType.includes('mp4') ||
-            mimeType.includes('aac') ||
-            mimeType.includes('amr');
-
-          if (!audioPermitido) {
-            return Response.json({
-              success: false,
-              error: `Formato de áudio não compatível com a API Oficial Meta: ${mimeType}. Ajuste o gravador para gerar audio/ogg; codecs=opus ou envie esse arquivo como documento.`,
-            }, { status: 400 });
-          }
+          // A API da Meta é restritiva. Idealmente, o frontend deve enviar audio/ogg com opus.
+          // Por segurança, vamos sempre tentar enviar como audio/ogg.
+          mimeType = 'audio/ogg';
         }
 
         const uploadFormData = new FormData();

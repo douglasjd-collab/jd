@@ -66,20 +66,10 @@ Deno.serve(async (req) => {
       if (urlAtual && /^\d{10,}$/.test(urlAtual.trim())) {
         mediaId = urlAtual.trim();
       } else if (whatsappMessageId) {
-        try {
-          const msgRes = await fetch(`https://graph.facebook.com/v19.0/${whatsappMessageId}`, {
-            headers: { 'Authorization': `Bearer ${metaToken}` }
-          });
-          if (msgRes.ok) {
-            const msgData = await msgRes.json();
-            mediaId = msgData?.audio?.id || msgData?.image?.id || msgData?.video?.id || msgData?.document?.id || msgData?.sticker?.id;
-            if (mediaId) {
-              mimeType = msgData?.audio?.mime_type || msgData?.image?.mime_type || msgData?.video?.mime_type || msgData?.document?.mime_type || mimeType;
-            }
-          }
-        } catch (e) {
-          console.warn('⚠️ Busca Meta falhou:', e.message);
-        }
+        // Não buscar na Meta por whatsappMessageId, pois o ID da mensagem não contém o media_id
+        // O media_id deve ser obtido do webhook de recebimento e salvo no arquivo_url
+        // Se arquivo_url não for um media_id, não há como baixar da Meta aqui.
+        console.warn('⚠️ Tentativa de baixar da Meta sem media_id (apenas com whatsapp_message_id). Isso não é suportado. O media_id deve estar em arquivo_url.');
       }
 
       if (mediaId) {
