@@ -180,53 +180,25 @@ async function salvarMensagem(base44, value, message) {
     texto = message.text?.body || '';
   } else if (message.type === 'image') {
     tipoConteudo = 'imagem';
-    texto = message.image?.caption || null;
-    const mediaId = message.image?.id;
-    if (mediaId && accessTokenTemp) {
-      const midia = await baixarMidiaMeta(base44, mediaId, accessTokenTemp, 'imagem');
-      arquivoUrl = midia.arquivo_url;
-      arquivoNome = midia.arquivo_nome;
-      if (midia.erro) console.warn('⚠️ Mídia imagem:', midia.erro);
-    }
-    if (!texto) texto = '[Imagem]';
-  } else if (message.type === 'audio') {
+    texto = message.image?.caption || '';
+    arquivoUrl = message.image?.id || null;
+    arquivoNome = `imagem_${telefoneLimpo}.jpg`;
+  } else if (message.type === 'audio' || message.type === 'voice') {
     tipoConteudo = 'audio';
     texto = '[Áudio]';
-    const mediaId = message.audio?.id;
-    if (mediaId && accessTokenTemp) {
-      const midia = await baixarMidiaMeta(base44, mediaId, accessTokenTemp, 'audio');
-      arquivoUrl = midia.arquivo_url;
-      arquivoNome = midia.arquivo_nome;
-      if (midia.erro) {
-        console.error('❌ Erro ao baixar áudio:', midia.erro);
-      } else {
-        console.log('✅ Áudio baixado com sucesso:', arquivoNome);
-      }
-    } else {
-      console.warn('⚠️ mediaId ou accessToken não disponível para áudio');
-    }
+    arquivoUrl = message.audio?.id || message.voice?.id || null;
+    arquivoNome = `audio_${telefoneLimpo}.ogg`;
   } else if (message.type === 'video') {
     tipoConteudo = 'video';
-    texto = message.video?.caption || null;
-    const mediaId = message.video?.id;
-    if (mediaId && accessTokenTemp) {
-      const midia = await baixarMidiaMeta(base44, mediaId, accessTokenTemp, 'video');
-      arquivoUrl = midia.arquivo_url;
-      arquivoNome = midia.arquivo_nome;
-      if (midia.erro) console.warn('⚠️ Mídia vídeo:', midia.erro);
-    }
-    if (!texto) texto = '[Vídeo]';
+    texto = message.video?.caption || '[Vídeo]';
+    arquivoUrl = message.video?.id || null;
+    arquivoNome = `video_${telefoneLimpo}.mp4`;
   } else if (message.type === 'document') {
     tipoConteudo = 'documento';
-    arquivoNome = message.document?.filename || 'documento';
-    texto = message.document?.caption || `[Documento: ${arquivoNome}]`;
-    const mediaId = message.document?.id;
-    if (mediaId && accessTokenTemp) {
-      const midia = await baixarMidiaMeta(base44, mediaId, accessTokenTemp, arquivoNome.replace(/\.[^.]+$/, '') || 'documento');
-      arquivoUrl = midia.arquivo_url;
-      if (midia.arquivo_nome) arquivoNome = midia.arquivo_nome;
-      if (midia.erro) console.warn('⚠️ Mídia documento:', midia.erro);
-    }
+    texto = message.document?.caption || message.document?.filename || '[Documento]';
+    arquivoUrl = message.document?.id || null;
+    arquivoNome = message.document?.filename || `documento_${telefoneLimpo}`;
+  }
   } else if (message.type === 'button') {
     tipoConteudo = 'texto';
     texto = message.button?.text || message.button?.payload || '[Botão]';
