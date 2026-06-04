@@ -62,10 +62,16 @@ Deno.serve(async (req) => {
 
         // Verificar instâncias desconectadas
         const desconectadas = resultado.instancias.filter(i =>
-          !['open', 'connected', 'CONNECTED'].includes(i.status)
+          !['open', 'connected', 'CONNECTED', 'connecting', 'CONNECTING', 'unknown'].includes(i.status)
         );
+        const statusDesconhecido = resultado.instancias.filter(i => i.status === 'unknown');
+        
         if (desconectadas.length > 0) {
           resultado.problemas.push(`${desconectadas.length} instância(s) desconectada(s): ${desconectadas.map(i => i.nome).join(', ')}`);
+        }
+        // Status "unknown" pode indicar problema — verificar separadamente sem bloquear alertas
+        if (statusDesconhecido.length > 0 && desconectadas.length === 0) {
+          resultado.problemas.push(`${statusDesconhecido.length} instância(s) com status desconhecido: ${statusDesconhecido.map(i => i.nome).join(', ')}`);
         }
       }
 
