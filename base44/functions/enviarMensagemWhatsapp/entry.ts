@@ -289,7 +289,6 @@ Deno.serve(async (req) => {
       let metaPayload;
 
       if (arquivo && arquivo.base64) {
-        // Para mídia via API Oficial, fazer upload para obter URL pública
         const tipo = arquivo.tipo || '';
         let mediaType = 'document';
         if (tipo.startsWith('image')) mediaType = 'image';
@@ -299,26 +298,57 @@ Deno.serve(async (req) => {
         const binaryStr = atob(arquivo.base64);
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-        const mimeType = arquivo.tipo || 'application/octet-stream';
-        const nomeArquivo = arquivo.nome || `arquivo_${Date.now()}`;
-        const fileObj = new File([bytes], nomeArquivo, { type: mimeType });
-        const uploadRes = await base44.integrations.Core.UploadFile({ file: fileObj });
-        const fileUrl = uploadRes?.file_url;
 
-        if (!fileUrl) throw new Error('Falha ao fazer upload do arquivo para envio via Meta');
+        // Para áudio: Meta exige ogg/opus ou aac — webm não é suportado via link.
+        // Solução: fazer upload direto para a Meta Media API e usar media_id.
+        let mimeType = arquivo.tipo || 'application/octet-stream';
+        let nomeArquivo = arquivo.nome || `arquivo_${Date.now()}`;
 
-        // Validar que a URL é HTTPS pública
-        if (!fileUrl.startsWith('https://')) {
-          throw new Error('URL da mídia não é pública HTTPS. Não é possível enviar via API Meta Oficial.');
+        if (mediaType === 'audio') {
+          // Forçar MIME type compatível com Meta (ogg opus é aceito)
+          mimeType = 'audio/ogg; codecs=opus';
+          nomeArquivo = nomeArquivo.replace(/\.(webm|mp4|m4a)$/, '.ogg') || 'audio.ogg';
+          if (!nomeArquivo.endsWith('.ogg')) nomeArquivo = 'audio.ogg';
         }
 
-        console.log('📎 Mídia para Meta:', mediaType, fileUrl);
+        // Upload direto para Meta Media API (mais confiável que link externo)
+        const uploadFormData = new FormData();
+        uploadFormData.append('messaging_product', 'whatsapp');
+        uploadFormData.append('file', new Blob([bytes], { type: mimeType }), nomeArquivo);
+        uploadFormData.append('type', mimeType);
 
-        // Montar payload correto por tipo:
-        // - image e video: suportam caption (texto da legenda)
-        // - audio: NÃO suporta caption
-        // - document: suporta caption e filename
-        const mediaObj = { link: fileUrl };
+        const metaUploadUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/media`;
+        console.log('📤 Upload mídia para Meta Media API:', mediaType, mimeType);
+        const uploadResp = await fetch(metaUploadUrl, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${accessToken}` },
+          body: uploadFormData,
+        });
+        const uploadText = await uploadResp.text();
+        console.log('📥 Meta Media Upload status:', uploadResp.status, uploadText.substring(0, 200));
+
+        let mediaId = null;
+        if (uploadResp.ok) {
+          const uploadData = JSON.parse(uploadText);
+          mediaId = uploadData.id;
+          console.log('✅ Media ID obtido:', mediaId);
+        }
+
+        // Se upload direto falhou, fallback por link público
+        let mediaObj;
+        if (mediaId) {
+          mediaObj = { id: mediaId };
+        } else {
+          console.warn('⚠️ Upload direto falhou — tentando via link público');
+          const fileObj = new File([bytes], nomeArquivo, { type: mimeType });
+          const uploadRes = await base44.integrations.Core.UploadFile({ file: fileObj });
+          const fileUrl = uploadRes?.file_url;
+          if (!fileUrl) throw new Error('Falha ao fazer upload do arquivo para envio via Meta');
+          mediaObj = { link: fileUrl };
+          console.log('📎 Fallback link:', fileUrl);
+        }
+
+        // caption e filename apenas onde suportado
         if (mediaType === 'image' || mediaType === 'video') {
           if (mensagem_texto?.trim()) mediaObj.caption = mensagem_texto.trim();
         } else if (mediaType === 'document') {
