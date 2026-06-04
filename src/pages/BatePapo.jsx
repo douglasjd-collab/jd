@@ -639,7 +639,7 @@ export default function BatePapo() {
       const conversaAtualizada = conversas.find(c => c.id === conversaSelecionada.id);
       if (conversaAtualizada) {
         // Atualizar silenciosamente os dados da conversa selecionada (status, última mensagem, etc.)
-        setConversaSelecionada(prev => prev ? { ...conversaAtualizada, ...prev, status: conversaAtualizada.status, ultima_mensagem: conversaAtualizada.ultima_mensagem, data_ultima_mensagem: conversaAtualizada.data_ultima_mensagem, tipo_conexao: conversaAtualizada.tipo_conexao, instancia: conversaAtualizada.instancia, phone_number_id_meta: conversaAtualizada.phone_number_id_meta } : prev);
+        setConversaSelecionada(prev => prev ? { ...conversaAtualizada, ...prev, status: conversaAtualizada.status, ultima_mensagem: conversaAtualizada.ultima_mensagem, data_ultima_mensagem: conversaAtualizada.data_ultima_mensagem, tipo_conexao: conversaAtualizada.tipo_conexao, instancia: conversaAtualizada.instancia, phone_number_id_meta: conversaAtualizada.phone_number_id_meta, canal_atendimento: conversaAtualizada.canal_atendimento, canal_preferencial: conversaAtualizada.canal_preferencial } : prev);
       } else {
         // Conversa não existe mais — tentar encontrar pelo telefone
         const mesmTelefone = conversas.find(c =>
