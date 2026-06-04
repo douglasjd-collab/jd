@@ -189,15 +189,21 @@ async function salvarMensagem(base44, value, message) {
       if (midia.erro) console.warn('⚠️ Mídia imagem:', midia.erro);
     }
     if (!texto) texto = '[Imagem]';
-  } else if (message.type === 'audio' || message.type === 'voice') {
+  } else if (message.type === 'audio') {
     tipoConteudo = 'audio';
     texto = '[Áudio]';
-    const mediaId = (message.audio || message.voice)?.id;
+    const mediaId = message.audio?.id;
     if (mediaId && accessTokenTemp) {
       const midia = await baixarMidiaMeta(base44, mediaId, accessTokenTemp, 'audio');
       arquivoUrl = midia.arquivo_url;
       arquivoNome = midia.arquivo_nome;
-      if (midia.erro) console.warn('⚠️ Mídia áudio:', midia.erro);
+      if (midia.erro) {
+        console.error('❌ Erro ao baixar áudio:', midia.erro);
+      } else {
+        console.log('✅ Áudio baixado com sucesso:', arquivoNome);
+      }
+    } else {
+      console.warn('⚠️ mediaId ou accessToken não disponível para áudio');
     }
   } else if (message.type === 'video') {
     tipoConteudo = 'video';
@@ -360,7 +366,7 @@ async function salvarMensagem(base44, value, message) {
     return;
   }
 
-  // Salvar mensagem
+  // Salvar mensagem — garantir que mídia é salva com tipo_conteudo correto
   const mensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
     conversa_id: conversa.id,
     empresa_id: empresaId,
@@ -369,10 +375,15 @@ async function salvarMensagem(base44, value, message) {
     texto: String(texto || '').slice(0, 5000),
     arquivo_url: arquivoUrl,
     arquivo_nome: arquivoNome,
+    arquivo_tamanho: 0,
     whatsapp_message_id: String(msgId),
     data_envio: new Date(Number(timestamp) * 1000).toISOString(),
     status: 'entregue',
   });
+
+  if (arquivoUrl) {
+    console.log(`✅ Mídia salva: tipo=${tipoConteudo} | nome=${arquivoNome} | url=${arquivoUrl?.substring(0, 80)}...`);
+  }
 
   // Atualizar última mensagem da conversa
   // tipo_conexao registra a última origem recebida; canal_atendimento é fixo
