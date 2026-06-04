@@ -41,6 +41,14 @@ export default function ChatHeader({
   chamadaAtiva,
   erroSip,
 }) {
+  // Canal override local: permite que o usuário troque o canal sem ser revertido pelo polling
+  const [canalOverride, setCanalOverride] = React.useState(null);
+
+  // Resetar override ao trocar de conversa
+  React.useEffect(() => {
+    setCanalOverride(null);
+  }, [conversaSelecionada?.id]);
+
   if (!conversaSelecionada) return null;
 
   const ehInstagram =
@@ -48,22 +56,26 @@ export default function ChatHeader({
     conversaSelecionada.instancia === 'INSTAGRAM' ||
     String(conversaSelecionada.cliente_telefone || '').startsWith('ig_');
 
-  // Se a conversa tem phone_number_id_meta preenchido, o canal real é Meta Oficial
-  // independente do tipo_conexao salvo (que pode estar desatualizado)
+  // Canal efetivo: prioriza override local, depois dados da conversa
+  const tipoConexaoEfetivo = canalOverride || conversaSelecionada.tipo_conexao;
+  const instanciaEfetiva = canalOverride === 'meta_oficial' ? 'META_OFICIAL' : (canalOverride === 'empresa' ? '' : conversaSelecionada.instancia);
+
   const ehMeta =
     !ehInstagram && (
-      conversaSelecionada.tipo_conexao === 'meta_oficial' ||
-      conversaSelecionada.instancia === 'META_OFICIAL' ||
-      conversaSelecionada.instancia === 'meta_oficial' ||
+      tipoConexaoEfetivo === 'meta_oficial' ||
+      instanciaEfetiva === 'META_OFICIAL' ||
+      instanciaEfetiva === 'meta_oficial' ||
       !!conversaSelecionada.phone_number_id_meta
     );
 
   const alternarApi = async () => {
     if (ehMeta) {
+      setCanalOverride('empresa');
       await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { tipo_conexao: 'empresa', instancia: '' });
       setConversaSelecionada(prev => ({ ...prev, tipo_conexao: 'empresa', instancia: '' }));
       toast.success('Alterado para Evolution');
     } else {
+      setCanalOverride('meta_oficial');
       await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL' });
       setConversaSelecionada(prev => ({ ...prev, tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL' }));
       toast.success('Alterado para Meta Oficial');
