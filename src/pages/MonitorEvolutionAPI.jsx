@@ -331,7 +331,7 @@ export default function MonitorEvolutionAPI() {
                     <div key={i} className={`p-1.5 rounded ${t.ok ? 'bg-green-100' : 'bg-red-100'}`}>
                       <span className="font-semibold">{t.ok ? '✅' : '❌'} {t.endpoint}</span>
                       <span className="ml-2 text-slate-600">[{t.status}]</span>
-                      <pre className="mt-1 whitespace-pre-wrap break-all text-xs">{JSON.stringify(t.resposta, null, 2).substring(0, 300)}</pre>
+                      <pre className="mt-1 whitespace-pre-wrap break-all text-xs">{t.resposta ? JSON.stringify(t.resposta, null, 2).substring(0, 300) : ''}</pre>
                     </div>
                   ))}
                 </div>
