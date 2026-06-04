@@ -810,8 +810,9 @@ async function processarWebhook(req, rawBody, base44) {
     if (found.length > 0) { contatoExistente = found[0]; break; }
   }
 
-  // Tentar buscar foto de perfil da Evolution (com timeout de 3s)
-  let fotoUrl = contatoExistente?.foto_url || null;
+  // Tentar buscar foto de perfil da Evolution (com timeout de 3s) e fazer upload permanente
+  let fotoUrlPermanente = contatoExistente?.foto_url || null;
+  let fotoUrlTemporaria = null;
   try {
     const evolutionUrl = empresaEvolutionUrl;
     const evolutionKey = empresaEvolutionKey;
@@ -828,8 +829,21 @@ async function processarWebhook(req, rawBody, base44) {
       clearTimeout(timeout);
       if (resProfile.ok) {
         const profileData = await resProfile.json();
-        const novaFoto = profileData?.profilePictureUrl || profileData?.picture || profileData?.pictureUrl;
-        if (novaFoto && novaFoto.trim().length > 0) fotoUrl = novaFoto;
+        fotoUrlTemporaria = profileData?.profilePictureUrl || profileData?.picture || profileData?.pictureUrl;
+        if (fotoUrlTemporaria && fotoUrlTemporaria.trim().length > 0) {
+          // Fazer download e upload permanente
+          const fotoRes = await fetch(fotoUrlTemporaria);
+          if (fotoRes.ok) {
+            const arrayBuffer = await fotoRes.arrayBuffer();
+            const blob = new Blob([arrayBuffer], { type: 'image/jpeg' });
+            const file = new File([blob], `foto_${telefoneLimpo}.jpg`, { type: 'image/jpeg' });
+            const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file });
+            if (uploadRes?.file_url) {
+              fotoUrlPermanente = uploadRes.file_url;
+              console.log(`✅ Foto upload permanente: ${uploadRes.file_url}`);
+            }
+          }
+        }
       }
     }
   } catch (e) { console.warn('⚠️ Erro ao buscar foto:', e.message); }
@@ -838,14 +852,14 @@ async function processarWebhook(req, rawBody, base44) {
     const updates = { ultima_atualizacao: new Date().toISOString() };
     // Só atualizar nome se não foi fixado manualmente pelo usuário
     if (!contatoExistente.nome_fixo && !contatoExistente.nome && pushName) updates.nome = pushName;
-    if (fotoUrl && fotoUrl !== contatoExistente.foto_url) updates.foto_url = fotoUrl;
+    if (fotoUrlPermanente && fotoUrlPermanente !== contatoExistente.foto_url) updates.foto_url = fotoUrlPermanente;
     base44.asServiceRole.entities.ContatoWhatsapp.update(contatoExistente.id, updates).catch(() => {});
   } else if (!fromMe) {
     base44.asServiceRole.entities.ContatoWhatsapp.create({
       empresa_id: empresaId,
       telefone: telefoneLimpo,
       nome: pushName || telefoneLimpo,
-      foto_url: fotoUrl || null,
+      foto_url: fotoUrlPermanente || null,
       ultima_atualizacao: new Date().toISOString()
     }).catch(() => {});
   }
