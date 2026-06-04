@@ -289,73 +289,81 @@ Deno.serve(async (req) => {
       let metaPayload;
 
       if (arquivo && arquivo.base64) {
-        const tipo = arquivo.tipo || '';
+        const tipoOriginal = arquivo.tipo || 'application/octet-stream';
         let mediaType = 'document';
-        if (tipo.startsWith('image')) mediaType = 'image';
-        else if (tipo.startsWith('video')) mediaType = 'video';
-        else if (tipo.startsWith('audio')) mediaType = 'audio';
 
-        const binaryStr = atob(arquivo.base64);
+        if (tipoOriginal.startsWith('image/')) mediaType = 'image';
+        else if (tipoOriginal.startsWith('video/')) mediaType = 'video';
+        else if (tipoOriginal.startsWith('audio/')) mediaType = 'audio';
+
+        // Limpar base64 caso venha com prefixo data:
+        const base64Limpo = String(arquivo.base64).includes(',')
+          ? String(arquivo.base64).split(',').pop()
+          : String(arquivo.base64);
+
+        const binaryStr = atob(base64Limpo);
         const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
 
-        // Para áudio: Meta exige ogg/opus ou aac — webm não é suportado via link.
-        // Solução: fazer upload direto para a Meta Media API e usar media_id.
-        let mimeType = arquivo.tipo || 'application/octet-stream';
+        let mimeType = tipoOriginal;
         let nomeArquivo = arquivo.nome || `arquivo_${Date.now()}`;
 
         if (mediaType === 'audio') {
-          // Forçar MIME type compatível com Meta (ogg opus é aceito)
-          mimeType = 'audio/ogg; codecs=opus';
-          nomeArquivo = nomeArquivo.replace(/\.(webm|mp4|m4a)$/, '.ogg') || 'audio.ogg';
-          if (!nomeArquivo.endsWith('.ogg')) nomeArquivo = 'audio.ogg';
+          const audioPermitido =
+            mimeType.includes('ogg') ||
+            mimeType.includes('mpeg') ||
+            mimeType.includes('mp3') ||
+            mimeType.includes('mp4') ||
+            mimeType.includes('aac') ||
+            mimeType.includes('amr');
+
+          if (!audioPermitido) {
+            return Response.json({
+              success: false,
+              error: `Formato de áudio não compatível com a API Oficial Meta: ${mimeType}. Ajuste o gravador para gerar audio/ogg; codecs=opus ou envie esse arquivo como documento.`,
+            }, { status: 400 });
+          }
         }
 
-        // Upload direto para Meta Media API (mais confiável que link externo)
         const uploadFormData = new FormData();
         uploadFormData.append('messaging_product', 'whatsapp');
-        uploadFormData.append('file', new Blob([bytes], { type: mimeType }), nomeArquivo);
+        uploadFormData.append('file', new File([bytes], nomeArquivo, { type: mimeType }));
         uploadFormData.append('type', mimeType);
 
         const metaUploadUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/media`;
-        console.log('📤 Upload mídia para Meta Media API:', mediaType, mimeType);
+        console.log('📤 Upload mídia Meta:', { mediaType, mimeType, nomeArquivo, tamanho: bytes.length });
+
         const uploadResp = await fetch(metaUploadUrl, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${accessToken}` },
           body: uploadFormData,
         });
+
         const uploadText = await uploadResp.text();
-        console.log('📥 Meta Media Upload status:', uploadResp.status, uploadText.substring(0, 200));
+        console.log('📥 Meta upload status:', uploadResp.status, uploadText.substring(0, 500));
 
-        let mediaId = null;
-        if (uploadResp.ok) {
-          const uploadData = JSON.parse(uploadText);
-          mediaId = uploadData.id;
-          console.log('✅ Media ID obtido:', mediaId);
+        if (!uploadResp.ok) {
+          return Response.json({ success: false, error: 'Falha ao fazer upload da mídia para a Meta', details: uploadText }, { status: 400 });
         }
 
-        // Se upload direto falhou, fallback por link público
-        let mediaObj;
-        if (mediaId) {
-          mediaObj = { id: mediaId };
-        } else {
-          console.warn('⚠️ Upload direto falhou — tentando via link público');
-          const fileObj = new File([bytes], nomeArquivo, { type: mimeType });
-          const uploadRes = await base44.integrations.Core.UploadFile({ file: fileObj });
-          const fileUrl = uploadRes?.file_url;
-          if (!fileUrl) throw new Error('Falha ao fazer upload do arquivo para envio via Meta');
-          mediaObj = { link: fileUrl };
-          console.log('📎 Fallback link:', fileUrl);
+        const uploadData = JSON.parse(uploadText);
+        const mediaId = uploadData.id;
+
+        if (!mediaId) {
+          return Response.json({ success: false, error: 'Meta não retornou media_id no upload', details: uploadText }, { status: 400 });
         }
 
-        // caption e filename apenas onde suportado
+        const mediaObj = { id: mediaId };
+
         if (mediaType === 'image' || mediaType === 'video') {
           if (mensagem_texto?.trim()) mediaObj.caption = mensagem_texto.trim();
-        } else if (mediaType === 'document') {
-          if (mensagem_texto?.trim()) mediaObj.caption = mensagem_texto.trim();
-          if (arquivo.nome) mediaObj.filename = arquivo.nome;
         }
-        // áudio: sem caption, sem filename
+        if (mediaType === 'document') {
+          if (mensagem_texto?.trim()) mediaObj.caption = mensagem_texto.trim();
+          mediaObj.filename = nomeArquivo;
+        }
 
         metaPayload = {
           messaging_product: 'whatsapp',
@@ -364,7 +372,11 @@ Deno.serve(async (req) => {
           [mediaType]: mediaObj
         };
 
-        console.log('📤 Meta payload mídia:', JSON.stringify(metaPayload).substring(0, 400));
+        if (resposta_para_message_id) {
+          metaPayload.context = { message_id: resposta_para_message_id };
+        }
+
+        console.log('📤 Payload Meta mídia:', JSON.stringify(metaPayload).substring(0, 500));
       } else {
         metaPayload = {
           messaging_product: 'whatsapp',
