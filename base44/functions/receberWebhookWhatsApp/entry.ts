@@ -716,27 +716,41 @@ async function processarWebhook(req, rawBody, base44) {
     // canal_atendimento é o canal fixo de resposta — só definido na criação ou manualmente
     const canalAtual = conversa.canal_atendimento || conversa.canal_preferencial || null;
 
-    // Se a conversa já é Meta Oficial, NÃO mudar tipo_conexao via webhook Evolution
-    const conversaEhMetaOficial = conversa.tipo_conexao === 'meta_oficial' || conversa.instancia === 'META_OFICIAL';
+    // Se a conversa já é Meta Oficial ou Instagram, NÃO mudar tipo_conexao via webhook Evolution
+    const conversaEhMetaOficial = 
+      conversa.tipo_conexao === 'meta_oficial' || 
+      conversa.instancia === 'META_OFICIAL' ||
+      conversa.canal_atendimento === 'meta_oficial' ||
+      conversa.canal_preferencial === 'meta_oficial';
+
+    const conversaEhInstagram = 
+      conversa.tipo_conexao === 'instagram' || 
+      conversa.instancia === 'INSTAGRAM';
+
+    const conversaDevePreservarCanal = conversaEhMetaOficial || conversaEhInstagram;
+
+    if (conversaDevePreservarCanal) {
+      console.log(`🛡️ Conversa protegida (canal: ${conversa.tipo_conexao} / instancia: ${conversa.instancia}) — ignorando webhook Evolution que mudaria o canal`);
+    }
 
     const updateData = {
       ultima_mensagem: conteudo.substring(0, 200),
       data_ultima_mensagem: new Date().toISOString(),
       status: 'ativa',
       ultimo_remetente: ultimoRemetente,
-      ultima_origem_recebida: 'evolution',
       colaborador_id: colaboradorId || conversa.colaborador_id || '',
       cliente_id: clienteId || conversa.cliente_id || '',
-      instancia: conversaEhMetaOficial ? conversa.instancia : instanceFinal,
       cliente_nome: conversa.cliente_nome || pushName || telefoneLimpo,
       cliente_telefone: telefoneLimpo,
-      whatsapp_id: conversa.whatsapp_id || (telefoneLimpo + '@s.whatsapp.net')
+      whatsapp_id: conversa.whatsapp_id || (telefoneLimpo + '@s.whatsapp.net'),
+      // Preservar canal/instância se for Meta Oficial ou Instagram
+      instancia: conversaDevePreservarCanal ? conversa.instancia : instanceFinal,
+      tipo_conexao: conversaDevePreservarCanal ? conversa.tipo_conexao : 'empresa',
+      ultima_origem_recebida: conversaDevePreservarCanal ? conversa.ultima_origem_recebida : 'evolution',
     };
 
-    // Só muda tipo_conexao e canal se a conversa NÃO é Meta Oficial
-    if (!conversaEhMetaOficial) {
-      updateData.tipo_conexao = 'empresa';
-      // Só define canal se ainda não tem canal travado
+    // Só define canal se a conversa NÃO é Meta/Instagram e ainda não tem canal travado
+    if (!conversaDevePreservarCanal) {
       if (!canalAtual) {
         updateData.canal_atendimento = 'evolution';
         updateData.canal_preferencial = 'evolution';
