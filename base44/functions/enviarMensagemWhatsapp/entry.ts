@@ -312,16 +312,24 @@ Deno.serve(async (req) => {
 
         if (mediaType === 'audio') {
           // Meta exige audio/mp4 ou audio/ogg; codecs=opus
-          mimeType = 'audio/mp4';
+          mimeType = 'audio/ogg';
+          nomeArquivo = nomeArquivo.replace(/\.[^.]+$/, '') + '.ogg';
         }
 
         const uploadFormData = new FormData();
         uploadFormData.append('messaging_product', 'whatsapp');
-        uploadFormData.append('file', new File([bytes], nomeArquivo, { type: mimeType }));
+        const fileBlob = new Blob([bytes], { type: mimeType });
+        uploadFormData.append('file', fileBlob, nomeArquivo);
         uploadFormData.append('type', mimeType);
 
         const metaUploadUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/media`;
-        console.log('📤 Upload mídia Meta:', { mediaType, mimeType, nomeArquivo, tamanho: bytes.length });
+        console.log('📤 Upload mídia Meta:', { 
+          mediaType, 
+          mimeType, 
+          nomeArquivo, 
+          tamanho: bytes.length,
+          fileSize: fileBlob.size
+        });
 
         const uploadResp = await fetch(metaUploadUrl, {
           method: 'POST',
@@ -367,7 +375,7 @@ Deno.serve(async (req) => {
           metaPayload.context = { message_id: resposta_para_message_id };
         }
 
-        console.log('📤 Payload Meta mídia:', JSON.stringify(metaPayload).substring(0, 500));
+        console.log('📤 Payload Meta mídia:', JSON.stringify(metaPayload, null, 2));
       } else {
         metaPayload = {
           messaging_product: 'whatsapp',
@@ -382,6 +390,9 @@ Deno.serve(async (req) => {
       }
 
       console.log('📤 Enviando via API Oficial Meta...');
+      console.log('📋 URL:', metaUrl);
+      console.log('📋 Payload completo:', JSON.stringify(metaPayload, null, 2));
+      
       const metaResp = await fetch(metaUrl, {
         method: 'POST',
         headers: {
@@ -392,7 +403,8 @@ Deno.serve(async (req) => {
       });
 
       const metaText = await metaResp.text();
-      console.log('📥 Status Meta:', metaResp.status, metaText.substring(0, 300));
+      console.log('📥 Status Meta:', metaResp.status);
+      console.log('📥 Resposta completa:', metaText);
 
       if (!metaResp.ok) {
         let errMsg = 'Erro ao enviar via API Oficial Meta';
