@@ -1,0 +1,78 @@
+{
+  "name": "LogVersaoWhatsApp",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa (null = global)"
+    },
+    "versao_anterior": {
+      "type": "string",
+      "description": "Vers\u00e3o anterior configurada"
+    },
+    "versao_nova": {
+      "type": "string",
+      "description": "Nova vers\u00e3o detectada"
+    },
+    "versao_atual_evolution": {
+      "type": "string",
+      "description": "Vers\u00e3o que estava configurada na Evolution API"
+    },
+    "status_antes": {
+      "type": "string",
+      "description": "Status das inst\u00e2ncias antes da a\u00e7\u00e3o"
+    },
+    "status_depois": {
+      "type": "string",
+      "description": "Status das inst\u00e2ncias ap\u00f3s a a\u00e7\u00e3o"
+    },
+    "precisou_reiniciar": {
+      "type": "boolean",
+      "default": false
+    },
+    "instancias_reconectadas": {
+      "type": "boolean",
+      "default": false
+    },
+    "acao": {
+      "type": "string",
+      "enum": [
+        "verificacao",
+        "atualizacao_manual",
+        "atualizacao_automatica",
+        "reinicio_manual",
+        "alerta_falha"
+      ],
+      "description": "Tipo de a\u00e7\u00e3o realizada"
+    },
+    "detalhes": {
+      "type": "string",
+      "description": "Detalhes adicionais / JSON de resposta"
+    },
+    "sucesso": {
+      "type": "boolean",
+      "default": true
+    },
+    "erro": {
+      "type": "string",
+      "description": "Mensagem de erro se houver"
+    }
+  },
+  "required": [
+    "acao"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id || record.empresa_id === null;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return false;"
+    },
+    "delete": {
+      "rule": "return user.perfil === 'super_admin' || user.perfil === 'master';"
+    }
+  }
+}
