@@ -82,6 +82,16 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
       toast.error('Ramal SIP é obrigatório');
       return;
     }
+    // Bloquear se o numbersip parece um celular brasileiro (10-11 dígitos com DDD)
+    const sipLimpo = form.numbersip.replace(/\D/g, '');
+    if (sipLimpo.length >= 10 && sipLimpo.length <= 11 && /^[1-9]{2}[6-9]/.test(sipLimpo)) {
+      toast.error('❌ O Ramal SIP parece ser um número de celular. O Ramal SIP deve ser o número interno do NVOIP (ex: 137715001), não o telefone do cliente ou seu celular pessoal.');
+      return;
+    }
+    if (sipLimpo.length >= 10 && sipLimpo.length <= 11 && /^[1-9]{2}[2-5]/.test(sipLimpo)) {
+      toast.error('❌ O Ramal SIP parece ser um número de telefone fixo. O Ramal SIP deve ser o número interno do NVOIP (ex: 137715001), não um número de linha externa.');
+      return;
+    }
     if (!form.napikey && !form.user_token) {
       toast.error('Informe a Napikey ou o User Token');
       return;
@@ -153,11 +163,12 @@ export default function ConfiguracaoRamalUsuarioModal({ open, onOpenChange, onSa
             <div className="space-y-2">
               <Label>Ramal SIP (NumberSIP) *</Label>
               <Input
-                placeholder="Ex: 142502001"
+                placeholder="Ex: 137715001 (ramal interno NVOIP, NÃO o telefone do cliente)"
                 value={form.numbersip}
                 onChange={e => setForm({ ...form, numbersip: e.target.value.trim() })}
               />
-              <p className="text-xs text-slate-400">Número do seu ramal SIP no painel NVOIP</p>
+              <p className="text-xs text-amber-600 font-medium">⚠️ Este é o ramal interno do NVOIP (ex: 137715001), NÃO o telefone do cliente nem seu celular pessoal.</p>
+              <p className="text-xs text-slate-400">NVOIP → Ramais → selecione o ramal → campo "NumberSIP"</p>
             </div>
 
             <div className="space-y-2">
