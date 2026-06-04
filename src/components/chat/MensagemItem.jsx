@@ -753,7 +753,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           <div className="flex items-center gap-1 mb-1">
             <span className="text-[10px]">👤</span>
             <p className="text-xs font-semibold opacity-75">
-              {mensagem.usuario_nome || 'WhatsApp'}
+              {mensagem.atendente_nome || mensagem.usuario_nome || 'Atendente'}
             </p>
           </div>
         )}

@@ -155,13 +155,21 @@ Deno.serve(async (req) => {
       const igData = JSON.parse(igText);
       const msgId = igData.message_id || `ig_${Date.now()}`;
 
+      // Buscar nome real do colaborador para Instagram também
+      let nomeAtendenteIg = user?.full_name || user?.email || 'Atendente';
+      try {
+        const colabsIg = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id }, '-created_date', 1);
+        if (colabsIg?.length > 0) nomeAtendenteIg = colabsIg[0].nome || colabsIg[0].nome_completo || nomeAtendenteIg;
+      } catch (_) {}
+
       // Salvar mensagem no banco
       const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
         conversa_id: conversa_id,
         empresa_id: empresaId,
         remetente: 'vendedor',
         usuario_id: user.id,
-        usuario_nome: user.full_name,
+        usuario_nome: nomeAtendenteIg,
+        atendente_nome: nomeAtendenteIg,
         tipo_conteudo: 'texto',
         texto: mensagem_texto.trim(),
         whatsapp_message_id: msgId,
@@ -478,7 +486,30 @@ Deno.serve(async (req) => {
 
     // Criar registro de mensagem no banco
     console.log('💾 Salvando mensagem no banco...');
-    
+
+    // Buscar nome real do colaborador (evita mostrar email ou nome do auth user)
+    let nomeAtendente =
+      user?.nome_perfil ||
+      user?.full_name ||
+      user?.name ||
+      user?.email ||
+      'Atendente';
+
+    try {
+      const colaboradores = await base44.asServiceRole.entities.Colaborador.filter({
+        user_id: user.id
+      }, '-created_date', 1);
+      if (colaboradores?.length > 0) {
+        nomeAtendente =
+          colaboradores[0].nome ||
+          colaboradores[0].nome_completo ||
+          colaboradores[0].full_name ||
+          nomeAtendente;
+      }
+    } catch (e) {
+      console.warn('⚠️ Não foi possível buscar nome do colaborador:', e.message);
+    }
+
     const empresaIdFinal = empresaId || payload.empresa_id;
 
     // Determinar tipo de conteúdo
@@ -516,7 +547,8 @@ Deno.serve(async (req) => {
         empresa_id: empresaIdParaSalvar,
         remetente: 'vendedor',
         usuario_id: user.id,
-        usuario_nome: user.full_name,
+        usuario_nome: nomeAtendente,
+        atendente_nome: nomeAtendente,
         tipo_conteudo: tipo_conteudo,
         texto: mensagem_texto || (arquivo ? `📎 ${arquivo.nome}` : ''),
         arquivo_url: arquivo_url_permanente,
