@@ -1,24 +1,36 @@
 /**
- * Testa a conexão com o EasyPanel API e lista os serviços disponíveis.
- * Use para verificar se o token e URL estão corretos.
+ * Testa a conexão com o EasyPanel API e inspeciona o serviço configurado.
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-async function easypanelCall(easypanelUrl, token, procedure, input = {}) {
-  const url = `${easypanelUrl.replace(/\/$/, '')}/api/trpc/${procedure}`;
+async function epGet(baseUrl, token, path, queryInput = null) {
+  let url = `${baseUrl.replace(/\/$/, '')}${path}`;
+  if (queryInput !== null) {
+    url += `?input=${encodeURIComponent(JSON.stringify(queryInput))}`;
+  }
   const resp = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify({ json: input }),
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json', 'Authorization': token },
     signal: AbortSignal.timeout(10000),
   });
   const text = await resp.text();
   let parsed = null;
   try { parsed = JSON.parse(text); } catch (_) {}
-  return { status: resp.status, ok: resp.ok, text: text.substring(0, 500), parsed };
+  return { status: resp.status, ok: resp.ok, parsed, text: text.substring(0, 600) };
+}
+
+async function epPost(baseUrl, token, path, body) {
+  const url = `${baseUrl.replace(/\/$/, '')}${path}`;
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': token },
+    body: JSON.stringify({ json: body }),
+    signal: AbortSignal.timeout(10000),
+  });
+  const text = await resp.text();
+  let parsed = null;
+  try { parsed = JSON.parse(text); } catch (_) {}
+  return { status: resp.status, ok: resp.ok, parsed, text: text.substring(0, 600) };
 }
 
 Deno.serve(async (req) => {
@@ -26,42 +38,35 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
-    if (!['master', 'super_admin', 'admin'].includes(user.perfil)) {
-      return Response.json({ error: 'Acesso negado' }, { status: 403 });
-    }
 
-    const easypanelUrl = Deno.env.get('EASYPANEL_URL');
-    const easypanelToken = Deno.env.get('EASYPANEL_TOKEN');
-    const easypanelProject = Deno.env.get('EASYPANEL_PROJECT');
-    const easypanelService = Deno.env.get('EASYPANEL_SERVICE');
+    const url = Deno.env.get('EASYPANEL_URL');
+    const token = Deno.env.get('EASYPANEL_TOKEN');
+    const project = Deno.env.get('EASYPANEL_PROJECT');
+    const service = Deno.env.get('EASYPANEL_SERVICE');
 
-    if (!easypanelUrl || !easypanelToken) {
+    if (!url || !token) {
       return Response.json({ error: 'EASYPANEL_URL e EASYPANEL_TOKEN não configurados' }, { status: 400 });
     }
 
-    const resultados = {
-      config: { url: easypanelUrl, project: easypanelProject, service: easypanelService },
-      testes: []
-    };
+    const testes = [];
 
-    // Teste 1: Listar projetos
-    const r1 = await easypanelCall(easypanelUrl, easypanelToken, 'projects.list', {});
-    resultados.testes.push({ endpoint: 'projects.list', status: r1.status, ok: r1.ok, resposta: r1.parsed || r1.text });
+    // Teste 1: getUser
+    const r1 = await epGet(url, token, '/api/trpc/auth.getUser', { json: null });
+    testes.push({ endpoint: 'auth.getUser', ...r1 });
 
-    // Teste 2: Inspecionar serviço específico (se configurado)
-    if (easypanelProject && easypanelService) {
-      const r2 = await easypanelCall(easypanelUrl, easypanelToken, 'services.inspect', {
-        projectName: easypanelProject,
-        serviceName: easypanelService
+    // Teste 2: listar projetos
+    const r2 = await epGet(url, token, '/api/trpc/projects.listProjects', { json: null });
+    testes.push({ endpoint: 'projects.listProjects', ...r2 });
+
+    // Teste 3: inspecionar serviço app (GET com query)
+    if (project && service) {
+      const r3 = await epGet(url, token, '/api/trpc/services.app.inspectService', {
+        input: { json: { projectName: project, serviceName: service } }
       });
-      resultados.testes.push({ endpoint: 'services.inspect', status: r2.status, ok: r2.ok, resposta: r2.parsed || r2.text });
+      testes.push({ endpoint: 'services.app.inspectService', ...r3 });
     }
 
-    // Teste 3: Verificar autenticação simples
-    const r3 = await easypanelCall(easypanelUrl, easypanelToken, 'auth.me', {});
-    resultados.testes.push({ endpoint: 'auth.me', status: r3.status, ok: r3.ok, resposta: r3.parsed || r3.text });
-
-    return Response.json(resultados);
+    return Response.json({ config: { url, project, service }, testes });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
