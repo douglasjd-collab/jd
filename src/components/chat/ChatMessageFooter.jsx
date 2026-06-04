@@ -71,7 +71,7 @@ export default function ChatMessageFooter({
       <EnviarMensagemForm
         key={conversaSelecionada?.id}
         onEnviar={async ({ texto, arquivo }) => {
-          await enviarMensagemMutation.mutateAsync({ texto, arquivo });
+          await enviarMensagemMutation.mutateAsync({ texto, arquivo, mensagemParaResponder });
           setMensagemParaResponder(null);
         }}
         isLoading={enviarMensagemMutation.isPending}

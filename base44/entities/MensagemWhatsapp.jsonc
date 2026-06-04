@@ -92,6 +92,14 @@
     "reaction": {
       "type": "string",
       "description": "Emoji de rea\u00e7\u00e3o recebida nesta mensagem (ex: \ud83d\udc4d, \u2764\ufe0f)"
+    },
+    "resposta_para_texto": {
+      "type": "string",
+      "description": "Texto da mensagem original \u00e0 qual esta \u00e9 uma resposta (cita\u00e7\u00e3o)"
+    },
+    "resposta_para_nome": {
+      "type": "string",
+      "description": "Nome do remetente da mensagem citada"
     }
   },
   "required": [

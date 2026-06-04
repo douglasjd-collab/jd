@@ -768,6 +768,19 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         {!isGrupo && !isVendedor && mensagem.usuario_nome && (
           <p className="text-xs font-semibold mb-1 opacity-60">{mensagem.usuario_nome}</p>
         )}
+        {/* Citação da mensagem respondida — estilo WhatsApp */}
+        {mensagem.resposta_para_texto && (
+          <div className={`mb-2 rounded-lg overflow-hidden border-l-4 ${isVendedor ? 'border-white/60 bg-white/15' : 'border-blue-500 bg-slate-100'}`}>
+            <div className={`px-2 pt-1.5 pb-1`}>
+              <p className={`text-[11px] font-semibold truncate ${isVendedor ? 'text-white/90' : 'text-blue-600'}`}>
+                {mensagem.resposta_para_nome || 'Mensagem'}
+              </p>
+              <p className={`text-xs truncate mt-0.5 ${isVendedor ? 'text-white/70' : 'text-slate-500'}`}>
+                {mensagem.resposta_para_texto}
+              </p>
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap items-end gap-x-1.5">
           <div className="flex-1 min-w-0">{renderConteudo()}</div>
           {mensagem.reaction && (

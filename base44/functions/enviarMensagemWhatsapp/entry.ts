@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'JSON inválido' }, { status: 400 });
     }
 
-    const { conversa_id, mensagem_texto, numero_cliente, arquivo, forcar_api } = payload;
+    const { conversa_id, mensagem_texto, numero_cliente, arquivo, forcar_api, resposta_para_texto, resposta_para_nome } = payload;
     
     console.log('📋 Parâmetros:');
     console.log('  - conversa_id:', conversa_id);
@@ -589,6 +589,8 @@ Deno.serve(async (req) => {
         arquivo_url: arquivo_url_permanente,
         arquivo_nome: arquivo?.nome || null,
         arquivo_tamanho: 0,
+        resposta_para_texto: resposta_para_texto || null,
+        resposta_para_nome: resposta_para_nome || null,
         whatsapp_message_id: (usaMetaOficial ? null : messageIdEvolution) || result?.key?.id || result?.messageId || result?.id || `temp_${Date.now()}`,
         data_envio: new Date().toISOString(),
         status: 'enviada'

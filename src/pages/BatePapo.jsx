@@ -852,7 +852,7 @@ export default function BatePapo() {
   });
 
   const enviarMensagemMutation = useMutation({
-    mutationFn: async ({ texto, arquivo }) => {
+    mutationFn: async ({ texto, arquivo, mensagemParaResponder }) => {
       if (!texto?.trim() && !arquivo) {
         throw new Error('Mensagem ou arquivo obrigatório');
       }
@@ -867,13 +867,15 @@ export default function BatePapo() {
         numero_cliente: destinatario,
         empresa_id: empresaId,
         arquivo: arquivo,
+        resposta_para_texto: mensagemParaResponder?.texto || null,
+        resposta_para_nome: mensagemParaResponder ? (mensagemParaResponder.remetente === 'vendedor' ? (mensagemParaResponder.usuario_nome || 'Você') : (conversaSelecionada?.cliente_nome || 'Cliente')) : null,
       });
       if (!resp?.data?.success) {
         throw new Error(resp?.data?.error || 'Erro ao enviar mensagem');
       }
       return resp.data;
     },
-    onMutate: async ({ texto, arquivo }) => {
+    onMutate: async ({ texto, arquivo, mensagemParaResponder }) => {
       // Mensagem otimista — aparece imediatamente
       const queryKey = ['mensagens-whatsapp', conversaSelecionadaId];
       await queryClient.cancelQueries({ queryKey });
@@ -902,6 +904,8 @@ export default function BatePapo() {
           arquivo_nome: arquivo?.nome || null,
           data_envio: new Date().toISOString(),
           status: 'pendente',
+          resposta_para_texto: mensagemParaResponder?.texto || null,
+          resposta_para_nome: mensagemParaResponder ? (mensagemParaResponder.remetente === 'vendedor' ? (mensagemParaResponder.usuario_nome || 'Você') : (conversaSelecionada?.cliente_nome || 'Cliente')) : null,
         }
       ]);
       return { previous, queryKey };
