@@ -102,17 +102,16 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop());
     });
 
-    const mimeType = mediaRecorderRef.current?.mimeType || 'audio/webm';
-    const blob = new Blob(audioChunksRef.current, { type: mimeType });
+    const recordedMime = mediaRecorderRef.current?.mimeType || 'audio/webm';
+    const blob = new Blob(audioChunksRef.current, { type: recordedMime });
     const url = URL.createObjectURL(blob);
     const reader = new FileReader();
     reader.onload = () => {
       const base64 = reader.result.split(',')[1];
       setGravando(false);
       setTempoGravacao(0);
-      // Extensão baseada no mimeType real
-      const ext = mimeType.includes('ogg') ? 'ogg' : 'webm';
-      setAudioPreview({ url, blob, base64, mimeType, ext });
+      // Sempre enviar como ogg para compatibilidade com Evolution e Meta
+      setAudioPreview({ url, blob, base64, mimeType: 'audio/ogg', ext: 'ogg' });
     };
     reader.readAsDataURL(blob);
   };

@@ -423,7 +423,8 @@ Deno.serve(async (req) => {
           requestPayload = { number: numeroFormatado, mediatype: 'image', media: arquivo.base64, fileName: arquivo.nome, caption: mensagem_texto || '' };
         } else if (tipo.startsWith('audio')) {
           endpoint = `${baseUrl}/message/sendWhatsAppAudio/${instanceName}`;
-          requestPayload = { number: numeroFormatado, audio: arquivo.base64, encoding: true };
+          // Evolution espera o base64 puro do áudio (sem prefixo data:) e encoding=true para converter
+          requestPayload = { number: numeroFormatado, audio: arquivo.base64, encoding: true, delay: 1200 };
         } else if (tipo.startsWith('video')) {
           endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
           requestPayload = { number: numeroFormatado, mediatype: 'video', media: arquivo.base64, fileName: arquivo.nome, caption: mensagem_texto || '' };
@@ -461,8 +462,8 @@ Deno.serve(async (req) => {
           }
         } catch (_) {}
         console.error(`❌ Evolution ${response.status}: ${mensagemErro}`);
-        // NÃO retornar erro aqui — salvar a mensagem no banco mesmo com erro do WhatsApp
-        // Continuar com o fluxo para salvar a mensagem
+        // Retornar erro para o frontend mostrar ao usuário
+        return Response.json({ error: mensagemErro, details: responseText, success: false }, { status: 400 });
       }
 
       try {
