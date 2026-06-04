@@ -869,6 +869,7 @@ export default function BatePapo() {
         arquivo: arquivo,
         resposta_para_texto: mensagemParaResponder?.texto || null,
         resposta_para_nome: mensagemParaResponder ? (mensagemParaResponder.remetente === 'vendedor' ? (mensagemParaResponder.usuario_nome || 'Você') : (conversaSelecionada?.cliente_nome || 'Cliente')) : null,
+        resposta_para_message_id: mensagemParaResponder?.whatsapp_message_id || null,
       });
       if (!resp?.data?.success) {
         throw new Error(resp?.data?.error || 'Erro ao enviar mensagem');

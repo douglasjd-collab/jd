@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'JSON inválido' }, { status: 400 });
     }
 
-    const { conversa_id, mensagem_texto, numero_cliente, arquivo, forcar_api, resposta_para_texto, resposta_para_nome } = payload;
+    const { conversa_id, mensagem_texto, numero_cliente, arquivo, forcar_api, resposta_para_texto, resposta_para_nome, resposta_para_message_id } = payload;
     
     console.log('📋 Parâmetros:');
     console.log('  - conversa_id:', conversa_id);
@@ -372,6 +372,10 @@ Deno.serve(async (req) => {
           type: 'text',
           text: { body: mensagem_texto.trim() }
         };
+        // Reply/quoted — adicionar context se tiver message_id da mensagem original
+        if (resposta_para_message_id) {
+          metaPayload.context = { message_id: resposta_para_message_id };
+        }
       }
 
       console.log('📤 Enviando via API Oficial Meta...');
@@ -435,6 +439,10 @@ Deno.serve(async (req) => {
       } else {
         endpoint = `${baseUrl}/message/sendText/${instanceName}`;
         requestPayload = { number: numeroFormatado, text: mensagem_texto.trim() };
+        // Reply/quoted — adicionar quoted se tiver message_id da mensagem original
+        if (resposta_para_message_id) {
+          requestPayload.quoted = { key: { id: resposta_para_message_id } };
+        }
       }
 
       console.log('🎯 Endpoint:', endpoint);
