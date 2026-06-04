@@ -463,13 +463,18 @@ async function processarWebhook(req, rawBody, base44) {
         return;
       }
 
-      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversaGrupo.id, {
+      const grupoEhMetaOficial = conversaGrupo.tipo_conexao === 'meta_oficial' || conversaGrupo.instancia === 'META_OFICIAL';
+      const grupoUpdateData = {
         ultima_mensagem: conteudoG.substring(0, 200),
         data_ultima_mensagem: new Date().toISOString(),
         status: 'ativa',
         ultimo_remetente: fromMe ? 'vendedor' : 'cliente',
-        instancia: instanceFinal,
-      });
+      };
+      if (!grupoEhMetaOficial) {
+        grupoUpdateData.instancia = instanceFinal;
+        grupoUpdateData.tipo_conexao = 'empresa';
+      }
+      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversaGrupo.id, grupoUpdateData);
     } else {
       // Buscar nome do grupo via Evolution
       let nomeGrupo = pushNameGrupo;
@@ -711,25 +716,31 @@ async function processarWebhook(req, rawBody, base44) {
     // canal_atendimento é o canal fixo de resposta — só definido na criação ou manualmente
     const canalAtual = conversa.canal_atendimento || conversa.canal_preferencial || null;
 
+    // Se a conversa já é Meta Oficial, NÃO mudar tipo_conexao via webhook Evolution
+    const conversaEhMetaOficial = conversa.tipo_conexao === 'meta_oficial' || conversa.instancia === 'META_OFICIAL';
+
     const updateData = {
       ultima_mensagem: conteudo.substring(0, 200),
       data_ultima_mensagem: new Date().toISOString(),
       status: 'ativa',
       ultimo_remetente: ultimoRemetente,
-      tipo_conexao: 'empresa',          // última origem recebida = evolution
       ultima_origem_recebida: 'evolution',
       colaborador_id: colaboradorId || conversa.colaborador_id || '',
       cliente_id: clienteId || conversa.cliente_id || '',
-      instancia: instanceFinal,
+      instancia: conversaEhMetaOficial ? conversa.instancia : instanceFinal,
       cliente_nome: conversa.cliente_nome || pushName || telefoneLimpo,
       cliente_telefone: telefoneLimpo,
       whatsapp_id: conversa.whatsapp_id || (telefoneLimpo + '@s.whatsapp.net')
     };
 
-    // Só define canal se ainda não tem canal travado
-    if (!canalAtual) {
-      updateData.canal_atendimento = 'evolution';
-      updateData.canal_preferencial = 'evolution';
+    // Só muda tipo_conexao e canal se a conversa NÃO é Meta Oficial
+    if (!conversaEhMetaOficial) {
+      updateData.tipo_conexao = 'empresa';
+      // Só define canal se ainda não tem canal travado
+      if (!canalAtual) {
+        updateData.canal_atendimento = 'evolution';
+        updateData.canal_preferencial = 'evolution';
+      }
     }
 
     // Se a mensagem foi enviada pelo vendedor (fora do CRM), marcar como em atendimento por 10 min
