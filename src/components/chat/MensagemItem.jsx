@@ -135,8 +135,16 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
-  // Sem auto-download: usuário clica para carregar cada áudio individualmente
-  // Isso evita sobrecarga quando há muitos áudios na conversa
+  // Auto-carregar áudio se já tiver URL permanente válida (mensagens enviadas ou já baixadas)
+  useEffect(() => {
+    if (
+      mensagem.tipo_conteudo === 'audio' &&
+      !mediaUrl &&
+      isUrlValida(mensagem.arquivo_url)
+    ) {
+      setMediaUrl(mensagem.arquivo_url);
+    }
+  }, [mensagem.id]);
 
   const handleDeletar = async () => {
     if (mensagem.id?.startsWith('temp_')) {

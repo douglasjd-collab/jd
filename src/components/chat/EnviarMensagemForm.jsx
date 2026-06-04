@@ -20,6 +20,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const [erro, setErro] = useState(null);
   const [gravando, setGravando] = useState(false);
   const [tempoGravacao, setTempoGravacao] = useState(0);
+  const [audioPreview, setAudioPreview] = useState(null); // { url, blob, base64 }
   const [mensagensRapidasOpen, setMensagensRapidasOpen] = useState(false);
   const [templateMetaOpen, setTemplateMetaOpen] = useState(false);
   const [menuPlusOpen, setMenuPlusOpen] = useState(false);
@@ -84,7 +85,8 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     setTempoGravacao(0);
   };
 
-  const enviarAudio = async () => {
+  // Parar gravação e entrar no modo preview (sem enviar ainda)
+  const pararGravacaoParaPreview = async () => {
     if (!mediaRecorderRef.current) return;
     clearInterval(timerRef.current);
 
@@ -95,23 +97,41 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     });
 
     const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+    const url = URL.createObjectURL(blob);
     const reader = new FileReader();
-    reader.onload = async () => {
+    reader.onload = () => {
       const base64 = reader.result.split(',')[1];
       setGravando(false);
       setTempoGravacao(0);
-      setErro(null);
-      try {
-        await onEnviar({
-          texto: '',
-          arquivo: { base64, nome: 'audio.webm', tipo: 'audio/webm' }
-        });
-      } catch (err) {
-        setErro(err.message || 'Erro ao enviar áudio.');
-      }
+      setAudioPreview({ url, blob, base64 });
     };
     reader.readAsDataURL(blob);
   };
+
+  const cancelarPreviewAudio = () => {
+    if (audioPreview?.url) URL.revokeObjectURL(audioPreview.url);
+    setAudioPreview(null);
+    audioChunksRef.current = [];
+  };
+
+  const confirmarEnvioAudio = async () => {
+    if (!audioPreview) return;
+    setErro(null);
+    const { base64, url } = audioPreview;
+    setAudioPreview(null);
+    URL.revokeObjectURL(url);
+    try {
+      await onEnviar({
+        texto: '',
+        arquivo: { base64, nome: 'audio.webm', tipo: 'audio/webm' }
+      });
+    } catch (err) {
+      setErro(err.message || 'Erro ao enviar áudio.');
+    }
+  };
+
+  // mantido para compatibilidade (não usado mais diretamente)
+  const enviarAudio = pararGravacaoParaPreview;
 
   const formatarTempo = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
@@ -310,8 +330,23 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
         </div>
       )}
 
-      {/* UI de gravação ativa */}
-      {gravando ? (
+      {/* UI de preview do áudio gravado (confirmar antes de enviar) */}
+      {audioPreview ? (
+        <div className="flex flex-col gap-2 px-2 py-1">
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-2xl px-3 py-2">
+            <Mic className="w-4 h-4 text-blue-500 flex-shrink-0" />
+            <audio controls src={audioPreview.url} className="flex-1 h-8" style={{ minWidth: 0 }} />
+          </div>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={cancelarPreviewAudio} className="flex-1 text-slate-500 hover:bg-slate-100 rounded-xl gap-1.5">
+              <X className="w-4 h-4" /> Descartar
+            </Button>
+            <Button type="button" size="sm" onClick={confirmarEnvioAudio} disabled={isLoading} className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-xl gap-1.5">
+              <Send className="w-4 h-4" /> Enviar áudio
+            </Button>
+          </div>
+        </div>
+      ) : gravando ? (
         <div className="flex items-center gap-3 px-2 py-1">
           <div className="flex items-center gap-2 flex-1 bg-red-50 border border-red-200 rounded-2xl px-4 py-2">
             <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
@@ -330,11 +365,11 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
           </Button>
           <Button
             type="button"
-            onClick={enviarAudio}
+            onClick={pararGravacaoParaPreview}
             disabled={isLoading}
             className="rounded-full w-10 h-10 bg-green-500 hover:bg-green-600 shadow-md flex-shrink-0"
             size="icon"
-            title="Enviar áudio"
+            title="Parar e revisar"
           >
             <Send className="w-4 h-4" />
           </Button>
