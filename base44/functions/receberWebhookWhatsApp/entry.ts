@@ -717,11 +717,15 @@ async function processarWebhook(req, rawBody, base44) {
     const canalAtual = conversa.canal_atendimento || conversa.canal_preferencial || null;
 
     // Se a conversa já é Meta Oficial ou Instagram, NÃO mudar tipo_conexao via webhook Evolution
+    // phone_number_id_meta preenchido = conversa Meta — nunca tocar com Evolution
     const conversaEhMetaOficial = 
       conversa.tipo_conexao === 'meta_oficial' || 
       conversa.instancia === 'META_OFICIAL' ||
       conversa.canal_atendimento === 'meta_oficial' ||
-      conversa.canal_preferencial === 'meta_oficial';
+      conversa.canal_preferencial === 'meta_oficial' ||
+      conversa.canal_origem === 'meta' ||
+      conversa.provider === 'whatsapp_meta' ||
+      !!conversa.phone_number_id_meta;
 
     const conversaEhInstagram = 
       conversa.tipo_conexao === 'instagram' || 

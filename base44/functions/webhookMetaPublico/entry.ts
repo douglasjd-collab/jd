@@ -261,73 +261,62 @@ async function salvarMensagemMeta(base44, value, message) {
     }).catch(() => {});
   }
 
-  // Variações do telefone
+  // ── REGRA PRINCIPAL: conversa é identificada por (empresa + telefone + phone_number_id_meta) ──
+  // Nunca misturar conversas de canais diferentes do mesmo contato.
   const tel12 = telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13 ? telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5) : null;
   const tel13 = telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12 ? telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4) : null;
   const variacoes = [telefoneLimpo, tel12, tel13].filter(Boolean);
 
-  // Buscar conversa existente
+  // Buscar todas as conversas da empresa para filtrar
   const todasConvs = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
     { empresa_id: empresaId }, 'created_date', 500
   );
 
+  // 1ª prioridade: conversa Meta com o mesmo phone_number_id (canal correto + telefone)
   const conversasDoNumero = todasConvs.filter(c => {
     const t = String(c.cliente_telefone || '').replace(/\D/g, '');
     return variacoes.includes(t);
   });
 
-  let conversa = null;
+  // Buscar conversa que pertence a este canal Meta especificamente
+  let conversa = conversasDoNumero.find(c =>
+    (c.canal_origem === 'meta' || c.provider === 'whatsapp_meta' || c.tipo_conexao === 'meta_oficial') &&
+    (c.phone_number_id_meta === phoneNumberId || !c.phone_number_id_meta)
+  );
 
-  if (conversasDoNumero.length > 0) {
-    // Consolidar duplicatas — manter a mais antiga
-    conversa = conversasDoNumero[0];
-    for (const dup of conversasDoNumero.slice(1)) {
-      const msgsDup = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ conversa_id: dup.id }, null, 500);
-      for (const m of msgsDup) {
-        await base44.asServiceRole.entities.MensagemWhatsapp.update(m.id, { conversa_id: conversa.id });
-      }
-      await base44.asServiceRole.entities.ConversaWhatsapp.update(dup.id, { status: 'arquivada' });
-      console.log(`🗄️ [META] Duplicata ${dup.id} arquivada`);
-    }
+  // Se não encontrou conversa Meta, verificar se existe alguma com phone_number_id igual
+  if (!conversa) {
+    conversa = conversasDoNumero.find(c => c.phone_number_id_meta === phoneNumberId);
+  }
 
-    // REGRA CRÍTICA: só atualizar canal_origem se ainda não está definido
-    // Se já está meta → manter meta. Se era evolution e chegou mensagem Meta → não trocar automaticamente.
-    const canalOrigemAtual = conversa.canal_origem;
+  console.log(`🔍 [META] Busca conversa | phone_number_id=${phoneNumberId} | variacoes=${variacoes.join(',')} | total conversas número=${conversasDoNumero.length} | conversa Meta encontrada=${conversa?.id || 'NENHUMA'}`);
+
+  let conversa_id_final = null;
+
+  if (conversa) {
+    // Conversa Meta já existe — atualizar mantendo canal fixo
     const updateData = {
       ultima_mensagem: String(texto || '').slice(0, 200),
       data_ultima_mensagem: new Date().toISOString(),
       ultimo_remetente: 'cliente',
       status: 'ativa',
-      // Sempre atualizar phone_number_id da Meta
       phone_number_id_meta: phoneNumberId,
-      // last_inbound_provider é sempre atualizado (só diagnóstico)
       last_inbound_provider: 'whatsapp_meta',
+      // Reforçar campos Meta sempre (nunca deixar vazio)
+      canal_origem: 'meta',
+      provider: 'whatsapp_meta',
+      locked_provider: true,
+      tipo_conexao: 'meta_oficial',
+      instancia: 'META_OFICIAL',
+      canal_atendimento: 'meta_oficial',
+      canal_preferencial: 'meta_oficial',
     };
-
-    // Campos de canal: só definir se ainda não têm valor travado
-    if (!canalOrigemAtual) {
-      // Primeira mensagem Meta — travar como meta
-      updateData.canal_origem = 'meta';
-      updateData.provider = 'whatsapp_meta';
-      updateData.locked_provider = true;
-      updateData.tipo_conexao = 'meta_oficial';
-      updateData.instancia = 'META_OFICIAL';
-      updateData.canal_atendimento = 'meta_oficial';
-      updateData.canal_preferencial = 'meta_oficial';
-      console.log(`🔒 [META] Canal travado como META para conversa ${conversa.id}`);
-    } else if (canalOrigemAtual === 'meta') {
-      // Já é meta — apenas confirmar tipo_conexao
-      updateData.tipo_conexao = 'meta_oficial';
-      updateData.instancia = 'META_OFICIAL';
-    } else {
-      // Era evolution mas chegou mensagem Meta — NÃO trocar automaticamente
-      console.log(`⚠️ [META] Conversa ${conversa.id} tem canal_origem=${canalOrigemAtual} — não sobrescrevendo com Meta automaticamente`);
-    }
-
     await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, updateData);
-    console.log(`💬 [META] Conversa atualizada: ${conversa.id} | canal_origem=${canalOrigemAtual || 'meta (novo)'}`);
+    conversa_id_final = conversa.id;
+    console.log(`💬 [META] Conversa Meta atualizada: ${conversa.id}`);
   } else {
-    // Criar nova conversa — canal_origem=meta travado imediatamente
+    // Não existe conversa Meta para este phone_number_id + telefone — criar nova
+    // NUNCA reusar uma conversa Evolution existente para responder via Meta
     conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
       empresa_id: empresaId,
       cliente_nome: nomePerfil || telefoneLimpo,
@@ -347,7 +336,8 @@ async function salvarMensagemMeta(base44, value, message) {
       data_ultima_mensagem: new Date().toISOString(),
       ultimo_remetente: 'cliente',
     });
-    console.log(`✨ [META] Conversa criada (canal=meta travado): ${conversa.id}`);
+    conversa_id_final = conversa.id;
+    console.log(`✨ [META] Nova conversa Meta criada (phone_number_id=${phoneNumberId}): ${conversa.id}`);
   }
 
   // Verificar duplicata

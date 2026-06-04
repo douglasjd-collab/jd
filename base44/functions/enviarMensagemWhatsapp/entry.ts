@@ -103,20 +103,26 @@ Deno.serve(async (req) => {
     const tipoConexaoConversa = conversaDoBanco?.tipo_conexao || '';
 
     // ── FONTE DE VERDADE DO CANAL ────────────────────────────────────────────
-    // Ordem de prioridade (da mais confiável para menos):
-    // 1. canal_origem (novo campo travado)
-    // 2. provider (novo campo travado)
-    // 3. canal_atendimento (legado)
-    // 4. tipo_conexao (legado)
+    // Regra: o canal é definido pelo número da EMPRESA que recebeu a mensagem (phone_number_id_meta
+    // para Meta, ou instancia para Evolution). NÃO usar o telefone do cliente para decidir o canal.
+    //
+    // Prioridade:
+    // 1. canal_origem (campo travado — definido no webhook, nunca sobrescrito automaticamente)
+    // 2. provider (campo travado equivalente)
+    // 3. phone_number_id_meta presente → forçar Meta
+    // 4. tipo_conexao / canal_atendimento (legado)
     const canalOrigem = conversaDoBanco?.canal_origem || null;
     const providerSalvo = conversaDoBanco?.provider || null;
+    const phoneNumberIdConversa = conversaDoBanco?.phone_number_id_meta || null;
 
+    // Se phone_number_id_meta está preenchido na conversa, é Meta — independente de outros campos
     const canalAtendimento =
       canalOrigem === 'meta' ? 'meta_oficial' :
       canalOrigem === 'instagram' ? 'instagram' :
       canalOrigem === 'evolution' ? 'evolution' :
       providerSalvo === 'whatsapp_meta' ? 'meta_oficial' :
       providerSalvo === 'instagram' ? 'instagram' :
+      phoneNumberIdConversa ? 'meta_oficial' :
       conversaDoBanco?.canal_atendimento ||
       conversaDoBanco?.canal_preferencial ||
       tipoConexaoConversa ||
