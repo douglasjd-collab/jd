@@ -198,7 +198,6 @@ async function salvarMensagem(base44, value, message) {
     texto = message.document?.caption || message.document?.filename || '[Documento]';
     arquivoUrl = message.document?.id || null;
     arquivoNome = message.document?.filename || `documento_${telefoneLimpo}`;
-  }
   } else if (message.type === 'button') {
     tipoConteudo = 'texto';
     texto = message.button?.text || message.button?.payload || '[Botão]';
@@ -409,23 +408,17 @@ async function salvarMensagem(base44, value, message) {
     console.log(`✅ Mídia salva: tipo=${tipoConteudo} | nome=${arquivoNome} | url=${arquivoUrl?.substring(0, 80)}...`);
   }
 
-  // Atualizar última mensagem da conversa
-  // tipo_conexao registra a última origem recebida; canal_atendimento é fixo
-  const canalAtualPublico = conversa.canal_atendimento || conversa.canal_preferencial || null;
-
+  // Atualizar última mensagem da conversa — SEMPRE forçar canal meta_oficial
   const updateConversaPublico = {
     ultima_mensagem: String(texto || '').slice(0, 100),
     data_ultima_mensagem: new Date().toISOString(),
     tipo_conexao: 'meta_oficial',
     ultima_origem_recebida: 'meta_oficial',
     instancia: 'META_OFICIAL',
+    canal_atendimento: 'meta_oficial',
+    canal_preferencial: 'meta_oficial',
     phone_number_id_meta: phoneNumberId,
   };
-
-  if (!canalAtualPublico) {
-    updateConversaPublico.canal_atendimento = 'meta_oficial';
-    updateConversaPublico.canal_preferencial = 'meta_oficial';
-  }
 
   await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, updateConversaPublico);
 
