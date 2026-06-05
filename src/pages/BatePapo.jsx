@@ -1692,7 +1692,9 @@ export default function BatePapo() {
                             })()}
                             {/* Etiqueta de atendimento */}
                             {(() => {
-                              const atendenteAtivo = atendenteDentroDoTempo(c) && c.responsavel_nome;
+                              const atendenteAtivo = c.responsavel_nome && (
+                                !c.responsavel_expira_em || atendenteDentroDoTempo(c)
+                              );
                               if (c.status === 'encerrada') return (
                                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5" style={{ background: '#f1f5f9', fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
                                   <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
