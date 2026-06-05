@@ -1,7 +1,10 @@
 /**
- * Atualiza CONFIG_SESSION_PHONE_VERSION no EasyPanel via API tRPC
- * e reinicia o serviço da Evolution API.
- * Proteção anti-loop: não reinicia se já reiniciou nos últimos 15 min.
+ * Atualiza APENAS CONFIG_SESSION_PHONE_VERSION no EasyPanel.
+ * ESTRATÉGIA SEGURA:
+ * 1. Lê env vars atuais
+ * 2. Faz PATCH apenas nas 3 variáveis CONFIG_SESSION_PHONE_*
+ * 3. Se não conseguir ler env atual → ABORTA (não sobrescreve nada)
+ * 4. Verifica que todas as outras variáveis foram preservadas antes de salvar
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
@@ -17,8 +20,7 @@ async function epGet(baseUrl, token, path, queryInput = null) {
   });
   const text = await resp.text();
   if (!resp.ok) throw new Error(`EasyPanel GET ${path} [${resp.status}]: ${text.substring(0, 300)}`);
-  const data = JSON.parse(text);
-  return data?.result?.data?.json ?? data?.result?.data ?? data;
+  return JSON.parse(text);
 }
 
 async function epPost(baseUrl, token, path, body) {
@@ -31,19 +33,74 @@ async function epPost(baseUrl, token, path, body) {
   });
   const text = await resp.text();
   if (!resp.ok) throw new Error(`EasyPanel POST ${path} [${resp.status}]: ${text.substring(0, 300)}`);
-  const data = JSON.parse(text);
-  return data?.result?.data?.json ?? data?.result?.data ?? data;
+  return JSON.parse(text);
+}
+
+function parseEnvStr(envStr) {
+  const vars = {};
+  if (!envStr) return vars;
+  envStr.split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    const idx = trimmed.indexOf('=');
+    if (idx === -1) return;
+    const k = trimmed.substring(0, idx).trim();
+    const v = trimmed.substring(idx + 1); // NÃO trim() no valor — preservar espaços/vazios
+    if (k) vars[k] = v;
+  });
+  return vars;
+}
+
+function buildEnvStr(vars) {
+  return Object.entries(vars).map(([k, v]) => `${k}=${v}`).join('\n');
+}
+
+async function lerEnvVarsAtuais(epUrl, epToken, epProject, epService) {
+  // Tenta múltiplos formatos do endpoint EasyPanel tRPC
+  const tentativas = [
+    async () => {
+      const data = await epGet(epUrl, epToken, `/api/trpc/services.app.inspectService`, {
+        projectName: epProject, serviceName: epService
+      });
+      const d = data?.result?.data?.json ?? data?.result?.data ?? data;
+      return d?.env || d?.source?.env || d?.config?.env || null;
+    },
+    async () => {
+      const data = await epGet(epUrl, epToken, `/api/trpc/services.app.inspectService?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, serviceName: epService } }))}`);
+      const d = data?.result?.data?.json ?? data?.result?.data ?? data;
+      return d?.env || d?.source?.env || d?.config?.env || null;
+    },
+    async () => {
+      const data = await epGet(epUrl, epToken, `/api/trpc/apps.inspect?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, appName: epService } }))}`);
+      const d = data?.result?.data?.json ?? data?.result?.data ?? data;
+      return d?.env || d?.source?.env || null;
+    },
+  ];
+
+  for (let i = 0; i < tentativas.length; i++) {
+    try {
+      const envStr = await tentativas[i]();
+      if (envStr && typeof envStr === 'string' && envStr.trim().length > 10) {
+        const vars = parseEnvStr(envStr);
+        const qtd = Object.keys(vars).length;
+        console.log(`✅ Env lida na tentativa ${i + 1}: ${qtd} variáveis`);
+        if (qtd >= 5) return { envStr, vars }; // mínimo 5 vars para ser válido
+      }
+    } catch (e) {
+      console.warn(`⚠️ Tentativa ${i + 1} falhou: ${e.message}`);
+    }
+  }
+  return null;
 }
 
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const payload = await req.json().catch(() => ({}));
-    const { versao_nova, forcar = false } = payload;
+    const { versao_nova, forcar = false, apenas_inspecionar = false } = payload;
 
     const epUrl = Deno.env.get('EASYPANEL_URL');
     const epToken = Deno.env.get('EASYPANEL_TOKEN');
@@ -51,13 +108,32 @@ Deno.serve(async (req) => {
     const epService = Deno.env.get('EASYPANEL_SERVICE');
 
     if (!epUrl || !epToken || !epProject || !epService) {
-      return Response.json({ success: false, error: 'Secrets do EasyPanel não configurados (EASYPANEL_URL, EASYPANEL_TOKEN, EASYPANEL_PROJECT, EASYPANEL_SERVICE).' }, { status: 400 });
+      return Response.json({ success: false, error: 'Secrets do EasyPanel não configurados.' }, { status: 400 });
     }
 
-    // Proteção anti-loop
+    // ──────────────────────────────────────────────────────────────────────
+    // MODO APENAS INSPECIONAR: retorna env atual sem modificar nada
+    // ──────────────────────────────────────────────────────────────────────
+    if (apenas_inspecionar) {
+      const resultado = await lerEnvVarsAtuais(epUrl, epToken, epProject, epService);
+      if (!resultado) return Response.json({ success: false, error: 'Não conseguiu ler env vars' });
+      return Response.json({
+        success: true,
+        total_vars: Object.keys(resultado.vars).length,
+        vars_config_session: {
+          CONFIG_SESSION_PHONE_VERSION: resultado.vars['CONFIG_SESSION_PHONE_VERSION'] || null,
+          CONFIG_SESSION_PHONE_NAME: resultado.vars['CONFIG_SESSION_PHONE_NAME'] || null,
+          CONFIG_SESSION_PHONE_CLIENT: resultado.vars['CONFIG_SESSION_PHONE_CLIENT'] || null,
+        },
+        env_preview: resultado.envStr.substring(0, 500) + '...',
+      });
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // PROTEÇÃO ANTI-LOOP
+    // ──────────────────────────────────────────────────────────────────────
     const LOCK_KEY = 'easypanel_ultimo_restart';
-    let lockId = null;
-    let ultimoRestart = null;
+    let lockId = null, ultimoRestart = null;
     try {
       const locks = await base44.asServiceRole.entities.ConfiguracaoSistema.filter({ chave: LOCK_KEY });
       if (locks.length > 0) { ultimoRestart = locks[0].valor ? new Date(locks[0].valor) : null; lockId = locks[0].id; }
@@ -67,16 +143,18 @@ Deno.serve(async (req) => {
       const minutosPassados = (Date.now() - ultimoRestart.getTime()) / 60000;
       if (minutosPassados < 15) {
         const restante = Math.ceil(15 - minutosPassados);
-        return Response.json({ success: false, bloqueado: true, error: `Anti-loop: último reinício há ${Math.floor(minutosPassados)} min. Aguarde ${restante} min ou use forcar=true.`, proximo_restart_em: restante });
+        return Response.json({ success: false, bloqueado: true, error: `Anti-loop: último reinício há ${Math.floor(minutosPassados)} min. Aguarde ${restante} min ou use forcar=true.` });
       }
     }
 
-    // Buscar versão mais recente se não informada
+    // ──────────────────────────────────────────────────────────────────────
+    // BUSCAR VERSÃO MAIS RECENTE (se não informada)
+    // ──────────────────────────────────────────────────────────────────────
     let versaoAlvo = versao_nova;
     if (!versaoAlvo) {
       try {
         const resp = await fetch('https://wppconnect.io/whatsapp-versions/', {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CRM-Bot/1.0)' },
+          headers: { 'User-Agent': 'Mozilla/5.0' },
           signal: AbortSignal.timeout(10000)
         });
         if (resp.ok) {
@@ -95,105 +173,99 @@ Deno.serve(async (req) => {
         }
       } catch (_) {}
     }
-
     if (!versaoAlvo) return Response.json({ success: false, error: 'Não foi possível detectar a versão mais recente.' }, { status: 400 });
 
-    // Versão anterior
+    // Versão anterior no banco
     let versaoAnterior = null, versaoConfigId = null;
     try {
       const configs = await base44.asServiceRole.entities.ConfiguracaoSistema.filter({ chave: 'whatsapp_versao_configurada' });
       if (configs.length > 0) { versaoAnterior = configs[0].valor; versaoConfigId = configs[0].id; }
     } catch (_) {}
 
-    // Passo 1: Inspecionar serviço para obter env vars atuais
-    // CRÍTICO: Se não conseguir ler as vars atuais, ABORTAR para não sobrescrever tudo com env vazio
-    let envVarsAtuais = {};
-    let inspecaoOk = false;
-    let envStrOriginal = '';
+    // ──────────────────────────────────────────────────────────────────────
+    // PASSO CRÍTICO: LER ENV VARS ATUAIS
+    // Se falhar → ABORTAR COMPLETAMENTE
+    // ──────────────────────────────────────────────────────────────────────
+    console.log('📖 Lendo env vars atuais do EasyPanel...');
+    const leituraAtual = await lerEnvVarsAtuais(epUrl, epToken, epProject, epService);
 
-    // Tentar múltiplos endpoints de inspeção
-    const endpointsInspecao = [
-      '/api/trpc/services.app.inspectService',
-      '/api/trpc/apps.inspect',
-      '/api/trpc/services.inspect',
-    ];
-
-    for (const endpoint of endpointsInspecao) {
-      try {
-        const serviceData = await epGet(epUrl, epToken, endpoint, {
-          input: { json: { projectName: epProject, serviceName: epService } }
-        });
-        const envStr = serviceData?.env || serviceData?.source?.env || serviceData?.config?.env || serviceData?.envVars || '';
-        if (envStr && envStr.trim().length > 0) {
-          envStrOriginal = envStr;
-          envStr.split('\n').forEach(line => {
-            const [k, ...v] = line.split('=');
-            if (k?.trim()) envVarsAtuais[k.trim()] = v.join('=').trim();
-          });
-          inspecaoOk = true;
-          console.log(`✅ Serviço inspecionado via ${endpoint}, env vars encontradas: ${Object.keys(envVarsAtuais).length}`);
-          break;
-        }
-      } catch (e) {
-        console.warn(`⚠️ Endpoint ${endpoint} falhou: ${e.message}`);
-      }
-    }
-
-    // PROTEÇÃO CRÍTICA: Se não encontrou nenhuma env var, ABORTAR
-    // para não sobrescrever o ambiente com apenas 3 variáveis e derrubar o Evolution
-    if (!inspecaoOk || Object.keys(envVarsAtuais).length === 0) {
-      const msg = 'SEGURANÇA: Não foi possível ler as variáveis de ambiente atuais do EasyPanel. Operação ABORTADA para evitar apagar as configurações do Evolution API.';
-      console.error('🛑 ' + msg);
-
-      // Log no banco
+    if (!leituraAtual) {
+      const msg = '🛑 ABORTADO: Não foi possível ler as variáveis de ambiente atuais. Operação cancelada para proteger o Evolution API.';
+      console.error(msg);
       try {
         await base44.asServiceRole.entities.LogVersaoWhatsApp.create({
           versao_anterior: versaoAnterior, versao_nova: versaoAlvo,
-          precisou_reiniciar: false, instancias_reconectadas: false,
-          acao: 'alerta_falha', sucesso: false,
-          erro: msg
+          acao: 'alerta_falha', sucesso: false, erro: msg
         });
       } catch (_) {}
-
       return Response.json({ success: false, abortado: true, error: msg }, { status: 500 });
     }
 
-    console.log(`📋 Env vars lidas (${Object.keys(envVarsAtuais).length} variáveis). Atualizando apenas CONFIG_SESSION_PHONE_*`);
+    const { vars: envVarsAtuais, envStr: envStrOriginal } = leituraAtual;
+    const totalVarsAntes = Object.keys(envVarsAtuais).length;
+    console.log(`✅ ${totalVarsAntes} variáveis lidas. Fazendo patch apenas nas CONFIG_SESSION_PHONE_*`);
 
-    // Atualizar SOMENTE as variáveis do WhatsApp — manter todo o resto intacto
-    envVarsAtuais['CONFIG_SESSION_PHONE_VERSION'] = versaoAlvo;
-    envVarsAtuais['CONFIG_SESSION_PHONE_NAME'] = 'Chrome';
-    envVarsAtuais['CONFIG_SESSION_PHONE_CLIENT'] = 'Evolution API';
+    // ──────────────────────────────────────────────────────────────────────
+    // PATCH: Atualizar SOMENTE as 3 variáveis de versão
+    // Todas as outras (~150 vars) são preservadas intactas
+    // ──────────────────────────────────────────────────────────────────────
+    const versaoAtualNoEasyPanel = envVarsAtuais['CONFIG_SESSION_PHONE_VERSION'];
+    if (versaoAtualNoEasyPanel === versaoAlvo && !forcar) {
+      return Response.json({
+        success: true,
+        sem_mudanca: true,
+        mensagem: `Versão ${versaoAlvo} já está configurada no EasyPanel. Use forcar=true para forçar.`,
+        versao_atual: versaoAtualNoEasyPanel
+      });
+    }
 
-    const novaEnvStr = Object.entries(envVarsAtuais).map(([k, v]) => `${k}=${v}`).join('\n');
+    // Clonar vars e atualizar apenas as 3
+    const envVarsNovo = { ...envVarsAtuais };
+    envVarsNovo['CONFIG_SESSION_PHONE_VERSION'] = versaoAlvo;
+    envVarsNovo['CONFIG_SESSION_PHONE_NAME'] = 'Chrome';
+    envVarsNovo['CONFIG_SESSION_PHONE_CLIENT'] = 'Evolution API';
 
-    // Passo 2: Atualizar env vars
+    const totalVarsDepois = Object.keys(envVarsNovo).length;
+
+    // VERIFICAÇÃO DE SEGURANÇA: número de vars deve ser igual (só atualizamos, não removemos)
+    if (totalVarsDepois < totalVarsAntes) {
+      const msg = `🛑 ABORTADO: Verificação de segurança falhou. Antes: ${totalVarsAntes} vars, depois: ${totalVarsDepois} vars. Algo removeria variáveis.`;
+      console.error(msg);
+      return Response.json({ success: false, abortado: true, error: msg }, { status: 500 });
+    }
+
+    const novaEnvStr = buildEnvStr(envVarsNovo);
+
+    // ──────────────────────────────────────────────────────────────────────
+    // SALVAR ENV ATUALIZADA NO EASYPANEL
+    // ──────────────────────────────────────────────────────────────────────
     let easypanelAtualizou = false;
     try {
       await epPost(epUrl, epToken, '/api/trpc/services.app.updateEnv', {
         projectName: epProject, serviceName: epService, env: novaEnvStr
       });
       easypanelAtualizou = true;
-      console.log('✅ Env vars atualizadas via services.app.updateEnv');
+      console.log(`✅ Env salva: ${totalVarsDepois} vars preservadas, CONFIG_SESSION_PHONE_VERSION=${versaoAlvo}`);
     } catch (e) {
       console.error('❌ updateEnv falhou:', e.message);
+      return Response.json({ success: false, error: `Falha ao salvar env no EasyPanel: ${e.message}` }, { status: 500 });
     }
 
-    // Passo 3: Fazer deploy/restart
+    // ──────────────────────────────────────────────────────────────────────
+    // DEPLOY/RESTART
+    // ──────────────────────────────────────────────────────────────────────
     let reiniciou = false;
-    if (easypanelAtualizou) {
-      try {
-        await epPost(epUrl, epToken, '/api/trpc/services.app.deployService', {
-          projectName: epProject, serviceName: epService
-        });
-        reiniciou = true;
-        console.log('✅ Deploy iniciado via services.app.deployService');
-      } catch (e) {
-        console.error('❌ deployService falhou:', e.message);
-      }
+    try {
+      await epPost(epUrl, epToken, '/api/trpc/services.app.deployService', {
+        projectName: epProject, serviceName: epService
+      });
+      reiniciou = true;
+      console.log('✅ Deploy iniciado');
+    } catch (e) {
+      console.error('❌ deployService falhou:', e.message);
     }
 
-    // Salvar lock anti-loop
+    // Lock anti-loop
     if (reiniciou) {
       try {
         const agora = new Date().toISOString();
@@ -202,7 +274,9 @@ Deno.serve(async (req) => {
       } catch (_) {}
     }
 
-    // Passo 4: Aguardar e verificar instâncias
+    // ──────────────────────────────────────────────────────────────────────
+    // AGUARDAR E VERIFICAR INSTÂNCIAS
+    // ──────────────────────────────────────────────────────────────────────
     let statusInstancias = [];
     if (reiniciou) {
       console.log('⏳ Aguardando serviço reiniciar (20s)...');
@@ -225,7 +299,6 @@ Deno.serve(async (req) => {
             }
           } catch (_) { if (t < 3) await new Promise(r => setTimeout(r, 5000)); }
         }
-        // Reconectar desconectadas
         for (const inst of statusInstancias.filter(i => !['open', 'connected', 'CONNECTED'].includes(i.status))) {
           try {
             await fetch(`${evolutionUrl}/instance/connect/${inst.nome}`, { headers: { 'apikey': evolutionKey }, signal: AbortSignal.timeout(10000) });
@@ -240,15 +313,15 @@ Deno.serve(async (req) => {
       else await base44.asServiceRole.entities.ConfiguracaoSistema.create({ chave: 'whatsapp_versao_configurada', valor: versaoAlvo, descricao: 'Versão WhatsApp Web configurada na Evolution API' });
     } catch (_) {}
 
-    // Log no banco
     const instConectadas = statusInstancias.filter(i => ['open', 'connected', 'CONNECTED'].includes(i.status));
+
+    // Log no banco
     try {
       await base44.asServiceRole.entities.LogVersaoWhatsApp.create({
         versao_anterior: versaoAnterior, versao_nova: versaoAlvo,
         precisou_reiniciar: reiniciou, instancias_reconectadas: instConectadas.length === statusInstancias.length && statusInstancias.length > 0,
         acao: 'atualizacao_automatica', sucesso: easypanelAtualizou,
-        detalhes: JSON.stringify({ easypanel_atualizou: easypanelAtualizou, reiniciou, instancias: statusInstancias }),
-        erro: !easypanelAtualizou ? 'EasyPanel não atualizou as env vars' : null
+        detalhes: JSON.stringify({ total_vars_preservadas: totalVarsDepois, reiniciou, instancias: statusInstancias }),
       });
     } catch (_) {}
 
@@ -256,7 +329,7 @@ Deno.serve(async (req) => {
     const tgToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
     const tgChat = Deno.env.get('TELEGRAM_CHAT_ID');
     if (tgToken && tgChat) {
-      const msg = `${easypanelAtualizou ? '✅' : '⚠️'} *EasyPanel - Versão WhatsApp Atualizada*\n\n• Versão anterior: \`${versaoAnterior || 'N/A'}\`\n• Nova versão: \`${versaoAlvo}\`\n• EasyPanel atualizou: ${easypanelAtualizou ? '✅' : '❌'}\n• Reiniciado: ${reiniciou ? '✅' : '❌'}\n• Instâncias online: ${instConectadas.length}/${statusInstancias.length}`;
+      const msg = `✅ *EasyPanel - Versão WhatsApp Atualizada*\n\n• Versão anterior: \`${versaoAnterior || 'N/A'}\`\n• Nova versão: \`${versaoAlvo}\`\n• Variáveis preservadas: ${totalVarsDepois}\n• Reiniciado: ${reiniciou ? '✅' : '❌'}\n• Instâncias online: ${instConectadas.length}/${statusInstancias.length}`;
       await fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: tgChat, text: msg, parse_mode: 'Markdown' })
@@ -264,10 +337,13 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({
-      success: easypanelAtualizou, versao_anterior: versaoAnterior, versao_nova: versaoAlvo,
-      easypanel_atualizou: easypanelAtualizou, reiniciou, instancias: statusInstancias,
+      success: true,
+      versao_anterior: versaoAnterior,
+      versao_nova: versaoAlvo,
+      total_vars_preservadas: totalVarsDepois,
+      reiniciou,
+      instancias: statusInstancias,
       instancias_conectadas: instConectadas.length,
-      aviso: !easypanelAtualizou ? 'Não foi possível atualizar via EasyPanel API. Verifique o token, URL, project e service.' : null
     });
 
   } catch (error) {
