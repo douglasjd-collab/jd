@@ -392,11 +392,8 @@ export default function Layout({ children, currentPageName }) {
     { 
       name: 'Campanhas', 
       icon: Send, 
-      roles: ALL_ROLES,
-      submenu: [
-        { name: 'Dashboard', page: 'Campanhas' },
-        { name: 'Disparos', page: 'DisparoEmMassa' },
-      ]
+      page: 'Campanhas',
+      roles: ALL_ROLES
     },
     {
       name: 'Funcionários',
@@ -430,7 +427,6 @@ export default function Layout({ children, currentPageName }) {
     'Call Center': 'call_center',
     'Contatos CRM': 'contatos_crm',
     'Campanhas': 'campanhas',
-    'Disparo em Massa': 'campanhas:DisparoEmMassa',
     'JD Messenger (Central de conversas)': 'bate_papo',
     'Financeiro': 'financeiro',
     'Cadastros': 'cadastros',
