@@ -483,22 +483,16 @@ export default function useSoftphone(config) {
 
     // ── Caller ID / DID de saída (deve vir ANTES da URI_QUEUE) ───────────
     const ramalSIP  = String(cfg?.numbersip || '');
-    const didLimpo  = cfg?.numero_did ? cfg.numero_did.replace(/\D/g, '') : '';
+    const didRaw    = cfg?.numero_did ? cfg.numero_did.replace(/\D/g, '') : '';
+    // Normaliza o DID: garante que tenha o 55 para o header SIP, mas testa ambos
+    const didLimpo  = didRaw.startsWith('55') ? didRaw : (didRaw ? '55' + didRaw : '');
     const sipDomain = 'app.nvoip.com.br';
 
-    // [FIX-DID] Quando DID configurado (ex: 558132998470), a NVOIP espera o destino
-    // SEM DDI 55, pois o próprio DID já carrega o contexto de saída nacional.
-    // Com DDI → Rejected. Sem DDI → aceito pela rota de saída do DID.
-    // Ordem: sem DDI primeiro (funciona com DID configurado), com DDI como fallback.
-    const URI_QUEUE = didLimpo
-      ? [
-          `sip:${numSemDDI}@${sipDomain}`,
-          `sip:${numComDDI}@${sipDomain}`,
-        ]
-      : [
-          `sip:${numComDDI}@${sipDomain}`,
-          `sip:${numSemDDI}@${sipDomain}`,
-        ];
+    // Tenta as duas variantes do destino: sem DDI e com DDI
+    const URI_QUEUE = [
+      `sip:${numComDDI}@${sipDomain}`,
+      `sip:${numSemDDI}@${sipDomain}`,
+    ];
 
     const numHistorico = numSemDDI;
 
@@ -530,16 +524,18 @@ export default function useSoftphone(config) {
       extraHeaders.push(`P-Asserted-Identity: <sip:${didLimpo}@${sipDomain}>`);
       // Remote-Party-ID: compatibilidade com proxies mais antigos
       extraHeaders.push(`Remote-Party-ID: <sip:${didLimpo}@${sipDomain}>;privacy=off;screen=yes`);
-      // X-Caller-ID: campo legado NVOIP
-      extraHeaders.push(`X-Caller-ID: ${didLimpo}`);
+      // X-Caller-ID: campo legado NVOIP (sem prefixo 55)
+      extraHeaders.push(`X-Caller-ID: ${didSemPrefixo}`);
     }
 
     // [FIX-CALLER-ID] Se DID configurado, usá-lo como From URI da chamada.
-    // O JsSIP usa o campo `fromUserName` (ou `anonymous_from`) para sobrescrever
-    // o usuário no header From sem alterar as credenciais de autenticação.
+    // O JsSIP usa o campo `fromUserName` para sobrescrever o usuário no header From
+    // sem alterar as credenciais de autenticação.
     // Isso faz o INVITE sair com: From: <sip:558132998470@app.nvoip.com.br>
     // mas ainda autentica com ramal 137715001 + senha SIP.
     const fromUri = didLimpo ? `sip:${didLimpo}@${sipDomain}` : undefined;
+    // DID sem o 55 para headers que podem não aceitar DDI
+    const didSemPrefixo = didLimpo.startsWith('55') ? didLimpo.slice(2) : didLimpo;
 
     // [FIX-CANCELED] Não passar mediaStream manual.
     // JsSIP gerencia getUserMedia internamente via mediaConstraints.
@@ -548,7 +544,7 @@ export default function useSoftphone(config) {
       rtcOfferConstraints : { offerToReceiveAudio: true, offerToReceiveVideo: false },
       pcConfig,
       extraHeaders,
-      ...(fromUri ? { fromUserName: didLimpo, fromDisplayName: didLimpo } : {}),
+      ...(fromUri ? { fromUserName: didSemPrefixo || didLimpo, fromDisplayName: didSemPrefixo || didLimpo } : {}),
     };
 
     // ── Tenta cada URI em sequência ────────────────────────────────────────
