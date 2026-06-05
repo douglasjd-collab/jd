@@ -44,7 +44,6 @@ export default function Campanhas() {
   const [user, setUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('todas');
   const [filtroRenovacao, setFiltroRenovacao] = useState('aguardando');
   const [modalSimulacaoOpen, setModalSimulacaoOpen] = useState(false);
   const [renovacaoSelecionada, setRenovacaoSelecionada] = useState(null);
@@ -72,13 +71,6 @@ export default function Campanhas() {
     }
   };
 
-  // Buscar histórico de campanhas enviadas
-  const { data: campanhas = [], refetch: refetchCampanhas } = useQuery({
-    queryKey: ['campanhas', empresaId],
-    enabled: !!empresaId,
-    queryFn: () => base44.entities.CampanhaLog.filter({ empresa_id: empresaId }, '-created_date', 1000),
-  });
-
   // Buscar fila de renovações
   const { data: renovacoes = [], refetch: refetchRenovacoes } = useQuery({
     queryKey: ['campanhas-renovacao', empresaId],
@@ -95,7 +87,6 @@ export default function Campanhas() {
     onSuccess: (data) => {
       toast.success(`✅ ${data.campanhasEnviadas} campanhas enviadas`);
       if (data.erros > 0) toast.warning(`⚠️ ${data.erros} erros`);
-      refetchCampanhas();
       refetchRenovacoes();
     },
     onError: (e) => toast.error('Erro: ' + e.message),
@@ -261,14 +252,6 @@ export default function Campanhas() {
     onError: (e) => toast.error('Erro: ' + e.message),
   });
 
-  // Filtros histórico
-  const campanhasFiltradas = campanhas.filter(c => {
-    const matchSearch =
-      (c.cliente_nome || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.cliente_telefone || '').includes(searchTerm);
-    return matchSearch && (filtroStatus === 'todas' || c.status === filtroStatus);
-  });
-
   // Filtros renovação
   const renovacoesFiltradas = renovacoes.filter(r => {
     const matchSearch =
@@ -288,16 +271,6 @@ export default function Campanhas() {
   };
 
   const hoje = new Date().toISOString().slice(0, 10);
-
-  // Estatísticas
-  const stats = {
-    total: campanhas.length,
-    enviadas: campanhas.filter(c => c.status === 'enviada').length,
-    erros: campanhas.filter(c => c.status === 'erro').length,
-    taxa_sucesso: campanhas.length > 0
-      ? Math.round((campanhas.filter(c => c.status === 'enviada').length / campanhas.length) * 100)
-      : 0,
-  };
 
   const renovacaoStats = {
     aguardando: renovacoes.filter(r => r.status === 'aguardando').length,
@@ -437,7 +410,7 @@ export default function Campanhas() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-slate-500 uppercase font-semibold">Enviadas</p>
-                <p className="text-3xl font-bold text-blue-600 mt-1">{stats.enviadas + renovacaoStats.enviadas}</p>
+                <p className="text-3xl font-bold text-blue-600 mt-1">{renovacaoStats.enviadas}</p>
                 <p className="text-xs text-slate-400 mt-0.5">total histórico</p>
               </div>
               <BarChart3 className="w-8 h-8 text-blue-400 opacity-60" />
@@ -471,10 +444,6 @@ export default function Campanhas() {
                 {oportunidadesPlanejamento.length}
               </span>
             )}
-          </TabsTrigger>
-          <TabsTrigger value="historico" className="gap-1.5">
-            <BarChart3 className="w-4 h-4" />
-            Histórico de Envios
           </TabsTrigger>
         </TabsList>
 
@@ -882,78 +851,7 @@ export default function Campanhas() {
           </Card>
         </TabsContent>
 
-        {/* ABA: Histórico */}
-        <TabsContent value="historico">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <BarChart3 className="w-5 h-5" />
-                Histórico de Campanhas Enviadas
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex gap-2 flex-wrap">
-                <div className="flex-1 min-w-[200px] relative">
-                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                  <Input
-                    placeholder="Buscar por cliente ou telefone..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                <div className="flex gap-1">
-                  {['todas', 'enviada', 'erro'].map(s => (
-                    <Button
-                      key={s}
-                      variant={filtroStatus === s ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setFiltroStatus(s)}
-                      className="capitalize"
-                    >
-                      {s === 'todas' ? 'Todas' : s}
-                    </Button>
-                  ))}
-                </div>
-              </div>
 
-              <ScrollArea className="h-[500px] border rounded-lg">
-                <div className="space-y-2 p-3">
-                  {campanhasFiltradas.length === 0 ? (
-                    <div className="flex items-center justify-center h-64 text-slate-400">
-                      <p className="text-sm">Nenhuma campanha encontrada</p>
-                    </div>
-                  ) : (
-                    campanhasFiltradas.map(c => (
-                      <div
-                        key={c.id}
-                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm text-slate-900">{c.cliente_nome}</p>
-                          <p className="text-xs text-slate-500 mt-0.5">{c.cliente_telefone}</p>
-                          <p className="text-xs text-slate-400 mt-0.5">
-                            {c.tipo_campanha === 'aniversario_emprestimo' ? 'Aniversário de Empréstimo' : c.tipo_campanha}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3 ml-4">
-                          <span className="text-xs text-slate-500">
-                            {new Date(c.created_date).toLocaleDateString('pt-BR')}
-                          </span>
-                          <Badge
-                            variant={c.status === 'enviada' ? 'default' : 'destructive'}
-                          >
-                            {c.status === 'enviada' ? '✓ Enviada' : '✗ Erro'}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* Modal envio campanha planejamento */}
