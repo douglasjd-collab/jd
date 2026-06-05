@@ -13,6 +13,7 @@ import ContatosCRM from './pages/ContatosCRM';
 import ConfiguracaoApi from './pages/ConfiguracaoApi';
 import Adiantamentos from './pages/Adiantamentos';
 import Campanhas from './pages/Campanhas';
+import DisparoEmMassa from './pages/DisparoEmMassa';
 import HistoricoImportacaoPropostas from './pages/HistoricoImportacaoPropostas';
 import TesteWebhookWhatsApp from './pages/TesteWebhookWhatsApp';
 import ExportarHistoricoConversa from './pages/ExportarHistoricoConversa';
@@ -102,6 +103,7 @@ const AuthenticatedApp = () => {
       <Route path="/ConfiguracaoApi" element={<LayoutWrapper currentPageName="ConfiguracaoApi"><ConfiguracaoApi /></LayoutWrapper>} />
       <Route path="/Adiantamentos" element={<LayoutWrapper currentPageName="Adiantamentos"><Adiantamentos /></LayoutWrapper>} />
       <Route path="/Campanhas" element={<LayoutWrapper currentPageName="Campanhas"><Campanhas /></LayoutWrapper>} />
+      <Route path="/DisparoEmMassa" element={<LayoutWrapper currentPageName="DisparoEmMassa"><DisparoEmMassa /></LayoutWrapper>} />
       <Route path="/HistoricoImportacaoPropostas" element={<LayoutWrapper currentPageName="HistoricoImportacaoPropostas"><HistoricoImportacaoPropostas /></LayoutWrapper>} />
       <Route path="/TesteWebhookWhatsApp" element={<LayoutWrapper currentPageName="TesteWebhookWhatsApp"><TesteWebhookWhatsApp /></LayoutWrapper>} />
       <Route path="/ExportarHistoricoConversa" element={<LayoutWrapper currentPageName="ExportarHistoricoConversa"><ExportarHistoricoConversa /></LayoutWrapper>} />

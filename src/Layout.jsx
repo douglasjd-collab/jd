@@ -389,7 +389,15 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Minhas Comissões', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor', 'colaborador', 'funcionario'] },
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
-    { name: 'Campanhas', icon: Send, page: 'Campanhas', roles: ALL_ROLES },
+    { 
+      name: 'Campanhas', 
+      icon: Send, 
+      roles: ALL_ROLES,
+      submenu: [
+        { name: 'Dashboard', page: 'Campanhas' },
+        { name: 'Disparo em Massa', page: 'DisparoEmMassa' },
+      ]
+    },
     {
       name: 'Funcionários',
       icon: Users,
@@ -422,6 +430,7 @@ export default function Layout({ children, currentPageName }) {
     'Call Center': 'call_center',
     'Contatos CRM': 'contatos_crm',
     'Campanhas': 'campanhas',
+    'Disparo em Massa': 'campanhas:DisparoEmMassa',
     'JD Messenger (Central de conversas)': 'bate_papo',
     'Financeiro': 'financeiro',
     'Cadastros': 'cadastros',
