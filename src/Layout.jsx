@@ -395,7 +395,7 @@ export default function Layout({ children, currentPageName }) {
       roles: ALL_ROLES,
       submenu: [
         { name: 'Dashboard', page: 'Campanhas' },
-        { name: 'Disparos', page: 'DisparoEmMassa' },
+        { name: 'Disparo em Massa', page: 'DisparoEmMassa' },
       ]
     },
     {
