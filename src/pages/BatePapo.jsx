@@ -1651,7 +1651,6 @@ export default function BatePapo() {
                               const cache = contatosWhatsapp[c.id];
                               const base = { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url };
                               if (!cache) return base;
-                              // Preferir foto do cache, mas usar foto da conversa como fallback
                               return { ...cache, foto_url: cache.foto_url || c.foto_url };
                             })()}
                             className="h-full w-full"
@@ -1663,6 +1662,16 @@ export default function BatePapo() {
                             ) : (
                               <span style={{ backgroundColor: statusDotColor }} className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white" />
                             )}
+                            {/* Badge de API no topo direito do avatar */}
+                            {(() => {
+                              const isIg = c.cliente_telefone?.startsWith('ig_') || c.instancia === 'INSTAGRAM' || c.tipo_conexao === 'instagram';
+                              if (isIg) return null;
+                              const isMeta = c.provider === 'whatsapp_meta' || c.canal_origem === 'meta' || c.tipo_conexao === 'meta_oficial' || c.instancia === 'META_OFICIAL';
+                              if (!isMeta) return null;
+                              return (
+                                <span className="absolute top-0 right-0 h-4 w-4 rounded-full border border-white flex items-center justify-center" style={{ background: '#22c55e', fontSize: '7px', fontWeight: 800, color: 'white', lineHeight: 1 }} title="API Oficial Meta">M</span>
+                              );
+                            })()}
                           </div>
 
                           {/* Conteúdo */}

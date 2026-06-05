@@ -133,6 +133,12 @@ Deno.serve(async (req) => {
         responsavel_expira_em: conversa.responsavel_expira_em || null,
         usuario_responsavel_id: conversa.usuario_responsavel_id || null,
         usuario_responsavel_nome: conversa.usuario_responsavel_nome || null,
+        tipo_conexao: conversa.tipo_conexao || null,
+        canal_origem: conversa.canal_origem || null,
+        provider: conversa.provider || null,
+        instancia: conversa.instancia || null,
+        phone_number_id_meta: conversa.phone_number_id_meta || null,
+        locked_provider: conversa.locked_provider || false,
         bloqueado: conversa.bloqueado || false,
         foto_url: conversa.foto_url || null,
         contato: contato ? {
