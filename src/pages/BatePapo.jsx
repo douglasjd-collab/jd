@@ -1689,6 +1689,14 @@ export default function BatePapo() {
                                 </div>
                               );
                             })()}
+                            {/* Assinatura do responsável */}
+                            {(c.responsavel_nome || c.usuario_responsavel_nome) && (
+                              <div className="flex items-center gap-1" style={{ fontSize: '11px', marginBottom: '2px' }}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                <span style={{ color: '#059669', fontWeight: 600 }}>{c.responsavel_nome || c.usuario_responsavel_nome}</span>
+                                <span style={{ color: '#9ca3af' }}>atendendo</span>
+                              </div>
+                            )}
                             <div className="jd-chat-bottom">
                               <span className="jd-chat-message">{ultimaMsg}</span>
                               <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
@@ -1752,14 +1760,6 @@ export default function BatePapo() {
                                   </DropdownMenu>
                                   </div>
                                   </div>
-                                  {/* Assinatura do responsável */}
-                                  {(c.responsavel_nome || c.usuario_responsavel_nome) && (
-                                  <div className="flex items-center gap-1 mt-1" style={{ fontSize: '11px' }}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                                  <span style={{ color: '#059669', fontWeight: 600 }}>{c.responsavel_nome || c.usuario_responsavel_nome}</span>
-                                  <span style={{ color: '#9ca3af' }}>atendendo</span>
-                                  </div>
-                                  )}
                                   </div>
                                   </div>
                                   );
