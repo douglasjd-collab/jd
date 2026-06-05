@@ -488,9 +488,11 @@ export default function useSoftphone(config) {
     const didLimpo  = didRaw.startsWith('55') ? didRaw : (didRaw ? '55' + didRaw : '');
     const sipDomain = 'app.nvoip.com.br';
 
-    // Tenta as duas variantes do destino: sem DDI e com DDI
+    // NVOIP WebRTC outbound: sempre usar DDI completo (E.164) primeiro
+    // O servidor NVOIP roteia para PSTN quando recebe número E.164 completo
+    const numE164 = numComDDI; // ex: 5587991426333
     const URI_QUEUE = [
-      `sip:${numComDDI}@${sipDomain}`,
+      `sip:${numE164}@${sipDomain}`,
       `sip:${numSemDDI}@${sipDomain}`,
     ];
 
@@ -520,12 +522,12 @@ export default function useSoftphone(config) {
 
     const extraHeaders = [];
     if (didLimpo) {
-      // P-Asserted-Identity: identidade verificada pelo proxy — usada pela NVOIP para rotear pelo DID
-      extraHeaders.push(`P-Asserted-Identity: <sip:${didLimpo}@${sipDomain}>`);
-      // Remote-Party-ID: compatibilidade com proxies mais antigos
-      extraHeaders.push(`Remote-Party-ID: <sip:${didLimpo}@${sipDomain}>;privacy=off;screen=yes`);
-      // X-Caller-ID: campo legado NVOIP (sem prefixo 55)
-      extraHeaders.push(`X-Caller-ID: ${didSemPrefixo}`);
+      // X-NVOIP-Caller-ID: header aceito pelo proxy NVOIP para identificar DID de saída
+      extraHeaders.push(`X-NVOIP-Caller-ID: ${didLimpo}`);
+      // X-DID: campo alternativo reconhecido por alguns gateways NVOIP
+      extraHeaders.push(`X-DID: ${didLimpo}`);
+      // X-Caller-ID: mantido por compatibilidade
+      extraHeaders.push(`X-Caller-ID: ${didLimpo}`);
     }
 
     // [FIX-CALLER-ID] Se DID configurado, usá-lo como From URI da chamada.
@@ -557,17 +559,43 @@ export default function useSoftphone(config) {
     // Mic é gerenciado pelo JsSIP — _releaseMic é no-op aqui (mantido por compatibilidade)
     const _releaseMic = () => {};
 
-    const tentarProximaURI = () => {
+    const tentarProximaURI = async () => {
       uriIdx++;
       if (uriIdx >= URI_QUEUE.length) {
-        // Esgotou todas as URIs
+        // Esgotou todas as URIs — tentar fallback via API REST NVOIP
         _clearCallTimeout();
         _releaseMic();
         sessionAtivaRef.current = null;
+
+        SIP_LOG.push('ALL_FAILED', `WebRTC falhou em todas as URIs — acionando fallback API REST NVOIP`);
+        console.warn('⚠️ [SIP] WebRTC falhou — tentando fallback API REST NVOIP');
+
+        try {
+          const res = await base44.functions.invoke('nvoipCallCenter', {
+            action: 'realizarChamadaDireta',
+            called: numOriginal,
+          });
+          const data = res?.data;
+          if (data?.callId || data?._tipo === 'headless_direto') {
+            SIP_LOG.push('FALLBACK_API', `✅ Fallback API REST acionado — callId: ${data.callId || 'sem ID'}`);
+            console.log('✅ [SIP] Fallback API REST NVOIP bem-sucedido:', data.callId);
+            if (mountedRef.current) {
+              setChamadaAtiva({ session: null, destino: numHistorico, direcao: 'saida', status: 'chamando', via: 'api_rest' });
+              setErroMsg('');
+            }
+            return;
+          }
+          const errMsg = data?.error || 'Resposta inesperada';
+          SIP_LOG.push('FALLBACK_FAILED', `Fallback API retornou erro: ${errMsg}`);
+        } catch (fallbackErr) {
+          SIP_LOG.push('FALLBACK_FAILED', `Fallback API também falhou: ${fallbackErr.message}`);
+          console.error('❌ [SIP] Fallback API REST falhou:', fallbackErr.message);
+        }
+
         const msg = inviteEnviado && !respostaRecebida
-          ? `NVOIP não respondeu ao INVITE em nenhuma das ${URI_QUEUE.length} URIs. Verifique: saldo, rota de saída e DID no painel NVOIP.`
-          : `Falha SIP em todas as URIs tentadas. Verifique o diagnóstico.`;
-        SIP_LOG.push('ALL_FAILED', msg);
+          ? `NVOIP não respondeu ao INVITE WebRTC. Possível causa: ramal sem rota PSTN outbound. Configure um trunk de saída no painel NVOIP.`
+          : `Falha SIP em todas as URIs e fallback API REST. Verifique o diagnóstico.`;
+        SIP_LOG.push('ALL_FAILED_FINAL', msg);
         if (mountedRef.current) { setErroMsg(msg); setChamadaAtiva(null); }
         _clearAudio();
         _salvarHistorico(numHistorico, 'saida', 'nao_atendida', 0);
@@ -581,6 +609,7 @@ export default function useSoftphone(config) {
       SIP_LOG.push('TRYING', `▶ INVITE para: ${destino}`);
       console.log(`📤 [SIP] Tentando URI: ${destino}`);
       inviteEnviado = false;
+      const inviteTimestamp = Date.now();
 
       let s;
       try {
@@ -794,12 +823,17 @@ export default function useSoftphone(config) {
           code, cause, phrase, uri: destino,
           invite_enviado   : inviteEnviado,
           resposta_recebida: respostaRecebida,
+          timing_ms        : Date.now() - inviteTimestamp,
+          nvoip_respondeu  : respostaRecebida,
+          causa_provavel   : !respostaRecebida
+            ? 'Ramal sem rota PSTN outbound no painel NVOIP — configurar trunk de saída'
+            : `Código SIP ${code}`,
           www_authenticate : wwwAuth,
           proxy_authenticate: proxyAuth,
           headers_recebidos: Object.keys(hdrs),
           diagnostico:
             !inviteEnviado         ? 'A) INVITE não saiu do CRM'
-            : !respostaRecebida    ? 'B) NVOIP ignorou o INVITE'
+            : !respostaRecebida    ? 'B) NVOIP ignorou o INVITE — sem rota PSTN outbound'
             : code === 403         ? 'C) Saldo/rota bloqueada'
             : code === 404         ? 'C) Formato URI errado'
             : cause === 'Canceled' ? 'SDP/WebRTC cancelado antes de enviar'
