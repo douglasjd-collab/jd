@@ -106,24 +106,61 @@ Deno.serve(async (req) => {
     } catch (_) {}
 
     // Passo 1: Inspecionar serviço para obter env vars atuais
+    // CRÍTICO: Se não conseguir ler as vars atuais, ABORTAR para não sobrescrever tudo com env vazio
     let envVarsAtuais = {};
-    try {
-      const serviceData = await epGet(epUrl, epToken, '/api/trpc/services.app.inspectService', {
-        input: { json: { projectName: epProject, serviceName: epService } }
-      });
-      const envStr = serviceData?.env || serviceData?.source?.env || serviceData?.config?.env || '';
-      if (envStr) {
-        envStr.split('\n').forEach(line => {
-          const [k, ...v] = line.split('=');
-          if (k?.trim()) envVarsAtuais[k.trim()] = v.join('=').trim();
+    let inspecaoOk = false;
+    let envStrOriginal = '';
+
+    // Tentar múltiplos endpoints de inspeção
+    const endpointsInspecao = [
+      '/api/trpc/services.app.inspectService',
+      '/api/trpc/apps.inspect',
+      '/api/trpc/services.inspect',
+    ];
+
+    for (const endpoint of endpointsInspecao) {
+      try {
+        const serviceData = await epGet(epUrl, epToken, endpoint, {
+          input: { json: { projectName: epProject, serviceName: epService } }
         });
+        const envStr = serviceData?.env || serviceData?.source?.env || serviceData?.config?.env || serviceData?.envVars || '';
+        if (envStr && envStr.trim().length > 0) {
+          envStrOriginal = envStr;
+          envStr.split('\n').forEach(line => {
+            const [k, ...v] = line.split('=');
+            if (k?.trim()) envVarsAtuais[k.trim()] = v.join('=').trim();
+          });
+          inspecaoOk = true;
+          console.log(`✅ Serviço inspecionado via ${endpoint}, env vars encontradas: ${Object.keys(envVarsAtuais).length}`);
+          break;
+        }
+      } catch (e) {
+        console.warn(`⚠️ Endpoint ${endpoint} falhou: ${e.message}`);
       }
-      console.log('✅ Serviço inspecionado, env vars encontradas:', Object.keys(envVarsAtuais).length);
-    } catch (e) {
-      console.warn('⚠️ Não conseguiu inspecionar serviço:', e.message);
     }
 
-    // Atualizar variáveis do WhatsApp
+    // PROTEÇÃO CRÍTICA: Se não encontrou nenhuma env var, ABORTAR
+    // para não sobrescrever o ambiente com apenas 3 variáveis e derrubar o Evolution
+    if (!inspecaoOk || Object.keys(envVarsAtuais).length === 0) {
+      const msg = 'SEGURANÇA: Não foi possível ler as variáveis de ambiente atuais do EasyPanel. Operação ABORTADA para evitar apagar as configurações do Evolution API.';
+      console.error('🛑 ' + msg);
+
+      // Log no banco
+      try {
+        await base44.asServiceRole.entities.LogVersaoWhatsApp.create({
+          versao_anterior: versaoAnterior, versao_nova: versaoAlvo,
+          precisou_reiniciar: false, instancias_reconectadas: false,
+          acao: 'alerta_falha', sucesso: false,
+          erro: msg
+        });
+      } catch (_) {}
+
+      return Response.json({ success: false, abortado: true, error: msg }, { status: 500 });
+    }
+
+    console.log(`📋 Env vars lidas (${Object.keys(envVarsAtuais).length} variáveis). Atualizando apenas CONFIG_SESSION_PHONE_*`);
+
+    // Atualizar SOMENTE as variáveis do WhatsApp — manter todo o resto intacto
     envVarsAtuais['CONFIG_SESSION_PHONE_VERSION'] = versaoAlvo;
     envVarsAtuais['CONFIG_SESSION_PHONE_NAME'] = 'Chrome';
     envVarsAtuais['CONFIG_SESSION_PHONE_CLIENT'] = 'Evolution API';
