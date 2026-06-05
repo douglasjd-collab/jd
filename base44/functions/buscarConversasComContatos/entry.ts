@@ -129,6 +129,7 @@ Deno.serve(async (req) => {
         status: conversa.status || 'ativa',
         ultimo_remetente: conversa.ultimo_remetente || null,
         responsavel_id: conversa.responsavel_id || null,
+        responsavel_nome: conversa.responsavel_nome || null,
         responsavel_expira_em: conversa.responsavel_expira_em || null,
         usuario_responsavel_id: conversa.usuario_responsavel_id || null,
         usuario_responsavel_nome: conversa.usuario_responsavel_nome || null,
