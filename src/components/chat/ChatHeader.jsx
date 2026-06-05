@@ -57,20 +57,18 @@ export default function ChatHeader({
     String(conversaSelecionada.cliente_telefone || '').startsWith('ig_');
 
   // ── CANAL FIXO: lido do banco, NÃO recalculado ──────────────────────────
-  // Ordem de prioridade: novo campo canal_origem > provider > campos legados
-  const canalOrigemBanco = conversaSelecionada.canal_origem || null;
+  // Prioridade: 1) override manual local, 2) provider (mais confiável), 3) canal_origem, 4) campos legados
   const providerBanco = conversaSelecionada.provider || null;
-  
-  // Override local só se usuário trocou manualmente — NÃO afeta canal_origem do banco
+  const canalOrigemBanco = conversaSelecionada.canal_origem || null;
+
+  // Override local só se usuário trocou manualmente
   const tipoConexaoEfetivo = canalOverride || conversaSelecionada.tipo_conexao;
 
-  // phone_number_id_meta preenchido = canal Meta com certeza, independente de canal_origem legado
   const ehMeta =
     !ehInstagram && (
       canalOverride === 'meta_oficial' ||
-      canalOrigemBanco === 'meta' ||
       providerBanco === 'whatsapp_meta' ||
-      !!conversaSelecionada.phone_number_id_meta ||
+      canalOrigemBanco === 'meta' ||
       (!canalOverride && (
         tipoConexaoEfetivo === 'meta_oficial' ||
         conversaSelecionada.instancia === 'META_OFICIAL'
