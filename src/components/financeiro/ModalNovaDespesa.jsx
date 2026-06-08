@@ -13,7 +13,7 @@ import GerenciarCategoriasModal from '@/components/forms/GerenciarCategoriasModa
 import { TrendingDown, Upload, Calendar as CalendarIcon, ChevronDown, CheckCircle, Repeat, Settings, Landmark, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import moment from 'moment';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }) {
@@ -324,11 +324,11 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
                     <PopoverTrigger asChild>
                       <Button variant="outline" className="flex-1 bg-slate-700 hover:bg-slate-600 text-white border-slate-600 justify-start">
                         <CalendarIcon className="w-4 h-4 mr-2" />
-                        {formData.data ? format(new Date(formData.data), 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
+                        {formData.data ? format(parseISO(formData.data), 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione'}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 bg-slate-800 border-slate-700">
-                      <Calendar mode="single" selected={formData.data ? new Date(formData.data) : undefined}
+                      <Calendar mode="single" selected={formData.data ? parseISO(formData.data) : undefined}
                         onSelect={(date) => { if (date) setFormData({ ...formData, data: format(date, 'yyyy-MM-dd') }); }}
                         locale={ptBR} className="bg-slate-800 text-white" />
                     </PopoverContent>
