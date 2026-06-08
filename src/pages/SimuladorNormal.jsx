@@ -48,6 +48,12 @@ export default function SimuladorNormal() {
   useEffect(() => {
     loadUser();
     carregarPlanoSelecionado();
+
+    // Restaurar nome e telefone da última simulação
+    const ultimoNome = localStorage.getItem('simulacao_ultima_nome');
+    const ultimoTelefone = localStorage.getItem('simulacao_ultimo_telefone');
+    if (ultimoNome) setClienteNome(ultimoNome);
+    if (ultimoTelefone) setTelefone(ultimoTelefone);
   }, []);
 
   const carregarPlanoSelecionado = async () => {

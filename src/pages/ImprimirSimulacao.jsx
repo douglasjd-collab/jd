@@ -205,12 +205,20 @@ export default function ImprimirSimulacao() {
       <div className="bg-white print:h-auto">
         {/* Botões - não aparecem na impressão */}
         <div className="no-print fixed top-4 left-4 right-4 z-50 flex justify-between">
-          <Link to={createPageUrl('SimuladorConsorcio')}>
-            <Button variant="outline" className="gap-2 shadow-lg">
-              <ArrowLeft className="w-4 h-4" />
-              Voltar ao Simulador
-            </Button>
-          </Link>
+          <Button
+            variant="outline"
+            className="gap-2 shadow-lg"
+            onClick={() => {
+              if (simulacao) {
+                localStorage.setItem('simulacao_ultima_nome', simulacao.cliente_nome || '');
+                localStorage.setItem('simulacao_ultimo_telefone', simulacao.telefone || '');
+              }
+              window.location.href = createPageUrl('SimuladorNormal');
+            }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Voltar ao Simulador
+          </Button>
           <Button onClick={handleImprimir} className="gap-2 shadow-lg bg-[#23BE84] hover:bg-[#1da570] px-6">
             <Printer className="w-4 h-4" />
             <span>Imprimir</span>
