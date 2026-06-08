@@ -1112,6 +1112,9 @@ export default function FunilVendas() {
               <Button variant="outline" size="sm" className="gap-1.5 h-9"><Settings className="w-4 h-4" /> Configurar</Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setCriarFunilOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" /> Novo Funil
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate(createPageUrl('ConfiguracaoFunis'))}>
                 <Settings className="w-4 h-4 mr-2" /> Configurar Etapas
               </DropdownMenuItem>
