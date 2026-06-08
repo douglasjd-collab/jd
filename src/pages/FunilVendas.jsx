@@ -67,6 +67,7 @@ export default function FunilVendas() {
   const [searchCard, setSearchCard] = useState('');
   const [chatFunilOportunidade, setChatFunilOportunidade] = useState(null);
   const [configAlertasOpen, setConfigAlertasOpen] = useState(false);
+  const [abaSelecionada, setAbaSelecionada] = useState('funil'); // 'funil' | 'relatorio'
 
   // ── Softphone WebRTC (mesmo do BatePapo/CallCenter) ───────────────────────
   const { data: nvoipConfig } = useQuery({
@@ -1228,21 +1229,34 @@ export default function FunilVendas() {
         ))}
       </div>
 
-      {/* ── NOVA BARRA DE INDICADORES EXECUTIVOS ── */}
-      <FunilIndicadoresExecutivos
-        oportunidades={filteredOportunidades}
-        etapas={etapasOrdenadas}
-        vendedores={vendedores}
-        filterProduto={filterProduto}
-      />
+      {/* ── ABAS: FUNIL vs RELATÓRIO ── */}
+      <div className="flex gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setAbaSelecionada('funil')}
+          className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-colors ${
+            abaSelecionada === 'funil'
+              ? 'border-[#1e3a5f] text-[#1e3a5f]'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          📊 Funil
+        </button>
+        <button
+          onClick={() => setAbaSelecionada('relatorio')}
+          className={`px-4 py-2.5 font-medium text-sm border-b-2 transition-colors ${
+            abaSelecionada === 'relatorio'
+              ? 'border-[#1e3a5f] text-[#1e3a5f]'
+              : 'border-transparent text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          📈 Relatório
+        </button>
+      </div>
 
-      {/* ── PAINEL DE ORIGEM DOS LEADS ── */}
-      <FunilOrigemLeads oportunidades={oportunidadesDoVendedor} />
-
-      {/* ── PAINEL DE MOTIVOS DE PERDA ── */}
-      <FunilMotivosPerda oportunidades={oportunidadesDoVendedor} />
-
-      {/* ── BARRA DE MÉTRICAS (mantida para compatibilidade) ── */}
+      {/* ── ABA FUNIL ── */}
+      {abaSelecionada === 'funil' && (
+        <>
+          {/* ── BARRA DE MÉTRICAS (mantida para compatibilidade) ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-3 border-l-4 border-l-blue-500 border-t-0 border-r-0 border-b-0 shadow-sm bg-blue-50/50">
           <p className="text-xs text-blue-600 font-medium">💰 Em negociação</p>
@@ -1601,6 +1615,27 @@ export default function FunilVendas() {
           })}
         </div>
       </DragDropContext>
+        </>
+      )}
+
+      {/* ── ABA RELATÓRIO ── */}
+      {abaSelecionada === 'relatorio' && (
+        <>
+          {/* ── NOVA BARRA DE INDICADORES EXECUTIVOS ── */}
+          <FunilIndicadoresExecutivos
+            oportunidades={filteredOportunidades}
+            etapas={etapasOrdenadas}
+            vendedores={vendedores}
+            filterProduto={filterProduto}
+          />
+
+          {/* ── PAINEL DE ORIGEM DOS LEADS ── */}
+          <FunilOrigemLeads oportunidades={oportunidadesDoVendedor} />
+
+          {/* ── PAINEL DE MOTIVOS DE PERDA ── */}
+          <FunilMotivosPerda oportunidades={oportunidadesDoVendedor} />
+        </>
+      )}
 
       {/* Form Modal */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
