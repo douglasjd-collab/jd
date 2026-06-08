@@ -203,6 +203,22 @@ export default function Dashboard() {
     staleTime: 60000,
   });
 
+  // Mapa colaborador_id → filial_nome para enriquecer o ranking de filiais
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colabs-filial-exec', user?.empresa_id],
+    enabled: !!user && isAdmin,
+    queryFn: () => user?.empresa_id
+      ? base44.entities.Colaborador.filter({ empresa_id: user.empresa_id }, 'nome', 500)
+      : base44.entities.Colaborador.list('nome', 500),
+    staleTime: 60000,
+  });
+
+  const mapaColaboradorFilial = useMemo(() => {
+    const m = {};
+    colaboradores.forEach(c => { if (c.id) m[c.id] = c.filial_nome || null; });
+    return m;
+  }, [colaboradores]);
+
   const { data: propostasCip = [] } = useQuery({
     queryKey: ['cip-exec', user?.empresa_id],
     enabled: !!user,
@@ -389,7 +405,7 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <DashboardRankingVendedores vendas={vendasFiltradas} propostas={propostasEmprestimo} propostasFinanciamento={propostasFinanciamento} propostasSeguros={propostasSeguros} periodo={periodo} />
-              {isAdmin && <DashboardRankingFiliais vendas={vendasFiltradas} propostas={propostasEmprestimo} propostasFinanciamento={propostasFinanciamento} propostasSeguros={propostasSeguros} periodo={periodo} />}
+              {isAdmin && <DashboardRankingFiliais vendas={vendasFiltradas} propostas={propostasEmprestimo} propostasFinanciamento={propostasFinanciamento} propostasSeguros={propostasSeguros} periodo={periodo} mapaColaboradorFilial={mapaColaboradorFilial} />}
             </div>
 
             <DashboardOportunidadesParadas oportunidades={oportunidadesFiltradas} />

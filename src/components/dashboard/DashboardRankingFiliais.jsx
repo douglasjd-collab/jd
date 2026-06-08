@@ -5,42 +5,61 @@ import { Building2 } from 'lucide-react';
 const BRL = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const medalhas = ['🥇', '🥈', '🥉'];
 
-export default function DashboardRankingFiliais({ vendas, propostas, propostasFinanciamento = [], propostasSeguros = [], periodo }) {
+export default function DashboardRankingFiliais({
+  vendas,
+  propostas,
+  propostasFinanciamento = [],
+  propostasSeguros = [],
+  periodo,
+  mapaColaboradorFilial = {},
+}) {
   const ranking = React.useMemo(() => {
     const stats = {};
 
-    const add = (nome, valor, qtd = 1) => {
-      const key = nome || 'Sem filial';
+    // Resolve filial: tenta filial_nome do registro; se não tiver, usa mapa pelo vendedor_id
+    const resolveFilial = (record) => {
+      if (record.filial_nome) return record.filial_nome;
+      const vendedorId = record.vendedor_id || record.responsavel_id;
+      return (vendedorId && mapaColaboradorFilial[vendedorId]) || null;
+    };
+
+    const add = (filial, valor) => {
+      const key = filial || 'Sem filial';
       if (!stats[key]) stats[key] = { nome: key, producao: 0, negocios: 0 };
       stats[key].producao += valor;
-      stats[key].negocios += qtd;
+      stats[key].negocios += 1;
     };
 
     const inPeriodo = d => d && d >= periodo.inicio && d <= periodo.fim;
 
     // Consórcio
-    vendas.filter(v => v.status !== 'cancelada' && inPeriodo(v.data_venda))
-      .forEach(v => add(v.filial_nome, v.valorCredito || 0));
+    vendas
+      .filter(v => v.status !== 'cancelada' && inPeriodo(v.data_venda))
+      .forEach(v => add(resolveFilial(v), v.valorCredito || 0));
 
     // Empréstimos
-    propostas.filter(p => {
-      const d = p.emprestimo_data_liberacao || p.data_venda || '';
-      return !['cancelado', 'cancelada'].includes(p.status) && inPeriodo(d);
-    }).forEach(p => add(p.filial_nome, p.valor_credito || 0));
+    propostas
+      .filter(p => {
+        const d = p.emprestimo_data_liberacao || p.data_venda || '';
+        return !['cancelado', 'cancelada'].includes(p.status) && inPeriodo(d);
+      })
+      .forEach(p => add(resolveFilial(p), p.valor_credito || 0));
 
     // Financiamentos
-    propostasFinanciamento.filter(p => {
-      const d = p.financiamento_data_liberacao || p.data_venda || '';
-      return !['cancelado', 'cancelada'].includes(p.status) && inPeriodo(d);
-    }).forEach(p => add(p.filial_nome, p.financiamento_valor_financiado || p.valor_credito || 0));
+    propostasFinanciamento
+      .filter(p => {
+        const d = p.financiamento_data_liberacao || p.data_venda || '';
+        return !['cancelado', 'cancelada'].includes(p.status) && inPeriodo(d);
+      })
+      .forEach(p => add(resolveFilial(p), p.financiamento_valor_financiado || p.valor_credito || 0));
 
     // Seguros
-    propostasSeguros.filter(p => p.status !== 'cancelado' && inPeriodo(p.data_inicio))
-      .forEach(p => add(p.filial_nome, p.valor_parcela || 0));
+    propostasSeguros
+      .filter(p => p.status !== 'cancelado' && inPeriodo(p.data_inicio))
+      .forEach(p => add(resolveFilial(p), p.valor_parcela || 0));
 
-    return Object.values(stats)
-      .sort((a, b) => b.producao - a.producao);
-  }, [vendas, propostas, propostasFinanciamento, propostasSeguros, periodo]);
+    return Object.values(stats).sort((a, b) => b.producao - a.producao);
+  }, [vendas, propostas, propostasFinanciamento, propostasSeguros, periodo, mapaColaboradorFilial]);
 
   const max = ranking[0]?.producao || 1;
 
@@ -58,7 +77,15 @@ export default function DashboardRankingFiliais({ vendas, propostas, propostasFi
         ) : (
           <div className="space-y-3">
             {ranking.map((f, i) => (
-              <div key={f.nome} className={`p-3 rounded-xl border ${i === 0 ? 'bg-amber-50 border-amber-200' : i === 1 ? 'bg-slate-50 border-slate-200' : i === 2 ? 'bg-orange-50 border-orange-200' : 'bg-white border-slate-100'}`}>
+              <div
+                key={f.nome}
+                className={`p-3 rounded-xl border ${
+                  i === 0 ? 'bg-amber-50 border-amber-200' :
+                  i === 1 ? 'bg-slate-50 border-slate-200' :
+                  i === 2 ? 'bg-orange-50 border-orange-200' :
+                  'bg-white border-slate-100'
+                }`}
+              >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-base">{medalhas[i] || `${i + 1}º`}</span>
