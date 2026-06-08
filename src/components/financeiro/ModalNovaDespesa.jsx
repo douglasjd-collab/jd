@@ -221,7 +221,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
       toast.error('Preencha os campos obrigatórios: Descrição, Valor e Filial');
       return;
     }
-    const valor = parseFloat(formData.valor.replace(/[^\d,.-]/g, '').replace(',', '.'));
+    const valor = parseFloat(formData.valor.replace(/\./g, '').replace(',', '.'));
     if (isNaN(valor) || valor <= 0) {
       toast.error('Valor inválido');
       return;
