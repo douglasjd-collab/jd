@@ -23,9 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, MoreHorizontal, Pencil, UserPlus, Trash2, ChevronDown, ChevronRight, Building2, Landmark, Smartphone, ShieldCheck } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, UserPlus, Trash2, ChevronDown, ChevronRight, Building2, Landmark, Smartphone, ShieldCheck, MapPin } from 'lucide-react';
 import UsuariosBancoModal from '@/components/forms/UsuariosBancoModal';
 import GerenciarPermissoesModal from '@/components/forms/GerenciarPermissoesModal';
+import VincularFilialModal from '@/components/forms/VincularFilialModal';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -67,6 +68,8 @@ export default function Usuarios() {
   const [usuarioBanco, setUsuarioBanco] = useState(null);
   const [permissoesOpen, setPermissoesOpen] = useState(false);
   const [usuarioPermissoes, setUsuarioPermissoes] = useState(null);
+  const [filialModalOpen, setFilialModalOpen] = useState(false);
+  const [usuarioFilial, setUsuarioFilial] = useState(null);
   const [empresasExpandidas, setEmpresasExpandidas] = useState(new Set());
   const queryClient = useQueryClient();
 
@@ -762,6 +765,11 @@ export default function Usuarios() {
                               </div>
                               <p className="text-xs text-slate-500">{usuario.email}</p>
                               {usuario.cpf_cnpj && <p className="text-xs text-slate-400">{usuario.cpf_cnpj}</p>}
+                              {usuario.filial_nome && (
+                                <p className="text-xs text-blue-600 flex items-center gap-1 mt-0.5">
+                                  <MapPin className="w-3 h-3" />{usuario.filial_nome}
+                                </p>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -815,6 +823,20 @@ export default function Usuarios() {
                                     <Pencil className="w-4 h-4 mr-2" />
                                     Editar
                                   </DropdownMenuItem>
+                                  {isAdmin && usuario.empresa_id && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        setUsuarioFilial(usuario);
+                                        setFilialModalOpen(true);
+                                      }}
+                                    >
+                                      <MapPin className="w-4 h-4 mr-2 text-blue-500" />
+                                      Vincular Filial
+                                      {usuario.filial_nome && (
+                                        <span className="ml-auto text-xs text-slate-400 truncate max-w-[80px]">{usuario.filial_nome}</span>
+                                      )}
+                                    </DropdownMenuItem>
+                                  )}
                                   {isAdmin && (
                                     <DropdownMenuItem
                                       onClick={() => {
@@ -925,6 +947,17 @@ export default function Usuarios() {
         onSuccess={() => {
           queryClient.invalidateQueries({ queryKey: ['usuarios'] });
           setUsuarioPermissoes(null);
+        }}
+      />
+
+      {/* Vincular Filial Modal */}
+      <VincularFilialModal
+        open={filialModalOpen}
+        onOpenChange={setFilialModalOpen}
+        usuario={usuarioFilial}
+        onSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+          setUsuarioFilial(null);
         }}
       />
 
