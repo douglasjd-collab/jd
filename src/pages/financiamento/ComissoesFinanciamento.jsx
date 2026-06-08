@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,12 +6,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Search, CheckCircle, XCircle, Clock, DollarSign, Car, Bike, FileText, 
   TrendingUp, TrendingDown, RefreshCw, Eye, FileDown, Plus, Trash2,
-  ArrowUpRight, ArrowDownRight, Wallet, Receipt, BarChart3
+  ArrowUpRight, ArrowDownRight, Wallet, Receipt, BarChart3, PieChart,
+  Calendar, Filter, Download, Edit2, ExternalLink, Activity
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 const STATUS_MAP = {
   pendente: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
@@ -71,15 +74,54 @@ export default function FinanceiroFinanciamento({ user }) {
   useEffect(() => { carregar(); }, [carregar]);
 
   // Cálculos de KPIs
-  const kpis = {
-    comissoes_a_receber: comissoes.filter(c => c.status === 'pendente').reduce((s, c) => s + (c.valor_comissao || 0), 0),
-    comissoes_recebidas: comissoes.filter(c => c.status === 'recebida').reduce((s, c) => s + (c.valor_comissao || 0), 0),
-    tarifas_recebidas: financiamentos.filter(f => f.tarifa_cadastral_status === 'recebida').reduce((s, f) => s + (f.tarifa_cadastral || 0), 0),
-    custos_operacionais: financiamentos.reduce((s, f) => s + (f.custos_operacionais || 0), 0),
-    qtd_tarifas: financiamentos.filter(f => f.tarifa_cadastral_status === 'recebida').length,
-  };
-  kpis.receita_total = kpis.comissoes_recebidas + kpis.tarifas_recebidas;
-  kpis.resultado_liquido = kpis.receita_total - kpis.custos_operacionais;
+  const kpis = useMemo(() => {
+    const comissoesPendentes = comissoes.filter(c => c.status === 'pendente');
+    const comissoesRecebidas = comissoes.filter(c => c.status === 'recebida');
+    const tarifasPendentes = financiamentos.filter(f => f.tarifa_cadastral_status === 'aguardando_pagamento');
+    const tarifasRecebidas = financiamentos.filter(f => f.tarifa_cadastral_status === 'recebida');
+    
+    const comissoes_a_receber = comissoesPendentes.reduce((s, c) => s + (c.valor_comissao || 0), 0);
+    const comissoes_recebidas = comissoesRecebidas.reduce((s, c) => s + (c.valor_comissao || 0), 0);
+    const tarifas_a_receber = tarifasPendentes.reduce((s, f) => s + (f.tarifa_cadastral || 0), 0);
+    const tarifas_recebidas = tarifasRecebidas.reduce((s, f) => s + (f.tarifa_cadastral || 0), 0);
+    const custos_operacionais = financiamentos.reduce((s, f) => s + (f.custos_operacionais || 0), 0);
+    
+    const receita_total = comissoes_recebidas + tarifas_recebidas;
+    const resultado_liquido = receita_total - custos_operacionais;
+
+    return {
+      comissoes_a_receber,
+      comissoes_recebidas,
+      tarifas_a_receber,
+      tarifas_recebidas,
+      qtd_tarifas_total: financiamentos.filter(f => f.tarifa_cadastral && f.tarifa_cadastral > 0).length,
+      qtd_tarifas_recebidas: tarifasRecebidas.length,
+      qtd_tarifas_pendentes: tarifasPendentes.length,
+      qtd_comissoes_total: comissoes.length,
+      qtd_comissoes_recebidas: comissoesRecebidas.length,
+      qtd_comissoes_pendentes: comissoesPendentes.length,
+      custos_operacionais,
+      receita_total,
+      resultado_liquido,
+    };
+  }, [comissoes, financiamentos]);
+
+  // Dados para gráficos
+  const dadosGraficoEntradasSaidas = useMemo(() => [
+    { nome: 'Tarifas', valor: kpis.tarifas_recebidas, cor: '#3b82f6' },
+    { nome: 'Comissões', valor: kpis.comissoes_recebidas, cor: '#22c55e' },
+    { nome: 'Custos', valor: kpis.custos_operacionais, cor: '#ef4444' },
+  ], [kpis]);
+
+  const dadosGraficoTarifasStatus = useMemo(() => [
+    { nome: 'Recebidas', valor: kpis.qtd_tarifas_recebidas, cor: '#22c55e' },
+    { nome: 'Pendentes', valor: kpis.qtd_tarifas_pendentes, cor: '#eab308' },
+  ], [kpis]);
+
+  const dadosGraficoComissoesStatus = useMemo(() => [
+    { nome: 'Recebidas', valor: kpis.qtd_comissoes_recebidas, cor: '#22c55e' },
+    { nome: 'Pendentes', valor: kpis.qtd_comissoes_pendentes, cor: '#eab308' },
+  ], [kpis]);
 
   // Dados únicos para filtros
   const bancos = [...new Set(financiamentos.map(f => f.banco).filter(Boolean))];
@@ -269,20 +311,22 @@ export default function FinanceiroFinanciamento({ user }) {
         </div>
       </div>
 
-      {/* Cards de KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-yellow-50 border-yellow-200">
+      {/* Cards de KPIs - 8 cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Card 1: Comissões a Receber */}
+        <Card className="bg-amber-50 border-amber-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-yellow-700 flex items-center gap-1">
+            <CardTitle className="text-xs font-semibold text-amber-700 flex items-center gap-1">
               <Clock className="w-3 h-3" /> Comissões a Receber
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-yellow-800">{fmt(kpis.comissoes_a_receber)}</p>
-            <p className="text-xs text-yellow-600 mt-1">{comissoes.filter(c => c.status === 'pendente').length} comissões pendentes</p>
+            <p className="text-xl font-bold text-amber-800">{fmt(kpis.comissoes_a_receber)}</p>
+            <p className="text-xs text-amber-600 mt-1">{kpis.qtd_comissoes_pendentes} comissões</p>
           </CardContent>
         </Card>
 
+        {/* Card 2: Comissões Recebidas */}
         <Card className="bg-green-50 border-green-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold text-green-700 flex items-center gap-1">
@@ -290,23 +334,57 @@ export default function FinanceiroFinanciamento({ user }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-green-800">{fmt(kpis.comissoes_recebidas)}</p>
-            <p className="text-xs text-green-600 mt-1">{comissoes.filter(c => c.status === 'recebida').length} comissões recebidas</p>
+            <p className="text-xl font-bold text-green-800">{fmt(kpis.comissoes_recebidas)}</p>
+            <p className="text-xs text-green-600 mt-1">{kpis.qtd_comissoes_recebidas} comissões</p>
           </CardContent>
         </Card>
 
+        {/* Card 3: Quantidade de Tarifas */}
         <Card className="bg-blue-50 border-blue-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold text-blue-700 flex items-center gap-1">
-              <Receipt className="w-3 h-3" /> Tarifas Recebidas
+              <Receipt className="w-3 h-3" /> Qtd. Tarifas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-blue-800">{fmt(kpis.tarifas_recebidas)}</p>
-            <p className="text-xs text-blue-600 mt-1">{kpis.qtd_tarifas} tarifas recebidas</p>
+            <p className="text-xl font-bold text-blue-800">{kpis.qtd_tarifas_total}</p>
+            <p className="text-xs text-blue-600 mt-1">
+              <span className="text-green-600">{kpis.qtd_tarifas_recebidas} recebidas</span> • 
+              <span className="text-amber-600 ml-1">{kpis.qtd_tarifas_pendentes} pendentes</span>
+            </p>
           </CardContent>
         </Card>
 
+        {/* Card 4: Valor Total de Tarifas */}
+        <Card className="bg-teal-50 border-teal-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold text-teal-700 flex items-center gap-1">
+              <DollarSign className="w-3 h-3" /> Total Tarifas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl font-bold text-teal-800">{fmt(kpis.tarifas_recebidas + kpis.tarifas_a_receber)}</p>
+            <p className="text-xs text-teal-600 mt-1">
+              <span className="text-green-600">{fmt(kpis.tarifas_recebidas)} rec.</span> • 
+              <span className="text-amber-600 ml-1">{fmt(kpis.tarifas_a_receber)} pend.</span>
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Card 5: Valor Total de Comissões */}
+        <Card className="bg-purple-50 border-purple-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold text-purple-700 flex items-center gap-1">
+              <Wallet className="w-3 h-3" /> Total Comissões
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xl font-bold text-purple-800">{fmt(kpis.comissoes_recebidas + kpis.comissoes_a_receber)}</p>
+            <p className="text-xs text-purple-600 mt-1">Recebidas + Pendentes</p>
+          </CardContent>
+        </Card>
+
+        {/* Card 6: Custos Operacionais */}
         <Card className="bg-red-50 border-red-200">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold text-red-700 flex items-center gap-1">
@@ -314,24 +392,26 @@ export default function FinanceiroFinanciamento({ user }) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-red-800">{fmt(kpis.custos_operacionais)}</p>
-            <p className="text-xs text-red-600 mt-1">Total de custos</p>
+            <p className="text-xl font-bold text-red-800">{fmt(kpis.custos_operacionais)}</p>
+            <p className="text-xs text-red-600 mt-1">Despesas totais</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-purple-50 border-purple-200">
+        {/* Card 7: Total Tarifa + Comissão (PRINCIPAL) */}
+        <Card className="bg-indigo-50 border-indigo-200 shadow-md">
           <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-semibold text-purple-700 flex items-center gap-1">
-              <DollarSign className="w-3 h-3" /> Receita Total
+            <CardTitle className="text-xs font-semibold text-indigo-700 flex items-center gap-1">
+              <ArrowUpRight className="w-3 h-3" /> Receita Total
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-purple-800">{fmt(kpis.receita_total)}</p>
-            <p className="text-xs text-purple-600 mt-1">Comissão + Tarifa</p>
+            <p className="text-2xl font-bold text-indigo-800">{fmt(kpis.receita_total)}</p>
+            <p className="text-xs text-indigo-600 mt-1">Tarifas + Comissões recebidas</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-emerald-50 border-emerald-200">
+        {/* Card 8: Resultado Líquido (PRINCIPAL) */}
+        <Card className="bg-emerald-50 border-emerald-200 shadow-md">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold text-emerald-700 flex items-center gap-1">
               <TrendingUp className="w-3 h-3" /> Resultado Líquido
@@ -344,43 +424,163 @@ export default function FinanceiroFinanciamento({ user }) {
         </Card>
       </div>
 
-      {/* Resumo Financeiro */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-blue-600" />
-            Resumo de Recebimentos do Financiamento
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
-            <div>
-              <p className="text-xs text-slate-500">Total de Propostas</p>
-              <p className="font-bold text-slate-800">{financiamentos.length}</p>
+      {/* Painel de Resumo Financeiro */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Resumo Central - Entradas x Saídas */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Activity className="w-4 h-4 text-blue-600" />
+              Painel Financeiro do Financiamento
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {/* Entradas */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-xs font-semibold text-green-700 mb-2">📈 ENTRADAS</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-green-600">Tarifas Recebidas</p>
+                    <p className="text-lg font-bold text-green-800">{fmt(kpis.tarifas_recebidas)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-green-600">Comissões Recebidas</p>
+                    <p className="text-lg font-bold text-green-800">{fmt(kpis.comissoes_recebidas)}</p>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-green-200">
+                  <p className="text-xs text-green-600">TOTAL DE ENTRADAS</p>
+                  <p className="text-xl font-bold text-green-800">{fmt(kpis.receita_total)}</p>
+                </div>
+              </div>
+
+              {/* Saídas */}
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-xs font-semibold text-red-700 mb-2">📉 SAÍDAS</p>
+                <div>
+                  <p className="text-xs text-red-600">Custos Operacionais</p>
+                  <p className="text-lg font-bold text-red-800">{fmt(kpis.custos_operacionais)}</p>
+                </div>
+                <div className="mt-3 pt-3 border-t border-red-200">
+                  <p className="text-xs text-red-600">TOTAL DE SAÍDAS</p>
+                  <p className="text-xl font-bold text-red-800">{fmt(kpis.custos_operacionais)}</p>
+                </div>
+              </div>
+
+              {/* Resultado Líquido */}
+              <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-300 rounded-lg p-4">
+                <p className="text-xs font-semibold text-emerald-700 mb-2">💰 RESULTADO LÍQUIDO</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-emerald-600">Receita Total - Custos</p>
+                    <p className="text-2xl font-bold text-emerald-800">{fmt(kpis.resultado_liquido)}</p>
+                  </div>
+                  <TrendingUp className={`w-10 h-10 ${kpis.resultado_liquido >= 0 ? 'text-emerald-600' : 'text-red-600'}`} />
+                </div>
+              </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Resumo Lateral - Quantidades e Gráficos */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <PieChart className="w-4 h-4 text-purple-600" />
+              Resumo Quantitativo
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Tarifas */}
             <div>
-              <p className="text-xs text-slate-500">Total Financiado</p>
-              <p className="font-bold text-slate-800">{fmt(financiamentos.reduce((s, f) => s + (f.valor_financiado || 0), 0))}</p>
+              <p className="text-xs font-semibold text-slate-600 mb-2">TARIFAS</p>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Total</span>
+                  <span className="font-semibold">{kpis.qtd_tarifas_total}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-green-600">Recebidas</span>
+                  <span className="font-semibold text-green-700">{kpis.qtd_tarifas_recebidas}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-amber-600">Pendentes</span>
+                  <span className="font-semibold text-amber-700">{kpis.qtd_tarifas_pendentes}</span>
+                </div>
+              </div>
             </div>
+
+            {/* Comissões */}
             <div>
-              <p className="text-xs text-slate-500">Receita de Comissão</p>
-              <p className="font-bold text-green-700">{fmt(kpis.comissoes_recebidas)}</p>
+              <p className="text-xs font-semibold text-slate-600 mb-2">COMISSÕES</p>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Total</span>
+                  <span className="font-semibold">{kpis.qtd_comissoes_total}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-green-600">Recebidas</span>
+                  <span className="font-semibold text-green-700">{kpis.qtd_comissoes_recebidas}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-amber-600">Pendentes</span>
+                  <span className="font-semibold text-amber-700">{kpis.qtd_comissoes_pendentes}</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-slate-500">Receita de Tarifa</p>
-              <p className="font-bold text-blue-700">{fmt(kpis.tarifas_recebidas)}</p>
+
+            {/* Gráfico Entradas x Saídas */}
+            <div className="pt-3 border-t">
+              <p className="text-xs font-semibold text-slate-600 mb-2">Entradas x Saídas</p>
+              <div className="h-32">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dadosGraficoEntradasSaidas}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="nome" fontSize={10} />
+                    <YAxis fontSize={10} tickFormatter={(v) => `R$ ${(v/1000).toFixed(0)}k`} />
+                    <Tooltip formatter={(v) => fmt(v)} />
+                    <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+                      {dadosGraficoEntradasSaidas.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.cor} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-slate-500">(-) Custos Operacionais</p>
-              <p className="font-bold text-red-700">{fmt(kpis.custos_operacionais)}</p>
+
+            {/* Gráfico Tarifas por Status */}
+            <div className="pt-3 border-t">
+              <p className="text-xs font-semibold text-slate-600 mb-2">Tarifas por Status</p>
+              <div className="h-24">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={dadosGraficoTarifasStatus}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={30}
+                      outerRadius={40}
+                      paddingAngle={2}
+                      dataKey="valor"
+                    >
+                      {dadosGraficoTarifasStatus.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.cor} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-3 text-xs mt-1">
+                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-green-500"></div> Recebidas</span>
+                <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm bg-yellow-500"></div> Pendentes</span>
+              </div>
             </div>
-            <div>
-              <p className="text-xs text-slate-500">Resultado Líquido</p>
-              <p className="font-bold text-purple-700">{fmt(kpis.resultado_liquido)}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Filtros */}
       <Card>
