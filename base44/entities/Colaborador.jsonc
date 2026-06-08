@@ -36,6 +36,14 @@
       "default": "vendedor",
       "description": "Perfil do colaborador"
     },
+    "filial_id": {
+      "type": "string",
+      "description": "ID da filial vinculada"
+    },
+    "filial_nome": {
+      "type": "string",
+      "description": "Nome da filial (denormalizado)"
+    },
     "cpf_cnpj": {
       "type": "string",
       "description": "CPF ou CNPJ"
