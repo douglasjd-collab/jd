@@ -12,9 +12,15 @@ export default function VincularFilialModal({ open, onOpenChange, usuario, onSuc
   const queryClient = useQueryClient();
 
   const { data: filiais = [], isLoading } = useQuery({
-    queryKey: ['filiais-vinculo', usuario?.empresa_id],
-    enabled: open && !!usuario?.empresa_id,
-    queryFn: () => base44.entities.Filial.filter({ empresa_id: usuario.empresa_id, situacao: 'ativa' }, 'nome'),
+    queryKey: ['filiais-vinculo', usuario?.empresa_id, usuario?.id],
+    enabled: open && !!usuario,
+    queryFn: async () => {
+      if (usuario?.empresa_id) {
+        return base44.entities.Filial.filter({ empresa_id: usuario.empresa_id, situacao: 'ativa' }, 'nome');
+      }
+      // Fallback: buscar todas as filiais ativas
+      return base44.entities.Filial.filter({ situacao: 'ativa' }, 'nome', 200);
+    },
   });
 
   useEffect(() => {
@@ -24,17 +30,24 @@ export default function VincularFilialModal({ open, onOpenChange, usuario, onSuc
   }, [open, usuario]);
 
   const mutation = useMutation({
-    mutationFn: () => base44.entities.Colaborador.update(usuario.id, {
-      filial_id: filialId || null,
-      filial_nome: filiais.find(f => f.id === filialId)?.nome || null,
-    }),
+    mutationFn: async () => {
+      const filialSelecionada = filiais.find(f => f.id === filialId);
+      await base44.entities.Colaborador.update(usuario.id, {
+        filial_id: filialId || null,
+        filial_nome: filialSelecionada?.nome || null,
+      });
+    },
     onSuccess: () => {
       toast.success(`Filial vinculada com sucesso!`);
       queryClient.invalidateQueries({ queryKey: ['usuarios'], exact: false });
+      queryClient.refetchQueries({ queryKey: ['usuarios'], exact: false });
       onSuccess?.();
       onOpenChange(false);
     },
-    onError: () => toast.error('Erro ao vincular filial'),
+    onError: (err) => {
+      console.error('Erro ao vincular filial:', err);
+      toast.error('Erro ao vincular filial: ' + (err?.message || 'desconhecido'));
+    },
   });
 
   const filialAtual = filiais.find(f => f.id === usuario?.filial_id);
