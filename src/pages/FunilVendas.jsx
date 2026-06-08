@@ -1196,12 +1196,7 @@ export default function FunilVendas() {
             </button>
           );
         })}
-        {podeAlterarQuadro && (
-          <button onClick={() => setCriarFunilOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-dashed border-slate-300 text-slate-400 hover:border-[#1e3a5f] hover:text-[#1e3a5f] text-sm transition-all">
-            <Plus className="w-4 h-4" /> Novo Funil
-          </button>
-        )}
+
       </div>
 
       {/* ── FILTROS RÁPIDOS ── */}
