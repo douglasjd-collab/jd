@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, ComposedChart 
 } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -182,8 +182,8 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
         <CardContent>
           <div className="space-y-4">
             {/* Gráfico */}
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={propostasEmprestimosPorMes} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={320}>
+              <ComposedChart data={propostasEmprestimosPorMes} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
                 <YAxis stroke="#64748b" fontSize={12} label={{ value: 'Qtd', angle: -90, position: 'insideLeft' }} />
@@ -197,9 +197,19 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
                   }}
                   cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                 />
-                <Bar dataKey="pagas" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="valor" fill="#23BE84" radius={[4, 4, 0, 0]} yAxisId="right" />
-              </BarChart>
+                <Bar dataKey="pagas" fill="#1e3a5f" radius={[4, 4, 0, 0]} barSize={30} />
+                <Bar dataKey="valor" fill="#23BE84" radius={[4, 4, 0, 0]} yAxisId="right" barSize={30} />
+                <Line 
+                  yAxisId="right" 
+                  type="monotone" 
+                  dataKey="valor" 
+                  stroke="#f59e0b" 
+                  strokeWidth={3}
+                  dot={{ fill: '#f59e0b', strokeWidth: 2, r: 5, stroke: '#fff' }}
+                  activeDot={{ r: 7, strokeWidth: 3 }}
+                  name="Valor Total"
+                />
+              </ComposedChart>
             </ResponsiveContainer>
 
             {/* Resumo do Período */}
