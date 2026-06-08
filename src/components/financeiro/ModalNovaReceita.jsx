@@ -120,6 +120,9 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
       resetForm();
       onSuccess?.();
     },
+    onError: (err) => {
+      toast.error('Erro ao lançar receita: ' + (err?.message || 'Erro desconhecido'));
+    },
   });
 
   const updateMutation = useMutation({
@@ -131,6 +134,9 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
       onOpenChange(false);
       resetForm();
       onSuccess?.();
+    },
+    onError: (err) => {
+      toast.error('Erro ao atualizar receita: ' + (err?.message || 'Erro desconhecido'));
     },
   });
 

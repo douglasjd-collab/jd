@@ -8,7 +8,7 @@
     },
     "filial_id": {
       "type": "string",
-      "description": "ID da filial (obrigat\u00f3rio)"
+      "description": "ID da filial (opcional)"
     },
     "filial_nome": {
       "type": "string",
@@ -100,8 +100,6 @@
   },
   "required": [
     "empresa_id",
-    "filial_id",
-    "descricao",
     "categoria_id",
     "valor",
     "data"
