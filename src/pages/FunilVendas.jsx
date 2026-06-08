@@ -31,6 +31,9 @@ import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamento
 import CampanhasStatusModal from '@/components/funil/CampanhasStatusModal';
 import AlertasPreFechamentoBell from '@/components/funil/AlertasPreFechamentoBell';
 import ConfiguracaoAlertasPreFechamento from '@/components/funil/ConfiguracaoAlertasPreFechamento';
+import FunilIndicadoresExecutivos from '@/components/funil/FunilIndicadoresExecutivos';
+import FunilOrigemLeads from '@/components/funil/FunilOrigemLeads';
+import FunilMotivosPerda from '@/components/funil/FunilMotivosPerda';
 import { ModalAlterarResponsavel, ModalComentarios, ModalAlterarQuadro, ModalCriarFunil, ModalVenda } from '@/components/funil/FunilModais';
 import VendedorSearchSelect from '@/components/funil/VendedorSearchSelect';
 import { toast } from 'sonner';
@@ -897,15 +900,21 @@ export default function FunilVendas() {
   // HU 05 - Indicadores
   const filteredOportunidades = (() => {
     const agora = new Date();
+    const hoje = agora.toISOString().split('T')[0];
+    const inicioSemana = new Date(agora);
+    inicioSemana.setDate(agora.getDate() - agora.getDay());
+    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    
     const base = oportunidadesDoVendedor
       .filter((o) => {
         if (filterProduto === 'todos') return true;
-        return o.produto === filterProduto;
+        const produtoOport = o.produto || 'consorcio';
+        return produtoOport === filterProduto;
       })
       .filter((o) => {
-        if (!podeVerTodos) return true; // Vendedores normais só veem seus próprios
-        if (!filterVendedor || filterVendedor === 'todos') return true; // Admin vendo todos
-        return o.vendedor_id === filterVendedor; // Admin filtrando por responsável específico
+        if (!podeVerTodos) return true;
+        if (!filterVendedor || filterVendedor === 'todos') return true;
+        return o.vendedor_id === filterVendedor;
       })
       .filter((o) => {
         if (!searchCard.trim()) return true;
@@ -918,13 +927,51 @@ export default function FunilVendas() {
       })
       .filter((o) => {
         if (!filtroRapido) return true;
-        const diffMs = agora - new Date(o.data_ultima_movimentacao || o.created_date || agora);
-        const diffHoras = diffMs / (1000 * 60 * 60);
-        if (filtroRapido === 'atrasados') {
-          return o.data_fechamento_prevista && o.data_fechamento_prevista < agora.toISOString().split('T')[0] && o.status === 'aberta';
+        
+        const dataMovimentacao = new Date(o.data_ultima_movimentacao || o.created_date || agora);
+        const diffMs = agora - dataMovimentacao;
+        const diffDias = diffMs / (1000 * 60 * 60 * 24);
+        const dataOport = o.data_cadastro_lead ? new Date(o.data_cadastro_lead) : dataMovimentacao;
+        
+        if (filtroRapido === 'hoje') {
+          return o.data_cadastro_lead && o.data_cadastro_lead === hoje;
         }
-        if (filtroRapido === 'sem_resposta') return diffHoras >= 24 && o.status === 'aberta';
-        if (filtroRapido === 'quentes') return (o.valor_estimado || 0) > 50000 && o.status === 'aberta';
+        if (filtroRapido === 'esta_semana') {
+          return dataOport >= inicioSemana;
+        }
+        if (filtroRapido === 'este_mes') {
+          return dataOport >= inicioMes && dataOport.getMonth() === agora.getMonth();
+        }
+        if (filtroRapido === 'atrasados') {
+          return o.data_fechamento_prevista && o.data_fechamento_prevista < hoje && o.status === 'aberta';
+        }
+        if (filtroRapido === 'sem_resposta') {
+          return diffDias >= 1 && o.status === 'aberta';
+        }
+        if (filtroRapido === 'sem_movimento_3') {
+          return diffDias >= 3 && o.status === 'aberta';
+        }
+        if (filtroRapido === 'sem_movimento_7') {
+          return diffDias >= 7 && o.status === 'aberta';
+        }
+        if (filtroRapido === 'sem_movimento_15') {
+          return diffDias >= 15 && o.status === 'aberta';
+        }
+        if (filtroRapido === 'quentes') {
+          return (o.valor_estimado || 0) > 50000 && o.status === 'aberta';
+        }
+        if (filtroRapido === 'ganhos') {
+          return o.status === 'ganha';
+        }
+        if (filtroRapido === 'perdidos') {
+          return o.status === 'perdida';
+        }
+        if (filtroRapido === 'em_negociacao') {
+          return o.status === 'aberta';
+        }
+        if (filtroRapido === 'sem_responsavel') {
+          return !o.vendedor_id;
+        }
         return true;
       });
 
@@ -1158,9 +1205,19 @@ export default function FunilVendas() {
         <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">Filtro rápido:</span>
         {[
           { key: null, label: 'Todos', urgent: false },
+          { key: 'hoje', label: '📅 Hoje', urgent: false },
+          { key: 'esta_semana', label: '📆 Esta Semana', urgent: false },
+          { key: 'este_mes', label: '📅 Este Mês', urgent: false },
           { key: 'atrasados', label: `⏰ Atrasados${totalAtrasados > 0 ? ` (${totalAtrasados})` : ''}`, urgent: totalAtrasados > 0 },
           { key: 'sem_resposta', label: `🔕 Sem Resposta${totalSemResposta > 0 ? ` (${totalSemResposta})` : ''}`, urgent: totalSemResposta > 0 },
+          { key: 'sem_movimento_3', label: '😴 3+ dias', urgent: false },
+          { key: 'sem_movimento_7', label: '😴 7+ dias', urgent: true },
+          { key: 'sem_movimento_15', label: '😴 15+ dias', urgent: true },
           { key: 'quentes', label: '🔥 Quentes (+50k)', urgent: false },
+          { key: 'ganhos', label: '✅ Ganhos', urgent: false },
+          { key: 'perdidos', label: '❌ Perdidos', urgent: false },
+          { key: 'em_negociacao', label: '💼 Em Negociação', urgent: false },
+          { key: 'sem_responsavel', label: '⚠️ Sem Resp.', urgent: true },
         ].map(f => (
           <button key={String(f.key)} onClick={() => setFiltroRapido(f.key)}
             className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all border ${
@@ -1171,7 +1228,21 @@ export default function FunilVendas() {
         ))}
       </div>
 
-      {/* ── BARRA DE MÉTRICAS ── */}
+      {/* ── NOVA BARRA DE INDICADORES EXECUTIVOS ── */}
+      <FunilIndicadoresExecutivos
+        oportunidades={filteredOportunidades}
+        etapas={etapasOrdenadas}
+        vendedores={vendedores}
+        filterProduto={filterProduto}
+      />
+
+      {/* ── PAINEL DE ORIGEM DOS LEADS ── */}
+      <FunilOrigemLeads oportunidades={oportunidadesDoVendedor} />
+
+      {/* ── PAINEL DE MOTIVOS DE PERDA ── */}
+      <FunilMotivosPerda oportunidades={oportunidadesDoVendedor} />
+
+      {/* ── BARRA DE MÉTRICAS (mantida para compatibilidade) ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-3 border-l-4 border-l-blue-500 border-t-0 border-r-0 border-b-0 shadow-sm bg-blue-50/50">
           <p className="text-xs text-blue-600 font-medium">💰 Em negociação</p>
