@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line
+  LineChart, Line, Legend
 } from 'recharts';
 import {
   LayoutDashboard, TrendingUp, DollarSign, Users, Target, Cake, Search,
@@ -429,15 +429,42 @@ export default function Dashboard() {
 
             {/* Gráfico */}
             <Card className="border-0 shadow-sm">
-              <CardHeader><CardTitle>Evolução de Vendas (últimos 6 meses)</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle>Vendas de Consórcio por Mês</CardTitle>
+                <div className="flex gap-4 mt-1">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                    <div className="w-3 h-3 rounded-sm bg-[#1e3a5f]" /> Quantidade
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                    <div className="w-3 h-3 rounded-sm bg-[#23BE84]" /> Valor Total
+                  </div>
+                </div>
+              </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={vendasPorMes}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={vendasPorMes} barCategoryGap="30%" barGap={4}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="name" fontSize={12} />
-                    <YAxis fontSize={12} />
-                    <Tooltip formatter={(v, n) => n === 'vendas' ? [v, 'Qtd'] : [BRL(v), 'Valor']} />
-                    <Bar dataKey="vendas" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
+                    <XAxis dataKey="name" fontSize={12} tick={{ fill: '#64748b' }} />
+                    <YAxis
+                      yAxisId="qtd"
+                      orientation="left"
+                      fontSize={11}
+                      tick={{ fill: '#64748b' }}
+                      label={{ value: 'Qtd', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#94a3b8' }}
+                    />
+                    <YAxis
+                      yAxisId="valor"
+                      orientation="right"
+                      fontSize={11}
+                      tick={{ fill: '#23BE84' }}
+                      tickFormatter={v => `R$ ${(v / 1000).toFixed(0)}k`}
+                    />
+                    <Tooltip
+                      formatter={(v, name) => name === 'Quantidade' ? [v, 'Quantidade'] : [BRL(v), 'Valor Total']}
+                      contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                    />
+                    <Bar yAxisId="qtd" dataKey="vendas" name="Quantidade" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="valor" dataKey="valor" name="Valor Total" fill="#23BE84" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
