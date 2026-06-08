@@ -114,6 +114,28 @@ export default function Dashboard() {
     staleTime: 30000,
   });
 
+  const { data: propostasFinanciamento = [] } = useQuery({
+    queryKey: ['prop-fin-exec', user?.empresa_id],
+    enabled: !!user,
+    queryFn: () => {
+      const f = { produto: 'financiamento' };
+      if (user?.empresa_id) f.empresa_id = user.empresa_id;
+      return base44.entities.Proposta.filter(f, '-data_venda', 300);
+    },
+    staleTime: 30000,
+  });
+
+  const { data: propostasSeguros = [] } = useQuery({
+    queryKey: ['prop-seg-exec', user?.empresa_id],
+    enabled: !!user,
+    queryFn: () => {
+      const f = {};
+      if (user?.empresa_id) f.empresa_id = user.empresa_id;
+      return base44.entities.PropostaSeguro.filter(f, '-data_inicio', 300);
+    },
+    staleTime: 30000,
+  });
+
   const { data: statusPropostaList = [] } = useQuery({
     queryKey: ['status-prop-exec', user?.empresa_id],
     enabled: !!user,
@@ -356,7 +378,7 @@ export default function Dashboard() {
         {/* ─── ABA EXECUTIVO ─── */}
         {abaAtiva === 'executivo' && (
           <div className="space-y-5">
-            <DashboardExecutivoCards vendas={vendasFiltradas} oportunidades={oportunidadesFiltradas} propostas={propostasEmprestimo} user={user} periodo={periodo} />
+            <DashboardExecutivoCards vendas={vendasFiltradas} oportunidades={oportunidadesFiltradas} propostas={propostasEmprestimo} propostasFinanciamento={propostasFinanciamento} propostasSeguros={propostasSeguros} user={user} periodo={periodo} />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <DashboardFunilConsolidado oportunidades={oportunidadesFiltradas} etapas={etapas} />

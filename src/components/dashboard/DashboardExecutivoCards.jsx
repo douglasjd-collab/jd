@@ -34,17 +34,45 @@ function Card({ icon: Icon, title, value, sub, color = 'blue', trend }) {
   );
 }
 
-export default function DashboardExecutivoCards({ vendas, oportunidades, propostas, user, periodo }) {
+export default function DashboardExecutivoCards({ vendas, oportunidades, propostas, propostasFinanciamento = [], propostasSeguros = [], user, periodo }) {
   const isVendedor = ['vendedor', 'colaborador', 'funcionario'].includes(user?.perfil);
 
+  // Consórcio
   const vendasPeriodo = vendas.filter(v => {
     if (v.status === 'cancelada') return false;
     if (!v.data_venda) return false;
     return v.data_venda >= periodo.inicio && v.data_venda <= periodo.fim;
   });
 
-  const producaoTotal = vendasPeriodo.reduce((a, v) => a + (v.valorCredito || 0), 0);
-  const ticketMedio = vendasPeriodo.length > 0 ? producaoTotal / vendasPeriodo.length : 0;
+  // Empréstimos no período
+  const emprestimoPeriodo = propostas.filter(p => {
+    if (['cancelado', 'cancelada'].includes(p.status)) return false;
+    const data = p.data_venda || p.emprestimo_data_liberacao || '';
+    return data >= periodo.inicio && data <= periodo.fim;
+  });
+
+  // Financiamentos no período
+  const financiamentoPeriodo = propostasFinanciamento.filter(p => {
+    if (['cancelado', 'cancelada'].includes(p.status)) return false;
+    const data = p.data_venda || p.financiamento_data_liberacao || '';
+    return data >= periodo.inicio && data <= periodo.fim;
+  });
+
+  // Seguros/Proteção veicular no período
+  const segurosPeriodo = propostasSeguros.filter(p => {
+    if (p.status === 'cancelado') return false;
+    const data = p.data_inicio || '';
+    return data >= periodo.inicio && data <= periodo.fim;
+  });
+
+  const totalConsorcio = vendasPeriodo.reduce((a, v) => a + (v.valorCredito || 0), 0);
+  const totalEmprestimo = emprestimoPeriodo.reduce((a, p) => a + (p.valor_credito || 0), 0);
+  const totalFinanciamento = financiamentoPeriodo.reduce((a, p) => a + (p.financiamento_valor_financiado || p.valor_credito || 0), 0);
+  const totalSeguros = segurosPeriodo.reduce((a, p) => a + (p.valor_parcela || 0), 0);
+
+  const producaoTotal = totalConsorcio + totalEmprestimo + totalFinanciamento + totalSeguros;
+  const totalVendas = vendasPeriodo.length + emprestimoPeriodo.length + financiamentoPeriodo.length + segurosPeriodo.length;
+  const ticketMedio = totalVendas > 0 ? producaoTotal / totalVendas : 0;
   const oportunidadesAbertas = oportunidades.filter(o => o.status === 'aberta').length;
   const valorNegociacao = oportunidades.filter(o => o.status === 'aberta').reduce((a, o) => a + (o.valor_estimado || 0), 0);
   const totalLeads = oportunidades.length;
@@ -57,11 +85,11 @@ export default function DashboardExecutivoCards({ vendas, oportunidades, propost
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      <Card icon={DollarSign} title="Produção Total" value={BRL(producaoTotal)} sub={`${vendasPeriodo.length} vendas`} color="green" />
+      <Card icon={DollarSign} title="Produção Total" value={BRL(producaoTotal)} sub={`${totalVendas} vendas (todos os produtos)`} color="green" />
       <Card icon={TrendingUp} title="Oportunidades Abertas" value={oportunidadesAbertas} sub={BRL(valorNegociacao)} color="purple" />
       <Card icon={Users} title="Total de Leads" value={totalLeads} sub={`${vendidas} convertidos`} color="blue" />
       <Card icon={Target} title="Taxa de Conversão" value={`${conversao}%`} sub="Leads → Vendas" color="teal" />
-      <Card icon={BarChart2} title="Ticket Médio" value={BRL(ticketMedio)} sub="Por venda" color="indigo" />
+      <Card icon={BarChart2} title="Ticket Médio" value={BRL(ticketMedio)} sub={`Por venda (${totalVendas} total)`} color="indigo" />
       <Card icon={Zap} title="Valor em Negociação" value={BRL(valorNegociacao)} sub={`${oportunidadesAbertas} oportunidades`} color="amber" />
       <Card icon={Clock} title="Propostas Ativas" value={propostasAtivas} sub={BRL(valorPropostas)} color="pink" />
       <Card icon={DollarSign} title="Receita Prevista" value={BRL(valorNegociacao * 0.15)} sub="Estimativa comissões" color="green" />
