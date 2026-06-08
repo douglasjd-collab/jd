@@ -34,6 +34,8 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
     categoria_id: '',
     subcategoria_id: '',
     origem: '',
+    filial_id: '',
+    filial_nome: '',
   };
 
   const [formData, setFormData] = useState(emptyForm);
@@ -54,6 +56,8 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
           categoria_id: receitaParaEditar.categoria_id || '',
           subcategoria_id: receitaParaEditar.subcategoria_id || '',
           origem: receitaParaEditar.conta_bancaria_id || '',
+          filial_id: receitaParaEditar.filial_id || '',
+          filial_nome: receitaParaEditar.filial_nome || '',
         });
       } else {
         setFormData(emptyForm);
@@ -74,6 +78,12 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
       return base44.entities.SubcategoriaReceita.filter({ categoria_id: formData.categoria_id, ativo: true }, 'ordem');
     },
     enabled: !!user && !!formData.categoria_id,
+  });
+
+  const { data: filiais = [] } = useQuery({
+    queryKey: ['filiais-receita', user?.empresa_id],
+    queryFn: () => base44.entities.Filial.filter(user?.empresa_id ? { empresa_id: user.empresa_id, situacao: 'ativa' } : {}, 'nome'),
+    enabled: !!user,
   });
 
   const { data: contas = [] } = useQuery({
@@ -154,6 +164,8 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
       categoria_id: '',
       subcategoria_id: '',
       origem: '',
+      filial_id: '',
+      filial_nome: '',
     });
     setMostrarDetalhes(true);
   };
@@ -168,8 +180,8 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
   };
 
   const handleSubmit = () => {
-    if (!formData.categoria_id || !formData.valor) {
-      toast.error('Preencha categoria e valor');
+    if (!formData.categoria_id || !formData.valor || !formData.filial_id) {
+      toast.error('Preencha categoria, valor e filial');
       return;
     }
     const valorLimpo = formData.valor.replace(/\./g, '').replace(',', '.');
@@ -194,6 +206,8 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
 
   const payload = {
       empresa_id: user.empresa_id,
+      filial_id: formData.filial_id,
+      filial_nome: formData.filial_nome,
       descricao: formData.descricao,
       categoria_id: formData.categoria_id,
       categoria_nome: categoria?.nome || '',
@@ -374,6 +388,25 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
                     )}
                   </div>
                 )}
+
+                {/* Filial - OBRIGATÓRIO */}
+                <div className="border-b border-slate-600 pb-4">
+                  <div className="flex items-center gap-3">
+                    <Tag className="w-5 h-5 text-slate-400" />
+                    <Select value={formData.filial_id} onValueChange={(v) => {
+                      const f = filiais.find(f => f.id === v);
+                      setFormData({ ...formData, filial_id: v, filial_nome: f?.nome || '' });
+                    }}>
+                      <SelectTrigger className="bg-transparent border-none text-white focus:ring-0">
+                        <SelectValue placeholder="Filial (obrigatório) *" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {filiais.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {!formData.filial_id && <p className="text-xs text-orange-400 mt-1 pl-8">Campo obrigatório</p>}
+                </div>
 
                 {/* Conta Bancária */}
                 <div className="border-b border-slate-600 pb-4">
