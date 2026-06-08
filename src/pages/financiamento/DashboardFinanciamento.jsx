@@ -309,29 +309,79 @@ export default function DashboardFinanciamento({ user }) {
 
       {/* Gráfico de Produção por Mês */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Produção de Financiamentos por Mês</CardTitle>
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Produção Mensal
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-2">
+              <span className="flex items-center gap-1 text-xs">
+                <span className="w-3 h-3 bg-blue-600 rounded"></span>
+                Quantidade
+              </span>
+              <span className="flex items-center gap-1 text-xs">
+                <span className="w-3 h-3 bg-green-600 rounded"></span>
+                Valor Total (R$)
+              </span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {producaoPorMes.length === 0 ? (
             <p className="text-sm text-slate-400 text-center py-8">Nenhum dado no período</p>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={producaoPorMes}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis yAxisId="left" orientation="left" />
-                <YAxis yAxisId="right" orientation="right" tickFormatter={v => `R$ ${(v/1000).toFixed(0)}k`} />
-                <Tooltip 
-                  formatter={(value, name) => 
-                    name === 'Quantidade' ? fmtNumber(value) : fmt(value)
-                  }
-                />
-                <Legend />
-                <Bar yAxisId="left" dataKey="quantidade" name="Quantidade" fill="#3b82f6" />
-                <Bar yAxisId="right" dataKey="valor" name="Valor Financiado" fill="#10b981" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="space-y-4">
+              {/* Gráfico */}
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={producaoPorMes}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="mes" fontSize={12} />
+                  <YAxis yAxisId="left" orientation="left" fontSize={12} />
+                  <YAxis yAxisId="right" orientation="right" fontSize={12} tickFormatter={v => `R$ ${(v/1000).toFixed(0)}k`} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '6px' }}
+                    formatter={(value, name) => {
+                      if (name === 'Quantidade') return [fmtNumber(value), 'Quantidade'];
+                      return [fmt(value), 'Valor'];
+                    }}
+                  />
+                  <Bar yAxisId="left" dataKey="quantidade" name="Quantidade" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                  <Bar yAxisId="right" dataKey="valor" name="Valor" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+
+              {/* Resumo do Período - Estatísticas */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Total de Financiamentos</p>
+                  <p className="text-2xl font-bold text-blue-600">{fmtNumber(totalPropostas)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Valor Total</p>
+                  <p className="text-2xl font-bold text-green-600">{fmt(totalFinanciado)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Ticket Médio</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {totalPropostas > 0 ? fmt(totalFinanciado / totalPropostas) : 'R$ 0'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Mês com Maior Valor</p>
+                  <p className="text-2xl font-bold text-amber-600">
+                    {producaoPorMes.length > 0 ? (
+                      (() => {
+                        const melhorMes = producaoPorMes.reduce((prev, current) => 
+                          (prev.valor > current.valor) ? prev : current
+                        );
+                        return melhorMes.mes;
+                      })()
+                    ) : '—'}
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
