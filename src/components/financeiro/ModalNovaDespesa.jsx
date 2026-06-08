@@ -39,7 +39,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
     comprovante_url: d.comprovante_url || '',
     observacao: d.observacao || '',
     foiPaga: ['pago', 'paga'].includes(d.status),
-    despesaFixa: false,
+    despesaFixa: d.despesa_fixa || false,
     repetir: false,
     repeticoes: 2,
     unidadeRepeticao: 'meses',
@@ -243,6 +243,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
       usuario_id: user.id,
       usuario_nome: user.nome || user.full_name,
       conta_bancaria_id: formData.conta_bancaria_id || null,
+      despesa_fixa: formData.despesaFixa || false,
     };
 
     if (!formData.repetir) {

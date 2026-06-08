@@ -85,6 +85,11 @@
     },
     "conta_bancaria_id": {
       "type": "string"
+    },
+    "despesa_fixa": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se \u00e9 uma despesa fixa recorrente"
     }
   },
   "required": [
