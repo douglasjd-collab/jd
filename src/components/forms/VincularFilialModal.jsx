@@ -4,44 +4,53 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Loader2 } from 'lucide-react';
+import { Building2, Loader2, MapPin } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function VincularFilialModal({ open, onOpenChange, usuario, onSuccess }) {
-  const [filialId, setFilialId] = useState('');
+  const [filialId, setFilialId] = useState('__none__');
   const queryClient = useQueryClient();
 
   const { data: filiais = [], isLoading } = useQuery({
-    queryKey: ['filiais-vinculo', usuario?.empresa_id, usuario?.id],
-    enabled: open && !!usuario,
-    queryFn: async () => {
-      if (usuario?.empresa_id) {
-        return base44.entities.Filial.filter({ empresa_id: usuario.empresa_id, situacao: 'ativa' }, 'nome');
-      }
-      // Fallback: buscar todas as filiais ativas
-      return base44.entities.Filial.filter({ situacao: 'ativa' }, 'nome', 200);
-    },
+    queryKey: ['filiais-vinculo', usuario?.empresa_id],
+    enabled: open && !!usuario?.empresa_id,
+    queryFn: () => base44.entities.Filial.filter({ empresa_id: usuario.empresa_id, situacao: 'ativa' }, 'nome'),
   });
 
   useEffect(() => {
     if (open && usuario) {
       setFilialId(usuario.filial_id || '__none__');
     }
-  }, [open, usuario]);
+  }, [open, usuario?.id]);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const idReal = filialId === '__none__' ? null : (filialId || null);
+      const idReal = filialId === '__none__' ? null : filialId;
       const filialSelecionada = idReal ? filiais.find(f => f.id === idReal) : null;
+
       await base44.entities.Colaborador.update(usuario.id, {
         filial_id: idReal,
         filial_nome: filialSelecionada?.nome || null,
       });
+
+      return { filial_id: idReal, filial_nome: filialSelecionada?.nome || null };
     },
-    onSuccess: () => {
-      toast.success(`Filial vinculada com sucesso!`);
-      queryClient.invalidateQueries({ queryKey: ['usuarios'], exact: false });
-      queryClient.refetchQueries({ queryKey: ['usuarios'], exact: false });
+    onSuccess: (result) => {
+      // Atualizar cache de todos os queries de usuarios otimisticamente
+      queryClient.setQueriesData({ queryKey: ['usuarios'] }, (old) => {
+        if (!Array.isArray(old)) return old;
+        return old.map(u =>
+          u.id === usuario.id
+            ? { ...u, filial_id: result.filial_id, filial_nome: result.filial_nome }
+            : u
+        );
+      });
+
+      toast.success(result.filial_nome
+        ? `Filial "${result.filial_nome}" vinculada com sucesso!`
+        : 'Filial removida com sucesso!'
+      );
+
       onSuccess?.();
       onOpenChange(false);
     },
@@ -52,6 +61,8 @@ export default function VincularFilialModal({ open, onOpenChange, usuario, onSuc
   });
 
   const filialAtual = filiais.find(f => f.id === usuario?.filial_id);
+
+  if (!usuario) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -65,14 +76,21 @@ export default function VincularFilialModal({ open, onOpenChange, usuario, onSuc
 
         <div className="space-y-4 py-2">
           <div className="bg-slate-50 rounded-lg p-3">
-            <p className="text-sm font-medium text-slate-900">{usuario?.nome}</p>
-            <p className="text-xs text-slate-500">{usuario?.email}</p>
-            {filialAtual && (
-              <p className="text-xs text-[#23BE84] mt-1">Filial atual: {filialAtual.nome}</p>
+            <p className="text-sm font-medium text-slate-900">{usuario.nome}</p>
+            <p className="text-xs text-slate-500">{usuario.email}</p>
+            {(filialAtual || usuario.filial_nome) && (
+              <p className="text-xs text-[#23BE84] mt-1 flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                Filial atual: {filialAtual?.nome || usuario.filial_nome}
+              </p>
             )}
           </div>
 
-          {isLoading ? (
+          {!usuario.empresa_id ? (
+            <p className="text-sm text-amber-600 text-center py-4 bg-amber-50 rounded-lg px-3">
+              Este usuário não está vinculado a uma empresa. Vincule a uma empresa primeiro.
+            </p>
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
             </div>
@@ -104,10 +122,10 @@ export default function VincularFilialModal({ open, onOpenChange, usuario, onSuc
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button
             onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || filiais.length === 0}
+            disabled={mutation.isPending || !usuario.empresa_id || (filiais.length === 0 && filialId === '__none__')}
             className="bg-[#23BE84] hover:bg-[#1da570] text-white"
           >
-            {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            {mutation.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
             Salvar
           </Button>
         </div>

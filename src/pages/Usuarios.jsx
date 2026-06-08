@@ -964,11 +964,13 @@ export default function Usuarios() {
       {/* Vincular Filial Modal */}
       <VincularFilialModal
         open={filialModalOpen}
-        onOpenChange={setFilialModalOpen}
+        onOpenChange={(open) => {
+          setFilialModalOpen(open);
+          if (!open) setUsuarioFilial(null);
+        }}
         usuario={usuarioFilial}
         onSuccess={() => {
-          queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-          setUsuarioFilial(null);
+          refetchUsuarios();
         }}
       />
 
