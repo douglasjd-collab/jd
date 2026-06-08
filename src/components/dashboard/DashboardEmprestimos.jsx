@@ -168,28 +168,71 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
 
       {/* Gráfico de Empréstimos por Mês */}
       <Card className="border-0 shadow-sm">
-        <CardHeader>
+        <CardHeader className="flex items-center justify-between pb-3">
           <CardTitle className="text-lg font-semibold">Propostas de Empréstimos por Mês</CardTitle>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-sm bg-[#1e3a5f]"></div>
+              <span className="text-xs text-slate-500">Quantidade</span>
+              <div className="w-3 h-3 rounded-sm bg-[#23BE84]"></div>
+              <span className="text-xs text-slate-500">Valor Total (R$)</span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={propostasEmprestimosPorMes}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
-              <YAxis stroke="#64748b" fontSize={12} label={{ value: 'Qtd', angle: -90, position: 'insideLeft' }} />
-              <YAxis yAxisId="right" orientation="right" stroke="#23BE84" fontSize={12} tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`} />
-              <Tooltip
-                contentStyle={{ backgroundColor: 'white', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                formatter={(value, name) => {
-                  if (name === 'pagas') return [value, 'Quantidade'];
-                  if (name === 'valor') return [new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value), 'Valor Total'];
-                  return [value, name];
-                }}
-              />
-              <Bar dataKey="pagas" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="valor" fill="#23BE84" radius={[4, 4, 0, 0]} yAxisId="right" />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="space-y-4">
+            {/* Gráfico */}
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={propostasEmprestimosPorMes} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="name" stroke="#64748b" fontSize={12} />
+                <YAxis stroke="#64748b" fontSize={12} label={{ value: 'Qtd', angle: -90, position: 'insideLeft' }} />
+                <YAxis yAxisId="right" orientation="right" stroke="#23BE84" fontSize={12} tickFormatter={(v) => `R$ ${(v / 1000).toFixed(0)}k`} />
+                <Tooltip
+                  contentStyle={{ backgroundColor: 'white', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value, name) => {
+                    if (name === 'pagas') return [value, 'Quantidade'];
+                    if (name === 'valor') return [new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value), 'Valor Total'];
+                    return [value, name];
+                  }}
+                  cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                />
+                <Bar dataKey="pagas" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="valor" fill="#23BE84" radius={[4, 4, 0, 0]} yAxisId="right" />
+              </BarChart>
+            </ResponsiveContainer>
+
+            {/* Resumo do Período */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Total Propostas</p>
+                <p className="text-xl font-bold text-slate-900">{propostasPagasMes.length}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Valor Total Liberado</p>
+                <p className="text-xl font-bold text-green-600">{formatCurrency(valorLiquidoPagoMes)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Ticket Médio</p>
+                <p className="text-xl font-bold text-blue-600">
+                  {propostasPagasMes.length > 0 ? formatCurrency(valorLiquidoPagoMes / propostasPagasMes.length) : 'R$ 0'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Melhor Mês</p>
+                <p className="text-xl font-bold text-amber-600">
+                  {propostasEmprestimosPorMes.length > 0 ? 
+                    (() => {
+                      const melhorMes = propostasEmprestimosPorMes.reduce((prev, current) => 
+                        (prev.valor > current.valor) ? prev : current
+                      );
+                      return melhorMes.name;
+                    })()
+                  : '—'}
+                </p>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
