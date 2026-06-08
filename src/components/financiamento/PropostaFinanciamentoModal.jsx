@@ -10,29 +10,29 @@ import { Loader2, Save, Car, Search, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STATUS_OPTIONS = [
-  { value: 'em_analise', label: 'Em análise' },
-  { value: 'aguardando_documentacao', label: 'Aguardando documentação' },
+  { value: 'em_analise', label: 'Em Análise' },
+  { value: 'aguardando_documentacao', label: 'Aguardando Documentação' },
   { value: 'aprovado', label: 'Aprovado' },
   { value: 'reprovado', label: 'Reprovado' },
-  { value: 'contrato_emitido', label: 'Contrato emitido' },
-  { value: 'pago', label: 'Pago / Finalizado' },
+  { value: 'contrato_emitido', label: 'Contrato Emitido' },
+  { value: 'pago_pelo_banco', label: 'Pago pelo Banco' },
+  { value: 'comissao_recebida', label: 'Comissão Recebida' },
   { value: 'cancelado', label: 'Cancelado' },
-];
-
-const STATUS_COMISSAO = [
-  { value: 'pendente', label: 'Pendente' },
-  { value: 'recebida', label: 'Recebida' },
-  { value: 'paga', label: 'Paga' },
 ];
 
 const EMPTY = {
   cliente_id: '', cliente_nome: '', cliente_cpf: '', cliente_telefone: '', cliente_renda: '', cliente_profissao: '',
   tipo_veiculo: 'carro', veiculo_marca: '', veiculo_modelo: '', veiculo_ano: '', veiculo_placa: '',
   valor_veiculo: '', valor_entrada: '', valor_financiado: '', banco: '', prazo_meses: '',
-  valor_parcela: '', taxa_juros: '', status: 'em_analise', vendedor_id: '', vendedor_nome: '',
+  valor_parcela: '', taxa_juros: '',
+  tarifa_cadastral: '', tarifa_cadastral_status: 'aguardando_pagamento',
+  custos_operacionais: '',
+  vendedor_id: '', vendedor_nome: '',
+  empresa_id: '', empresa_nome: '',
+  filial_id: '', filial_nome: '',
+  status: 'em_analise',
   data_proposta: '', data_aprovacao: '', data_pagamento: '',
-  valor_comissao_recebida: '', percentual_comissao: '', comissao_vendedor: '',
-  status_comissao: 'pendente', observacoes: '',
+  observacoes: '',
 };
 
 const F = ({ label, children, className = '' }) => (
@@ -45,6 +45,7 @@ const F = ({ label, children, className = '' }) => (
 export default function PropostaFinanciamentoModal({ open, onOpenChange, proposta, onSalvar, user }) {
   const [form, setForm] = useState(EMPTY);
   const [vendedores, setVendedores] = useState([]);
+  const [filiais, setFiliais] = useState([]);
   const [saving, setSaving] = useState(false);
 
   // Busca de cliente
@@ -74,6 +75,8 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
     if (!user?.empresa_id) return;
     base44.entities.Colaborador.filter({ empresa_id: user.empresa_id, status: 'ativo' }, 'nome', 200)
       .then(setVendedores).catch(() => {});
+    base44.entities.Filial.filter({ empresa_id: user.empresa_id, situacao: 'ativa' }, 'nome', 100)
+      .then(setFiliais).catch(() => {});
   }, [user]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -200,7 +203,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
     try {
       const dados = { ...form, cliente_nome: form.cliente_nome || buscaCliente };
       ['cliente_renda', 'valor_veiculo', 'valor_entrada', 'valor_financiado', 'prazo_meses',
-        'valor_parcela', 'taxa_juros', 'valor_comissao_recebida', 'percentual_comissao', 'comissao_vendedor']
+        'valor_parcela', 'taxa_juros', 'tarifa_cadastral', 'custos_operacionais']
         .forEach(k => { if (dados[k] !== '' && dados[k] !== undefined) dados[k] = parseFloat(String(dados[k]).replace(',', '.')) || 0; });
       await onSalvar(dados);
     } catch (err) {
@@ -228,7 +231,6 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
               🧾 Dados do Cliente
             </h3>
 
-            {/* Busca de cliente */}
             <div className="relative mb-4">
               <Label className="text-xs font-semibold">Cliente * <span className="text-slate-400 font-normal">(buscar pelo nome, CPF ou telefone)</span></Label>
               <Input
@@ -246,7 +248,6 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
               />
               {buscandoCliente && <Loader2 className="absolute right-3 top-8 w-4 h-4 animate-spin text-slate-400" />}
 
-              {/* Dropdown de resultados */}
               {!cadastrandoCliente && (clientesFiltrados.length > 0 || (buscaCliente.length >= 2 && !buscandoCliente && !form.cliente_id)) && (
                 <div className="absolute z-50 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {clientesFiltrados.map(c => (
@@ -259,11 +260,8 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                   {clientesFiltrados.length === 0 && buscaCliente.length >= 2 && !buscandoCliente && !form.cliente_id && (
                     <div className="px-3 py-2">
                       <p className="text-xs text-slate-400 mb-1">Nenhum cliente encontrado para "{buscaCliente}"</p>
-                      <button
-                        type="button"
-                        onClick={abrirCadastroCliente}
-                        className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium"
-                      >
+                      <button type="button" onClick={abrirCadastroCliente}
+                        className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium">
                         <UserPlus className="w-4 h-4" />
                         Cadastrar "{buscaCliente}" como novo cliente
                       </button>
@@ -272,15 +270,12 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                 </div>
               )}
 
-              {/* Mini formulário de cadastro rápido */}
               {cadastrandoCliente && (
                 <div className="mt-2 border border-blue-200 rounded-lg bg-blue-50 p-3 space-y-3">
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-blue-700 flex items-center gap-1.5"><UserPlus className="w-3.5 h-3.5" /> Cadastrar novo cliente</p>
                     <button type="button" onClick={() => setCadastrandoCliente(false)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
                   </div>
-
-                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">🧾 Dados Pessoais</p>
                   <div className="grid grid-cols-3 gap-2">
                     <Input placeholder="Nome completo *" value={novoCliente.nome_completo}
                       onChange={e => setNovoCliente(n => ({ ...n, nome_completo: e.target.value }))}
@@ -309,44 +304,23 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                   </div>
                   <Input placeholder="Nome da mãe" value={novoCliente.nome_mae} onChange={e => setNovoCliente(n => ({ ...n, nome_mae: e.target.value }))} className="h-8 text-sm bg-white" />
                   <div className="grid grid-cols-2 gap-2">
-                    <Input placeholder="Nacionalidade" value={novoCliente.nacionalidade} onChange={e => setNovoCliente(n => ({ ...n, nacionalidade: e.target.value }))} className="h-8 text-sm bg-white" />
-                    <Input placeholder="Naturalidade (cidade/UF)" value={novoCliente.local_nascimento} onChange={e => setNovoCliente(n => ({ ...n, local_nascimento: e.target.value }))} className="h-8 text-sm bg-white" />
-                  </div>
-
-                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">📞 Contato</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input placeholder="Telefone / WhatsApp *" value={novoCliente.celular} onChange={e => setNovoCliente(n => ({ ...n, celular: e.target.value }))} className="h-8 text-sm bg-white" />
+                    <Input placeholder="Celular" value={novoCliente.celular} onChange={e => setNovoCliente(n => ({ ...n, celular: e.target.value }))} className="h-8 text-sm bg-white" />
                     <Input placeholder="E-mail" type="email" value={novoCliente.email} onChange={e => setNovoCliente(n => ({ ...n, email: e.target.value }))} className="h-8 text-sm bg-white" />
                   </div>
-
-                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">📍 Endereço</p>
                   <div className="flex gap-2">
                     <div className="relative flex-1">
-                      <Input
-                        placeholder="CEP *"
-                        value={novoCliente.cep}
-                        onChange={e => {
-                          const v = e.target.value;
-                          setNovoCliente(n => ({ ...n, cep: v }));
-                          buscarCep(v);
-                        }}
-                        className="h-8 text-sm bg-white"
-                        maxLength={9}
-                      />
+                      <Input placeholder="CEP *" value={novoCliente.cep}
+                        onChange={e => { const v = e.target.value; setNovoCliente(n => ({ ...n, cep: v })); buscarCep(v); }}
+                        className="h-8 text-sm bg-white" maxLength={9} />
                       {buscandoCep && <Loader2 className="absolute right-2 top-2 w-3.5 h-3.5 animate-spin text-slate-400" />}
                     </div>
                     <Input placeholder="Número" value={novoCliente.numero} onChange={e => setNovoCliente(n => ({ ...n, numero: e.target.value }))} className="h-8 text-sm bg-white w-24" />
                   </div>
                   <Input placeholder="Rua / Logradouro" value={novoCliente.endereco} onChange={e => setNovoCliente(n => ({ ...n, endereco: e.target.value }))} className="h-8 text-sm bg-white" />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input placeholder="Complemento" value={novoCliente.complemento} onChange={e => setNovoCliente(n => ({ ...n, complemento: e.target.value }))} className="h-8 text-sm bg-white" />
-                    <Input placeholder="Bairro" value={novoCliente.bairro} onChange={e => setNovoCliente(n => ({ ...n, bairro: e.target.value }))} className="h-8 text-sm bg-white" />
-                  </div>
                   <div className="grid grid-cols-3 gap-2">
                     <Input placeholder="Cidade" value={novoCliente.cidade} onChange={e => setNovoCliente(n => ({ ...n, cidade: e.target.value }))} className="h-8 text-sm bg-white col-span-2" />
                     <Input placeholder="UF" value={novoCliente.estado} onChange={e => setNovoCliente(n => ({ ...n, estado: e.target.value }))} className="h-8 text-sm bg-white" maxLength={2} />
                   </div>
-
                   <Button type="button" size="sm" onClick={salvarNovoCliente} disabled={salvandoCliente}
                     className="w-full h-9 bg-blue-600 hover:bg-blue-700 text-sm gap-1.5">
                     {salvandoCliente ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
@@ -355,7 +329,6 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                 </div>
               )}
 
-              {/* Cliente selecionado — mostrar dados extras */}
               {form.cliente_id && !cadastrandoCliente && (
                 <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <F label="CPF">
@@ -375,6 +348,47 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
             </div>
           </div>
 
+          {/* Empresa, Filial e Vendedor */}
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">🏢 Responsáveis</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <F label="Vendedor responsável">
+                <Select value={form.vendedor_id || 'none'} onValueChange={v => {
+                  if (v === 'none') { set('vendedor_id', ''); set('vendedor_nome', ''); return; }
+                  const vend = vendedores.find(x => x.id === v);
+                  set('vendedor_id', v); set('vendedor_nome', vend?.nome || '');
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar vendedor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </F>
+              <F label="Filial">
+                <Select value={form.filial_id || 'none'} onValueChange={v => {
+                  if (v === 'none') { set('filial_id', ''); set('filial_nome', ''); return; }
+                  const fil = filiais.find(x => x.id === v);
+                  set('filial_id', v); set('filial_nome', fil?.nome || '');
+                }}>
+                  <SelectTrigger><SelectValue placeholder="Selecionar filial" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhuma</SelectItem>
+                    {filiais.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </F>
+              <F label="Status da proposta *">
+                <Select value={form.status} onValueChange={v => set('status', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </F>
+            </div>
+          </div>
+
           {/* Dados do veículo */}
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">🚗 Dados do Veículo</h3>
@@ -389,7 +403,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                   </SelectContent>
                 </Select>
               </F>
-              <F label="Placa" className="sm:col-span-1">
+              <F label="Placa">
                 <div className="flex gap-2">
                   <Input value={form.veiculo_placa} onChange={e => set('veiculo_placa', e.target.value.toUpperCase())} placeholder="ABC-1234" maxLength={8} className="font-mono tracking-widest uppercase" />
                   <Button type="button" onClick={consultarPlaca} disabled={buscandoPlaca}
@@ -438,63 +452,45 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
             </div>
           </div>
 
-          {/* Status e datas */}
+          {/* Tarifa e Custos */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">📋 Status e Datas</h3>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">🏦 Tarifa Cadastral e Custos Operacionais</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <F label="Status da proposta *">
-                <Select value={form.status} onValueChange={v => set('status', v)}>
+              <F label="Tarifa Cadastral (R$)">
+                <Input type="number" value={form.tarifa_cadastral} onChange={e => set('tarifa_cadastral', e.target.value)}
+                  placeholder="0,00" />
+                <p className="text-xs text-slate-400">Gera Receita Prevista automaticamente</p>
+              </F>
+              <F label="Status da Tarifa">
+                <Select value={form.tarifa_cadastral_status} onValueChange={v => set('tarifa_cadastral_status', v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {STATUS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                    <SelectItem value="aguardando_pagamento">Aguardando Pagamento</SelectItem>
+                    <SelectItem value="recebida">Recebida</SelectItem>
+                    <SelectItem value="cancelada">Cancelada</SelectItem>
                   </SelectContent>
                 </Select>
               </F>
-              <F label="Vendedor responsável">
-                <Select value={form.vendedor_id || 'none'} onValueChange={v => {
-                  if (v === 'none') { set('vendedor_id', ''); set('vendedor_nome', ''); return; }
-                  const vend = vendedores.find(x => x.id === v);
-                  set('vendedor_id', v); set('vendedor_nome', vend?.nome || '');
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar vendedor" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+              <F label="Custos Operacionais (R$)">
+                <Input type="number" value={form.custos_operacionais} onChange={e => set('custos_operacionais', e.target.value)}
+                  placeholder="0,00" />
+                <p className="text-xs text-slate-400">Gera Despesa automaticamente</p>
               </F>
+            </div>
+          </div>
+
+          {/* Datas */}
+          <div>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">📅 Datas</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <F label="Data da proposta">
                 <Input type="date" value={form.data_proposta} onChange={e => set('data_proposta', e.target.value)} />
               </F>
               <F label="Data da aprovação">
                 <Input type="date" value={form.data_aprovacao} onChange={e => set('data_aprovacao', e.target.value)} />
               </F>
-              <F label="Data do pagamento">
+              <F label="Data de pagamento pelo banco">
                 <Input type="date" value={form.data_pagamento} onChange={e => set('data_pagamento', e.target.value)} />
-              </F>
-            </div>
-          </div>
-
-          {/* Comissão */}
-          <div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">💼 Comissão</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <F label="Vr. comissão recebida (R$)">
-                <Input type="number" value={form.valor_comissao_recebida} onChange={e => set('valor_comissao_recebida', e.target.value)} />
-              </F>
-              <F label="Percentual comissão (%)">
-                <Input type="number" step="0.01" value={form.percentual_comissao} onChange={e => set('percentual_comissao', e.target.value)} />
-              </F>
-              <F label="Comissão do vendedor (R$)">
-                <Input type="number" value={form.comissao_vendedor} onChange={e => set('comissao_vendedor', e.target.value)} />
-              </F>
-              <F label="Status da comissão">
-                <Select value={form.status_comissao} onValueChange={v => set('status_comissao', v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {STATUS_COMISSAO.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                  </SelectContent>
-                </Select>
               </F>
             </div>
           </div>

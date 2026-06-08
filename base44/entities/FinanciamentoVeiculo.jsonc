@@ -6,9 +6,25 @@
       "type": "string",
       "description": "ID da empresa"
     },
+    "empresa_nome": {
+      "type": "string",
+      "description": "Nome da empresa (denormalizado)"
+    },
+    "filial_id": {
+      "type": "string",
+      "description": "ID da filial"
+    },
+    "filial_nome": {
+      "type": "string",
+      "description": "Nome da filial (denormalizado)"
+    },
     "numero_proposta": {
       "type": "string",
       "description": "N\u00famero da proposta (FIN001, FIN002...)"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID do cliente"
     },
     "cliente_nome": {
       "type": "string",
@@ -84,19 +100,38 @@
       "type": "number",
       "description": "Taxa de juros (% ao m\u00eas)"
     },
-    "status": {
+    "tarifa_cadastral": {
+      "type": "number",
+      "default": 0,
+      "description": "Tarifa cadastral cobrada do cliente"
+    },
+    "tarifa_cadastral_status": {
       "type": "string",
       "enum": [
-        "em_analise",
-        "aguardando_documentacao",
-        "aprovado",
-        "reprovado",
-        "contrato_emitido",
-        "pago",
-        "cancelado"
+        "aguardando_pagamento",
+        "recebida",
+        "cancelada"
       ],
-      "default": "em_analise",
-      "description": "Status da proposta"
+      "default": "aguardando_pagamento",
+      "description": "Status da tarifa cadastral"
+    },
+    "tarifa_cadastral_data_recebimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de recebimento da tarifa"
+    },
+    "tarifa_receita_id": {
+      "type": "string",
+      "description": "ID da Receita gerada pela tarifa cadastral"
+    },
+    "custos_operacionais": {
+      "type": "number",
+      "default": 0,
+      "description": "Custos operacionais do financiamento"
+    },
+    "custos_despesa_id": {
+      "type": "string",
+      "description": "ID da Despesa gerada pelos custos operacionais"
     },
     "vendedor_id": {
       "type": "string",
@@ -105,6 +140,21 @@
     "vendedor_nome": {
       "type": "string",
       "description": "Nome do vendedor"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "em_analise",
+        "aguardando_documentacao",
+        "aprovado",
+        "reprovado",
+        "contrato_emitido",
+        "pago_pelo_banco",
+        "comissao_recebida",
+        "cancelado"
+      ],
+      "default": "em_analise",
+      "description": "Status da proposta"
     },
     "data_proposta": {
       "type": "string",
@@ -119,32 +169,11 @@
     "data_pagamento": {
       "type": "string",
       "format": "date",
-      "description": "Data do pagamento"
+      "description": "Data de pagamento pelo banco"
     },
-    "valor_comissao_recebida": {
-      "type": "number",
-      "description": "Valor da comiss\u00e3o recebida",
-      "default": 0
-    },
-    "percentual_comissao": {
-      "type": "number",
-      "description": "Percentual da comiss\u00e3o (%)",
-      "default": 0
-    },
-    "comissao_vendedor": {
-      "type": "number",
-      "description": "Comiss\u00e3o do vendedor",
-      "default": 0
-    },
-    "status_comissao": {
+    "comissao_financiamento_id": {
       "type": "string",
-      "enum": [
-        "pendente",
-        "recebida",
-        "paga"
-      ],
-      "default": "pendente",
-      "description": "Status da comiss\u00e3o"
+      "description": "ID do registro ComissaoFinanciamento gerado"
     },
     "observacoes": {
       "type": "string",

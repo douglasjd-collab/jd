@@ -8,16 +8,72 @@ import PropostaFinanciamentoModal from '@/components/financiamento/PropostaFinan
 import { toast } from 'sonner';
 
 const STATUS_LABELS = {
-  em_analise: { label: 'Em análise', color: 'bg-blue-100 text-blue-700' },
+  em_analise: { label: 'Em Análise', color: 'bg-blue-100 text-blue-700' },
   aguardando_documentacao: { label: 'Aguardando Doc.', color: 'bg-yellow-100 text-yellow-700' },
   aprovado: { label: 'Aprovado', color: 'bg-green-100 text-green-700' },
   reprovado: { label: 'Reprovado', color: 'bg-red-100 text-red-700' },
   contrato_emitido: { label: 'Contrato Emitido', color: 'bg-purple-100 text-purple-700' },
-  pago: { label: 'Pago / Finalizado', color: 'bg-emerald-100 text-emerald-700' },
+  pago_pelo_banco: { label: 'Pago pelo Banco', color: 'bg-teal-100 text-teal-700' },
+  comissao_recebida: { label: 'Comissão Recebida', color: 'bg-emerald-100 text-emerald-700' },
   cancelado: { label: 'Cancelado', color: 'bg-gray-100 text-gray-600' },
 };
 
 const TIPO_LABELS = { carro: 'Carro', moto: 'Moto', caminhao: 'Caminhão' };
+
+const fmt = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+async function criarReceitaTarifa(dados, empresaId) {
+  if (!dados.tarifa_cadastral || parseFloat(dados.tarifa_cadastral) <= 0) return null;
+  return base44.entities.Receita.create({
+    empresa_id: empresaId,
+    filial_id: dados.filial_id || '',
+    filial_nome: dados.filial_nome || '',
+    descricao: `Tarifa Cadastral — Financiamento ${dados.cliente_nome}`,
+    categoria_id: 'tarifa_cadastral_financiamento',
+    categoria_nome: 'Tarifa Cadastral de Financiamento',
+    valor: parseFloat(dados.tarifa_cadastral) || 0,
+    data: dados.data_proposta || new Date().toISOString().split('T')[0],
+    status: dados.tarifa_cadastral_status === 'recebida' ? 'recebida' : 'prevista',
+    cliente_nome: dados.cliente_nome || '',
+    responsavel_id: dados.vendedor_id || '',
+    responsavel_nome: dados.vendedor_nome || '',
+    origem: 'financiamento',
+  });
+}
+
+async function criarDespesaCustos(dados, empresaId) {
+  if (!dados.custos_operacionais || parseFloat(dados.custos_operacionais) <= 0) return null;
+  return base44.entities.Despesa.create({
+    empresa_id: empresaId,
+    filial_id: dados.filial_id || '',
+    filial_nome: dados.filial_nome || '',
+    descricao: `Custos Operacionais — Financiamento ${dados.cliente_nome}`,
+    categoria: 'Custos Operacionais de Financiamento',
+    valor: parseFloat(dados.custos_operacionais) || 0,
+    data: dados.data_proposta || new Date().toISOString().split('T')[0],
+    status: 'pago',
+    responsavel_nome: dados.vendedor_nome || '',
+  });
+}
+
+async function criarComissaoFinanciamento(proposta, empresaId) {
+  return base44.entities.ComissaoFinanciamento.create({
+    empresa_id: empresaId,
+    filial_id: proposta.filial_id || '',
+    filial_nome: proposta.filial_nome || '',
+    financiamento_id: proposta.id,
+    numero_proposta: proposta.numero_proposta || '',
+    cliente_nome: proposta.cliente_nome || '',
+    cliente_cpf: proposta.cliente_cpf || '',
+    banco: proposta.banco || '',
+    valor_financiado: proposta.valor_financiado || 0,
+    valor_comissao: 0,
+    status: 'pendente',
+    vendedor_id: proposta.vendedor_id || '',
+    vendedor_nome: proposta.vendedor_nome || '',
+    data_prevista: proposta.data_pagamento || '',
+  });
+}
 
 export default function PropostasFinanciamento({ user }) {
   const [propostas, setPropostas] = useState([]);
@@ -36,23 +92,83 @@ export default function PropostasFinanciamento({ user }) {
     setLoading(false);
   }, [user?.empresa_id]);
 
-  useEffect(() => {
-    carregarPropostas();
-  }, [carregarPropostas]);
+  useEffect(() => { carregarPropostas(); }, [carregarPropostas]);
 
   const handleSalvar = async (dados) => {
+    const empresaId = user?.empresa_id;
+
     if (propostaSelecionada) {
-      await base44.entities.FinanciamentoVeiculo.update(propostaSelecionada.id, dados);
+      // ── EDIÇÃO ──
+      const antiga = propostaSelecionada;
+      const atualizacoes = { ...dados };
+
+      // Tarifa: se mudou e não tem receita ainda, criar
+      const tarifaNova = parseFloat(dados.tarifa_cadastral) || 0;
+      const tarifaAntiga = parseFloat(antiga.tarifa_cadastral) || 0;
+      if (tarifaNova > 0 && !antiga.tarifa_receita_id) {
+        const receita = await criarReceitaTarifa(dados, empresaId);
+        if (receita) atualizacoes.tarifa_receita_id = receita.id;
+      } else if (antiga.tarifa_receita_id && dados.tarifa_cadastral_status === 'recebida' && antiga.tarifa_cadastral_status !== 'recebida') {
+        // Marcar receita como recebida
+        await base44.entities.Receita.update(antiga.tarifa_receita_id, { status: 'recebida', data_recebimento: new Date().toISOString().split('T')[0] });
+      }
+
+      // Custos: se mudou e não tem despesa ainda, criar
+      const custosNovos = parseFloat(dados.custos_operacionais) || 0;
+      if (custosNovos > 0 && !antiga.custos_despesa_id) {
+        const despesa = await criarDespesaCustos(dados, empresaId);
+        if (despesa) atualizacoes.custos_despesa_id = despesa.id;
+      }
+
+      // Se status virou "pago_pelo_banco" e não tem comissão, criar
+      if (dados.status === 'pago_pelo_banco' && antiga.status !== 'pago_pelo_banco' && !antiga.comissao_financiamento_id) {
+        const propAtualizada = { ...antiga, ...dados, id: antiga.id, empresa_id: empresaId };
+        const comissao = await criarComissaoFinanciamento(propAtualizada, empresaId);
+        if (comissao) atualizacoes.comissao_financiamento_id = comissao.id;
+        toast.info('Comissão a Receber criada no módulo de Comissões de Financiamento.');
+      }
+
+      await base44.entities.FinanciamentoVeiculo.update(antiga.id, atualizacoes);
       toast.success('Proposta atualizada!');
     } else {
+      // ── CRIAÇÃO ──
       const count = propostas.length + 1;
-      await base44.entities.FinanciamentoVeiculo.create({
+      const proposta = await base44.entities.FinanciamentoVeiculo.create({
         ...dados,
-        empresa_id: user?.empresa_id,
+        empresa_id: empresaId,
         numero_proposta: `FIN${String(count).padStart(4, '0')}`,
       });
+
+      const atualizacoes = {};
+
+      // Tarifa cadastral
+      if (parseFloat(dados.tarifa_cadastral) > 0) {
+        const receita = await criarReceitaTarifa({ ...dados, data_proposta: proposta.data_proposta }, empresaId);
+        if (receita) atualizacoes.tarifa_receita_id = receita.id;
+        toast.success('Receita de Tarifa Cadastral criada no Financeiro.');
+      }
+
+      // Custos operacionais
+      if (parseFloat(dados.custos_operacionais) > 0) {
+        const despesa = await criarDespesaCustos(dados, empresaId);
+        if (despesa) atualizacoes.custos_despesa_id = despesa.id;
+        toast.success('Despesa de Custos Operacionais criada no Financeiro.');
+      }
+
+      // Se já entrou como pago_pelo_banco, criar comissão imediatamente
+      if (dados.status === 'pago_pelo_banco') {
+        const comissao = await criarComissaoFinanciamento({ ...proposta, ...dados }, empresaId);
+        if (comissao) atualizacoes.comissao_financiamento_id = comissao.id;
+        toast.info('Comissão a Receber criada.');
+      }
+
+      if (Object.keys(atualizacoes).length > 0) {
+        await base44.entities.FinanciamentoVeiculo.update(proposta.id, atualizacoes);
+      }
+
       toast.success('Proposta cadastrada!');
     }
+
     setModalOpen(false);
     setPropostaSelecionada(null);
     carregarPropostas();
@@ -74,8 +190,6 @@ export default function PropostasFinanciamento({ user }) {
     }
     return true;
   });
-
-  const fmt = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   return (
     <div className="space-y-5">
@@ -119,6 +233,7 @@ export default function PropostasFinanciamento({ user }) {
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Veículo</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Banco</th>
                 <th className="text-right px-4 py-3 font-semibold text-slate-600">Vr. Financiado</th>
+                <th className="text-right px-4 py-3 font-semibold text-slate-600">Tarifa</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Vendedor</th>
                 <th className="text-center px-4 py-3 font-semibold text-slate-600">Ações</th>
@@ -126,9 +241,9 @@ export default function PropostasFinanciamento({ user }) {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">Carregando...</td></tr>
+                <tr><td colSpan={9} className="text-center py-10 text-slate-400">Carregando...</td></tr>
               ) : propostasFiltradas.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">Nenhuma proposta encontrada</td></tr>
+                <tr><td colSpan={9} className="text-center py-10 text-slate-400">Nenhuma proposta encontrada</td></tr>
               ) : propostasFiltradas.map(p => (
                 <tr key={p.id} className="border-b last:border-0 hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-700">{p.numero_proposta || '—'}</td>
@@ -142,6 +257,7 @@ export default function PropostasFinanciamento({ user }) {
                   </td>
                   <td className="px-4 py-3 text-slate-600">{p.banco || '—'}</td>
                   <td className="px-4 py-3 text-right font-medium text-slate-700">{fmt(p.valor_financiado)}</td>
+                  <td className="px-4 py-3 text-right text-slate-600">{p.tarifa_cadastral ? fmt(p.tarifa_cadastral) : '—'}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${STATUS_LABELS[p.status]?.color || 'bg-gray-100 text-gray-600'}`}>
                       {STATUS_LABELS[p.status]?.label || p.status}

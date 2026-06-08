@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { LayoutDashboard, FileText, Building2, BarChart2, Settings, Car } from 'lucide-react';
+import { LayoutDashboard, FileText, Building2, BarChart2, Settings, Car, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import DashboardFinanciamento from './financiamento/DashboardFinanciamento';
 import PropostasFinanciamento from './financiamento/PropostasFinanciamento';
 import BancosFinanciamento from './financiamento/BancosFinanciamento';
 import RelatoriosFinanciamento from './financiamento/RelatoriosFinanciamento';
 import ConfiguracoesFinanciamento from './financiamento/ConfiguracoesFinanciamento';
+import ComissoesFinanciamento from './financiamento/ComissoesFinanciamento';
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'propostas', label: 'Propostas', icon: FileText },
+  { id: 'comissoes', label: 'Comissões', icon: DollarSign },
   { id: 'bancos', label: 'Bancos / Tabelas', icon: Building2 },
   { id: 'relatorios', label: 'Relatórios', icon: BarChart2 },
   { id: 'configuracoes', label: 'Configurações', icon: Settings },
@@ -66,9 +68,10 @@ export default function FinanciamentoVeiculos() {
         ))}
       </div>
 
-      {/* Conteúdo — renderizado sempre para evitar remontagem ao trocar abas */}
+      {/* Conteúdo */}
       <div className={aba === 'dashboard' ? '' : 'hidden'}><DashboardFinanciamento user={user} /></div>
       {user && <div className={aba === 'propostas' ? '' : 'hidden'}><PropostasFinanciamento user={user} /></div>}
+      {user && <div className={aba === 'comissoes' ? '' : 'hidden'}><ComissoesFinanciamento user={user} /></div>}
       <div className={aba === 'bancos' ? '' : 'hidden'}><BancosFinanciamento user={user} /></div>
       <div className={aba === 'relatorios' ? '' : 'hidden'}><RelatoriosFinanciamento user={user} /></div>
       <div className={aba === 'configuracoes' ? '' : 'hidden'}><ConfiguracoesFinanciamento user={user} /></div>
