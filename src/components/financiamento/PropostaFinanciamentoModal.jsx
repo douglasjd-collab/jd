@@ -15,7 +15,7 @@ const STATUS_OPTIONS = [
   { value: 'aprovado', label: 'Aprovado' },
   { value: 'reprovado', label: 'Reprovado' },
   { value: 'contrato_emitido', label: 'Contrato Emitido' },
-  { value: 'pago_pelo_banco', label: 'Pago pelo Banco' },
+  { value: 'pago_pelo_banco', label: 'Operação Finalizada' },
   { value: 'comissao_recebida', label: 'Comissão Recebida' },
   { value: 'cancelado', label: 'Cancelado' },
 ];

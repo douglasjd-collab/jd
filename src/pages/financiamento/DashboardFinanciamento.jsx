@@ -11,7 +11,7 @@ const STATUS_LABELS = {
   aprovado: { label: 'Aprovado', color: '#10b981' },
   reprovado: { label: 'Reprovado', color: '#ef4444' },
   contrato_emitido: { label: 'Contrato Emitido', color: '#8b5cf6' },
-  pago_pelo_banco: { label: 'Pago pelo Banco', color: '#0ea5e9' },
+  pago_pelo_banco: { label: 'Operação Finalizada', color: '#0ea5e9' },
   comissao_recebida: { label: 'Comissão Recebida', color: '#22c55e' },
   cancelado: { label: 'Cancelado', color: '#6b7280' },
 };
