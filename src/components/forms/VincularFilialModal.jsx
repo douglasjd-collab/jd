@@ -30,7 +30,7 @@ export default function VincularFilialModal({ open, onOpenChange, usuario, onSuc
     }),
     onSuccess: () => {
       toast.success(`Filial vinculada com sucesso!`);
-      queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      queryClient.invalidateQueries({ queryKey: ['usuarios'], exact: false });
       onSuccess?.();
       onOpenChange(false);
     },
