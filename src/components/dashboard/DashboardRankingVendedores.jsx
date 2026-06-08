@@ -1,38 +1,65 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trophy } from 'lucide-react';
 
 const BRL = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
 const medalhas = ['🥇', '🥈', '🥉'];
 
-export default function DashboardRankingVendedores({ vendas, propostas, periodo }) {
-  const ranking = React.useMemo(() => {
+const PRODUTOS = [
+  { key: 'geral', label: 'Geral' },
+  { key: 'consorcio', label: 'Consórcio' },
+  { key: 'emprestimo', label: 'Empréstimos' },
+  { key: 'financiamento', label: 'Financiamentos' },
+  { key: 'seguro', label: 'Seguros' },
+];
+
+export default function DashboardRankingVendedores({ vendas, propostas, propostasFinanciamento = [], propostasSeguros = [], periodo }) {
+  const [produtoAtivo, setProdutoAtivo] = useState('geral');
+
+  const ranking = useMemo(() => {
     const stats = {};
 
-    vendas.filter(v => v.status !== 'cancelada' && v.data_venda >= periodo.inicio && v.data_venda <= periodo.fim)
-      .forEach(v => {
-        const nome = v.vendedor_nome || 'Sem vendedor';
-        if (!stats[nome]) stats[nome] = { nome, vendas: 0, valor: 0, propostas: 0, valorProp: 0 };
-        stats[nome].vendas++;
-        stats[nome].valor += v.valorCredito || 0;
-      });
+    const add = (nome, valor, qtd = 1) => {
+      if (!nome) nome = 'Sem vendedor';
+      if (!stats[nome]) stats[nome] = { nome, totalValor: 0, totalNeg: 0 };
+      stats[nome].totalValor += valor;
+      stats[nome].totalNeg += qtd;
+    };
 
-    propostas.filter(p => {
-      const data = p.emprestimo_data_liberacao || p.data_venda || '';
-      return !['cancelado', 'cancelada'].includes(p.status) && data >= periodo.inicio && data <= periodo.fim;
-    }).forEach(p => {
-      const nome = p.vendedor_nome || 'Sem vendedor';
-      if (!stats[nome]) stats[nome] = { nome, vendas: 0, valor: 0, propostas: 0, valorProp: 0 };
-      stats[nome].propostas++;
-      stats[nome].valorProp += p.valor_credito || 0;
-    });
+    const inPeriodo = (data) => data && data >= periodo.inicio && data <= periodo.fim;
+
+    // Consórcio
+    if (produtoAtivo === 'geral' || produtoAtivo === 'consorcio') {
+      vendas.filter(v => v.status !== 'cancelada' && inPeriodo(v.data_venda))
+        .forEach(v => add(v.vendedor_nome, v.valorCredito || 0));
+    }
+
+    // Empréstimos
+    if (produtoAtivo === 'geral' || produtoAtivo === 'emprestimo') {
+      propostas.filter(p => {
+        const data = p.emprestimo_data_liberacao || p.data_venda || '';
+        return !['cancelado', 'cancelada'].includes(p.status) && inPeriodo(data);
+      }).forEach(p => add(p.vendedor_nome, p.valor_credito || 0));
+    }
+
+    // Financiamentos
+    if (produtoAtivo === 'geral' || produtoAtivo === 'financiamento') {
+      propostasFinanciamento.filter(p => {
+        const data = p.financiamento_data_liberacao || p.data_venda || '';
+        return !['cancelado', 'cancelada'].includes(p.status) && inPeriodo(data);
+      }).forEach(p => add(p.vendedor_nome, p.financiamento_valor_financiado || p.valor_credito || 0));
+    }
+
+    // Seguros
+    if (produtoAtivo === 'geral' || produtoAtivo === 'seguro') {
+      propostasSeguros.filter(p => p.status !== 'cancelado' && inPeriodo(p.data_inicio))
+        .forEach(p => add(p.vendedor_nome, p.valor_parcela || 0));
+    }
 
     return Object.values(stats)
-      .map(s => ({ ...s, totalValor: s.valor + s.valorProp, totalNeg: s.vendas + s.propostas }))
       .sort((a, b) => b.totalValor - a.totalValor)
       .slice(0, 10);
-  }, [vendas, propostas, periodo]);
+  }, [vendas, propostas, propostasFinanciamento, propostasSeguros, periodo, produtoAtivo]);
 
   const max = ranking[0]?.totalValor || 1;
 
@@ -43,6 +70,22 @@ export default function DashboardRankingVendedores({ vendas, propostas, periodo 
           <Trophy className="w-5 h-5 text-amber-500" />
           Ranking de Vendedores
         </CardTitle>
+        {/* Filtro por produto */}
+        <div className="flex flex-wrap gap-1 mt-2">
+          {PRODUTOS.map(p => (
+            <button
+              key={p.key}
+              onClick={() => setProdutoAtivo(p.key)}
+              className={`px-2.5 py-1 text-xs rounded-lg font-medium border transition-colors ${
+                produtoAtivo === p.key
+                  ? 'bg-[#23BE84] text-white border-[#23BE84]'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-[#23BE84]'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </CardHeader>
       <CardContent>
         {ranking.length === 0 ? (

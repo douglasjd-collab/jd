@@ -388,7 +388,7 @@ export default function Dashboard() {
             <DashboardProducaoPorProduto vendas={vendasFiltradas} propostas={propostasEmprestimo} periodo={periodo} />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <DashboardRankingVendedores vendas={vendasFiltradas} propostas={propostasEmprestimo} periodo={periodo} />
+              <DashboardRankingVendedores vendas={vendasFiltradas} propostas={propostasEmprestimo} propostasFinanciamento={propostasFinanciamento} propostasSeguros={propostasSeguros} periodo={periodo} />
               {isAdmin && <DashboardRankingFiliais vendas={vendasFiltradas} propostas={propostasEmprestimo} receitas={receitas} despesas={despesas} periodo={periodo} />}
             </div>
 
@@ -493,7 +493,7 @@ export default function Dashboard() {
             </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <DashboardRankingVendedores vendas={vendasMesPeriodo} propostas={[]} periodo={periodo} />
+              <DashboardRankingVendedores vendas={vendasMesPeriodo} propostas={[]} propostasFinanciamento={[]} propostasSeguros={[]} periodo={periodo} />
 
               {/* Vendas do período */}
               <Card className="border-0 shadow-sm">
