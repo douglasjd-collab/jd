@@ -179,8 +179,10 @@ export default function FunilVendas() {
 
   const isAdmin = currentUser?.perfil === 'master' || currentUser?.perfil === 'super_admin' || currentUser?.perfil === 'admin';
   const isGerente = currentUser?.perfil === 'gerente';
+  const isVendedor = currentUser?.perfil === 'vendedor';
+  const isColaborador = currentUser?.perfil === 'colaborador' || currentUser?.perfil === 'funcionario';
   const podeVerTodos = isAdmin || isGerente;
-  const podeAlterarResponsavel = isAdmin || isGerente;
+  const podeAlterarResponsavel = isAdmin || isGerente || isVendedor || isColaborador;
   const podeAlterarQuadro = isAdmin || isGerente;
 
   const { data: etapas = [], isLoading: loadingEtapas } = useQuery({
@@ -302,10 +304,12 @@ export default function FunilVendas() {
 
   const alterarResponsavelMutation = useMutation({
     mutationFn: async ({ oportunidadeId, responsaveisIds }) => {
-      if (!podeAlterarResponsavel) {
+      // Vendedores/colaboradores só podem alterar responsáveis de suas próprias oportunidades
+      const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
+      const isResponsavel = oportunidade?.vendedor_id === currentUser?.id || oportunidade?.vendedor_id === currentUser?.colaborador_id;
+      if (!podeAlterarResponsavel && !isResponsavel) {
         throw new Error('Você não tem permissão para alterar o responsável.');
       }
-      const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
       
       // Obter dados dos responsáveis selecionados
       const responsaveisData = responsaveisIds.map(id => {
@@ -720,7 +724,8 @@ export default function FunilVendas() {
     });
     
     // Verificar permissões: usuários superiores ou responsável pela oportunidade podem mover
-    const podeMovimentar = podeAlterarQuadro || oportunidade?.vendedor_id === currentUser?.id;
+    const isResponsavelMovimentar = oportunidade?.vendedor_id === currentUser?.id || oportunidade?.vendedor_id === currentUser?.colaborador_id;
+    const podeMovimentar = podeAlterarQuadro || isResponsavelMovimentar;
     
     console.log('🔐 Permissões:', {
       podeAlterarQuadro,
@@ -1341,7 +1346,7 @@ export default function FunilVendas() {
                                          Editar
                                        </DropdownMenuItem>
                                      )}
-                                     {podeAlterarResponsavel && (
+                                     {(podeAlterarResponsavel || isResponsavel) && (
                                        <DropdownMenuItem onClick={() => {
                                          setOportunidadeParaAlterar(oport);
                                          // Carregar responsáveis atuais
