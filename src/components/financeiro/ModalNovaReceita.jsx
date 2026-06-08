@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Switch } from '@/components/ui/switch';
 import GerenciarCategoriasReceitaModal from '@/components/forms/GerenciarCategoriasReceitaModal';
 import GerenciarContasBancariasModal from '@/components/forms/GerenciarContasBancariasModal';
-import { Calculator, CheckCircle, Tag, FileText, Repeat, Paperclip, ChevronDown, Settings } from 'lucide-react';
+import { Calculator, CheckCircle, Tag, FileText, Repeat, Paperclip, ChevronDown, Settings, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import moment from 'moment';
 
@@ -18,6 +18,8 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
   const [categoriasModalOpen, setCategoriasModalOpen] = useState(false);
   const [contasModalOpen, setContasModalOpen] = useState(false);
   const [mostrarDetalhes, setMostrarDetalhes] = useState(true);
+  const [criarSubcatOpen, setCriarSubcatOpen] = useState(false);
+  const [novaSubcatNome, setNovaSubcatNome] = useState('');
 
   const emptyForm = {
     valor: '',
@@ -81,6 +83,32 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
     ),
     enabled: !!user,
   });
+
+  const criarSubcatMutation = useMutation({
+    mutationFn: (data) => base44.entities.SubcategoriaReceita.create(data),
+    onSuccess: (novaSub) => {
+      queryClient.invalidateQueries({ queryKey: ['subcategorias-receita', formData.categoria_id] });
+      toast.success('Subcategoria criada!');
+      setFormData(prev => ({ ...prev, subcategoria_id: novaSub.id }));
+      setNovaSubcatNome('');
+      setCriarSubcatOpen(false);
+    },
+  });
+
+  const handleCriarSubcat = () => {
+    const nome = novaSubcatNome.trim();
+    if (!nome) { toast.error('Digite o nome da subcategoria'); return; }
+    if (!formData.categoria_id) { toast.error('Selecione uma categoria primeiro'); return; }
+    const categoria = categorias.find(c => c.id === formData.categoria_id);
+    criarSubcatMutation.mutate({
+      empresa_id: user.empresa_id,
+      categoria_id: formData.categoria_id,
+      categoria_nome: categoria?.nome || '',
+      nome,
+      ativo: true,
+      ordem: subcategorias.length,
+    });
+  };
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Receita.create(data),
@@ -298,18 +326,46 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
                 </div>
 
                 {formData.categoria_id && (
-                  <div className="border-b border-slate-600 pb-4">
+                  <div className="border-b border-slate-600 pb-4 space-y-2">
                     <div className="flex items-center gap-3">
                       <Tag className="w-5 h-5 text-slate-400" />
-                      <Select value={formData.subcategoria_id} onValueChange={(v) => setFormData({ ...formData, subcategoria_id: v })}>
+                      <Select value={formData.subcategoria_id} onValueChange={(v) => {
+                        if (v === '__nova__') { setCriarSubcatOpen(true); }
+                        else { setFormData({ ...formData, subcategoria_id: v }); }
+                      }}>
                         <SelectTrigger className="bg-transparent border-none text-white focus:ring-0">
                           <SelectValue placeholder="Subcategoria (opcional)" />
                         </SelectTrigger>
                         <SelectContent>
                           {subcategorias.map(sub => <SelectItem key={sub.id} value={sub.id}>{sub.nome}</SelectItem>)}
+                          {formData.subcategoria_id && (
+                            <SelectItem value={null}>— Remover subcategoria</SelectItem>
+                          )}
+                          <div className="h-px bg-slate-200 my-1" />
+                          <SelectItem value="__nova__" className="text-blue-500 font-semibold">
+                            <div className="flex items-center gap-2"><Plus className="w-4 h-4" />Nova subcategoria</div>
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    {criarSubcatOpen && (
+                      <div className="flex items-center gap-2 pl-8">
+                        <Input
+                          autoFocus
+                          value={novaSubcatNome}
+                          onChange={(e) => setNovaSubcatNome(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleCriarSubcat(); if (e.key === 'Escape') { setCriarSubcatOpen(false); setNovaSubcatNome(''); } }}
+                          placeholder="Nome da subcategoria"
+                          className="bg-slate-700 border-slate-600 text-white text-sm h-8 flex-1"
+                        />
+                        <Button size="sm" onClick={handleCriarSubcat} disabled={criarSubcatMutation.isPending} className="h-8 bg-blue-600 hover:bg-blue-700 text-white px-3">
+                          <Plus className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setCriarSubcatOpen(false); setNovaSubcatNome(''); }} className="h-8 text-slate-400 hover:text-white px-2">
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
 
