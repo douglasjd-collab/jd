@@ -9,9 +9,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, TrendingUp, TrendingDown, CheckCircle, MoreVertical, Trash2, Edit2, X } from 'lucide-react';
+import { Search, TrendingUp, TrendingDown, CheckCircle, MoreVertical, Trash2, Edit2, X, Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import moment from 'moment';
+import { format, parseISO } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { ptBR } from 'date-fns/locale';
 
 const BRL = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 
@@ -212,6 +216,134 @@ export default function AbaTransacoes({ despesas, receitas, categoriasDespesa, c
         </div>
         <div className="p-3 border-t text-xs text-slate-500">{filtered.length} transação(ões)</div>
       </Card>
+
+      {/* Modal Editar Despesa */}
+      <Dialog open={!!editingDespesa} onOpenChange={() => setEditingDespesa(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Editar Despesa</DialogTitle></DialogHeader>
+          {editingDespesa && (
+            <div className="space-y-3">
+              <div>
+                <Label>Descrição</Label>
+                <Input value={editingDespesa.descricao || ''} onChange={e => setEditingDespesa(p => ({...p, descricao: e.target.value}))} className="mt-1"/>
+              </div>
+              <div>
+                <Label>Valor (R$)</Label>
+                <Input type="number" step="0.01" value={editingDespesa.valor || ''} onChange={e => setEditingDespesa(p => ({...p, valor: parseFloat(e.target.value) || 0}))} className="mt-1"/>
+              </div>
+              <div>
+                <Label>Data</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full mt-1 justify-start">
+                      <CalendarIcon className="w-4 h-4 mr-2"/>
+                      {editingDespesa.data ? format(parseISO(editingDespesa.data), 'dd/MM/yyyy', {locale: ptBR}) : 'Selecione'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar mode="single" selected={editingDespesa.data ? parseISO(editingDespesa.data) : undefined}
+                      onSelect={date => { if (date) setEditingDespesa(p => ({...p, data: format(date, 'yyyy-MM-dd')})); }}
+                      locale={ptBR}/>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select value={editingDespesa.status || 'pendente'} onValueChange={v => setEditingDespesa(p => ({...p, status: v}))}>
+                  <SelectTrigger className="mt-1"><SelectValue/></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="pago">Pago</SelectItem>
+                    <SelectItem value="paga">Paga</SelectItem>
+                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Observação</Label>
+                <Textarea value={editingDespesa.observacao || ''} onChange={e => setEditingDespesa(p => ({...p, observacao: e.target.value}))} className="mt-1" rows={2}/>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingDespesa(null)}>Cancelar</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" disabled={updateDespesa.isPending}
+              onClick={() => updateDespesa.mutate({ id: editingDespesa.id, data: {
+                descricao: editingDespesa.descricao,
+                valor: editingDespesa.valor,
+                data: editingDespesa.data,
+                status: editingDespesa.status,
+                observacao: editingDespesa.observacao,
+              }})}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Editar Receita */}
+      <Dialog open={!!editingReceita} onOpenChange={() => setEditingReceita(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Editar Receita</DialogTitle></DialogHeader>
+          {editingReceita && (
+            <div className="space-y-3">
+              <div>
+                <Label>Descrição</Label>
+                <Input value={editingReceita.descricao || ''} onChange={e => setEditingReceita(p => ({...p, descricao: e.target.value}))} className="mt-1"/>
+              </div>
+              <div>
+                <Label>Valor (R$)</Label>
+                <Input type="number" step="0.01" value={editingReceita.valor || ''} onChange={e => setEditingReceita(p => ({...p, valor: parseFloat(e.target.value) || 0}))} className="mt-1"/>
+              </div>
+              <div>
+                <Label>Data</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full mt-1 justify-start">
+                      <CalendarIcon className="w-4 h-4 mr-2"/>
+                      {editingReceita.data ? format(parseISO(editingReceita.data), 'dd/MM/yyyy', {locale: ptBR}) : 'Selecione'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar mode="single" selected={editingReceita.data ? parseISO(editingReceita.data) : undefined}
+                      onSelect={date => { if (date) setEditingReceita(p => ({...p, data: format(date, 'yyyy-MM-dd')})); }}
+                      locale={ptBR}/>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select value={editingReceita.status || 'pendente'} onValueChange={v => setEditingReceita(p => ({...p, status: v}))}>
+                  <SelectTrigger className="mt-1"><SelectValue/></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="recebida">Recebida</SelectItem>
+                    <SelectItem value="prevista">Prevista</SelectItem>
+                    <SelectItem value="cancelada">Cancelada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Observação</Label>
+                <Textarea value={editingReceita.observacao || ''} onChange={e => setEditingReceita(p => ({...p, observacao: e.target.value}))} className="mt-1" rows={2}/>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingReceita(null)}>Cancelar</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" disabled={updateReceita.isPending}
+              onClick={() => updateReceita.mutate({ id: editingReceita.id, data: {
+                descricao: editingReceita.descricao,
+                valor: editingReceita.valor,
+                data: editingReceita.data,
+                status: editingReceita.status,
+                observacao: editingReceita.observacao,
+              }})}>
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal Pagar */}
       <Dialog open={!!pagandoConta} onOpenChange={() => setPagandoConta(null)}>
