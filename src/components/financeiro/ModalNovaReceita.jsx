@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -13,12 +13,13 @@ import { Calculator, CheckCircle, Tag, FileText, Repeat, Paperclip, ChevronDown,
 import { toast } from 'sonner';
 import moment from 'moment';
 
-export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess }) {
+export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, receitaParaEditar = null }) {
   const queryClient = useQueryClient();
   const [categoriasModalOpen, setCategoriasModalOpen] = useState(false);
   const [contasModalOpen, setContasModalOpen] = useState(false);
   const [mostrarDetalhes, setMostrarDetalhes] = useState(true);
-  const [formData, setFormData] = useState({
+
+  const emptyForm = {
     valor: '',
     foiRecebida: true,
     tipoData: 'hoje',
@@ -31,7 +32,32 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess }
     categoria_id: '',
     subcategoria_id: '',
     origem: '',
-  });
+  };
+
+  const [formData, setFormData] = useState(emptyForm);
+
+  useEffect(() => {
+    if (open) {
+      if (receitaParaEditar) {
+        setFormData({
+          valor: receitaParaEditar.valor ? receitaParaEditar.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
+          foiRecebida: receitaParaEditar.status === 'recebida',
+          tipoData: 'outro',
+          dataCustom: receitaParaEditar.data || moment().format('YYYY-MM-DD'),
+          descricao: receitaParaEditar.descricao || '',
+          receitaFixa: false,
+          repetir: false,
+          repeticoes: 2,
+          unidadeRepeticao: 'meses',
+          categoria_id: receitaParaEditar.categoria_id || '',
+          subcategoria_id: receitaParaEditar.subcategoria_id || '',
+          origem: receitaParaEditar.conta_bancaria_id || '',
+        });
+      } else {
+        setFormData(emptyForm);
+      }
+    }
+  }, [open, receitaParaEditar]);
 
   const { data: categorias = [] } = useQuery({
     queryKey: ['categorias-receita'],
@@ -62,6 +88,18 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess }
       queryClient.invalidateQueries(['receitas']);
       queryClient.invalidateQueries(['receitas-transacoes']);
       toast.success('Receita lançada com sucesso!');
+      onOpenChange(false);
+      resetForm();
+      onSuccess?.();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Receita.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['receitas']);
+      queryClient.invalidateQueries(['receitas-transacoes']);
+      toast.success('Receita atualizada com sucesso!');
       onOpenChange(false);
       resetForm();
       onSuccess?.();
@@ -120,7 +158,7 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess }
       if (conta) origemFinal = `${conta.nome_conta} — ${conta.banco}`;
     }
 
-    createMutation.mutate({
+  const payload = {
       empresa_id: user.empresa_id,
       descricao: formData.descricao,
       categoria_id: formData.categoria_id,
@@ -135,7 +173,13 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess }
       conta_bancaria_id: formData.origem || null,
       usuario_id: user.id,
       usuario_nome: user.nome || user.full_name,
-    });
+    };
+
+    if (receitaParaEditar) {
+      updateMutation.mutate({ id: receitaParaEditar.id, data: payload });
+    } else {
+      createMutation.mutate(payload);
+    }
   };
 
   return (
@@ -143,7 +187,7 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess }
       <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#2a2d35] text-white border-none">
           <DialogHeader>
-            <DialogTitle className="text-white">Nova receita</DialogTitle>
+            <DialogTitle className="text-white">{receitaParaEditar ? 'Editar Receita' : 'Nova Receita'}</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6">
@@ -310,8 +354,8 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess }
           <DialogFooter className="mt-6">
             <Button variant="outline" onClick={() => { onOpenChange(false); resetForm(); }}
               className="bg-slate-700 hover:bg-slate-600 text-white border-none">Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={createMutation.isPending} className="bg-green-600 hover:bg-green-700">
-              Lançar Receita
+            <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending} className="bg-green-600 hover:bg-green-700">
+              {receitaParaEditar ? 'Salvar Alterações' : 'Lançar Receita'}
             </Button>
           </DialogFooter>
         </DialogContent>

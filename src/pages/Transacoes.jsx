@@ -20,6 +20,8 @@ export default function Transacoes() {
   const [user, setUser] = useState(null);
   const [novaDespesaOpen, setNovaDespesaOpen] = useState(false);
   const [novaReceitaOpen, setNovaReceitaOpen] = useState(false);
+  const [editandoDespesa, setEditandoDespesa] = useState(null);
+  const [editandoReceita, setEditandoReceita] = useState(null);
   const [periodo, setPeriodo] = useState(() => moment().format('YYYY-MM'));
   const queryClient = useQueryClient();
 
@@ -106,6 +108,8 @@ export default function Transacoes() {
     user, despesas, receitas, comissoes, categoriasDespesa, contasBancarias,
     filiais, periodo, setPeriodo, refetchAll, queryClient,
     loadingDespesas, loadingReceitas,
+    onEditDespesa: (d) => setEditandoDespesa(d),
+    onEditReceita: (r) => setEditandoReceita(r),
   };
 
   return (
@@ -153,6 +157,8 @@ export default function Transacoes() {
 
       <ModalNovaDespesa open={novaDespesaOpen} onOpenChange={setNovaDespesaOpen} user={user} onSuccess={refetchAll} />
       <ModalNovaReceita open={novaReceitaOpen} onOpenChange={setNovaReceitaOpen} user={user} onSuccess={refetchAll} />
+      <ModalNovaDespesa open={!!editandoDespesa} onOpenChange={(v) => { if (!v) setEditandoDespesa(null); }} user={user} onSuccess={refetchAll} despesaParaEditar={editandoDespesa} />
+      <ModalNovaReceita open={!!editandoReceita} onOpenChange={(v) => { if (!v) setEditandoReceita(null); }} user={user} onSuccess={refetchAll} receitaParaEditar={editandoReceita} />
     </div>
   );
 }

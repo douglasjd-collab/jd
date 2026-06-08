@@ -26,7 +26,7 @@ const STATUS_COLORS = {
   'aguardando pagamento': 'bg-blue-100 text-blue-700', prevista: 'bg-purple-100 text-purple-700',
 };
 
-export default function AbaTransacoes({ despesas, receitas, categoriasDespesa, contasBancarias, user, refetchAll, queryClient: qc }) {
+export default function AbaTransacoes({ despesas, receitas, categoriasDespesa, contasBancarias, user, refetchAll, queryClient: qc, onEditDespesa, onEditReceita }) {
   const queryClient = useQueryClient();
   const hoje = moment().format('YYYY-MM-DD');
   const [search, setSearch] = useState('');
@@ -196,7 +196,7 @@ export default function AbaTransacoes({ despesas, receitas, categoriasDespesa, c
                             <Button size="sm" variant="ghost" className="h-6 w-6 p-0"><MoreVertical className="w-3.5 h-3.5"/></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => isDespesa ? setEditingDespesa(t) : setEditingReceita(t)}>
+                            <DropdownMenuItem onClick={() => isDespesa ? (onEditDespesa ? onEditDespesa(t) : setEditingDespesa(t)) : (onEditReceita ? onEditReceita(t) : setEditingReceita(t))}>
                               <Edit2 className="w-3.5 h-3.5 mr-2"/>Editar
                             </DropdownMenuItem>
                             {canDelete && (

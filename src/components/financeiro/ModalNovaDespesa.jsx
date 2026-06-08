@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -16,14 +16,39 @@ import moment from 'moment';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }) {
+export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, despesaParaEditar = null }) {
   const queryClient = useQueryClient();
   const [gerenciarCategoriasOpen, setGerenciarCategoriasOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [criarSubcatOpen, setCriarSubcatOpen] = useState(false);
   const [novaSubcatNome, setNovaSubcatNome] = useState('');
   const [mostrarDetalhes, setMostrarDetalhes] = useState(true);
-  const [formData, setFormData] = useState({
+
+  const getFormFromDespesa = (d) => ({
+    descricao: d.descricao || '',
+    categoria: d.categoria || '',
+    subcategoria: '',
+    valor: d.valor ? d.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
+    data: d.data || moment().format('YYYY-MM-DD'),
+    filial_id: d.filial_id || '',
+    filial_nome: d.filial_nome || '',
+    centro_custo_id: d.centro_custo_id || '',
+    centro_custo_nome: d.centro_custo_nome || '',
+    responsavel_id: d.responsavel_id || '',
+    responsavel_nome: d.responsavel_nome || '',
+    comprovante_url: d.comprovante_url || '',
+    observacao: d.observacao || '',
+    foiPaga: ['pago', 'paga'].includes(d.status),
+    despesaFixa: false,
+    repetir: false,
+    repeticoes: 2,
+    unidadeRepeticao: 'meses',
+    parcelaInicial: 1,
+    totalParcelas: 0,
+    conta_bancaria_id: d.conta_bancaria_id || '',
+  });
+
+  const emptyForm = {
     descricao: '',
     categoria: '',
     subcategoria: '',
@@ -45,7 +70,15 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
     parcelaInicial: 1,
     totalParcelas: 0,
     conta_bancaria_id: '',
-  });
+  };
+
+  const [formData, setFormData] = useState(emptyForm);
+
+  React.useEffect(() => {
+    if (open) {
+      setFormData(despesaParaEditar ? getFormFromDespesa(despesaParaEditar) : emptyForm);
+    }
+  }, [open, despesaParaEditar]);
 
   const { data: filiais = [] } = useQuery({
     queryKey: ['filiais-despesa', user?.empresa_id],
@@ -127,6 +160,18 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Despesa.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['despesas']);
+      queryClient.invalidateQueries(['despesas-transacoes']);
+      toast.success('Despesa atualizada com sucesso!');
+      onOpenChange(false);
+      resetForm();
+      onSuccess?.();
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       descricao: '',
@@ -201,13 +246,24 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
     };
 
     if (!formData.repetir) {
-      // Lançamento simples
-      createMutation.mutate({
-        ...base,
-        data: formData.data,
-        status: formData.foiPaga ? 'pago' : 'pendente',
-        data_pagamento: formData.foiPaga ? formData.data : undefined,
-      });
+      if (despesaParaEditar) {
+        updateMutation.mutate({
+          id: despesaParaEditar.id,
+          data: {
+            ...base,
+            data: formData.data,
+            status: formData.foiPaga ? 'pago' : 'pendente',
+            data_pagamento: formData.foiPaga ? formData.data : undefined,
+          },
+        });
+      } else {
+        createMutation.mutate({
+          ...base,
+          data: formData.data,
+          status: formData.foiPaga ? 'pago' : 'pendente',
+          data_pagamento: formData.foiPaga ? formData.data : undefined,
+        });
+      }
       return;
     }
 
@@ -276,7 +332,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
       <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
         <DialogContent className="max-w-4xl bg-[#2A2A2A] text-white border-0">
           <DialogHeader className="border-b border-slate-700 pb-4">
-            <DialogTitle className="text-xl font-semibold">Nova Despesa</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">{despesaParaEditar ? 'Editar Despesa' : 'Nova Despesa'}</DialogTitle>
           </DialogHeader>
 
           <div className="grid grid-cols-2 gap-6 py-4">
@@ -582,8 +638,8 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { onOpenChange(false); resetForm(); }}
                 className="bg-slate-700 hover:bg-slate-600 text-white border-slate-600">Cancelar</Button>
-              <Button onClick={handleSubmit} disabled={createMutation.isPending}
-                className="bg-red-500 hover:bg-red-600 text-white">Lançar Despesa</Button>
+              <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}
+                className="bg-red-500 hover:bg-red-600 text-white">{despesaParaEditar ? 'Salvar Alterações' : 'Lançar Despesa'}</Button>
             </div>
           </DialogFooter>
         </DialogContent>
