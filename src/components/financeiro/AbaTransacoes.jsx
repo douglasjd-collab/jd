@@ -169,7 +169,7 @@ export default function AbaTransacoes({ despesas, receitas, categoriasDespesa, c
                       {t.cliente_nome && <p className="text-xs text-slate-400">{t.descricao}</p>}
                     </td>
                     <td className="p-3 text-slate-500">{t.produto || '-'}</td>
-                    <td className="p-3 text-slate-500">{t.categoria || '-'}</td>
+                    <td className="p-3 text-slate-500">{t.categoria || t.categoria_nome || '-'}</td>
                     <td className="p-3 text-slate-500">{t.responsavel_nome || '-'}</td>
                     <td className="p-3 text-right">
                       <span className={`font-bold ${isDespesa ? 'text-red-600' : 'text-green-600'}`}>
