@@ -389,7 +389,7 @@ export default function Dashboard() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <DashboardRankingVendedores vendas={vendasFiltradas} propostas={propostasEmprestimo} propostasFinanciamento={propostasFinanciamento} propostasSeguros={propostasSeguros} periodo={periodo} />
-              {isAdmin && <DashboardRankingFiliais vendas={vendasFiltradas} propostas={propostasEmprestimo} receitas={receitas} despesas={despesas} periodo={periodo} />}
+              {isAdmin && <DashboardRankingFiliais vendas={vendasFiltradas} propostas={propostasEmprestimo} propostasFinanciamento={propostasFinanciamento} propostasSeguros={propostasSeguros} periodo={periodo} />}
             </div>
 
             <DashboardOportunidadesParadas oportunidades={oportunidadesFiltradas} />
