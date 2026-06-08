@@ -329,7 +329,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Configurações', page: 'ConfiguracaoSeguros' },
       ]
     },
-    { name: 'Financiamento de Veículos', icon: Car, page: 'FinanciamentoVeiculos', roles: ALL_ROLES },
+    { name: 'Financiamentos', icon: Car, page: 'FinanciamentoVeiculos', roles: ALL_ROLES },
 
     { name: 'Tarefas', icon: CheckSquare, page: 'Tarefas', roles: ALL_ROLES },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ALL_ROLES },
