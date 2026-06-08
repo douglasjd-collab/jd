@@ -693,6 +693,7 @@ export default function Usuarios() {
                 <th className="text-left px-4 py-3 text-sm font-medium text-slate-700 pl-10">Nome / CPF</th>
                 <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Telefone</th>
                 <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Perfil</th>
+                <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Filial</th>
                 <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">PIX</th>
                 <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Banco</th>
                 <th className="text-left px-4 py-3 text-sm font-medium text-slate-700">Status</th>
@@ -702,13 +703,13 @@ export default function Usuarios() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
                     Carregando...
                   </td>
                 </tr>
               ) : usuariosAgrupados.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                  <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
                     Nenhum usuário encontrado
                   </td>
                 </tr>
@@ -720,7 +721,7 @@ export default function Usuarios() {
                       className="bg-slate-100 hover:bg-slate-200 cursor-pointer border-b border-slate-200"
                       onClick={() => toggleEmpresa(grupo.empresa_id)}
                     >
-                      <td colSpan={7} className="px-4 py-3">
+                      <td colSpan={8} className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           {empresasExpandidas.has(grupo.empresa_id) ? (
                             <ChevronDown className="w-5 h-5 text-slate-600" />
@@ -778,6 +779,16 @@ export default function Usuarios() {
                           <Badge className={perfilColors[usuario.perfil] || perfilColors.vendedor}>
                             {perfilLabels[usuario.perfil] || 'Vendedor'}
                           </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {usuario.filial_nome ? (
+                            <span className="flex items-center gap-1 text-blue-600 font-medium">
+                              <MapPin className="w-3 h-3 flex-shrink-0" />
+                              {usuario.filial_nome}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300">—</span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600">
                           {usuario.pix_chave || usuario.chave_pix ? (
