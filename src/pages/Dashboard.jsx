@@ -93,15 +93,15 @@ export default function Dashboard() {
   const { data: vendas = [] } = useQuery({
     queryKey: ['vendas-exec', user?.empresa_id, user?.perfil],
     enabled: !!user,
-    queryFn: () => user?.empresa_id ? base44.entities.Venda.filter({ empresa_id: user.empresa_id }, '-data_venda', 500) : base44.entities.Venda.list('-data_venda', 500),
-    staleTime: 30000,
+    queryFn: () => user?.empresa_id ? base44.entities.Venda.filter({ empresa_id: user.empresa_id }, '-data_venda', 300) : base44.entities.Venda.list('-data_venda', 300),
+    staleTime: 120000, // 2 minutos
   });
 
   const { data: oportunidades = [] } = useQuery({
     queryKey: ['oport-exec', user?.empresa_id],
     enabled: !!user,
-    queryFn: () => user?.empresa_id ? base44.entities.Oportunidade.filter({ empresa_id: user.empresa_id }, '-data_ultima_movimentacao', 300) : base44.entities.Oportunidade.list('-data_ultima_movimentacao', 300),
-    staleTime: 30000,
+    queryFn: () => user?.empresa_id ? base44.entities.Oportunidade.filter({ empresa_id: user.empresa_id }, '-data_ultima_movimentacao', 200) : base44.entities.Oportunidade.list('-data_ultima_movimentacao', 200),
+    staleTime: 120000,
   });
 
   const { data: propostasEmprestimo = [] } = useQuery({
@@ -110,9 +110,9 @@ export default function Dashboard() {
     queryFn: () => {
       const f = { produto: 'emprestimo' };
       if (user?.empresa_id) f.empresa_id = user.empresa_id;
-      return base44.entities.Proposta.filter(f, '-data_venda', 500);
+      return base44.entities.Proposta.filter(f, '-data_venda', 300);
     },
-    staleTime: 30000,
+    staleTime: 120000,
   });
 
   const { data: propostasFinanciamento = [] } = useQuery({
@@ -121,9 +121,9 @@ export default function Dashboard() {
     queryFn: () => {
       const f = { produto: 'financiamento' };
       if (user?.empresa_id) f.empresa_id = user.empresa_id;
-      return base44.entities.Proposta.filter(f, '-data_venda', 300);
+      return base44.entities.Proposta.filter(f, '-data_venda', 200);
     },
-    staleTime: 30000,
+    staleTime: 120000,
   });
 
   const { data: propostasSeguros = [] } = useQuery({
@@ -132,9 +132,9 @@ export default function Dashboard() {
     queryFn: () => {
       const f = {};
       if (user?.empresa_id) f.empresa_id = user.empresa_id;
-      return base44.entities.PropostaSeguro.filter(f, '-data_inicio', 300);
+      return base44.entities.PropostaSeguro.filter(f, '-data_inicio', 200);
     },
-    staleTime: 30000,
+    staleTime: 120000,
   });
 
   const { data: statusPropostaList = [] } = useQuery({
@@ -145,7 +145,7 @@ export default function Dashboard() {
       if (user?.empresa_id) f.empresa_id = user.empresa_id;
       return base44.entities.StatusProposta.filter(f);
     },
-    staleTime: 60000,
+    staleTime: 300000, // 5 minutos
   });
 
   const { data: clientes = [] } = useQuery({
@@ -154,9 +154,9 @@ export default function Dashboard() {
     queryFn: () => {
       const f = { status: 'ativo' };
       if (user?.empresa_id) f.empresa_id = user.empresa_id;
-      return base44.entities.Cliente.filter(f);
+      return base44.entities.Cliente.filter(f, '-created_date', 500);
     },
-    staleTime: 60000,
+    staleTime: 300000,
   });
 
   const { data: receitas = [] } = useQuery({
@@ -164,9 +164,9 @@ export default function Dashboard() {
     enabled: !!user && isAdmin,
     queryFn: () => {
       const f = user?.empresa_id ? { empresa_id: user.empresa_id } : {};
-      return base44.entities.Receita.filter(f, '-data', 500);
+      return base44.entities.Receita.filter(f, '-data', 300);
     },
-    staleTime: 30000,
+    staleTime: 120000,
   });
 
   const { data: despesas = [] } = useQuery({
@@ -174,9 +174,9 @@ export default function Dashboard() {
     enabled: !!user && isAdmin,
     queryFn: () => {
       const f = user?.empresa_id ? { empresa_id: user.empresa_id } : {};
-      return base44.entities.Despesa.filter(f, '-data', 500);
+      return base44.entities.Despesa.filter(f, '-data', 300);
     },
-    staleTime: 30000,
+    staleTime: 120000,
   });
 
   const { data: etapas = [] } = useQuery({
@@ -187,21 +187,21 @@ export default function Dashboard() {
       if (user?.empresa_id) f.empresa_id = user.empresa_id;
       return base44.entities.EtapaFunil.filter(f, 'ordem');
     },
-    staleTime: 60000,
+    staleTime: 300000,
   });
 
   const { data: parcelas = [] } = useQuery({
     queryKey: ['parcelas-exec'],
     enabled: !!user,
-    queryFn: () => base44.entities.Parcela.list('-created_date', 300),
-    staleTime: 60000,
+    queryFn: () => base44.entities.Parcela.list('-created_date', 200),
+    staleTime: 120000,
   });
 
   const { data: importacoes = [] } = useQuery({
     queryKey: ['importacoes-exec', user?.empresa_id],
     enabled: !!user?.empresa_id,
     queryFn: () => base44.entities.ImportacaoAssembleia.filter({ empresa_id: user.empresa_id }, '-created_date', 5),
-    staleTime: 60000,
+    staleTime: 300000,
   });
 
   // Mapa colaborador_id → filial_nome para enriquecer o ranking de filiais
@@ -209,9 +209,9 @@ export default function Dashboard() {
     queryKey: ['colabs-filial-exec', user?.empresa_id],
     enabled: !!user && isAdmin,
     queryFn: () => user?.empresa_id
-      ? base44.entities.Colaborador.filter({ empresa_id: user.empresa_id }, 'nome', 500)
-      : base44.entities.Colaborador.list('nome', 500),
-    staleTime: 60000,
+      ? base44.entities.Colaborador.filter({ empresa_id: user.empresa_id }, 'nome', 300)
+      : base44.entities.Colaborador.list('nome', 300),
+    staleTime: 300000,
   });
 
   const mapaColaboradorFilial = useMemo(() => {
@@ -230,7 +230,7 @@ export default function Dashboard() {
       const todas = await base44.entities.Proposta.filter(f, '-created_date', 200);
       return todas.filter(p => p.cip_data_retorno_prevista === hoje);
     },
-    staleTime: 60000,
+    staleTime: 300000, // 5 minutos
   });
 
   // Filtros aplicados
