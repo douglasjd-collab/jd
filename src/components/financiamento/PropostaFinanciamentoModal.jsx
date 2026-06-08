@@ -27,6 +27,7 @@ const EMPTY = {
   valor_parcela: '', taxa_juros: '',
   tarifa_cadastral: '', tarifa_cadastral_status: 'aguardando_pagamento',
   custos_operacionais: '',
+  percentual_comissao: '',
   vendedor_id: '', vendedor_nome: '',
   empresa_id: '', empresa_nome: '',
   filial_id: '', filial_nome: '',
@@ -203,7 +204,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
     try {
       const dados = { ...form, cliente_nome: form.cliente_nome || buscaCliente };
       ['cliente_renda', 'valor_veiculo', 'valor_entrada', 'valor_financiado', 'prazo_meses',
-        'valor_parcela', 'taxa_juros', 'tarifa_cadastral', 'custos_operacionais']
+        'valor_parcela', 'taxa_juros', 'tarifa_cadastral', 'custos_operacionais', 'percentual_comissao']
         .forEach(k => { if (dados[k] !== '' && dados[k] !== undefined) dados[k] = parseFloat(String(dados[k]).replace(',', '.')) || 0; });
       await onSalvar(dados);
     } catch (err) {
@@ -452,9 +453,9 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
             </div>
           </div>
 
-          {/* Tarifa e Custos */}
+          {/* Tarifa, Custos e Comissão */}
           <div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">🏦 Tarifa Cadastral e Custos Operacionais</h3>
+            <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">🏦 Tarifa, Custos e Comissão</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <F label="Tarifa Cadastral (R$)">
                 <Input type="number" value={form.tarifa_cadastral} onChange={e => set('tarifa_cadastral', e.target.value)}
@@ -475,6 +476,11 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                 <Input type="number" value={form.custos_operacionais} onChange={e => set('custos_operacionais', e.target.value)}
                   placeholder="0,00" />
                 <p className="text-xs text-slate-400">Gera Despesa automaticamente</p>
+              </F>
+              <F label="Percentual de Comissão (%)">
+                <Input type="number" step="0.01" value={form.percentual_comissao} onChange={e => set('percentual_comissao', e.target.value)}
+                  placeholder="0,00" />
+                <p className="text-xs text-slate-400">Cria comissão ao marcar "Operação Finalizada"</p>
               </F>
             </div>
           </div>

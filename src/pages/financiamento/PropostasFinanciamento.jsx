@@ -57,6 +57,10 @@ async function criarDespesaCustos(dados, empresaId) {
 }
 
 async function criarComissaoFinanciamento(proposta, empresaId) {
+  const valorFinanciado = proposta.valor_financiado || 0;
+  const percentualComissao = proposta.percentual_comissao || 0;
+  const valorComissao = percentualComissao > 0 ? (valorFinanciado * percentualComissao) / 100 : 0;
+
   return base44.entities.ComissaoFinanciamento.create({
     empresa_id: empresaId,
     filial_id: proposta.filial_id || '',
@@ -66,8 +70,9 @@ async function criarComissaoFinanciamento(proposta, empresaId) {
     cliente_nome: proposta.cliente_nome || '',
     cliente_cpf: proposta.cliente_cpf || '',
     banco: proposta.banco || '',
-    valor_financiado: proposta.valor_financiado || 0,
-    valor_comissao: 0,
+    valor_financiado: valorFinanciado,
+    valor_comissao: valorComissao,
+    percentual_comissao: percentualComissao,
     status: 'pendente',
     vendedor_id: proposta.vendedor_id || '',
     vendedor_nome: proposta.vendedor_nome || '',
