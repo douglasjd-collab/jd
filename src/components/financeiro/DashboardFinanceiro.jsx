@@ -11,6 +11,13 @@ const BRL = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currenc
 const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const CORES = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#64748b','#ec4899'];
 
+const SERVICOS = {
+  consorcio: 'Consórcio',
+  emprestimo: 'Empréstimos',
+  financiamento: 'Financiamentos',
+  seguro: 'Seguros',
+};
+
 export default function DashboardFinanceiro({ despesas, receitas, comissoes, filiais = [] }) {
   const hoje = moment().format('YYYY-MM-DD');
   const [filterFilial, setFilterFilial] = useState('todas');
@@ -69,12 +76,29 @@ export default function DashboardFinanceiro({ despesas, receitas, comissoes, fil
     }).sort((a,b)=>b.lucro-a.lucro);
   }, [filiais, receitas, despesas]);
 
-  // Por produto
-  const receitaPorProduto = useMemo(()=>{
-    const map = {};
-    receitasFiltradas.forEach(r=>{ const p = r.produto||r.origem||'Outros'; map[p]=(map[p]||0)+(r.valor||0); });
-    return Object.entries(map).map(([name,value])=>({name,value}));
-  },[receitasFiltradas]);
+  // Por serviço — agrupa usando o campo "produto" da Receita mapeado para os 4 serviços
+  const receitaPorProduto = useMemo(() => {
+    const map = { 'Consórcio': 0, 'Empréstimos': 0, 'Financiamentos': 0, 'Seguros': 0, 'Outros': 0 };
+    receitasFiltradas.forEach(r => {
+      const prod = (r.produto || '').toLowerCase();
+      const catNome = (r.categoria_nome || r.categoria || '').toLowerCase();
+      const combinado = prod + ' ' + catNome;
+      if (combinado.includes('consorcio') || combinado.includes('consórcio')) {
+        map['Consórcio'] += r.valor || 0;
+      } else if (combinado.includes('emprestimo') || combinado.includes('empréstimo') || combinado.includes('credito') || combinado.includes('crédito')) {
+        map['Empréstimos'] += r.valor || 0;
+      } else if (combinado.includes('financiamento') || combinado.includes('veiculo') || combinado.includes('veículo')) {
+        map['Financiamentos'] += r.valor || 0;
+      } else if (combinado.includes('seguro') || combinado.includes('protecao') || combinado.includes('proteção')) {
+        map['Seguros'] += r.valor || 0;
+      } else {
+        map['Outros'] += r.valor || 0;
+      }
+    });
+    return Object.entries(map)
+      .filter(([, value]) => value > 0)
+      .map(([name, value]) => ({ name, value }));
+  }, [receitasFiltradas]);
 
   // Alertas
   const alertas = [];
@@ -155,7 +179,7 @@ export default function DashboardFinanceiro({ despesas, receitas, comissoes, fil
         </Card>
 
         <Card className="p-4">
-          <h3 className="font-semibold text-slate-700 mb-4 text-sm">Receita por Produto</h3>
+          <h3 className="font-semibold text-slate-700 mb-4 text-sm">Receita por Serviço</h3>
           {receitaPorProduto.length>0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
