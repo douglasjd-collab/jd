@@ -213,7 +213,7 @@ export default function ImprimirSimulacao() {
                 localStorage.setItem('simulacao_ultima_nome', simulacao.cliente_nome || '');
                 localStorage.setItem('simulacao_ultimo_telefone', simulacao.telefone || '');
               }
-              window.location.href = createPageUrl('SimuladorNormal');
+              window.location.href = '/SimuladorNormal';
             }}
           >
             <ArrowLeft className="w-4 h-4" />
