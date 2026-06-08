@@ -323,7 +323,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
               {/* Categoria Principal */}
               <div className="border-b border-slate-700 pb-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400">🏷️</span>
+                  {!formData.categoria && <span className="text-slate-400">🏷️</span>}
                   <Select value={formData.categoria} onValueChange={(v) => {
                     if (v === '__gerenciar__') { setGerenciarCategoriasOpen(true); }
                     else { setFormData({ ...formData, categoria: v, subcategoria: '' }); }
