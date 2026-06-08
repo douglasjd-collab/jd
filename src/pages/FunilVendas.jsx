@@ -1707,21 +1707,7 @@ export default function FunilVendas() {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="data_pre_fechamento" className="flex items-center gap-1.5">
-                <Target className="w-3.5 h-3.5 text-purple-600" />
-                Data de Pré-Fechamento
-              </Label>
-              <Input
-                id="data_pre_fechamento"
-                type="date"
-                value={formData.data_pre_fechamento}
-                onChange={(e) => setFormData({ ...formData, data_pre_fechamento: e.target.value })}
-              />
-              <p className="text-xs text-slate-400 mt-1">
-                Quando o lead estiver na etapa "Pré-Fechamento" e esta data chegar, o sistema alertará automaticamente o responsável.
-              </p>
-            </div>
+
 
             {formData.origem === 'Indicação' && (
               <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
