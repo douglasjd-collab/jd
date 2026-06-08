@@ -25,15 +25,16 @@ export default function VincularFilialModal({ open, onOpenChange, usuario, onSuc
 
   useEffect(() => {
     if (open && usuario) {
-      setFilialId(usuario.filial_id || '');
+      setFilialId(usuario.filial_id || '__none__');
     }
   }, [open, usuario]);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const filialSelecionada = filiais.find(f => f.id === filialId);
+      const idReal = filialId === '__none__' ? null : (filialId || null);
+      const filialSelecionada = idReal ? filiais.find(f => f.id === idReal) : null;
       await base44.entities.Colaborador.update(usuario.id, {
-        filial_id: filialId || null,
+        filial_id: idReal,
         filial_nome: filialSelecionada?.nome || null,
       });
     },
@@ -87,7 +88,7 @@ export default function VincularFilialModal({ open, onOpenChange, usuario, onSuc
                   <SelectValue placeholder="Selecione uma filial..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={null}>— Sem filial —</SelectItem>
+                  <SelectItem value="__none__">— Sem filial —</SelectItem>
                   {filiais.map(f => (
                     <SelectItem key={f.id} value={f.id}>
                       {f.nome} {f.codigo ? `(${f.codigo})` : ''}
