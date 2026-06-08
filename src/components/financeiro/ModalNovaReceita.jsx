@@ -268,22 +268,22 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
 
             {/* Tipo de data */}
             <div className="border-b border-slate-600 pb-4">
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3">
                 <FileText className="w-5 h-5 text-slate-400" />
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap items-center">
                   {['hoje', 'ontem', 'outro'].map((tipo) => (
                     <Button key={tipo} size="sm" onClick={() => setFormData({ ...formData, tipoData: tipo })}
                       className={formData.tipoData === tipo ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-700 hover:bg-slate-600 text-white'}>
                       {tipo === 'hoje' ? 'Hoje' : tipo === 'ontem' ? 'Ontem' : 'Outros...'}
                     </Button>
                   ))}
+                  {formData.tipoData === 'outro' && (
+                    <Input type="date" value={formData.dataCustom}
+                      onChange={(e) => setFormData({ ...formData, dataCustom: e.target.value })}
+                      className="bg-slate-700 border-slate-600 text-white w-auto" />
+                  )}
                 </div>
               </div>
-              {formData.tipoData === 'outro' && (
-                <Input type="date" value={formData.dataCustom}
-                  onChange={(e) => setFormData({ ...formData, dataCustom: e.target.value })}
-                  className="bg-slate-700 border-slate-600 text-white" />
-              )}
             </div>
 
             {/* Descrição */}
