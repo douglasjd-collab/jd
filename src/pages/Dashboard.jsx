@@ -442,7 +442,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={vendasPorMes} barCategoryGap="30%" barGap={4}>
+                  <BarChart data={vendasPorMes} barCategoryGap="20%" barGap={2}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="name" fontSize={12} tick={{ fill: '#64748b' }} />
                     <YAxis
