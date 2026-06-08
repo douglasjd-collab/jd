@@ -8,15 +8,20 @@ moment.locale('pt-br');
 const BRL = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const PCT = (v, total) => total > 0 ? `${((v/total)*100).toFixed(1)}%` : '0%';
 
-export default function AbaDRE({ despesas, receitas, comissoes }) {
+export default function AbaDRE({ despesas, receitas, comissoes, filiais = [] }) {
   const [periodo, setPeriodo] = useState(() => moment().format('YYYY-MM'));
+  const [filterFilial, setFilterFilial] = useState('todas');
 
   const meses = useMemo(() => Array.from({length:12},(_,i) => {
     const d = moment().subtract(i,'months');
     return { value: d.format('YYYY-MM'), label: d.format('MMMM [de] YYYY') };
   }), []);
 
-  const filtrarPorPeriodo = (items, campoData) => items.filter(i => (i[campoData] || i.data || '').startsWith(periodo));
+  const filtrarPorPeriodo = (items, campoData) => items.filter(i => {
+    const matchPeriodo = (i[campoData] || i.data || '').startsWith(periodo);
+    const matchFilial = filterFilial === 'todas' || i.filial_id === filterFilial;
+    return matchPeriodo && matchFilial;
+  });
 
   const receitasBrutas = useMemo(() =>
     filtrarPorPeriodo(receitas.filter(r => r.status === 'recebida'), 'data_recebimento')
@@ -69,6 +74,15 @@ export default function AbaDRE({ despesas, receitas, comissoes }) {
             {meses.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        {filiais.length > 0 && (
+          <Select value={filterFilial} onValueChange={setFilterFilial}>
+            <SelectTrigger className="w-48"><SelectValue/></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Consolidado (Grupo)</SelectItem>
+              {filiais.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

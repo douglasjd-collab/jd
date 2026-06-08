@@ -4,7 +4,23 @@
   "properties": {
     "empresa_id": {
       "type": "string",
-      "description": "ID da empresa"
+      "description": "ID da empresa (obrigat\u00f3rio)"
+    },
+    "filial_id": {
+      "type": "string",
+      "description": "ID da filial (obrigat\u00f3rio)"
+    },
+    "filial_nome": {
+      "type": "string",
+      "description": "Nome da filial (denormalizado)"
+    },
+    "centro_custo_id": {
+      "type": "string",
+      "description": "ID do centro de custo"
+    },
+    "centro_custo_nome": {
+      "type": "string",
+      "description": "Nome do centro de custo (denormalizado)"
     },
     "descricao": {
       "type": "string",
@@ -12,70 +28,79 @@
     },
     "categoria_id": {
       "type": "string",
-      "description": "ID da categoria (obrigat\u00f3rio)"
+      "description": "ID da categoria"
     },
     "categoria_nome": {
       "type": "string",
       "description": "Nome da categoria (denormalizado)"
     },
     "subcategoria_id": {
-      "type": "string",
-      "description": "ID da subcategoria (opcional)"
+      "type": "string"
     },
     "subcategoria_nome": {
+      "type": "string"
+    },
+    "produto": {
       "type": "string",
-      "description": "Nome da subcategoria (denormalizado)"
+      "description": "Produto vinculado (opcional)"
     },
     "valor": {
-      "type": "number",
-      "description": "Valor da receita"
+      "type": "number"
     },
     "data": {
       "type": "string",
-      "format": "date",
-      "description": "Data da receita"
+      "format": "date"
     },
     "status": {
       "type": "string",
       "enum": [
         "pendente",
-        "recebida"
+        "recebida",
+        "prevista",
+        "cancelada"
       ],
-      "default": "recebida",
-      "description": "Status da receita"
+      "default": "recebida"
     },
     "data_recebimento": {
       "type": "string",
-      "format": "date",
-      "description": "Data de recebimento efetivo"
+      "format": "date"
     },
     "origem": {
+      "type": "string"
+    },
+    "cliente_nome": {
       "type": "string",
-      "description": "Origem da receita"
+      "description": "Nome do cliente (opcional)"
+    },
+    "cliente_id": {
+      "type": "string"
+    },
+    "responsavel_id": {
+      "type": "string",
+      "description": "Colaborador (opcional)"
+    },
+    "responsavel_nome": {
+      "type": "string"
     },
     "observacao": {
-      "type": "string",
-      "description": "Observa\u00e7\u00f5es"
+      "type": "string"
     },
     "usuario_id": {
-      "type": "string",
-      "description": "ID do usu\u00e1rio que lan\u00e7ou"
+      "type": "string"
     },
     "usuario_nome": {
-      "type": "string",
-      "description": "Nome do usu\u00e1rio que lan\u00e7ou"
+      "type": "string"
     },
     "importacao_id": {
-      "type": "string",
-      "description": "ID da importa\u00e7\u00e3o que originou esta receita"
+      "type": "string"
     },
     "conta_bancaria_id": {
-      "type": "string",
-      "description": "ID da conta banc\u00e1ria vinculada"
+      "type": "string"
     }
   },
   "required": [
     "empresa_id",
+    "filial_id",
     "descricao",
     "categoria_id",
     "valor",

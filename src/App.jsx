@@ -45,6 +45,8 @@ import ConfiguracaoSeguros from './pages/ConfiguracaoSeguros';
 import ConfiguracaoSetoresTarefas from './pages/ConfiguracaoSetoresTarefas';
 import SimuladorInteligente from './pages/SimuladorInteligente';
 import DiagnosticoNvoip from './pages/DiagnosticoNvoip';
+import Filiais from './pages/Filiais';
+import CentrosCusto from './pages/CentrosCusto';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -134,6 +136,8 @@ const AuthenticatedApp = () => {
       <Route path="/ConfiguracaoSetoresTarefas" element={<LayoutWrapper currentPageName="ConfiguracaoSetoresTarefas"><ConfiguracaoSetoresTarefas /></LayoutWrapper>} />
       <Route path="/SimuladorInteligente" element={<LayoutWrapper currentPageName="SimuladorInteligente"><SimuladorInteligente /></LayoutWrapper>} />
       <Route path="/DiagnosticoNvoip" element={<LayoutWrapper currentPageName="DiagnosticoNvoip"><DiagnosticoNvoip /></LayoutWrapper>} />
+      <Route path="/Filiais" element={<LayoutWrapper currentPageName="Filiais"><Filiais /></LayoutWrapper>} />
+      <Route path="/CentrosCusto" element={<LayoutWrapper currentPageName="CentrosCusto"><CentrosCusto /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

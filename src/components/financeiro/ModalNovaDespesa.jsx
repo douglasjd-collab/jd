@@ -29,6 +29,10 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
     subcategoria: '',
     valor: '',
     data: moment().format('YYYY-MM-DD'),
+    filial_id: '',
+    filial_nome: '',
+    centro_custo_id: '',
+    centro_custo_nome: '',
     responsavel_id: '',
     responsavel_nome: '',
     comprovante_url: '',
@@ -41,6 +45,18 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
     parcelaInicial: 1,
     totalParcelas: 0,
     conta_bancaria_id: '',
+  });
+
+  const { data: filiais = [] } = useQuery({
+    queryKey: ['filiais-despesa', user?.empresa_id],
+    queryFn: () => base44.entities.Filial.filter(user?.empresa_id ? { empresa_id: user.empresa_id, situacao: 'ativa' } : {}, 'nome'),
+    enabled: !!user,
+  });
+
+  const { data: centrosCusto = [] } = useQuery({
+    queryKey: ['centros-custo-despesa', user?.empresa_id],
+    queryFn: () => base44.entities.CentroCusto.filter(user?.empresa_id ? { empresa_id: user.empresa_id, ativo: true } : {}, 'nome'),
+    enabled: !!user,
   });
 
   const { data: colaboradores = [] } = useQuery({
@@ -118,6 +134,10 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
       subcategoria: '',
       valor: '',
       data: moment().format('YYYY-MM-DD'),
+      filial_id: '',
+      filial_nome: '',
+      centro_custo_id: '',
+      centro_custo_nome: '',
       responsavel_id: '',
       responsavel_nome: '',
       comprovante_url: '',
@@ -152,8 +172,8 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
   };
 
   const handleSubmit = async () => {
-    if (!formData.descricao || !formData.valor || !formData.responsavel_id || !formData.conta_bancaria_id) {
-      toast.error('Preencha os campos obrigatórios (incluindo Conta Bancária)');
+    if (!formData.descricao || !formData.valor || !formData.filial_id) {
+      toast.error('Preencha os campos obrigatórios: Descrição, Valor e Filial');
       return;
     }
     const valor = parseFloat(formData.valor.replace(/[^\d,.-]/g, '').replace(',', '.'));
@@ -164,11 +184,15 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
 
     const base = {
       empresa_id: user.empresa_id,
+      filial_id: formData.filial_id,
+      filial_nome: formData.filial_nome,
+      centro_custo_id: formData.centro_custo_id || null,
+      centro_custo_nome: formData.centro_custo_nome || null,
       descricao: formData.descricao,
       categoria: formData.subcategoria || formData.categoria,
       valor,
-      responsavel_id: formData.responsavel_id,
-      responsavel_nome: formData.responsavel_nome,
+      responsavel_id: formData.responsavel_id || null,
+      responsavel_nome: formData.responsavel_nome || null,
       comprovante_url: formData.comprovante_url,
       observacao: formData.observacao,
       usuario_id: user.id,
@@ -392,6 +416,44 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess }
                   )}
                 </div>
               )}
+
+              {/* Filial - OBRIGATÓRIO */}
+              <div className="border-b border-slate-700 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">🏢</span>
+                  <Select value={formData.filial_id} onValueChange={v => {
+                    const f = filiais.find(f => f.id === v);
+                    setFormData({ ...formData, filial_id: v, filial_nome: f?.nome || '' });
+                  }}>
+                    <SelectTrigger className="bg-transparent border-none text-white focus:ring-0 flex-1">
+                      <SelectValue placeholder="Filial (obrigatório)" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {filiais.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {!formData.filial_id && <p className="text-xs text-orange-400 mt-1 pl-6">Campo obrigatório</p>}
+              </div>
+
+              {/* Centro de Custo */}
+              <div className="border-b border-slate-700 pb-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">🎯</span>
+                  <Select value={formData.centro_custo_id || 'none'} onValueChange={v => {
+                    const cc = centrosCusto.find(c => c.id === v);
+                    setFormData({ ...formData, centro_custo_id: v === 'none' ? '' : v, centro_custo_nome: cc?.nome || '' });
+                  }}>
+                    <SelectTrigger className="bg-transparent border-none text-white focus:ring-0 flex-1">
+                      <SelectValue placeholder="Centro de Custo (opcional)" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      <SelectItem value="none">— Nenhum</SelectItem>
+                      {centrosCusto.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
               <div className="border-b border-slate-700 pb-4">
                 <div className="flex items-center gap-2">

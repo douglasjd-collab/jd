@@ -58,6 +58,12 @@ export default function Transacoes() {
     enabled: !!user,
   });
 
+  const { data: filiais = [] } = useQuery({
+    queryKey: ['filiais-transacoes', user?.empresa_id],
+    queryFn: () => base44.entities.Filial.filter(user?.empresa_id ? { empresa_id: user.empresa_id } : {}, 'nome'),
+    enabled: !!user,
+  });
+
   const { data: categoriasDespesa = [] } = useQuery({
     queryKey: ['categorias-despesa', user?.empresa_id],
     queryFn: () => base44.entities.CategoriaDespesa.filter({ empresa_id: user.empresa_id, status: 'ativa' }),
@@ -98,7 +104,7 @@ export default function Transacoes() {
 
   const sharedProps = {
     user, despesas, receitas, comissoes, categoriasDespesa, contasBancarias,
-    periodo, setPeriodo, refetchAll, queryClient,
+    filiais, periodo, setPeriodo, refetchAll, queryClient,
     loadingDespesas, loadingReceitas,
   };
 

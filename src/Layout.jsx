@@ -359,6 +359,8 @@ export default function Layout({ children, currentPageName }) {
       roles: ['master', 'super_admin', 'admin'],
       submenu: [
          { name: 'Empresas', page: 'Empresas' },
+         { name: 'Filiais', page: 'Filiais' },
+         { name: 'Centros de Custo', page: 'CentrosCusto' },
          { name: 'Convênios', page: 'Convenios' },
         { name: 'Bancos', page: 'Bancos' },
         { name: 'Administradoras', page: 'Administradoras' },
