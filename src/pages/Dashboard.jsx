@@ -12,6 +12,7 @@ import DashboardInsights from '@/components/dashboard/DashboardInsights';
 import DashboardOportunidadesParadas from '@/components/dashboard/DashboardOportunidadesParadas';
 import CipRetornoModal from '@/components/emprestimos/CipRetornoModal';
 import LancesDoGrupoPanel from '@/components/simulador/LancesDoGrupoPanel';
+import GraficoProducao from '@/components/dashboard/GraficoProducao';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -465,48 +466,13 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* Gráfico */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader>
-                <CardTitle>Vendas de Consórcio por Mês</CardTitle>
-                <div className="flex gap-4 mt-1">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <div className="w-3 h-3 rounded-sm bg-[#1e3a5f]" /> Quantidade
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                    <div className="w-3 h-3 rounded-sm bg-[#23BE84]" /> Valor Total
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={vendasPorMes} barCategoryGap="20%" barGap={2}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="name" fontSize={12} tick={{ fill: '#64748b' }} />
-                    <YAxis
-                      yAxisId="qtd"
-                      orientation="left"
-                      fontSize={11}
-                      tick={{ fill: '#64748b' }}
-                      label={{ value: 'Qtd', angle: -90, position: 'insideLeft', fontSize: 11, fill: '#94a3b8' }}
-                    />
-                    <YAxis
-                      yAxisId="valor"
-                      orientation="right"
-                      fontSize={11}
-                      tick={{ fill: '#23BE84' }}
-                      tickFormatter={v => `R$ ${(v / 1000).toFixed(0)}k`}
-                    />
-                    <Tooltip
-                      formatter={(v, name) => name === 'Quantidade' ? [v, 'Quantidade'] : [BRL(v), 'Valor Total']}
-                      contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
-                    />
-                    <Bar yAxisId="qtd" dataKey="vendas" name="Quantidade" fill="#1e3a5f" radius={[4, 4, 0, 0]} />
-                    <Bar yAxisId="valor" dataKey="valor" name="Valor Total" fill="#23BE84" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+            <GraficoProducao 
+              dados={vendasPorMes.map(d => ({ ...d, quantidade: d.vendas }))}
+              titulo="Produção de Consórcios por Mês"
+              subtitle="Acompanhe a evolução mensal da produção em quantidade e valor."
+              tipo="consorcio"
+              meta={150} // Exemplo de meta
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <DashboardRankingVendedores vendas={vendasMesPeriodo} propostas={[]} propostasFinanciamento={[]} propostasSeguros={[]} periodo={periodo} />
