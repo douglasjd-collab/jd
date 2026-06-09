@@ -78,8 +78,14 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
     if (!open) return;
     const empresaId = user?.empresa_id;
     if (!empresaId) return;
-    base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome', 200)
-      .then(setVendedores).catch(() => {});
+    base44.entities.Colaborador.filter({ empresa_id: empresaId }, 'nome', 200)
+      .then(res => setVendedores(res.filter(c => c.status !== 'inativo')))
+      .catch(() => {
+        // Fallback: buscar sem filtro de empresa
+        base44.entities.Colaborador.list('nome', 200)
+          .then(res => setVendedores(res.filter(c => c.empresa_id === empresaId && c.status !== 'inativo')))
+          .catch(() => {});
+      });
     base44.entities.Filial.filter({ empresa_id: empresaId, situacao: 'ativa' }, 'nome', 100)
       .then(setFiliais).catch(() => {});
     base44.entities.EmpresaParceira.filter({ empresa_id: empresaId }, 'nome', 200)
