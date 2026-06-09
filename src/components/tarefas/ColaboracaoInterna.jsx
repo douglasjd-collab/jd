@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
 import { base44 } from '@/api/base44Client';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -93,7 +94,7 @@ function MensagemItem({ comentario, currentUser, colaboradores, onReagir, reacoe
               ? 'bg-[#1e3a5f] text-white rounded-tr-sm'
               : 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm'
           }`}>
-            {comentario.mensagem}
+            {renderTextWithLinks(comentario.mensagem, isMe ? 'text-blue-200 hover:text-blue-100' : 'text-blue-600 hover:text-blue-500')}
             {comentario.responsavel_mencionado_nome && (
               <div className={`mt-1.5 flex items-center gap-1 text-xs ${isMe ? 'text-blue-200' : 'text-blue-500'}`}>
                 <AtSign className="w-3 h-3" />

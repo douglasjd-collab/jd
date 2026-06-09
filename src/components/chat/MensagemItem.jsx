@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Copy, Pin } from 'lucide-react';
+import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
@@ -261,57 +262,24 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
   const formatarTexto = (texto) => {
     if (!texto) return null;
-    // Detectar URLs e formatação
-    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+    // Processar formatação WhatsApp (*bold*, _italic_, ~strike~) + URLs clicáveis
     const boldItalicRegex = /(\*[^*]+\*|_[^_]+_|~[^~]+~)/g;
-    
-    // Primeiro, split por URLs
-    const urlParts = texto.split(urlRegex);
-    const urlMatches = texto.match(urlRegex) || [];
-    
+    const parts = texto.split(boldItalicRegex);
     const result = [];
-    let urlIndex = 0;
-    
-    urlParts.forEach((part, i) => {
-      if (i > 0 && urlIndex < urlMatches.length && part === undefined) {
-        // Espaço reservado para URL
-        const url = urlMatches[urlIndex];
-        result.push(
-          <a 
-            key={`url-${urlIndex}`}
-            href={url.startsWith('http') ? url : `https://${url}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 underline break-all"
-          >
-            {url}
-          </a>
-        );
-        urlIndex++;
-      } else if (part) {
-        // Processar formatação dentro de texto não-URL
-        const boldItalicParts = part.split(boldItalicRegex);
-        const boldItalicMatches = part.match(boldItalicRegex) || [];
-        
-        let formatIndex = 0;
-        boldItalicParts.forEach((subpart, j) => {
-          if (subpart === undefined) return;
-          if (boldItalicMatches[formatIndex] === subpart) {
-            if (subpart.startsWith('*') && subpart.endsWith('*')) {
-              result.push(<strong key={`${i}-${j}`}>{subpart.slice(1, -1)}</strong>);
-            } else if (subpart.startsWith('_') && subpart.endsWith('_')) {
-              result.push(<em key={`${i}-${j}`}>{subpart.slice(1, -1)}</em>);
-            } else if (subpart.startsWith('~') && subpart.endsWith('~')) {
-              result.push(<s key={`${i}-${j}`}>{subpart.slice(1, -1)}</s>);
-            }
-            formatIndex++;
-          } else if (subpart) {
-            result.push(subpart);
-          }
-        });
+    parts.forEach((part, i) => {
+      if (!part) return;
+      if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+        result.push(<strong key={i}>{part.slice(1, -1)}</strong>);
+      } else if (part.startsWith('_') && part.endsWith('_') && part.length > 2) {
+        result.push(<em key={i}>{part.slice(1, -1)}</em>);
+      } else if (part.startsWith('~') && part.endsWith('~') && part.length > 2) {
+        result.push(<s key={i}>{part.slice(1, -1)}</s>);
+      } else {
+        // Detectar links dentro do texto comum
+        const linkClass = isVendedor ? 'text-blue-200 hover:text-blue-100' : 'text-blue-600 hover:text-blue-500';
+        result.push(...renderTextWithLinks(part, linkClass));
       }
     });
-    
     return result.length > 0 ? result : null;
   };
 
