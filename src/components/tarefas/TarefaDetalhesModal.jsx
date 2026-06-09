@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogClose } from '@/components/ui/dialog';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
@@ -134,7 +134,7 @@ export default function TarefaDetalhesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden flex flex-col gap-0" style={{ maxHeight: '92vh' }}>
+      <DialogContent className="max-w-4xl p-0 overflow-hidden flex flex-col gap-0 [&>button:last-of-type]:hidden" style={{ maxHeight: '92vh' }}>
         {/* Header */}
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b bg-white">
           <div className="flex-1 min-w-0 pr-4">
@@ -157,8 +157,11 @@ export default function TarefaDetalhesModal({
             </div>
             <h2 className="text-lg font-bold text-slate-900 leading-tight">{tarefa.titulo}</h2>
           </div>
-          <button onClick={() => onOpenChange(false)} className="text-slate-400 hover:text-slate-600 mt-1">
-            <X className="w-5 h-5" />
+          <button
+            onClick={() => onOpenChange(false)}
+            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors mt-1"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
