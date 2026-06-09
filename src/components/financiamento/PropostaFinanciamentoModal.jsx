@@ -73,12 +73,14 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
   }, [proposta, open]);
 
   useEffect(() => {
-    if (!user?.empresa_id) return;
-    base44.entities.Colaborador.filter({ empresa_id: user.empresa_id, status: 'ativo' }, 'nome', 200)
+    if (!open) return;
+    const empresaId = user?.empresa_id;
+    if (!empresaId) return;
+    base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome', 200)
       .then(setVendedores).catch(() => {});
-    base44.entities.Filial.filter({ empresa_id: user.empresa_id, situacao: 'ativa' }, 'nome', 100)
+    base44.entities.Filial.filter({ empresa_id: empresaId, situacao: 'ativa' }, 'nome', 100)
       .then(setFiliais).catch(() => {});
-  }, [user]);
+  }, [open, user?.empresa_id]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -354,27 +356,35 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
             <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">🏢 Responsáveis</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <F label="Vendedor responsável">
-                <Select value={form.vendedor_id || 'none'} onValueChange={v => {
-                  if (v === 'none') { set('vendedor_id', ''); set('vendedor_nome', ''); return; }
+                <Select value={form.vendedor_id || '__none__'} onValueChange={v => {
+                  if (v === '__none__') { set('vendedor_id', ''); set('vendedor_nome', ''); return; }
                   const vend = vendedores.find(x => x.id === v);
                   set('vendedor_id', v); set('vendedor_nome', vend?.nome || '');
                 }}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar vendedor" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar vendedor">
+                      {form.vendedor_id ? vendedores.find(v => v.id === form.vendedor_id)?.nome || form.vendedor_nome : 'Nenhum'}
+                    </SelectValue>
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
+                    <SelectItem value="__none__">Nenhum</SelectItem>
                     {vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </F>
               <F label="Filial">
-                <Select value={form.filial_id || 'none'} onValueChange={v => {
-                  if (v === 'none') { set('filial_id', ''); set('filial_nome', ''); return; }
+                <Select value={form.filial_id || '__none__'} onValueChange={v => {
+                  if (v === '__none__') { set('filial_id', ''); set('filial_nome', ''); return; }
                   const fil = filiais.find(x => x.id === v);
                   set('filial_id', v); set('filial_nome', fil?.nome || '');
                 }}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar filial" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar filial">
+                      {form.filial_id ? filiais.find(f => f.id === form.filial_id)?.nome || form.filial_nome : 'Nenhuma'}
+                    </SelectValue>
+                  </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Nenhuma</SelectItem>
+                    <SelectItem value="__none__">Nenhuma</SelectItem>
                     {filiais.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
