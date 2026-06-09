@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  X, Pencil, Calendar, User, Tag, CheckSquare, MessageSquare, Clock, AlertTriangle
+  X, Calendar, User, Tag, CheckSquare, MessageSquare, Clock, AlertTriangle
 } from 'lucide-react';
-import ComentariosWhatsApp from './ComentariosWhatsApp';
+import ColaboracaoInterna from './ColaboracaoInterna';
 import ChecklistAba from './ChecklistAba';
 
 const PRIORIDADE_CORES = {
@@ -45,14 +44,13 @@ export default function TarefaDetalhesModal({
   onUpdate, colaboradores = [], subsetoresList = [], abaAtiva: abaInicial
 }) {
   const [aba, setAba] = useState(abaInicial || 'detalhes');
-  const [novoComentario, setNovoComentario] = useState('');
   const queryClient = useQueryClient();
 
   useEffect(() => {
     if (open) setAba(abaInicial || 'detalhes');
   }, [open, abaInicial]);
 
-  const { data: comentarios = [], isLoading: loadingComentarios } = useQuery({
+  const { data: comentarios = [] } = useQuery({
     queryKey: ['comentarios-tarefa', tarefa?.id],
     enabled: !!tarefa?.id && open,
     queryFn: () => base44.entities.ComentarioTarefa.filter({ tarefa_id: tarefa.id }, 'created_date'),
@@ -62,39 +60,6 @@ export default function TarefaDetalhesModal({
     queryKey: ['historico-tarefa', tarefa?.id],
     enabled: !!tarefa?.id && open && aba === 'historico',
     queryFn: () => base44.entities.TarefaHistorico.filter({ tarefa_id: tarefa.id }, '-created_date'),
-  });
-
-  const enviarComentario = useMutation({
-    mutationFn: async (responsavelSelecionado) => {
-      if (!novoComentario.trim()) return;
-      await base44.entities.ComentarioTarefa.create({
-        tarefa_id: tarefa.id,
-        empresa_id: tarefa.empresa_id,
-        usuario_id: currentUser?.id,
-        usuario_nome: currentUser?.nome_perfil || currentUser?.full_name || '',
-        mensagem: novoComentario.trim(),
-        tipo: 'comentario',
-        responsavel_mencionado_id: responsavelSelecionado?.id || null,
-        responsavel_mencionado_nome: responsavelSelecionado?.nome || null,
-      });
-      if (responsavelSelecionado) {
-        await base44.entities.AlertaTarefa.create({
-          empresa_id: tarefa.empresa_id,
-          tarefa_id: tarefa.id,
-          tarefa_titulo: tarefa.titulo,
-          comentario_texto: novoComentario.trim(),
-          destinatario_id: responsavelSelecionado.id,
-          destinatario_nome: responsavelSelecionado.nome,
-          remetente_id: currentUser?.id,
-          remetente_nome: currentUser?.nome_perfil || currentUser?.full_name || '',
-          lido: false,
-        });
-      }
-    },
-    onSuccess: () => {
-      setNovoComentario('');
-      queryClient.invalidateQueries({ queryKey: ['comentarios-tarefa', tarefa?.id] });
-    },
   });
 
   const atualizarChecklist = async (novaLista) => {
@@ -123,7 +88,7 @@ export default function TarefaDetalhesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden flex flex-col gap-0" style={{ maxHeight: '90vh' }}>
+      <DialogContent className="max-w-4xl p-0 overflow-hidden flex flex-col gap-0" style={{ maxHeight: '92vh' }}>
         {/* Header */}
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b bg-white">
           <div className="flex-1 min-w-0 pr-4">
@@ -259,19 +224,14 @@ export default function TarefaDetalhesModal({
             </div>
           )}
 
-          {/* Comentários */}
+          {/* Colaboração Interna */}
           {aba === 'comentarios' && (
-            <div className="flex flex-col" style={{ height: '440px' }}>
-              <ComentariosWhatsApp
-                comentarios={comentarios}
-                currentUser={currentUser}
-                novoComentario={novoComentario}
-                setNovoComentario={setNovoComentario}
-                onEnviar={(resp) => enviarComentario.mutate(resp)}
-                enviando={enviarComentario.isPending}
-                colaboradores={colaboradores}
-              />
-            </div>
+            <ColaboracaoInterna
+              tarefa={tarefa}
+              currentUser={currentUser}
+              colaboradores={colaboradores}
+              onUpdate={onUpdate}
+            />
           )}
 
           {/* Checklist */}
