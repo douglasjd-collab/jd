@@ -1,603 +1,301 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
-import PageHeader from '@/components/ui/PageHeader';
-import { Card } from '@/components/ui/card';
-import DataTable from '@/components/ui/DataTable';
-import StatusBadge from '@/components/ui/StatusBadge';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, User, DollarSign, Calendar, TrendingUp, History, Calculator, Printer } from 'lucide-react';
-import { format } from 'date-fns';
-import { createPageUrl } from '@/utils';
+import {
+  Loader2, ArrowLeft, Tag, MessageSquare, CheckSquare, Paperclip,
+  Clock, MessageCircle, Sparkles, User, DollarSign, Calendar, Phone,
+  TrendingUp, AlertTriangle
+} from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+import OportunidadeAbaDetalhes from '@/components/oportunidade/OportunidadeAbaDetalhes';
+import OportunidadeAbaComentarios from '@/components/oportunidade/OportunidadeAbaComentarios';
+import OportunidadeAbaChecklist from '@/components/oportunidade/OportunidadeAbaChecklist';
+import OportunidadeAbaAnexos from '@/components/oportunidade/OportunidadeAbaAnexos';
+import OportunidadeAbaHistorico from '@/components/oportunidade/OportunidadeAbaHistorico';
+import OportunidadeAbaBatePapo from '@/components/oportunidade/OportunidadeAbaBatePapo';
+import OportunidadeAbaIA from '@/components/oportunidade/OportunidadeAbaIA';
+
+const formatCurrency = (v) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+
+function tempoParado(dateStr) {
+  if (!dateStr) return null;
+  try {
+    return formatDistanceToNow(new Date(dateStr), { addSuffix: false, locale: ptBR });
+  } catch { return null; }
+}
+
+const STATUS_CORES = {
+  aberta: 'bg-blue-100 text-blue-700',
+  ganha: 'bg-green-100 text-green-700',
+  perdida: 'bg-red-100 text-red-700',
+};
 
 export default function OportunidadeDetalhes() {
   const urlParams = new URLSearchParams(window.location.search);
   const oportunidadeId = urlParams.get('id');
-  const [simulacaoSelecionada, setSimulacaoSelecionada] = useState(null);
+  const [aba, setAba] = useState('detalhes');
+  const [currentUser, setCurrentUser] = useState(null);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    base44.auth.me().then(me => {
+      if (!me) return;
+      base44.entities.Colaborador.filter({ user_id: me.id }, '-created_date').then(colabs => {
+        const c = colabs.find(x => x.status === 'ativo') || colabs[0];
+        setCurrentUser({ ...me, colaborador_id: c?.id, empresa_id: c?.empresa_id, perfil: c?.perfil || 'vendedor', nome_perfil: c?.nome || me.full_name, foto_perfil: c?.foto_perfil });
+      }).catch(() => setCurrentUser(me));
+    }).catch(() => {});
+  }, []);
 
   const { data: oportunidade, isLoading } = useQuery({
     queryKey: ['oportunidade', oportunidadeId],
     queryFn: async () => {
-      const oports = await base44.entities.Oportunidade.filter({ id: oportunidadeId });
-      return oports[0];
+      const r = await base44.entities.Oportunidade.filter({ id: oportunidadeId });
+      return r[0];
     },
+    enabled: !!oportunidadeId,
   });
 
-  const { data: movimentacoes = [], isLoading: loadingMovimentacoes } = useQuery({
-    queryKey: ['movimentacoes', oportunidadeId],
-    queryFn: () => base44.entities.MovimentacaoFunil.filter({ oportunidade_id: oportunidadeId }),
+  const { data: comentarios = [] } = useQuery({
+    queryKey: ['comentarios-oportunidade', oportunidadeId],
+    queryFn: () => base44.entities.ComentarioOportunidade.filter({ oportunidade_id: oportunidadeId }, 'created_date'),
+    enabled: !!oportunidadeId,
   });
 
-  const { data: simulacoes = [], isLoading: loadingSimulacoes } = useQuery({
-    queryKey: ['simulacoes', oportunidadeId],
-    queryFn: () => base44.entities.Simulacao.filter({ oportunidade_id: oportunidadeId }),
+  const { data: movimentacoes = [] } = useQuery({
+    queryKey: ['movimentacoes-oportunidade', oportunidadeId],
+    queryFn: () => base44.entities.MovimentacaoFunil.filter({ oportunidade_id: oportunidadeId }, '-created_date'),
+    enabled: !!oportunidadeId,
   });
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value || 0);
+  const { data: colaboradores = [] } = useQuery({
+    queryKey: ['colaboradores-oportunidade', oportunidade?.empresa_id],
+    queryFn: () => base44.entities.Colaborador.filter({ empresa_id: oportunidade.empresa_id }, null, 200),
+    enabled: !!oportunidade?.empresa_id,
+  });
+
+  const { data: etapas = [] } = useQuery({
+    queryKey: ['etapas-funil', oportunidade?.empresa_id],
+    queryFn: () => base44.entities.EtapaFunil.filter({ empresa_id: oportunidade.empresa_id }, 'ordem', 100),
+    enabled: !!oportunidade?.empresa_id,
+  });
+
+  // Checklist da oportunidade (guardado em campo JSON)
+  let checklistItems = [];
+  try { checklistItems = oportunidade?.checklist ? JSON.parse(oportunidade.checklist) : []; } catch {}
+
+  // Anexos extraídos dos comentários
+  const ANEXO_REGEX = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+  const anexos = comentarios.flatMap(c => {
+    const ms = [];
+    let m;
+    const rx = new RegExp(ANEXO_REGEX.source, 'g');
+    while ((m = rx.exec(c.mensagem || '')) !== null) {
+      ms.push({ nome: m[1], url: m[2], usuario_nome: c.usuario_nome, created_date: c.created_date });
+    }
+    return ms;
+  });
+
+  const handleUpdateOportunidade = async (id, data) => {
+    await base44.entities.Oportunidade.update(id, data);
+    queryClient.invalidateQueries({ queryKey: ['oportunidade', oportunidadeId] });
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-      </div>
-    );
-  }
-
-  if (!oportunidade) {
-    return <div className="p-8">Oportunidade não encontrada</div>;
-  }
-
-  const columns = [
+  const abasConfig = [
+    { key: 'detalhes', label: 'Detalhes', icon: Tag },
+    { key: 'comentarios', label: 'Comentários', icon: MessageSquare, badge: comentarios.length || null },
     {
-      header: 'Data/Hora',
-      cell: (row) => format(new Date(row.created_date), 'dd/MM/yyyy HH:mm')
+      key: 'checklist', label: 'Checklist', icon: CheckSquare,
+      badge: checklistItems.length > 0 ? `${checklistItems.filter(i => i.checked).length}/${checklistItems.length}` : null
     },
-    {
-      header: 'De',
-      cell: (row) => row.etapa_origem_nome || 'Início'
-    },
-    {
-      header: 'Para',
-      cell: (row) => row.etapa_destino_nome
-    },
-    {
-      header: 'Usuário',
-      cell: (row) => row.usuario_nome
-    },
-    {
-      header: 'Observação',
-      cell: (row) => row.observacao || '-'
-    }
+    { key: 'anexos', label: 'Anexos', icon: Paperclip, badge: anexos.length || null },
+    { key: 'historico', label: 'Histórico', icon: Clock, badge: movimentacoes.length || null },
+    { key: 'batePapo', label: 'Bate-Papo', icon: MessageCircle },
+    { key: 'ia', label: 'Análise IA', icon: Sparkles },
   ];
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title={oportunidade.titulo}
-        subtitle={`Status: ${oportunidade.etapa_nome}`}
-        backTo="FunilVendas"
-      />
-
-      {/* Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4 border-0 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <User className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Cliente</p>
-              <p className="font-medium text-slate-900">{oportunidade.cliente_nome || 'Não vinculado'}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4 border-0 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-emerald-100 rounded-lg">
-              <DollarSign className="w-5 h-5 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Valor Estimado</p>
-              <p className="font-medium text-emerald-600">{formatCurrency(oportunidade.valor_estimado)}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4 border-0 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <User className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Vendedor</p>
-              <p className="font-medium text-slate-900">{oportunidade.vendedor_nome}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4 border-0 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Calendar className="w-5 h-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Previsão Fechamento</p>
-              <p className="font-medium text-slate-900">
-                {oportunidade.data_fechamento_prevista 
-                  ? format(new Date(oportunidade.data_fechamento_prevista), 'dd/MM/yyyy')
-                  : 'Não definida'}
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Informações Detalhadas */}
-      <Card className="p-6 border-0 shadow-sm">
-        <h3 className="text-lg font-semibold mb-4">Informações</h3>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-slate-500">Origem:</p>
-            <p className="font-medium">{oportunidade.origem || '-'}</p>
-          </div>
-          <div>
-            <p className="text-slate-500">Telefone:</p>
-            <p className="font-medium">{oportunidade.cliente_telefone || oportunidade.telefone_lead || '-'}</p>
-          </div>
-          <div>
-            <p className="text-slate-500">Data Criação:</p>
-            <p className="font-medium">{format(new Date(oportunidade.created_date), 'dd/MM/yyyy HH:mm')}</p>
-          </div>
-          <div>
-            <p className="text-slate-500">Última Movimentação:</p>
-            <p className="font-medium">
-              {oportunidade.data_ultima_movimentacao 
-                ? format(new Date(oportunidade.data_ultima_movimentacao), 'dd/MM/yyyy HH:mm')
-                : '-'}
-            </p>
-          </div>
-          <div className="col-span-2">
-            <p className="text-slate-500">Observações:</p>
-            <p className="font-medium whitespace-pre-wrap">{oportunidade.observacoes || '-'}</p>
-          </div>
-        </div>
-      </Card>
-
-      {/* Histórico de Simulações */}
-      {simulacoes.length > 0 && (
-        <Card className="p-6 border-0 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <Calculator className="w-5 h-5 text-slate-600" />
-            <h3 className="text-lg font-semibold">Histórico de Simulações</h3>
-          </div>
-          <div className="space-y-4">
-            {simulacoes
-              .sort((a, b) => new Date(b.created_date) - new Date(a.created_date))
-              .map((sim, index) => (
-                <div key={sim.id} className="p-4 bg-slate-50 rounded-lg border">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-blue-100 text-blue-700">
-                        Simulação #{simulacoes.length - index}
-                      </Badge>
-                      <span className="text-sm text-slate-600">
-                        {format(new Date(sim.created_date), 'dd/MM/yyyy HH:mm')}
-                      </span>
-                    </div>
-                    <span className="text-xs text-slate-500">
-                      Por: {sim.usuario_nome}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-slate-500 text-xs">💰 Crédito Total</p>
-                      <p className="font-semibold text-slate-900">{formatCurrency(sim.credito_total)}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500 text-xs">💵 Valor a Receber</p>
-                      <p className="font-semibold text-blue-600">{formatCurrency(sim.credito_total - (sim.lance_embutido_valor || 0))}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500 text-xs">📅 Parcela Original</p>
-                      <p className="font-semibold text-slate-900">{formatCurrency(sim.parcela_total)}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-500 text-xs">⏱️ Prazo Original</p>
-                      <p className="font-semibold text-slate-900">{sim.prazo_original} meses</p>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-3 flex items-center gap-2">
-                    <p className="text-slate-500 text-xs">🏢 Administradora:</p>
-                    <p className="font-semibold text-slate-900">{sim.administradora || 'Canopus'}</p>
-                  </div>
-
-                  <div className="mt-3 pt-3 border-t border-slate-200">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs text-slate-500">✨ Após Contemplação:</p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-2 h-7 text-xs"
-                        onClick={() => setSimulacaoSelecionada(sim)}
-                      >
-                        <Printer className="w-3 h-3" />
-                        Imprimir 2ª Via
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <p className="text-slate-500 text-xs">💵 Nova Parcela</p>
-                        <p className="font-bold text-purple-600">{formatCurrency(sim.nova_parcela)}</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500 text-xs">📆 Novo Prazo</p>
-                        <p className="font-bold text-purple-600">{sim.novo_prazo} meses</p>
-                      </div>
-                      <div>
-                        <p className="text-slate-500 text-xs">💳 Saldo Devedor</p>
-                        <p className="font-semibold text-slate-900">{formatCurrency(sim.saldo_apos_contemplacao)}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {(sim.lance_embutido_ativo || sim.lance_proprio_ativo) && (
-                    <div className="mt-3 pt-3 border-t border-slate-200">
-                      <p className="text-xs text-slate-500 mb-2">🏆 Detalhes do Lance:</p>
-                      <div className="flex flex-wrap gap-3 text-xs">
-                        {sim.lance_embutido_ativo && (
-                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-                            Lance Embutido: {sim.lance_embutido_percentual}% = {formatCurrency(sim.lance_embutido_valor)}
-                          </Badge>
-                        )}
-                        {sim.lance_proprio_ativo && (
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            Lance Próprio: {formatCurrency(sim.lance_proprio_valor)}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Histórico de Movimentações */}
-      <Card className="p-6 border-0 shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <History className="w-5 h-5 text-slate-600" />
-          <h3 className="text-lg font-semibold">Histórico de Movimentações</h3>
-        </div>
-        <DataTable
-          columns={columns}
-          data={movimentacoes.sort((a, b) => new Date(b.created_date) - new Date(a.created_date))}
-          isLoading={loadingMovimentacoes}
-          emptyMessage="Nenhuma movimentação registrada"
-        />
-      </Card>
-
-      {/* Modal de Impressão */}
-      <Dialog open={!!simulacaoSelecionada} onOpenChange={() => setSimulacaoSelecionada(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle>Simulação de Consórcio</DialogTitle>
-              {simulacaoSelecionada && (
-                <Button 
-                  onClick={() => {
-                    const conteudo = document.getElementById('print-area').innerHTML;
-                    const janelaImpressao = window.open('', '', 'width=800,height=600');
-                    janelaImpressao.document.write(`
-                      <html>
-                        <head>
-                          <title>Simulação de Consórcio</title>
-                          <style>
-                           * { box-sizing: border-box; margin: 0; padding: 0; }
-                           body { 
-                             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-                             margin: 10px;
-                             padding: 10px;
-                             color: #1e293b;
-                             background: white;
-                             line-height: 1.3;
-                             font-size: 11px;
-                             max-width: 800px;
-                           }
-                           #print-area { max-width: 100%; }
-                           .space-y-4 > * + * { margin-top: 0.6rem; }
-                           .space-y-2 > * + * { margin-top: 0.3rem; }
-                           .space-y-1 > * + * { margin-top: 0.15rem; }
-                           .grid { display: grid; }
-                           .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-                           .gap-4 { gap: 0.6rem; }
-                           .gap-2 { gap: 0.3rem; }
-                           .flex { display: flex; }
-                           .justify-between { justify-content: space-between; }
-                           .justify-center { justify-content: center; }
-                           .items-center { align-items: center; }
-                           .text-center { text-align: center; }
-                           .font-bold { font-weight: 700; }
-                           .font-semibold { font-weight: 600; }
-                           .text-2xl { font-size: 1.1rem; line-height: 1.4rem; }
-                           .text-3xl { font-size: 1.3rem; line-height: 1.6rem; }
-                           .text-xl { font-size: 0.95rem; line-height: 1.3rem; }
-                           .text-lg { font-size: 0.9rem; line-height: 1.2rem; }
-                           .text-sm { font-size: 0.75rem; line-height: 1rem; }
-                           .text-xs { font-size: 0.65rem; line-height: 0.85rem; }
-                           .mb-1 { margin-bottom: 0.15rem; }
-                           .mb-2 { margin-bottom: 0.3rem; }
-                           .mb-3 { margin-bottom: 0.5rem; }
-                           .mb-4 { margin-bottom: 0.7rem; }
-                           .mt-1 { margin-top: 0.15rem; }
-                           .mt-2 { margin-top: 0.3rem; }
-                           .p-2 { padding: 0.35rem; }
-                           .p-3 { padding: 0.5rem; }
-                           .p-4 { padding: 0.65rem; }
-                           .pb-2 { padding-bottom: 0.3rem; }
-                           .pb-4 { padding-bottom: 0.65rem; }
-                           .pt-2 { padding-top: 0.3rem; }
-                           .pt-3 { padding-top: 0.5rem; }
-                           .rounded { border-radius: 0.25rem; }
-                           .rounded-lg { border-radius: 0.35rem; }
-                           .border { border: 1px solid; }
-                           .border-2 { border: 1.5px solid; }
-                           .border-b { border-bottom: 1px solid; }
-                           .border-b-2 { border-bottom: 1.5px solid; }
-                           .border-t { border-top: 1px solid; }
-                           .border-slate-800 { border-color: #1e293b; }
-                           .border-slate-300 { border-color: #cbd5e1; }
-                           .border-blue-200 { border-color: #bfdbfe; }
-                           .border-emerald-200 { border-color: #a7f3d0; }
-                           .border-purple-200 { border-color: #e9d5ff; }
-                           .border-purple-300 { border-color: #d8b4fe; }
-                           .bg-slate-50 { background-color: #f8fafc; }
-                           .bg-blue-50 { background-color: #eff6ff; }
-                           .bg-emerald-50 { background-color: #ecfdf5; }
-                           .bg-gradient-to-r { 
-                             background-image: linear-gradient(to right, var(--tw-gradient-from), var(--tw-gradient-to));
-                           }
-                           .from-blue-500 { --tw-gradient-from: #3b82f6; }
-                           .to-blue-600 { --tw-gradient-to: #2563eb; }
-                           .from-purple-100 { --tw-gradient-from: #f3e8ff; }
-                           .to-purple-50 { --tw-gradient-to: #faf5ff; }
-                           .text-slate-900 { color: #0f172a; }
-                           .text-slate-600 { color: #475569; }
-                           .text-slate-500 { color: #64748b; }
-                           .text-blue-900 { color: #1e3a8a; }
-                           .text-emerald-900 { color: #064e3b; }
-                           .text-purple-900 { color: #581c87; }
-                           .text-purple-800 { color: #6b21a8; }
-                           .text-purple-700 { color: #7e22ce; }
-                           .text-white { color: #ffffff !important; }
-                           .opacity-90 { opacity: 0.9; }
-                           .h-10 { height: 1.8rem; }
-                           .w-auto { width: auto; }
-                           .object-contain { object-fit: contain; }
-                           img { display: block; max-width: 100%; height: auto; margin: 0 auto; }
-                           strong { font-weight: 600; }
-                           @media print {
-                             @page { 
-                               margin: 0.8cm;
-                               size: A4 portrait;
-                             }
-                             body { 
-                               margin: 0 !important; 
-                               padding: 5px !important;
-                               font-size: 10px !important;
-                             }
-                             .space-y-4 > * + * { margin-top: 0.4rem !important; }
-                             .p-4 { padding: 0.5rem !important; }
-                             .bg-gradient-to-r { 
-                               -webkit-print-color-adjust: exact !important;
-                               print-color-adjust: exact !important;
-                               color-adjust: exact !important;
-                             }
-                             .bg-slate-50, .bg-blue-50, .bg-emerald-50 {
-                               -webkit-print-color-adjust: exact !important;
-                               print-color-adjust: exact !important;
-                             }
-                             .text-white { color: #ffffff !important; }
-                           }
-                          </style>
-                        </head>
-                        <body onload="window.print(); window.close();">
-                          ${conteudo}
-                        </body>
-                      </html>
-                    `);
-                    janelaImpressao.document.close();
-                  }}
-                  className="gap-2 bg-[#23BE84] hover:bg-[#1da570]"
-                  size="sm"
-                >
-                  <Printer className="w-4 h-4" />
-                  Imprimir
-                </Button>
-              )}
-            </div>
-          </DialogHeader>
-          {simulacaoSelecionada && <ConteudoSimulacao simulacao={simulacaoSelecionada} />}
-        </DialogContent>
-      </Dialog>
+  if (isLoading) return (
+    <div className="flex items-center justify-center h-64">
+      <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
     </div>
   );
-}
 
-function ConteudoSimulacao({ simulacao }) {
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value || 0);
-  };
+  if (!oportunidade) return (
+    <div className="p-8 text-slate-500">Oportunidade não encontrada.</div>
+  );
 
-  let cartas = [];
-  try {
-    cartas = JSON.parse(simulacao.cartas || '[]');
-  } catch (e) {
-    cartas = [];
-  }
+  const parado = tempoParado(oportunidade.data_ultima_movimentacao);
+  const responsavel = colaboradores.find(c => c.id === oportunidade.vendedor_id);
 
   return (
-    <div id="print-area" className="space-y-4">
-      {/* Cabeçalho */}
-      <div className="text-center pb-4 border-b-2 border-slate-800">
-          <div className="flex justify-center mb-2">
-            <img 
-              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" 
-              alt="JD Promotora" 
-              className="h-10 w-auto object-contain"
-            />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Simulação de Consórcio</h2>
-          <p className="text-sm text-slate-600">
-            {new Date(simulacao.created_date).toLocaleDateString('pt-BR')} às {new Date(simulacao.created_date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
-          </p>
+    <div className="space-y-0 min-h-screen bg-slate-50">
+      {/* Breadcrumb */}
+      <div className="px-6 pt-4 pb-2">
+        <button
+          onClick={() => window.history.back()}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Voltar ao Funil
+        </button>
       </div>
 
-      {/* Dados do Cliente */}
-      <div>
-          <h3 className="text-lg font-bold text-slate-900 mb-2 pb-2 border-b border-slate-300">
-            📋 Dados do Cliente
-          </h3>
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div><span className="font-semibold">Nome:</span> {simulacao.cliente_nome}</div>
-            <div><span className="font-semibold">Telefone:</span> {simulacao.telefone}</div>
-          </div>
-      </div>
+      {/* CABEÇALHO */}
+      <div className="bg-white border-b shadow-sm px-6 py-5">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          {/* Info principal */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${STATUS_CORES[oportunidade.status] || 'bg-slate-100 text-slate-600'}`}>
+                {oportunidade.status === 'aberta' ? 'Em andamento' : oportunidade.status === 'ganha' ? '✓ Ganha' : '✗ Perdida'}
+              </span>
+              {oportunidade.etapa_nome && (
+                <span className="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full font-medium">
+                  {oportunidade.etapa_nome}
+                </span>
+              )}
+              {oportunidade.produto && (
+                <span className="text-xs bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-1 rounded-full font-medium capitalize">
+                  {oportunidade.produto}
+                </span>
+              )}
+            </div>
 
-      {/* Cartas de Crédito */}
-      <div>
-          <h3 className="text-lg font-bold text-slate-900 mb-2 pb-2 border-b border-slate-300">
-            💳 Cartas de Crédito
-          </h3>
-          <div className="space-y-2 mb-3">
-            {cartas.map((carta, i) => (
-              <div key={i} className="text-sm bg-slate-50 p-2 rounded">
-                <strong>Carta {i + 1}:</strong> {formatCurrency(parseFloat(carta.credito))} • Parcela {formatCurrency(parseFloat(carta.parcela))} • {carta.prazo} Meses
-              </div>
-            ))}
-          </div>
-          <div className="bg-blue-50 p-3 rounded">
-            <div className="flex justify-between mb-1">
-              <span className="font-semibold">💰 Crédito Total:</span>
-              <span className="text-lg font-bold text-blue-900">{formatCurrency(simulacao.credito_total)}</span>
-            </div>
-            <div className="flex justify-between mb-1">
-              <span className="font-semibold">📅 Parcela Total:</span>
-              <span className="text-lg font-bold text-blue-900">{formatCurrency(simulacao.parcela_total)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="font-semibold">⏱️ Prazo:</span>
-              <span className="text-lg font-bold text-blue-900">{simulacao.prazo_original} Meses</span>
-            </div>
-          </div>
-      </div>
+            <h1 className="text-2xl font-bold text-slate-900 leading-tight mb-1">
+              {oportunidade.cliente_nome || oportunidade.titulo}
+            </h1>
+            {oportunidade.cliente_nome && oportunidade.titulo !== oportunidade.cliente_nome && (
+              <p className="text-sm text-slate-500 mb-2">{oportunidade.titulo}</p>
+            )}
 
-      {/* Lances */}
-      {simulacao.lance_total > 0 && (
-        <div>
-            <h3 className="text-lg font-bold text-slate-900 mb-2 pb-2 border-b border-slate-300">
-              🎯 Lances
-            </h3>
-            <div className="space-y-2">
-              {simulacao.lance_embutido_ativo && (
-                <div className="flex justify-between text-sm">
-                  <span>Lance Embutido ({simulacao.lance_embutido_percentual}%):</span>
-                  <span className="font-semibold">{formatCurrency(simulacao.lance_embutido_valor)}</span>
+            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
+              {oportunidade.cliente_telefone && (
+                <span className="flex items-center gap-1">
+                  <Phone className="w-3.5 h-3.5 text-slate-400" />
+                  {oportunidade.cliente_telefone}
+                </span>
+              )}
+              {oportunidade.valor_estimado > 0 && (
+                <span className="flex items-center gap-1 font-semibold text-emerald-700">
+                  <DollarSign className="w-3.5 h-3.5" />
+                  {formatCurrency(oportunidade.valor_estimado)}
+                </span>
+              )}
+              {oportunidade.created_date && (
+                <span className="flex items-center gap-1 text-slate-400">
+                  <Calendar className="w-3.5 h-3.5" />
+                  Criado em {format(new Date(oportunidade.created_date), 'dd/MM/yyyy')}
+                </span>
+              )}
+              {parado && (
+                <span className="flex items-center gap-1 text-amber-600">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  Parado há {parado}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Responsável */}
+          {(responsavel || oportunidade.vendedor_nome) && (
+            <div className="flex items-center gap-3 bg-slate-50 border rounded-xl px-4 py-3 flex-shrink-0">
+              {responsavel?.foto_perfil ? (
+                <img src={responsavel.foto_perfil} alt="" className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white font-bold text-sm">
+                  {(responsavel?.nome || oportunidade.vendedor_nome || '?').charAt(0).toUpperCase()}
                 </div>
               )}
-              {simulacao.lance_proprio_ativo && (
-                <div className="flex justify-between text-sm">
-                  <span>Lance Próprio:</span>
-                  <span className="font-semibold">{formatCurrency(simulacao.lance_proprio_valor)}</span>
-                </div>
-              )}
-              <div className="flex justify-between bg-emerald-50 p-2 rounded border-t border-emerald-200">
-                <span className="font-bold">🏆 Lance Total:</span>
-                <span className="text-lg font-bold text-emerald-900">{formatCurrency(simulacao.lance_total)}</span>
+              <div>
+                <p className="text-xs text-slate-400">Responsável</p>
+                <p className="text-sm font-semibold text-slate-800">{responsavel?.nome || oportunidade.vendedor_nome}</p>
+                {responsavel?.perfil && <p className="text-xs text-slate-400 capitalize">{responsavel.perfil}</p>}
               </div>
             </div>
+          )}
         </div>
-      )}
-
-      {/* Valor a Receber */}
-      <div className="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
-          <h3 className="text-sm font-bold mb-1">💰 Valor que o Cliente Recebe</h3>
-          <p className="text-3xl font-bold">
-            {formatCurrency(simulacao.credito_total - (simulacao.lance_embutido_valor || 0))}
-          </p>
-          <p className="text-xs opacity-90 mt-1">
-            (Crédito {formatCurrency(simulacao.credito_total)}
-            {simulacao.lance_embutido_valor > 0 && ` - Lance Emb. ${formatCurrency(simulacao.lance_embutido_valor)}`})
-          </p>
       </div>
 
-      {/* Cálculos */}
-      <div>
-          <h3 className="text-lg font-bold text-slate-900 mb-2 pb-2 border-b border-slate-300">
-            🧮 Cálculos
-          </h3>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span>Total do Plano:</span>
-              <span className="font-semibold">{formatCurrency(simulacao.prazo_original * simulacao.parcela_total)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>(-) Lance:</span>
-              <span className="font-semibold">{formatCurrency(simulacao.lance_total)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>(-) 1ª Parcela (no ato):</span>
-              <span className="font-semibold">{formatCurrency(simulacao.parcela_total)}</span>
-            </div>
-            <div className="flex justify-between bg-blue-50 p-2 rounded border-t border-blue-200">
-              <span className="font-bold">Saldo Devedor:</span>
-              <span className="text-lg font-bold text-blue-900">{formatCurrency(simulacao.saldo_apos_contemplacao)}</span>
-            </div>
-            {simulacao.opcao_pos_contemplacao === 'prazo' && (
-              <p className="text-xs text-slate-600 italic mt-2">⏱️ Carência 3 meses reduz prazo</p>
+      {/* ABAS */}
+      <div className="flex border-b bg-white px-6 gap-1 overflow-x-auto">
+        {abasConfig.map(a => (
+          <button
+            key={a.key}
+            onClick={() => setAba(a.key)}
+            className={`flex items-center gap-1.5 px-3 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+              aba === a.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <a.icon className="w-4 h-4" />
+            {a.label}
+            {a.badge != null && a.badge !== 0 && (
+              <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full font-semibold leading-none">
+                {a.badge}
+              </span>
             )}
-          </div>
+          </button>
+        ))}
       </div>
 
-      {/* Resultado Final */}
-      <div className="bg-gradient-to-r from-purple-100 to-purple-50 border-2 border-purple-300 rounded-lg p-4">
-          <h3 className="text-lg font-bold text-purple-900 mb-3 text-center">
-            ✨ Resultado Final
-          </h3>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-purple-800">Novo Prazo:</span>
-              <span className="text-xl font-bold text-purple-900">{simulacao.novo_prazo} meses</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="font-semibold text-purple-800">Nova Parcela:</span>
-              <span className="text-xl font-bold text-purple-900">{formatCurrency(simulacao.nova_parcela)}</span>
-            </div>
-            {simulacao.opcao_pos_contemplacao === 'prazo' && (
-              <div className="pt-2 border-t border-purple-200 text-sm text-purple-700">
-                ✓ 3 meses de carência após contemplação
-              </div>
-            )}
-          </div>
-      </div>
-
-      {/* Rodapé */}
-      <div className="pt-3 border-t border-slate-300 text-center text-xs text-slate-500">
-        <p>Vendedor: {simulacao.usuario_nome}</p>
-        <p className="mt-1">Simulação sujeita a alterações conforme condições da administradora.</p>
+      {/* CONTEÚDO DAS ABAS */}
+      <div className="bg-white min-h-[500px]">
+        {aba === 'detalhes' && (
+          <OportunidadeAbaDetalhes
+            oportunidade={oportunidade}
+            colaboradores={colaboradores}
+            etapas={etapas}
+            currentUser={currentUser}
+            onUpdate={handleUpdateOportunidade}
+          />
+        )}
+        {aba === 'comentarios' && (
+          <OportunidadeAbaComentarios
+            oportunidade={oportunidade}
+            currentUser={currentUser}
+            colaboradores={colaboradores}
+          />
+        )}
+        {aba === 'checklist' && (
+          <OportunidadeAbaChecklist
+            oportunidade={oportunidade}
+            currentUser={currentUser}
+            onUpdate={handleUpdateOportunidade}
+          />
+        )}
+        {aba === 'anexos' && (
+          <OportunidadeAbaAnexos
+            oportunidade={oportunidade}
+            currentUser={currentUser}
+            comentarios={comentarios}
+          />
+        )}
+        {aba === 'historico' && (
+          <OportunidadeAbaHistorico
+            oportunidade={oportunidade}
+            movimentacoes={movimentacoes}
+            comentarios={comentarios}
+          />
+        )}
+        {aba === 'batePapo' && (
+          <OportunidadeAbaBatePapo
+            oportunidade={oportunidade}
+            currentUser={currentUser}
+          />
+        )}
+        {aba === 'ia' && (
+          <OportunidadeAbaIA
+            oportunidade={oportunidade}
+            comentarios={comentarios}
+            movimentacoes={movimentacoes}
+            checklistItems={checklistItems}
+            currentUser={currentUser}
+          />
+        )}
       </div>
     </div>
   );
