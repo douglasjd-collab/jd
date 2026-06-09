@@ -341,29 +341,48 @@ export default function ColaboracaoInterna({ tarefa, currentUser, colaboradores 
   const enviarComentario = useMutation({
     mutationFn: async () => {
       if (!novoComentario.trim()) return;
+      const texto = novoComentario.trim();
+      const remetenteId = currentUser?.id;
+      const remetenteNome = currentUser?.nome_perfil || currentUser?.full_name || '';
+
       await base44.entities.ComentarioTarefa.create({
         tarefa_id: tarefa.id,
         empresa_id: tarefa.empresa_id,
-        usuario_id: currentUser?.id,
-        usuario_nome: currentUser?.nome_perfil || currentUser?.full_name || '',
-        mensagem: novoComentario.trim(),
+        usuario_id: remetenteId,
+        usuario_nome: remetenteNome,
+        mensagem: texto,
         tipo: 'comentario',
         responsavel_mencionado_id: responsavelMencionar?.id || null,
         responsavel_mencionado_nome: responsavelMencionar?.nome || null,
       });
-      if (responsavelMencionar) {
-        await base44.entities.AlertaTarefa.create({
+
+      // Coletar todos os participantes da tarefa (principal + responsáveis adicionais)
+      let responsaveisIds = [];
+      try { responsaveisIds = tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : []; } catch {}
+      const todosIds = new Set([
+        tarefa.responsavel_principal_id,
+        ...responsaveisIds,
+      ].filter(Boolean));
+
+      // Notificar todos exceto o próprio remetente
+      const destinatarios = [...todosIds]
+        .filter(id => id !== remetenteId)
+        .map(id => colaboradores.find(c => c.id === id))
+        .filter(Boolean);
+
+      await Promise.all(destinatarios.map(dest =>
+        base44.entities.AlertaTarefa.create({
           empresa_id: tarefa.empresa_id,
           tarefa_id: tarefa.id,
           tarefa_titulo: tarefa.titulo,
-          comentario_texto: novoComentario.trim(),
-          destinatario_id: responsavelMencionar.id,
-          destinatario_nome: responsavelMencionar.nome,
-          remetente_id: currentUser?.id,
-          remetente_nome: currentUser?.nome_perfil || currentUser?.full_name || '',
+          comentario_texto: texto,
+          destinatario_id: dest.id,
+          destinatario_nome: dest.nome,
+          remetente_id: remetenteId,
+          remetente_nome: remetenteNome,
           lido: false,
-        });
-      }
+        })
+      ));
     },
     onSuccess: () => {
       setNovoComentario('');
