@@ -38,40 +38,47 @@ data_proposta: '', data_aprovacao: '', data_pagamento: '',
 observacoes: '',
 };
 
-// Helper para formatar input monetário (BRL)
-const formatMoney = (value) => {
-  if (value === '' || value === null || value === undefined) return '';
-  const num = parseFloat(String(value).replace(',', '.'));
-  if (isNaN(num)) return '';
-  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-};
-
-// Input monetário com prefixo R$
+// Input monetário com prefixo R$ — digitação livre, formata só no blur
 const MoneyInput = ({ value, onChange, placeholder = '0,00', ...props }) => {
-  const [display, setDisplay] = React.useState('');
+  const [focused, setFocused] = React.useState(false);
+  const [raw, setRaw] = React.useState('');
+
+  // Quando recebe value externo e não está focado, sincroniza o display
   React.useEffect(() => {
-    if (value === '' || value === null || value === undefined) { setDisplay(''); return; }
-    const num = parseFloat(String(value).replace(',', '.'));
-    if (!isNaN(num)) setDisplay(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-  }, [value]);
+    if (!focused) {
+      if (value === '' || value === null || value === undefined) { setRaw(''); return; }
+      const num = parseFloat(value);
+      if (!isNaN(num)) setRaw(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+      else setRaw('');
+    }
+  }, [value, focused]);
+
+  const handleChange = (e) => {
+    // Permite apenas dígitos e vírgula/ponto
+    const v = e.target.value.replace(/[^\d,.]/g, '');
+    setRaw(v);
+    const num = parseFloat(v.replace(',', '.'));
+    onChange(isNaN(num) ? '' : num);
+  };
+
+  const handleBlur = () => {
+    setFocused(false);
+    const num = parseFloat(String(raw).replace(',', '.'));
+    if (!isNaN(num)) setRaw(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    else setRaw('');
+  };
+
   return (
     <div className="relative">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">R$</span>
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium select-none">R$</span>
       <Input
         {...props}
-        value={display}
+        value={raw}
         placeholder={placeholder}
         className={`pl-9 ${props.className || ''}`}
-        onChange={e => {
-          const raw = e.target.value.replace(/[^\d,]/g, '');
-          setDisplay(raw);
-          const num = parseFloat(raw.replace(',', '.'));
-          onChange(isNaN(num) ? '' : num);
-        }}
-        onBlur={() => {
-          const num = parseFloat(String(display).replace(',', '.'));
-          if (!isNaN(num)) setDisplay(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-        }}
+        onChange={handleChange}
+        onFocus={() => setFocused(true)}
+        onBlur={handleBlur}
       />
     </div>
   );
