@@ -125,6 +125,10 @@
     "checklist_template_id": {
       "type": "string"
     },
+    "anexos": {
+      "type": "string",
+      "description": "JSON array de {nome, url, data} \u2014 lista de arquivos anexados"
+    },
     "criado_por_id": {
       "type": "string"
     },

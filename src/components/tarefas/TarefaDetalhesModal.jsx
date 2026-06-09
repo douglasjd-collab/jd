@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Phone, CreditCard, Calendar, Briefcase, ClipboardList, MessageCircle, History, Paperclip, ChevronRight, ArrowRight } from 'lucide-react';
+import { Phone, CreditCard, Calendar, Briefcase, ClipboardList, MessageCircle, History, Paperclip, ChevronRight, ArrowRight, Upload, Trash2, FileText, Image, File } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -49,9 +49,17 @@ function formatarHora(dateStr) {
   } catch { return ''; }
 }
 
+function getFileIcon(nome) {
+  const ext = nome?.split('.').pop()?.toLowerCase();
+  if (['jpg','jpeg','png','gif','webp','svg'].includes(ext)) return Image;
+  if (['pdf'].includes(ext)) return FileText;
+  return File;
+}
+
 export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, statusList, currentUser, onUpdate, colaboradores = [], tiposList = [] }) {
   const [aba, setAba] = useState('detalhes');
   const [novoComentario, setNovoComentario] = useState('');
+  const [uploadingAnexo, setUploadingAnexo] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: comentarios = [] } = useQuery({
@@ -81,6 +89,35 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
       toast.success('Comentário adicionado!');
     },
   });
+
+  // Carregar anexos salvos na tarefa
+  let anexos = [];
+  try { anexos = tarefa?.anexos ? JSON.parse(tarefa.anexos) : []; } catch {}
+
+  const handleUploadAnexo = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingAnexo(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const novosAnexos = [...anexos, { nome: file.name, url: file_url, data: new Date().toISOString() }];
+      await onUpdate?.(tarefa.id, { anexos: JSON.stringify(novosAnexos) });
+      queryClient.invalidateQueries({ queryKey: ['tarefas'] });
+      toast.success(`Anexo "${file.name}" enviado!`);
+    } catch (err) {
+      toast.error('Erro ao enviar anexo');
+    } finally {
+      setUploadingAnexo(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoverAnexo = async (idx) => {
+    const novosAnexos = anexos.filter((_, i) => i !== idx);
+    await onUpdate?.(tarefa.id, { anexos: JSON.stringify(novosAnexos) });
+    queryClient.invalidateQueries({ queryKey: ['tarefas'] });
+    toast.success('Anexo removido');
+  };
 
   if (!tarefa) return null;
 
@@ -117,7 +154,7 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl w-[95vw] max-h-[95vh] h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
+      <DialogContent className="max-w-5xl w-[95vw] max-h-[95vh] h-[90vh] flex flex-col overflow-hidden p-0 gap-0 [&>button]:top-3 [&>button]:right-3">
 
         {/* ── CABEÇALHO ── */}
         <div className="px-6 pt-5 pb-4 border-b bg-white">
@@ -158,7 +195,7 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
 
             {/* Select status */}
             <Select value={tarefa.status} onValueChange={v => onUpdate?.(tarefa.id, { status: v })}>
-              <SelectTrigger className="w-44 h-9 text-sm flex-shrink-0 border-slate-300">
+              <SelectTrigger className="w-56 h-9 text-sm flex-shrink-0 border-slate-300 mr-8">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -352,7 +389,52 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
 
             {/* ANEXOS */}
             {aba === 'anexos' && (
-              <p className="text-sm text-slate-400 text-center py-8">Nenhum anexo</p>
+              <div className="space-y-4">
+                {/* Botão de upload */}
+                <label className={`flex items-center gap-2 border-2 border-dashed border-slate-300 rounded-xl p-4 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors ${uploadingAnexo ? 'opacity-60 pointer-events-none' : ''}`}>
+                  <input type="file" className="hidden" onChange={handleUploadAnexo} disabled={uploadingAnexo} />
+                  <Upload className="w-5 h-5 text-slate-400" />
+                  <span className="text-sm text-slate-500">
+                    {uploadingAnexo ? 'Enviando...' : 'Clique para anexar um arquivo'}
+                  </span>
+                </label>
+
+                {/* Lista de anexos */}
+                {anexos.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-6">Nenhum anexo adicionado</p>
+                ) : (
+                  <div className="space-y-2">
+                    {anexos.map((anexo, idx) => {
+                      const IconComp = getFileIcon(anexo.nome);
+                      return (
+                        <div key={idx} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200 hover:border-slate-300 transition-colors">
+                          <IconComp className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                          <a
+                            href={anexo.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 min-w-0 text-sm font-medium text-blue-700 hover:underline truncate"
+                          >
+                            {anexo.nome}
+                          </a>
+                          {anexo.data && (
+                            <span className="text-xs text-slate-400 flex-shrink-0">
+                              {format(new Date(anexo.data), 'dd/MM/yyyy')}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleRemoverAnexo(idx)}
+                            className="text-slate-400 hover:text-red-500 flex-shrink-0 transition-colors"
+                            title="Remover anexo"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             )}
 
             {/* HISTÓRICO */}
