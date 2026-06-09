@@ -1976,7 +1976,7 @@ export default function FunilVendas() {
       {/* FAB - Nova Oportunidade */}
       <button
         onClick={openNovaOportunidade}
-        className="fixed bottom-8 right-8 z-50 flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2a4a73] text-white px-5 py-3.5 rounded-full shadow-2xl transition-all hover:scale-105 font-semibold text-sm"
+        className={`fixed bottom-8 right-8 z-50 flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2a4a73] text-white px-5 py-3.5 rounded-full shadow-2xl transition-all hover:scale-105 font-semibold text-sm ${!!oportunidadeModalId ? 'hidden' : ''}`}
       >
         <Plus className="w-5 h-5" />
         Nova Oportunidade
