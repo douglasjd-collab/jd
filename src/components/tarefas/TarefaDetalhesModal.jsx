@@ -210,7 +210,8 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
           {TABS.map(tab => {
             const count = tab.key === 'comentarios' ? comentarios.length
               : tab.key === 'historico' ? historico.length
-              : tab.key === 'checklist' ? checklist.length : 0;
+              : tab.key === 'checklist' ? checklist.length
+              : tab.key === 'anexos' ? anexos.length : 0;
             return (
               <button
                 key={tab.key}
