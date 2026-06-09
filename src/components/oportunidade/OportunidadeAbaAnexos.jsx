@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQueryClient } from '@tanstack/react-query';
-import { FileText, Image, Music, Video, Download, Trash2, Upload, Paperclip } from 'lucide-react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { FileText, Image, Music, Video, Download, Upload, Paperclip, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
-const CATEGORIAS = ['Todos', 'Documentos', 'CNH', 'Comprovante', 'Contrato', 'Simulação', 'Fotos', 'Áudios', 'Outros'];
+const CATEGORIAS = ['Todos', 'WhatsApp', 'Interno', 'Documentos', 'CNH', 'Comprovante', 'Contrato', 'Simulação', 'Fotos', 'Outros'];
 
 function getIconeAnexo(nome) {
   const ext = nome?.split('.').pop()?.toLowerCase() || '';
@@ -15,9 +15,20 @@ function getIconeAnexo(nome) {
   return { icon: FileText, color: 'text-slate-500', bg: 'bg-slate-50' };
 }
 
-function isImagem(nome) {
+function isImagem(nome, url) {
   const ext = nome?.split('.').pop()?.toLowerCase() || '';
-  return ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
+  return ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext) || isImagemUrl(url);
+}
+
+function isImagemUrl(url = '') {
+  if (!url) return false;
+  const s = url.toLowerCase().split('?')[0];
+  return s.endsWith('.png') || s.endsWith('.jpg') || s.endsWith('.jpeg') || s.endsWith('.gif') || s.endsWith('.webp');
+}
+
+function isPdfUrl(url = '') {
+  if (!url) return false;
+  return url.toLowerCase().split('?')[0].endsWith('.pdf');
 }
 
 export default function OportunidadeAbaAnexos({ oportunidade, currentUser, comentarios = [] }) {
@@ -25,9 +36,9 @@ export default function OportunidadeAbaAnexos({ oportunidade, currentUser, comen
   const [categoria, setCategoria] = useState('Todos');
   const [enviando, setEnviando] = useState(false);
 
-  // Extrai anexos dos comentários
+  // Extrai anexos dos comentários internos
   const ANEXO_REGEX = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
-  const anexos = comentarios.flatMap(c => {
+  const anexosComentarios = comentarios.flatMap(c => {
     const ms = [];
     let m;
     const rx = new RegExp(ANEXO_REGEX.source, 'g');
@@ -36,11 +47,63 @@ export default function OportunidadeAbaAnexos({ oportunidade, currentUser, comen
         nome: m[1], url: m[2],
         usuario_nome: c.usuario_nome,
         created_date: c.created_date,
-        comentario_id: c.id,
+        fonte: 'interno',
       });
     }
     return ms;
   });
+
+  // Busca conversa WhatsApp pelo telefone do lead
+  const telefone = oportunidade?.telefone_lead || oportunidade?.cliente_telefone;
+  const { data: conversa } = useQuery({
+    queryKey: ['conversa-whatsapp-lead', telefone, oportunidade?.empresa_id],
+    enabled: !!telefone && !!oportunidade?.empresa_id,
+    queryFn: async () => {
+      const convs = await base44.entities.ConversaWhatsapp.filter({
+        empresa_id: oportunidade.empresa_id,
+        cliente_telefone: telefone,
+      });
+      return convs[0] || null;
+    },
+  });
+
+  const { data: mensagensWhatsApp = [] } = useQuery({
+    queryKey: ['mensagens-whatsapp-anexos', conversa?.id],
+    enabled: !!conversa?.id,
+    queryFn: async () => {
+      const msgs = await base44.entities.MensagemWhatsapp.filter(
+        { conversa_id: conversa.id },
+        '-data_envio',
+        500
+      );
+      // Filtra apenas mensagens com arquivo (imagem ou pdf)
+      return msgs.filter(m =>
+        m.arquivo_url &&
+        (m.tipo_conteudo === 'imagem' || m.tipo_conteudo === 'pdf' || m.tipo_conteudo === 'documento' ||
+         isImagemUrl(m.arquivo_url) || isPdfUrl(m.arquivo_url))
+      );
+    },
+  });
+
+  // Monta lista de anexos do WhatsApp
+  const anexosWhatsApp = mensagensWhatsApp.map(m => ({
+    nome: m.arquivo_nome || (isImagemUrl(m.arquivo_url) ? 'imagem.jpg' : isPdfUrl(m.arquivo_url) ? 'documento.pdf' : 'arquivo'),
+    url: m.arquivo_url,
+    usuario_nome: m.remetente === 'cliente' ? (oportunidade?.cliente_nome || 'Cliente') : (m.usuario_nome || 'Vendedor'),
+    created_date: m.data_envio || m.created_date,
+    fonte: 'whatsapp',
+    remetente: m.remetente,
+  }));
+
+  // Todos os anexos combinados
+  const todosAnexos = [...anexosComentarios, ...anexosWhatsApp];
+  
+  // Filtro por categoria
+  const anexos = categoria === 'WhatsApp'
+    ? anexosWhatsApp
+    : categoria === 'Interno'
+    ? anexosComentarios
+    : todosAnexos;
 
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files || []);
@@ -72,19 +135,29 @@ export default function OportunidadeAbaAnexos({ oportunidade, currentUser, comen
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         {/* Categorias */}
         <div className="flex flex-wrap gap-1.5">
-          {CATEGORIAS.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setCategoria(cat)}
-              className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${
-                categoria === cat
-                  ? 'bg-[#1e3a5f] text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
+          {CATEGORIAS.map(cat => {
+            const count = cat === 'Todos' ? todosAnexos.length
+              : cat === 'WhatsApp' ? anexosWhatsApp.length
+              : cat === 'Interno' ? anexosComentarios.length
+              : null;
+            return (
+              <button
+                key={cat}
+                onClick={() => setCategoria(cat)}
+                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors flex items-center gap-1 ${
+                  categoria === cat
+                    ? 'bg-[#1e3a5f] text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {cat === 'WhatsApp' && <MessageSquare className="w-3 h-3" />}
+                {cat}
+                {count != null && count > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${categoria === cat ? 'bg-white/20' : 'bg-slate-200'}`}>{count}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Upload */}
@@ -111,7 +184,7 @@ export default function OportunidadeAbaAnexos({ oportunidade, currentUser, comen
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {anexos.map((a, i) => {
             const { icon: Icon, color, bg } = getIconeAnexo(a.nome);
-            const ehImagem = isImagem(a.nome);
+                const ehImagem = isImagem(a.nome, a.url);
             return (
               <div key={i} className="border border-slate-200 rounded-xl overflow-hidden bg-white hover:border-blue-300 hover:shadow-sm transition-all group">
                 {/* Preview */}
@@ -127,7 +200,8 @@ export default function OportunidadeAbaAnexos({ oportunidade, currentUser, comen
                 {/* Info */}
                 <div className="px-3 py-2.5">
                   <p className="text-sm font-medium text-slate-800 truncate">{a.nome}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                    {a.fonte === 'whatsapp' && <MessageSquare className="w-3 h-3 text-green-500" />}
                     {a.usuario_nome} · {a.created_date ? format(new Date(a.created_date), 'dd/MM/yyyy HH:mm') : ''}
                   </p>
                 </div>
