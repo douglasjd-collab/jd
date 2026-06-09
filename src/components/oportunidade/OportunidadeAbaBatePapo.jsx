@@ -2,14 +2,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, MessageCircle } from 'lucide-react';
+import { Loader2, MessageCircle, MoreVertical, BellOff, Tag, CalendarCheck, CalendarClock, CheckSquare, ArrowLeftRight } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import MensagemItem from '@/components/chat/MensagemItem';
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
+import AgendarMensagemModal from '@/components/chat/AgendarMensagemModal';
+import AgendarReuniaoModal from '@/components/chat/AgendarReuniaoModal';
+import TagsModal from '@/components/chat/TagsModal';
 import { toast } from 'sonner';
 
 export default function OportunidadeAbaBatePapo({ oportunidade, currentUser }) {
   const queryClient = useQueryClient();
   const scrollAreaRef = useRef(null);
+  const [agendarMensagemOpen, setAgendarMensagemOpen] = useState(false);
+  const [agendarReuniaoOpen, setAgendarReuniaoOpen] = useState(false);
+  const [tagsOpen, setTagsOpen] = useState(false);
 
   const contato = {
     telefone: oportunidade?.telefone_lead || oportunidade?.cliente_telefone,
@@ -142,10 +151,49 @@ export default function OportunidadeAbaBatePapo({ oportunidade, currentUser }) {
           <p className="text-xs text-white/70">{contato.telefone}</p>
         </div>
         {conversa && (
-          <div className="ml-auto text-xs bg-white/20 px-2 py-0.5 rounded-full">
+          <div className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
             {conversa.status === 'ativa' ? '● Ativa' : conversa.status}
           </div>
         )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="ml-auto p-1.5 rounded-full hover:bg-white/20 transition-colors">
+              <MoreVertical className="w-5 h-5 text-white" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuItem onClick={() => {
+              if (conversa) {
+                base44.entities.ConversaWhatsapp.update(conversa.id, { status: conversa.status === 'ativa' ? 'arquivada' : 'ativa' })
+                  .then(() => { queryClient.invalidateQueries({ queryKey: ['conversa-funil'] }); toast.success('Status atualizado'); })
+                  .catch(() => toast.error('Erro ao atualizar'));
+              }
+            }}>
+              <BellOff className="w-4 h-4 mr-2" />
+              Marcar como não lido
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setTagsOpen(true)}>
+              <Tag className="w-4 h-4 mr-2 text-blue-500" />
+              Tags
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setAgendarReuniaoOpen(true)} className="text-green-600">
+              <CalendarCheck className="w-4 h-4 mr-2" />
+              Agendar reunião
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setAgendarMensagemOpen(true)} className="text-blue-600">
+              <CalendarClock className="w-4 h-4 mr-2" />
+              Agendar mensagem
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => {
+              window.location.href = `/Tarefas?nova=1&cliente=${encodeURIComponent(contato.nome || '')}&telefone=${encodeURIComponent(contato.telefone || '')}`;
+            }}>
+              <CheckSquare className="w-4 h-4 mr-2" />
+              Criar tarefa
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Mensagens */}
@@ -186,6 +234,26 @@ export default function OportunidadeAbaBatePapo({ oportunidade, currentUser }) {
           empresaId={currentUser?.empresa_id || null}
         />
       </div>
+
+      {/* Modais */}
+      <AgendarMensagemModal
+        open={agendarMensagemOpen}
+        onOpenChange={setAgendarMensagemOpen}
+        conversa={conversa}
+        currentUser={currentUser}
+      />
+      <AgendarReuniaoModal
+        open={agendarReuniaoOpen}
+        onOpenChange={setAgendarReuniaoOpen}
+        conversa={conversa}
+        user={currentUser}
+      />
+      <TagsModal
+        open={tagsOpen}
+        onOpenChange={setTagsOpen}
+        contato={conversa}
+        empresaId={currentUser?.empresa_id}
+      />
     </div>
   );
 }
