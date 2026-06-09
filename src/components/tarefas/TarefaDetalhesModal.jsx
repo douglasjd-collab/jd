@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  X, Calendar, User, Tag, CheckSquare, MessageSquare, Clock, AlertTriangle
+  X, Calendar, User, Tag, CheckSquare, MessageSquare, Clock, AlertTriangle, Paperclip, FileText, Download
 } from 'lucide-react';
 import ColaboracaoInterna from './ColaboracaoInterna';
 import ChecklistAba from './ChecklistAba';
@@ -79,10 +79,28 @@ export default function TarefaDetalhesModal({
   const hoje = format(new Date(), 'yyyy-MM-dd');
   const atrasada = tarefa.data_conclusao_prevista && tarefa.data_conclusao_prevista < hoje && tarefa.status !== 'concluido' && tarefa.status !== 'arquivado';
 
+  // Extrair anexos dos comentários (formato: 📎 [nome](url))
+  const ANEXO_REGEX = /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g;
+  const anexos = comentarios.flatMap(c => {
+    const matches = [];
+    let m;
+    const rx = new RegExp(ANEXO_REGEX.source, 'g');
+    while ((m = rx.exec(c.mensagem || '')) !== null) {
+      matches.push({
+        nome: m[1],
+        url: m[2],
+        usuario_nome: c.usuario_nome,
+        created_date: c.created_date,
+      });
+    }
+    return matches;
+  });
+
   const abas = [
     { key: 'detalhes', label: 'Detalhes', icon: Tag },
     { key: 'comentarios', label: 'Comentários', icon: MessageSquare, badge: comentarios.length },
     { key: 'checklist', label: 'Checklist', icon: CheckSquare, badge: checklistItems.length > 0 ? `${checklistItems.filter(i => i.checked).length}/${checklistItems.length}` : null },
+    { key: 'anexos', label: 'Anexos', icon: Paperclip, badge: anexos.length || null },
     { key: 'historico', label: 'Histórico', icon: Clock },
   ];
 
@@ -242,6 +260,52 @@ export default function TarefaDetalhesModal({
                 empresaId={tarefa.empresa_id}
                 onUpdate={atualizarChecklist}
               />
+            </div>
+          )}
+
+          {/* Anexos */}
+          {aba === 'anexos' && (
+            <div className="p-6">
+              {anexos.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                  <Paperclip className="w-12 h-12 opacity-20 mb-3" />
+                  <p className="text-sm font-medium">Nenhum anexo encontrado</p>
+                  <p className="text-xs mt-1">Arquivos enviados nos comentários aparecerão aqui</p>
+                </div>
+              ) : (
+                <div className="grid gap-3">
+                  {anexos.map((a, i) => {
+                    const ext = a.nome.split('.').pop()?.toLowerCase() || '';
+                    const isImg = ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext);
+                    return (
+                      <div key={i} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl p-3 hover:border-blue-300 hover:shadow-sm transition-all group">
+                        <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                          {isImg
+                            ? <img src={a.url} alt={a.nome} className="w-10 h-10 rounded-lg object-cover" onError={e => { e.target.style.display='none'; }} />
+                            : <FileText className="w-5 h-5 text-slate-400" />
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{a.nome}</p>
+                          <p className="text-xs text-slate-400">
+                            {a.usuario_nome} · {a.created_date ? format(new Date(a.created_date), 'dd/MM/yyyy HH:mm') : ''}
+                          </p>
+                        </div>
+                        <a
+                          href={a.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          download={a.nome}
+                          className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Baixar"
+                        >
+                          <Download className="w-4 h-4" />
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
