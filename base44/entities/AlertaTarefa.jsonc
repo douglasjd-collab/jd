@@ -1,46 +1,48 @@
 {
-  "name": "ComentarioTarefa",
+  "name": "AlertaTarefa",
   "type": "object",
   "properties": {
-    "tarefa_id": {
-      "type": "string"
-    },
     "empresa_id": {
       "type": "string"
     },
-    "usuario_id": {
+    "tarefa_id": {
       "type": "string"
     },
-    "usuario_nome": {
+    "tarefa_titulo": {
       "type": "string"
     },
-    "mensagem": {
+    "comentario_id": {
       "type": "string"
     },
-    "tipo": {
+    "comentario_texto": {
+      "type": "string"
+    },
+    "destinatario_id": {
       "type": "string",
-      "enum": [
-        "comentario",
-        "ligacao",
-        "reuniao",
-        "email",
-        "movimentacao"
-      ],
-      "default": "comentario"
+      "description": "ID do colaborador que deve receber o alerta"
     },
-    "responsavel_mencionado_id": {
-      "type": "string",
-      "description": "ID do colaborador notificado"
-    },
-    "responsavel_mencionado_nome": {
+    "destinatario_nome": {
       "type": "string"
+    },
+    "remetente_id": {
+      "type": "string"
+    },
+    "remetente_nome": {
+      "type": "string"
+    },
+    "lido": {
+      "type": "boolean",
+      "default": false
+    },
+    "lido_em": {
+      "type": "string",
+      "format": "date-time"
     }
   },
   "required": [
-    "tarefa_id",
     "empresa_id",
-    "usuario_id",
-    "mensagem"
+    "tarefa_id",
+    "destinatario_id"
   ],
   "security": {
     "read": {
@@ -53,7 +55,7 @@
       "rule": "return true;"
     },
     "delete": {
-      "rule": "return user.perfil === 'admin' || user.perfil === 'super_admin';"
+      "rule": "return true;"
     }
   }
 }

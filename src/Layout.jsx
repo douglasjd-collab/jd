@@ -50,6 +50,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import AntiTranslateGuard from '@/components/AntiTranslateGuard';
 import { Toaster, toast } from 'sonner';
 import VendaForm from '@/components/forms/VendaForm';
+import AlertasTarefasPopup from '@/components/tarefas/AlertasTarefasPopup';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
@@ -790,6 +791,16 @@ export default function Layout({ children, currentPageName }) {
         empresaId={user?.empresa_id}
         onSuccess={loadUser}
       />
+
+      {/* Alertas de Tarefas */}
+      {user && (
+        <AlertasTarefasPopup
+          user={user}
+          onAbrirTarefa={(tarefaId) => {
+            window.location.href = `/Tarefas?tarefa_id=${tarefaId}`;
+          }}
+        />
+      )}
 
       {/* Nova Venda Consórcio Modal */}
       <VendaForm

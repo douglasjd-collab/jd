@@ -77,14 +77,34 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
   });
 
   const criarComentario = useMutation({
-    mutationFn: async (mensagem) => base44.entities.ComentarioTarefa.create({
-      tarefa_id: tarefa.id,
-      empresa_id: tarefa.empresa_id,
-      usuario_id: currentUser?.id,
-      usuario_nome: currentUser?.full_name || currentUser?.nome_perfil || '',
-      mensagem,
-      tipo: 'comentario',
-    }),
+    mutationFn: async ({ mensagem, responsavel }) => {
+      const comentario = await base44.entities.ComentarioTarefa.create({
+        tarefa_id: tarefa.id,
+        empresa_id: tarefa.empresa_id,
+        usuario_id: currentUser?.id,
+        usuario_nome: currentUser?.full_name || currentUser?.nome_perfil || '',
+        mensagem,
+        tipo: 'comentario',
+        responsavel_mencionado_id: responsavel?.id || null,
+        responsavel_mencionado_nome: responsavel?.nome || null,
+      });
+      // Criar alerta para o responsável mencionado
+      if (responsavel?.id) {
+        await base44.entities.AlertaTarefa.create({
+          empresa_id: tarefa.empresa_id,
+          tarefa_id: tarefa.id,
+          tarefa_titulo: tarefa.titulo || tarefa.cliente_nome || '',
+          comentario_id: comentario.id,
+          comentario_texto: mensagem,
+          destinatario_id: responsavel.id,
+          destinatario_nome: responsavel.nome,
+          remetente_id: currentUser?.colaborador_id || currentUser?.id || '',
+          remetente_nome: currentUser?.full_name || currentUser?.nome_perfil || '',
+          lido: false,
+        });
+      }
+      return comentario;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comentarios-tarefa', tarefa.id] });
       setNovoComentario('');
@@ -355,8 +375,9 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
                 currentUser={currentUser}
                 novoComentario={novoComentario}
                 setNovoComentario={setNovoComentario}
-                onEnviar={() => novoComentario.trim() && criarComentario.mutate(novoComentario)}
+                onEnviar={(responsavel) => novoComentario.trim() && criarComentario.mutate({ mensagem: novoComentario, responsavel })}
                 enviando={criarComentario.isPending}
+                colaboradores={colaboradores}
               />
             )}
 
