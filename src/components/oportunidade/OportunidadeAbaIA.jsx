@@ -281,7 +281,12 @@ Gere análise completa. Responda em JSON:
     setLoadingAudio(true);
     setAnalise(null);
     try {
-      const resultado = await gerarAnaliseIA(transcricao);
+      // Enriquecer com contexto existente para análise combinada
+      const resumoComentarios = comentarios.slice(-5).map(c => `${c.usuario_nome}: ${c.mensagem?.slice(0, 150)}`).join('\n');
+      const textoEnriquecido = resumoComentarios
+        ? `RELATO ATUAL DO VENDEDOR:\n${transcricao}\n\nCONTEXTO HISTÓRICO DA OPORTUNIDADE:\n${resumoComentarios}`
+        : transcricao;
+      const resultado = await gerarAnaliseIA(textoEnriquecido);
       setAnalise(resultado);
       setTranscricaoAtual(transcricao);
       setAudioUrlAtual(audio_url);
@@ -298,7 +303,7 @@ Gere análise completa. Responda em JSON:
     try {
       const resumoComentarios = comentarios.slice(-10).map(c => `${c.usuario_nome}: ${c.mensagem}`).join('\n');
       const resumoMovs = movimentacoes.slice(0, 5).map(m => `De "${m.etapa_origem_nome}" para "${m.etapa_destino_nome}"`).join('; ');
-      const texto = `Histórico de comentários:\n${resumoComentarios || 'Nenhum'}\n\nMovimentações: ${resumoMovs || 'Nenhuma'}`;
+      const texto = `Histórico de comentários:\n${resumoComentarios || 'Nenhum'}\n\nMovimentações: ${resumoMovs || 'Nenhuma'}\n\nAnalises IA anteriores: ${historicoIA.slice(0,3).map(c => c.mensagem?.slice(0,200)).join(' | ') || 'Nenhuma'}`;
       const resultado = await gerarAnaliseIA(texto);
       setAnalise(resultado);
       setTranscricaoAtual('');

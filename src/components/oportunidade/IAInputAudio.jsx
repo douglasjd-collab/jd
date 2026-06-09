@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Mic, MicOff, Upload, FileText, Square, Pause, Play, Loader2, X, Headphones } from 'lucide-react';
+import { Mic, MicOff, Upload, FileText, Square, Pause, Play, Loader2, X, Headphones, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 function fmt(s) {
@@ -263,15 +263,26 @@ export default function IAInputAudio({ onAnalisar, loading }) {
       {modo === 'digitar' && (
         <div className="space-y-3">
           <Textarea
-            placeholder="Descreva como foi a conversa com o cliente. Ex: Conversei com Maria. Ela tem interesse em financiamento de R$ 60.000. Achou a entrada alta e pediu nova simulação..."
+            placeholder={`Descreva como foi o atendimento com o cliente...\n\nExemplos:\n• "Conversei com Maria Eliane. Ela deseja financiar um veículo de R$ 60.000. Achou a entrada alta e pediu nova simulação com entrada menor."\n• "Cliente interessado em proteção veicular para uma Hilux 2022. Ficou interessado e pediu retorno amanhã."`}
             value={texto}
             onChange={e => setTexto(e.target.value)}
-            className="min-h-[120px] text-sm bg-white resize-none"
+            className="min-h-[140px] text-sm bg-white resize-none"
+            autoFocus
           />
-          <Button className="w-full gap-2 bg-violet-600 hover:bg-violet-700" onClick={analisarTexto} disabled={!texto.trim() || isProcessando}>
-            {isProcessando ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-            {isProcessando ? 'Analisando...' : 'Analisar com IA'}
-          </Button>
+          <div className="flex gap-2">
+            <Button className="flex-1 gap-2 bg-violet-600 hover:bg-violet-700" onClick={analisarTexto} disabled={!texto.trim() || isProcessando}>
+              {isProcessando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {isProcessando ? 'Analisando...' : '🤖 Analisar Texto'}
+            </Button>
+            {texto && (
+              <Button size="sm" variant="ghost" className="gap-1 text-slate-500 hover:bg-slate-100 px-3" title="Limpar texto" onClick={() => setTexto('')}>
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="gap-1 text-slate-500 px-3" onClick={() => { setTexto(''); setModo(null); }}>
+              Cancelar
+            </Button>
+          </div>
         </div>
       )}
     </div>
