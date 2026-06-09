@@ -198,17 +198,24 @@ export default function Layout({ children, currentPageName }) {
         return;
       }
 
-      // Super admin não precisa de Colaborador - acessa tudo
+      // Super admin: tenta buscar Colaborador para pegar empresa_id
       if (me.role === 'super_admin' || me.perfil === 'super_admin') {
+        let colaboradorSA = null;
+        try {
+          const colabsSA = await base44.entities.Colaborador.filter({ user_id: me.id }, '-created_date');
+          colaboradorSA = colabsSA.find(c => c.status === 'ativo') || colabsSA[0] || null;
+        } catch {}
+
         setUser({
           ...me,
           auth_id: me.id,
-          colaborador_id: null,
-          empresa_id: null, // Acessa todas empresas
+          colaborador_id: colaboradorSA?.id || null,
+          empresa_id: colaboradorSA?.empresa_id || null,
           perfil: 'super_admin',
-          nome_perfil: me.full_name,
-          foto_perfil: null,
-          email: me.email,
+          nome_perfil: colaboradorSA?.nome || me.full_name,
+          foto_perfil: colaboradorSA?.foto_perfil || null,
+          email: colaboradorSA?.email || me.email,
+          menus_permitidos: [],
         });
         return;
       }
