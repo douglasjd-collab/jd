@@ -279,13 +279,16 @@ Gere análise completa. Responda em JSON:
 
   const handleAnalisarAudio = async ({ transcricao, audio_url, duracao_segundos }) => {
     setLoadingAudio(true);
-    setAnalise(null);
     try {
-      // Enriquecer com contexto existente para análise combinada
       const resumoComentarios = comentarios.slice(-5).map(c => `${c.usuario_nome}: ${c.mensagem?.slice(0, 150)}`).join('\n');
-      const textoEnriquecido = resumoComentarios
-        ? `RELATO ATUAL DO VENDEDOR:\n${transcricao}\n\nCONTEXTO HISTÓRICO DA OPORTUNIDADE:\n${resumoComentarios}`
-        : transcricao;
+
+      // Se já existe uma análise, enriquecer com ela para orientar o vendedor
+      const contextoAnaliseAnterior = analise
+        ? `\n\nANÁLISE ANTERIOR (atualize e complemente com as novas informações):\n- Temperatura: ${analise.temperatura}\n- Probabilidade: ${analise.probabilidade_fechamento}%\n- Resumo anterior: ${analise.resumo?.slice(0, 200)}\n- Objeções anteriores: ${analise.objecoes?.join(', ')}`
+        : '';
+
+      const textoEnriquecido = `NOVO RELATO DO VENDEDOR:\n${transcricao}${resumoComentarios ? `\n\nCONTEXTO HISTÓRICO:\n${resumoComentarios}` : ''}${contextoAnaliseAnterior}`;
+
       const resultado = await gerarAnaliseIA(textoEnriquecido);
       setAnalise(resultado);
       setTranscricaoAtual(transcricao);
@@ -353,10 +356,12 @@ Gere análise completa. Responda em JSON:
 
       {/* Resultado da análise via áudio */}
       {loadingAudio && (
-        <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-2xl p-10 flex flex-col items-center gap-3 text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-violet-500" />
-          <p className="text-sm font-semibold text-violet-800">Processando áudio e gerando análise comercial...</p>
-          <p className="text-xs text-violet-500">Transcrevendo → Analisando com IA → Gerando insights</p>
+        <div className="bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200 rounded-2xl p-6 flex items-center gap-3">
+          <Loader2 className="w-6 h-6 animate-spin text-violet-500 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-violet-800">{analise ? 'Atualizando análise com novo input...' : 'Processando e gerando análise comercial...'}</p>
+            <p className="text-xs text-violet-500 mt-0.5">Transcrevendo → Analisando com IA → Gerando insights</p>
+          </div>
         </div>
       )}
 

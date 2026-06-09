@@ -94,6 +94,18 @@ export default function IAInputAudio({ onAnalisar, loading }) {
     setAudioUrl(URL.createObjectURL(file));
   };
 
+  const limparInput = () => {
+    setModo(null);
+    setGravando(false);
+    setPausado(false);
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setTexto('');
+    setTimer(0);
+    audioChunksRef.current = [];
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const analisarAudio = async () => {
     if (!audioBlob) return;
     setProcessando(true);
@@ -104,6 +116,8 @@ export default function IAInputAudio({ onAnalisar, loading }) {
       const transcricao = await base44.integrations.Core.TranscribeAudio({ audio_url: file_url });
       if (!transcricao) throw new Error('Transcrição retornou vazia.');
       await onAnalisar({ transcricao, audio_url: file_url, duracao_segundos: timer });
+      // Limpa o input após análise bem-sucedida
+      limparInput();
     } catch (e) {
       toast.error('Erro ao processar áudio: ' + (e.message || 'Tente novamente'));
     } finally {
@@ -114,18 +128,11 @@ export default function IAInputAudio({ onAnalisar, loading }) {
   const analisarTexto = async () => {
     if (!texto.trim()) return;
     await onAnalisar({ transcricao: texto, audio_url: null, duracao_segundos: 0 });
+    // Limpa o input após análise bem-sucedida
+    limparInput();
   };
 
-  const resetar = () => {
-    setModo(null);
-    setGravando(false);
-    setPausado(false);
-    setAudioBlob(null);
-    setAudioUrl(null);
-    setTexto('');
-    setTimer(0);
-    audioChunksRef.current = [];
-  };
+  const resetar = limparInput;
 
   const isProcessando = processando || loading;
 
