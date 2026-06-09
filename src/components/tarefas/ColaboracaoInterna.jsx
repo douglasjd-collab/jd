@@ -367,19 +367,26 @@ export default function ColaboracaoInterna({ tarefa, currentUser, colaboradores 
         responsavel_mencionado_nome: responsavelMencionar?.nome || null,
       });
 
-      // Coletar todos os participantes da tarefa (principal + responsáveis adicionais)
-      let responsaveisIds = [];
-      try { responsaveisIds = tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : []; } catch {}
-      const todosIds = new Set([
-        tarefa.responsavel_principal_id,
-        ...responsaveisIds,
-      ].filter(Boolean));
-
-      // Notificar todos exceto o próprio remetente
-      const destinatarios = [...todosIds]
-        .filter(id => id !== remetenteId)
-        .map(id => colaboradores.find(c => c.id === id))
-        .filter(Boolean);
+      // Determinar destinatários dos alertas:
+      // - Se mencionou alguém: apenas o mencionado (desde que não seja o próprio remetente)
+      // - Se não mencionou: todos os responsáveis da tarefa exceto o remetente
+      let destinatarios = [];
+      if (responsavelMencionar && responsavelMencionar.id !== remetenteId) {
+        // Apenas o mencionado
+        destinatarios = [responsavelMencionar];
+      } else if (!responsavelMencionar) {
+        // Todos os responsáveis exceto o remetente
+        let responsaveisIds = [];
+        try { responsaveisIds = tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : []; } catch {}
+        const todosIds = new Set([
+          tarefa.responsavel_principal_id,
+          ...responsaveisIds,
+        ].filter(Boolean));
+        destinatarios = [...todosIds]
+          .filter(id => id !== remetenteId)
+          .map(id => colaboradores.find(c => c.id === id))
+          .filter(Boolean);
+      }
 
       await Promise.all(destinatarios.map(dest =>
         base44.entities.AlertaTarefa.create({
