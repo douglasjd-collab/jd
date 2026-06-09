@@ -76,8 +76,8 @@ function MensagemItem({ comentario, currentUser, colaboradores, onReagir, reacoe
   const [showReacoes, setShowReacoes] = useState(false);
   const reacoes = reacoesMap?.[comentario.id] || {};
 
-  // Busca foto do colaborador
-  const colab = colaboradores.find(c => c.id === comentario.usuario_id);
+  // Busca foto do colaborador (inclusive o próprio usuário)
+  const colab = colaboradores.find(c => c.id === comentario.usuario_id || c.user_id === comentario.usuario_id);
   const foto = colab?.foto_perfil || null;
 
   return (
