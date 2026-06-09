@@ -309,6 +309,7 @@ export default function ColaboracaoInterna({ tarefa, currentUser, colaboradores 
   const [responsavelMencionar, setResponsavelMencionar] = useState(null);
   const [filtroColab, setFiltroColab] = useState('');
   const [reacoesLocais, setReacoesLocais] = useState({});
+  const [enviandoArquivo, setEnviandoArquivo] = useState(false);
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
@@ -398,6 +399,32 @@ export default function ColaboracaoInterna({ tarefa, currentUser, colaboradores 
       responsaveis_ids: JSON.stringify(novosIds),
       responsaveis_nomes: JSON.stringify(novosNomes),
     });
+  };
+
+  const handleAnexarArquivo = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setEnviandoArquivo(true);
+    try {
+      for (const file of files) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const mensagem = `📎 [${file.name}](${file_url})`;
+        await base44.entities.ComentarioTarefa.create({
+          tarefa_id: tarefa.id,
+          empresa_id: tarefa.empresa_id,
+          usuario_id: currentUser?.id,
+          usuario_nome: currentUser?.nome_perfil || currentUser?.full_name || '',
+          mensagem,
+          tipo: 'comentario',
+          responsavel_mencionado_id: responsavelMencionar?.id || null,
+          responsavel_mencionado_nome: responsavelMencionar?.nome || null,
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['comentarios-tarefa', tarefa?.id] });
+    } finally {
+      setEnviandoArquivo(false);
+      e.target.value = '';
+    }
   };
 
   const colabsFiltrados = colaboradores.filter(c =>
@@ -527,14 +554,18 @@ export default function ColaboracaoInterna({ tarefa, currentUser, colaboradores 
             />
             <div className="flex items-center justify-between px-3 py-2">
               <div className="flex items-center gap-0.5">
-                <input type="file" ref={fileInputRef} className="hidden" multiple />
+                <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleAnexarArquivo} />
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                  disabled={enviandoArquivo}
+                  className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
                   title="Anexar arquivo"
                 >
-                  <Paperclip className="w-4 h-4" />
+                  {enviandoArquivo
+                    ? <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                    : <Paperclip className="w-4 h-4" />
+                  }
                 </button>
                 <button
                   type="button"

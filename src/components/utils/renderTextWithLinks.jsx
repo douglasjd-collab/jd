@@ -1,35 +1,68 @@
 import React from 'react';
 
 /**
- * Detecta URLs válidas no texto e as converte em links clicáveis.
- * Suporta: https://, http://, www.
+ * Detecta URLs válidas e links markdown [texto](url) no texto e os converte em links clicáveis.
+ * Suporta: https://, http://, www. e formato [label](url)
  * Seguro: target="_blank" + rel="noopener noreferrer", sem execução de scripts.
  */
-const URL_REGEX = /(https?:\/\/[^\s<>"]+|www\.[^\s<>"]+\.[^\s<>"]+)/gi;
+const COMBINED_REGEX = /(\[([^\]]+)\]\((https?:\/\/[^)]+)\)|https?:\/\/[^\s<>"]+|www\.[^\s<>"]+\.[^\s<>"]+)/gi;
 
 export function renderTextWithLinks(text, linkClassName = '') {
   if (!text || typeof text !== 'string') return text;
 
-  const parts = text.split(URL_REGEX);
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  const regex = new RegExp(COMBINED_REGEX.source, 'gi');
 
-  return parts.map((part, i) => {
-    if (URL_REGEX.test(part)) {
-      // Reset lastIndex após o test()
-      URL_REGEX.lastIndex = 0;
-      const href = part.startsWith('www.') ? `https://${part}` : part;
-      return (
+  while ((match = regex.exec(text)) !== null) {
+    // Texto antes do match
+    if (match.index > lastIndex) {
+      parts.push(<React.Fragment key={lastIndex}>{text.slice(lastIndex, match.index)}</React.Fragment>);
+    }
+
+    const full = match[0];
+    const mdLabel = match[2]; // grupo [label]
+    const mdUrl = match[3];   // grupo (url) do markdown
+
+    if (mdLabel && mdUrl) {
+      // Formato markdown: [nome](url)
+      parts.push(
         <a
-          key={i}
+          key={match.index}
+          href={mdUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`underline underline-offset-2 break-all hover:opacity-80 transition-opacity ${linkClassName}`}
+          onClick={e => e.stopPropagation()}
+        >
+          {mdLabel}
+        </a>
+      );
+    } else {
+      // URL simples
+      const href = full.startsWith('www.') ? `https://${full}` : full;
+      parts.push(
+        <a
+          key={match.index}
           href={href}
           target="_blank"
           rel="noopener noreferrer"
           className={`underline underline-offset-2 break-all hover:opacity-80 transition-opacity ${linkClassName}`}
           onClick={e => e.stopPropagation()}
         >
-          {part}
+          {full}
         </a>
       );
     }
-    return part ? <React.Fragment key={i}>{part}</React.Fragment> : null;
-  });
+
+    lastIndex = match.index + full.length;
+  }
+
+  // Texto restante
+  if (lastIndex < text.length) {
+    parts.push(<React.Fragment key={lastIndex}>{text.slice(lastIndex)}</React.Fragment>);
+  }
+
+  return parts.length > 0 ? parts : text;
 }
