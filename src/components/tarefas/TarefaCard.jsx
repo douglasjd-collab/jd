@@ -66,7 +66,7 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes, st
         venceHoje ? 'bg-amber-50 border-amber-300' :
         'bg-white border-slate-200'
       }`}
-      onClick={() => onVerDetalhes(tarefa)}
+      onDoubleClick={() => onVerDetalhes(tarefa)}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
