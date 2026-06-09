@@ -431,11 +431,13 @@ export default function TarefaDetalhesModal({
                   </p>
                 </div>
                 {tarefa.cliente_nome && (
-                  <div className="bg-white border rounded-xl p-3">
-                    <p className="text-xs text-slate-400 mb-1 flex items-center gap-1"><User className="w-3 h-3" /> Cliente</p>
-                    <p className="text-sm font-semibold text-slate-800">{tarefa.cliente_nome}</p>
-                  </div>
-                )}
+                   <div className="bg-white border rounded-xl p-3 col-span-2">
+                     <p className="text-xs text-slate-400 mb-1 flex items-center gap-1"><User className="w-3 h-3" /> Cliente</p>
+                     <p className="text-sm font-semibold text-slate-800 mb-1">{tarefa.cliente_nome}</p>
+                     {tarefa.cliente_cpf && <p className="text-xs text-slate-500">CPF: {tarefa.cliente_cpf}</p>}
+                     {tarefa.cliente_telefone && <p className="text-xs text-slate-500">Tel: {tarefa.cliente_telefone}</p>}
+                   </div>
+                 )}
                 {(subsetor || tarefa.subsetor_nome) && (
                   <div className="bg-white border rounded-xl p-3">
                     <p className="text-xs text-slate-400 mb-1 flex items-center gap-1"><Tag className="w-3 h-3" /> Tipo</p>
