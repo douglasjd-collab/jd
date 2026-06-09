@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import TarefaCard from '@/components/tarefas/TarefaCard';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
-import TarefaDetalhesModal from '@/components/tarefas/TarefaDetalhesModal.jsx';
+import TarefaDetalhesModal from '@/components/tarefas/TarefaDetalhesModal';
 import ConfiguracaoTarefasModal from '@/components/tarefas/ConfiguracaoTarefasModal';
 
 const STATUS_PADRAO = [
