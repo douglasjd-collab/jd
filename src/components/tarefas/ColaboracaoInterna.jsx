@@ -41,13 +41,14 @@ function avatarColor(nome = '') {
   return AVATAR_COLORS[(nome.charCodeAt(0) || 0) % AVATAR_COLORS.length];
 }
 
-function UserAvatar({ nome, foto, size = 'md', showStatus = false, online = false }) {
+function UserAvatar({ nome, foto, size = 'md', showStatus = false, online = false, forceColor }) {
   const sz = size === 'sm' ? 'h-7 w-7 text-xs' : size === 'lg' ? 'h-11 w-11 text-base' : 'h-9 w-9 text-sm';
+  const cor = forceColor || avatarColor(nome);
   return (
     <div className="relative flex-shrink-0">
       <Avatar className={sz}>
         {foto && <AvatarImage src={foto} />}
-        <AvatarFallback className={`${avatarColor(nome)} text-white font-bold`}>
+        <AvatarFallback className={`${cor} text-white font-bold`}>
           {getInitials(nome)}
         </AvatarFallback>
       </Avatar>
@@ -75,9 +76,19 @@ function MensagemItem({ comentario, currentUser, colaboradores, onReagir, reacoe
   const [showReacoes, setShowReacoes] = useState(false);
   const reacoes = reacoesMap?.[comentario.id] || {};
 
+  // Busca foto do colaborador
+  const colab = colaboradores.find(c => c.id === comentario.usuario_id);
+  const foto = colab?.foto_perfil || null;
+
   return (
     <div className={`flex gap-3 group ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-      <UserAvatar nome={comentario.usuario_nome} foto={null} size="sm" showStatus={false} />
+      <UserAvatar
+        nome={comentario.usuario_nome}
+        foto={foto}
+        size="sm"
+        showStatus={false}
+        forceColor={isMe ? undefined : 'bg-pink-500'}
+      />
 
       <div className={`max-w-[72%] flex flex-col gap-1 ${isMe ? 'items-end' : 'items-start'}`}>
         <div className="flex items-center gap-2">
