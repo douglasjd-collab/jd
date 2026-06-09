@@ -51,6 +51,7 @@ import AntiTranslateGuard from '@/components/AntiTranslateGuard';
 import { Toaster, toast } from 'sonner';
 import VendaForm from '@/components/forms/VendaForm';
 import AlertasTarefasPopup from '@/components/tarefas/AlertasTarefasPopup';
+import AlertasTarefasAtrasadas from '@/components/tarefas/AlertasTarefasAtrasadas';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
@@ -808,6 +809,9 @@ export default function Layout({ children, currentPageName }) {
           }}
         />
       )}
+
+      {/* Alertas de Tarefas Atrasadas */}
+      {user && <AlertasTarefasAtrasadas user={user} />}
 
       {/* Nova Venda Consórcio Modal */}
       <VendaForm
