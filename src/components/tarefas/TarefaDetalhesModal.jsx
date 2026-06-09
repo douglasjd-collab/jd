@@ -156,10 +156,10 @@ export default function TarefaDetalhesModal({
         </div>
 
         {/* Conteúdo */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-hidden flex flex-col">
           {/* Detalhes */}
           {aba === 'detalhes' && (
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 overflow-y-auto flex-1">
               {/* Responsável principal */}
               {(responsavelPrincipal || tarefa.responsavel_principal_nome) && (
                 <div className="flex items-center gap-4 bg-slate-50 rounded-xl p-4">
@@ -254,7 +254,7 @@ export default function TarefaDetalhesModal({
 
           {/* Checklist */}
           {aba === 'checklist' && (
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1">
               <ChecklistAba
                 checklist={checklistItems}
                 empresaId={tarefa.empresa_id}
@@ -265,7 +265,7 @@ export default function TarefaDetalhesModal({
 
           {/* Anexos */}
           {aba === 'anexos' && (
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto flex-1">
               {anexos.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-slate-400">
                   <Paperclip className="w-12 h-12 opacity-20 mb-3" />
@@ -311,7 +311,7 @@ export default function TarefaDetalhesModal({
 
           {/* Histórico */}
           {aba === 'historico' && (
-            <div className="p-6 space-y-3">
+            <div className="p-6 space-y-3 overflow-y-auto flex-1">
               {loadingHistorico && (
                 <div className="flex justify-center py-8">
                   <div className="w-6 h-6 border-2 border-slate-300 border-t-blue-500 rounded-full animate-spin" />

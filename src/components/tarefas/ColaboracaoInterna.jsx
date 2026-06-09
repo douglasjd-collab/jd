@@ -453,7 +453,7 @@ export default function ColaboracaoInterna({ tarefa, currentUser, colaboradores 
   if (!tarefa) return null;
 
   return (
-    <div className="flex overflow-hidden" style={{ height: '60vh', minHeight: '400px' }}>
+    <div className="flex overflow-hidden flex-1" style={{ minHeight: '400px' }}>
       {/* Área principal: Timeline + Input */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
