@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Phone, MessageSquare, Volume2, History, Settings,
-  Loader2, WifiOff, Wallet, PhoneCall, RefreshCw, Hash, Stethoscope
+  Loader2, WifiOff, Wallet, PhoneCall, RefreshCw, Hash, Stethoscope, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -20,6 +20,7 @@ import MeusNumeros from '@/components/callcenter/MeusNumeros';
 import ChamadaAtiva from '@/components/callcenter/ChamadaAtiva';
 import SoftphonePanel from '@/components/callcenter/SoftphonePanel';
 import useSoftphone from '@/components/callcenter/useSoftphone';
+import AssistenteIALigacao from '@/components/callcenter/AssistenteIALigacao';
 
 export default function CallCenter() {
   const [user, setUser] = useState(null);
@@ -38,6 +39,7 @@ export default function CallCenter() {
   const [chamadaAtiva, setChamadaAtiva] = useState(null);
   const [numeroParaChamar, setNumeroParaChamar] = useState('');
   const [credencialInvalida, setCredencialInvalida] = useState(false);
+  const [assistenteIAOpen, setAssistenteIAOpen] = useState(false);
 
   // Softphone WebRTC — só inicializa se tiver sip_password
   const softphone = useSoftphone(sipConfig?.sip_password ? sipConfig : null);
@@ -193,6 +195,10 @@ export default function CallCenter() {
           <Button variant="outline" size="sm" onClick={() => window.location.href = '/DiagnosticoNvoip'} className="border-blue-200 text-blue-700 hover:bg-blue-50">
             <Stethoscope className="w-4 h-4 mr-1" />
             Diagnóstico
+          </Button>
+          <Button size="sm" onClick={() => setAssistenteIAOpen(true)} className="bg-violet-600 hover:bg-violet-700 text-white gap-1.5">
+            <Sparkles className="w-4 h-4" />
+            Assistente IA
           </Button>
         </div>
       </div>
@@ -413,8 +419,11 @@ export default function CallCenter() {
         onOpenChange={setTorpedoOpen}
         numbersip={config?.numbersip}
       />
-
-
+      <AssistenteIALigacao
+        open={assistenteIAOpen}
+        onOpenChange={setAssistenteIAOpen}
+        currentUser={user}
+      />
     </div>
   );
 }
