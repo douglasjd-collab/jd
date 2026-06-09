@@ -168,11 +168,6 @@ export default function TarefaDetalhesModal({
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b bg-white">
           <div className="flex-1 min-w-0 pr-4">
             <div className="flex items-center gap-2 mb-1">
-              {status && (
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full text-white" style={{ backgroundColor: status.cor }}>
-                  {status.nome}
-                </span>
-              )}
               {tarefa.prioridade && (
                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${PRIORIDADE_CORES[tarefa.prioridade] || 'bg-slate-100 text-slate-600'}`}>
                   {PRIORIDADE_LABEL[tarefa.prioridade] || tarefa.prioridade}
