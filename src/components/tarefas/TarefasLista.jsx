@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import SelecionarStatusResponsaveisModal from './SelecionarStatusResponsaveisModal';
-import TarefaDetalhesModal from './TarefaDetalhesModal';
+import TarefaDetalhesModal from './TarefaDetalhesModal.jsx';
 import ResponsaveisModal from './ResponsaveisModal';
 import SelecionarStatusModal from './SelecionarStatusModal';
 

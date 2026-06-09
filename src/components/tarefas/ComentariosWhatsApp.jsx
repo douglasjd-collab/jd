@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Send, UserPlus, X } from 'lucide-react';
+import { Send, Paperclip, AtSign, Smile, X, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
 
 function getInitials(name = '') {
-  const parts = name.trim().split(/\s+/);
+  const parts = (name || '').trim().split(/\s+/);
   return (parts[0]?.[0] || '') + (parts[1]?.[0] || '');
 }
 
@@ -13,9 +12,7 @@ function formatarHora(dateStr) {
   if (!dateStr) return '';
   try {
     const d = new Date(dateStr);
-    const hoje = new Date();
-    const isHoje = d.toDateString() === hoje.toDateString();
-    return isHoje ? format(d, 'HH:mm') : format(d, 'dd/MM HH:mm');
+    return format(d, 'dd/MM HH:mm');
   } catch { return ''; }
 }
 
@@ -24,6 +21,7 @@ export default function ComentariosWhatsApp({
   onEnviar, enviando, colaboradores = []
 }) {
   const bottomRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [showSelectResp, setShowSelectResp] = useState(false);
   const [responsavelSelecionado, setResponsavelSelecionado] = useState(null);
   const [filtroColab, setFiltroColab] = useState('');
@@ -49,50 +47,59 @@ export default function ComentariosWhatsApp({
   };
 
   const colabsFiltrados = colaboradores.filter(c =>
-    c.nome?.toLowerCase().includes(filtroColab.toLowerCase()) &&
-    c.id !== currentUser?.colaborador_id
+    c.nome?.toLowerCase().includes(filtroColab.toLowerCase())
   );
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden rounded-2xl">
       {/* Lista de mensagens */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 bg-slate-50">
+      <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
         {ordenados.length === 0 && (
-          <p className="text-sm text-slate-400 text-center py-8">Nenhum comentário ainda</p>
+          <p className="text-sm text-slate-400 text-center py-10">Nenhum comentário ainda</p>
         )}
+
         {ordenados.map(c => {
           const isMe = c.usuario_id === currentUser?.id || c.usuario_nome === (currentUser?.full_name || currentUser?.nome_perfil);
           return (
-            <div key={c.id} className={`flex gap-2 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div key={c.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
               {/* Avatar */}
-              <Avatar className="h-8 w-8 flex-shrink-0 mt-1">
-                {c.usuario_foto && <img src={c.usuario_foto} alt="" className="w-full h-full object-cover rounded-full" />}
-                <AvatarFallback className={`text-xs ${isMe ? 'bg-[#1e3a5f] text-white' : 'bg-blue-100 text-blue-700'}`}>
+              <Avatar className="h-9 w-9 flex-shrink-0">
+                {c.usuario_foto && <AvatarImage src={c.usuario_foto} />}
+                <AvatarFallback className="bg-[#1e3a5f] text-white text-xs font-bold">
                   {getInitials(c.usuario_nome)}
                 </AvatarFallback>
               </Avatar>
 
-              <div className={`max-w-[72%] flex flex-col gap-0.5 ${isMe ? 'items-end' : 'items-start'}`}>
-                {/* Nome acima do balão */}
-                <span className={`text-xs font-semibold px-1 ${isMe ? 'text-slate-500' : 'text-slate-600'}`}>
+              <div className={`max-w-[68%] flex flex-col gap-1 ${isMe ? 'items-end' : 'items-start'}`}>
+                {/* Nome */}
+                <span className="text-xs font-semibold text-slate-500 px-1">
                   {isMe ? 'Você' : c.usuario_nome}
                 </span>
 
-                <div className={`rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words shadow-sm ${
+                {/* Balão */}
+                <div className={`rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap break-words shadow-sm ${
                   isMe
-                    ? 'bg-[#1e3a5f] text-white rounded-tr-none'
-                    : 'bg-white text-slate-800 border border-slate-100 rounded-tl-none'
+                    ? 'bg-slate-200 text-slate-800 rounded-tr-sm'
+                    : 'bg-slate-100 text-slate-800 rounded-tl-sm'
                 }`}>
                   {c.mensagem}
-                  {/* Badge responsável mencionado */}
                   {c.responsavel_mencionado_nome && (
-                    <div className={`mt-1.5 text-xs flex items-center gap-1 ${isMe ? 'text-blue-200' : 'text-blue-600'}`}>
+                    <div className="mt-1.5 text-xs flex items-center gap-1 text-blue-500">
                       <UserPlus className="w-3 h-3" />
                       <span>Para: {c.responsavel_mencionado_nome}</span>
                     </div>
                   )}
                 </div>
-                <span className="text-xs text-slate-400 px-1">{formatarHora(c.created_date)}</span>
+
+                {/* Hora + check */}
+                <div className={`flex items-center gap-1 px-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <span className="text-xs text-slate-400">{formatarHora(c.created_date)}</span>
+                  {isMe && (
+                    <svg className="w-3.5 h-3.5 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M1.5 12.5l5 5L20.5 6M7 12.5l5 5L20.5 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -102,36 +109,32 @@ export default function ComentariosWhatsApp({
 
       {/* Responsável selecionado */}
       {responsavelSelecionado && (
-        <div className="border-t bg-blue-50 px-4 py-2 flex items-center gap-2">
-          <UserPlus className="w-4 h-4 text-blue-600 flex-shrink-0" />
-          <span className="text-xs text-blue-700 font-medium flex-1">
-            Notificar: <strong>{responsavelSelecionado.nome}</strong>
-          </span>
+        <div className="px-4 py-2 bg-blue-50 border-t border-blue-100 flex items-center gap-2">
+          <UserPlus className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+          <span className="text-xs text-blue-700 flex-1">Notificando: <strong>{responsavelSelecionado.nome}</strong></span>
           <button onClick={() => setResponsavelSelecionado(null)} className="text-blue-400 hover:text-blue-600">
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
-      {/* Painel seleção de responsável */}
+      {/* Painel selecionar responsável */}
       {showSelectResp && (
-        <div className="border-t bg-white px-3 py-3 shadow-inner max-h-48 overflow-y-auto">
+        <div className="border-t bg-white px-4 py-3 max-h-44 overflow-y-auto">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-600">Selecionar responsável para notificar</span>
+            <span className="text-xs font-semibold text-slate-600">Selecionar para notificar</span>
             <button onClick={() => setShowSelectResp(false)} className="text-slate-400 hover:text-slate-600">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
           <input
+            autoFocus
             type="text"
-            placeholder="Buscar..."
+            placeholder="Buscar colaborador..."
             className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 mb-2 outline-none focus:border-slate-400"
             value={filtroColab}
             onChange={e => setFiltroColab(e.target.value)}
           />
-          {colabsFiltrados.length === 0 && (
-            <p className="text-xs text-slate-400 text-center py-2">Nenhum colaborador encontrado</p>
-          )}
           {colabsFiltrados.map(c => (
             <button
               key={c.id}
@@ -139,52 +142,77 @@ export default function ComentariosWhatsApp({
               className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-50 text-left"
             >
               <Avatar className="h-6 w-6 flex-shrink-0">
-                {c.foto_perfil && <img src={c.foto_perfil} alt="" className="w-full h-full object-cover rounded-full" />}
-                <AvatarFallback className="text-xs bg-blue-100 text-blue-700">{getInitials(c.nome)}</AvatarFallback>
+                {c.foto_perfil && <AvatarImage src={c.foto_perfil} />}
+                <AvatarFallback className="text-xs bg-slate-200">{getInitials(c.nome)}</AvatarFallback>
               </Avatar>
               <span className="text-sm text-slate-700">{c.nome}</span>
             </button>
           ))}
+          {colabsFiltrados.length === 0 && (
+            <p className="text-xs text-slate-400 text-center py-2">Nenhum colaborador encontrado</p>
+          )}
         </div>
       )}
 
-      {/* Input fixo no fundo */}
-      <div className="border-t bg-white px-3 py-3 flex gap-2 items-end flex-shrink-0">
-        {/* Botão adicionar responsável */}
-        <button
-          type="button"
-          title="Notificar responsável"
-          onClick={() => setShowSelectResp(v => !v)}
-          className={`h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 border transition-colors ${
-            showSelectResp || responsavelSelecionado
-              ? 'bg-blue-600 text-white border-blue-600'
-              : 'border-slate-200 text-slate-400 hover:text-blue-600 hover:border-blue-400'
-          }`}
-        >
-          <UserPlus className="w-4 h-4" />
-        </button>
+      {/* Input area */}
+      <div className="border-t bg-white px-4 py-3 flex-shrink-0">
+        <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+          <textarea
+            rows={2}
+            className="w-full text-sm px-4 pt-3 pb-1 outline-none placeholder:text-slate-400 bg-transparent resize-none leading-5"
+            placeholder="Escreva um comentário..."
+            value={novoComentario}
+            onChange={e => {
+              setNovoComentario(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+            }}
+            onKeyDown={handleKeyDown}
+            style={{ minHeight: '44px' }}
+          />
+          {/* Barra inferior do input */}
+          <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center gap-1">
+              {/* Anexo */}
+              <input type="file" ref={fileInputRef} className="hidden" />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                title="Anexar arquivo"
+              >
+                <Paperclip className="w-4 h-4" />
+              </button>
+              {/* Mencionar responsável */}
+              <button
+                type="button"
+                onClick={() => setShowSelectResp(v => !v)}
+                className={`p-1.5 rounded-lg transition-colors ${showSelectResp || responsavelSelecionado ? 'text-blue-600 bg-blue-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
+                title="Notificar responsável"
+              >
+                <AtSign className="w-4 h-4" />
+              </button>
+              {/* Emoji placeholder */}
+              <button
+                type="button"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                title="Emoji"
+              >
+                <Smile className="w-4 h-4" />
+              </button>
+            </div>
 
-        <textarea
-          rows={1}
-          className="flex-1 text-sm border border-slate-200 rounded-2xl px-4 py-2 outline-none focus:border-slate-400 placeholder:text-slate-400 bg-slate-50 resize-none overflow-hidden leading-5"
-          placeholder="Escreva um comentário..."
-          value={novoComentario}
-          onChange={e => {
-            setNovoComentario(e.target.value);
-            e.target.style.height = 'auto';
-            e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
-          }}
-          onKeyDown={handleKeyDown}
-          style={{ minHeight: '36px' }}
-        />
-        <Button
-          size="icon"
-          className="h-9 w-9 rounded-full bg-[#1e3a5f] hover:bg-[#2a4a73] text-white flex-shrink-0"
-          disabled={!novoComentario.trim() || enviando}
-          onClick={handleEnviar}
-        >
-          <Send className="w-4 h-4" />
-        </Button>
+            {/* Botão enviar */}
+            <button
+              type="button"
+              disabled={!novoComentario.trim() || enviando}
+              onClick={handleEnviar}
+              className="h-9 w-9 rounded-full bg-[#1e3a5f] hover:bg-[#2a4a73] text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
