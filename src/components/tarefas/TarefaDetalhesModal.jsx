@@ -6,7 +6,7 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   X, Calendar, User, Tag, CheckSquare, MessageSquare, Clock, AlertTriangle, Paperclip, FileText, Download,
-  Sparkles, AlertCircle, Timer, CheckCircle2, Zap, RefreshCw, Loader2
+  Sparkles, AlertCircle, Timer, CheckCircle2, Zap, RefreshCw, Loader2, ChevronDown, Check
 } from 'lucide-react';
 import ColaboracaoInterna from './ColaboracaoInterna';
 import ChecklistAba from './ChecklistAba';
@@ -92,6 +92,35 @@ export default function TarefaDetalhesModal({
 
   const atualizarChecklist = async (novaLista) => {
     await onUpdate(tarefa.id, { checklist: JSON.stringify(novaLista) });
+  };
+
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const statusDropdownRef = useRef(null);
+  useEffect(() => {
+    if (!statusDropdownOpen) return;
+    const handler = (e) => {
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(e.target)) {
+        setStatusDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [statusDropdownOpen]);
+  const [editandoPrazo, setEditandoPrazo] = useState(false);
+  const [novoPrazo, setNovoPrazo] = useState('');
+  const [salvandoPrazo, setSalvandoPrazo] = useState(false);
+
+  const handleAlterarStatus = async (novoStatus) => {
+    setStatusDropdownOpen(false);
+    await onUpdate(tarefa.id, { status: novoStatus });
+  };
+
+  const handleSalvarPrazo = async () => {
+    if (!novoPrazo) { setEditandoPrazo(false); return; }
+    setSalvandoPrazo(true);
+    await onUpdate(tarefa.id, { data_conclusao_prevista: novoPrazo });
+    setSalvandoPrazo(false);
+    setEditandoPrazo(false);
   };
 
   if (!tarefa) return null;
@@ -222,6 +251,81 @@ export default function TarefaDetalhesModal({
                   </div>
                 </div>
               )}
+
+              {/* Ações rápidas: Status e Prazo */}
+              <div className="flex gap-3">
+                {/* Alterar Status */}
+                <div className="relative flex-1" ref={statusDropdownRef}>
+                  <p className="text-xs text-slate-400 font-medium mb-1.5">Status</p>
+                  <button
+                    onClick={() => setStatusDropdownOpen(v => !v)}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2.5 border rounded-xl bg-white hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700"
+                  >
+                    <span className="flex items-center gap-2">
+                      {status && (
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: status.cor }} />
+                      )}
+                      {status?.nome || tarefa.status || 'Sem status'}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  </button>
+                  {statusDropdownOpen && (
+                    <div className="absolute z-50 top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                      {statusList.map(s => (
+                        <button
+                          key={s.id}
+                          onClick={() => handleAlterarStatus(s.slug || s.id)}
+                          className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-slate-50 transition-colors text-left"
+                        >
+                          <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.cor }} />
+                          <span className="flex-1 font-medium text-slate-700">{s.nome}</span>
+                          {(s.slug || s.id) === tarefa.status && <Check className="w-3.5 h-3.5 text-blue-500" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Alterar Prazo */}
+                <div className="flex-1">
+                  <p className="text-xs text-slate-400 font-medium mb-1.5">Prazo</p>
+                  {editandoPrazo ? (
+                    <div className="flex gap-1.5">
+                      <input
+                        type="date"
+                        value={novoPrazo}
+                        onChange={e => setNovoPrazo(e.target.value)}
+                        className="flex-1 border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleSalvarPrazo}
+                        disabled={salvandoPrazo}
+                        className="px-3 py-2 bg-blue-500 text-white rounded-xl text-sm font-medium hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                      >
+                        {salvandoPrazo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => setEditandoPrazo(false)}
+                        className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm hover:bg-slate-200 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => { setNovoPrazo(tarefa.data_conclusao_prevista || ''); setEditandoPrazo(true); }}
+                      className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 border rounded-xl hover:bg-slate-50 transition-colors text-sm font-medium ${atrasada ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100' : 'bg-white text-slate-700'}`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Calendar className={`w-4 h-4 ${atrasada ? 'text-red-400' : 'text-slate-400'}`} />
+                        {tarefa.data_conclusao_prevista ? formatarData(tarefa.data_conclusao_prevista) : 'Sem prazo'}
+                      </span>
+                      <span className="text-xs text-slate-400 font-normal">Editar</span>
+                    </button>
+                  )}
+                </div>
+              </div>
 
               {/* Grid de informações */}
               <div className="grid grid-cols-2 gap-3">
