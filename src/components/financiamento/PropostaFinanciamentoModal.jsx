@@ -21,19 +21,20 @@ const STATUS_OPTIONS = [
 ];
 
 const EMPTY = {
-  cliente_id: '', cliente_nome: '', cliente_cpf: '', cliente_telefone: '', cliente_renda: '', cliente_profissao: '',
-  tipo_veiculo: 'carro', veiculo_marca: '', veiculo_modelo: '', veiculo_ano: '', veiculo_placa: '',
-  valor_veiculo: '', valor_entrada: '', valor_financiado: '', banco: '', prazo_meses: '',
-  valor_parcela: '', taxa_juros: '',
-  tarifa_cadastral: '', tarifa_cadastral_status: 'aguardando_pagamento',
-  custos_operacionais: '',
-  percentual_comissao: '',
-  vendedor_id: '', vendedor_nome: '',
-  empresa_id: '', empresa_nome: '',
-  filial_id: '', filial_nome: '',
-  status: 'em_analise',
-  data_proposta: '', data_aprovacao: '', data_pagamento: '',
-  observacoes: '',
+cliente_id: '', cliente_nome: '', cliente_cpf: '', cliente_telefone: '', cliente_renda: '', cliente_profissao: '',
+tipo_veiculo: 'carro', veiculo_marca: '', veiculo_modelo: '', veiculo_ano: '', veiculo_placa: '',
+valor_veiculo: '', valor_entrada: '', valor_financiado: '', banco: '', prazo_meses: '',
+valor_parcela: '', taxa_juros: '',
+tarifa_cadastral: '', tarifa_cadastral_status: 'aguardando_pagamento',
+custos_operacionais: '',
+percentual_comissao: '',
+vendedor_id: '', vendedor_nome: '',
+empresa_id: '', empresa_nome: '',
+filial_id: '', filial_nome: '',
+empresa_parceira_id: '', empresa_parceira_nome: '',
+status: 'em_analise',
+data_proposta: '', data_aprovacao: '', data_pagamento: '',
+observacoes: '',
 };
 
 const F = ({ label, children, className = '' }) => (
@@ -47,6 +48,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
   const [form, setForm] = useState(EMPTY);
   const [vendedores, setVendedores] = useState([]);
   const [filiais, setFiliais] = useState([]);
+  const [empresasParceiras, setEmpresasParceiras] = useState([]);
   const [saving, setSaving] = useState(false);
 
   // Busca de cliente
@@ -80,6 +82,8 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
       .then(setVendedores).catch(() => {});
     base44.entities.Filial.filter({ empresa_id: empresaId, situacao: 'ativa' }, 'nome', 100)
       .then(setFiliais).catch(() => {});
+    base44.entities.EmpresaParceira.filter({ empresa_id: empresaId }, 'nome', 200)
+      .then(setEmpresasParceiras).catch(() => {});
   }, [open, user?.empresa_id]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -354,7 +358,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
           {/* Empresa, Filial e Vendedor */}
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">🏢 Responsáveis</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <F label="Vendedor responsável">
                 <Select value={form.vendedor_id || '__none__'} onValueChange={v => {
                   if (v === '__none__') { set('vendedor_id', ''); set('vendedor_nome', ''); return; }
@@ -386,6 +390,23 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                   <SelectContent>
                     <SelectItem value="__none__">Nenhuma</SelectItem>
                     {filiais.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </F>
+              <F label="Empresa Parceira / Parceiro Vendedor">
+                <Select value={form.empresa_parceira_id || '__none__'} onValueChange={v => {
+                  if (v === '__none__') { set('empresa_parceira_id', ''); set('empresa_parceira_nome', ''); return; }
+                  const ep = empresasParceiras.find(x => x.id === v);
+                  set('empresa_parceira_id', v); set('empresa_parceira_nome', ep?.nome || '');
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar parceiro">
+                      {form.empresa_parceira_id ? empresasParceiras.find(e => e.id === form.empresa_parceira_id)?.nome || form.empresa_parceira_nome : 'Nenhum'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Nenhum</SelectItem>
+                    {empresasParceiras.map(ep => <SelectItem key={ep.id} value={ep.id}>{ep.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </F>
