@@ -205,10 +205,29 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.cliente_nome && !buscaCliente) { toast.error('Informe o nome do cliente'); return; }
+    const nomeCliente = form.cliente_nome || buscaCliente;
+    if (!nomeCliente) { toast.error('Informe o nome do cliente'); return; }
     setSaving(true);
     try {
-      const dados = { ...form, cliente_nome: form.cliente_nome || buscaCliente };
+      let clienteId = form.cliente_id;
+      let clienteNome = nomeCliente;
+
+      // Se digitou nome mas não selecionou do CRM, cria o cliente automaticamente
+      if (!clienteId && nomeCliente.trim()) {
+        try {
+          const clienteCriado = await base44.entities.Cliente.create({
+            empresa_id: user.empresa_id,
+            tipo_pessoa: 'Física',
+            nome_completo: nomeCliente.trim(),
+            cpf: form.cliente_cpf || '',
+            celular: form.cliente_telefone || '',
+          });
+          clienteId = clienteCriado.id;
+          clienteNome = clienteCriado.nome_completo;
+        } catch { /* silencioso: salva a proposta mesmo sem criar o cliente */ }
+      }
+
+      const dados = { ...form, cliente_id: clienteId, cliente_nome: clienteNome };
       ['cliente_renda', 'valor_veiculo', 'valor_entrada', 'valor_financiado', 'prazo_meses',
         'valor_parcela', 'taxa_juros', 'tarifa_cadastral', 'custos_operacionais', 'percentual_comissao']
         .forEach(k => { if (dados[k] !== '' && dados[k] !== undefined) dados[k] = parseFloat(String(dados[k]).replace(',', '.')) || 0; });
