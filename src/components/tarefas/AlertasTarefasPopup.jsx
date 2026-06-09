@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Bell, X, MessageCircle, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import TarefaDetalhesModal from './TarefaDetalhesModal';
 
 function formatarHora(dateStr) {
   if (!dateStr) return '';
@@ -19,15 +20,20 @@ export default function AlertasTarefasPopup({ user, onAbrirTarefa }) {
   const [visto, setVisto] = useState(false);
   const [aberto, setAberto] = useState(false);
 
+  // Modal da tarefa
+  const [tarefaModal, setTarefaModal] = useState(null);
+  const [modalAberto, setModalAberto] = useState(false);
+  const [statusList, setStatusList] = useState([]);
+  const [colaboradores, setColaboradores] = useState([]);
+  const [subsetores, setSubsetores] = useState([]);
+
   useEffect(() => {
     if (!user?.colaborador_id) return;
     carregarAlertas();
-    // Poll a cada 30s
     const interval = setInterval(carregarAlertas, 30000);
     return () => clearInterval(interval);
   }, [user?.colaborador_id]);
 
-  // Abre popup automaticamente quando chega alerta novo
   useEffect(() => {
     if (alertas.length > 0 && !visto) {
       setAberto(true);
@@ -59,19 +65,55 @@ export default function AlertasTarefasPopup({ user, onAbrirTarefa }) {
     setAberto(false);
   };
 
-  const handleAbrirTarefa = (alerta) => {
+  const handleVerComentario = async (alerta) => {
     marcarLido(alerta);
-    onAbrirTarefa?.(alerta.tarefa_id);
     setAberto(false);
+
+    const filtroEmpresa = user.empresa_id ? { empresa_id: user.empresa_id } : {};
+
+    const [tarefas, statuses, colabs, subs] = await Promise.all([
+      base44.entities.Tarefa.filter({ id: alerta.tarefa_id }),
+      base44.entities.StatusTarefa.filter(filtroEmpresa, 'ordem', 100).catch(() => []),
+      base44.entities.Colaborador.filter(filtroEmpresa, null, 200).catch(() => []),
+      base44.entities.SubsetorTarefa.filter(filtroEmpresa, null, 200).catch(() => []),
+    ]);
+
+    setTarefaModal(tarefas[0] || null);
+    setStatusList(statuses);
+    setColaboradores(colabs);
+    setSubsetores(subs);
+    setModalAberto(true);
+  };
+
+  const handleUpdate = async (id, data) => {
+    await base44.entities.Tarefa.update(id, data);
+    const updated = await base44.entities.Tarefa.filter({ id });
+    if (updated[0]) setTarefaModal(updated[0]);
   };
 
   const naoLidos = alertas.length;
 
-  if (naoLidos === 0 && !aberto) return null;
+  if (naoLidos === 0 && !aberto) return (
+    <>
+      {tarefaModal && (
+        <TarefaDetalhesModal
+          open={modalAberto}
+          onOpenChange={setModalAberto}
+          tarefa={tarefaModal}
+          statusList={statusList}
+          currentUser={user}
+          onUpdate={handleUpdate}
+          colaboradores={colaboradores}
+          subsetoresList={subsetores}
+          abaAtiva="comentarios"
+        />
+      )}
+    </>
+  );
 
   return (
     <>
-      {/* Popup modal */}
+      {/* Popup de alertas */}
       {aberto && alertas.length > 0 && (
         <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-16 px-4 pointer-events-none">
           <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md pointer-events-auto overflow-hidden">
@@ -112,7 +154,7 @@ export default function AlertasTarefasPopup({ user, onAbrirTarefa }) {
                   </div>
                   <div className="flex flex-col gap-1 flex-shrink-0">
                     <button
-                      onClick={() => handleAbrirTarefa(a)}
+                      onClick={() => handleVerComentario(a)}
                       className="text-xs bg-[#1e3a5f] text-white px-3 py-1 rounded-full hover:bg-[#2a4a73] flex items-center gap-1"
                     >
                       Ver <ChevronRight className="w-3 h-3" />
@@ -152,6 +194,21 @@ export default function AlertasTarefasPopup({ user, onAbrirTarefa }) {
             {naoLidos}
           </span>
         </button>
+      )}
+
+      {/* Modal da tarefa direto na aba de comentários */}
+      {tarefaModal && (
+        <TarefaDetalhesModal
+          open={modalAberto}
+          onOpenChange={setModalAberto}
+          tarefa={tarefaModal}
+          statusList={statusList}
+          currentUser={user}
+          onUpdate={handleUpdate}
+          colaboradores={colaboradores}
+          subsetoresList={subsetores}
+          abaAtiva="comentarios"
+        />
       )}
     </>
   );
