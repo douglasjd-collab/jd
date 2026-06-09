@@ -24,10 +24,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2, Users, Globe, AlertTriangle, Clock, Flame, Target, Settings, ChevronDown, Zap, MessageSquare, Bell, PhoneCall, PhoneOff } from 'lucide-react';
+import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2, Users, Globe, AlertTriangle, Clock, Flame, Target, Settings, ChevronDown, Zap, MessageSquare, Bell, PhoneCall, PhoneOff, Bot } from 'lucide-react';
 import useSoftphone from '@/components/callcenter/useSoftphone';
 import ChatFunilModal from '@/components/funil/ChatFunilModal';
 import OportunidadeModal from '@/components/oportunidade/OportunidadeModal';
+import PainelIAFunil from '@/components/funil/PainelIAFunil';
+import { getProdutoConfig } from '@/components/funil/produtoConfig';
 import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
 import CampanhasStatusModal from '@/components/funil/CampanhasStatusModal';
 import AlertasPreFechamentoBell from '@/components/funil/AlertasPreFechamentoBell';
@@ -70,6 +72,7 @@ export default function FunilVendas() {
   const [oportunidadeModalId, setOportunidadeModalId] = useState(null);
   const [configAlertasOpen, setConfigAlertasOpen] = useState(false);
   const [abaSelecionada, setAbaSelecionada] = useState('funil'); // 'funil' | 'relatorio'
+  const [painelIAOportunidade, setPainelIAOportunidade] = useState(null);
 
   // ── Softphone WebRTC (mesmo do BatePapo/CallCenter) ───────────────────────
   const { data: nvoipConfig } = useQuery({
@@ -704,58 +707,24 @@ export default function FunilVendas() {
   });
 
   const handleDragEnd = async (result) => {
-    console.log('🎯 handleDragEnd iniciado:', result);
-    
-    if (!result.destination) {
-      console.log('❌ Sem destino - cancelando');
-      return;
-    }
-    
-    // Não fazer nada se soltar no mesmo lugar
-    if (result.source.droppableId === result.destination.droppableId && 
-        result.source.index === result.destination.index) {
-      console.log('⚠️ Mesma posição - cancelando');
-      return;
-    }
+    if (!result.destination) return;
+    if (result.source.droppableId === result.destination.droppableId &&
+        result.source.index === result.destination.index) return;
 
     const oportunidadeId = result.draggableId;
     const novaEtapaId = result.destination.droppableId;
     const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
-    
-    console.log('📋 Dados do drag:', {
-      oportunidadeId,
-      novaEtapaId,
-      oportunidade: oportunidade?.titulo,
-      currentUser: currentUser?.full_name
-    });
-    
-    // Verificar permissões: usuários superiores ou responsável pela oportunidade podem mover
     const isResponsavelMovimentar = oportunidade?.vendedor_id === currentUser?.id || oportunidade?.vendedor_id === currentUser?.colaborador_id;
     const podeMovimentar = podeAlterarQuadro || isResponsavelMovimentar;
-    
-    console.log('🔐 Permissões:', {
-      podeAlterarQuadro,
-      isResponsavel: oportunidade?.vendedor_id === currentUser?.id,
-      podeMovimentar
-    });
-    
+
     if (!podeMovimentar) {
-      console.log('❌ SEM PERMISSÃO');
       toast.error('Você não tem permissão para mover esta oportunidade');
       return;
     }
 
     try {
-      console.log('🚀 Iniciando mutation...');
-      const result = await moverOportunidadeMutation.mutateAsync({ oportunidadeId, novaEtapaId });
-      console.log('✅ Mutation concluída:', result);
+      await moverOportunidadeMutation.mutateAsync({ oportunidadeId, novaEtapaId });
     } catch (error) {
-      console.error('❌ ERRO na mutation:', error);
-      console.error('Detalhes:', {
-        message: error.message,
-        stack: error.stack,
-        response: error.response
-      });
       toast.error(`Erro: ${error.message}`);
       queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
     }
@@ -1304,15 +1273,27 @@ export default function FunilVendas() {
                     className="flex-shrink-0 w-80"
                   >
                     <Card className={`border-0 shadow-sm ${snapshot.isDraggingOver ? 'ring-2 ring-blue-400' : ''}`}>
-                      {/* Header da coluna */}
-                      <div className="p-4 border-b" style={{ borderTopColor: etapa.cor, borderTopWidth: 4 }}>
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold text-slate-900">{etapa.nome}</h3>
-                          <Badge variant="secondary">{quantidade}</Badge>
+                      {/* Header da coluna melhorado */}
+                      <div className="p-3 border-b" style={{ borderTopColor: etapa.cor, borderTopWidth: 4 }}>
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-semibold text-slate-900 text-sm">{etapa.nome}</h3>
+                          <Badge variant="secondary" className="text-xs">{quantidade}</Badge>
                         </div>
-                        <div className="text-sm text-slate-600">
-                          {formatCurrency(valor)}
-                        </div>
+                        <div className="text-sm font-bold text-emerald-700">{formatCurrency(valor)}</div>
+                        {filterProduto === 'todos' && (() => {
+                          const dist = {};
+                          oportEtapa.forEach(o => { const p = o.produto || 'consorcio'; dist[p] = (dist[p] || 0) + 1; });
+                          const entries = Object.entries(dist);
+                          if (entries.length <= 1) return null;
+                          return (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {entries.slice(0, 3).map(([prod, cnt]) => {
+                                const cfg = getProdutoConfig(prod);
+                                return <span key={prod} className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${cfg.bg} ${cfg.text}`}>{cfg.emoji} {cfg.label} ({cnt})</span>;
+                              })}
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Cards das oportunidades */}
@@ -1372,16 +1353,26 @@ export default function FunilVendas() {
                                cardClasses = 'bg-slate-50 border border-slate-200';
                              }
 
+                             const prodCfg = getProdutoConfig(oport.produto);
                              return (
                              <div
                                ref={provided.innerRef}
                                {...provided.draggableProps}
                                {...provided.dragHandleProps}
-                               className={`p-3 rounded-lg shadow-sm transition-all cursor-move ${
+                               className={`rounded-lg shadow-sm transition-all cursor-move overflow-hidden ${
                                  snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-400' : ''
                                } ${cardClasses}`}
                                onDoubleClick={() => setOportunidadeModalId(oport.id)}
                              >
+                                {/* Barra colorida do produto */}
+                                <div className="h-1.5 w-full" style={{ backgroundColor: prodCfg.barra }} />
+                                <div className="p-3">
+                                {/* Badge do produto */}
+                                <div className="mb-2">
+                                  <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${prodCfg.bg} ${prodCfg.text}`}>
+                                    {prodCfg.emoji} {prodCfg.label}
+                                  </span>
+                                </div>
                                 {prioridadeLabel && <div className="mb-1.5">{prioridadeLabel}</div>}
                                 {preFechamentoAtivo && (
                                   <div className="mb-2 p-2 bg-purple-100 rounded-lg border border-purple-300 text-xs text-purple-800">
@@ -1537,6 +1528,15 @@ export default function FunilVendas() {
                                         <MessageSquare className="w-4 h-4 text-green-600" />
                                       </Button>
                                     )}
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6 hover:bg-purple-100"
+                                      onClick={(e) => { e.stopPropagation(); setPainelIAOportunidade(oport); }}
+                                      title="Análise IA"
+                                    >
+                                      <Bot className="w-4 h-4 text-purple-600" />
+                                    </Button>
                                     {(oport.telefone_lead || oport.cliente_telefone) && nvoipConfig?.ativo && (
                                       <Button
                                         size="icon"
@@ -1587,11 +1587,6 @@ export default function FunilVendas() {
                                     ⏱️ Há {calcularTempoNaEtapa(oport.data_ultima_movimentacao)}
                                   </div>
                                   <div className="flex items-center gap-2">
-                                    {oport.data_cadastro_lead && (
-                                      <div className="flex items-center gap-1 text-slate-500">
-                                        📅 {format(new Date(oport.data_cadastro_lead), 'dd/MM/yyyy')}
-                                      </div>
-                                    )}
                                     {oport.data_fechamento_prevista && (
                                       <div className="flex items-center gap-1 text-slate-500">
                                         <Calendar className="w-3 h-3" />
@@ -1600,10 +1595,11 @@ export default function FunilVendas() {
                                     )}
                                   </div>
                                 </div>
-                              </div>
-                            );
-                            }}
-                          </Draggable>
+                                </div>{/* fim p-3 */}
+                                </div>
+                                );
+                                }}
+                                </Draggable>
                         ))}
                         {provided.placeholder}
                       </div>
@@ -1973,10 +1969,20 @@ export default function FunilVendas() {
         onUpdate={() => queryClient.invalidateQueries({ queryKey: ['oportunidades'] })}
       />
 
+      {/* Painel IA */}
+      {painelIAOportunidade && (
+        <PainelIAFunil
+          oportunidade={painelIAOportunidade}
+          onClose={() => setPainelIAOportunidade(null)}
+          formatCurrency={formatCurrency}
+          calcularTempoNaEtapa={calcularTempoNaEtapa}
+        />
+      )}
+
       {/* FAB - Nova Oportunidade */}
       <button
         onClick={openNovaOportunidade}
-        className={`fixed bottom-8 right-8 z-50 flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2a4a73] text-white px-5 py-3.5 rounded-full shadow-2xl transition-all hover:scale-105 font-semibold text-sm ${!!oportunidadeModalId ? 'hidden' : ''}`}
+        className={`fixed bottom-8 right-8 z-50 flex items-center gap-2 bg-[#1e3a5f] hover:bg-[#2a4a73] text-white px-5 py-3.5 rounded-full shadow-2xl transition-all hover:scale-105 font-semibold text-sm ${!!oportunidadeModalId || !!painelIAOportunidade ? 'hidden' : ''}`}
       >
         <Plus className="w-5 h-5" />
         Nova Oportunidade
