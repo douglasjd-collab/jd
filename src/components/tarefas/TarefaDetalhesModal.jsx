@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Phone, CreditCard, Calendar, Briefcase, ClipboardList, MessageCircle, History, Paperclip, ChevronRight, ArrowRight, Upload, Trash2, FileText, Image, File } from 'lucide-react';
 import ComentariosWhatsApp from './ComentariosWhatsApp';
+import ChecklistAba from './ChecklistAba';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -340,31 +341,11 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
 
             {/* CHECKLIST */}
             {aba === 'checklist' && (
-              <div>
-                {checklist.length > 0 && (
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-slate-700">{checkDone} de {checklist.length} concluídos</span>
-                      <span className="text-sm font-bold text-slate-500">{checkPct}%</span>
-                    </div>
-                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${checkPct}%` }} />
-                    </div>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  {checklist.map(item => (
-                    <div key={item.id} className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${item.checked ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}>
-                      <Checkbox checked={item.checked} onCheckedChange={v => handleCheckItem(item.id, !!v)} />
-                      <span className={`text-sm flex-1 ${item.checked ? 'line-through text-slate-400' : 'text-slate-700'}`}>{item.texto}</span>
-                      {item.checked && <span className="text-xs text-green-600">✓</span>}
-                    </div>
-                  ))}
-                  {checklist.length === 0 && (
-                    <p className="text-sm text-slate-400 text-center py-8">Nenhum item no checklist</p>
-                  )}
-                </div>
-              </div>
+              <ChecklistAba
+                checklist={checklist}
+                empresaId={tarefa.empresa_id}
+                onUpdate={(updated) => onUpdate?.(tarefa.id, { checklist: JSON.stringify(updated) })}
+              />
             )}
 
             {/* COMENTÁRIOS — estilo WhatsApp */}
