@@ -251,6 +251,16 @@ export default function TarefaDetalhesModal({
           {/* Detalhes */}
           {aba === 'detalhes' && (
             <div className="p-6 space-y-5 overflow-y-auto flex-1">
+              {/* Cliente */}
+              {tarefa.cliente_nome && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide mb-2">Cliente</p>
+                  <p className="text-base font-bold text-slate-900 mb-2">{tarefa.cliente_nome}</p>
+                  {tarefa.cliente_cpf && <p className="text-sm text-slate-600 mb-1"><span className="font-medium">CPF:</span> {tarefa.cliente_cpf}</p>}
+                  {tarefa.cliente_telefone && <p className="text-sm text-slate-600"><span className="font-medium">Tel:</span> {tarefa.cliente_telefone}</p>}
+                </div>
+              )}
+
               {/* Responsável principal */}
               {(responsavelPrincipal || tarefa.responsavel_principal_nome) && (
                 <div className="flex items-center gap-4 bg-slate-50 rounded-xl p-4">
@@ -430,14 +440,7 @@ export default function TarefaDetalhesModal({
                     {formatarData(tarefa.data_conclusao_prevista)}
                   </p>
                 </div>
-                {tarefa.cliente_nome && (
-                   <div className="bg-white border rounded-xl p-3 col-span-2">
-                     <p className="text-xs text-slate-400 mb-1 flex items-center gap-1"><User className="w-3 h-3" /> Cliente</p>
-                     <p className="text-sm font-semibold text-slate-800 mb-1">{tarefa.cliente_nome}</p>
-                     {tarefa.cliente_cpf && <p className="text-xs text-slate-500">CPF: {tarefa.cliente_cpf}</p>}
-                     {tarefa.cliente_telefone && <p className="text-xs text-slate-500">Tel: {tarefa.cliente_telefone}</p>}
-                   </div>
-                 )}
+
                 {(subsetor || tarefa.subsetor_nome) && (
                   <div className="bg-white border rounded-xl p-3">
                     <p className="text-xs text-slate-400 mb-1 flex items-center gap-1"><Tag className="w-3 h-3" /> Tipo</p>
