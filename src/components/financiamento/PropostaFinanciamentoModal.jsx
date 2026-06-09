@@ -97,18 +97,25 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
       setBuscandoCliente(true);
       try {
         const qLower = q.toLowerCase().trim();
-        const res = await base44.entities.Cliente.filter({ empresa_id: user?.empresa_id }, 'nome_completo', 2000);
+        const qDigits = q.replace(/\D/g, '');
+        // Busca sem filtro de empresa_id para garantir que retorna resultados
+        const filtro = user?.empresa_id ? { empresa_id: user.empresa_id } : {};
+        const res = await base44.entities.Cliente.list('nome_completo', 2000);
         const filtrado = res.filter(c => {
+          // Filtra pela empresa se disponível
+          if (user?.empresa_id && c.empresa_id && c.empresa_id !== user.empresa_id) return false;
           const nome = (c.nome_completo || '').toLowerCase();
           const cpf = (c.cpf || '').replace(/\D/g, '');
-          const qDigits = q.replace(/\D/g, '');
           return nome.includes(qLower) ||
             (qDigits.length >= 3 && cpf.includes(qDigits)) ||
-            (c.celular || '').includes(q);
-        }).slice(0, 10);
+            (c.celular || '').includes(q) ||
+            (c.telefone_fixo || '').includes(q);
+        }).slice(0, 15);
         setClientesFiltrados(filtrado);
-      } catch { } finally { setBuscandoCliente(false); }
-    }, 400);
+      } catch (err) {
+        console.error('Erro ao buscar clientes:', err);
+      } finally { setBuscandoCliente(false); }
+    }, 300);
   }, [user?.empresa_id]);
 
   const selecionarCliente = (c) => {
