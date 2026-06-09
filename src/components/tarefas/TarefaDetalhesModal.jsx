@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Phone, CreditCard, Calendar, Briefcase, ClipboardList, MessageCircle, History, Paperclip, ChevronRight, ArrowRight, Upload, Trash2, FileText, Image, File } from 'lucide-react';
+import ComentariosWhatsApp from './ComentariosWhatsApp';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -236,7 +237,8 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
         <div className="flex flex-1 overflow-hidden">
 
           {/* Coluna esquerda: conteúdo da aba */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+          <div className="flex-1 overflow-hidden flex flex-col">
+          <div className={aba === 'comentarios' ? 'flex-1 overflow-hidden flex flex-col' : 'flex-1 overflow-y-auto p-5 space-y-4'}>
 
             {/* DETALHES */}
             {aba === 'detalhes' && (
@@ -365,27 +367,16 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
               </div>
             )}
 
-            {/* COMENTÁRIOS */}
+            {/* COMENTÁRIOS — estilo WhatsApp */}
             {aba === 'comentarios' && (
-              <div className="space-y-3">
-                {comentarios.length === 0 && (
-                  <p className="text-sm text-slate-400 text-center py-6">Nenhum comentário ainda</p>
-                )}
-                {comentarios.map(c => (
-                  <div key={c.id} className="flex gap-3">
-                    <Avatar className="h-7 w-7 flex-shrink-0">
-                      <AvatarFallback className="text-xs bg-blue-100 text-blue-700">{getInitials(c.usuario_nome)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold text-slate-800">{c.usuario_nome}</span>
-                        <span className="text-xs text-slate-400">{formatarHora(c.created_date)}</span>
-                      </div>
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap">{c.mensagem}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <ComentariosWhatsApp
+                comentarios={comentarios}
+                currentUser={currentUser}
+                novoComentario={novoComentario}
+                setNovoComentario={setNovoComentario}
+                onEnviar={() => novoComentario.trim() && criarComentario.mutate(novoComentario)}
+                enviando={criarComentario.isPending}
+              />
             )}
 
             {/* ANEXOS */}
@@ -470,6 +461,7 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
               </div>
             )}
           </div>
+          </div>
 
           {/* ── Sidebar direita ── */}
           <div className="w-80 flex-shrink-0 border-l bg-slate-50 flex flex-col">
@@ -549,29 +541,7 @@ export default function TarefaDetalhesModal({ open, onOpenChange, tarefa, status
               </div>
             </div>
 
-            {/* Input de comentário fixo no rodapé da sidebar */}
-            <div className="border-t p-3 bg-white flex gap-2 items-center">
-              <input
-                type="text"
-                className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-slate-400 placeholder:text-slate-400 bg-slate-50"
-                placeholder="Escreva um comentário..."
-                value={novoComentario}
-                onChange={e => setNovoComentario(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && novoComentario.trim()) {
-                    criarComentario.mutate(novoComentario);
-                  }
-                }}
-              />
-              <Button
-                size="sm"
-                className="bg-[#1e3a5f] hover:bg-[#2a4a73] text-white px-3 flex-shrink-0"
-                disabled={!novoComentario.trim() || criarComentario.isPending}
-                onClick={() => novoComentario.trim() && criarComentario.mutate(novoComentario)}
-              >
-                Enviar
-              </Button>
-            </div>
+
           </div>
         </div>
       </DialogContent>
