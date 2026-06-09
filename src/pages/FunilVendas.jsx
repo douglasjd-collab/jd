@@ -27,6 +27,7 @@ import {
 import { Plus, MoreHorizontal, Pencil, Eye, DollarSign, Calendar, User, TrendingUp, Filter, UserCheck, MoveHorizontal, Trash2, MessageCircle, X, Search, Loader2, Settings2, Users, Globe, AlertTriangle, Clock, Flame, Target, Settings, ChevronDown, Zap, MessageSquare, Bell, PhoneCall, PhoneOff } from 'lucide-react';
 import useSoftphone from '@/components/callcenter/useSoftphone';
 import ChatFunilModal from '@/components/funil/ChatFunilModal';
+import OportunidadeModal from '@/components/oportunidade/OportunidadeModal';
 import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
 import CampanhasStatusModal from '@/components/funil/CampanhasStatusModal';
 import AlertasPreFechamentoBell from '@/components/funil/AlertasPreFechamentoBell';
@@ -66,6 +67,7 @@ export default function FunilVendas() {
   const [novoFunil, setNovoFunil] = useState({ nome: '', cor: '#3b82f6' });
   const [searchCard, setSearchCard] = useState('');
   const [chatFunilOportunidade, setChatFunilOportunidade] = useState(null);
+  const [oportunidadeModalId, setOportunidadeModalId] = useState(null);
   const [configAlertasOpen, setConfigAlertasOpen] = useState(false);
   const [abaSelecionada, setAbaSelecionada] = useState('funil'); // 'funil' | 'relatorio'
 
@@ -1378,7 +1380,7 @@ export default function FunilVendas() {
                                className={`p-3 rounded-lg shadow-sm transition-all cursor-move ${
                                  snapshot.isDragging ? 'shadow-lg ring-2 ring-blue-400' : ''
                                } ${cardClasses}`}
-                               onDoubleClick={() => navigate(createPageUrl(`OportunidadeDetalhes?id=${oport.id}`))}
+                               onDoubleClick={() => setOportunidadeModalId(oport.id)}
                              >
                                 {prioridadeLabel && <div className="mb-1.5">{prioridadeLabel}</div>}
                                 {preFechamentoAtivo && (
@@ -1960,6 +1962,15 @@ export default function FunilVendas() {
       <ConfiguracaoAlertasPreFechamento
         open={configAlertasOpen}
         onOpenChange={setConfigAlertasOpen}
+      />
+
+      {/* Modal de detalhes da oportunidade (duplo clique) */}
+      <OportunidadeModal
+        open={!!oportunidadeModalId}
+        onOpenChange={(v) => { if (!v) setOportunidadeModalId(null); }}
+        oportunidadeId={oportunidadeModalId}
+        currentUser={currentUser}
+        onUpdate={() => queryClient.invalidateQueries({ queryKey: ['oportunidades'] })}
       />
 
       {/* FAB - Nova Oportunidade */}
