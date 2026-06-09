@@ -77,18 +77,25 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
   useEffect(() => {
     if (!open) return;
     const empresaId = user?.empresa_id;
-    if (!empresaId) return;
-    base44.entities.Colaborador.filter({ empresa_id: empresaId }, 'nome', 200)
+
+    // Colaboradores
+    const filtroColab = empresaId ? { empresa_id: empresaId } : {};
+    base44.entities.Colaborador.filter(filtroColab, 'nome', 200)
       .then(res => setVendedores(res.filter(c => c.status !== 'inativo')))
       .catch(() => {
-        // Fallback: buscar sem filtro de empresa
         base44.entities.Colaborador.list('nome', 200)
-          .then(res => setVendedores(res.filter(c => c.empresa_id === empresaId && c.status !== 'inativo')))
+          .then(res => setVendedores(empresaId ? res.filter(c => c.empresa_id === empresaId) : res))
           .catch(() => {});
       });
-    base44.entities.Filial.filter({ empresa_id: empresaId, situacao: 'ativa' }, 'nome', 100)
+
+    // Filiais
+    const filtroFilial = empresaId ? { empresa_id: empresaId } : {};
+    base44.entities.Filial.filter(filtroFilial, 'nome', 100)
       .then(setFiliais).catch(() => {});
-    base44.entities.EmpresaParceira.filter({ empresa_id: empresaId }, 'nome', 200)
+
+    // Empresas Parceiras
+    const filtroEP = empresaId ? { empresa_id: empresaId } : {};
+    base44.entities.EmpresaParceira.filter(filtroEP, 'nome', 200)
       .then(setEmpresasParceiras).catch(() => {});
   }, [open, user?.empresa_id]);
 
