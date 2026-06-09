@@ -182,53 +182,48 @@ export default function OportunidadeAbaDetalhes({ oportunidade, colaboradores, e
       {/* Card Responsável */}
       <CardSection title="Responsáveis" icon={User} color="purple">
         {/* Responsável principal */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {responsavel?.foto_perfil ? (
-            <img src={responsavel.foto_perfil} alt="" className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+            <img src={responsavel.foto_perfil} alt="" className="w-9 h-9 rounded-full object-cover flex-shrink-0" />
           ) : (
-            <div className="w-12 h-12 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white font-bold text-base flex-shrink-0">
+            <div className="w-9 h-9 rounded-full bg-[#1e3a5f] flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
               {(responsavel?.nome || oportunidade.vendedor_nome || '?').charAt(0).toUpperCase()}
             </div>
           )}
-          <div className="min-w-0">
-            <p className="font-semibold text-slate-800">{responsavel?.nome || oportunidade.vendedor_nome || '-'}</p>
-            <p className="text-xs text-slate-400 capitalize">{responsavel?.perfil || 'Principal'}</p>
-            {responsavel?.telefone && (
-              <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                <Phone className="w-3 h-3" /> {responsavel.telefone}
-              </p>
-            )}
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-xs text-slate-800 truncate">{responsavel?.nome || oportunidade.vendedor_nome || '-'}</p>
+            <p className="text-[11px] text-slate-400 capitalize">{responsavel?.perfil || 'Principal'}</p>
           </div>
-          <span className="ml-auto text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium flex-shrink-0">Principal</span>
+          <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 whitespace-nowrap">Principal</span>
         </div>
 
         {/* Responsáveis adicionais */}
         {responsaveisAdicionais.map(colab => (
-          <div key={colab.id} className="flex items-center gap-3 pt-2 border-t">
+          <div key={colab.id} className="flex items-center gap-2 pt-1.5 border-t">
             {colab.foto_perfil ? (
-              <img src={colab.foto_perfil} alt="" className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+              <img src={colab.foto_perfil} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-slate-400 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-slate-400 flex items-center justify-center text-white font-bold text-[11px] flex-shrink-0">
                 {(colab.nome || '?').charAt(0).toUpperCase()}
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p className="font-medium text-sm text-slate-800">{colab.nome}</p>
-              <p className="text-xs text-slate-400 capitalize">{colab.perfil}</p>
+              <p className="font-medium text-xs text-slate-800 truncate">{colab.nome}</p>
+              <p className="text-[11px] text-slate-400 capitalize">{colab.perfil}</p>
             </div>
             <button onClick={() => removerResponsavel(colab.id)} className="text-slate-400 hover:text-red-500 transition-colors flex-shrink-0" title="Remover">
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         ))}
 
         {/* Adicionar responsável */}
-        <div className="pt-2 border-t">
+        <div className="pt-1.5 border-t">
           {adicionandoResponsavel ? (
-            <div className="flex gap-2">
+            <div className="flex gap-1.5">
               <Select value={novoResponsavelId} onValueChange={setNovoResponsavelId}>
-                <SelectTrigger className="h-8 text-xs flex-1">
-                  <SelectValue placeholder="Selecionar colaborador..." />
+                <SelectTrigger className="h-7 text-xs flex-1">
+                  <SelectValue placeholder="Selecionar..." />
                 </SelectTrigger>
                 <SelectContent>
                   {colaboradores
@@ -238,16 +233,16 @@ export default function OportunidadeAbaDetalhes({ oportunidade, colaboradores, e
                     ))}
                 </SelectContent>
               </Select>
-              <Button size="sm" className="h-8 px-3 bg-[#1e3a5f]" onClick={adicionarResponsavel} disabled={!novoResponsavelId}>
+              <Button size="sm" className="h-7 px-2 bg-[#1e3a5f]" onClick={adicionarResponsavel} disabled={!novoResponsavelId}>
                 <Check className="w-3 h-3" />
               </Button>
-              <Button size="sm" variant="outline" className="h-8 px-3" onClick={() => { setAdicionandoResponsavel(false); setNovoResponsavelId(''); }}>
+              <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => { setAdicionandoResponsavel(false); setNovoResponsavelId(''); }}>
                 <X className="w-3 h-3" />
               </Button>
             </div>
           ) : (
-            <button onClick={() => setAdicionandoResponsavel(true)} className="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-800 font-medium transition-colors">
-              <UserPlus className="w-3.5 h-3.5" /> Adicionar responsável
+            <button onClick={() => setAdicionandoResponsavel(true)} className="flex items-center gap-1 text-[11px] text-purple-600 hover:text-purple-800 font-medium transition-colors">
+              <UserPlus className="w-3 h-3" /> Adicionar responsável
             </button>
           )}
         </div>
