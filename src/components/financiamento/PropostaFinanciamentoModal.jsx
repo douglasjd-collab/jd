@@ -27,6 +27,7 @@ valor_veiculo: '', valor_entrada: '', valor_financiado: '', banco: '', prazo_mes
 valor_parcela: '', taxa_juros: '',
 tarifa_cadastral: '', tarifa_cadastral_status: 'aguardando_pagamento',
 custos_operacionais: '',
+valor_comissao: '',
 percentual_comissao: '',
 vendedor_id: '', vendedor_nome: '',
 empresa_id: '', empresa_nome: '',
@@ -35,6 +36,45 @@ empresa_parceira_id: '', empresa_parceira_nome: '',
 status: 'em_analise',
 data_proposta: '', data_aprovacao: '', data_pagamento: '',
 observacoes: '',
+};
+
+// Helper para formatar input monetário (BRL)
+const formatMoney = (value) => {
+  if (value === '' || value === null || value === undefined) return '';
+  const num = parseFloat(String(value).replace(',', '.'));
+  if (isNaN(num)) return '';
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+// Input monetário com prefixo R$
+const MoneyInput = ({ value, onChange, placeholder = '0,00', ...props }) => {
+  const [display, setDisplay] = React.useState('');
+  React.useEffect(() => {
+    if (value === '' || value === null || value === undefined) { setDisplay(''); return; }
+    const num = parseFloat(String(value).replace(',', '.'));
+    if (!isNaN(num)) setDisplay(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+  }, [value]);
+  return (
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-medium">R$</span>
+      <Input
+        {...props}
+        value={display}
+        placeholder={placeholder}
+        className={`pl-9 ${props.className || ''}`}
+        onChange={e => {
+          const raw = e.target.value.replace(/[^\d,]/g, '');
+          setDisplay(raw);
+          const num = parseFloat(raw.replace(',', '.'));
+          onChange(isNaN(num) ? '' : num);
+        }}
+        onBlur={() => {
+          const num = parseFloat(String(display).replace(',', '.'));
+          if (!isNaN(num)) setDisplay(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        }}
+      />
+    </div>
+  );
 };
 
 const F = ({ label, children, className = '' }) => (
@@ -249,7 +289,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
 
       const dados = { ...form, cliente_id: clienteId, cliente_nome: clienteNome };
       ['cliente_renda', 'valor_veiculo', 'valor_entrada', 'valor_financiado', 'prazo_meses',
-        'valor_parcela', 'taxa_juros', 'tarifa_cadastral', 'custos_operacionais', 'percentual_comissao']
+        'valor_parcela', 'taxa_juros', 'tarifa_cadastral', 'custos_operacionais', 'valor_comissao', 'percentual_comissao']
         .forEach(k => { if (dados[k] !== '' && dados[k] !== undefined) dados[k] = parseFloat(String(dados[k]).replace(',', '.')) || 0; });
       await onSalvar(dados);
     } catch (err) {
@@ -493,7 +533,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                 <Input value={form.veiculo_ano} onChange={e => set('veiculo_ano', e.target.value)} placeholder="2024" />
               </F>
               <F label="Valor do veículo (R$)">
-                <Input type="number" value={form.valor_veiculo} onChange={e => set('valor_veiculo', e.target.value)} />
+                <MoneyInput value={form.valor_veiculo} onChange={v => set('valor_veiculo', v)} />
               </F>
             </div>
           </div>
@@ -503,10 +543,15 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
             <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">💰 Dados do Financiamento</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <F label="Valor de entrada (R$)">
-                <Input type="number" value={form.valor_entrada} onChange={e => set('valor_entrada', e.target.value)} />
+                <MoneyInput value={form.valor_entrada} onChange={v => set('valor_entrada', v)} />
               </F>
               <F label="Valor financiado (R$)">
-                <Input type="number" value={form.valor_financiado} onChange={e => set('valor_financiado', e.target.value)} />
+                <MoneyInput value={form.valor_financiado} onChange={v => {
+                  const valFinanciado = parseFloat(v) || 0;
+                  const pct = parseFloat(form.percentual_comissao) || 0;
+                  const valComissao = pct > 0 && valFinanciado > 0 ? (pct / 100) * valFinanciado : form.valor_comissao;
+                  setForm(f => ({ ...f, valor_financiado: v, valor_comissao: valComissao || '' }));
+                }} />
               </F>
               <F label="Banco">
                 <Input value={form.banco} onChange={e => set('banco', e.target.value)} placeholder="Ex: Bradesco, Santander..." />
@@ -515,7 +560,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                 <Input type="number" value={form.prazo_meses} onChange={e => set('prazo_meses', e.target.value)} />
               </F>
               <F label="Valor da parcela (R$)">
-                <Input type="number" value={form.valor_parcela} onChange={e => set('valor_parcela', e.target.value)} />
+                <MoneyInput value={form.valor_parcela} onChange={v => set('valor_parcela', v)} />
               </F>
               <F label="Taxa de juros (% a.m.)">
                 <Input type="number" step="0.01" value={form.taxa_juros} onChange={e => set('taxa_juros', e.target.value)} />
@@ -528,8 +573,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
             <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">🏦 Tarifa, Custos e Comissão</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <F label="Tarifa Cadastral (R$)">
-                <Input type="number" value={form.tarifa_cadastral} onChange={e => set('tarifa_cadastral', e.target.value)}
-                  placeholder="0,00" />
+                <MoneyInput value={form.tarifa_cadastral} onChange={v => set('tarifa_cadastral', v)} />
                 <p className="text-xs text-slate-400">Gera Receita Prevista automaticamente</p>
               </F>
               <F label="Status da Tarifa">
@@ -543,14 +587,38 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                 </Select>
               </F>
               <F label="Custos Operacionais (R$)">
-                <Input type="number" value={form.custos_operacionais} onChange={e => set('custos_operacionais', e.target.value)}
-                  placeholder="0,00" />
+                <MoneyInput value={form.custos_operacionais} onChange={v => set('custos_operacionais', v)} />
                 <p className="text-xs text-slate-400">Gera Despesa automaticamente</p>
               </F>
-              <F label="Percentual de Comissão (%)">
-                <Input type="number" step="0.01" value={form.percentual_comissao} onChange={e => set('percentual_comissao', e.target.value)}
-                  placeholder="0,00" />
+              <F label="Valor da Comissão (R$)">
+                <MoneyInput
+                  value={form.valor_comissao}
+                  onChange={v => {
+                    const valComissao = v || 0;
+                    const valFinanciado = parseFloat(String(form.valor_financiado).replace(',', '.')) || 0;
+                    const pct = valFinanciado > 0 ? ((valComissao / valFinanciado) * 100).toFixed(4) : '';
+                    setForm(f => ({ ...f, valor_comissao: v, percentual_comissao: pct }));
+                  }}
+                />
                 <p className="text-xs text-slate-400">Cria comissão ao marcar "Operação Finalizada"</p>
+              </F>
+              <F label="Percentual de Comissão (%)">
+                <div className="relative">
+                  <Input
+                    type="number" step="0.0001"
+                    value={form.percentual_comissao}
+                    onChange={e => {
+                      const pct = e.target.value;
+                      const valFinanciado = parseFloat(String(form.valor_financiado).replace(',', '.')) || 0;
+                      const valComissao = valFinanciado > 0 ? (parseFloat(pct) / 100) * valFinanciado : '';
+                      setForm(f => ({ ...f, percentual_comissao: pct, valor_comissao: valComissao || '' }));
+                    }}
+                    placeholder="0,00"
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">%</span>
+                </div>
+                <p className="text-xs text-slate-400">Calculado automaticamente pelo valor da comissão</p>
               </F>
             </div>
           </div>
