@@ -6,7 +6,7 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   X, Calendar, User, Tag, CheckSquare, MessageSquare, Clock, AlertTriangle, Paperclip, FileText, Download,
-  Sparkles, AlertCircle, Timer, CheckCircle2, Zap, RefreshCw, Loader2, ChevronDown, Check
+  Sparkles, AlertCircle, Timer, CheckCircle2, Zap, RefreshCw, Loader2, ChevronDown, Check, UserPlus, Search, UserMinus
 } from 'lucide-react';
 import ColaboracaoInterna from './ColaboracaoInterna';
 import ChecklistAba from './ChecklistAba';
@@ -92,6 +92,40 @@ export default function TarefaDetalhesModal({
 
   const atualizarChecklist = async (novaLista) => {
     await onUpdate(tarefa.id, { checklist: JSON.stringify(novaLista) });
+  };
+
+  const [responsaveisDropdownOpen, setResponsaveisDropdownOpen] = useState(false);
+  const responsaveisDropdownRef = useRef(null);
+  const [searchResponsavel, setSearchResponsavel] = useState('');
+  const [salvandoResponsaveis, setSalvandoResponsaveis] = useState(false);
+
+  useEffect(() => {
+    if (!responsaveisDropdownOpen) return;
+    const handler = (e) => {
+      if (responsaveisDropdownRef.current && !responsaveisDropdownRef.current.contains(e.target)) {
+        setResponsaveisDropdownOpen(false);
+        setSearchResponsavel('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [responsaveisDropdownOpen]);
+
+  const handleToggleResponsavel = async (colaboradorId) => {
+    setSalvandoResponsaveis(true);
+    let ids = [...responsaveisIds];
+    if (ids.includes(colaboradorId)) {
+      ids = ids.filter(id => id !== colaboradorId);
+    } else {
+      ids = [...ids, colaboradorId];
+    }
+    const colabs = ids.map(id => colaboradores.find(c => c.id === id)).filter(Boolean);
+    await onUpdate(tarefa.id, {
+      responsaveis_ids: JSON.stringify(ids),
+      responsaveis_nomes: JSON.stringify(colabs.map(c => c.nome)),
+      responsaveis_fotos: JSON.stringify(colabs.map(c => c.foto_perfil || '')),
+    });
+    setSalvandoResponsaveis(false);
   };
 
   const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
@@ -234,20 +268,78 @@ export default function TarefaDetalhesModal({
                 </div>
               )}
 
-              {/* Outros responsáveis */}
-              {responsaveisColabs.length > 1 && (
-                <div>
-                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide mb-2">Responsáveis</p>
-                  <div className="flex flex-wrap gap-2">
-                    {responsaveisColabs.map(c => (
-                      <div key={c.id} className="flex items-center gap-2 bg-white border rounded-lg px-3 py-2">
-                        <Iniciais nome={c.nome} foto={c.foto_perfil} size="sm" />
-                        <span className="text-sm font-medium text-slate-700">{c.nome}</span>
-                      </div>
-                    ))}
-                  </div>
+              {/* Responsáveis — gerenciável */}
+              <div ref={responsaveisDropdownRef} className="relative">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs text-slate-400 font-semibold uppercase tracking-wide">Responsáveis</p>
+                  <button
+                    onClick={() => { setResponsaveisDropdownOpen(v => !v); setSearchResponsavel(''); }}
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                  >
+                    {salvandoResponsaveis ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+                    Adicionar
+                  </button>
                 </div>
-              )}
+
+                {/* Lista de responsáveis atuais */}
+                <div className="flex flex-wrap gap-2">
+                  {responsaveisColabs.map(c => (
+                    <div key={c.id} className="flex items-center gap-2 bg-white border rounded-lg px-3 py-1.5 group">
+                      <Iniciais nome={c.nome} foto={c.foto_perfil} size="sm" />
+                      <span className="text-sm font-medium text-slate-700">{c.nome}</span>
+                      {c.id !== tarefa.responsavel_principal_id && (
+                        <button
+                          onClick={() => handleToggleResponsavel(c.id)}
+                          className="ml-1 text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Remover responsável"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {responsaveisColabs.length === 0 && (
+                    <p className="text-sm text-slate-400 italic">Nenhum responsável adicional</p>
+                  )}
+                </div>
+
+                {/* Dropdown para adicionar */}
+                {responsaveisDropdownOpen && (
+                  <div className="absolute z-50 top-full left-0 mt-1 w-72 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                    <div className="p-2 border-b">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Buscar colaborador..."
+                          value={searchResponsavel}
+                          onChange={e => setSearchResponsavel(e.target.value)}
+                          className="w-full pl-8 pr-3 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-52 overflow-y-auto">
+                      {colaboradores
+                        .filter(c => c.nome?.toLowerCase().includes(searchResponsavel.toLowerCase()))
+                        .map(c => {
+                          const jaAdicionado = responsaveisIds.includes(c.id);
+                          return (
+                            <button
+                              key={c.id}
+                              onClick={() => handleToggleResponsavel(c.id)}
+                              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-slate-50 transition-colors text-left"
+                            >
+                              <Iniciais nome={c.nome} foto={c.foto_perfil} size="sm" />
+                              <span className="flex-1 font-medium text-slate-700">{c.nome}</span>
+                              {jaAdicionado && <Check className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Ações rápidas: Status e Prazo */}
               <div className="flex gap-3">
