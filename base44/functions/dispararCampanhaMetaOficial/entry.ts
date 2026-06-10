@@ -64,16 +64,64 @@ Deno.serve(async (req) => {
       const headerType = (templateHeaderType || '').toUpperCase();
       if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && templateHeaderUrl) {
         const mediaKey = headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document';
-        // Handles da Meta são numéricos (ex: "924654321234567"), URLs públicas contêm "http"
-        const isHandle = /^\d+$/.test(String(templateHeaderUrl).trim());
-        const mediaValue = isHandle
-          ? { id: templateHeaderUrl }       // handle numérico da Meta (salvo via header_handle)
-          : { link: templateHeaderUrl };    // URL pública hospedada fornecida pelo usuário
-        console.log(`📎 Header ${headerType}: ${isHandle ? 'handle' : 'link'} = ${String(templateHeaderUrl).substring(0, 80)}`);
-        components.push({
-          type: 'header',
-          parameters: [{ type: mediaKey, [mediaKey]: mediaValue }],
-        });
+        const urlStr = String(templateHeaderUrl).trim();
+
+        // Handles numéricos da Meta (ex: "924654321234567") — usar diretamente como id
+        const isHandle = /^\d{10,}$/.test(urlStr);
+
+        // URLs CDN temporárias da Meta (scontent.whatsapp.net, fbcdn.net, etc.) — precisam de re-upload
+        const isMetaCDN = urlStr.includes('scontent.whatsapp.net') || urlStr.includes('fbcdn.net') || urlStr.includes('fna.fbcdn.net');
+
+        let mediaValue = null;
+
+        if (isHandle) {
+          // Handle permanente — usar diretamente
+          mediaValue = { id: urlStr };
+          console.log(`📎 Header ${headerType}: handle permanente = ${urlStr}`);
+        } else if (isMetaCDN || urlStr.startsWith('http')) {
+          // URL pública ou CDN — fazer upload para obter media_id permanente
+          try {
+            console.log(`📎 Header ${headerType}: fazendo upload da URL CDN para obter media_id...`);
+            // Baixar a imagem
+            const imgResp = await fetch(urlStr);
+            if (!imgResp.ok) throw new Error(`Falha ao baixar mídia: HTTP ${imgResp.status}`);
+            const imgBlob = await imgResp.arrayBuffer();
+            const contentType = imgResp.headers.get('content-type') || 'image/jpeg';
+            const ext = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
+
+            // Upload para Meta Media API
+            const formData = new FormData();
+            formData.append('messaging_product', 'whatsapp');
+            formData.append('type', contentType);
+            formData.append('file', new Blob([imgBlob], { type: contentType }), `template_header.${ext}`);
+
+            const uploadResp = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/media`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${accessToken}` },
+              body: formData,
+            });
+            const uploadData = await uploadResp.json();
+            if (uploadData.id) {
+              mediaValue = { id: uploadData.id };
+              console.log(`✅ Upload OK — media_id: ${uploadData.id}`);
+            } else {
+              throw new Error(uploadData.error?.message || 'Upload sem media_id');
+            }
+          } catch (uploadErr) {
+            console.warn(`⚠️ Upload falhou (${uploadErr.message}), tentando como link direto`);
+            // Fallback: tentar como link (funciona apenas se URL for pública permanente)
+            if (!isMetaCDN) {
+              mediaValue = { link: urlStr };
+            }
+          }
+        }
+
+        if (mediaValue) {
+          components.push({
+            type: 'header',
+            parameters: [{ type: mediaKey, [mediaKey]: mediaValue }],
+          });
+        }
       }
 
       // Body variables
