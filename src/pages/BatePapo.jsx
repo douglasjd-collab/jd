@@ -25,7 +25,7 @@ import {
 import {
   Search, Plus, MoreVertical, PhoneCall, PhoneOff, Tag, ArrowRightLeft,
   BellOff, Pin, Check, Clock, Loader2, MessageCircle, AlignJustify,
-  X, Trash2, RefreshCw, Contact, Pencil, Lock, Unlock, TrendingUp,
+  X, Trash2, RefreshCw, Contact, Pencil, Lock, Unlock, TrendingUp, BarChart2,
 } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -68,6 +68,7 @@ import MensagensAgendadasModal from '@/components/chat/MensagensAgendadasModal';
 import AgendarReuniaoModal from '@/components/chat/AgendarReuniaoModal';
 import useSoftphone from '@/components/callcenter/useSoftphone';
 import ChamadaAtivaBar from '@/components/chat/ChamadaAtivaBar.jsx';
+import PainelProdutividade from '@/components/chat/PainelProdutividade';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -293,6 +294,7 @@ export default function BatePapo() {
   const [agendarReuniaoModal, setAgendarReuniaoModal] = useState(null); // conversa
   const [mobileViewChat, setMobileViewChat] = useState(false); // mobile: false=lista, true=chat
   const [nvoipConfig, setNvoipConfig] = useState(null);
+  const [produtividadeOpen, setProdutividadeOpen] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1316,6 +1318,14 @@ export default function BatePapo() {
             opacity: 1;
           }
         `}</style>
+        {/* Painel de Produtividade */}
+        {produtividadeOpen && (
+          <PainelProdutividade
+            empresaId={empresaId}
+            onClose={() => setProdutividadeOpen(false)}
+          />
+        )}
+
         <NovaConversaModal
           open={novaConversaOpen}
           onOpenChange={setNovaConversaOpen}
@@ -1518,6 +1528,16 @@ export default function BatePapo() {
             <CardHeader className="jd-messenger-top flex flex-row items-center justify-between gap-2 pb-2 px-4 py-3 flex-shrink-0">
               <p className="text-lg font-semibold">Conversas</p>
               <div className="flex items-center gap-1">
+                {['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil) && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setProdutividadeOpen(true)}>
+                        <BarChart2 className="h-5 w-5 text-emerald-600" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Painel de Produtividade</TooltipContent>
+                  </Tooltip>
+                )}
                 <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setNovaConversaOpen(true)}>
                   <Plus className="h-5 w-5" />
                 </Button>
