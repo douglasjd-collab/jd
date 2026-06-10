@@ -856,11 +856,38 @@ export default function CampanhaMetaOficial({ empresaId }) {
                           })}
                         </div>
                       )}
-                      {/* Campo URL de mídia para templates com imagem/vídeo/documento */}
+                      {/* Campo URL de mídia para templates com imagem/vídeo/documento SEM handle salvo */}
                       {templateSelecionado && (() => {
                         const td = parseTemplateDados(templateSelecionado);
                         const tipoH = (td.tipo_cabecalho || '').toUpperCase();
                         if (!['IMAGE', 'VIDEO', 'DOCUMENT'].includes(tipoH)) return null;
+
+                        const handleSalvo = td.cabecalho_midia_url; // handle numérico ou URL já salva
+                        const temHandleSalvo = !!handleSalvo;
+
+                        // Se já tem handle/url salvo na Meta, a imagem já está vinculada — apenas mostrar info opcional
+                        if (temHandleSalvo) {
+                          return (
+                            <div className="border border-slate-200 bg-slate-50 rounded-xl p-3 space-y-2">
+                              <p className="text-xs font-medium text-slate-600 flex items-center gap-1.5">
+                                {tipoH === 'IMAGE' ? <Image className="w-3.5 h-3.5 text-slate-400" /> : tipoH === 'VIDEO' ? <Video className="w-3.5 h-3.5 text-slate-400" /> : <File className="w-3.5 h-3.5 text-slate-400" />}
+                                ✓ Mídia já vinculada ao template na Meta — envio direto
+                              </p>
+                              <p className="text-[10px] text-slate-400">Opcional: informe uma URL pública para substituir a mídia original neste disparo.</p>
+                              <Input
+                                value={templateHeaderUrlInput}
+                                onChange={e => setTemplateHeaderUrlInput(e.target.value)}
+                                placeholder={tipoH === 'IMAGE' ? 'https://exemplo.com/imagem.jpg (opcional)' : tipoH === 'VIDEO' ? 'https://exemplo.com/video.mp4 (opcional)' : 'https://exemplo.com/documento.pdf (opcional)'}
+                                className="text-sm bg-white"
+                              />
+                              {templateHeaderUrlInput && (
+                                <p className="text-[10px] text-blue-700">↑ Esta URL substituirá a mídia original do template neste disparo.</p>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        // Sem handle salvo: URL é necessária
                         return (
                           <div className="border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-2">
                             <p className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
@@ -873,10 +900,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                               placeholder={tipoH === 'IMAGE' ? 'https://exemplo.com/imagem.jpg' : tipoH === 'VIDEO' ? 'https://exemplo.com/video.mp4' : 'https://exemplo.com/documento.pdf'}
                               className="text-sm bg-white"
                             />
-                            {!templateHeaderUrlInput && td.cabecalho_midia_url && (
-                              <p className="text-[10px] text-amber-700">⚠️ URL salva no template pode ter expirado. Recomendamos informar uma URL pública permanente.</p>
-                            )}
-                            {!templateHeaderUrlInput && !td.cabecalho_midia_url && (
+                            {!templateHeaderUrlInput && (
                               <p className="text-[10px] text-red-600">⚠️ URL obrigatória — sem ela o envio falhará.</p>
                             )}
                             {templateHeaderUrlInput && (
