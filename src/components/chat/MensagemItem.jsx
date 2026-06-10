@@ -291,6 +291,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     try {
       const obj = JSON.parse(mensagem.texto);
       if (obj.contactMessage) return false;
+      if (obj.__template) return false; // mensagem de template rico — não bloquear
       if (obj.senderKeyDistributionMessage) return true;
       if (obj.protocolMessage) return true;
       if (obj.ephemeralMessage) return true;
@@ -300,10 +301,69 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   };
 
+  // Tentar parsear mensagem de template rico (imagem + botões)
+  const parseTemplateMsg = () => {
+    if (!mensagem.texto) return null;
+    try {
+      const obj = JSON.parse(mensagem.texto);
+      if (obj?.__template) return obj;
+    } catch {}
+    return null;
+  };
+
   const renderConteudo = () => {
     // Ignorar mensagens internas do WhatsApp codificadas
     if (isJsonEncodedMessage()) {
       return null;
+    }
+
+    // Mensagem de template rico (enviada via API Oficial com imagem/botões)
+    const tmpl = parseTemplateMsg();
+    if (tmpl) {
+      const hasImage = tmpl.header_type === 'IMAGE' && tmpl.header_url && !/^\d+$/.test(String(tmpl.header_url).trim());
+      const hasVideo = tmpl.header_type === 'VIDEO' && tmpl.header_url && !/^\d+$/.test(String(tmpl.header_url).trim());
+      const botoes = Array.isArray(tmpl.botoes) ? tmpl.botoes : [];
+      return (
+        <div className={`flex flex-col rounded-xl overflow-hidden w-64 ${isVendedor ? 'bg-blue-400/10' : 'bg-white border border-slate-200'}`}>
+          {/* Imagem do cabeçalho */}
+          {hasImage && (
+            <img
+              src={tmpl.header_url}
+              alt="Template"
+              className="w-full object-cover max-h-40 rounded-t-xl"
+              onError={e => { e.target.style.display = 'none'; }}
+            />
+          )}
+          {hasVideo && (
+            <video src={tmpl.header_url} className="w-full max-h-40 rounded-t-xl bg-black" controls />
+          )}
+          {/* Fallback para handle numérico: mostrar ícone de imagem */}
+          {['IMAGE', 'VIDEO'].includes(tmpl.header_type) && tmpl.header_url && /^\d+$/.test(String(tmpl.header_url).trim()) && (
+            <div className={`w-full h-28 flex items-center justify-center text-xs ${isVendedor ? 'bg-white/10 text-white/50' : 'bg-slate-100 text-slate-400'}`}>
+              🖼️ Mídia do template
+            </div>
+          )}
+          {/* Corpo */}
+          <div className="px-3 py-2">
+            <p className="text-xs break-words whitespace-pre-wrap">{formatarTexto(tmpl.corpo)}</p>
+          </div>
+          {/* Botões */}
+          {botoes.length > 0 && (
+            <div className={`border-t ${isVendedor ? 'border-white/20' : 'border-slate-100'}`}>
+              {botoes.map((btn, i) => (
+                <div
+                  key={i}
+                  className={`py-2 px-3 text-center text-xs font-semibold ${
+                    isVendedor ? 'text-white/90 hover:bg-white/10' : 'text-blue-600 hover:bg-blue-50'
+                  } ${i > 0 ? (isVendedor ? 'border-t border-white/20' : 'border-t border-slate-100') : ''}`}
+                >
+                  {btn.texto || btn.text}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
     }
 
     // PRIMEIRO: Verificar se é contactMessage (pode vir com qualquer tipo_conteudo)

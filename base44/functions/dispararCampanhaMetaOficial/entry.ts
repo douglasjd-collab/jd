@@ -141,6 +141,17 @@ Deno.serve(async (req) => {
         if (conversa_id) {
           const whatsappMsgId = data?.messages?.[0]?.id;
           const textoMensagem = texto_preview || `📋 Template enviado: ${template_name}`;
+
+          // Montar JSON de template para renderização rica no chat (imagem + botões)
+          const templateJson = JSON.stringify({
+            __template: true,
+            template_name,
+            header_type: (templateHeaderType || '').toUpperCase(),
+            header_url: templateHeaderUrl || null,
+            corpo: textoMensagem,
+            botoes: botoesParaEnviar,
+          });
+
           await base44.asServiceRole.entities.MensagemWhatsapp.create({
             conversa_id,
             empresa_id,
@@ -148,7 +159,7 @@ Deno.serve(async (req) => {
             usuario_id: user.id,
             usuario_nome: user.full_name || '',
             tipo_conteudo: 'texto',
-            texto: textoMensagem,
+            texto: templateJson,
             whatsapp_message_id: whatsappMsgId || null,
             data_envio: new Date().toISOString(),
             status: 'enviada',
@@ -156,7 +167,7 @@ Deno.serve(async (req) => {
 
           // Atualizar última mensagem da conversa
           await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
-            ultima_mensagem: textoMensagem,
+            ultima_mensagem: `📋 ${template_name}`,
             data_ultima_mensagem: new Date().toISOString(),
             ultimo_remetente: 'vendedor',
           }).catch(() => {});
