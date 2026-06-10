@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url, template_botoes = [], conversa_id, texto_preview, delay_segundos = 5, pausar_apos = 0, duracao_pausa = 60 } = await req.json();
+    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url, template_botoes = [], conversa_id, texto_preview, delay_segundos = 5, pausar_apos = 0, duracao_pausa = 60, nome_campanha = '' } = await req.json();
 
     if (!empresa_id || !template_name || contatos.length === 0) {
       return Response.json({ error: 'empresa_id, template_name e contatos são obrigatórios' }, { status: 400 });
@@ -60,24 +60,20 @@ Deno.serve(async (req) => {
 
       const components = [];
 
-      // Header com mídia — apenas quando há URL pública fornecida pelo usuário
-      // Se cabecalho_midia_url é handle numérico da Meta (imagem aprovada junto ao template),
-      // NÃO enviar componente header — a Meta resolve a mídia automaticamente pelo template.
+      // Header com mídia — enviar quando template tem IMAGE/VIDEO/DOCUMENT
       const headerType = (templateHeaderType || '').toUpperCase();
       if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && templateHeaderUrl) {
+        const mediaKey = headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document';
+        // Handles da Meta são numéricos (ex: "924654321234567"), URLs públicas contêm "http"
         const isHandle = /^\d+$/.test(String(templateHeaderUrl).trim());
-        if (isHandle) {
-          // Handle numérico = mídia vinculada ao template na Meta, não enviar header component
-          console.log(`📎 Header ${headerType}: handle numérico detectado — omitindo componente header (Meta resolve automaticamente)`);
-        } else {
-          // URL pública fornecida pelo usuário — enviar como link
-          const mediaKey = headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document';
-          console.log(`📎 Header ${headerType}: link = ${String(templateHeaderUrl).substring(0, 80)}`);
-          components.push({
-            type: 'header',
-            parameters: [{ type: mediaKey, [mediaKey]: { link: templateHeaderUrl } }],
-          });
-        }
+        const mediaValue = isHandle
+          ? { id: templateHeaderUrl }       // handle numérico da Meta (salvo via header_handle)
+          : { link: templateHeaderUrl };    // URL pública hospedada fornecida pelo usuário
+        console.log(`📎 Header ${headerType}: ${isHandle ? 'handle' : 'link'} = ${String(templateHeaderUrl).substring(0, 80)}`);
+        components.push({
+          type: 'header',
+          parameters: [{ type: mediaKey, [mediaKey]: mediaValue }],
+        });
       }
 
       // Body variables
@@ -87,19 +83,19 @@ Deno.serve(async (req) => {
         components.push({ type: 'body', parameters: parametros });
       }
 
-      // Botões QUICK_REPLY (índice de cada botão)
-      if (Array.isArray(template_botoes) && template_botoes.length > 0) {
-        template_botoes.forEach((btn, idx) => {
-          if (btn.tipo === 'QUICK_REPLY') {
-            components.push({
-              type: 'button',
-              sub_type: 'quick_reply',
-              index: String(idx),
-              parameters: [{ type: 'payload', payload: btn.texto || String(idx) }],
-            });
-          }
-        });
-      }
+      // Botões QUICK_REPLY — usar botões do template definition (já buscados acima)
+      // A Meta exige um componente button por botão QUICK_REPLY com índice correto
+      const botoesParaEnviar = template_botoes?.length > 0 ? template_botoes : [];
+      botoesParaEnviar.forEach((btn, idx) => {
+        if (btn.tipo === 'QUICK_REPLY') {
+          components.push({
+            type: 'button',
+            sub_type: 'quick_reply',
+            index: String(idx),
+            parameters: [{ type: 'payload', payload: btn.texto || String(idx) }],
+          });
+        }
+      });
 
       const payload = {
         messaging_product: 'whatsapp',
@@ -136,6 +132,7 @@ Deno.serve(async (req) => {
           tipo_campanha: 'meta_oficial',
           cliente_telefone: numeroLimpo,
           cliente_nome: numeroLimpo,
+          nome_campanha: nome_campanha || template_name,
           status: 'enviada',
           numero_sequencia: 1,
         });

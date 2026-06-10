@@ -403,6 +403,8 @@ export default function CampanhaMetaOficial({ empresaId }) {
           template_header_type: templateDados.tipo_cabecalho || '',
           template_header_url: templateHeaderUrlInput || templateDados.cabecalho_midia_url || '',
           template_botoes: templateDados.botoes || [],
+          // Passar nome da campanha para log
+          nome_campanha: nomeCampanha,
         });
       } else {
         // Modo texto: usar função dedicada de disparo em massa
