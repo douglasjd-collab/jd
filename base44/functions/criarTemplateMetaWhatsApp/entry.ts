@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 Deno.serve(async (req) => {
   try {
@@ -33,12 +33,13 @@ Deno.serve(async (req) => {
         // A Meta exige example.header_handle com o media_id obtido via upload
         const headerComp = { type: 'HEADER', format: tipoHeader };
         if (cabecalho_media_id) {
-          headerComp.example = { header_handle: [cabecalho_media_id] };
-        } else {
-          // Sem media_id, usar URL direta como exemplo (funciona para alguns casos)
-          // A Meta pode rejeitar sem exemplo mas tentamos assim
-          headerComp.example = { header_handle: ['https://example.com/placeholder.jpg'] };
+          // media_id obtido via upload para a Meta — usar como header_handle
+          headerComp.example = { header_handle: [String(cabecalho_media_id)] };
+        } else if (cabecalho_midia_url && cabecalho_midia_url.startsWith('http')) {
+          // URL pública direta como fallback (a Meta aceita URLs públicas permanentes como exemplo)
+          headerComp.example = { header_handle: [cabecalho_midia_url] };
         }
+        // Se não há exemplo, a Meta pode rejeitar — mas tentamos sem ele em último caso
         components.push(headerComp);
       }
     }

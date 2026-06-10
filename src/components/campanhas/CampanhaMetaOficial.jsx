@@ -323,16 +323,23 @@ export default function CampanhaMetaOficial({ empresaId }) {
       let cabecalho_media_id = null;
       const tipoHeader = (dados.tipo_cabecalho || 'TEXT').toUpperCase();
       if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(tipoHeader) && dados.cabecalho_midia_url) {
+        toast.info('Enviando mídia para a Meta...', { id: 'upload-midia' });
         const uploadResp = await base44.functions.invoke('uploadMidiaMetaTemplate', {
           empresa_id: empresaId,
           midia_url: dados.cabecalho_midia_url,
           tipo_midia: tipoHeader,
         });
+        toast.dismiss('upload-midia');
         if (!uploadResp?.data?.ok || !uploadResp?.data?.media_id) {
-          const errMsg = uploadResp?.data?.error || 'Erro ao fazer upload da mídia para a Meta';
-          throw new Error(errMsg);
+          // Se o upload falhar, tenta criar o template mesmo assim usando a URL diretamente
+          // A Meta às vezes aceita URLs públicas como header_handle
+          console.warn('[Template] Upload de mídia falhou, tentando com URL direta:', uploadResp?.data?.error);
+          // Não lança erro — passa null para cabecalho_media_id e usa a URL no backend
+          cabecalho_media_id = null;
+        } else {
+          cabecalho_media_id = uploadResp.data.media_id;
+          toast.success('Mídia enviada com sucesso!', { duration: 2000 });
         }
-        cabecalho_media_id = uploadResp.data.media_id;
       }
 
       // Novo template: enviar direto para a Meta via API
@@ -370,9 +377,13 @@ export default function CampanhaMetaOficial({ empresaId }) {
       refetchTemplates();
     },
     onError: (e) => {
-      // Tentar extrair mensagem real da Meta do erro de rede
-      const msg = e?.response?.data?.error || e?.response?.data?.details?.error?.error_user_msg || e.message;
-      toast.error('Erro: ' + msg);
+      const msg = e?.response?.data?.error
+        || e?.response?.data?.details?.error?.error_user_msg
+        || e?.response?.data?.details?.error?.error_data?.details
+        || e?.response?.data?.details?.error?.message
+        || e.message
+        || 'Erro desconhecido';
+      toast.error('Erro ao criar template: ' + msg, { duration: 8000 });
     },
   });
 

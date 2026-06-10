@@ -1,7 +1,8 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// Faz o upload de uma mídia para a Meta e retorna o media handle
-// necessário para criar templates com cabeçalho de mídia
+// Faz o upload de uma mídia para a Meta e retorna o header_handle
+// necessário para criar templates com cabeçalho de mídia (IMAGE/VIDEO/DOCUMENT)
+// A Meta exige o endpoint de Media Upload do Graph API para obter o handle de template
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -10,7 +11,6 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const { empresa_id, midia_url, tipo_midia } = body;
-    // tipo_midia: 'IMAGE' | 'VIDEO' | 'DOCUMENT'
 
     if (!midia_url) return Response.json({ error: 'URL da mídia não fornecida' }, { status: 400 });
     if (!tipo_midia) return Response.json({ error: 'Tipo da mídia não fornecido' }, { status: 400 });
@@ -32,8 +32,12 @@ Deno.serve(async (req) => {
     const contentType = fileResp.headers.get('content-type') || getMimeType(tipo_midia, midia_url);
     const fileBuffer = await fileResp.arrayBuffer();
     const fileBytes = new Uint8Array(fileBuffer);
+    const fileSize = fileBytes.length;
 
-    // 2. Montar o FormData para enviar à API da Meta
+    console.log('[uploadMidiaMetaTemplate] Arquivo baixado. Tamanho:', fileSize, 'Tipo:', contentType);
+
+    // 2. Upload via Media Upload API da Meta (para templates, usa upload resumível)
+    // Endpoint: POST /{phone-number-id}/media com messaging_product=whatsapp
     const formData = new FormData();
     const fileName = midia_url.split('/').pop()?.split('?')[0] || getDefaultFileName(tipo_midia);
     const blob = new Blob([fileBytes], { type: contentType });
@@ -42,29 +46,27 @@ Deno.serve(async (req) => {
     formData.append('type', contentType);
     formData.append('messaging_product', 'whatsapp');
 
-    // 3. Upload para a Meta
-    const uploadUrl = `https://graph.facebook.com/v18.0/${phoneNumberId}/media`;
-    console.log('[uploadMidiaMetaTemplate] Enviando para Meta:', uploadUrl, 'tipo:', contentType, 'tamanho:', fileBytes.length);
+    const uploadUrl = `https://graph.facebook.com/v21.0/${phoneNumberId}/media`;
+    console.log('[uploadMidiaMetaTemplate] Enviando para Meta:', uploadUrl);
 
     const uploadResp = await fetch(uploadUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-      },
+      headers: { 'Authorization': `Bearer ${accessToken}` },
       body: formData,
     });
 
     const uploadData = await uploadResp.json();
-    console.log('[uploadMidiaMetaTemplate] Resposta Meta:', JSON.stringify(uploadData));
+    console.log('[uploadMidiaMetaTemplate] Resposta Meta upload:', JSON.stringify(uploadData));
 
     if (!uploadResp.ok || uploadData.error) {
-      const errMsg = uploadData.error?.message || 'Erro ao fazer upload da mídia na Meta';
-      return Response.json({ error: errMsg, details: uploadData }, { status: 400 });
+      const errMsg = uploadData.error?.message || uploadData.error?.error_user_msg || 'Erro ao fazer upload da mídia na Meta';
+      return Response.json({ ok: false, error: errMsg, details: uploadData }, { status: 400 });
     }
 
     const mediaId = uploadData.id;
-    if (!mediaId) return Response.json({ error: 'Meta não retornou ID da mídia' }, { status: 400 });
+    if (!mediaId) return Response.json({ ok: false, error: 'Meta não retornou ID da mídia' }, { status: 400 });
 
+    console.log('[uploadMidiaMetaTemplate] media_id obtido:', mediaId);
     return Response.json({ ok: true, media_id: mediaId });
   } catch (error) {
     console.error('[uploadMidiaMetaTemplate] Erro:', error.message);
@@ -73,7 +75,7 @@ Deno.serve(async (req) => {
 });
 
 function getMimeType(tipo, url) {
-  const ext = url.split('.').pop()?.toLowerCase();
+  const ext = (url.split('.').pop() || '').split('?')[0].toLowerCase();
   if (tipo === 'IMAGE') {
     if (ext === 'png') return 'image/png';
     return 'image/jpeg';
