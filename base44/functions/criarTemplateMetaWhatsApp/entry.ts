@@ -76,10 +76,22 @@ Deno.serve(async (req) => {
       components.push({ type: 'BUTTONS', buttons: botoesFormatados });
     }
 
+    // Validar nome do template (Meta exige: minúsculas, underscore, alfanumérico, máx 60 chars)
+    let templateName = (nome || '').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    // Remover underscope inicial, garantir que começa com letra
+    templateName = templateName.replace(/^_+/, '').replace(/^[0-9]+/, '');
+    if (!templateName || templateName.length < 3) {
+      return Response.json({ ok: false, error: 'Nome do template inválido. Use pelo menos 3 caracteres (apenas letras minúsculas, números e underscore).' }, { status: 400 });
+    }
+    if (templateName.length > 60) {
+      templateName = templateName.substring(0, 60);
+    }
+
     const payload = {
-      name: nome.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
+      name: templateName,
       category: categoria.toUpperCase(), // MARKETING, UTILITY, AUTHENTICATION
       language: idioma || 'pt_BR',
+      allow_category_change: true,
       components,
     };
 
@@ -102,7 +114,8 @@ Deno.serve(async (req) => {
       const errMsg = metaData.error?.error_user_msg
         || metaData.error?.error_data?.details
         || metaData.error?.message
-        || 'Erro ao criar template na Meta';
+        || metaData.error?.error_data?.messaging_product_whatsapp?.message
+        || `Erro Meta (código ${metaData.error?.code || metaResp.status})`;
       console.error('[criarTemplateMetaWhatsApp] Erro Meta:', JSON.stringify(metaData));
       return Response.json({
         ok: false,
