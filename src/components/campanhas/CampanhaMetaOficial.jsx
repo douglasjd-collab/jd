@@ -96,6 +96,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
   const [duracaoPausa, setDuracaoPausa] = useState(120);
   const [tipoMensagem, setTipoMensagem] = useState('template'); // 'texto' | 'imagem' | 'video' | 'template'
   const [templateSelecionado, setTemplateSelecionado] = useState(null);
+  const [templateHeaderUrlInput, setTemplateHeaderUrlInput] = useState('');
   const [mensagemTexto, setMensagemTexto] = useState('');
   const [disparando, setDisparando] = useState(false);
   const [apiSelecionada, setApiSelecionada] = useState('meta'); // 'meta' | 'evolution'
@@ -400,7 +401,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
           pausar_apos: Number(pausarApos),
           duracao_pausa: Number(duracaoPausa),
           template_header_type: templateDados.tipo_cabecalho || '',
-          template_header_url: templateDados.cabecalho_midia_url || '',
+          template_header_url: templateHeaderUrlInput || templateDados.cabecalho_midia_url || '',
           template_botoes: templateDados.botoes || [],
         });
       } else {
@@ -836,7 +837,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                             return (
                               <div
                                 key={t.id}
-                                onClick={() => setTemplateSelecionado(selecionado ? null : t)}
+                                onClick={() => { setTemplateSelecionado(selecionado ? null : t); setTemplateHeaderUrlInput(''); }}
                                 className={`p-3 border-2 rounded-lg cursor-pointer transition-all ${selecionado ? 'border-green-500 bg-green-50' : 'border-slate-200 hover:border-slate-300'}`}
                               >
                                 <div className="flex items-center justify-between">
@@ -855,6 +856,35 @@ export default function CampanhaMetaOficial({ empresaId }) {
                           })}
                         </div>
                       )}
+                      {/* Campo URL de mídia para templates com imagem/vídeo/documento */}
+                      {templateSelecionado && (() => {
+                        const td = parseTemplateDados(templateSelecionado);
+                        const tipoH = (td.tipo_cabecalho || '').toUpperCase();
+                        if (!['IMAGE', 'VIDEO', 'DOCUMENT'].includes(tipoH)) return null;
+                        return (
+                          <div className="border border-amber-200 bg-amber-50 rounded-xl p-3 space-y-2">
+                            <p className="text-xs font-semibold text-amber-800 flex items-center gap-1.5">
+                              {tipoH === 'IMAGE' ? <Image className="w-3.5 h-3.5" /> : tipoH === 'VIDEO' ? <Video className="w-3.5 h-3.5" /> : <File className="w-3.5 h-3.5" />}
+                              Este template requer {tipoH === 'IMAGE' ? 'uma imagem' : tipoH === 'VIDEO' ? 'um vídeo' : 'um documento'} — informe a URL pública
+                            </p>
+                            <Input
+                              value={templateHeaderUrlInput}
+                              onChange={e => setTemplateHeaderUrlInput(e.target.value)}
+                              placeholder={tipoH === 'IMAGE' ? 'https://exemplo.com/imagem.jpg' : tipoH === 'VIDEO' ? 'https://exemplo.com/video.mp4' : 'https://exemplo.com/documento.pdf'}
+                              className="text-sm bg-white"
+                            />
+                            {!templateHeaderUrlInput && td.cabecalho_midia_url && (
+                              <p className="text-[10px] text-amber-700">⚠️ URL salva no template pode ter expirado. Recomendamos informar uma URL pública permanente.</p>
+                            )}
+                            {!templateHeaderUrlInput && !td.cabecalho_midia_url && (
+                              <p className="text-[10px] text-red-600">⚠️ URL obrigatória — sem ela o envio falhará.</p>
+                            )}
+                            {templateHeaderUrlInput && (
+                              <p className="text-[10px] text-green-700">✓ URL informada será usada no envio.</p>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <p className="text-xs text-slate-400 flex items-center gap-1">
                         ℹ️ Templates Meta API: Mensagens com templates são enviadas via API oficial do WhatsApp e funcionam mesmo para contatos fora da janela de 24 horas.
                       </p>

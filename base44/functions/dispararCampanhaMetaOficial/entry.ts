@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url, template_botoes = [], conversa_id, texto_preview } = await req.json();
+    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url, template_botoes = [], conversa_id, texto_preview, delay_segundos = 5, pausar_apos = 0, duracao_pausa = 60 } = await req.json();
 
     if (!empresa_id || !template_name || contatos.length === 0) {
       return Response.json({ error: 'empresa_id, template_name e contatos são obrigatórios' }, { status: 400 });
@@ -62,20 +62,18 @@ Deno.serve(async (req) => {
 
       // Header com mídia — obrigatório quando template tem header IMAGE/VIDEO/DOCUMENT
       const headerType = (templateHeaderType || '').toUpperCase();
-      if (headerType === 'IMAGE' && templateHeaderUrl) {
+      if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && templateHeaderUrl) {
+        // Handles da Meta são numéricos (ex: "924654321234567"), URLs públicas contêm "http"
+        const isHandle = /^\d+$/.test(String(templateHeaderUrl).trim());
+        const mediaKey = headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document';
+        const mediaValue = isHandle
+          ? { id: templateHeaderUrl }       // handle numérico da Meta
+          : { link: templateHeaderUrl };    // URL pública hospedada
+
+        console.log(`📎 Header ${headerType}: ${isHandle ? 'handle' : 'link'} = ${String(templateHeaderUrl).substring(0, 80)}`);
         components.push({
           type: 'header',
-          parameters: [{ type: 'image', image: { link: templateHeaderUrl } }],
-        });
-      } else if (headerType === 'VIDEO' && templateHeaderUrl) {
-        components.push({
-          type: 'header',
-          parameters: [{ type: 'video', video: { link: templateHeaderUrl } }],
-        });
-      } else if (headerType === 'DOCUMENT' && templateHeaderUrl) {
-        components.push({
-          type: 'header',
-          parameters: [{ type: 'document', document: { link: templateHeaderUrl } }],
+          parameters: [{ type: mediaKey, [mediaKey]: mediaValue }],
         });
       }
 
@@ -183,8 +181,16 @@ Deno.serve(async (req) => {
         resultados.push({ telefone: numeroLimpo, status: 'erro', motivo: e.message });
       }
 
-      // Delay de 100ms entre envios para evitar rate limit
-      await new Promise(r => setTimeout(r, 100));
+      // Delay configurável entre envios
+      const delayMs = Math.max(1000, (Number(delay_segundos) || 5) * 1000);
+      await new Promise(r => setTimeout(r, delayMs));
+
+      // Pausa automática a cada N mensagens
+      if (pausar_apos > 0 && (enviados + erros) % pausar_apos === 0 && (enviados + erros) > 0) {
+        const pausaMs = Math.max(10000, (Number(duracao_pausa) || 60) * 1000);
+        console.log(`⏸️ Pausa automática de ${pausaMs / 1000}s após ${enviados + erros} mensagens`);
+        await new Promise(r => setTimeout(r, pausaMs));
+      }
     }
 
     console.log(`✅ Campanha Meta Oficial: ${enviados} enviados, ${erros} erros`);
