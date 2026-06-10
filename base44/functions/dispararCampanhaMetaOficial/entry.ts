@@ -60,21 +60,24 @@ Deno.serve(async (req) => {
 
       const components = [];
 
-      // Header com mídia — obrigatório quando template tem header IMAGE/VIDEO/DOCUMENT
+      // Header com mídia — apenas quando há URL pública fornecida pelo usuário
+      // Se cabecalho_midia_url é handle numérico da Meta (imagem aprovada junto ao template),
+      // NÃO enviar componente header — a Meta resolve a mídia automaticamente pelo template.
       const headerType = (templateHeaderType || '').toUpperCase();
       if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && templateHeaderUrl) {
-        // Handles da Meta são numéricos (ex: "924654321234567"), URLs públicas contêm "http"
         const isHandle = /^\d+$/.test(String(templateHeaderUrl).trim());
-        const mediaKey = headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document';
-        const mediaValue = isHandle
-          ? { id: templateHeaderUrl }       // handle numérico da Meta
-          : { link: templateHeaderUrl };    // URL pública hospedada
-
-        console.log(`📎 Header ${headerType}: ${isHandle ? 'handle' : 'link'} = ${String(templateHeaderUrl).substring(0, 80)}`);
-        components.push({
-          type: 'header',
-          parameters: [{ type: mediaKey, [mediaKey]: mediaValue }],
-        });
+        if (isHandle) {
+          // Handle numérico = mídia vinculada ao template na Meta, não enviar header component
+          console.log(`📎 Header ${headerType}: handle numérico detectado — omitindo componente header (Meta resolve automaticamente)`);
+        } else {
+          // URL pública fornecida pelo usuário — enviar como link
+          const mediaKey = headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document';
+          console.log(`📎 Header ${headerType}: link = ${String(templateHeaderUrl).substring(0, 80)}`);
+          components.push({
+            type: 'header',
+            parameters: [{ type: mediaKey, [mediaKey]: { link: templateHeaderUrl } }],
+          });
+        }
       }
 
       // Body variables
