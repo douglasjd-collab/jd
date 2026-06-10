@@ -17,6 +17,7 @@ Deno.serve(async (req) => {
     const empresa = empresas[0];
     const accessToken = empresa.whatsapp_access_token;
     const wabaId = empresa.whatsapp_business_account_id;
+    const phoneNumberId = empresa.whatsapp_phone_number_id;
 
     if (!accessToken || !wabaId) {
       return Response.json({ error: 'Credenciais Meta não configuradas. Configure o Access Token e Business Account ID nas configurações do WhatsApp.' }, { status: 400 });
@@ -46,9 +47,46 @@ Deno.serve(async (req) => {
       const tipoCabecalho = header?.format || (header ? 'TEXT' : 'NONE');
 
       // URL da mídia do cabeçalho (quando disponível via example)
+      // Prioridade: header_handle (já é media_id permanente) > header_url (temporária, precisa upload)
       let cabecalhoMidiaUrl = '';
+      let cabecalhoMediaId = '';
+
       if (header?.example?.header_handle?.[0]) {
-        cabecalhoMidiaUrl = header.example.header_handle[0];
+        // header_handle pode ser URL CDN ou handle numérico
+        const handleVal = header.example.header_handle[0];
+        if (/^\d{10,}$/.test(String(handleVal).trim())) {
+          // Handle numérico permanente — usar diretamente
+          cabecalhoMediaId = handleVal;
+          cabecalhoMidiaUrl = handleVal;
+        } else {
+          // URL CDN — fazer upload para obter media_id permanente
+          cabecalhoMidiaUrl = handleVal;
+          try {
+            const imgR = await fetch(handleVal);
+            if (imgR.ok) {
+              const buf = await imgR.arrayBuffer();
+              const ct = imgR.headers.get('content-type') || 'image/jpeg';
+              const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg';
+              const fd = new FormData();
+              fd.append('messaging_product', 'whatsapp');
+              fd.append('type', ct);
+              fd.append('file', new Blob([buf], { type: ct }), `header.${ext}`);
+              const upR = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/media`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+                body: fd,
+              });
+              const upData = await upR.json();
+              if (upData.id) {
+                cabecalhoMediaId = upData.id;
+                cabecalhoMidiaUrl = upData.id; // salvar o media_id como "url" para uso no disparo
+                console.log(`✅ Upload header ${tmpl.name}: media_id=${upData.id}`);
+              }
+            }
+          } catch (upErr) {
+            console.warn(`⚠️ Upload header falhou para ${tmpl.name}:`, upErr.message);
+          }
+        }
       } else if (header?.example?.header_url?.[0]) {
         cabecalhoMidiaUrl = header.example.header_url[0];
       }

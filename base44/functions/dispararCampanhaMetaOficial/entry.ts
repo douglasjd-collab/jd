@@ -66,53 +66,42 @@ Deno.serve(async (req) => {
         const mediaKey = headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document';
         const urlStr = String(templateHeaderUrl).trim();
 
-        // Handles numéricos da Meta (ex: "924654321234567") — usar diretamente como id
-        const isHandle = /^\d{10,}$/.test(urlStr);
-
-        // URLs CDN temporárias da Meta (scontent.whatsapp.net, fbcdn.net, etc.) — precisam de re-upload
-        const isMetaCDN = urlStr.includes('scontent.whatsapp.net') || urlStr.includes('fbcdn.net') || urlStr.includes('fna.fbcdn.net');
+        // Handles/media_ids numéricos da Meta — usar diretamente como id
+        const isMediaId = /^\d{10,}$/.test(urlStr);
 
         let mediaValue = null;
 
-        if (isHandle) {
-          // Handle permanente — usar diretamente
+        if (isMediaId) {
+          // media_id permanente salvo pelo sincronizarTemplatesMeta
           mediaValue = { id: urlStr };
-          console.log(`📎 Header ${headerType}: handle permanente = ${urlStr}`);
-        } else if (isMetaCDN || urlStr.startsWith('http')) {
-          // URL pública ou CDN — fazer upload para obter media_id permanente
+          console.log(`📎 Header ${headerType}: media_id permanente = ${urlStr}`);
+        } else if (urlStr.startsWith('http')) {
+          // URL pública — tentar upload para obter media_id
           try {
-            console.log(`📎 Header ${headerType}: fazendo upload da URL CDN para obter media_id...`);
-            // Baixar a imagem
+            console.log(`📎 Header ${headerType}: upload da URL para obter media_id...`);
             const imgResp = await fetch(urlStr);
-            if (!imgResp.ok) throw new Error(`Falha ao baixar mídia: HTTP ${imgResp.status}`);
-            const imgBlob = await imgResp.arrayBuffer();
-            const contentType = imgResp.headers.get('content-type') || 'image/jpeg';
-            const ext = contentType.includes('png') ? 'png' : contentType.includes('webp') ? 'webp' : 'jpg';
-
-            // Upload para Meta Media API
-            const formData = new FormData();
-            formData.append('messaging_product', 'whatsapp');
-            formData.append('type', contentType);
-            formData.append('file', new Blob([imgBlob], { type: contentType }), `template_header.${ext}`);
-
-            const uploadResp = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/media`, {
+            if (!imgResp.ok) throw new Error(`HTTP ${imgResp.status}`);
+            const imgBuf = await imgResp.arrayBuffer();
+            const ct = imgResp.headers.get('content-type') || 'image/jpeg';
+            const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg';
+            const fd = new FormData();
+            fd.append('messaging_product', 'whatsapp');
+            fd.append('type', ct);
+            fd.append('file', new Blob([imgBuf], { type: ct }), `header.${ext}`);
+            const upResp = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/media`, {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${accessToken}` },
-              body: formData,
+              body: fd,
             });
-            const uploadData = await uploadResp.json();
-            if (uploadData.id) {
-              mediaValue = { id: uploadData.id };
-              console.log(`✅ Upload OK — media_id: ${uploadData.id}`);
+            const upData = await upResp.json();
+            if (upData.id) {
+              mediaValue = { id: upData.id };
+              console.log(`✅ Upload OK — media_id: ${upData.id}`);
             } else {
-              throw new Error(uploadData.error?.message || 'Upload sem media_id');
+              throw new Error(upData.error?.message || 'sem media_id');
             }
-          } catch (uploadErr) {
-            console.warn(`⚠️ Upload falhou (${uploadErr.message}), tentando como link direto`);
-            // Fallback: tentar como link (funciona apenas se URL for pública permanente)
-            if (!isMetaCDN) {
-              mediaValue = { link: urlStr };
-            }
+          } catch (upErr) {
+            console.warn(`⚠️ Upload falhou: ${upErr.message} — enviando sem imagem`);
           }
         }
 
