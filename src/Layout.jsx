@@ -345,8 +345,7 @@ export default function Layout({ children, currentPageName }) {
       submenu: [
         { name: 'Dashboard', page: 'FinanciamentoVeiculos?tab=dashboard' },
         { name: 'Propostas', page: 'FinanciamentoVeiculos?tab=propostas' },
-        { name: 'Financeiro', page: 'FinanciamentoVeiculos?tab=financeiro' },
-        { name: 'Bancos / Tabelas', page: 'FinanciamentoVeiculos?tab=bancos' },
+        { name: 'Comissão', page: 'FinanciamentoVeiculos?tab=financeiro' },
         { name: 'Relatórios', page: 'FinanciamentoVeiculos?tab=relatorios' },
         { name: 'Configurações', page: 'FinanciamentoVeiculos?tab=configuracoes' },
       ]
