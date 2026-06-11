@@ -55,18 +55,54 @@ Deno.serve(async (req) => {
         // header_handle pode ser URL CDN ou handle numérico
         const handleVal = header.example.header_handle[0];
         if (/^\d{10,}$/.test(String(handleVal).trim())) {
-          // Handle numérico permanente — usar diretamente
+          // Handle numérico permanente — baixar imagem da Meta e fazer upload para URL pública
           cabecalhoMediaId = handleVal;
-          cabecalhoMidiaUrl = handleVal;
+          cabecalhoMidiaUrl = handleVal; // fallback (handle numérico)
+          try {
+            // Buscar URL temporária da Meta para o media handle
+            const mediaUrlMeta = `https://graph.facebook.com/v19.0/${handleVal}`;
+            const mediaR = await fetch(mediaUrlMeta, {
+              headers: { 'Authorization': `Bearer ${accessToken}` },
+            });
+            const mediaData = await mediaR.json();
+            if (mediaData.url) {
+              // Baixar imagem da URL temporária
+              const imgR = await fetch(mediaData.url);
+              if (imgR.ok) {
+                const buf = await imgR.arrayBuffer();
+                const ct = imgR.headers.get('content-type') || 'image/jpeg';
+                const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg';
+                // Upload para storage Base44
+                const blob = new Blob([buf], { type: ct });
+                const fileObj = new File([blob], `template_${tmpl.name}.${ext}`, { type: ct });
+                const { file_url } = await base44.asServiceRole.integrations.Core.UploadFile({ file: fileObj });
+                cabecalhoMidiaUrl = file_url;
+                console.log(`✅ Imagem do template ${tmpl.name} salva no storage: ${file_url}`);
+              }
+            }
+          } catch (e) {
+            console.warn(`⚠️ Falha ao baixar imagem do handle ${handleVal}:`, e.message);
+          }
         } else {
-          // URL CDN — fazer upload para obter media_id permanente
-          cabecalhoMidiaUrl = handleVal;
+          // URL CDN — fazer upload para storage Base44 (URL pública permanente) + Meta (media_id)
+          cabecalhoMidiaUrl = handleVal; // manter URL original como fallback
           try {
             const imgR = await fetch(handleVal);
             if (imgR.ok) {
               const buf = await imgR.arrayBuffer();
               const ct = imgR.headers.get('content-type') || 'image/jpeg';
               const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg';
+              // Upload para storage Base44 (URL pública permanente para preview)
+              try {
+                const blob = new Blob([buf], { type: ct });
+                const fileObj = new File([blob], `template_${tmpl.name}.${ext}`, { type: ct });
+                const { file_url } = await base44.asServiceRole.integrations.Core.UploadFile({ file: fileObj });
+                cabecalhoMidiaUrl = file_url;
+                console.log(`✅ Imagem template ${tmpl.name} salva no storage: ${file_url}`);
+              } catch (storageErr) {
+                console.warn(`⚠️ Storage upload falhou para ${tmpl.name}, usando URL CDN:`, storageErr.message);
+              }
+              // Upload para Meta (media_id para disparos)
               const fd = new FormData();
               fd.append('messaging_product', 'whatsapp');
               fd.append('type', ct);
@@ -79,8 +115,7 @@ Deno.serve(async (req) => {
               const upData = await upR.json();
               if (upData.id) {
                 cabecalhoMediaId = upData.id;
-                cabecalhoMidiaUrl = upData.id; // salvar o media_id como "url" para uso no disparo
-                console.log(`✅ Upload header ${tmpl.name}: media_id=${upData.id}`);
+                console.log(`✅ Upload Meta ${tmpl.name}: media_id=${upData.id}`);
               }
             }
           } catch (upErr) {
@@ -109,6 +144,7 @@ Deno.serve(async (req) => {
         rodape: footer?.text || '',
         tipo_cabecalho: tipoCabecalho,
         cabecalho_midia_url: cabecalhoMidiaUrl,
+        cabecalho_media_id: cabecalhoMediaId,
         botoes,
         status_meta: (tmpl.status || 'PENDING').toLowerCase() === 'approved' ? 'aprovado' :
                      (tmpl.status || '').toLowerCase() === 'rejected' ? 'rejeitado' : 'pendente',
