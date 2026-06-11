@@ -90,9 +90,9 @@ export default function PropostasFinanciamento({ user }) {
   const [propostaSelecionada, setPropostaSelecionada] = useState(null);
 
   const carregarPropostas = useCallback(async () => {
-    if (!user?.empresa_id) return;
     setLoading(true);
-    const data = await base44.entities.FinanciamentoVeiculo.filter({ empresa_id: user.empresa_id }, '-created_date', 1000);
+    const filtro = user?.empresa_id ? { empresa_id: user.empresa_id } : {};
+    const data = await base44.entities.FinanciamentoVeiculo.filter(filtro, '-created_date', 1000);
     setPropostas(data);
     setLoading(false);
   }, [user?.empresa_id]);
