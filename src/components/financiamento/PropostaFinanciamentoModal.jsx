@@ -96,6 +96,8 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
   const [vendedores, setVendedores] = useState([]);
   const [filiais, setFiliais] = useState([]);
   const [empresasParceiras, setEmpresasParceiras] = useState([]);
+  const [buscaParceiro, setBuscaParceiro] = useState('');
+  const [parceirosFiltrados, setParceirosFiltrados] = useState([]);
   const [saving, setSaving] = useState(false);
 
   // Busca de cliente
@@ -113,12 +115,15 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
     if (proposta) {
       setForm({ ...EMPTY, ...proposta });
       setBuscaCliente(proposta.cliente_nome || '');
+      setBuscaParceiro(proposta.empresa_parceira_nome || '');
     } else {
       setForm({ ...EMPTY, data_proposta: new Date().toISOString().split('T')[0] });
       setBuscaCliente('');
+      setBuscaParceiro('');
     }
     setCadastrandoCliente(false);
     setClientesFiltrados([]);
+    setParceirosFiltrados([]);
   }, [proposta, open]);
 
   useEffect(() => {
@@ -480,21 +485,43 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                 </Select>
               </F>
               <F label="Empresa Parceira / Parceiro Vendedor">
-                <Select value={form.empresa_parceira_id || '__none__'} onValueChange={v => {
-                  if (v === '__none__') { set('empresa_parceira_id', ''); set('empresa_parceira_nome', ''); return; }
-                  const ep = empresasParceiras.find(x => x.id === v);
-                  set('empresa_parceira_id', v); set('empresa_parceira_nome', ep?.nome || '');
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar parceiro">
-                      {form.empresa_parceira_id ? empresasParceiras.find(e => e.id === form.empresa_parceira_id)?.nome || form.empresa_parceira_nome : 'Nenhum'}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">Nenhum</SelectItem>
-                    {empresasParceiras.map(ep => <SelectItem key={ep.id} value={ep.id}>{ep.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <Input
+                    value={buscaParceiro}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setBuscaParceiro(v);
+                      if (form.empresa_parceira_id) setForm(f => ({ ...f, empresa_parceira_id: '', empresa_parceira_nome: '' }));
+                      if (v.length >= 1) {
+                        const q = v.toLowerCase();
+                        setParceirosFiltrados(empresasParceiras.filter(ep => ep.nome.toLowerCase().includes(q)).slice(0, 10));
+                      } else {
+                        setParceirosFiltrados([]);
+                      }
+                    }}
+                    placeholder="Buscar parceiro..."
+                    className="pl-9"
+                    autoComplete="off"
+                  />
+                  {parceirosFiltrados.length > 0 && (
+                    <div className="absolute z-50 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-36 overflow-y-auto">
+                      <button type="button" onClick={() => { set('empresa_parceira_id', ''); set('empresa_parceira_nome', ''); setBuscaParceiro(''); setParceirosFiltrados([]); }}
+                        className="w-full text-left px-3 py-2 text-sm text-slate-400 hover:bg-slate-50 border-b">
+                        Nenhum
+                      </button>
+                      {parceirosFiltrados.map(ep => (
+                        <button key={ep.id} type="button" onClick={() => {
+                          set('empresa_parceira_id', ep.id); set('empresa_parceira_nome', ep.nome);
+                          setBuscaParceiro(ep.nome); setParceirosFiltrados([]);
+                        }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 border-b last:border-0">
+                          <span className="font-medium">{ep.nome}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </F>
               <F label="Status da proposta *">
                 <Select value={form.status} onValueChange={v => set('status', v)}>
