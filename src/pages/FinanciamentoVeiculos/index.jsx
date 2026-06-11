@@ -44,12 +44,12 @@ export default function FinanciamentoVeiculos() {
       </div>
 
       {/* Conteúdo */}
-      <div className={aba === 'dashboard' ? '' : 'hidden'}><DashboardFinanciamento user={user} /></div>
-      {user && <div className={aba === 'propostas' ? '' : 'hidden'}><PropostasFinanciamento user={user} /></div>}
-      {user && <div className={aba === 'financeiro' ? '' : 'hidden'}><ComissoesFinanciamento user={user} /></div>}
-      <div className={aba === 'bancos' ? '' : 'hidden'}><BancosFinanciamento user={user} /></div>
-      <div className={aba === 'relatorios' ? '' : 'hidden'}><RelatoriosFinanciamento user={user} /></div>
-      <div className={aba === 'configuracoes' ? '' : 'hidden'}><ConfiguracoesFinanciamento user={user} /></div>
+      {aba === 'dashboard' && <DashboardFinanciamento user={user} />}
+      {aba === 'propostas' && user && <PropostasFinanciamento user={user} />}
+      {aba === 'financeiro' && user && <ComissoesFinanciamento user={user} />}
+      {aba === 'bancos' && <BancosFinanciamento user={user} />}
+      {aba === 'relatorios' && <RelatoriosFinanciamento user={user} />}
+      {aba === 'configuracoes' && <ConfiguracoesFinanciamento user={user} />}
     </div>
   );
 }
