@@ -201,21 +201,7 @@ export default function TarefaDetalhesModal({
         {/* Header */}
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b bg-white">
           <div className="flex-1 min-w-0 pr-4">
-            <div className="flex items-center gap-2 mb-1">
-              {atrasada && (
-                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-700 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> Atrasada
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {tarefa.prioridade && (
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${PRIORIDADE_CORES[tarefa.prioridade] || 'bg-slate-100 text-slate-600'}`}>
-                  {PRIORIDADE_LABEL[tarefa.prioridade] || tarefa.prioridade}
-                </span>
-              )}
-              <h2 className="text-lg font-bold text-slate-900 leading-tight">{tarefa.titulo}</h2>
-            </div>
+            <h2 className="text-lg font-bold text-slate-900 leading-tight">{tarefa.titulo}</h2>
           </div>
           <button
             onClick={() => onOpenChange(false)}
