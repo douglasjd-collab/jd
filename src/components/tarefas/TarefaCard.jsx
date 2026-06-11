@@ -165,34 +165,28 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes }) 
           </div>
         )}
 
-        {/* ── PILLS: STATUS PRAZO + CHECKLIST ── */}
-        <div className="flex items-center gap-2">
-          {statusPill && (
-            <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-lg border ${statusPill.bg}`}>
-              <statusPill.ico className="w-3 h-3" />
-              {statusPill.label}
-            </span>
-          )}
-          {checkTotal > 0 && (
+        {/* ── PILLS: APENAS CHECKLIST (status de prazo aparece só no rodapé) ── */}
+        {checkTotal > 0 && (
+          <div className="flex items-center gap-2">
             <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-500">
               <CheckSquare className="w-3 h-3 text-slate-400" />
-              {checkDone}/{checkTotal}
+              {checkDone}/{checkTotal} concluídas
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* ── DIVISOR ── */}
         <hr className="border-slate-100" />
 
         {/* ── DATAS ── */}
-        <div className="flex items-center gap-3 text-[11px] text-slate-400">
-          <div className="flex items-center gap-1">
-            <Calendar className="w-3 h-3" />
-            <span className="text-slate-500 font-medium">{inicioStr}</span>
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-1.5">
+            <Calendar className="w-4 h-4 text-slate-400" />
+            <span className="text-slate-600 font-medium">{inicioStr}</span>
           </div>
-          <span className="text-slate-200">|</span>
-          <div className="flex items-center gap-1">
-            <Clock className={`w-3 h-3 ${atrasada ? 'text-red-400' : venceHoje ? 'text-orange-400' : ''}`} />
+          <span className="text-slate-200 text-base">|</span>
+          <div className="flex items-center gap-1.5">
+            <Clock className={`w-4 h-4 ${atrasada ? 'text-red-400' : venceHoje ? 'text-orange-400' : 'text-slate-400'}`} />
             <span className={`font-semibold ${atrasada ? 'text-red-500' : venceHoje ? 'text-orange-500' : 'text-slate-600'}`}>
               {prazoStr}
             </span>
