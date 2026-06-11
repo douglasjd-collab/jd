@@ -174,23 +174,52 @@ Deno.serve(async (req) => {
           numero_sequencia: 1,
         });
 
-        // Salvar como MensagemWhatsapp para aparecer no chat
-        if (conversa_id) {
-          const whatsappMsgId = data?.messages?.[0]?.id;
-          const textoMensagem = texto_preview || `📋 Template enviado: ${template_name}`;
+        // Salvar como MensagemWhatsapp para aparecer no chat (Bate Papo)
+        const whatsappMsgId = data?.messages?.[0]?.id;
+        const textoMensagem = texto_preview || `📋 Template enviado: ${template_name}`;
 
-          // Montar JSON de template para renderização rica no chat (imagem + botões)
-          const templateJson = JSON.stringify({
-            __template: true,
-            template_name,
-            header_type: (templateHeaderType || '').toUpperCase(),
-            header_url: templateHeaderUrl || null,
-            corpo: textoMensagem,
-            botoes: botoesParaEnviar,
-          });
+        // Montar JSON de template para renderização rica no chat (imagem + botões)
+        const templateJson = JSON.stringify({
+          __template: true,
+          template_name,
+          header_type: (templateHeaderType || '').toUpperCase(),
+          header_url: templateHeaderUrl || null,
+          corpo: textoMensagem,
+          botoes: botoesParaEnviar,
+        });
 
+        // Buscar ou usar conversa_id fornecida
+        let convId = conversa_id;
+        if (!convId) {
+          // Procurar conversa existente para este telefone na empresa
+          const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
+            { empresa_id, cliente_telefone: numeroLimpo },
+            '-data_ultima_mensagem', 1
+          );
+          if (conversas.length > 0) {
+            convId = conversas[0].id;
+          } else {
+            // Criar nova conversa
+            const nova = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+              empresa_id,
+              cliente_telefone: numeroLimpo,
+              cliente_nome: numeroLimpo,
+              status: 'ativa',
+              tipo_conexao: 'meta_oficial',
+              canal_origem: 'meta',
+              provider: 'whatsapp_meta',
+              phone_number_id_meta: phoneNumberId,
+              data_ultima_mensagem: new Date().toISOString(),
+              ultima_mensagem: `📋 ${template_name}`,
+              ultimo_remetente: 'vendedor',
+            });
+            convId = nova.id;
+          }
+        }
+
+        if (convId) {
           await base44.asServiceRole.entities.MensagemWhatsapp.create({
-            conversa_id,
+            conversa_id: convId,
             empresa_id,
             remetente: 'vendedor',
             usuario_id: user.id,
@@ -200,10 +229,11 @@ Deno.serve(async (req) => {
             whatsapp_message_id: whatsappMsgId || null,
             data_envio: new Date().toISOString(),
             status: 'enviada',
+            provider: 'whatsapp_meta',
           });
 
           // Atualizar última mensagem da conversa
-          await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+          await base44.asServiceRole.entities.ConversaWhatsapp.update(convId, {
             ultima_mensagem: `📋 ${template_name}`,
             data_ultima_mensagem: new Date().toISOString(),
             ultimo_remetente: 'vendedor',
