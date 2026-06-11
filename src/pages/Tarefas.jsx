@@ -5,14 +5,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Settings, AlertTriangle, Clock3, CheckCircle2, UserSquare2, LayoutList, Kanban } from 'lucide-react';
+import { Search, Layers, AlertTriangle, Clock3, CheckCircle2, UserSquare2, LayoutList, Kanban } from 'lucide-react';
 import TarefasLista from '@/components/tarefas/TarefasLista';
 import { toast } from 'sonner';
 import { format, addDays, differenceInDays } from 'date-fns';
 import TarefaCard from '@/components/tarefas/TarefaCard';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
 import TarefaDetalhesModal from '@/components/tarefas/TarefaDetalhesModal';
-import ConfiguracaoTarefasModal from '@/components/tarefas/ConfiguracaoTarefasModal';
+import GerenciarEtapasModal from '@/components/tarefas/GerenciarEtapasModal';
 
 const STATUS_PADRAO = [
   { slug: 'a_fazer', nome: 'A Fazer', cor: '#f59e0b', ordem: 1 },
@@ -363,8 +363,9 @@ export default function Tarefas() {
             <span className="text-xs">Kanban</span>
           </Button>
         </div>
-        <Button variant="outline" size="icon" title="Configurar setores e subsetores" onClick={() => window.location.href = '/ConfiguracaoSetoresTarefas'}>
-          <Settings className="w-4 h-4" />
+        <Button variant="outline" className="gap-2" onClick={() => setConfigOpen(true)}>
+          <Layers className="w-4 h-4" />
+          <span className="hidden sm:inline">Gerenciar Etapas</span>
         </Button>
       </PageHeader>
 
@@ -611,11 +612,18 @@ export default function Tarefas() {
         subsetoresList={subsetoresList}
       />
 
-      <ConfiguracaoTarefasModal
+      <GerenciarEtapasModal
         open={configOpen}
         onOpenChange={setConfigOpen}
         empresaId={empresaId}
-        onStatusChanged={() => queryClient.invalidateQueries({ queryKey: ['status-tarefa'] })}
+        currentUser={currentUser}
+        tarefas={tarefas}
+        setoresList={setoresList}
+        statusList={statusList}
+        onStatusChanged={() => {
+          queryClient.invalidateQueries({ queryKey: ['status-tarefa'] });
+          queryClient.invalidateQueries({ queryKey: ['tarefas'] });
+        }}
       />
     </div>
   );
