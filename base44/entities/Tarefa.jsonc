@@ -100,6 +100,20 @@
       "default": "media",
       "description": "Prioridade"
     },
+    "pendencia_com": {
+      "type": "string",
+      "enum": [
+        "cliente",
+        "banco",
+        "administradora",
+        "seguradora",
+        "detran",
+        "cartorio",
+        "parceiro",
+        "equipe_interna"
+      ],
+      "description": "Quem est\u00e1 com a pend\u00eancia"
+    },
     "responsavel_principal_id": {
       "type": "string"
     },

@@ -69,6 +69,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
            data_conclusao_prevista: tarefa.data_conclusao_prevista || '',
            status: tarefa.status || 'a_fazer',
            prioridade: tarefa.prioridade || 'media',
+           pendencia_com: tarefa.pendencia_com || '',
            responsavel_principal_id: tarefa.responsavel_principal_id || '',
          });
         try { setChecklist(tarefa.checklist ? JSON.parse(tarefa.checklist) : []); } catch { setChecklist([]); }
@@ -81,6 +82,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
            data_conclusao_prevista: '',
            status: statusInicial || statusList?.[0]?.slug || statusList?.[0]?.id || 'a_fazer',
            prioridade: 'media',
+           pendencia_com: '',
            responsavel_principal_id: currentUser?.colaborador_id || currentUser?.id || '',
          });
         setChecklist([]);
@@ -339,6 +341,26 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {statusList.map(s => <SelectItem key={s.slug || s.id} value={s.slug || s.id}>{s.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Pendência com */}
+          <div>
+            <Label>Pendência com</Label>
+            <Select value={form.pendencia_com || ''} onValueChange={v => setForm({ ...form, pendencia_com: v })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Quem está com a pendência?" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cliente">👤 Cliente</SelectItem>
+                <SelectItem value="banco">🏦 Banco</SelectItem>
+                <SelectItem value="administradora">🏢 Administradora</SelectItem>
+                <SelectItem value="seguradora">🛡️ Seguradora</SelectItem>
+                <SelectItem value="detran">🚗 Detran</SelectItem>
+                <SelectItem value="cartorio">📋 Cartório</SelectItem>
+                <SelectItem value="parceiro">🤝 Parceiro</SelectItem>
+                <SelectItem value="equipe_interna">👨‍💼 Equipe Interna</SelectItem>
               </SelectContent>
             </Select>
           </div>
