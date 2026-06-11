@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Car, Bike, Truck, FileText, TrendingUp, RefreshCw, Users, Building2, Calendar } from 'lucide-react';
+import { Car, Bike, Truck, FileText, TrendingUp, RefreshCw, Users, Building2, Calendar, Store } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -110,6 +110,20 @@ export default function DashboardFinanciamento({ user }) {
     });
     return Object.values(porVendedor)
       .map(v => ({ ...v, ticketMedio: v.valor / v.quantidade, participacao: totalFinanciado > 0 ? (v.valor / totalFinanciado) * 100 : 0 }))
+      .sort((a, b) => b.valor - a.valor);
+  }, [filtradas, totalFinanciado]);
+
+  // Ranking por loja parceira
+  const rankingLojasParceiras = useMemo(() => {
+    const porLoja = {};
+    filtradas.forEach(p => {
+      const loja = p.empresa_nome || 'Não informada';
+      if (!porLoja[loja]) porLoja[loja] = { loja, quantidade: 0, valor: 0 };
+      porLoja[loja].quantidade += 1;
+      porLoja[loja].valor += p.valor_financiado || 0;
+    });
+    return Object.values(porLoja)
+      .map(l => ({ ...l, ticketMedio: l.valor / l.quantidade, participacao: totalFinanciado > 0 ? (l.valor / totalFinanciado) * 100 : 0 }))
       .sort((a, b) => b.valor - a.valor);
   }, [filtradas, totalFinanciado]);
 
@@ -387,7 +401,7 @@ export default function DashboardFinanciamento({ user }) {
       </Card>
 
       {/* Rankings */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Ranking por Vendedor */}
         <Card>
           <CardHeader>
@@ -437,6 +451,35 @@ export default function DashboardFinanciamento({ user }) {
                       <p className="font-medium text-slate-700 truncate">{b.banco}</p>
                       <p className="text-xs text-slate-500">
                         {fmtNumber(b.quantidade)} financiamentos • {fmt(b.valor)} • {b.participacao.toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Ranking por Loja Parceira */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Store className="w-4 h-4 text-orange-600" />
+              Ranking por Loja Parceira
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {rankingLojasParceiras.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-8">Nenhuma loja no período</p>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {rankingLojasParceiras.slice(0, 10).map((l, i) => (
+                  <div key={l.loja} className="flex items-center gap-3">
+                    <span className="w-6 text-center font-bold text-slate-600">{i + 1}º</span>
+                    <div className="flex-1">
+                      <p className="font-medium text-slate-700 truncate">{l.loja}</p>
+                      <p className="text-xs text-slate-500">
+                        {fmtNumber(l.quantidade)} financiamentos • {fmt(l.valor)} • {l.participacao.toFixed(1)}%
                       </p>
                     </div>
                   </div>
