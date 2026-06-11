@@ -338,7 +338,19 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Configurações', page: 'ConfiguracaoSeguros' },
       ]
     },
-    { name: 'Financiamentos', icon: Car, page: 'FinanciamentoVeiculos', roles: ALL_ROLES },
+    { 
+      name: 'Financiamentos', 
+      icon: Car, 
+      roles: ALL_ROLES,
+      submenu: [
+        { name: 'Dashboard', page: 'FinanciamentoVeiculos?tab=dashboard' },
+        { name: 'Propostas', page: 'FinanciamentoVeiculos?tab=propostas' },
+        { name: 'Financeiro', page: 'FinanciamentoVeiculos?tab=financeiro' },
+        { name: 'Bancos / Tabelas', page: 'FinanciamentoVeiculos?tab=bancos' },
+        { name: 'Relatórios', page: 'FinanciamentoVeiculos?tab=relatorios' },
+        { name: 'Configurações', page: 'FinanciamentoVeiculos?tab=configuracoes' },
+      ]
+    },
 
     { name: 'Tarefas', icon: CheckSquare, page: 'Tarefas', roles: ALL_ROLES },
     { name: 'Clientes', icon: Users, page: 'Clientes', roles: ALL_ROLES },
@@ -447,6 +459,7 @@ export default function Layout({ children, currentPageName }) {
     'Configurações': 'configuracoes',
     'Configuração WhatsApp': 'configuracao_whatsapp',
     'FinantoBank INSS': 'finanto_bank',
+    'Financiamentos': 'financiamento_veiculos',
   };
 
   const menus_permitidos = user?.menus_permitidos || [];

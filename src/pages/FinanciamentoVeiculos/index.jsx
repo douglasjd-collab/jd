@@ -19,7 +19,11 @@ const TABS = [
 ];
 
 export default function FinanciamentoVeiculos() {
-  const [aba, setAba] = useState('dashboard');
+  const getTabFromUrl = () => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') || 'dashboard';
+  };
+  const [aba, setAba] = useState(getTabFromUrl);
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -54,7 +58,7 @@ export default function FinanciamentoVeiculos() {
         {TABS.map(t => (
           <button
             key={t.id}
-            onClick={() => setAba(t.id)}
+            onClick={() => { setAba(t.id); window.history.replaceState(null, '', `?tab=${t.id}`); }}
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
               aba === t.id
