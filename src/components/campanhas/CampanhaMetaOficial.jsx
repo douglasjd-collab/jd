@@ -99,6 +99,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
   const [templateHeaderUrlInput, setTemplateHeaderUrlInput] = useState('');
   const [mensagemTexto, setMensagemTexto] = useState('');
   const [disparando, setDisparando] = useState(false);
+  const [progressoEnvio, setProgressoEnvio] = useState({ enviados: 0, total: 0, status: '' });
   const [apiSelecionada, setApiSelecionada] = useState('meta'); // 'meta' | 'evolution'
   // ─── Funil de Vendas state ──────────────────────────────────────────────────
   const [adicionarAoFunil, setAdicionarAoFunil] = useState(false);
@@ -400,9 +401,34 @@ export default function CampanhaMetaOficial({ empresaId }) {
     const contatos = contatosSelecionadosLista.map(c => c.telefone).filter(Boolean);
 
     setDisparando(true);
+    setProgressoEnvio({ enviados: 0, total: contatos.length, status: 'Iniciando...' });
+    let pollInterval = null;
     try {
       let resp;
       if (tipoMensagem === 'template') {
+        // Criar job de progresso
+        const job = await base44.entities.CampanhaDisparoJob.create({
+          empresa_id: empresaId,
+          nome_campanha: nomeCampanha,
+          total_contatos: contatos.length,
+          enviados: 0,
+          erros: 0,
+          status: 'em_andamento',
+        });
+
+        // Iniciar polling de progresso
+        pollInterval = setInterval(async () => {
+          try {
+            const fresh = await base44.entities.CampanhaDisparoJob.get(job.id);
+            if (fresh) {
+              setProgressoEnvio({ enviados: fresh.enviados || 0, total: fresh.total_contatos || contatos.length, status: fresh.status || 'em_andamento' });
+              if (fresh.status === 'concluido' || fresh.status === 'erro') {
+                clearInterval(pollInterval);
+              }
+            }
+          } catch {}
+        }, 1500);
+
         const templateDados = parseTemplateDados(templateSelecionado);
         resp = await base44.functions.invoke('dispararCampanhaMetaOficial', {
           empresa_id: empresaId,
@@ -417,6 +443,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
           template_header_type: templateDados.tipo_cabecalho || '',
           template_header_url: templateHeaderUrlInput || templateDados.cabecalho_midia_url || '',
           template_botoes: templateDados.botoes || [],
+          job_id: job.id,
           // Passar nome da campanha para log
           nome_campanha: nomeCampanha,
         });
@@ -444,6 +471,8 @@ export default function CampanhaMetaOficial({ empresaId }) {
         setDisparando(false);
         return;
       }
+      if (pollInterval) clearInterval(pollInterval);
+      setProgressoEnvio({ enviados: 0, total: 0, status: '' });
       const data = resp?.data;
       toast.success(`✅ Campanha "${nomeCampanha}" disparada: ${data?.enviados || 0} enviados${data?.erros > 0 ? ` | ⚠️ ${data.erros} erros` : ''}`);
 
@@ -460,6 +489,8 @@ export default function CampanhaMetaOficial({ empresaId }) {
       setMensagemTexto('');
       refetchLogs();
     } catch (e) {
+      if (pollInterval) clearInterval(pollInterval);
+      setProgressoEnvio({ enviados: 0, total: 0, status: '' });
       toast.error('Erro: ' + e.message);
     } finally {
       setDisparando(false);
@@ -985,6 +1016,21 @@ export default function CampanhaMetaOficial({ empresaId }) {
                 </div>
 
                 {/* Rodapé: status + botão */}
+                {disparando && progressoEnvio.total > 0 && (
+                  <div className="mb-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-sm font-semibold text-blue-700">📨 Enviando campanha...</span>
+                      <span className="text-sm font-bold text-blue-600">{progressoEnvio.enviados}/{progressoEnvio.total}</span>
+                    </div>
+                    <div className="h-2 bg-blue-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                        style={{ width: `${progressoEnvio.total > 0 ? Math.round((progressoEnvio.enviados / progressoEnvio.total) * 100) : 0}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-blue-500 mt-1">Aguarde enquanto as mensagens são enviadas com intervalo de segurança...</p>
+                  </div>
+                )}
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                   <p className="text-sm text-slate-500">
                     {templateSelecionado
@@ -1005,9 +1051,11 @@ export default function CampanhaMetaOficial({ empresaId }) {
                       onClick={dispararCampanha}
                       disabled={disparando || contatosSelecionados.size === 0 || !nomeCampanha.trim() || (tipoMensagem === 'template' && !templateSelecionado) || (tipoMensagem === 'texto' && !mensagemTexto.trim())}
                     >
-                      {disparando
-                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Disparando...</>
-                        : <><Send className="w-4 h-4" /> Enviar para Leads ({contatosSelecionados.size})</>}
+                      {disparando && progressoEnvio.total > 0
+                        ? <><Loader2 className="w-4 h-4 animate-spin" /> Enviando {progressoEnvio.enviados}/{progressoEnvio.total}</>
+                        : disparando
+                          ? <><Loader2 className="w-4 h-4 animate-spin" /> Disparando...</>
+                          : <><Send className="w-4 h-4" /> Enviar para Leads ({contatosSelecionados.size})</>}
                     </Button>
                   </div>
                 </div>

@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url, template_botoes = [], conversa_id, texto_preview, delay_segundos = 5, pausar_apos = 0, duracao_pausa = 60, nome_campanha = '' } = await req.json();
+    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url, template_botoes = [], conversa_id, texto_preview, delay_segundos = 5, pausar_apos = 0, duracao_pausa = 60, nome_campanha = '', job_id = '' } = await req.json();
 
     if (!empresa_id || !template_name || contatos.length === 0) {
       return Response.json({ error: 'empresa_id, template_name e contatos são obrigatórios' }, { status: 400 });
@@ -213,6 +213,14 @@ Deno.serve(async (req) => {
         enviados++;
         resultados.push({ telefone: numeroLimpo, status: 'enviada', message_id: data?.messages?.[0]?.id });
 
+        // Atualizar progresso do job
+        if (job_id) {
+          await base44.asServiceRole.entities.CampanhaDisparoJob.update(job_id, {
+            enviados,
+            erros,
+          }).catch(() => {});
+        }
+
       } catch (e) {
         erros++;
         console.error(`❌ Erro ao enviar para ${numeroLimpo}:`, e.message);
@@ -239,6 +247,16 @@ Deno.serve(async (req) => {
         console.log(`⏸️ Pausa automática de ${pausaMs / 1000}s após ${enviados + erros} mensagens`);
         await new Promise(r => setTimeout(r, pausaMs));
       }
+    }
+
+    // Marcar job como concluído
+    if (job_id) {
+      await base44.asServiceRole.entities.CampanhaDisparoJob.update(job_id, {
+        enviados,
+        erros,
+        status: 'concluido',
+        resultados: JSON.stringify(resultados),
+      }).catch(() => {});
     }
 
     console.log(`✅ Campanha Meta Oficial: ${enviados} enviados, ${erros} erros`);
