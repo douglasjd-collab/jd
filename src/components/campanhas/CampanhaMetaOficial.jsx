@@ -1269,20 +1269,32 @@ export default function CampanhaMetaOficial({ empresaId }) {
                   <p className="text-[10px] text-slate-500 mb-2 font-medium uppercase tracking-wide">Prévia da mensagem</p>
                   <div className="bg-white rounded-xl shadow-sm max-w-xs ml-auto p-3 space-y-1.5">
                     {/* Cabeçalho com mídia */}
-                    {tipoAtual === 'imagem' && d.cabecalho_midia_url && (
+                    {tipoAtual === 'imagem' && d.cabecalho_midia_url && !/^\d+$/.test(String(d.cabecalho_midia_url).trim()) && (
                       <img src={d.cabecalho_midia_url} alt="Imagem do template" className="w-full rounded-lg object-cover max-h-48" onError={e => { e.target.style.display='none'; }} />
+                    )}
+                    {tipoAtual === 'imagem' && d.cabecalho_midia_url && /^\d+$/.test(String(d.cabecalho_midia_url).trim()) && (
+                      <div className="w-full h-28 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center text-blue-500 text-sm gap-2">🖼️ Imagem do template (handle Meta)</div>
                     )}
                     {tipoAtual === 'imagem' && !d.cabecalho_midia_url && (
                       <div className="w-full h-28 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center text-blue-500 text-sm gap-2">🖼️ Imagem do template</div>
                     )}
-                    {tipoAtual === 'video' && d.cabecalho_midia_url && (
+                    {tipoAtual === 'video' && d.cabecalho_midia_url && !/^\d+$/.test(String(d.cabecalho_midia_url).trim()) && (
                       <video src={d.cabecalho_midia_url} controls className="w-full rounded-lg max-h-48" />
                     )}
-                    {tipoAtual === 'documento' && d.cabecalho_midia_url && (
+                    {tipoAtual === 'video' && d.cabecalho_midia_url && /^\d+$/.test(String(d.cabecalho_midia_url).trim()) && (
+                      <div className="w-full h-28 bg-gradient-to-br from-slate-700 to-slate-900 rounded-lg flex items-center justify-center text-slate-300 text-sm gap-2">🎥 Vídeo do template (handle Meta)</div>
+                    )}
+                    {tipoAtual === 'documento' && d.cabecalho_midia_url && !/^\d+$/.test(String(d.cabecalho_midia_url).trim()) && (
                       <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-600">
                         <span className="text-xl">📄</span>
                         <span className="text-xs font-medium">Documento PDF</span>
                         <a href={d.cabecalho_midia_url} target="_blank" rel="noreferrer" className="ml-auto text-xs text-blue-500 underline">Abrir</a>
+                      </div>
+                    )}
+                    {tipoAtual === 'documento' && d.cabecalho_midia_url && /^\d+$/.test(String(d.cabecalho_midia_url).trim()) && (
+                      <div className="w-full bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2 text-red-600">
+                        <span className="text-xl">📄</span>
+                        <span className="text-xs font-medium">Documento PDF (handle Meta)</span>
                       </div>
                     )}
                     {/* Cabeçalho texto */}
