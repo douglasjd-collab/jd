@@ -1,22 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { LayoutDashboard, FileText, Building2, BarChart2, Settings, Car, DollarSign } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Car } from 'lucide-react';
 import DashboardFinanciamento from './financiamento/DashboardFinanciamento';
 import PropostasFinanciamento from './financiamento/PropostasFinanciamento';
 import BancosFinanciamento from './financiamento/BancosFinanciamento';
 import RelatoriosFinanciamento from './financiamento/RelatoriosFinanciamento';
 import ConfiguracoesFinanciamento from './financiamento/ConfiguracoesFinanciamento';
 import ComissoesFinanciamento from './financiamento/ComissoesFinanciamento';
-
-const TABS = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'propostas', label: 'Propostas', icon: FileText },
-  { id: 'financeiro', label: 'Financeiro do Financiamento', icon: DollarSign },
-  { id: 'bancos', label: 'Bancos / Tabelas', icon: Building2 },
-  { id: 'relatorios', label: 'Relatórios', icon: BarChart2 },
-  { id: 'configuracoes', label: 'Configurações', icon: Settings },
-];
 
 export default function FinanciamentoVeiculos() {
   const getTabFromUrl = () => {
@@ -51,25 +41,6 @@ export default function FinanciamentoVeiculos() {
           <h1 className="text-2xl font-bold text-slate-800">Financiamento de Veículos</h1>
           <p className="text-sm text-slate-500">Gestão completa de propostas e financiamentos</p>
         </div>
-      </div>
-
-      {/* Abas */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit flex-wrap">
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            onClick={() => { setAba(t.id); window.history.replaceState(null, '', `?tab=${t.id}`); }}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
-              aba === t.id
-                ? 'bg-white text-blue-700 shadow-sm'
-                : 'text-slate-600 hover:text-slate-800'
-            )}
-          >
-            <t.icon className="w-4 h-4" />
-            {t.label}
-          </button>
-        ))}
       </div>
 
       {/* Conteúdo */}
