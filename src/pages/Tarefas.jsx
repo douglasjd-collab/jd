@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Settings, AlertTriangle, Clock3, CheckCircle2, UserSquare2, LayoutList, Kanban } from 'lucide-react';
 import TarefasLista from '@/components/tarefas/TarefasLista';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, addDays, differenceInDays } from 'date-fns';
 import TarefaCard from '@/components/tarefas/TarefaCard';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
 import TarefaDetalhesModal from '@/components/tarefas/TarefaDetalhesModal';
@@ -45,6 +45,7 @@ export default function Tarefas() {
   const [filtroSetor, setFiltroSetor] = useState(() => {
     try { return localStorage.getItem('tarefas_filtro_setor') || 'todos'; } catch { return 'todos'; }
   });
+  const [filtroPrazo, setFiltroPrazo] = useState('todas');
   const [mostrarSoMinhas, setMostrarSoMinhas] = useState(false);
   const [modoVisualizacao, setModoVisualizacao] = useState('kanban'); // 'kanban' | 'lista'
   const [abaAtiva, setAbaAtiva] = useState('andamento'); // 'andamento' | 'finalizados'
@@ -266,6 +267,40 @@ export default function Tarefas() {
       ? tarefas.filter(t => !t.setor_id && !t.setor)
       : tarefas.filter(t => t.setor_id === filtroSetor || t.setor === filtroSetor);
 
+  // Helper: dias até o prazo (negativo = atrasada)
+  const diasAtePrazo = (t) => {
+    if (!t.data_conclusao_prevista) return null;
+    return differenceInDays(new Date(t.data_conclusao_prevista + 'T23:59:59'), new Date());
+  };
+
+  // Helper: filtrar por prazo
+  const matchPrazo = (t) => {
+    if (filtroPrazo === 'todas') return true;
+    const concluido = t.status === 'concluido' || t.status === 'arquivado';
+    const dias = diasAtePrazo(t);
+
+    if (filtroPrazo === 'atrasadas') return !concluido && dias !== null && dias < 0;
+    if (filtroPrazo === 'vencem_hoje') return !concluido && dias === 0;
+    if (filtroPrazo === 'vencem_amanha') return !concluido && dias === 1;
+    if (filtroPrazo === 'proximos_7_dias') return !concluido && dias !== null && dias >= 0 && dias <= 7;
+    if (filtroPrazo === 'proximos_30_dias') return !concluido && dias !== null && dias >= 0 && dias <= 30;
+    if (filtroPrazo === 'sem_prazo') return !concluido && dias === null;
+    if (filtroPrazo === 'concluidas_no_prazo') {
+      if (!concluido) return false;
+      if (!t.data_conclusao_real || !t.data_conclusao_prevista) return true;
+      return t.data_conclusao_real <= t.data_conclusao_prevista;
+    }
+    if (filtroPrazo === 'concluidas_com_atraso') {
+      if (!concluido) return false;
+      if (!t.data_conclusao_real || !t.data_conclusao_prevista) return false;
+      return t.data_conclusao_real > t.data_conclusao_prevista;
+    }
+    if (filtroPrazo === 'criticas') {
+      return !concluido && (t.prioridade === 'alta' || t.prioridade === 'urgente' || (dias !== null && dias < 0));
+    }
+    return true;
+  };
+
   const tarefasFiltradas = tarefasDoSetor.filter(t => {
     const normalize = str => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const s = normalize(search);
@@ -279,7 +314,7 @@ export default function Tarefas() {
     const matchAba = abaAtiva === 'finalizados'
       ? SLUGS_FINALIZADOS.includes(t.status)
       : !SLUGS_FINALIZADOS.includes(t.status);
-    return matchBusca && matchStatus && matchPrioridade && matchResponsavel && matchMinhas && matchAba;
+    return matchBusca && matchStatus && matchPrioridade && matchResponsavel && matchMinhas && matchAba && matchPrazo(t);
   });
 
   // Indicadores calculados sobre tarefasDoSetor (respeita filtro de setor)
@@ -376,6 +411,17 @@ export default function Tarefas() {
           {setoresCombinados.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
           <option value="_sem_setor">Sem Setor</option>
         </select>
+        <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroPrazo} onChange={e => setFiltroPrazo(e.target.value)}>
+          <option value="todas">Prazo</option>
+          <option value="atrasadas">Atrasadas</option>
+          <option value="vencem_hoje">Vencem Hoje</option>
+          <option value="vencem_amanha">Vencem Amanhã</option>
+          <option value="proximos_7_dias">Próximos 7 Dias</option>
+          <option value="proximos_30_dias">Próximos 30 Dias</option>
+          <option value="sem_prazo">Sem Prazo</option>
+          <option value="concluidas_no_prazo">Concluídas no Prazo</option>
+          <option value="concluidas_com_atraso">Concluídas com Atraso</option>
+        </select>
         <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)}>
           <option value="todos">Responsável</option>
           {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -388,37 +434,64 @@ export default function Tarefas() {
         >
           Minhas
         </Button>
+        <Button
+          variant={filtroPrazo === 'criticas' ? 'default' : 'outline'}
+          size="sm"
+          className={filtroPrazo === 'criticas' ? 'bg-red-600 hover:bg-red-700 text-white h-8 px-3 text-xs' : 'h-8 px-3 text-xs border-red-300 text-red-600 hover:bg-red-50'}
+          onClick={() => setFiltroPrazo(p => p === 'criticas' ? 'todas' : 'criticas')}
+        >
+          ⚠ Pendências Críticas
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-white border shadow-sm p-4 flex items-center justify-between">
+        <button
+          onClick={() => {
+            setMostrarSoMinhas(p => !p);
+            setFiltroPrazo('todas');
+          }}
+          className={`rounded-2xl bg-white border shadow-sm p-4 flex items-center justify-between text-left transition-all hover:shadow-md ${mostrarSoMinhas ? 'ring-2 ring-blue-500 bg-blue-50' : ''}`}
+        >
           <div>
             <p className="text-xs text-slate-500">Minhas tarefas</p>
             <p className="text-2xl font-bold text-slate-900 mt-1">{minhasTarefas}</p>
           </div>
-          <UserSquare2 className="w-8 h-8 text-slate-300" />
-        </div>
-        <div className="rounded-2xl bg-white border shadow-sm p-4 flex items-center justify-between">
+          <UserSquare2 className={`w-8 h-8 ${mostrarSoMinhas ? 'text-blue-400' : 'text-slate-300'}`} />
+        </button>
+        <button
+          onClick={() => setFiltroPrazo(p => p === 'atrasadas' ? 'todas' : 'atrasadas')}
+          className={`rounded-2xl bg-white border shadow-sm p-4 flex items-center justify-between text-left transition-all hover:shadow-md ${filtroPrazo === 'atrasadas' ? 'ring-2 ring-red-500 bg-red-50' : ''}`}
+        >
           <div>
             <p className="text-xs text-slate-500">Atrasadas</p>
             <p className="text-2xl font-bold text-red-600 mt-1">{atrasadas}</p>
           </div>
-          <AlertTriangle className="w-8 h-8 text-red-200" />
-        </div>
-        <div className="rounded-2xl bg-white border shadow-sm p-4 flex items-center justify-between">
+          <AlertTriangle className={`w-8 h-8 ${filtroPrazo === 'atrasadas' ? 'text-red-300' : 'text-red-200'}`} />
+        </button>
+        <button
+          onClick={() => setFiltroPrazo(p => p === 'vencem_hoje' ? 'todas' : 'vencem_hoje')}
+          className={`rounded-2xl bg-white border shadow-sm p-4 flex items-center justify-between text-left transition-all hover:shadow-md ${filtroPrazo === 'vencem_hoje' ? 'ring-2 ring-amber-500 bg-amber-50' : ''}`}
+        >
           <div>
             <p className="text-xs text-slate-500">Vencem hoje</p>
             <p className="text-2xl font-bold text-amber-600 mt-1">{vencemHoje}</p>
           </div>
-          <Clock3 className="w-8 h-8 text-amber-200" />
-        </div>
-        <div className="rounded-2xl bg-white border shadow-sm p-4 flex items-center justify-between">
+          <Clock3 className={`w-8 h-8 ${filtroPrazo === 'vencem_hoje' ? 'text-amber-300' : 'text-amber-200'}`} />
+        </button>
+        <button
+          onClick={() => {
+            setAbaAtiva('finalizados');
+            setFiltroPrazo('todas');
+            setFiltroStatus('concluido');
+          }}
+          className={`rounded-2xl bg-white border shadow-sm p-4 flex items-center justify-between text-left transition-all hover:shadow-md ${filtroStatus === 'concluido' ? 'ring-2 ring-green-500 bg-green-50' : ''}`}
+        >
           <div>
             <p className="text-xs text-slate-500">Concluídas</p>
             <p className="text-2xl font-bold text-green-600 mt-1">{concluidas}</p>
           </div>
-          <CheckCircle2 className="w-8 h-8 text-green-200" />
-        </div>
+          <CheckCircle2 className={`w-8 h-8 ${filtroStatus === 'concluido' ? 'text-green-300' : 'text-green-200'}`} />
+        </button>
       </div>
 
       {modoVisualizacao === 'lista' ? (

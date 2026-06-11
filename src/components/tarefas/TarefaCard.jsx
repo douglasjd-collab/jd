@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, Calendar, CheckSquare, MessageCircle, User, Briefcase } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { format, differenceInDays, differenceInHours } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 
 const prioridadeCfg = {
   urgente: { label: 'Urgente', className: 'bg-red-600 text-white' },
@@ -110,10 +110,24 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes, st
         )}
       </div>
 
-      {/* Badges de status */}
+      {/* Badges de prazo com cores por urgência */}
       <div className="flex flex-wrap gap-1 mb-2">
-        {atrasada && <Badge className="text-xs px-1.5 py-0 bg-red-600 text-white">⚠ Atrasada</Badge>}
-        {venceHoje && !atrasada && <Badge className="text-xs px-1.5 py-0 bg-amber-500 text-white">Vence hoje</Badge>}
+        {(() => {
+          if (tarefa.status === 'concluido' || tarefa.status === 'arquivado') {
+            return <Badge className="text-xs px-1.5 py-0 bg-green-500 text-white">✓ Concluída</Badge>;
+          }
+          if (!tarefa.data_conclusao_prevista) return null;
+          const prazo = new Date(tarefa.data_conclusao_prevista + 'T23:59:59');
+          const agora = new Date();
+          const dias = differenceInDays(prazo, agora);
+          if (dias <= -3) return <Badge className="text-xs px-1.5 py-0 bg-red-600 text-white">🔴 {Math.abs(dias)}d atraso</Badge>;
+          if (dias === -2) return <Badge className="text-xs px-1.5 py-0 bg-orange-600 text-white">🟠 2d atraso</Badge>;
+          if (dias === -1) return <Badge className="text-xs px-1.5 py-0 bg-orange-500 text-white">🟠 1d atraso</Badge>;
+          if (dias === 0) return <Badge className="text-xs px-1.5 py-0 bg-amber-500 text-white">🟡 Vence hoje</Badge>;
+          if (dias === 1) return <Badge className="text-xs px-1.5 py-0 bg-amber-400 text-white">🟡 Amanhã</Badge>;
+          if (dias <= 7) return <Badge className="text-xs px-1.5 py-0 bg-blue-100 text-blue-700">{dias}d restantes</Badge>;
+          return <Badge variant="outline" className="text-xs px-1.5 py-0">{dias}d restantes</Badge>;
+        })()}
       </div>
 
       {/* Checklist progress */}
