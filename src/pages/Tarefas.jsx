@@ -23,12 +23,13 @@ const STATUS_PADRAO = [
   { slug: 'arquivado', nome: 'Arquivado', cor: '#94a3b8', ordem: 6 },
 ];
 
-const SETORES = [
-  { value: 'consorcio', label: 'Consórcio' },
-  { value: 'emprestimo', label: 'Empréstimo' },
-  { value: 'financiamento', label: 'Financiamento' },
-  { value: 'protecao_veicular', label: 'Proteção Veicular' },
-  { value: 'cobranca', label: 'Cobrança' },
+const SETORES_FALLBACK = [
+  { id: 'consorcio', nome: 'Consórcio' },
+  { id: 'emprestimo', nome: 'Empréstimo' },
+  { id: 'financiamento', nome: 'Financiamento' },
+  { id: 'protecao_veicular', nome: 'Proteção Veicular' },
+  { id: 'cobranca', nome: 'Cobrança' },
+  { id: 'seguros', nome: 'Seguros' },
 ];
 
 export default function Tarefas() {
@@ -41,7 +42,9 @@ export default function Tarefas() {
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [filtroPrioridade, setFiltroPrioridade] = useState('todas');
   const [filtroResponsavel, setFiltroResponsavel] = useState('todos');
-  const [filtroSetor, setFiltroSetor] = useState('todos');
+  const [filtroSetor, setFiltroSetor] = useState(() => {
+    try { return localStorage.getItem('tarefas_filtro_setor') || 'todos'; } catch { return 'todos'; }
+  });
   const [mostrarSoMinhas, setMostrarSoMinhas] = useState(false);
   const [modoVisualizacao, setModoVisualizacao] = useState('kanban'); // 'kanban' | 'lista'
   const [abaAtiva, setAbaAtiva] = useState('andamento'); // 'andamento' | 'finalizados'
@@ -253,13 +256,22 @@ export default function Tarefas() {
 
   const SLUGS_FINALIZADOS = ['concluido', 'arquivado'];
 
-  const tarefasFiltradas = tarefas.filter(t => {
+  // Lista de setores combinada (API + fallback)
+  const setoresCombinados = setoresList.length > 0 ? setoresList : SETORES_FALLBACK;
+
+  // Tarefas filtradas apenas pelo setor (usado nos indicadores superiores)
+  const tarefasDoSetor = filtroSetor === 'todos'
+    ? tarefas
+    : filtroSetor === '_sem_setor'
+      ? tarefas.filter(t => !t.setor_id && !t.setor)
+      : tarefas.filter(t => t.setor_id === filtroSetor || t.setor === filtroSetor);
+
+  const tarefasFiltradas = tarefasDoSetor.filter(t => {
     const normalize = str => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     const s = normalize(search);
     const matchBusca = !search.trim() || normalize(t.titulo).includes(s) || normalize(t.cliente_nome).includes(s);
     const matchStatus = filtroStatus === 'todos' || t.status === filtroStatus;
     const matchPrioridade = filtroPrioridade === 'todas' || t.prioridade === filtroPrioridade;
-    const matchSetor = filtroSetor === 'todos' || t.setor === filtroSetor;
     let responsaveisIds = [];
     try { responsaveisIds = t.responsaveis_ids ? JSON.parse(t.responsaveis_ids) : []; } catch {}
     const matchResponsavel = filtroResponsavel === 'todos' || t.responsavel_principal_id === filtroResponsavel || responsaveisIds.includes(filtroResponsavel);
@@ -267,17 +279,18 @@ export default function Tarefas() {
     const matchAba = abaAtiva === 'finalizados'
       ? SLUGS_FINALIZADOS.includes(t.status)
       : !SLUGS_FINALIZADOS.includes(t.status);
-    return matchBusca && matchStatus && matchPrioridade && matchSetor && matchResponsavel && matchMinhas && matchAba;
+    return matchBusca && matchStatus && matchPrioridade && matchResponsavel && matchMinhas && matchAba;
   });
 
-  const atrasadas = tarefas.filter(t => t.data_conclusao_prevista && t.data_conclusao_prevista < hoje && t.status !== 'concluido' && t.status !== 'arquivado').length;
-  const minhasTarefas = tarefas.filter(t => {
+  // Indicadores calculados sobre tarefasDoSetor (respeita filtro de setor)
+  const atrasadas = tarefasDoSetor.filter(t => t.data_conclusao_prevista && t.data_conclusao_prevista < hoje && t.status !== 'concluido' && t.status !== 'arquivado').length;
+  const minhasTarefas = tarefasDoSetor.filter(t => {
     let ids = [];
     try { ids = t.responsaveis_ids ? JSON.parse(t.responsaveis_ids) : []; } catch {}
     return t.responsavel_principal_id === currentUser?.id || ids.includes(currentUser?.id);
   }).length;
-  const vencemHoje = tarefas.filter(t => t.data_conclusao_prevista === hoje && t.status !== 'concluido' && t.status !== 'arquivado').length;
-  const concluidas = tarefas.filter(t => t.status === 'concluido').length;
+  const vencemHoje = tarefasDoSetor.filter(t => t.data_conclusao_prevista === hoje && t.status !== 'concluido' && t.status !== 'arquivado').length;
+  const concluidas = tarefasDoSetor.filter(t => t.status === 'concluido').length;
 
   if (!currentUser) return (
     <div className="flex items-center justify-center min-h-screen">
@@ -354,9 +367,14 @@ export default function Tarefas() {
           <option value="alta">Alta</option>
           <option value="urgente">Urgente</option>
         </select>
-        <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroSetor} onChange={e => setFiltroSetor(e.target.value)}>
-          <option value="todos">Setor</option>
-          {SETORES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+        <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroSetor} onChange={e => {
+          const val = e.target.value;
+          setFiltroSetor(val);
+          try { localStorage.setItem('tarefas_filtro_setor', val); } catch {}
+        }}>
+          <option value="todos">Setor (Todos)</option>
+          {setoresCombinados.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+          <option value="_sem_setor">Sem Setor</option>
         </select>
         <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)}>
           <option value="todos">Responsável</option>
