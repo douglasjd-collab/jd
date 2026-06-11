@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Car } from 'lucide-react';
-import DashboardFinanciamento from './financiamento/DashboardFinanciamento';
-import PropostasFinanciamento from './financiamento/PropostasFinanciamento';
-import BancosFinanciamento from './financiamento/BancosFinanciamento';
-import RelatoriosFinanciamento from './financiamento/RelatoriosFinanciamento';
-import ConfiguracoesFinanciamento from './financiamento/ConfiguracoesFinanciamento';
-import ComissoesFinanciamento from './financiamento/ComissoesFinanciamento';
+import DashboardFinanciamento from '../financiamento/DashboardFinanciamento';
+import PropostasFinanciamento from '../financiamento/PropostasFinanciamento';
+import BancosFinanciamento from '../financiamento/BancosFinanciamento';
+import RelatoriosFinanciamento from '../financiamento/RelatoriosFinanciamento';
+import ConfiguracoesFinanciamento from '../financiamento/ConfiguracoesFinanciamento';
+import ComissoesFinanciamento from '../financiamento/ComissoesFinanciamento';
 
 export default function FinanciamentoVeiculos() {
   const getTabFromUrl = () => {
@@ -32,7 +32,6 @@ export default function FinanciamentoVeiculos() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
           <Car className="w-5 h-5 text-white" />
@@ -43,10 +42,9 @@ export default function FinanciamentoVeiculos() {
         </div>
       </div>
 
-      {/* Conteúdo */}
       {aba === 'dashboard' && <DashboardFinanciamento user={user} />}
       {aba === 'propostas' && user && <PropostasFinanciamento user={user} />}
-      {aba === 'financeiro' && user && <ComissoesFinanciamento user={user} />}
+      {aba === 'comissoes' && user && <ComissoesFinanciamento user={user} />}
       {aba === 'bancos' && <BancosFinanciamento user={user} />}
       {aba === 'relatorios' && <RelatoriosFinanciamento user={user} />}
       {aba === 'configuracoes' && <ConfiguracoesFinanciamento user={user} />}
