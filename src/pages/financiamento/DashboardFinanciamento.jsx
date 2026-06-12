@@ -1,42 +1,80 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Car, Bike, Truck, FileText, TrendingUp, RefreshCw, Users, Building2, Calendar, Store } from 'lucide-react';
+import { Car, Bike, Truck, FileText, TrendingUp, TrendingDown, RefreshCw, Users, Building2, Store, Trophy, Medal, ChevronUp, ChevronDown } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const STATUS_LABELS = {
-  em_analise: { label: 'Em Análise', color: '#f59e0b' },
-  aguardando_documentacao: { label: 'Aguard. Documentação', color: '#3b82f6' },
-  aprovado: { label: 'Aprovado', color: '#10b981' },
-  reprovado: { label: 'Reprovado', color: '#ef4444' },
-  contrato_emitido: { label: 'Contrato Emitido', color: '#8b5cf6' },
-  pago_pelo_banco: { label: 'Pago pelo Banco', color: '#0ea5e9' },
-  comissao_recebida: { label: 'Comissão Recebida', color: '#22c55e' },
-  cancelado: { label: 'Cancelado', color: '#6b7280' },
+  em_analise: 'Em Análise', aguardando_documentacao: 'Aguard. Doc.', aprovado: 'Aprovado',
+  reprovado: 'Reprovado', contrato_emitido: 'Contrato Emitido', pago_pelo_banco: 'Pago pelo Banco',
+  comissao_recebida: 'Comissão Recebida', cancelado: 'Cancelado',
 };
 
 const PERIODOS = [
-  { value: '7', label: 'Últimos 7 dias' },
-  { value: '30', label: 'Últimos 30 dias' },
-  { value: '90', label: 'Últimos 90 dias' },
-  { value: '365', label: 'Este ano' },
-  { value: 'all', label: 'Todos' },
+  { value: '7', label: 'Últimos 7 dias' }, { value: '30', label: 'Últimos 30 dias' },
+  { value: '90', label: 'Últimos 90 dias' }, { value: '365', label: 'Este ano' }, { value: 'all', label: 'Todos' },
 ];
+
+const DONUT_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1'];
 
 const fmt = val => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 const fmtNumber = val => new Intl.NumberFormat('pt-BR').format(val || 0);
 
+// ─── Medalha + Barra de Desempenho ────────────────────────────────────────────
+const RankBar = ({ pos, nome, valor, contratos, percentual, valorMax, cor, comparacao }) => {
+  const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : '';
+  const barWidth = valorMax > 0 ? (valor / valorMax) * 100 : 0;
+  return (
+    <div className="group">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          {medal ? <span className="text-lg">{medal}</span> : <span className="w-5 text-center text-sm font-bold text-slate-400">{pos}º</span>}
+          <span className="font-medium text-sm text-slate-700 truncate max-w-32">{nome}</span>
+          {comparacao != null && (
+            <span className={`flex items-center text-xs font-semibold ${comparacao >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+              {comparacao >= 0 ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              {Math.abs(comparacao)}%
+            </span>
+          )}
+        </div>
+        <span className="text-sm font-bold text-slate-700">{fmt(valor)}</span>
+      </div>
+      <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-1">
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${barWidth}%`, backgroundColor: cor }} />
+      </div>
+      <div className="flex justify-between text-xs text-slate-400">
+        <span>{contratos} contrato{contratos !== 1 ? 's' : ''}</span>
+        <span>{percentual.toFixed(1)}%</span>
+      </div>
+    </div>
+  );
+};
+
+// ─── Card KPI individual ──────────────────────────────────────────────────────
+const KPICard = ({ icon: Icon, label, value, sub, color, bgColor }) => (
+  <div className="bg-white rounded-xl border p-4 hover:shadow-md transition-shadow">
+    <div className="flex items-start justify-between">
+      <div>
+        <p className="text-xs font-medium text-slate-500 mb-1">{label}</p>
+        <p className="text-xl font-bold text-slate-800">{value}</p>
+        {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+      </div>
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${bgColor}`}>
+        <Icon className={`w-4 h-4 ${color}`} />
+      </div>
+    </div>
+  </div>
+);
+
 export default function DashboardFinanciamento({ user }) {
   const [propostas, setPropostas] = useState([]);
+  const [propostasAnteriores, setPropostasAnteriores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtroPeriodo, setFiltroPeriodo] = useState('30');
   const [filtroStatus, setFiltroStatus] = useState('all');
   const [filtroTipo, setFiltroTipo] = useState('all');
-  const [filtroBanco, setFiltroBanco] = useState('all');
-  const [filtroVendedor, setFiltroVendedor] = useState('all');
-
   const empresaId = user?.empresa_id;
 
   const carregar = async () => {
@@ -44,445 +82,283 @@ export default function DashboardFinanciamento({ user }) {
     const filtro = empresaId ? { empresa_id: empresaId } : {};
     const p = await base44.entities.FinanciamentoVeiculo.filter(filtro, '-created_date', 2000);
     setPropostas(p || []);
+    setPropostasAnteriores(p || []); // snapshot completo para comparação
     setLoading(false);
   };
 
   useEffect(() => { carregar(); }, [empresaId]);
 
   const hoje = new Date();
+
+  // Filtro principal
   const filtradas = useMemo(() => propostas.filter(p => {
     if (filtroStatus !== 'all' && p.status !== filtroStatus) return false;
     if (filtroTipo !== 'all' && p.tipo_veiculo !== filtroTipo) return false;
-    if (filtroBanco !== 'all' && p.banco !== filtroBanco) return false;
-    if (filtroVendedor !== 'all' && p.vendedor_nome !== filtroVendedor) return false;
     if (filtroPeriodo !== 'all') {
       const dias = parseInt(filtroPeriodo);
-      const limite = new Date();
-      limite.setDate(hoje.getDate() - dias);
-      const dataProposta = p.data_proposta ? new Date(p.data_proposta) : new Date(p.created_date);
-      if (dataProposta < limite) return false;
+      const limite = new Date(); limite.setDate(hoje.getDate() - dias);
+      const dp = p.data_proposta ? new Date(p.data_proposta) : new Date(p.created_date);
+      if (dp < limite) return false;
     }
     return true;
-  }), [propostas, filtroStatus, filtroTipo, filtroBanco, filtroVendedor, filtroPeriodo]);
+  }), [propostas, filtroStatus, filtroTipo, filtroPeriodo]);
 
-  // KPIs principais
-  const totalPropostas = filtradas.length;
-  const totalFinanciado = filtradas.filter(p => ['aprovado', 'pago_pelo_banco', 'contrato_emitido', 'comissao_recebida'].includes(p.status))
-    .reduce((s, p) => s + (p.valor_financiado || 0), 0);
-  
-  const carros = filtradas.filter(p => p.tipo_veiculo === 'carro');
-  const motos = filtradas.filter(p => p.tipo_veiculo === 'moto');
-  const caminhoes = filtradas.filter(p => p.tipo_veiculo === 'caminhao');
-
-  const emAndamento = filtradas.filter(p => ['em_analise', 'aguardando_documentacao', 'aprovado', 'contrato_emitido'].includes(p.status));
-  const aprovados = filtradas.filter(p => p.status === 'aprovado' || p.status === 'pago_pelo_banco');
-  const pagos = filtradas.filter(p => p.status === 'pago_pelo_banco' || p.status === 'comissao_recebida');
-
-  // Dados únicos para filtros
-  const bancos = [...new Set(propostas.map(p => p.banco).filter(Boolean))];
-  const vendedores = [...new Set(propostas.map(p => p.vendedor_nome).filter(Boolean))];
-
-  // Produção por mês
-  const producaoPorMes = useMemo(() => {
-    const meses = {};
-    filtradas.forEach(p => {
-      const data = p.data_proposta ? new Date(p.data_proposta) : new Date(p.created_date);
-      const chave = `${data.getMonth() + 1}/${data.getFullYear().toString().slice(-2)}`;
-      if (!meses[chave]) meses[chave] = { mes: chave, quantidade: 0, valor: 0 };
-      meses[chave].quantidade += 1;
-      meses[chave].valor += p.valor_financiado || 0;
+  // Período anterior (para comparação)
+  const anteriores = useMemo(() => {
+    if (filtroPeriodo === 'all') return [];
+    const dias = parseInt(filtroPeriodo) || 30;
+    const fim = new Date(); fim.setDate(hoje.getDate() - dias);
+    const inicio = new Date(fim); inicio.setDate(fim.getDate() - dias);
+    return propostasAnteriores.filter(p => {
+      const dp = p.data_proposta ? new Date(p.data_proposta) : new Date(p.created_date);
+      return dp >= inicio && dp < fim;
     });
-    return Object.values(meses).sort((a, b) => {
-      const [mesA, anoA] = a.mes.split('/');
-      const [mesB, anoB] = b.mes.split('/');
-      return new Date(`20${anoA}`, mesA - 1) - new Date(`20${anoB}`, mesB - 1);
-    });
-  }, [filtradas]);
+  }, [propostasAnteriores, filtroPeriodo]);
 
-  // Ranking por vendedor
+  // ─── KPIs Gerais ──────────────────────────────────────────────────────────
+  const totalContratos = filtradas.length;
+  const totalFinanciado = filtradas.reduce((s, p) => s + (p.valor_financiado || 0), 0);
+  const ticketMedioGeral = totalContratos > 0 ? totalFinanciado / totalContratos : 0;
+
+  // Ranking por Vendedor
   const rankingVendedores = useMemo(() => {
-    const porVendedor = {};
+    const map = {};
     filtradas.forEach(p => {
       const nome = p.vendedor_nome || 'Não informado';
-      if (!porVendedor[nome]) porVendedor[nome] = { nome, quantidade: 0, valor: 0 };
-      porVendedor[nome].quantidade += 1;
-      porVendedor[nome].valor += p.valor_financiado || 0;
+      if (!map[nome]) map[nome] = { nome, valor: 0, contratos: 0 };
+      map[nome].valor += p.valor_financiado || 0;
+      map[nome].contratos += 1;
     });
-    return Object.values(porVendedor)
-      .map(v => ({ ...v, ticketMedio: v.valor / v.quantidade, participacao: totalFinanciado > 0 ? (v.valor / totalFinanciado) * 100 : 0 }))
-      .sort((a, b) => b.valor - a.valor);
-  }, [filtradas, totalFinanciado]);
+    return Object.values(map).sort((a, b) => b.valor - a.valor);
+  }, [filtradas]);
 
-  // Ranking por loja parceira
-  const rankingLojasParceiras = useMemo(() => {
-    const porLoja = {};
-    filtradas.forEach(p => {
-      const loja = p.empresa_parceira_nome || 'Não informada';
-      if (!porLoja[loja]) porLoja[loja] = { loja, quantidade: 0, valor: 0 };
-      porLoja[loja].quantidade += 1;
-      porLoja[loja].valor += p.valor_financiado || 0;
+  // Ranking anterior para comparação
+  const rankingAnterior = useMemo(() => {
+    const map = {};
+    anteriores.forEach(p => {
+      const nome = p.vendedor_nome || 'Não informado';
+      if (!map[nome]) map[nome] = { nome, valor: 0 };
+      map[nome].valor += p.valor_financiado || 0;
     });
-    return Object.values(porLoja)
-      .map(l => ({ ...l, ticketMedio: l.valor / l.quantidade, participacao: totalFinanciado > 0 ? (l.valor / totalFinanciado) * 100 : 0 }))
-      .sort((a, b) => b.valor - a.valor);
-  }, [filtradas, totalFinanciado]);
+    return map;
+  }, [anteriores]);
 
-  // Ranking por banco
+  const melhorVendedor = rankingVendedores[0];
+  const valorMaxVendedor = rankingVendedores[0]?.valor || 1;
+
+  // Ranking por Banco (Donut)
   const rankingBancos = useMemo(() => {
-    const porBanco = {};
+    const map = {};
     filtradas.forEach(p => {
       const banco = p.banco || 'Outros';
-      if (!porBanco[banco]) porBanco[banco] = { banco, quantidade: 0, valor: 0 };
-      porBanco[banco].quantidade += 1;
-      porBanco[banco].valor += p.valor_financiado || 0;
+      if (!map[banco]) map[banco] = { name: banco, value: 0, contratos: 0 };
+      map[banco].value += p.valor_financiado || 0;
+      map[banco].contratos += 1;
     });
-    return Object.values(porBanco)
-      .map(b => ({ ...b, ticketMedio: b.valor / b.quantidade, participacao: totalFinanciado > 0 ? (b.valor / totalFinanciado) * 100 : 0 }))
-      .sort((a, b) => b.valor - a.valor);
-  }, [filtradas, totalFinanciado]);
+    return Object.values(map).sort((a, b) => b.value - a.value);
+  }, [filtradas]);
 
-  // Produção por tipo de veículo
-  const producaoPorTipo = [
-    { tipo: 'Carros', quantidade: carros.length, valor: carros.reduce((s, p) => s + (p.valor_financiado || 0), 0), icon: Car },
-    { tipo: 'Motos', quantidade: motos.length, valor: motos.reduce((s, p) => s + (p.valor_financiado || 0), 0), icon: Bike },
-    { tipo: 'Caminhões', quantidade: caminhoes.length, valor: caminhoes.reduce((s, p) => s + (p.valor_financiado || 0), 0), icon: Truck },
-  ];
+  const melhorBanco = rankingBancos[0];
 
-  // Propostas por status
-  const porStatus = Object.entries(STATUS_LABELS).map(([key, cfg]) => ({
-    key, label: cfg.label, color: cfg.color,
-    quantidade: filtradas.filter(p => p.status === key).length,
+  // Ranking por Loja Parceira
+  const rankingParceiros = useMemo(() => {
+    const map = {};
+    filtradas.forEach(p => {
+      const loja = p.empresa_parceira_nome || 'Não informada';
+      if (!map[loja]) map[loja] = { loja, valor: 0, contratos: 0 };
+      map[loja].valor += p.valor_financiado || 0;
+      map[loja].contratos += 1;
+    });
+    return Object.values(map).sort((a, b) => b.valor - a.valor);
+  }, [filtradas]);
+
+  const melhorParceiro = rankingParceiros[0];
+  const valorMaxParceiro = rankingParceiros[0]?.valor || 1;
+
+  // Comissão estimada (exemplo: ~2%)
+  const comissaoEstimada = rankingVendedores.map(v => ({ nome: v.nome, comissao: v.valor * 0.02 }));
+
+  // ─── Gráfico de colunas: Vendedores ───────────────────────────────────────
+  const chartVendedores = rankingVendedores.slice(0, 8).map(v => ({
+    nome: v.nome.split(' ')[0], valor: v.valor, contratos: v.contratos,
+  }));
+
+  // ─── Comparação mensal ────────────────────────────────────────────────────
+  const getComparacao = (nome) => {
+    const atual = rankingVendedores.find(v => v.nome === nome)?.valor || 0;
+    const ant = rankingAnterior[nome]?.valor || 0;
+    if (ant === 0) return null;
+    return Math.round(((atual - ant) / ant) * 100);
+  };
+
+  const totalAnterior = anteriores.reduce((s, p) => s + (p.valor_financiado || 0), 0);
+  const compTotal = totalAnterior > 0 ? Math.round(((totalFinanciado - totalAnterior) / totalAnterior) * 100) : null;
+
+  // ─── Tabela de status ─────────────────────────────────────────────────────
+  const porStatus = Object.entries(STATUS_LABELS).map(([key, label]) => ({
+    key, label,
+    qtd: filtradas.filter(p => p.status === key).length,
     valor: filtradas.filter(p => p.status === key).reduce((s, p) => s + (p.valor_financiado || 0), 0),
-  })).filter(s => s.quantidade > 0);
+  })).filter(s => s.qtd > 0);
 
-  // Últimas propostas
-  const ultimasPropostas = filtradas.slice(0, 10);
+  if (loading) return <div className="text-center py-20 text-slate-400">Carregando dashboard...</div>;
 
   return (
     <div className="space-y-6">
+      {/* Cabeçalho + Filtros */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-xl font-bold text-slate-800">Dashboard — Financiamentos</h2>
-        <Button variant="outline" size="sm" onClick={carregar} disabled={loading}>
-          <RefreshCw className={`w-4 h-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
-          Atualizar
-        </Button>
+        <div>
+          <h2 className="text-xl font-bold text-slate-800">Dashboard Executivo</h2>
+          <p className="text-sm text-slate-500">Visão consolidada da performance de financiamentos</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>{PERIODOS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" onClick={carregar}><RefreshCw className="w-4 h-4 mr-1" />Atualizar</Button>
+        </div>
       </div>
 
-      {/* Filtros */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 bg-white p-4 rounded-xl border">
-        <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
-          <SelectTrigger><SelectValue placeholder="Período" /></SelectTrigger>
-          <SelectContent>
-            {PERIODOS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-          <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos status</SelectItem>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-          <SelectTrigger><SelectValue placeholder="Tipo de veículo" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos tipos</SelectItem>
-            <SelectItem value="carro">Carro</SelectItem>
-            <SelectItem value="moto">Moto</SelectItem>
-            <SelectItem value="caminhao">Caminhão</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filtroBanco} onValueChange={setFiltroBanco}>
-          <SelectTrigger><SelectValue placeholder="Banco" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos bancos</SelectItem>
-            {bancos.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filtroVendedor} onValueChange={setFiltroVendedor}>
-          <SelectTrigger><SelectValue placeholder="Vendedor" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos vendedores</SelectItem>
-            {vendedores.map(v => <SelectItem key={v} value={v}>{v}</SelectItem>)}
-          </SelectContent>
-        </Select>
+      {/* KPIs Gerais */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <KPICard icon={FileText} label="Total Financiado" value={fmt(totalFinanciado)}
+          sub={compTotal != null ? `${compTotal >= 0 ? '▲' : '▼'} ${Math.abs(compTotal)}% vs anterior` : null}
+          color="text-blue-600" bgColor="bg-blue-50" />
+        <KPICard icon={TrendingUp} label="Contratos" value={fmtNumber(totalContratos)}
+          color="text-green-600" bgColor="bg-green-50" />
+        <KPICard icon={TrendingUp} label="Ticket Médio" value={fmt(ticketMedioGeral)}
+          color="text-purple-600" bgColor="bg-purple-50" />
+        <KPICard icon={Trophy} label="Melhor Vendedor" value={melhorVendedor?.nome || '—'}
+          sub={melhorVendedor ? fmt(melhorVendedor.valor) : ''} color="text-amber-600" bgColor="bg-amber-50" />
+        <KPICard icon={Building2} label="Melhor Banco" value={melhorBanco?.name || '—'}
+          sub={melhorBanco ? fmt(melhorBanco.value) : ''} color="text-teal-600" bgColor="bg-teal-50" />
+        <KPICard icon={Store} label="Melhor Parceiro" value={melhorParceiro?.loja || '—'}
+          sub={melhorParceiro ? fmt(melhorParceiro.valor) : ''} color="text-orange-600" bgColor="bg-orange-50" />
       </div>
 
-      {/* Cards KPI */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Gráficos: Vendedores (colunas) + Bancos (donut) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
-          <CardContent className="p-4">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center mb-3">
-              <FileText className="w-5 h-5 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-800">{fmtNumber(totalPropostas)}</p>
-            <p className="text-xs text-slate-500 mt-1">Total de Propostas</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center mb-3">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-800">{fmt(totalFinanciado)}</p>
-            <p className="text-xs text-slate-500 mt-1">Total Financiado</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center mb-3">
-              <Car className="w-5 h-5 text-amber-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-800">{carros.length}</p>
-            <p className="text-xs text-slate-500 mt-1">Financiamentos de Carros</p>
-            <p className="text-xs text-slate-400 mt-0.5">{fmt(carros.reduce((s, p) => s + (p.valor_financiado || 0), 0))}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center mb-3">
-              <Bike className="w-5 h-5 text-purple-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-800">{motos.length}</p>
-            <p className="text-xs text-slate-500 mt-1">Financiamentos de Motos</p>
-            <p className="text-xs text-slate-400 mt-0.5">{fmt(motos.reduce((s, p) => s + (p.valor_financiado || 0), 0))}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center mb-3">
-              <Truck className="w-5 h-5 text-slate-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-800">{caminhoes.length}</p>
-            <p className="text-xs text-slate-500 mt-1">Financiamentos de Caminhões</p>
-            <p className="text-xs text-slate-400 mt-0.5">{fmt(caminhoes.reduce((s, p) => s + (p.valor_financiado || 0), 0))}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center mb-3">
-              <Calendar className="w-5 h-5 text-indigo-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-800">{emAndamento.length}</p>
-            <p className="text-xs text-slate-500 mt-1">Em Andamento</p>
-            <p className="text-xs text-slate-400 mt-0.5">{fmt(emAndamento.reduce((s, p) => s + (p.valor_financiado || 0), 0))}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center mb-3">
-              <Users className="w-5 h-5 text-emerald-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-800">{aprovados.length}</p>
-            <p className="text-xs text-slate-500 mt-1">Aprovados</p>
-            <p className="text-xs text-slate-400 mt-0.5">{fmt(aprovados.reduce((s, p) => s + (p.valor_financiado || 0), 0))}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mb-3">
-              <Building2 className="w-5 h-5 text-teal-600" />
-            </div>
-            <p className="text-2xl font-bold text-slate-800">{pagos.length}</p>
-            <p className="text-xs text-slate-500 mt-1">Pagos pelo Banco</p>
-            <p className="text-xs text-slate-400 mt-0.5">{fmt(pagos.reduce((s, p) => s + (p.valor_financiado || 0), 0))}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Produção por tipo de veículo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {producaoPorTipo.map(item => (
-          <Card key={item.tipo}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                  item.tipo === 'Carros' ? 'bg-amber-50' : item.tipo === 'Motos' ? 'bg-purple-50' : 'bg-slate-50'
-                }`}>
-                  <item.icon className={`w-5 h-5 ${
-                    item.tipo === 'Carros' ? 'text-amber-600' : item.tipo === 'Motos' ? 'text-purple-600' : 'text-slate-600'
-                  }`} />
-                </div>
-                <p className="font-semibold text-slate-700">{item.tipo}</p>
-              </div>
-              <p className="text-2xl font-bold text-slate-800">{fmtNumber(item.quantidade)}</p>
-              <p className="text-xs text-slate-500 mt-1">Veículos financiados</p>
-              <p className="text-sm font-semibold text-slate-700 mt-2">{fmt(item.valor)}</p>
-              <p className="text-xs text-slate-400">Valor total financiado</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Gráfico de Produção por Mês */}
-      <Card>
-        <CardHeader className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" />
-            Produção Mensal
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <div className="flex gap-2">
-              <span className="flex items-center gap-1 text-xs">
-                <span className="w-3 h-3 bg-blue-600 rounded"></span>
-                Quantidade
-              </span>
-              <span className="flex items-center gap-1 text-xs">
-                <span className="w-3 h-3 bg-green-600 rounded"></span>
-                Valor Total (R$)
-              </span>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {producaoPorMes.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-8">Nenhum dado no período</p>
-          ) : (
-            <div className="space-y-4">
-              {/* Gráfico */}
-              <ResponsiveContainer width="100%" height={320}>
-                <BarChart data={producaoPorMes}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="mes" fontSize={12} />
-                  <YAxis yAxisId="left" orientation="left" fontSize={12} />
-                  <YAxis yAxisId="right" orientation="right" fontSize={12} tickFormatter={v => `R$ ${(v/1000).toFixed(0)}k`} />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #ddd', borderRadius: '6px' }}
-                    formatter={(value, name) => {
-                      if (name === 'Quantidade') return [fmtNumber(value), 'Quantidade'];
-                      return [fmt(value), 'Valor'];
-                    }}
-                  />
-                  <Bar yAxisId="left" dataKey="quantidade" name="Quantidade" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                  <Bar yAxisId="right" dataKey="valor" name="Valor" fill="#10b981" radius={[4, 4, 0, 0]} />
+          <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="w-4 h-4 text-blue-600" />Valor Financiado por Vendedor</CardTitle></CardHeader>
+          <CardContent>
+            {chartVendedores.length === 0 ? <p className="text-sm text-slate-400 text-center py-8">Sem dados</p> : (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={chartVendedores} layout="vertical" margin={{ left: 0, right: 30, top: 5, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <XAxis type="number" fontSize={11} tickFormatter={v => `R$ ${(v/1000).toFixed(0)}k`} />
+                  <YAxis type="category" dataKey="nome" fontSize={12} width={80} />
+                  <Tooltip formatter={(v, name) => name === 'valor' ? fmt(v) : v} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                  <Bar dataKey="valor" name="Valor" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
 
-              {/* Resumo do Período - Estatísticas */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Total de Financiamentos</p>
-                  <p className="text-2xl font-bold text-blue-600">{fmtNumber(totalPropostas)}</p>
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Building2 className="w-4 h-4 text-green-600" />Participação dos Bancos</CardTitle></CardHeader>
+          <CardContent>
+            {rankingBancos.length === 0 ? <p className="text-sm text-slate-400 text-center py-8">Sem dados</p> : (
+              <div className="flex items-center gap-4">
+                <ResponsiveContainer width="55%" height={240}>
+                  <PieChart>
+                    <Pie data={rankingBancos} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={55}>
+                      {rankingBancos.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={v => fmt(v)} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="space-y-2 text-xs">
+                  {rankingBancos.slice(0, 6).map((b, i) => (
+                    <div key={b.name} className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
+                      <span className="text-slate-600 truncate max-w-24">{b.name}</span>
+                      <span className="font-semibold text-slate-700">{fmt(b.value)}</span>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Valor Total</p>
-                  <p className="text-2xl font-bold text-green-600">{fmt(totalFinanciado)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Ticket Médio</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {totalPropostas > 0 ? fmt(totalFinanciado / totalPropostas) : 'R$ 0'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-slate-500 mb-1">Mês com Maior Valor</p>
-                  <p className="text-2xl font-bold text-amber-600">
-                    {producaoPorMes.length > 0 ? (
-                      (() => {
-                        const melhorMes = producaoPorMes.reduce((prev, current) => 
-                          (prev.valor > current.valor) ? prev : current
-                        );
-                        return melhorMes.mes;
-                      })()
-                    ) : '—'}
-                  </p>
-                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Líder do Período */}
+      {melhorVendedor && (
+        <Card className="border-amber-200 bg-gradient-to-r from-amber-50 to-white">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center">
+                <Trophy className="w-7 h-7 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">🏆 Líder do Período</p>
+                <p className="text-xl font-bold text-slate-800">{melhorVendedor.nome}</p>
+              </div>
+              <div className="flex gap-6 ml-auto">
+                <div className="text-center"><p className="text-lg font-bold text-slate-800">{fmt(melhorVendedor.valor)}</p><p className="text-xs text-slate-500">Valor Financiado</p></div>
+                <div className="text-center"><p className="text-lg font-bold text-slate-800">{melhorVendedor.contratos}</p><p className="text-xs text-slate-500">Contratos</p></div>
+                <div className="text-center"><p className="text-lg font-bold text-slate-800">{fmt(melhorVendedor.valor / melhorVendedor.contratos)}</p><p className="text-xs text-slate-500">Ticket Médio</p></div>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Rankings */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Ranking por Vendedor */}
+      {/* Rankings com barras de desempenho */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Ranking Vendedores */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Users className="w-4 h-4 text-blue-600" />
-              Ranking por Vendedor
-            </CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2"><Users className="w-4 h-4 text-blue-600" />Ranking de Vendedores</CardTitle>
           </CardHeader>
           <CardContent>
-            {rankingVendedores.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">Nenhum vendedor no período</p>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {rankingVendedores.slice(0, 10).map((v, i) => (
-                  <div key={v.nome} className="flex items-center gap-3">
-                    <span className="w-6 text-center font-bold text-slate-600">{i + 1}º</span>
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-700 truncate">{v.nome}</p>
-                      <p className="text-xs text-slate-500">
-                        {fmtNumber(v.quantidade)} financiamentos • {fmt(v.valor)} • {v.participacao.toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
+            {rankingVendedores.length === 0 ? <p className="text-sm text-slate-400 text-center py-8">Sem dados</p> : (
+              <div className="space-y-4">
+                {rankingVendedores.slice(0, 8).map((v, i) => (
+                  <RankBar key={v.nome} pos={i + 1} nome={v.nome} valor={v.valor}
+                    contratos={v.contratos} percentual={totalFinanciado > 0 ? (v.valor / totalFinanciado) * 100 : 0}
+                    valorMax={valorMaxVendedor} cor={['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'][i] || '#94a3b8'}
+                    comparacao={getComparacao(v.nome)} />
                 ))}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Ranking por Banco */}
+        {/* Ranking Bancos */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-green-600" />
-              Ranking por Banco/Parceiro
-            </CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2"><Building2 className="w-4 h-4 text-green-600" />Ranking de Bancos</CardTitle>
           </CardHeader>
           <CardContent>
-            {rankingBancos.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">Nenhum banco no período</p>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {rankingBancos.slice(0, 10).map((b, i) => (
-                  <div key={b.banco} className="flex items-center gap-3">
-                    <span className="w-6 text-center font-bold text-slate-600">{i + 1}º</span>
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-700 truncate">{b.banco}</p>
-                      <p className="text-xs text-slate-500">
-                        {fmtNumber(b.quantidade)} financiamentos • {fmt(b.valor)} • {b.participacao.toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
+            {rankingBancos.length === 0 ? <p className="text-sm text-slate-400 text-center py-8">Sem dados</p> : (
+              <div className="space-y-4">
+                {rankingBancos.slice(0, 8).map((b, i) => (
+                  <RankBar key={b.name} pos={i + 1} nome={b.name} valor={b.value}
+                    contratos={b.contratos} percentual={totalFinanciado > 0 ? (b.value / totalFinanciado) * 100 : 0}
+                    valorMax={rankingBancos[0]?.value || 1}
+                    cor={['#10b981', '#34d399', '#6ee7b7', '#a7f3d0'][i] || '#94a3b8'} />
                 ))}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Ranking por Loja Parceira */}
+        {/* Ranking Parceiros */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Store className="w-4 h-4 text-orange-600" />
-              Ranking por Loja Parceira
-            </CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2"><Store className="w-4 h-4 text-orange-600" />Ranking de Lojas Parceiras</CardTitle>
           </CardHeader>
           <CardContent>
-            {rankingLojasParceiras.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-8">Nenhuma loja no período</p>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {rankingLojasParceiras.slice(0, 10).map((l, i) => (
-                  <div key={l.loja} className="flex items-center gap-3">
-                    <span className="w-6 text-center font-bold text-slate-600">{i + 1}º</span>
-                    <div className="flex-1">
-                      <p className="font-medium text-slate-700 truncate">{l.loja}</p>
-                      <p className="text-xs text-slate-500">
-                        {fmtNumber(l.quantidade)} financiamentos • {fmt(l.valor)} • {l.participacao.toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
+            {rankingParceiros.length === 0 ? <p className="text-sm text-slate-400 text-center py-8">Sem dados</p> : (
+              <div className="space-y-4">
+                {rankingParceiros.slice(0, 8).map((p, i) => (
+                  <RankBar key={p.loja} pos={i + 1} nome={p.loja} valor={p.valor}
+                    contratos={p.contratos} percentual={totalFinanciado > 0 ? (p.valor / totalFinanciado) * 100 : 0}
+                    valorMax={valorMaxParceiro}
+                    cor={['#f59e0b', '#fbbf24', '#fcd34d', '#fde68a'][i] || '#94a3b8'} />
                 ))}
               </div>
             )}
@@ -490,76 +366,30 @@ export default function DashboardFinanciamento({ user }) {
         </Card>
       </div>
 
-      {/* Propostas por Status */}
+      {/* Pipeline por Status */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Propostas por Status</CardTitle>
-        </CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-base">Pipeline por Status</CardTitle></CardHeader>
         <CardContent>
-          {porStatus.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-8">Nenhuma proposta encontrada</p>
-          ) : (
+          {porStatus.length === 0 ? <p className="text-sm text-slate-400 text-center py-6">Sem dados</p> : (
             <div className="space-y-3">
-              {porStatus.map(s => (
-                <div key={s.key} className="flex items-center gap-3">
-                  <span className="text-sm text-slate-600 w-48 shrink-0">{s.label}</span>
-                  <div className="flex-1 h-6 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all"
-                      style={{ width: `${Math.max(4, (s.quantidade / filtradas.length) * 100)}%`, backgroundColor: s.color }} />
+              {porStatus.map(s => {
+                const pct = totalContratos > 0 ? (s.qtd / totalContratos) * 100 : 0;
+                return (
+                  <div key={s.key} className="flex items-center gap-3">
+                    <span className="text-sm text-slate-600 w-40 shrink-0 truncate">{s.label}</span>
+                    <div className="flex-1 h-6 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-blue-500 transition-all flex items-center justify-end pr-2"
+                        style={{ width: `${Math.max(pct, 2)}%` }}>
+                        {pct > 10 && <span className="text-xs text-white font-medium">{pct.toFixed(0)}%</span>}
+                      </div>
+                    </div>
+                    <span className="text-sm font-bold text-slate-700 w-8 text-right">{s.qtd}</span>
+                    <span className="text-xs text-slate-500 w-28 text-right">{fmt(s.valor)}</span>
                   </div>
-                  <span className="text-sm font-bold text-slate-700 w-8 text-right">{s.quantidade}</span>
-                  <span className="text-xs text-slate-500 w-24 text-right">{fmt(s.valor)}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Últimas Propostas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Últimas Propostas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 border-b">
-                <tr>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Data</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Cliente</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Veículo</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Banco</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Vendedor</th>
-                  <th className="text-right px-4 py-3 font-semibold text-slate-600">Valor</th>
-                  <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ultimasPropostas.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-10 text-slate-400">Nenhuma proposta encontrada</td></tr>
-                ) : ultimasPropostas.map(p => (
-                  <tr key={p.id} className="border-b last:border-0 hover:bg-slate-50">
-                    <td className="px-4 py-3 text-slate-500">{p.data_proposta ? new Date(p.data_proposta + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
-                    <td className="px-4 py-3 font-medium text-slate-700">{p.cliente_nome}</td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {p.tipo_veiculo === 'carro' ? '🚗' : p.tipo_veiculo === 'moto' ? '🏍️' : '🚛'} {p.veiculo_modelo}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{p.banco || '—'}</td>
-                    <td className="px-4 py-3 text-slate-600">{p.vendedor_nome || '—'}</td>
-                    <td className="px-4 py-3 text-right font-medium">{fmt(p.valor_financiado)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                        STATUS_LABELS[p.status]?.color || 'bg-slate-100 text-slate-600'
-                      }`}>
-                        {STATUS_LABELS[p.status]?.label || p.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </CardContent>
       </Card>
     </div>
