@@ -117,7 +117,7 @@ export default function DashboardFinanciamento({ user }) {
   const rankingLojasParceiras = useMemo(() => {
     const porLoja = {};
     filtradas.forEach(p => {
-      const loja = p.empresa_nome || 'Não informada';
+      const loja = p.empresa_parceira_nome || 'Não informada';
       if (!porLoja[loja]) porLoja[loja] = { loja, quantidade: 0, valor: 0 };
       porLoja[loja].quantidade += 1;
       porLoja[loja].valor += p.valor_financiado || 0;
