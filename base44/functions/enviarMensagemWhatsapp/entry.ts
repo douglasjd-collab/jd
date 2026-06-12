@@ -6,9 +6,9 @@ Deno.serve(async (req) => {
   console.log('='.repeat(80));
 
   try {
-    // Log do payload bruto para debug
-    const rawBody = await req.clone().text();
-    console.log('📥 Payload BRUTO:', rawBody.substring(0, 500));
+    // Ler payload UMA ÚNICA VEZ
+    const bodyText = await req.text();
+    console.log('📥 Payload recebido:', bodyText.substring(0, 500));
 
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -19,10 +19,6 @@ Deno.serve(async (req) => {
       console.error('❌ Usuário não autenticado');
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    // Ler payload
-    const bodyText = await req.text();
-    console.log('📥 Payload recebido:', bodyText);
     
     let payload;
     try {
@@ -303,7 +299,7 @@ Deno.serve(async (req) => {
       // Usar phone_number_id da CONVERSA (número específico que recebeu a msg) ou fallback da empresa
       const accessToken = accessTokenMeta;
       const phoneNumberId = phoneNumberIdMeta;
-      const metaUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`;
+      const metaUrl = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
       console.log('📤 Meta — phone_number_id:', phoneNumberId, '| origem conversa:', conversaDoBanco?.phone_number_id_meta ? 'conversa' : 'empresa');
 
       let metaPayload;
@@ -357,7 +353,7 @@ Deno.serve(async (req) => {
         const file = new File([bytes], nomeArquivo, { type: mimeType });
         uploadFormData.append('file', file);
 
-        const metaUploadUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/media`;
+        const metaUploadUrl = `https://graph.facebook.com/v21.0/${phoneNumberId}/media`;
         console.log('📤 Upload mídia Meta:', { 
           mediaType, 
           mimeType, 
