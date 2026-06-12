@@ -141,6 +141,14 @@
       "type": "string",
       "description": "Nome do vendedor"
     },
+    "empresa_parceira_id": {
+      "type": "string",
+      "description": "ID da empresa parceira"
+    },
+    "empresa_parceira_nome": {
+      "type": "string",
+      "description": "Nome da empresa parceira (denormalizado)"
+    },
     "status": {
       "type": "string",
       "enum": [

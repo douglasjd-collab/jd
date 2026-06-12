@@ -241,14 +241,15 @@ export default function PropostasFinanciamento({ user }) {
                 <th className="text-right px-4 py-3 font-semibold text-slate-600">Tarifa</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Status</th>
                 <th className="text-left px-4 py-3 font-semibold text-slate-600">Vendedor</th>
+                <th className="text-left px-4 py-3 font-semibold text-slate-600">Loja Parceira</th>
                 <th className="text-center px-4 py-3 font-semibold text-slate-600">Ações</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="text-center py-10 text-slate-400">Carregando...</td></tr>
-              ) : propostasFiltradas.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-10 text-slate-400">Nenhuma proposta encontrada</td></tr>
+                <tr><td colSpan={10} className="text-center py-10 text-slate-400">Carregando...</td></tr>
+                ) : propostasFiltradas.length === 0 ? (
+                <tr><td colSpan={10} className="text-center py-10 text-slate-400">Nenhuma proposta encontrada</td></tr>
               ) : propostasFiltradas.map(p => (
                 <tr key={p.id} className="border-b last:border-0 hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-700">{p.numero_proposta || '—'}</td>
@@ -269,6 +270,7 @@ export default function PropostasFinanciamento({ user }) {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-slate-600">{p.vendedor_nome || '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">{p.empresa_parceira_nome || '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
                       <button onClick={() => { setPropostaSelecionada(p); setModalOpen(true); }} className="p-1.5 hover:bg-slate-100 rounded-lg" title="Editar">
