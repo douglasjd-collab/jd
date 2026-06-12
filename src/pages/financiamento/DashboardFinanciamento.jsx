@@ -248,7 +248,7 @@ export default function DashboardFinanciamento({ user }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                   <XAxis type="number" fontSize={11} tickFormatter={v => `R$ ${(v/1000).toFixed(0)}k`} />
                   <YAxis type="category" dataKey="nome" fontSize={12} width={80} />
-                  <Tooltip formatter={(v, name) => name === 'valor' ? fmt(v) : v} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                  <Tooltip formatter={(value, name) => [fmt(value ?? 0), 'Valor Financiado']} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                   <Bar dataKey="valor" name="Valor" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
