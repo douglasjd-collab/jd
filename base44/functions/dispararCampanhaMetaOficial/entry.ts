@@ -22,7 +22,19 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Credenciais Meta (access_token e phone_number_id) não configuradas na empresa' }, { status: 400 });
     }
 
-    const metaUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`;
+    // Versão dinâmica da API Meta
+    let metaApiVersion = 'v23.0';
+    try {
+      const configsVersao = await base44.asServiceRole.entities.ConfiguracaoSistema.filter({
+        chave: `meta_api_versao_${empresa_id}`,
+        empresa_id
+      }, '-created_date', 1);
+      if (configsVersao?.length > 0 && configsVersao[0].valor) {
+        metaApiVersion = configsVersao[0].valor;
+      }
+    } catch (_) {}
+
+    const metaUrl = `https://graph.facebook.com/${metaApiVersion}/${phoneNumberId}/messages`;
 
     let enviados = 0;
     let erros = 0;
@@ -88,7 +100,7 @@ Deno.serve(async (req) => {
             fd.append('messaging_product', 'whatsapp');
             fd.append('type', ct);
             fd.append('file', new Blob([imgBuf], { type: ct }), `header.${ext}`);
-            const upResp = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/media`, {
+            const upResp = await fetch(`https://graph.facebook.com/${metaApiVersion}/${phoneNumberId}/media`, {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${accessToken}` },
               body: fd,

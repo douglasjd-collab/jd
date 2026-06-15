@@ -23,8 +23,20 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Credenciais Meta não configuradas. Configure o Access Token e Business Account ID nas configurações do WhatsApp.' }, { status: 400 });
     }
 
+    // Versão dinâmica da API Meta
+    let metaApiVersion = 'v23.0';
+    try {
+      const configsVersao = await base44.asServiceRole.entities.ConfiguracaoSistema.filter({
+        chave: `meta_api_versao_${empresa_id}`,
+        empresa_id
+      }, '-created_date', 1);
+      if (configsVersao?.length > 0 && configsVersao[0].valor) {
+        metaApiVersion = configsVersao[0].valor;
+      }
+    } catch (_) {}
+
     // Buscar templates da Meta
-    const url = `https://graph.facebook.com/v18.0/${wabaId}/message_templates?fields=id,name,status,language,category,components&limit=100&access_token=${accessToken}`;
+    const url = `https://graph.facebook.com/${metaApiVersion}/${wabaId}/message_templates?fields=id,name,status,language,category,components&limit=100&access_token=${accessToken}`;
     const resp = await fetch(url);
     const data = await resp.json();
 
@@ -60,7 +72,7 @@ Deno.serve(async (req) => {
           cabecalhoMidiaUrl = handleVal; // fallback (handle numérico)
           try {
             // Buscar URL temporária da Meta para o media handle
-            const mediaUrlMeta = `https://graph.facebook.com/v19.0/${handleVal}`;
+            const mediaUrlMeta = `https://graph.facebook.com/${metaApiVersion}/${handleVal}`;
             const mediaR = await fetch(mediaUrlMeta, {
               headers: { 'Authorization': `Bearer ${accessToken}` },
             });
@@ -107,7 +119,7 @@ Deno.serve(async (req) => {
               fd.append('messaging_product', 'whatsapp');
               fd.append('type', ct);
               fd.append('file', new Blob([buf], { type: ct }), `header.${ext}`);
-              const upR = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/media`, {
+              const upR = await fetch(`https://graph.facebook.com/${metaApiVersion}/${phoneNumberId}/media`, {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${accessToken}` },
                 body: fd,

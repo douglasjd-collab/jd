@@ -12,9 +12,23 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action, empresa_id, code, redirect_uri } = body;
 
+    // Versão dinâmica da API Meta (atualizada automaticamente pelo atualizarVersaoMetaApi)
+    let metaApiVersion = 'v23.0';
+    if (empresa_id) {
+      try {
+        const configsVersao = await base44.asServiceRole.entities.ConfiguracaoSistema.filter({
+          chave: `meta_api_versao_${empresa_id}`,
+          empresa_id
+        }, '-created_date', 1);
+        if (configsVersao?.length > 0 && configsVersao[0].valor) {
+          metaApiVersion = configsVersao[0].valor;
+        }
+      } catch (_) {}
+    }
+
     if (action === 'exchange_code') {
       // 1. Trocar code por access_token
-      const tokenUrl = `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${APP_ID}&client_secret=${APP_SECRET}&code=${code}`;
+      const tokenUrl = `https://graph.facebook.com/${metaApiVersion}/oauth/access_token?client_id=${APP_ID}&client_secret=${APP_SECRET}&code=${code}`;
       const tokenResp = await fetch(tokenUrl);
       const tokenData = await tokenResp.json();
 
@@ -26,7 +40,7 @@ Deno.serve(async (req) => {
 
       // 2. Buscar WABA(s) vinculadas ao usuário
       const wabaListResp = await fetch(
-        `https://graph.facebook.com/v21.0/me/businesses?fields=id,name,whatsapp_business_accounts&access_token=${userAccessToken}`
+        `https://graph.facebook.com/${metaApiVersion}/me/businesses?fields=id,name,whatsapp_business_accounts&access_token=${userAccessToken}`
       );
       const wabaListData = await wabaListResp.json();
 
@@ -47,13 +61,13 @@ Deno.serve(async (req) => {
       // Se não encontrou via businesses, tentar direto
       if (!wabaId) {
         const meResp = await fetch(
-          `https://graph.facebook.com/v21.0/me?fields=id,name&access_token=${userAccessToken}`
+          `https://graph.facebook.com/${metaApiVersion}/me?fields=id,name&access_token=${userAccessToken}`
         );
         const meData = await meResp.json();
         businessId = meData.id;
 
         const wabaResp = await fetch(
-          `https://graph.facebook.com/v21.0/${businessId}/owned_whatsapp_business_accounts?access_token=${userAccessToken}`
+          `https://graph.facebook.com/${metaApiVersion}/${businessId}/owned_whatsapp_business_accounts?access_token=${userAccessToken}`
         );
         const wabaData = await wabaResp.json();
         if (wabaData.data && wabaData.data.length > 0) {
@@ -69,7 +83,7 @@ Deno.serve(async (req) => {
 
       // 3. Buscar phone_number_id e detalhes do número
       const phoneResp = await fetch(
-        `https://graph.facebook.com/v21.0/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,status,code_verification_status&access_token=${userAccessToken}`
+        `https://graph.facebook.com/${metaApiVersion}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,status,code_verification_status&access_token=${userAccessToken}`
       );
       const phoneData = await phoneResp.json();
 
@@ -79,7 +93,7 @@ Deno.serve(async (req) => {
 
       // 4. Gerar token permanente via system user (usando app token)
       const appTokenResp = await fetch(
-        `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${APP_ID}&client_secret=${APP_SECRET}&grant_type=client_credentials`
+        `https://graph.facebook.com/${metaApiVersion}/oauth/access_token?client_id=${APP_ID}&client_secret=${APP_SECRET}&grant_type=client_credentials`
       );
       const appTokenData = await appTokenResp.json();
       const appAccessToken = appTokenData.access_token;
@@ -130,7 +144,7 @@ Deno.serve(async (req) => {
 
       // Verificar token
       const verifyResp = await fetch(
-        `https://graph.facebook.com/v21.0/me?access_token=${accessToken}`
+        `https://graph.facebook.com/${metaApiVersion}/me?access_token=${accessToken}`
       );
       const verifyData = await verifyResp.json();
       const tokenValido = !verifyData.error;
@@ -142,7 +156,7 @@ Deno.serve(async (req) => {
 
       if (tokenValido && empresa.whatsapp_phone_number_id) {
         const phoneResp = await fetch(
-          `https://graph.facebook.com/v21.0/${empresa.whatsapp_phone_number_id}?fields=id,display_phone_number,verified_name,quality_rating,status&access_token=${accessToken}`
+          `https://graph.facebook.com/${metaApiVersion}/${empresa.whatsapp_phone_number_id}?fields=id,display_phone_number,verified_name,quality_rating,status&access_token=${accessToken}`
         );
         const phoneData = await phoneResp.json();
         if (!phoneData.error) {
@@ -159,7 +173,7 @@ Deno.serve(async (req) => {
         // Verificar webhook
         if (empresa.whatsapp_business_account_id) {
           const whResp = await fetch(
-            `https://graph.facebook.com/v21.0/${empresa.whatsapp_business_account_id}/subscribed_apps?access_token=${accessToken}`
+            `https://graph.facebook.com/${metaApiVersion}/${empresa.whatsapp_business_account_id}/subscribed_apps?access_token=${accessToken}`
           );
           const whData = await whResp.json();
           webhookAtivo = (whData.data || []).length > 0;
@@ -168,7 +182,7 @@ Deno.serve(async (req) => {
         // Contar templates
         if (empresa.whatsapp_business_account_id) {
           const tplResp = await fetch(
-            `https://graph.facebook.com/v21.0/${empresa.whatsapp_business_account_id}/message_templates?limit=1&access_token=${accessToken}`
+            `https://graph.facebook.com/${metaApiVersion}/${empresa.whatsapp_business_account_id}/message_templates?limit=1&access_token=${accessToken}`
           );
           const tplData = await tplResp.json();
           templatesCount = tplData.paging?.cursors ? (tplData.data?.length || 0) : 0;
@@ -205,14 +219,14 @@ Deno.serve(async (req) => {
 
       // App token para configurar webhook
       const appTokenResp = await fetch(
-        `https://graph.facebook.com/v21.0/oauth/access_token?client_id=${APP_ID}&client_secret=${APP_SECRET}&grant_type=client_credentials`
+        `https://graph.facebook.com/${metaApiVersion}/oauth/access_token?client_id=${APP_ID}&client_secret=${APP_SECRET}&grant_type=client_credentials`
       );
       const appTokenData = await appTokenResp.json();
       const appAccessToken = appTokenData.access_token;
 
       // Configurar webhook subscription
       const webhookResp = await fetch(
-        `https://graph.facebook.com/v21.0/${wabaId}/subscribed_apps`,
+        `https://graph.facebook.com/${metaApiVersion}/${wabaId}/subscribed_apps`,
         {
           method: 'POST',
           headers: {

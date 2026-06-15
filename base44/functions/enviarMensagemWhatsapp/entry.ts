@@ -111,6 +111,23 @@ Deno.serve(async (req) => {
     const providerSalvo = conversaDoBanco?.provider || null;
     const phoneNumberIdConversa = conversaDoBanco?.phone_number_id_meta || null;
 
+    // ── VERSÃO DINÂMICA DA API META ──────────────────────────────────────
+    // Buscar versão configurada via atualizacaoVersaoMetaApi (automática) ou fallback para v23.0
+    let metaApiVersion = 'v23.0';
+    if (empresaId) {
+      try {
+        const configsVersao = await base44.asServiceRole.entities.ConfiguracaoSistema.filter({
+          chave: `meta_api_versao_${empresaId}`,
+          empresa_id: empresaId
+        }, '-created_date', 1);
+        if (configsVersao?.length > 0 && configsVersao[0].valor) {
+          metaApiVersion = configsVersao[0].valor;
+          console.log(`📌 Versão Meta API carregada da config: ${metaApiVersion}`);
+        }
+      } catch (_) {}
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     // Se phone_number_id_meta está preenchido na conversa, é Meta — independente de outros campos
     const canalAtendimento =
       canalOrigem === 'meta' ? 'meta_oficial' :
@@ -153,7 +170,7 @@ Deno.serve(async (req) => {
       }
 
       console.log('📤 Enviando via Instagram API — recipientId:', recipientId);
-      const igResp = await fetch(`https://graph.facebook.com/v21.0/me/messages?access_token=${igToken}`, {
+      const igResp = await fetch(`https://graph.facebook.com/${metaApiVersion}/me/messages?access_token=${igToken}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(igPayload)
@@ -299,7 +316,7 @@ Deno.serve(async (req) => {
       // Usar phone_number_id da CONVERSA (número específico que recebeu a msg) ou fallback da empresa
       const accessToken = accessTokenMeta;
       const phoneNumberId = phoneNumberIdMeta;
-      const metaUrl = `https://graph.facebook.com/v21.0/${phoneNumberId}/messages`;
+      const metaUrl = `https://graph.facebook.com/${metaApiVersion}/${phoneNumberId}/messages`;
       console.log('📤 Meta — phone_number_id:', phoneNumberId, '| origem conversa:', conversaDoBanco?.phone_number_id_meta ? 'conversa' : 'empresa');
 
       let metaPayload;
@@ -353,7 +370,7 @@ Deno.serve(async (req) => {
         const file = new File([bytes], nomeArquivo, { type: mimeType });
         uploadFormData.append('file', file);
 
-        const metaUploadUrl = `https://graph.facebook.com/v21.0/${phoneNumberId}/media`;
+        const metaUploadUrl = `https://graph.facebook.com/${metaApiVersion}/${phoneNumberId}/media`;
         console.log('📤 Upload mídia Meta:', { 
           mediaType, 
           mimeType, 

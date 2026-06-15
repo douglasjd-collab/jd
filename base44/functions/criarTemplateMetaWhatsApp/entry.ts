@@ -21,6 +21,18 @@ Deno.serve(async (req) => {
     if (!accessToken) return Response.json({ error: 'Access token da Meta não configurado' }, { status: 400 });
     if (!businessAccountId) return Response.json({ error: 'Business Account ID não configurado na empresa' }, { status: 400 });
 
+    // Versão dinâmica da API Meta
+    let metaApiVersion = 'v23.0';
+    try {
+      const configsVersao = await base44.asServiceRole.entities.ConfiguracaoSistema.filter({
+        chave: `meta_api_versao_${empresa_id}`,
+        empresa_id
+      }, '-created_date', 1);
+      if (configsVersao?.length > 0 && configsVersao[0].valor) {
+        metaApiVersion = configsVersao[0].valor;
+      }
+    } catch (_) {}
+
     // Construir payload do template para a API da Meta
     const components = [];
 
@@ -98,7 +110,7 @@ Deno.serve(async (req) => {
     console.log('[criarTemplateMetaWhatsApp] Payload enviado à Meta:', JSON.stringify(payload));
 
     // Chamar API da Meta para criar o template
-    const metaUrl = `https://graph.facebook.com/v21.0/${businessAccountId}/message_templates`;
+    const metaUrl = `https://graph.facebook.com/${metaApiVersion}/${businessAccountId}/message_templates`;
     const metaResp = await fetch(metaUrl, {
       method: 'POST',
       headers: {
