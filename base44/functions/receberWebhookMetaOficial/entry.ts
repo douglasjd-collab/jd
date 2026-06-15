@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     return new Response('Invalid token', { status: 403 });
   }
 
-  // POST request - mensagens reais
+  // POST request - mensagens e status updates
   if (req.method === 'POST') {
     try {
       const body = await req.json();
@@ -26,8 +26,8 @@ Deno.serve(async (req) => {
       // Responder imediatamente à Meta
       const response = Response.json({ received: true }, { status: 200 });
       
-      // Processar mensagem em background (sem await)
-      processarMensagem(body).catch(err => console.error('Erro ao processar:', err));
+      // Processar em background (sem await)
+      processarWebhook(body).catch(err => console.error('Erro ao processar webhook:', err));
       
       return response;
     } catch (error) {
@@ -38,24 +38,18 @@ Deno.serve(async (req) => {
   return Response.json({ ok: false }, { status: 405 });
 });
 
-async function processarMensagem(body) {
+async function processarWebhook(body) {
   if (!body.entry || !Array.isArray(body.entry)) return;
   
   const entry = body.entry[0];
   if (!entry.changes || entry.changes.length === 0) return;
   
   const change = entry.changes[0];
-  if (!change?.value?.messages) return;
-  
-  const message = change.value.messages[0];
-  const contacts = change.value.contacts || [];
-  const metadata = change.value.metadata || {};
-  console.log('📨 Mensagem recebida:', message);
+  const value = change.value || {};
+  const metadata = value.metadata || {};
 
-  const { createClientFromRequest: _unused, ...sdk } = await import('npm:@base44/sdk@0.8.25').then(m => m);
+  // Inicializar SDK service role
   const { createClientForServiceRole } = await import('npm:@base44/sdk@0.8.25');
-  
-  // Usar service role para salvar
   const appId = Deno.env.get('BASE44_APP_ID');
   const base44 = createClientForServiceRole ? createClientForServiceRole({ appId }) : null;
   if (!base44) {
@@ -63,7 +57,102 @@ async function processarMensagem(body) {
     return;
   }
 
-  const telefone = message.from; // número sem +
+  // === PROCESSAR STATUS UPDATES (entregue, lida, falha) ===
+  if (value.statuses && Array.isArray(value.statuses) && value.statuses.length > 0) {
+    await processarStatusUpdates(base44, value.statuses, metadata);
+  }
+
+  // === PROCESSAR MENSAGENS RECEBIDAS ===
+  if (value.messages && Array.isArray(value.messages) && value.messages.length > 0) {
+    await processarMensagensRecebidas(base44, value);
+  }
+}
+
+async function processarStatusUpdates(base44, statuses, metadata) {
+  const phoneNumberId = metadata.phone_number_id;
+  if (!phoneNumberId) {
+    console.warn('⚠️ Status update sem phone_number_id');
+    return;
+  }
+
+  // Identificar empresa pelo phone_number_id
+  const todasEmpresas = await base44.entities.Empresa.filter({}, null, 100);
+  const empresa = todasEmpresas.find(e => e.whatsapp_phone_number_id === phoneNumberId);
+  if (!empresa) {
+    console.warn('⚠️ Empresa não encontrada para phone_number_id:', phoneNumberId);
+    return;
+  }
+
+  for (const statusUpdate of statuses) {
+    const wamid = statusUpdate.id;        // wamid.HXXX...
+    const novoStatus = statusUpdate.status; // "sent", "delivered", "read", "failed"
+    const timestamp = statusUpdate.timestamp;
+    const recipientId = statusUpdate.recipient_id;
+
+    console.log(`📊 Status update: ${wamid} → ${novoStatus} (para ${recipientId})`);
+
+    // Mapear status Meta → status interno
+    const statusMap = {
+      'sent': 'enviada',
+      'delivered': 'entregue',
+      'read': 'lida',
+      'failed': 'erro',
+    };
+    const statusInterno = statusMap[novoStatus];
+    if (!statusInterno) {
+      console.warn(`⚠️ Status desconhecido: ${novoStatus}`);
+      continue;
+    }
+
+    try {
+      // Buscar a MensagemWhatsapp pelo whatsapp_message_id
+      const mensagens = await base44.entities.MensagemWhatsapp.filter({
+        empresa_id: empresa.id,
+        whatsapp_message_id: wamid,
+      }, '-created_date', 1);
+
+      if (mensagens.length === 0) {
+        console.warn(`⚠️ Mensagem não encontrada para wamid: ${wamid}`);
+        continue;
+      }
+
+      const mensagem = mensagens[0];
+
+      // Só atualizar se status novo for "melhor" (progressão: enviada → entregue → lida)
+      const ordemStatus = { 'enviada': 1, 'entregue': 2, 'lida': 3, 'erro': -1 };
+      const statusAtual = mensagem.status || 'pendente';
+      if (ordemStatus[statusInterno] !== undefined && ordemStatus[statusInterno] <= (ordemStatus[statusAtual] || 0)) {
+        continue; // não regredir status
+      }
+
+      // Atualizar status da mensagem
+      const updateData = { status: statusInterno };
+      const dataTimestamp = timestamp ? new Date(parseInt(timestamp) * 1000).toISOString() : new Date().toISOString();
+
+      if (novoStatus === 'delivered') {
+        updateData.entregue_em = dataTimestamp;
+      } else if (novoStatus === 'read') {
+        updateData.lida_em = dataTimestamp;
+      } else if (novoStatus === 'failed') {
+        updateData.erro = statusUpdate.errors?.[0]?.message || 'Falha no envio';
+      }
+
+      await base44.entities.MensagemWhatsapp.update(mensagem.id, updateData);
+      console.log(`✅ Status atualizado: ${wamid} → ${statusInterno}`);
+
+    } catch (e) {
+      console.error(`❌ Erro ao processar status update ${wamid}:`, e.message);
+    }
+  }
+}
+
+async function processarMensagensRecebidas(base44, value) {
+  const message = value.messages[0];
+  const contacts = value.contacts || [];
+  const metadata = value.metadata || {};
+  console.log('📨 Mensagem recebida:', message);
+
+  const telefone = message.from;
   const nomeContato = contacts[0]?.profile?.name || telefone;
   const phoneNumberId = metadata.phone_number_id;
 
@@ -75,7 +164,7 @@ async function processarMensagem(body) {
     return;
   }
 
-  // Buscar ou criar conversa com tipo_conexao = 'meta_oficial'
+  // Buscar ou criar conversa
   let conversas = await base44.entities.ConversaWhatsapp.filter({
     empresa_id: empresa.id,
     cliente_telefone: telefone
@@ -84,7 +173,6 @@ async function processarMensagem(body) {
   let conversa;
   if (conversas.length > 0) {
     conversa = conversas[0];
-    // Garantir que tipo_conexao e instancia estão corretos
     if (conversa.tipo_conexao !== 'meta_oficial' || conversa.instancia !== 'META_OFICIAL') {
       await base44.entities.ConversaWhatsapp.update(conversa.id, { tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL' });
       conversa.tipo_conexao = 'meta_oficial';
@@ -116,25 +204,23 @@ async function processarMensagem(body) {
   } else if (message.type === 'image') {
     tipo_conteudo = 'imagem';
     texto = message.image?.caption || '';
-    arquivo_url = message.image?.id || null; // media_id da Meta (não é URL direta)
+    arquivo_url = message.image?.id || null;
   } else if (message.type === 'audio') {
     tipo_conteudo = 'audio';
     texto = 'Áudio';
-    arquivo_url = message.audio?.id || null; // media_id da Meta
+    arquivo_url = message.audio?.id || null;
   } else if (message.type === 'video') {
     tipo_conteudo = 'video';
     texto = message.video?.caption || 'Vídeo';
-    arquivo_url = message.video?.id || null; // media_id da Meta
+    arquivo_url = message.video?.id || null;
   } else if (message.type === 'document') {
     tipo_conteudo = 'documento';
     texto = message.document?.filename || 'Documento';
-    arquivo_url = message.document?.id || null; // media_id da Meta
+    arquivo_url = message.document?.id || null;
   } else if (message.type === 'button') {
-    // Resposta de botão de template (quick_reply)
     tipo_conteudo = 'texto';
     texto = message.button?.text || message.button?.payload || 'Botão';
   } else if (message.type === 'interactive') {
-    // Resposta de mensagem interativa (list reply, button reply)
     tipo_conteudo = 'texto';
     texto = message.interactive?.button_reply?.title
          || message.interactive?.list_reply?.title
@@ -158,8 +244,6 @@ async function processarMensagem(body) {
   });
 
   // Atualizar última mensagem da conversa
-  // tipo_conexao registra a última origem recebida
-  // canal_atendimento é o canal fixo de resposta — não sobrescrever se já definido
   const canalAtualMeta = conversa.canal_atendimento || conversa.canal_preferencial || null;
 
   const updateConversaMeta = {
@@ -167,13 +251,12 @@ async function processarMensagem(body) {
     data_ultima_mensagem: new Date().toISOString(),
     ultimo_remetente: 'cliente',
     cliente_nome: nomeContato,
-    tipo_conexao: 'meta_oficial',       // última origem recebida
+    tipo_conexao: 'meta_oficial',
     ultima_origem_recebida: 'meta_oficial',
     instancia: 'META_OFICIAL',
     phone_number_id_meta: phoneNumberId,
   };
 
-  // Só define canal se ainda não tem canal travado
   if (!canalAtualMeta) {
     updateConversaMeta.canal_atendimento = 'meta_oficial';
     updateConversaMeta.canal_preferencial = 'meta_oficial';
