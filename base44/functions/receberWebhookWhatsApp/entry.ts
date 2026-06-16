@@ -756,22 +756,38 @@ async function processarWebhook(req, rawBody, base44) {
       };
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, updateDataMeta);
       console.log(`🛡️ Conversa Meta/Instagram ${conversa.id} — canal preservado (status: ${conversa.status === 'encerrada' ? 'reaberta→ativa' : 'mantido'})`);
-      // Não salvar mensagem duplicada — o webhook Meta já salvou com provider correto
-      // Só salvar se for mensagem enviada pelo vendedor (fromMe) que a Meta não captura
-      if (fromMe) {
-        const remetenteProt = 'vendedor';
+      
+      // ✅ Sempre salvar mensagem Evolution/Instagram, mesmo em conversa de outro canal.
+      // A mensagem é salva com o provider CORRETO (evolution ou instagram) para
+      // que o chat exiba a mensagem, mas o canal de resposta não é alterado.
+      // Motivo: o contato pode ter enviado a mensagem pelo WhatsApp conectado
+      // à Evolution, mesmo que o número também tenha Meta. Sem isso, mensagens
+      // da Evolution são descartadas silenciosamente em conversas Meta.
+      const providerMensagem = conversaEhInstagram ? 'instagram' : 'evolution';
+      const remetenteMsg = fromMe ? 'vendedor' : 'cliente';
+      const statusMsg = fromMe ? 'enviada' : 'pendente';
+      
+      // Verificar duplicata pelo messageId antes de salvar
+      const existentesCross = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+        whatsapp_message_id: messageId
+      });
+      
+      if (existentesCross.length === 0) {
         await base44.asServiceRole.entities.MensagemWhatsapp.create({
           conversa_id: conversa.id, empresa_id: empresaId,
-          remetente: remetenteProt, tipo_conteudo: tipo, texto: conteudo,
+          remetente: remetenteMsg, tipo_conteudo: tipo, texto: conteudo,
           arquivo_url: arquivo_url || null,
           arquivo_nome: arquivo_nome || null,
           arquivo_tamanho: arquivo_tamanho || 0,
-          provider: providerReal,
+          provider: providerMensagem,
           download_status: arquivo_url ? 'baixado' : 'nao_aplicavel',
           whatsapp_message_id: messageId,
           data_envio: new Date().toISOString(),
-          status: 'enviada'
+          status: statusMsg
         });
+        console.log(`✅ Mensagem cross-canal salva: provider=${providerMensagem} | remetente=${remetenteMsg} | id=${messageId}`);
+      } else {
+        console.log(`⏭️ Mensagem cross-canal duplicada ignorada: ${messageId}`);
       }
       return;
     }
