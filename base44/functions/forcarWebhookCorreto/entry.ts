@@ -15,7 +15,8 @@ Deno.serve(async (req) => {
     const instanceName = empresa.evolution_instance_name || 'JDPROMOTORA';
     const appId = Deno.env.get('BASE44_APP_ID') || '';
 
-    const webhookUrl = `https://api.base44.com/apps/${appId}/functions/receberWebhookWhatsApp?instance=${instanceName}`;
+    // URL correta: usar o domínio do app (não api.base44.com que pode não rotear)
+    const webhookUrl = `https://appjdpromorora.base44.app/api/apps/${appId}/functions/receberWebhookWhatsApp?instance=${instanceName}`;
 
     console.log(`🎯 URL correta: ${webhookUrl}`);
     console.log(`🏭 Evolution: ${evolutionUrl} | Instance: ${instanceName}`);
