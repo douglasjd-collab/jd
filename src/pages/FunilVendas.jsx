@@ -65,6 +65,7 @@ export default function FunilVendas() {
   const [indicadorNome, setIndicadorNome] = useState('');
   const [indicadorTelefone, setIndicadorTelefone] = useState('');
   const [clienteSearchOpen, setClienteSearchOpen] = useState(false);
+  const [clienteSelecionado, setClienteSelecionado] = useState(null); // guarda o objeto completo do cliente
   const [criarFunilOpen, setCriarFunilOpen] = useState(false);
   const [novoFunil, setNovoFunil] = useState({ nome: '', cor: '#3b82f6' });
   const [searchCard, setSearchCard] = useState('');
@@ -213,8 +214,9 @@ export default function FunilVendas() {
   });
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes'],
-    queryFn: () => base44.entities.Cliente.filter({ status: 'ativo' }),
+    queryKey: ['clientes-funil', currentUser?.empresa_id],
+    enabled: !!currentUser?.empresa_id,
+    queryFn: () => base44.entities.Cliente.filter({ status: 'ativo', empresa_id: currentUser.empresa_id }),
   });
 
   const { data: vendedores = [], isLoading: loadingVendedores } = useQuery({
@@ -744,7 +746,7 @@ export default function FunilVendas() {
       return;
     }
 
-    const cliente = clientes.find(c => c.id === formData.cliente_id);
+    const cli = clienteSelecionado || (formData.cliente_id ? clientes.find(c => c.id === formData.cliente_id) : null);
     const vendedorIdFinal = formData.vendedor_id || currentUser?.id || '';
     const vendedor = vendedores.find(v => v.id === vendedorIdFinal);
     const etapa = etapas.find(e => e.id === formData.etapa_id);
@@ -764,8 +766,8 @@ export default function FunilVendas() {
       ...formData,
       empresa_id: currentUser?.empresa_id || '',
       produto: produtoFinal,
-      cliente_nome: cliente?.nome_completo || cliente?.pj_razao_social || '',
-      cliente_telefone: cliente?.celular || cliente?.pj_celular || '',
+      cliente_nome: cli?.nome_completo || cli?.pj_razao_social || formData.cliente_nome || '',
+      cliente_telefone: cli?.celular || cli?.pj_celular || formData.cliente_telefone || '',
       vendedor_nome: vendedor?.razao_social || vendedor?.full_name || '',
       gerente_id: vendedor?.gerente_id || '',
       etapa_nome: etapa?.nome || '',
@@ -799,6 +801,7 @@ export default function FunilVendas() {
       telefone_lead: '',
       data_cadastro_lead: format(new Date(), 'yyyy-MM-dd')
     });
+    setClienteSelecionado(null);
     setIndicadorNome('');
     setIndicadorTelefone('');
   };
@@ -1003,6 +1006,7 @@ export default function FunilVendas() {
       origem: '', observacoes: '', data_fechamento_prevista: '',
       telefone_lead: '', data_cadastro_lead: format(new Date(), 'yyyy-MM-dd')
     });
+    setClienteSelecionado(null);
     setIndicadorNome('');
     setIndicadorTelefone('');
     setFormOpen(true);
@@ -1410,6 +1414,13 @@ export default function FunilVendas() {
                                           telefone_lead: oport.telefone_lead || oport.cliente_telefone || '',
                                           data_cadastro_lead: oport.data_cadastro_lead || format(new Date(), 'yyyy-MM-dd')
                                          });
+                                         // Carregar cliente selecionado para exibição correta
+                                         if (oport.cliente_id) {
+                                           const cliExistente = clientes.find(c => c.id === oport.cliente_id);
+                                           setClienteSelecionado(cliExistente || null);
+                                         } else {
+                                           setClienteSelecionado(null);
+                                         }
                                          // Extrair dados do indicador se existir
                                          const obsMatch = oport.observacoes?.match(/👤 Indicado por: (.+)\n📞 Telefone: (.+)/);
                                          if (obsMatch) {
@@ -1660,10 +1671,7 @@ export default function FunilVendas() {
                   onClick={() => setClienteSearchOpen(true)}
                 >
                   {formData.cliente_id ? (
-                    (() => {
-                      const cliente = clientes.find(c => c.id === formData.cliente_id);
-                      return cliente?.nome_completo || cliente?.pj_razao_social || 'Cliente selecionado';
-                    })()
+                    clienteSelecionado?.nome_completo || clienteSelecionado?.pj_razao_social || 'Cliente selecionado'
                   ) : (
                     <span className="text-slate-500">Buscar cliente...</span>
                   )}
@@ -1673,7 +1681,7 @@ export default function FunilVendas() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => setFormData({ ...formData, cliente_id: '' })}
+                    onClick={() => { setFormData({ ...formData, cliente_id: '', cliente_nome: '', cliente_telefone: '' }); setClienteSelecionado(null); }}
                     className="mt-1 w-full text-red-600 hover:text-red-700 hover:bg-red-50"
                   >
                     Remover Cliente
@@ -1920,7 +1928,11 @@ export default function FunilVendas() {
       <ClienteSearchModal
         open={clienteSearchOpen}
         onOpenChange={setClienteSearchOpen}
-        onSelectCliente={(cliente) => { setFormData({ ...formData, cliente_id: cliente.id }); setClienteSearchOpen(false); }}
+        onSelectCliente={(cliente) => {
+          setClienteSelecionado(cliente);
+          setFormData({ ...formData, cliente_id: cliente.id, cliente_nome: cliente.nome_completo || cliente.pj_razao_social || '', cliente_telefone: cliente.celular || cliente.pj_celular || '' });
+          setClienteSearchOpen(false);
+        }}
         currentUser={currentUser}
         empresaIdSelecionada={currentUser?.empresa_id}
       />
