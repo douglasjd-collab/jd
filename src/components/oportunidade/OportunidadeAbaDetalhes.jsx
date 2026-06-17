@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
-import { User, DollarSign, Phone, MapPin, Calendar, Building2, Tag, ChevronDown, Check, CheckCircle2, XCircle, UserPlus, X } from 'lucide-react';
+import { User, DollarSign, Phone, MapPin, Calendar, Building2, Tag, ChevronDown, Check, CheckCircle2, XCircle, UserPlus, X, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 
@@ -44,7 +44,7 @@ function CardSection({ title, icon: SectionIcon, children, color = 'blue' }) {
 
 
 
-export default function OportunidadeAbaDetalhes({ oportunidade, colaboradores, etapas, currentUser, onUpdate }) {
+export default function OportunidadeAbaDetalhes({ oportunidade, colaboradores, etapas, currentUser, onUpdate, cliente }) {
   const queryClient = useQueryClient();
   const [novaEtapaId, setNovaEtapaId] = useState('');
   const [editandoObservacao, setEditandoObservacao] = useState(false);
@@ -130,7 +130,8 @@ export default function OportunidadeAbaDetalhes({ oportunidade, colaboradores, e
     <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
       {/* Card Dados do Cliente */}
       <CardSection title="Dados do Cliente" icon={User} color="blue">
-        <InfoItem label="Nome" value={oportunidade.cliente_nome} icon={User} />
+        <InfoItem label="Nome" value={cliente?.nome_completo || cliente?.pj_razao_social || oportunidade.cliente_nome} icon={User} />
+        <InfoItem label="CPF" value={cliente?.cpf || cliente?.pj_cnpj} icon={FileText} />
         <InfoItem label="Telefone" value={oportunidade.cliente_telefone || oportunidade.telefone_lead} icon={Phone} />
         <InfoItem label="Origem" value={oportunidade.origem} icon={Tag} />
         <InfoItem label="Cadastro Lead" value={oportunidade.data_cadastro_lead ? format(new Date(oportunidade.data_cadastro_lead), 'dd/MM/yyyy') : null} icon={Calendar} />

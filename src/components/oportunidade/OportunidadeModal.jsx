@@ -83,6 +83,15 @@ export default function OportunidadeModal({ open, onOpenChange, oportunidadeId, 
     enabled: !!oportunidade?.empresa_id && open,
   });
 
+  const { data: cliente } = useQuery({
+    queryKey: ['cliente-oportunidade', oportunidade?.cliente_id],
+    queryFn: async () => {
+      const r = await base44.entities.Cliente.filter({ id: oportunidade.cliente_id });
+      return r[0] || null;
+    },
+    enabled: !!oportunidade?.cliente_id && open,
+  });
+
   let checklistItems = [];
   try { checklistItems = oportunidade?.checklist ? JSON.parse(oportunidade.checklist) : []; } catch {}
 
@@ -210,7 +219,7 @@ export default function OportunidadeModal({ open, onOpenChange, oportunidadeId, 
             {/* CONTEÚDO */}
             <div className="flex-1 overflow-y-auto bg-white">
               {aba === 'detalhes' && (
-                <OportunidadeAbaDetalhes oportunidade={oportunidade} colaboradores={colaboradores} etapas={etapas} currentUser={currentUser} onUpdate={handleUpdateOportunidade} />
+                <OportunidadeAbaDetalhes oportunidade={oportunidade} colaboradores={colaboradores} etapas={etapas} currentUser={currentUser} onUpdate={handleUpdateOportunidade} cliente={cliente} />
               )}
               {aba === 'comentarios' && (
                 <OportunidadeAbaComentarios oportunidade={oportunidade} currentUser={currentUser} colaboradores={colaboradores} />
