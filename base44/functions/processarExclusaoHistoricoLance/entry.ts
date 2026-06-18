@@ -1,4 +1,4 @@
-import { createClientFromRequest } from "npm:@base44/sdk@0.8.20";
+import { createClientFromRequest } from "npm:@base44/sdk@0.8.31";
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -7,8 +7,10 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
 
-    const role = (user.perfil || user.role || "").toLowerCase();
-    if (!["super_admin", "master", "admin", "gerente"].includes(role)) {
+    const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id });
+    const colab = colabs?.find(c => c.status === 'ativo') || colabs?.[0] || null;
+    const perfil = colab?.perfil || user.perfil || user.role || '';
+    if (!["super_admin", "master", "admin", "gerente"].includes(perfil.toLowerCase())) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
