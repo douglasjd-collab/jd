@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import {
   Loader2, ArrowLeft, Tag, MessageSquare, CheckSquare, Paperclip,
-  Clock, MessageCircle, Sparkles, Phone, DollarSign, Calendar, AlertTriangle, X
+  Clock, MessageCircle, Sparkles, Phone, DollarSign, Calendar, AlertTriangle, X, Calculator
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -15,6 +15,7 @@ import OportunidadeAbaComentarios from './OportunidadeAbaComentarios';
 import OportunidadeAbaChecklist from './OportunidadeAbaChecklist';
 import OportunidadeAbaAnexos from './OportunidadeAbaAnexos';
 import OportunidadeAbaHistorico from './OportunidadeAbaHistorico';
+import OportunidadeAbaSimulacoes from './OportunidadeAbaSimulacoes';
 import OportunidadeAbaBatePapo from './OportunidadeAbaBatePapo';
 import OportunidadeAbaIA from './OportunidadeAbaIA';
 
@@ -38,6 +39,7 @@ const ABAS = [
   { key: 'checklist', label: 'Checklist', icon: CheckSquare },
   { key: 'anexos', label: 'Anexos', icon: Paperclip },
   { key: 'historico', label: 'Histórico', icon: Clock },
+  { key: 'simulacoes', label: 'Simulações', icon: Calculator },
   { key: 'batePapo', label: 'Bate-Papo', icon: MessageCircle },
   { key: 'ia', label: 'IA', icon: Sparkles },
 ];
@@ -232,6 +234,9 @@ export default function OportunidadeModal({ open, onOpenChange, oportunidadeId, 
               )}
               {aba === 'historico' && (
                 <OportunidadeAbaHistorico oportunidade={oportunidade} movimentacoes={movimentacoes} comentarios={comentarios} />
+              )}
+              {aba === 'simulacoes' && (
+                <OportunidadeAbaSimulacoes oportunidade={oportunidade} />
               )}
               {aba === 'batePapo' && (
                 <OportunidadeAbaBatePapo oportunidade={oportunidade} currentUser={currentUser} />
