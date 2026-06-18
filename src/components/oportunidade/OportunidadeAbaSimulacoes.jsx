@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, Printer, Calculator, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
+import { imprimirSimulacao } from '@/components/simulador/printSimulacao';
 
 const formatCurrency = (v) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
@@ -54,8 +55,8 @@ export default function OportunidadeAbaSimulacoes({ oportunidade }) {
     enabled: !!oportunidade?.id,
   });
 
-  const imprimir = (id) => {
-    window.open(`/ImprimirSimulacao?id=${id}`, '_blank');
+  const imprimir = (simulacao) => {
+    imprimirSimulacao(simulacao);
   };
 
   if (isLoading) {
@@ -127,7 +128,7 @@ export default function OportunidadeAbaSimulacoes({ oportunidade }) {
               variant="outline"
               size="sm"
               className="gap-1.5 flex-shrink-0"
-              onClick={() => imprimir(s.id)}
+              onClick={() => imprimir(s)}
             >
               <Printer className="w-3.5 h-3.5" />
               2ª via
