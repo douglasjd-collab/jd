@@ -187,7 +187,7 @@ export default function AlertasTarefasPopup({ user, onAbrirTarefa }) {
       {!aberto && naoLidos > 0 && (
         <button
           onClick={() => setAberto(true)}
-          className="fixed bottom-6 right-6 z-[9998] bg-[#1e3a5f] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-[#2a4a73] transition-colors"
+          className="fixed bottom-32 right-6 z-[9998] bg-[#1e3a5f] text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg hover:bg-[#2a4a73] transition-colors"
         >
           <Bell className="w-5 h-5" />
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
