@@ -69,6 +69,7 @@ import AgendarReuniaoModal from '@/components/chat/AgendarReuniaoModal';
 import useSoftphone from '@/components/callcenter/useSoftphone';
 import ChamadaAtivaBar from '@/components/chat/ChamadaAtivaBar.jsx';
 import PainelProdutividade from '@/components/chat/PainelProdutividade';
+import CoachIAPanel from '@/components/chat/CoachIAPanel';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -295,6 +296,7 @@ export default function BatePapo() {
   const [mobileViewChat, setMobileViewChat] = useState(false); // mobile: false=lista, true=chat
   const [nvoipConfig, setNvoipConfig] = useState(null);
   const [produtividadeOpen, setProdutividadeOpen] = useState(false);
+  const [coachIAOpen, setCoachIAOpen] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1896,10 +1898,57 @@ export default function BatePapo() {
                       empresaId={empresaId}
                       selecionarConversa={selecionarConversa}
                     />
+
+                    {/* Botão Flutuante Coach IA */}
+                    {!coachIAOpen && (
+                      <button
+                        onClick={() => setCoachIAOpen(true)}
+                        className="coach-float-btn"
+                        title="Coach IA"
+                      >
+                        🤖
+                        {conversaSelecionada && mensagens?.length > 0 && (
+                          <span className="coach-float-badge">!</span>
+                        )}
+                      </button>
+                    )}
+
+                    <style>{`
+                      .coach-float-btn {
+                        position: absolute;
+                        bottom: 80px;
+                        right: 16px;
+                        width: 46px; height: 46px;
+                        border-radius: 50%;
+                        background: linear-gradient(135deg, #7c3aed, #6d28d9);
+                        color: white;
+                        border: none;
+                        cursor: pointer;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 20px;
+                        box-shadow: 0 4px 20px rgba(124,58,237,0.5);
+                        transition: transform 0.2s, box-shadow 0.2s;
+                        z-index: 5;
+                      }
+                      .coach-float-btn:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(124,58,237,0.65); }
+                      .coach-float-btn.active { background: linear-gradient(135deg, #5b21b6, #4c1d95); }
+                      .coach-float-badge {
+                        position: absolute;
+                        top: -3px; right: -3px;
+                        width: 16px; height: 16px;
+                        background: #ef4444;
+                        border-radius: 50%;
+                        border: 2px solid #09090b;
+                        font-size: 9px;
+                        color: white;
+                        display: flex; align-items: center; justify-content: center;
+                        font-weight: 600;
+                      }
+                    `}</style>
                   </div>
 
                   {/* Painel Informações do Lead */}
-                  {infoLeadAberto && (
+                  {infoLeadAberto && !coachIAOpen && (
                     <PainelInfoLead
                       conversaSelecionada={conversaSelecionada}
                       contatosWhatsapp={contatosWhatsapp}
@@ -1914,6 +1963,36 @@ export default function BatePapo() {
                       setInfoLeadAberto={setInfoLeadAberto}
                     />
                   )}
+
+                  {/* Painel Coach IA */}
+                  <CoachIAPanel
+                    conversaId={conversaSelecionada?.id}
+                    mensagens={mensagens}
+                    empresaId={empresaId}
+                    visible={coachIAOpen}
+                    onClose={() => setCoachIAOpen(false)}
+                    onSendScript={(script) => {
+                      if (script && conversaSelecionada) {
+                        setCoachIAOpen(false);
+                        setTimeout(() => {
+                          // Colocar o script no input e focar
+                          const inputEl = document.querySelector('.msg-input') || document.querySelector('[data-msg-input]');
+                          if (inputEl) {
+                            // Disparar evento para o ChatMessageFooter
+                            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+                            if (nativeInputValueSetter) {
+                              nativeInputValueSetter.call(inputEl, script);
+                            } else {
+                              inputEl.value = script;
+                            }
+                            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+                            inputEl.focus();
+                          }
+                          toast.success('Script inserido no campo de mensagem!');
+                        }, 200);
+                      }
+                    }}
+                  />
                 </div>
               </>
             ) : (
