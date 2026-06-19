@@ -32,6 +32,55 @@ async function epPost(baseUrl, token, path, body) {
   return data?.result?.data?.json ?? data?.result?.data ?? data;
 }
 
+function parseEnvStr(envStr) {
+  const vars = {};
+  if (!envStr) return vars;
+  envStr.split('\n').forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    const idx = trimmed.indexOf('=');
+    if (idx === -1) return;
+    const k = trimmed.substring(0, idx).trim();
+    const v = trimmed.substring(idx + 1); // NÃO trim() no valor — preservar espaços/vazios
+    if (k) vars[k] = v;
+  });
+  return vars;
+}
+
+function buildEnvStr(vars) {
+  return Object.entries(vars).map(([k, v]) => `${k}=${v}`).join('\n');
+}
+
+// Lê env vars atuais tentando múltiplos formatos do endpoint tRPC.
+// Retorna null se não conseguir ler pelo menos 5 variáveis (proteção).
+async function lerEnvVarsAtuais(epUrl, epToken, epProject, epService) {
+  const tentativas = [
+    async () => {
+      const d = await epGet(epUrl, epToken, '/api/trpc/services.app.inspectService', { json: { projectName: epProject, serviceName: epService } });
+      return d?.env || d?.source?.env || d?.config?.env || null;
+    },
+    async () => {
+      const d = await epGet(epUrl, epToken, '/api/trpc/services.app.inspectService', { projectName: epProject, serviceName: epService });
+      return d?.env || d?.source?.env || d?.config?.env || null;
+    },
+  ];
+  for (let i = 0; i < tentativas.length; i++) {
+    try {
+      const envStr = await tentativas[i]();
+      if (envStr && typeof envStr === 'string' && envStr.trim().length > 10) {
+        const vars = parseEnvStr(envStr);
+        if (Object.keys(vars).length >= 5) {
+          console.log(`✅ Env lida na tentativa ${i + 1}: ${Object.keys(vars).length} variáveis`);
+          return { envStr, vars };
+        }
+      }
+    } catch (e) {
+      console.warn(`⚠️ Tentativa leitura env ${i + 1} falhou: ${e.message}`);
+    }
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -108,32 +157,45 @@ Deno.serve(async (req) => {
     // 4. Atualizar via EasyPanel
     let easypanelOk = false;
     if (epUrl && epToken && epProject && epService) {
-      // Buscar env vars atuais
-      let envVarsAtuais = {};
-      try {
-        const serviceData = await epGet(epUrl, epToken, '/api/trpc/services.app.inspectService', {
-          input: { json: { projectName: epProject, serviceName: epService } }
-        });
-        const envStr = serviceData?.env || serviceData?.source?.env || serviceData?.config?.env || '';
-        if (envStr) {
-          envStr.split('\n').forEach(line => {
-            const [k, ...v] = line.split('=');
-            if (k?.trim()) envVarsAtuais[k.trim()] = v.join('=').trim();
+      // PASSO CRÍTICO: ler env vars atuais. Se falhar → ABORTAR (não sobrescrever nada).
+      const leituraAtual = await lerEnvVarsAtuais(epUrl, epToken, epProject, epService);
+      if (!leituraAtual) {
+        const msg = '🛑 ABORTADO: não foi possível ler as variáveis de ambiente atuais. Operação cancelada para proteger o Evolution API.';
+        console.error(msg);
+        try {
+          await base44.asServiceRole.entities.LogVersaoWhatsApp.create({
+            versao_anterior: versaoAtual, versao_nova: versaoRecente,
+            acao: 'alerta_falha', sucesso: false, erro: msg
           });
-        }
-      } catch (e) { console.warn('⚠️ inspectService:', e.message); }
+        } catch (_) {}
+        return Response.json({ success: false, abortado: true, error: msg }, { status: 500 });
+      }
 
-      envVarsAtuais['CONFIG_SESSION_PHONE_VERSION'] = versaoRecente;
-      envVarsAtuais['CONFIG_SESSION_PHONE_NAME'] = 'Chrome';
-      envVarsAtuais['CONFIG_SESSION_PHONE_CLIENT'] = 'Evolution API';
-      const novaEnvStr = Object.entries(envVarsAtuais).map(([k, v]) => `${k}=${v}`).join('\n');
+      const envVarsAtuais = leituraAtual.vars;
+      const totalVarsAntes = Object.keys(envVarsAtuais).length;
+
+      // PATCH: atualizar SOMENTE as 3 variáveis de versão, preservando todas as outras
+      const envVarsNovo = { ...envVarsAtuais };
+      envVarsNovo['CONFIG_SESSION_PHONE_VERSION'] = versaoRecente;
+      envVarsNovo['CONFIG_SESSION_PHONE_NAME'] = 'Chrome';
+      envVarsNovo['CONFIG_SESSION_PHONE_CLIENT'] = 'Evolution API';
+      const totalVarsDepois = Object.keys(envVarsNovo).length;
+
+      // VERIFICAÇÃO DE SEGURANÇA: nunca pode remover variáveis
+      if (totalVarsDepois < totalVarsAntes) {
+        const msg = `🛑 ABORTADO: verificação de segurança falhou (antes: ${totalVarsAntes}, depois: ${totalVarsDepois}).`;
+        console.error(msg);
+        return Response.json({ success: false, abortado: true, error: msg }, { status: 500 });
+      }
+
+      const novaEnvStr = buildEnvStr(envVarsNovo);
 
       try {
         await epPost(epUrl, epToken, '/api/trpc/services.app.updateEnv', {
           projectName: epProject, serviceName: epService, env: novaEnvStr
         });
         easypanelOk = true;
-        console.log('✅ Env vars atualizadas');
+        console.log(`✅ Env salva: ${totalVarsDepois} vars preservadas, CONFIG_SESSION_PHONE_VERSION=${versaoRecente}`);
       } catch (e) { console.error('❌ updateEnv:', e.message); }
 
       if (easypanelOk) {
