@@ -60,6 +60,7 @@ Deno.serve(async (req) => {
 
       // URL da mídia do cabeçalho (quando disponível via example)
       // Prioridade: header_handle (já é media_id permanente) > header_url (temporária, precisa upload)
+      const ehVideo = tipoCabecalho === 'VIDEO';
       let cabecalhoMidiaUrl = '';
       let cabecalhoMediaId = '';
 
@@ -67,7 +68,7 @@ Deno.serve(async (req) => {
         // header_handle pode ser URL CDN ou handle numérico
         const handleVal = header.example.header_handle[0];
         if (/^\d{10,}$/.test(String(handleVal).trim())) {
-          // Handle numérico permanente — baixar imagem da Meta e fazer upload para URL pública
+          // Handle numérico permanente — baixar mídia da Meta e fazer upload para URL pública
           cabecalhoMediaId = handleVal;
           cabecalhoMidiaUrl = handleVal; // fallback (handle numérico)
           try {
@@ -78,39 +79,49 @@ Deno.serve(async (req) => {
             });
             const mediaData = await mediaR.json();
             if (mediaData.url) {
-              // Baixar imagem da URL temporária
-              const imgR = await fetch(mediaData.url);
-              if (imgR.ok) {
-                const buf = await imgR.arrayBuffer();
-                const ct = imgR.headers.get('content-type') || 'image/jpeg';
-                const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg';
+              // Baixar mídia da URL temporária
+              const mediaFetch = await fetch(mediaData.url);
+              if (mediaFetch.ok) {
+                const buf = await mediaFetch.arrayBuffer();
+                const ct = mediaFetch.headers.get('content-type') || (ehVideo ? 'video/mp4' : 'image/jpeg');
+                let ext;
+                if (ehVideo) {
+                  ext = ct.includes('mp4') ? 'mp4' : ct.includes('webm') ? 'webm' : 'mp4';
+                } else {
+                  ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg';
+                }
                 // Upload para storage Base44
                 const blob = new Blob([buf], { type: ct });
                 const fileObj = new File([blob], `template_${tmpl.name}.${ext}`, { type: ct });
                 const { file_url } = await base44.asServiceRole.integrations.Core.UploadFile({ file: fileObj });
                 cabecalhoMidiaUrl = file_url;
-                console.log(`✅ Imagem do template ${tmpl.name} salva no storage: ${file_url}`);
+                console.log(`✅ ${ehVideo ? 'Vídeo' : 'Imagem'} do template ${tmpl.name} salvo no storage: ${file_url}`);
               }
             }
           } catch (e) {
-            console.warn(`⚠️ Falha ao baixar imagem do handle ${handleVal}:`, e.message);
+            console.warn(`⚠️ Falha ao baixar mídia do handle ${handleVal}:`, e.message);
           }
         } else {
           // URL CDN — fazer upload para storage Base44 (URL pública permanente) + Meta (media_id)
           cabecalhoMidiaUrl = handleVal; // manter URL original como fallback
           try {
-            const imgR = await fetch(handleVal);
-            if (imgR.ok) {
-              const buf = await imgR.arrayBuffer();
-              const ct = imgR.headers.get('content-type') || 'image/jpeg';
-              const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg';
+            const mediaFetch = await fetch(handleVal);
+            if (mediaFetch.ok) {
+              const buf = await mediaFetch.arrayBuffer();
+              const ct = mediaFetch.headers.get('content-type') || (ehVideo ? 'video/mp4' : 'image/jpeg');
+              let ext;
+              if (ehVideo) {
+                ext = ct.includes('mp4') ? 'mp4' : ct.includes('webm') ? 'webm' : 'mp4';
+              } else {
+                ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : 'jpg';
+              }
               // Upload para storage Base44 (URL pública permanente para preview)
               try {
                 const blob = new Blob([buf], { type: ct });
                 const fileObj = new File([blob], `template_${tmpl.name}.${ext}`, { type: ct });
                 const { file_url } = await base44.asServiceRole.integrations.Core.UploadFile({ file: fileObj });
                 cabecalhoMidiaUrl = file_url;
-                console.log(`✅ Imagem template ${tmpl.name} salva no storage: ${file_url}`);
+                console.log(`✅ ${ehVideo ? 'Vídeo' : 'Imagem'} template ${tmpl.name} salvo no storage: ${file_url}`);
               } catch (storageErr) {
                 console.warn(`⚠️ Storage upload falhou para ${tmpl.name}, usando URL CDN:`, storageErr.message);
               }

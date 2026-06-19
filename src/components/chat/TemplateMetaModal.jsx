@@ -110,9 +110,13 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
     const tId = previewTemplate.tId;
     const isEnviando = enviando === tId;
     const cabecalhoTipo = (d.tipo_cabecalho || '').toUpperCase();
-    const hasImage = cabecalhoTipo === 'IMAGE' && d.cabecalho_midia_url && !/^\d+$/.test(String(d.cabecalho_midia_url).trim());
-    const hasVideo = cabecalhoTipo === 'VIDEO' && d.cabecalho_midia_url && !/^\d+$/.test(String(d.cabecalho_midia_url).trim());
-    const isHandle = (cabecalhoTipo === 'IMAGE' || cabecalhoTipo === 'VIDEO') && d.cabecalho_midia_url && /^\d+$/.test(String(d.cabecalho_midia_url).trim());
+    const urlMidia = String(d.cabecalho_midia_url || '').trim();
+    const isNumericHandle = /^\d{10,}$/.test(urlMidia);
+    const isMetaCdn = /fbcdn\.net|fbsbx\.com|facebook\.com/.test(urlMidia);
+    const urlUtilizavel = urlMidia && !isNumericHandle && !isMetaCdn;
+    const hasImage = cabecalhoTipo === 'IMAGE' && urlUtilizavel;
+    const hasVideo = cabecalhoTipo === 'VIDEO' && urlUtilizavel;
+    const isHandle = (cabecalhoTipo === 'IMAGE' || cabecalhoTipo === 'VIDEO') && d.cabecalho_midia_url && (isNumericHandle || isMetaCdn);
     const botoes = Array.isArray(d.botoes) ? d.botoes : [];
 
     return (
@@ -157,8 +161,14 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
                 />
               )}
               {isHandle && (
-                <div className="w-full h-32 flex items-center justify-center bg-blue-400/50 text-white/70 text-xs gap-2">
-                  {cabecalhoTipo === 'VIDEO' ? '🎬 Vídeo do template' : '🖼️ Imagem do template'}
+                <div className="w-full py-8 flex flex-col items-center justify-center bg-blue-400/50 text-white/80 text-xs gap-1.5">
+                  <span className="text-lg">{cabecalhoTipo === 'VIDEO' ? '🎬' : '🖼️'}</span>
+                  <span className="font-medium">{cabecalhoTipo === 'VIDEO' ? 'Vídeo do template' : 'Imagem do template'}</span>
+                  {isMetaCdn && (
+                    <span className="text-[10px] text-white/50 max-w-[200px] text-center leading-tight">
+                      URL temporária da Meta. Clique em Sync para baixar a mídia.
+                    </span>
+                  )}
                 </div>
               )}
               {/* Corpo */}
