@@ -20,6 +20,9 @@ export default function ChatMessageFooter({
   user,
   empresaId,
   selecionarConversa,
+  scriptExterno,
+  coachIAOpen,
+  setCoachIAOpen,
 }) {
   const queryClient = useQueryClient();
   const [canalReabrir, setCanalReabrir] = useState(conversaSelecionada?.tipo_conexao || 'meta_oficial');
@@ -121,6 +124,9 @@ export default function ChatMessageFooter({
         empresaId={empresaId}
         telefoneDestino={conversaSelecionada?.cliente_telefone}
         conversaId={conversaSelecionada?.id}
+        scriptExterno={scriptExterno}
+        coachIAOpen={coachIAOpen}
+        setCoachIAOpen={setCoachIAOpen}
         onTemplateEnviado={() => {
           const qKey = ['mensagens-whatsapp', conversaSelecionada?.id];
           queryClient.invalidateQueries({ queryKey: qKey });

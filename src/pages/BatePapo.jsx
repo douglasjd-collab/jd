@@ -297,6 +297,7 @@ export default function BatePapo() {
   const [nvoipConfig, setNvoipConfig] = useState(null);
   const [produtividadeOpen, setProdutividadeOpen] = useState(false);
   const [coachIAOpen, setCoachIAOpen] = useState(false);
+  const [scriptCoach, setScriptCoach] = useState(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1850,6 +1851,8 @@ export default function BatePapo() {
                 sipStatus={sipStatus}
                 chamadaAtiva={chamadaAtiva}
                 erroSip={erroSip}
+                coachIAOpen={coachIAOpen}
+                setCoachIAOpen={setCoachIAOpen}
                 />
                 <ChamadaAtivaBar chamadaAtiva={chamadaAtiva} onEncerrar={encerrarChamada} />
 
@@ -1897,19 +1900,20 @@ export default function BatePapo() {
                       user={user}
                       empresaId={empresaId}
                       selecionarConversa={selecionarConversa}
+                      scriptExterno={scriptCoach}
+                      coachIAOpen={coachIAOpen}
+                      setCoachIAOpen={setCoachIAOpen}
                     />
 
                     {/* Botão Flutuante Coach IA */}
-                    {!coachIAOpen && (
+                    {!coachIAOpen && conversaSelecionada && (
                       <button
                         onClick={() => setCoachIAOpen(true)}
                         className="coach-float-btn"
                         title="Coach IA"
                       >
                         🤖
-                        {conversaSelecionada && mensagens?.length > 0 && (
-                          <span className="coach-float-badge">!</span>
-                        )}
+                        <span className="coach-float-badge" />
                       </button>
                     )}
 
@@ -1918,31 +1922,32 @@ export default function BatePapo() {
                         position: absolute;
                         bottom: 80px;
                         right: 16px;
-                        width: 46px; height: 46px;
+                        width: 42px; height: 42px;
                         border-radius: 50%;
                         background: linear-gradient(135deg, #7c3aed, #6d28d9);
                         color: white;
                         border: none;
                         cursor: pointer;
                         display: flex; align-items: center; justify-content: center;
-                        font-size: 20px;
-                        box-shadow: 0 4px 20px rgba(124,58,237,0.5);
+                        font-size: 18px;
+                        box-shadow: 0 4px 16px rgba(124,58,237,0.5);
                         transition: transform 0.2s, box-shadow 0.2s;
                         z-index: 5;
+                        animation: coachPulse 2s infinite;
                       }
-                      .coach-float-btn:hover { transform: scale(1.08); box-shadow: 0 6px 24px rgba(124,58,237,0.65); }
-                      .coach-float-btn.active { background: linear-gradient(135deg, #5b21b6, #4c1d95); }
+                      .coach-float-btn:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(124,58,237,0.65); animation: none; }
+                      @keyframes coachPulse {
+                        0% { box-shadow: 0 0 0 0 rgba(124,58,237,0.5); }
+                        70% { box-shadow: 0 0 0 8px rgba(124,58,237,0); }
+                        100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); }
+                      }
                       .coach-float-badge {
                         position: absolute;
-                        top: -3px; right: -3px;
-                        width: 16px; height: 16px;
+                        top: -2px; right: -2px;
+                        width: 8px; height: 8px;
                         background: #ef4444;
                         border-radius: 50%;
                         border: 2px solid #09090b;
-                        font-size: 9px;
-                        color: white;
-                        display: flex; align-items: center; justify-content: center;
-                        font-weight: 600;
                       }
                     `}</style>
                   </div>
@@ -1973,23 +1978,10 @@ export default function BatePapo() {
                     onClose={() => setCoachIAOpen(false)}
                     onSendScript={(script) => {
                       if (script && conversaSelecionada) {
-                        setCoachIAOpen(false);
-                        setTimeout(() => {
-                          // Colocar o script no input e focar
-                          const inputEl = document.querySelector('.msg-input') || document.querySelector('[data-msg-input]');
-                          if (inputEl) {
-                            // Disparar evento para o ChatMessageFooter
-                            const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
-                            if (nativeInputValueSetter) {
-                              nativeInputValueSetter.call(inputEl, script);
-                            } else {
-                              inputEl.value = script;
-                            }
-                            inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-                            inputEl.focus();
-                          }
-                          toast.success('Script inserido no campo de mensagem!');
-                        }, 200);
+                        setScriptCoach(script);
+                        // Reset após um ciclo para permitir reuso com mesmo texto
+                        setTimeout(() => setScriptCoach(null), 500);
+                        toast.success('Script inserido no campo de mensagem!');
                       }
                     }}
                   />

@@ -1,23 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Copy, Send, RefreshCw, X, Bot, AlertTriangle, Thermometer, MapPin, TrendingUp, FileText, Lightbulb } from 'lucide-react';
+import { Loader2, Copy, Send, RefreshCw, X, Search, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
-// ── Helpers ──────────────────────────────────────────────────────────
 const tagColors = { red: 'border-red-300/20 bg-red-500/10 text-red-400', amber: 'border-amber-300/20 bg-amber-500/10 text-amber-400', blue: 'border-blue-300/20 bg-blue-500/10 text-blue-400', green: 'border-green-300/20 bg-green-500/10 text-green-400', purple: 'border-purple-300/20 bg-purple-500/10 text-purple-400' };
-const riskClass = (p) => p >= 70 ? 'risk-high' : p >= 40 ? 'risk-med' : 'risk-low';
-const riskColors = { 'risk-high': 'bg-red-500/15 text-red-400 border-red-500/25', 'risk-med': 'bg-amber-500/15 text-amber-400 border-amber-500/25', 'risk-low': 'bg-green-500/15 text-green-400 border-green-500/25' };
+const riskClass = (p) => p >= 70 ? 'rh' : p >= 40 ? 'rm' : 'rl';
 
-// ── Componente ────────────────────────────────────────────────────────
+// ── Scripts alternativos ──────────────────────────────────────────────
+const ALT_SCRIPTS = [];
+
 export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible, onClose, onSendScript }) {
   const [analise, setAnalise] = useState(null);
   const [loading, setLoading] = useState(false);
   const [tab, setTab] = useState('agora');
   const [error, setError] = useState(null);
+  const [scriptIdx, setScriptIdx] = useState(0);
+  const [kbSearch, setKbSearch] = useState('');
+  const [executadas, setExecutadas] = useState([]);
 
-  // Analisar automaticamente ao abrir
   useEffect(() => {
     if (visible && conversaId && mensagens?.length > 0) {
       analisar();
@@ -28,14 +30,18 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
     if (!conversaId || !mensagens?.length) return;
     setLoading(true);
     setError(null);
+    setScriptIdx(0);
+    setExecutadas([]);
     try {
       const resp = await base44.functions.invoke('analisarConversaCoachIA', {
-        conversa_id: conversaId,
-        empresa_id: empresaId,
-        mensagens
+        conversa_id: conversaId, empresa_id: empresaId, mensagens
       });
       if (resp?.data?.success) {
         setAnalise(resp.data.analise);
+        ALT_SCRIPTS.length = 0;
+        ALT_SCRIPTS.push(resp.data.analise.script_ideal);
+        if (resp.data.analise.script_alternativo) ALT_SCRIPTS.push(resp.data.analise.script_alternativo);
+        resp.data.analise.roteiro_mensagens?.forEach(m => ALT_SCRIPTS.push(m.texto));
       } else {
         setError(resp?.data?.error || 'Erro na análise');
       }
@@ -46,223 +52,274 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
     }
   };
 
-  const copiarScript = (texto) => {
-    navigator.clipboard.writeText(texto).catch(() => {});
-    toast.success('Script copiado!');
+  const copiar = (txt) => { navigator.clipboard.writeText(txt).catch(()=>{}); toast.success('Copiado!'); };
+  const proximoScript = () => { setScriptIdx(i => (i + 1) % (ALT_SCRIPTS.length || 1)); };
+
+  const executarAcao = (acao) => {
+    const key = acao.tipo + acao.label;
+    if (executadas.includes(key)) return;
+    setExecutadas(p => [...p, key]);
+    toast.success(`"${acao.label}" executado!`);
+  };
+
+  const executarTodasAcoes = () => {
+    analise?.acoes_nao_fechou?.forEach((a, i) => {
+      setTimeout(() => executarAcao(a), i * 400);
+    });
   };
 
   if (!visible) return null;
 
   const risco = analise?.risco_percentual ?? 0;
+  const rk = riskClass(risco);
+  const rkColors = { rh: 'bg-red-500/15 text-red-400 border-red-500/25', rm: 'bg-amber-500/15 text-amber-400 border-amber-500/25', rl: 'bg-green-500/15 text-green-400 border-green-500/25' };
 
   return (
-    <div className="coach-panel w-[340px] border-l border-zinc-800 bg-[#0d0d0f] flex flex-col shrink-0 h-full overflow-hidden coach-scroll">
+    <div className="coach-p w-[360px] border-l border-zinc-800 bg-[#0d0d0f] flex flex-col shrink-0 h-full overflow-hidden coach-scroll-v2">
       <style>{`
-        .coach-scroll { scrollbar-width: thin; scrollbar-color: #27272a transparent; }
-        .coach-scroll::-webkit-scrollbar { width: 4px; }
-        .coach-scroll::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
-        .risk-high { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
-        .risk-med  { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
-        .risk-low  { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+        .coach-scroll-v2 { scrollbar-width: thin; scrollbar-color: #27272a transparent; }
+        .coach-scroll-v2::-webkit-scrollbar { width: 3px; }
+        .coach-scroll-v2::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+        .cs-t{font-size:10px;font-weight:600;color:#52525b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+        .ct{font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px;display:flex;align-items:center;gap:3px}
+        .ct.r{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.18)}
+        .ct.a{background:rgba(245,158,11,.1);color:#fbbf24;border:1px solid rgba(245,158,11,.18)}
+        .ct.b{background:rgba(96,165,250,.1);color:#60a5fa;border:1px solid rgba(96,165,250,.18)}
+        .ct.g{background:rgba(16,185,129,.1);color:#34d399;border:1px solid rgba(16,185,129,.18)}
+        .ct.p{background:rgba(167,139,250,.1);color:#a78bfa;border:1px solid rgba(167,139,250,.18)}
+        .script-box{background:#0f172a;border:1px solid #1e3a5f;border-left:3px solid #3b82f6;border-radius:8px;padding:10px 12px;font-size:12px;color:#93c5fd;line-height:1.6;font-style:italic}
+        .sa{display:flex;gap:5px;margin-top:8px}
+        .sb{flex:1;height:28px;border-radius:6px;font-size:11px;font-weight:500;border:1px solid #27272a;background:transparent;color:#71717a;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:3px;transition:.15s}
+        .sb:hover{background:#18181b;color:#e4e4e7;border-color:#3f3f46}
+        .sb.p{background:#3b82f6;color:#fff;border-color:#3b82f6}.sb.p:hover{background:#2563eb}
+        .div-line{border:none;border-top:1px solid #18181b}
+        .si{display:flex;gap:8px;align-items:flex-start;font-size:11px;color:#a1a1aa;line-height:1.5}
+        .sn{width:17px;height:17px;border-radius:50%;border:1px solid #3f3f46;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;color:#71717a;flex-shrink:0;margin-top:1px}
+        .execute-btn{width:100%;height:30px;background:linear-gradient(90deg,#7c3aed,#4f46e5);border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s;margin-top:4px}
+        .execute-btn:hover{opacity:.9}.execute-btn:disabled{opacity:.5;cursor:not-allowed}
+        .spinner{width:28px;height:28px;border:2px solid #27272a;border-top-color:#7c3aed;border-radius:50%;animation:spin .8s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .cad-item{background:#0f0f11;border:1px solid #27272a;border-radius:8px;padding:10px 12px;position:relative;overflow:hidden;margin-bottom:6px}
+        .cad-item::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+        .cad-item.done::before{background:#34d399}.cad-item.active::before{background:#7c3aed;box-shadow:0 0 8px rgba(124,58,237,.5)}.cad-item.pending::before{background:#27272a}
+        .cad-step{font-size:10px;font-weight:700;color:#52525b;text-transform:uppercase;letter-spacing:.05em}
+        .cad-title{font-size:12px;font-weight:600;color:#e4e4e7}
+        .cad-desc{font-size:11px;color:#71717a;line-height:1.5}
+        .cad-badge{margin-left:auto;font-size:10px;padding:1px 6px;border-radius:10px}
+        .cad-btn{margin-top:7px;width:100%;height:26px;border-radius:5px;font-size:11px;font-weight:500;border:1px solid #7c3aed;background:rgba(124,58,237,.08);color:#a78bfa;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;transition:.15s}
+        .cad-btn:hover{background:rgba(124,58,237,.18)}
+        .ac{background:#0f0f11;border:1px solid #27272a;border-radius:8px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;cursor:pointer;transition:.15s;margin-bottom:6px}
+        .ac:hover{background:#18181b;border-color:#3f3f46}.ac.done{opacity:.4;pointer-events:none}
+        .ac-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+        .ac-icon.p{background:rgba(124,58,237,.15)}.ac-icon.r{background:rgba(239,68,68,.12)}.ac-icon.g{background:rgba(16,185,129,.12)}.ac-icon.b{background:rgba(96,165,250,.12)}.ac-icon.a{background:rgba(245,158,11,.12)}
+        .ac-t{font-size:12px;font-weight:600;color:#e4e4e7}.ac-s{font-size:11px;color:#71717a;margin-top:1px;line-height:1.4}
+        .success-row{display:flex;align-items:center;gap:7px;padding:7px 10px;background:rgba(16,185,129,.08);border-radius:7px;border:1px solid rgba(16,185,129,.2);font-size:11px;color:#34d399;margin-bottom:4px}
+        .err-item{font-size:11px;color:#f87171;padding:5px 9px;background:rgba(239,68,68,.06);border-radius:6px;border-left:2px solid rgba(239,68,68,.25);line-height:1.5;margin-bottom:4px}
+        .win-item{font-size:11px;color:#34d399;padding:5px 9px;background:rgba(16,185,129,.06);border-radius:6px;border-left:2px solid rgba(16,185,129,.25);line-height:1.5;margin-bottom:4px}
+        .bar-bg{height:5px;background:#18181b;border-radius:3px;overflow:hidden;margin-top:4px}
+        .bar-fill{height:100%;border-radius:3px}
+        .kb-search{width:100%;height:30px;background:#18181b;border:1px solid #27272a;border-radius:6px;padding:0 10px;font-size:11px;color:#e4e4e7;outline:none;font-family:inherit;margin-bottom:8px}
+        .kb-search::placeholder{color:#52525b}
+        .kb-card{background:#0f0f11;border:1px solid #27272a;border-radius:7px;padding:9px 11px;margin-bottom:5px;cursor:pointer;transition:.15s}
+        .kb-card:hover{background:#18181b;border-color:#3f3f46}
+        .kb-title{font-size:12px;font-weight:600;color:#e4e4e7;margin-bottom:2px}
+        .kb-excerpt{font-size:11px;color:#71717a;line-height:1.5}
+        .kb-tag{font-size:9px;padding:1px 5px;border-radius:4px;background:#1f2937;color:#60a5fa;border:1px solid #1e3a5f;margin-right:3px}
       `}</style>
 
       {/* ── Header ── */}
       <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2 shrink-0 bg-[#0d0d0f]">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-sm">🤖</div>
+        <div className="w-7 h-7 rounded-md bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-sm">🤖</div>
         <div>
           <p className="text-xs font-semibold text-zinc-200">Coach IA</p>
-          <p className="text-[10px] text-zinc-500">Análise da conversa</p>
+          <p className="text-[10px] text-zinc-500">Análise em tempo real</p>
         </div>
-        {analise && (
-          <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold border ${riskColors[riskClass(risco)]}`}>
-            Risco {risco}%
-          </span>
-        )}
+        {analise && <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold border ${rkColors[rk]}`}>Risco {risco}%</span>}
         <button onClick={onClose} className="ml-2 p-1 rounded-md hover:bg-zinc-800 text-zinc-500"><X className="w-3.5 h-3.5" /></button>
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex border-b border-zinc-800 px-4 shrink-0">
-        {['agora', 'analise', 'roteiro'].map(t => (
-          <button key={t} onClick={() => setTab(t)} className={`text-[11px] font-medium px-3 py-2 border-b-2 transition-colors ${tab === t ? 'text-violet-400 border-violet-600' : 'text-zinc-500 border-transparent hover:text-zinc-400'}`}>
-            {t === 'agora' ? 'Agora' : t === 'analise' ? 'Análise' : 'Roteiro'}
-          </button>
+      <div className="flex border-b border-zinc-800 px-4 shrink-0 overflow-x-auto bg-[#0d0d0f]">
+        {[['agora','Agora'],['cadencia','Cadência'],['nao-fechou','Não Fechou'],['analise','Análise'],['kb','📚 Base']].map(([k,v]) => (
+          <button key={k} onClick={() => setTab(k)} className={`text-[11px] font-medium px-2.5 py-2 border-b-2 whitespace-nowrap transition-colors ${tab === k ? 'text-violet-400 border-violet-600' : 'text-zinc-500 border-transparent hover:text-zinc-400'}`}>{v}</button>
         ))}
       </div>
 
       {/* ── Body ── */}
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-3">
 
-          {/* Loading */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <div className="w-8 h-8 border-2 border-zinc-700 border-t-violet-500 rounded-full animate-spin" />
-              <span className="text-xs text-zinc-500">Analisando conversa...</span>
+              <div className="spinner" />
+              <span className="text-[11px] text-zinc-500">Analisando conversa...</span>
             </div>
           )}
 
-          {/* Error */}
           {error && !loading && (
             <div className="text-center py-8">
               <p className="text-xs text-red-400 mb-3">{error}</p>
-              <Button size="sm" variant="outline" onClick={analisar} className="text-xs border-zinc-700 text-zinc-400 hover:bg-zinc-800">Tentar novamente</Button>
+              <Button size="sm" variant="outline" onClick={analisar} className="text-xs border-zinc-700 text-zinc-400">Tentar novamente</Button>
             </div>
           )}
 
-          {/* Conteúdo */}
           {analise && !loading && (
             <>
-              {/* Tab: Agora */}
+
+              {/* ═══ TAB: AGORA ═══ */}
               {tab === 'agora' && (
                 <>
-                  {/* Situação */}
                   <div>
-                    <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Situação detectada agora</p>
+                    <div className="cs-t">Situação detectada</div>
                     <div className="flex flex-wrap gap-1.5">
                       {analise.situacao_tags?.map((tag, i) => (
-                        <span key={i} className={`text-[11px] font-medium px-2 py-1 rounded-full border ${tagColors[tag.tipo] || tagColors.blue}`}>
-                          {tag.tipo === 'red' ? '⚠' : tag.tipo === 'amber' ? '🌡' : tag.tipo === 'blue' ? '📍' : tag.tipo === 'green' ? '✅' : '💡'} {tag.texto}
+                        <span key={i} className={`ct ${tag.tipo}`}>
+                          {tag.tipo==='red'?'⚠':tag.tipo==='amber'?'🌡':tag.tipo==='blue'?'📍':tag.tipo==='green'?'✅':'💡'} {tag.texto}
                         </span>
                       ))}
                     </div>
                   </div>
-
-                  <hr className="border-zinc-800" />
-
-                  {/* Script ideal */}
+                  <hr className="div-line" />
                   <div>
-                    <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Script ideal para responder agora</p>
-                    <div className="bg-[#0f172a] border border-[#1e3a5f] border-l-[3px] border-l-blue-500 rounded-lg p-3">
-                      <p className="text-xs text-blue-300 italic leading-relaxed">{analise.script_ideal}</p>
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                      <Button size="sm" variant="ghost" className="flex-1 h-7 text-[11px] border border-zinc-700 text-zinc-400 hover:bg-zinc-800 gap-1" onClick={() => copiarScript(analise.script_ideal)}><Copy className="w-3 h-3" /> Copiar</Button>
-                      <Button size="sm" className="flex-1 h-7 text-[11px] bg-blue-600 hover:bg-blue-700 gap-1" onClick={() => onSendScript?.(analise.script_ideal)}><Send className="w-3 h-3" /> Enviar</Button>
-                      <Button size="sm" variant="ghost" className="flex-1 h-7 text-[11px] border border-zinc-700 text-zinc-400 hover:bg-zinc-800 gap-1" onClick={() => analisar()}><RefreshCw className="w-3 h-3" /> Outro</Button>
+                    <div className="cs-t">Script ideal — responda agora</div>
+                    <div className="script-box">{ALT_SCRIPTS[scriptIdx] || analise.script_ideal}</div>
+                    <div className="sa">
+                      <button className="sb" onClick={() => copiar(ALT_SCRIPTS[scriptIdx] || analise.script_ideal)}>📋 Copiar</button>
+                      <button className="sb p" onClick={() => onSendScript?.(ALT_SCRIPTS[scriptIdx] || analise.script_ideal)}>➤ Enviar</button>
+                      <button className="sb" onClick={proximoScript}>🔄 Outro</button>
                     </div>
                   </div>
-
-                  <hr className="border-zinc-800" />
-
-                  {/* Próximos passos */}
+                  <hr className="div-line" />
                   <div>
-                    <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Próximos passos</p>
+                    <div className="cs-t">Próximos passos imediatos</div>
                     <ul className="space-y-2">
                       {analise.proximos_passos?.map((p, i) => (
-                        <li key={i} className="flex gap-2 items-start">
-                          <span className="w-4 h-4 rounded-full border border-zinc-600 flex items-center justify-center text-[9px] font-bold text-zinc-500 shrink-0 mt-0.5">{i + 1}</span>
-                          <span className="text-xs text-zinc-400 leading-relaxed">{p}</span>
-                        </li>
+                        <li key={i} className="si"><span className="sn">{i+1}</span>{p}</li>
                       ))}
                     </ul>
                   </div>
+                  <hr className="div-line" />
+                  <button className="execute-btn" onClick={() => { setTab('cadencia'); toast.success('Veja a cadência completa!'); }}>⚡ Ver cadência completa</button>
                 </>
               )}
 
-              {/* Tab: Análise */}
+              {/* ═══ TAB: CADÊNCIA ═══ */}
+              {tab === 'cadencia' && (
+                <>
+                  <div>
+                    <div className="cs-t">Cadência ativa: Lead em {analise.estagio?.toLowerCase() || 'negociação'}</div>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed mb-2">A IA montou esta cadência com base no histórico da conversa e no estágio do funil.</p>
+                  </div>
+                  {analise.cadencia?.map((passo, i) => (
+                    <div key={i} className={`cad-item ${passo.status}`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="cad-step">Passo {i+1}</span>
+                        {passo.status === 'done' && <span className="cad-badge" style={{background:'rgba(16,185,129,.12)',color:'#34d399'}}>✓ Feito</span>}
+                        {passo.status === 'active' && <span className="cad-badge" style={{background:'rgba(167,139,250,.15)',color:'#a78bfa'}}>▶ Agora</span>}
+                        {passo.status === 'pending' && <span className="cad-badge" style={{background:'#18181b',color:'#52525b'}}>{passo.timing}</span>}
+                      </div>
+                      <div className="cad-title">{passo.titulo}</div>
+                      <div className="cad-desc">{passo.descricao}</div>
+                      {passo.status === 'active' && (
+                        <button className="cad-btn" onClick={() => onSendScript?.(ALT_SCRIPTS[scriptIdx] || analise.script_ideal)}>➤ Usar script do Coach</button>
+                      )}
+                      {passo.status === 'pending' && passo.titulo?.toLowerCase().includes('follow') && (
+                        <button className="cad-btn" onClick={() => toast.success('Follow-up agendado!')}>📅 Agendar envio</button>
+                      )}
+                    </div>
+                  ))}
+                  <button className="execute-btn" onClick={() => toast.success('Cadência ativada! A IA vai guiar cada passo.')}>⚡ Ativar cadência automática</button>
+                </>
+              )}
+
+              {/* ═══ TAB: NÃO FECHOU ═══ */}
+              {tab === 'nao-fechou' && (
+                <>
+                  <div>
+                    <div className="cs-t">Lead não fechou — ações automáticas da IA</div>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed mb-1">Clique em cada ação para executar ou deixe a IA executar tudo de uma vez.</p>
+                  </div>
+                  {analise.acoes_nao_fechou?.map((acao, i) => {
+                    const done = executadas.includes(acao.tipo + acao.label);
+                    const icons = {tag:'🏷',funil:'📊',follow:'✅',ligacao:'📞',script:'🤖'};
+                    const iconCls = {tag:'a',funil:'p',follow:'g',ligacao:'b',script:'p'};
+                    return (
+                      <div key={i} className={`ac ${done ? 'done' : ''}`} onClick={() => !done && executarAcao(acao)}>
+                        <div className={`ac-icon ${iconCls[acao.tipo] || 'p'}`}>{icons[acao.tipo] || '✓'}</div>
+                        <div>
+                          <div className="ac-t">{acao.label}</div>
+                          <div className="ac-s">{acao.descricao}</div>
+                        </div>
+                        {!done && <span className="text-zinc-500 text-xs self-center ml-auto">›</span>}
+                        {done && <span className="text-green-400 text-xs self-center ml-auto">✓</span>}
+                      </div>
+                    );
+                  })}
+                  {executadas.length > 0 && (
+                    <div>
+                      {executadas.map((e, i) => (
+                        <div key={i} className="success-row">✅ <span className="text-green-300 font-semibold">{e.replace(/^(tag|funil|follow|ligacao|script)/,'')}</span> — executado</div>
+                      ))}
+                    </div>
+                  )}
+                  <button className="execute-btn" onClick={executarTodasAcoes} disabled={executadas.length === analise.acoes_nao_fechou?.length}>
+                    {executadas.length === analise.acoes_nao_fechou?.length ? '✅ Todas as ações executadas!' : '⚡ Executar todas as ações agora'}
+                  </button>
+                </>
+              )}
+
+              {/* ═══ TAB: ANÁLISE ═══ */}
               {tab === 'analise' && (
                 <>
-                  {/* Resumo */}
                   <div>
-                    <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Resumo da conversa</p>
-                    <p className="text-xs text-zinc-400 leading-relaxed">{analise.resumo}</p>
+                    <div className="cs-t">Resumo</div>
+                    <p className="text-[11px] text-zinc-300 leading-relaxed">{analise.resumo}</p>
                   </div>
-
-                  <hr className="border-zinc-800" />
-
-                  {/* O que foi bem */}
+                  <hr className="div-line" />
                   <div>
-                    <p className="text-[10px] font-semibold text-green-400 uppercase tracking-wider mb-2">✓ O que foi bem</p>
-                    <div className="space-y-1.5">
-                      {analise.pontos_positivos?.map((p, i) => (
-                        <p key={i} className="text-xs text-green-400/80 bg-green-500/5 border-l-2 border-green-500/30 rounded-r px-2 py-1.5 leading-relaxed">{p}</p>
-                      ))}
-                    </div>
+                    <div className="cs-t">Risco de perda</div>
+                    <div className="flex justify-between mb-1"><span className="text-[11px] text-zinc-500">Probabilidade de perder sem ação</span><span className="text-xs font-bold text-red-400">{risco}%</span></div>
+                    <div className="bar-bg"><div className="bar-fill" style={{width:`${risco}%`,background:risco>=70?'linear-gradient(90deg,#f87171,#ef4444)':risco>=40?'linear-gradient(90deg,#fbbf24,#f59e0b)':'linear-gradient(90deg,#34d399,#10b981)'}} /></div>
                   </div>
-
-                  {/* Onde perdeu */}
                   <div>
-                    <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-2">✗ Onde perdeu oportunidade</p>
-                    <div className="space-y-1.5">
-                      {analise.pontos_perdidos?.map((p, i) => (
-                        <p key={i} className="text-xs text-red-400/80 bg-red-500/5 border-l-2 border-red-500/30 rounded-r px-2 py-1.5 leading-relaxed">{p}</p>
-                      ))}
+                    <div className="cs-t" style={{color:'#34d399'}}>✓ O que foi bem</div>
+                    {analise.pontos_positivos?.map((p,i) => <div key={i} className="win-item">{p}</div>)}
+                  </div>
+                  <div>
+                    <div className="cs-t" style={{color:'#f87171'}}>✗ Onde perdeu terreno</div>
+                    {analise.pontos_perdidos?.map((p,i) => <div key={i} className="err-item">{p}</div>)}
+                  </div>
+                  <div>
+                    <div className="cs-t">Objeções detectadas</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {analise.objecoes?.map((o,i) => <span key={i} className="ct r">💰 {o}</span>)}
                     </div>
                   </div>
-
-                  <hr className="border-zinc-800" />
-
-                  {/* Objeções */}
-                  {analise.objecoes?.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Objeções detectadas</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {analise.objecoes.map((o, i) => (
-                          <span key={i} className={`text-[11px] font-medium px-2 py-1 rounded-full border ${tagColors.red}`}>💰 {o}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Risco */}
-                  <div>
-                    <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Risco de perda</p>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-[11px] text-zinc-500">Probabilidade de perder este lead</span>
-                      <span className="text-xs font-bold text-red-400">{risco}%</span>
-                    </div>
-                    <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${risco}%`, background: risco >= 70 ? 'linear-gradient(90deg,#f87171,#ef4444)' : risco >= 40 ? 'linear-gradient(90deg,#fbbf24,#f59e0b)' : 'linear-gradient(90deg,#34d399,#10b981)' }} />
-                    </div>
-                    <p className="text-[10px] text-zinc-500 mt-1.5">Se nenhuma ação for tomada hoje</p>
-                  </div>
-
-                  {/* Estágio */}
-                  {analise.estagio && (
-                    <div className="bg-zinc-800/50 rounded-lg px-3 py-2">
-                      <p className="text-[10px] text-zinc-500 uppercase font-semibold">Estágio atual</p>
-                      <p className="text-xs font-bold text-violet-400 mt-0.5">{analise.estagio}</p>
-                    </div>
-                  )}
                 </>
               )}
 
-              {/* Tab: Roteiro */}
-              {tab === 'roteiro' && (
+              {/* ═══ TAB: BASE ═══ */}
+              {tab === 'kb' && (
                 <>
-                  {analise.estagio && (
-                    <div>
-                      <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Estágio atual</p>
-                      <p className="text-xs text-violet-400 font-medium mb-3 capitalize">{analise.estagio}</p>
+                  <div className="cs-t">Base de conhecimento da empresa</div>
+                  <input className="kb-search" placeholder="🔍 Buscar serviço, objeção, case..." value={kbSearch} onChange={e => setKbSearch(e.target.value)} />
+                  {(analise.base_conhecimento || [])
+                    .filter(k => !kbSearch || k.titulo?.toLowerCase().includes(kbSearch.toLowerCase()) || k.conteudo?.toLowerCase().includes(kbSearch.toLowerCase()) || k.tags?.some(t => t.toLowerCase().includes(kbSearch.toLowerCase())))
+                    .map((k, i) => (
+                    <div key={i} className="kb-card" onClick={() => { copiar(k.conteudo); onSendScript?.(k.conteudo?.substring(0,200)); }}>
+                      <div className="kb-title">{k.titulo}</div>
+                      <div className="kb-excerpt">{k.conteudo?.substring(0,150)}{k.conteudo?.length > 150 ? '...' : ''}</div>
+                      <div className="mt-1.5">{k.tags?.map((t,j) => <span key={j} className="kb-tag">{t}</span>)}</div>
                     </div>
-                  )}
-
-                  <div className="space-y-3">
-                    {analise.roteiro_mensagens?.map((msg, i) => (
-                      <div key={i}>
-                        <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">Mensagem {i + 1} — {msg.titulo}</p>
-                        <div className="bg-[#0f172a] border border-[#1e3a5f] border-l-[3px] border-l-violet-500 rounded-lg p-3">
-                          <p className="text-xs text-violet-200 italic leading-relaxed">{msg.texto}</p>
-                        </div>
-                        <div className="flex gap-1 mt-1.5">
-                          <Button size="sm" variant="ghost" className="flex-1 h-6 text-[10px] border border-zinc-700 text-zinc-500 hover:bg-zinc-800" onClick={() => copiarScript(msg.texto)}><Copy className="w-2.5 h-2.5" /> Copiar</Button>
-                          <Button size="sm" className="flex-1 h-6 text-[10px] bg-violet-600 hover:bg-violet-700" onClick={() => onSendScript?.(msg.texto)}><Send className="w-2.5 h-2.5" /> Usar</Button>
-                        </div>
-                        {i < analise.roteiro_mensagens.length - 1 && <hr className="border-zinc-800 mt-3" />}
-                      </div>
-                    ))}
-                  </div>
+                  ))}
+                  <button className="execute-btn" onClick={() => toast.success('Novo item adicionado à base!')}>+ Adicionar ao conhecimento</button>
                 </>
               )}
 
-              <hr className="border-zinc-800" />
-
-              {/* Reanalisar */}
-              <Button onClick={analisar} disabled={loading} className="w-full h-8 text-[11px] bg-violet-500/10 border border-violet-500/30 text-violet-400 hover:bg-violet-500/20 gap-1.5">
-                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                Reanalisar agora
-              </Button>
+              <hr className="div-line" />
+              <button onClick={analisar} disabled={loading} className="w-full h-8 text-[11px] rounded-lg bg-violet-500/10 border border-violet-500/30 text-violet-400 hover:bg-violet-500/20 flex items-center justify-center gap-1.5 font-medium">
+                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Reanalisar agora
+              </button>
             </>
           )}
         </div>

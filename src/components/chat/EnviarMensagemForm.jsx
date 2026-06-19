@@ -9,7 +9,7 @@ const LINE_HEIGHT = 24;
 
 const quickReplies = ["/boasvindas", "/consorcio", "/financiamento", "/documentos"];
 
-export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUsuario = '', empresaId = null, telefoneDestino = null, conversaId = null, onTemplateEnviado = null }) {
+export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUsuario = '', empresaId = null, telefoneDestino = null, conversaId = null, onTemplateEnviado = null, scriptExterno = null, coachIAOpen = false, setCoachIAOpen = null }) {
   const [texto, setTexto] = useState('');
   const [assinaturaAtiva, setAssinaturaAtiva] = useState(() => {
     return localStorage.getItem('chat_assinatura') === 'true';
@@ -30,6 +30,17 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   useEffect(() => {
     setTimeout(() => textareaRef.current?.focus(), 100);
   }, []);
+
+  // Script externo (Coach IA)
+  useEffect(() => {
+    if (scriptExterno) {
+      setTexto(scriptExterno);
+      setTimeout(() => {
+        textareaRef.current?.focus();
+        textareaRef.current?.setSelectionRange(0, 0);
+      }, 150);
+    }
+  }, [scriptExterno]);
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -450,6 +461,17 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
                   <FileText className="w-4 h-4 text-green-500" />
                   <span>Template Meta</span>
                 </button>
+                {setCoachIAOpen && (
+                  <button
+                    type="button"
+                    onClick={() => { setCoachIAOpen(!coachIAOpen); setMenuPlusOpen(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors border-t border-slate-100 ${coachIAOpen ? 'bg-violet-50 text-violet-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                  >
+                    <span className="text-base">🤖</span>
+                    <span>Coach IA</span>
+                    {coachIAOpen && <span className="ml-auto text-xs text-violet-500 font-medium">Aberto</span>}
+                  </button>
+                )}
               </div>
             )}
           </div>

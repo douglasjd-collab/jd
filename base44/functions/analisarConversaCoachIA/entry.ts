@@ -13,7 +13,10 @@ const COACH_SCHEMA = {
     objecoes: { type: 'array', items: { type: 'string' } },
     estagio: { type: 'string' },
     roteiro_mensagens: { type: 'array', items: { type: 'object', properties: { titulo: { type: 'string' }, texto: { type: 'string' } } } },
-    script_alternativo: { type: 'string' }
+    script_alternativo: { type: 'string' },
+    cadencia: { type: 'array', items: { type: 'object', properties: { status: { type: 'string', enum: ['done','active','pending'] }, titulo: { type: 'string' }, descricao: { type: 'string' }, timing: { type: 'string' } } } },
+    acoes_nao_fechou: { type: 'array', items: { type: 'object', properties: { tipo: { type: 'string', enum: ['tag','funil','follow','ligacao','script'] }, label: { type: 'string' }, descricao: { type: 'string' }, tag_class: { type: 'string' } } } },
+    base_conhecimento: { type: 'array', items: { type: 'object', properties: { titulo: { type: 'string' }, conteudo: { type: 'string' }, tags: { type: 'array', items: { type: 'string' } } } } }
   }
 };
 
@@ -30,16 +33,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'conversa_id e mensagens (array) obrigatórios' }, { status: 400 });
     }
 
-    // Buscar dados da conversa
     let conversa = null;
-    try {
-      conversa = await base44.asServiceRole.entities.ConversaWhatsapp.get(conversa_id);
-    } catch (_) {}
+    try { conversa = await base44.asServiceRole.entities.ConversaWhatsapp.get(conversa_id); } catch (_) {}
 
     const clienteNome = conversa?.cliente_nome || 'Cliente';
     const clienteTelefone = conversa?.cliente_telefone || '';
 
-    // Buscar oportunidade associada
     let oportunidade = null;
     try {
       const ops = await base44.asServiceRole.entities.Oportunidade.filter({
@@ -49,7 +48,6 @@ Deno.serve(async (req) => {
       if (ops?.length > 0) oportunidade = ops[0];
     } catch (_) {}
 
-    // Montar histórico de mensagens para o prompt
     const historico = mensagens.slice(-30).map(m => {
       const quem = m.remetente === 'cliente' ? `🧑 ${clienteNome}` : '💼 Vendedor';
       const conteudo = m.texto || (m.arquivo_nome ? `[Arquivo: ${m.arquivo_nome}]` : '[Mídia]');
@@ -71,26 +69,25 @@ ${contextoOportunidade}
 HISTÓRICO DA CONVERSA:
 ${historico}
 
-Analise profundamente esta conversa e gere um coaching completo. Foque em:
-1. O que está acontecendo AGORA na negociação
-2. Objeções e resistências do cliente
-3. Oportunidades perdidas pelo vendedor
-4. Temperatura do lead
-5. Próximos passos estratégicos
-6. Scripts prontos para o vendedor usar
+Gere um coaching COMPLETO com TODOS os campos abaixo. Responda em JSON:
 
-Responda em JSON com:
-- situacao_tags: array de {tipo:"red"|"amber"|"blue"|"green"|"purple", texto:""} — 2 a 4 tags descrevendo a situação atual
-- risco_percentual: 0 a 100 — probabilidade de perder o lead se nada for feito AGORA
-- script_ideal: mensagem PRONTA e PERSUASIVA que o vendedor deve enviar AGORA, no tom certo, personalizada com o contexto da conversa
-- proximos_passos: 3 ações táticas prioritárias para não perder o lead
-- resumo: resumo da conversa em 2-4 frases
-- pontos_positivos: 3 acertos do vendedor
-- pontos_perdidos: 3 oportunidades que o vendedor perdeu
-- objecoes: array de objeções que o cliente levantou
-- estagio: estágio da negociação (ex: "Prospecção", "Proposta", "Negociação", "Fechamento", "Follow-up")
-- roteiro_mensagens: array de {titulo, texto} com 3-5 mensagens sequenciais que o vendedor deve enviar
-- script_alternativo: uma abordagem alternativa para o script principal`;
+1. situacao_tags: array de {tipo:"red"|"amber"|"blue"|"green"|"purple", texto:""} — 3 ou 4 tags
+2. risco_percentual: 0 a 100
+3. script_ideal: mensagem PRONTA e PERSUASIVA para AGORA
+4. proximos_passos: 3-4 ações táticas prioritárias
+5. resumo: resumo em 2-4 frases
+6. pontos_positivos: 3 acertos do vendedor
+7. pontos_perdidos: 3-4 oportunidades perdidas
+8. objecoes: array de objeções detectadas
+9. estagio: "Prospecção" | "Qualificação" | "Apresentação" | "Proposta" | "Negociação" | "Fechamento"
+10. roteiro_mensagens: array de {titulo, texto} com 3-5 mensagens sequenciais
+11. script_alternativo: abordagem alternativa
+
+12. cadencia: array de 5-6 passos com {status:"done"|"active"|"pending", titulo, descricao, timing:"Agora"|"D+1"|"D+2"|"Quinta"|"D+3"|"D+7"}. O passo atual da conversa status="active", os anteriores="done", os seguintes="pending".
+
+13. acoes_nao_fechou: array de 4-7 ações automáticas caso o lead não feche com {tipo:"tag"|"funil"|"follow"|"ligacao"|"script", label, descricao, tag_class:"t-r"|"t-a"|"t-p"|"t-b"|"t-g"}.
+
+14. base_conhecimento: array de 4-6 {titulo, conteudo, tags:[]} com informações úteis do conhecimento da empresa relacionadas ao contexto — objeções comuns, scripts, cases, processos, preços.`;
 
     const resultado = await base44.integrations.Core.InvokeLLM({
       prompt,

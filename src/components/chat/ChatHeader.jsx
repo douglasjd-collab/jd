@@ -40,6 +40,8 @@ export default function ChatHeader({
   sipStatus,
   chamadaAtiva,
   erroSip,
+  coachIAOpen,
+  setCoachIAOpen,
 }) {
   // Canal override local: permite que o usuário troque o canal sem ser revertido pelo polling
   const [canalOverride, setCanalOverride] = React.useState(null);
@@ -305,6 +307,21 @@ export default function ChatHeader({
           </DropdownMenuContent>
         </DropdownMenu>
 
+          {setCoachIAOpen && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={coachIAOpen ? "secondary" : "outline"}
+                  size="icon"
+                  className="h-8 w-8 rounded-md border-violet-300 bg-violet-50 hover:bg-violet-100"
+                  onClick={() => setCoachIAOpen(!coachIAOpen)}
+                >
+                  <span className="text-sm">🤖</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Coach IA — Análise da conversa</TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
