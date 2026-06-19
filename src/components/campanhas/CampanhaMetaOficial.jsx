@@ -49,6 +49,7 @@ import {
   MessageSquare,
   Upload,
   X,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -82,6 +83,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
   const [searchTemplate, setSearchTemplate] = useState('');
   const [templateVisualizando, setTemplateVisualizando] = useState(null);
   const [criandoNaMeta, setCriandoNaMeta] = useState(false);
+  const [deletandoTemplate, setDeletandoTemplate] = useState(null);
 
   // ─── Disparo em Massa state ─────────────────────────────────────────────────
   const [busca, setBusca] = useState('');
@@ -293,6 +295,20 @@ export default function CampanhaMetaOficial({ empresaId }) {
       toast.error('Erro: ' + e.message);
     } finally {
       setSincronizando(false);
+    }
+  };
+
+  const deletarTemplate = async (d, tId) => {
+    if (!confirm(`Excluir o template "${d.nome || 'sem nome'}"? Esta ação não pode ser desfeita.`)) return;
+    setDeletandoTemplate(tId);
+    try {
+      await base44.entities.CampanhaLog.delete(tId);
+      toast.success(`Template "${d.nome}" excluído`);
+      refetchTemplates();
+    } catch (e) {
+      toast.error('Erro ao excluir: ' + e.message);
+    } finally {
+      setDeletandoTemplate(null);
     }
   };
 
@@ -1124,7 +1140,7 @@ export default function CampanhaMetaOficial({ empresaId }) {
                             {d.corpo && <p className="text-xs text-slate-500 mt-1.5 line-clamp-2">{d.corpo}</p>}
                             {d.cabecalho && <p className="text-[10px] text-slate-400 mt-1">Cabeçalho: {d.cabecalho}</p>}
                           </div>
-                          <div className="flex gap-1.5 flex-shrink-0">
+                          <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
                              <Button size="sm" variant="outline" onClick={() => setTemplateVisualizando(t)} title="Visualizar template">
                                <Eye className="w-3.5 h-3.5" />
                              </Button>
@@ -1140,6 +1156,16 @@ export default function CampanhaMetaOficial({ empresaId }) {
                                  <Clock className="w-3.5 h-3.5" /> Aguardando
                                </Button>
                              )}
+                             <Button
+                               size="sm"
+                               variant="outline"
+                               className="gap-1 text-xs border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                               onClick={() => deletarTemplate(d, t.id)}
+                               disabled={deletandoTemplate === t.id}
+                               title="Excluir template"
+                             >
+                               {deletandoTemplate === t.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                             </Button>
                            </div>
                         </div>
                       </div>
