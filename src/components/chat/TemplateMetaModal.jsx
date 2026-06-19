@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Send, Loader2, RefreshCw, FileText, Eye, X } from 'lucide-react';
+import { Search, Send, Loader2, RefreshCw, FileText, Eye, X, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -13,6 +13,7 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
   const [search, setSearch] = useState('');
   const [enviando, setEnviando] = useState(null);
   const [sincronizando, setSincronizando] = useState(false);
+  const [deletando, setDeletando] = useState(null);
   const [previewTemplate, setPreviewTemplate] = useState(null); // template em prévia
   const queryClient = useQueryClient();
 
@@ -100,6 +101,20 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
       toast.error('Erro: ' + e.message);
     } finally {
       setEnviando(null);
+    }
+  };
+
+  const deletarTemplate = async (d, tId) => {
+    if (!confirm(`Excluir o template "${d.nome || 'sem nome'}"? Esta ação não pode ser desfeita.`)) return;
+    setDeletando(tId);
+    try {
+      await base44.entities.CampanhaLog.delete(tId);
+      toast.success(`Template "${d.nome}" excluído`);
+      refetch();
+    } catch (e) {
+      toast.error('Erro ao excluir: ' + e.message);
+    } finally {
+      setDeletando(null);
     }
   };
 
@@ -297,6 +312,16 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
                               : <Send className="w-3 h-3" />
                             }
                             Enviar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 text-xs h-7 px-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                            onClick={() => deletarTemplate(d, t.id)}
+                            disabled={deletando === t.id}
+                          >
+                            {deletando === t.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                            Excluir
                           </Button>
                         </div>
                       </div>
