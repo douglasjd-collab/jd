@@ -109,8 +109,10 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
     const d = previewTemplate.d;
     const tId = previewTemplate.tId;
     const isEnviando = enviando === tId;
-    const hasImage = d.tipo_cabecalho === 'IMAGE' && d.cabecalho_midia_url && !/^\d+$/.test(String(d.cabecalho_midia_url).trim());
-    const isHandle = d.tipo_cabecalho === 'IMAGE' && d.cabecalho_midia_url && /^\d+$/.test(String(d.cabecalho_midia_url).trim());
+    const cabecalhoTipo = (d.tipo_cabecalho || '').toUpperCase();
+    const hasImage = cabecalhoTipo === 'IMAGE' && d.cabecalho_midia_url && !/^\d+$/.test(String(d.cabecalho_midia_url).trim());
+    const hasVideo = cabecalhoTipo === 'VIDEO' && d.cabecalho_midia_url && !/^\d+$/.test(String(d.cabecalho_midia_url).trim());
+    const isHandle = (cabecalhoTipo === 'IMAGE' || cabecalhoTipo === 'VIDEO') && d.cabecalho_midia_url && /^\d+$/.test(String(d.cabecalho_midia_url).trim());
     const botoes = Array.isArray(d.botoes) ? d.botoes : [];
 
     return (
@@ -145,9 +147,18 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
                   onError={e => { e.target.style.display = 'none'; }}
                 />
               )}
+              {/* Vídeo do cabeçalho */}
+              {hasVideo && (
+                <video
+                  src={d.cabecalho_midia_url}
+                  controls
+                  className="w-full max-h-48"
+                  onError={e => { e.target.style.display = 'none'; }}
+                />
+              )}
               {isHandle && (
                 <div className="w-full h-32 flex items-center justify-center bg-blue-400/50 text-white/70 text-xs gap-2">
-                  🖼️ Imagem do template
+                  {cabecalhoTipo === 'VIDEO' ? '🎬 Vídeo do template' : '🖼️ Imagem do template'}
                 </div>
               )}
               {/* Corpo */}
@@ -231,7 +242,8 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
                 {filtrados.map(t => {
                   const d = parseTemplate(t);
                   const isEnviando = enviando === t.id;
-                  const hasMedia = d.tipo_cabecalho && d.tipo_cabecalho !== 'NONE' && d.tipo_cabecalho !== 'TEXT' && d.cabecalho_midia_url;
+                  const cabecalhoTipoItem = (d.tipo_cabecalho || '').toUpperCase();
+                  const hasMedia = cabecalhoTipoItem && cabecalhoTipoItem !== 'NONE' && cabecalhoTipoItem !== 'TEXT' && d.cabecalho_midia_url;
                   const hasBotoes = Array.isArray(d.botoes) && d.botoes.length > 0;
                   return (
                     <div key={t.id} className="border rounded-xl p-3 hover:border-green-300 hover:bg-green-50/50 transition-colors">
@@ -247,7 +259,7 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
                           )}
                           <div className="flex items-center gap-2 mt-1">
                             {hasMedia && (
-                              <span className="text-[10px] text-slate-400">🖼️ {d.tipo_cabecalho}</span>
+                              <span className="text-[10px] text-slate-400">{cabecalhoTipoItem === 'VIDEO' ? '🎬' : '🖼️'} {cabecalhoTipoItem}</span>
                             )}
                             {hasBotoes && (
                               <span className="text-[10px] text-slate-400">🔘 {d.botoes.length} botão(ões)</span>
