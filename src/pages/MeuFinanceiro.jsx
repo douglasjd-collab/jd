@@ -132,8 +132,11 @@ function DashboardTab({ user, refreshKey }) {
   const contasAtrasadas = despesas.filter(d => d.status === 'pendente' && d.data_vencimento && d.data_vencimento < hojeStr).reduce((s, d) => s + (d.valor || 0), 0);
   const qtdAtrasadas = despesas.filter(d => d.status === 'pendente' && d.data_vencimento && d.data_vencimento < hojeStr).length;
 
-  // Saldo bancário
-  const saldoBancario = contas.filter(c => c.status === 'ativa').reduce((s, c) => s + (c.saldo_atual || 0), 0);
+  // Saldo bancário — calculado das movimentações (não depende do campo saldo_atual)
+  const saldoInicialContas = contas.filter(c => c.status === 'ativa').reduce((s, c) => s + (c.saldo_inicial || 0), 0);
+  const todasReceitasRecebidas = receitas.filter(r => r.status === 'recebida').reduce((s, r) => s + (r.valor || 0), 0);
+  const todasDespesasPagas = despesas.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
+  const saldoBancario = saldoInicialContas + todasReceitasRecebidas - todasDespesasPagas;
 
   // Dados por mês (últimos 6 meses)
   const mesesMap = useMemo(() => {
