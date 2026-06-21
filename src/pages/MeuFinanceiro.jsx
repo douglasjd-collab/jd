@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Plus, Pencil, Trash2, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Upload, X, Calendar } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Upload, X, Calendar, Building2, CreditCard, Hash, Key, MoreVertical, Eye } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -53,10 +53,12 @@ export default function MeuFinanceiro() {
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="receitas">Receitas</TabsTrigger>
           <TabsTrigger value="despesas">Despesas</TabsTrigger>
-        </TabsList>
+          <TabsTrigger value="contas">Contas</TabsTrigger>
+          </TabsList>
         <TabsContent value="dashboard"><DashboardTab user={user} /></TabsContent>
         <TabsContent value="receitas"><ReceitasTab user={user} /></TabsContent>
         <TabsContent value="despesas"><DespesasTab user={user} /></TabsContent>
+        <TabsContent value="contas"><ContasTab user={user} /></TabsContent>
       </Tabs>
     </div>
   );
@@ -327,6 +329,237 @@ function DespesasTab({ user }) {
 
       {modal.open && <FormModal open={modal.open} onClose={() => setModal({ open: false, item: null })} item={modal.item} tipo="despesa" user={user} onSaved={carregar} />}
     </div>
+  );
+}
+
+// ─── Contas Bancárias ─────────────────────────────────────
+const BANCOS_CONFIG = {
+  'Itaú': { bg: 'bg-orange-500', text: 'text-white', abbr: 'IT' },
+  'Nubank': { bg: 'bg-purple-600', text: 'text-white', abbr: 'NU' },
+  'Bradesco': { bg: 'bg-red-600', text: 'text-white', abbr: 'BD' },
+  'Santander': { bg: 'bg-red-700', text: 'text-white', abbr: 'SN' },
+  'Banco do Brasil': { bg: 'bg-yellow-500', text: 'text-white', abbr: 'BB' },
+  'Caixa Econômica Federal': { bg: 'bg-blue-600', text: 'text-white', abbr: 'CE' },
+  'Inter': { bg: 'bg-orange-600', text: 'text-white', abbr: 'IN' },
+  'C6 Bank': { bg: 'bg-slate-800', text: 'text-white', abbr: 'C6' },
+  'Sicoob': { bg: 'bg-green-700', text: 'text-white', abbr: 'SC' },
+  'BTG Pactual': { bg: 'bg-blue-800', text: 'text-white', abbr: 'BT' },
+  'PicPay': { bg: 'bg-green-500', text: 'text-white', abbr: 'PP' },
+  'Mercado Pago': { bg: 'bg-blue-500', text: 'text-white', abbr: 'MP' },
+  'Carteira/Dinheiro': { bg: 'bg-green-600', text: 'text-white', abbr: '💵' },
+  'Outro': { bg: 'bg-slate-500', text: 'text-white', abbr: 'OT' },
+};
+const BANCOS_COMUNS = Object.keys(BANCOS_CONFIG);
+
+function BancoAvatar({ banco, logoUrl = '', size = 'md' }) {
+  const cfg = BANCOS_CONFIG[banco] || { bg: 'bg-slate-400', text: 'text-white', abbr: (banco || '?').substring(0, 2).toUpperCase() };
+  const sz = size === 'sm' ? 'w-8 h-8 text-xs' : size === 'lg' ? 'w-12 h-12 text-base' : 'w-10 h-10 text-sm';
+  if (logoUrl) {
+    return <div className={`${sz} rounded-xl border border-slate-200 bg-white flex-shrink-0 overflow-hidden`}><img src={logoUrl} alt={banco} className="w-full h-full object-cover" /></div>;
+  }
+  return <div className={`${cfg.bg} ${cfg.text} ${sz} rounded-xl flex items-center justify-center font-bold flex-shrink-0`}>{cfg.abbr}</div>;
+}
+
+function ContasTab({ user }) {
+  const [contas, setContas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editando, setEditando] = useState(null);
+
+  const carregar = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await base44.entities.MeuFinanceiroContaBancaria.filter({ usuario_id: user.auth_id, empresa_id: user.empresa_id }, 'nome_conta', 50);
+      setContas(data);
+    } catch (e) { console.error(e); } finally { setLoading(false); }
+  }, [user]);
+
+  useEffect(() => { carregar(); }, [carregar]);
+
+  const contasAtivas = contas.filter(c => c.status === 'ativa');
+  const saldoTotal = contasAtivas.reduce((s, c) => s + (c.saldo_atual || 0), 0);
+
+  const toggleStatus = async (conta) => {
+    const novoStatus = conta.status === 'ativa' ? 'inativa' : 'ativa';
+    await base44.entities.MeuFinanceiroContaBancaria.update(conta.id, { status: novoStatus });
+    toast.success(`Conta ${novoStatus === 'ativa' ? 'ativada' : 'desativada'}!`);
+    carregar();
+  };
+
+  const excluir = async (id) => {
+    if (!confirm('Excluir esta conta bancária?')) return;
+    try { await base44.entities.MeuFinanceiroContaBancaria.delete(id); toast.success('Conta excluída'); carregar(); } catch (e) { toast.error('Erro ao excluir'); }
+  };
+
+  return (
+    <div className="space-y-4 mt-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex gap-3 text-sm">
+          <span className="text-slate-600">Saldo Total: <strong className="text-slate-800">{fmtMoeda(saldoTotal)}</strong></span>
+          <span className="text-slate-400">{contasAtivas.length} conta{contasAtivas.length !== 1 ? 's' : ''} ativa{contasAtivas.length !== 1 ? 's' : ''}</span>
+        </div>
+        <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => { setEditando(null); setModalOpen(true); }}><Plus className="w-4 h-4 mr-1" /> Nova Conta</Button>
+      </div>
+
+      {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div> : contas.length === 0 ? (
+        <div className="text-center py-16 text-slate-400">
+          <Building2 className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+          <p>Nenhuma conta bancária cadastrada.</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => { setEditando(null); setModalOpen(true); }}><Plus className="w-4 h-4 mr-1" /> Cadastrar primeira conta</Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {contas.map(conta => (
+            <Card key={conta.id} className={`border border-slate-200 hover:shadow-md transition-shadow ${conta.status === 'inativa' ? 'opacity-60' : ''}`}>
+              <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${conta.status === 'ativa' ? 'bg-green-500' : 'bg-slate-300'}`} />
+              <CardContent className="p-4 pl-5">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <BancoAvatar banco={conta.banco} logoUrl={conta.logo_url} size="md" />
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-800 text-sm leading-tight truncate">{conta.nome_conta}</p>
+                      <p className="text-xs text-slate-400 truncate">{conta.banco}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Badge className={conta.status === 'ativa' ? 'bg-green-100 text-green-700 border-0' : 'bg-slate-100 text-slate-500 border-0'}>
+                      {conta.status === 'ativa' ? 'Ativa' : 'Inativa'}
+                    </Badge>
+                    <button onClick={() => { setEditando(conta); setModalOpen(true); }} className="p-1 rounded hover:bg-slate-100"><Pencil className="w-3.5 h-3.5 text-slate-400" /></button>
+                    <button onClick={() => excluir(conta.id)} className="p-1 rounded hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                  </div>
+                </div>
+
+                <div className="space-y-1 text-xs text-slate-500 mb-3">
+                  {conta.tipo_conta && <div className="flex items-center gap-1.5"><CreditCard className="w-3 h-3 shrink-0" /><span>{conta.tipo_conta}</span></div>}
+                  {conta.agencia && <div className="flex items-center gap-1.5"><Hash className="w-3 h-3 shrink-0" /><span>Agência: {conta.agencia}</span></div>}
+                  {conta.conta && <div className="flex items-center gap-1.5"><Hash className="w-3 h-3 shrink-0" /><span>Conta: {conta.conta}</span></div>}
+                  {conta.chave_pix && <div className="flex items-center gap-1.5"><Key className="w-3 h-3 shrink-0" /><span className="truncate">PIX: {conta.chave_pix}</span></div>}
+                </div>
+
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Saldo Atual</p>
+                  <p className={`text-2xl font-bold ${(conta.saldo_atual || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtMoeda(conta.saldo_atual)}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <ContaBancariaModal open={modalOpen} onClose={() => setModalOpen(false)} conta={editando} user={user} onSaved={carregar} />
+    </div>
+  );
+}
+
+function ContaBancariaModal({ open, onClose, conta, user, onSaved }) {
+  const [form, setForm] = useState({ nome_conta: '', banco: '', tipo_conta: 'Conta Corrente', agencia: '', conta: '', chave_pix: '', saldo_inicial: '0', status: 'ativa', observacoes: '', logo_url: '' });
+  const [salvando, setSalvando] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const editando = !!conta;
+
+  useEffect(() => {
+    if (conta) {
+      setForm({
+        nome_conta: conta.nome_conta || '', banco: conta.banco || '', tipo_conta: conta.tipo_conta || 'Conta Corrente',
+        agencia: conta.agencia || '', conta: conta.conta || '', chave_pix: conta.chave_pix || '',
+        saldo_inicial: String(conta.saldo_inicial ?? 0), status: conta.status || 'ativa',
+        observacoes: conta.observacoes || '', logo_url: conta.logo_url || '',
+      });
+    } else {
+      setForm({ nome_conta: '', banco: '', tipo_conta: 'Conta Corrente', agencia: '', conta: '', chave_pix: '', saldo_inicial: '0', status: 'ativa', observacoes: '', logo_url: '' });
+    }
+  }, [conta, open]);
+
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setForm(f => ({ ...f, logo_url: file_url }));
+    setUploadingLogo(false);
+    e.target.value = '';
+  };
+
+  const salvar = async () => {
+    if (!form.nome_conta || !form.banco) return toast.error('Preencha nome e banco');
+    setSalvando(true);
+    const saldoInicial = parseFloat(form.saldo_inicial) || 0;
+    const payload = {
+      empresa_id: user.empresa_id, usuario_id: user.auth_id, usuario_nome: user.nome_perfil || user.full_name,
+      nome_conta: form.nome_conta, banco: form.banco, tipo_conta: form.tipo_conta,
+      agencia: form.agencia, conta: form.conta, chave_pix: form.chave_pix,
+      saldo_inicial: saldoInicial,
+      saldo_atual: editando ? conta.saldo_atual : saldoInicial,
+      status: form.status, observacoes: form.observacoes, logo_url: form.logo_url || '',
+    };
+    if (editando) await base44.entities.MeuFinanceiroContaBancaria.update(conta.id, payload);
+    else await base44.entities.MeuFinanceiroContaBancaria.create(payload);
+    toast.success(editando ? 'Conta atualizada!' : 'Conta criada!');
+    setSalvando(false); onClose(); onSaved();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>{editando ? 'Editar Conta Bancária' : 'Nova Conta Bancária'}</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-2">
+          <div>
+            <label className="text-sm font-medium text-slate-700">Logo do Banco (opcional)</label>
+            <div className="mt-1 flex items-center gap-3">
+              {form.logo_url ? <div className="w-16 h-16 rounded-xl border border-slate-200 bg-white flex-shrink-0 overflow-hidden"><img src={form.logo_url} alt="logo" className="w-full h-full object-cover" /></div>
+                : <div className="w-16 h-16 rounded-xl border-2 border-dashed border-slate-200 flex items-center justify-center text-slate-300 flex-shrink-0"><Building2 className="w-7 h-7" /></div>}
+              <div>
+                <label className="cursor-pointer"><span className="inline-block text-xs px-3 py-1.5 border border-slate-300 rounded-md hover:bg-slate-50 text-slate-600">{uploadingLogo ? 'Enviando...' : 'Escolher imagem'}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={uploadingLogo} />
+                </label>
+                {form.logo_url && <button className="ml-2 text-xs text-red-500 hover:underline" onClick={() => setForm(f => ({ ...f, logo_url: '' }))}>Remover</button>}
+              </div>
+            </div>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700">Nome da Conta *</label>
+            <Input className="mt-1" placeholder="Ex: Minha Conta Principal" value={form.nome_conta} onChange={e => setForm(f => ({ ...f, nome_conta: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-slate-700">Banco *</label>
+              <Select value={form.banco} onValueChange={v => setForm(f => ({ ...f, banco: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>{BANCOS_COMUNS.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Tipo de Conta</label>
+              <Select value={form.tipo_conta} onValueChange={v => setForm(f => ({ ...f, tipo_conta: v }))}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>{['Conta Corrente', 'Conta Poupança', 'Conta Salário', 'Conta de Pagamento', 'Carteira/Dinheiro'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="text-sm font-medium text-slate-700">Agência</label><Input className="mt-1" placeholder="0000" value={form.agencia} onChange={e => setForm(f => ({ ...f, agencia: e.target.value }))} /></div>
+            <div><label className="text-sm font-medium text-slate-700">Conta</label><Input className="mt-1" placeholder="00000-0" value={form.conta} onChange={e => setForm(f => ({ ...f, conta: e.target.value }))} /></div>
+          </div>
+          <div><label className="text-sm font-medium text-slate-700">Chave PIX</label><Input className="mt-1" placeholder="CPF, e-mail, telefone ou chave aleatória" value={form.chave_pix} onChange={e => setForm(f => ({ ...f, chave_pix: e.target.value }))} /></div>
+          {!editando && (
+            <div><label className="text-sm font-medium text-slate-700">Saldo Inicial (R$)</label><Input className="mt-1" type="number" step="0.01" placeholder="0,00" value={form.saldo_inicial} onChange={e => setForm(f => ({ ...f, saldo_inicial: e.target.value }))} /><p className="text-xs text-slate-400 mt-1">Saldo atual da conta no momento do cadastro</p></div>
+          )}
+          <div>
+            <label className="text-sm font-medium text-slate-700">Status</label>
+            <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
+              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="ativa">Ativa</SelectItem><SelectItem value="inativa">Inativa</SelectItem></SelectContent>
+            </Select>
+          </div>
+          <div><label className="text-sm font-medium text-slate-700">Observações</label><Input className="mt-1" placeholder="Opcional" value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={salvando}>Cancelar</Button>
+          <Button onClick={salvar} disabled={salvando} className="bg-blue-600 hover:bg-blue-700">{salvando ? 'Salvando...' : editando ? 'Salvar' : 'Criar Conta'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

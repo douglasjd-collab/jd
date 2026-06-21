@@ -1,0 +1,97 @@
+{
+  "name": "MeuFinanceiroContaBancaria",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "usuario_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio parceiro (obrigat\u00f3rio)"
+    },
+    "usuario_nome": {
+      "type": "string",
+      "description": "Nome do parceiro (denormalizado)"
+    },
+    "nome_conta": {
+      "type": "string",
+      "description": "Nome identificador da conta"
+    },
+    "banco": {
+      "type": "string",
+      "description": "Nome do banco"
+    },
+    "tipo_conta": {
+      "type": "string",
+      "enum": [
+        "Conta Corrente",
+        "Conta Poupan\u00e7a",
+        "Conta Sal\u00e1rio",
+        "Conta de Pagamento",
+        "Carteira/Dinheiro"
+      ],
+      "default": "Conta Corrente",
+      "description": "Tipo da conta"
+    },
+    "agencia": {
+      "type": "string",
+      "description": "N\u00famero da ag\u00eancia"
+    },
+    "conta": {
+      "type": "string",
+      "description": "N\u00famero da conta com d\u00edgito"
+    },
+    "chave_pix": {
+      "type": "string",
+      "description": "Chave PIX associada"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "URL da logo do banco"
+    },
+    "saldo_inicial": {
+      "type": "number",
+      "default": 0,
+      "description": "Saldo inicial"
+    },
+    "saldo_atual": {
+      "type": "number",
+      "default": 0,
+      "description": "Saldo atual calculado"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativa",
+        "inativa"
+      ],
+      "default": "ativa",
+      "description": "Status da conta"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre a conta"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "usuario_id",
+    "nome_conta",
+    "banco"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'parceiro') return record.usuario_id === user.user_id; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'parceiro') return record.usuario_id === user.user_id && record.empresa_id === user.empresa_id; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'parceiro') return record.usuario_id === user.user_id; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'parceiro') return record.usuario_id === user.user_id; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

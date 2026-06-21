@@ -359,7 +359,7 @@ export default function Layout({ children, currentPageName }) {
     { 
       name: 'Financeiro', 
       icon: Wallet, 
-      roles: ['master', 'super_admin', 'admin', 'parceiro'],
+      roles: ['master', 'super_admin', 'admin'],
       submenu: [
         { name: 'Dashboard Financeiro', page: 'RelatoriosFinanceiros' },
         { name: 'Contas Bancárias', page: 'ContasBancarias' },
