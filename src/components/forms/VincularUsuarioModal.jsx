@@ -131,7 +131,10 @@ export default function VincularUsuarioModal({ open, onOpenChange, usuario, empr
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="colaborador">Colaborador</SelectItem>
+                  <SelectItem value="colaborador_vendedor">Colaborador/Vendedor</SelectItem>
                   <SelectItem value="vendedor">Vendedor</SelectItem>
+                  <SelectItem value="parceiro">Parceiro</SelectItem>
                   <SelectItem value="gerente">Gerente</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
                 </SelectContent>

@@ -389,7 +389,9 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="colaborador">Colaborador</SelectItem>
+                        <SelectItem value="colaborador_vendedor">Colaborador/Vendedor</SelectItem>
                         <SelectItem value="vendedor">Vendedor</SelectItem>
+                        <SelectItem value="parceiro">Parceiro</SelectItem>
                         <SelectItem value="gerente">Gerente</SelectItem>
                         <SelectItem value="admin">Administrador</SelectItem>
                         {currentUser?.perfil === 'master' && <SelectItem value="super_admin">Super Admin</SelectItem>}
@@ -416,7 +418,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                     <Input {...register('usuario_canopus')} placeholder="0000022393" />
                   </FormField>
 
-                  {perfil === 'vendedor' && (
+                  {(perfil === 'vendedor' || perfil === 'colaborador_vendedor') && (
                     <>
                       <FormField label="Gerente Responsável" col2>
                         <Select value={watch('gerente_id') || 'sem-gerente'} onValueChange={(v) => setValue('gerente_id', v === 'sem-gerente' ? null : v)}>
