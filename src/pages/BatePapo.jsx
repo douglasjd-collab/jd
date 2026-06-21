@@ -1173,6 +1173,13 @@ export default function BatePapo() {
 
   return (
     <TooltipProvider>
+      {/* Dashboard de Produtividade — fora do batepapo-root para z-index correto */}
+      {produtividadeOpen && (
+        <DashboardProdutividade
+          empresaId={empresaId}
+          onClose={() => setProdutividadeOpen(false)}
+        />
+      )}
       <div id="batepapo-root" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 30, display: 'flex', flexDirection: 'column', padding: '8px', boxSizing: 'border-box', backgroundColor: '#F0EBE0' }}>
         <style>{`
           @media (min-width: 1024px) { #batepapo-root { left: 18rem !important; } }
@@ -1321,14 +1328,6 @@ export default function BatePapo() {
             opacity: 1;
           }
         `}</style>
-        {/* Dashboard de Produtividade */}
-        {produtividadeOpen && (
-          <DashboardProdutividade
-            empresaId={empresaId}
-            onClose={() => setProdutividadeOpen(false)}
-          />
-        )}
-
         <NovaConversaModal
           open={novaConversaOpen}
           onOpenChange={setNovaConversaOpen}
