@@ -226,6 +226,7 @@ export default function RelatoriosFinanceiros() {
   const valorAVencer7Dias = contasAVencer7Dias.reduce((acc, d) => acc + toNumber(d.valor), 0);
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
+  const isParceiro = user?.perfil === 'parceiro';
 
   const handlePagarConta = async () => {
     if (!pagandoConta) return;
@@ -243,7 +244,7 @@ export default function RelatoriosFinanceiros() {
     } : null);
   };
 
-  if (!user || !isAdmin) {
+  if (!user || (!isAdmin && !isParceiro)) {
     return (
       <div className="p-6">
         <Card className="p-8 text-center">
@@ -270,8 +271,8 @@ export default function RelatoriosFinanceiros() {
       </div>
       
       <div className={darkMode ? 'text-white' : ''}>
-        <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Dashboard Financeiro</h1>
-        <p className={`mb-6 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>Visão consolidada de todas as movimentações financeiras</p>
+        <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>{isParceiro ? 'Minhas Finanças' : 'Dashboard Financeiro'}</h1>
+        <p className={`mb-6 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>{isParceiro ? 'Controle financeiro individual' : 'Visão consolidada de todas as movimentações financeiras'}</p>
       </div>
 
       {/* Saldo Total em Contas Bancárias */}
