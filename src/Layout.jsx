@@ -813,7 +813,7 @@ export default function Layout({ children, currentPageName }) {
       />
 
       {/* Alertas de Tarefas */}
-      {user && (
+      {user && user.perfil !== 'parceiro' && (
         <AlertasTarefasPopup
           user={user}
           onAbrirTarefa={(tarefaId) => {
@@ -823,7 +823,7 @@ export default function Layout({ children, currentPageName }) {
       )}
 
       {/* Alertas de Tarefas Atrasadas */}
-      {user && <AlertasTarefasAtrasadas user={user} />}
+      {user && user.perfil !== 'parceiro' && <AlertasTarefasAtrasadas user={user} />}
 
       {/* Nova Venda Consórcio Modal */}
       <VendaForm

@@ -127,12 +127,20 @@ export default function Tarefas() {
   }, [statusCustom]);
 
   const isAdminPerfil = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
+  const isParceiro = currentUser?.perfil === 'parceiro';
 
   const { data: tarefas = [] } = useQuery({
-    queryKey: ['tarefas', empresaId, currentUser?.colaborador_id, isAdminPerfil],
+    queryKey: ['tarefas', empresaId, currentUser?.colaborador_id, isAdminPerfil, isParceiro, currentUser?.id],
     enabled: !!currentUser,
     queryFn: async () => {
       const filtro = empresaId ? { empresa_id: empresaId } : {};
+      // Parceiro: só vê tarefas que criou (tarefas independentes do sistema)
+      if (isParceiro && currentUser?.id) {
+        return base44.entities.Tarefa.filter(
+          { ...filtro, criado_por_id: currentUser.id },
+          '-created_date'
+        );
+      }
       const todas = await base44.entities.Tarefa.filter(filtro, '-created_date');
       if (isAdminPerfil) return todas;
       return todas.filter(t => {
@@ -146,7 +154,7 @@ export default function Tarefas() {
 
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colaboradores-tarefa', empresaId],
-    enabled: !!empresaId,
+    enabled: !!empresaId && !isParceiro,
     queryFn: () => base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }),
   });
 
@@ -363,10 +371,12 @@ export default function Tarefas() {
             <span className="text-xs">Kanban</span>
           </Button>
         </div>
-        <Button variant="outline" className="gap-2" onClick={() => setConfigOpen(true)}>
-          <Layers className="w-4 h-4" />
-          <span className="hidden sm:inline">Gerenciar Etapas</span>
-        </Button>
+        {!isParceiro && (
+          <Button variant="outline" className="gap-2" onClick={() => setConfigOpen(true)}>
+            <Layers className="w-4 h-4" />
+            <span className="hidden sm:inline">Gerenciar Etapas</span>
+          </Button>
+        )}
       </PageHeader>
 
       {/* Abas + Filtros na mesma linha */}
@@ -403,15 +413,17 @@ export default function Tarefas() {
           <option value="alta">Alta</option>
           <option value="urgente">Urgente</option>
         </select>
-        <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroSetor} onChange={e => {
-          const val = e.target.value;
-          setFiltroSetor(val);
-          try { localStorage.setItem('tarefas_filtro_setor', val); } catch {}
-        }}>
-          <option value="todos">Setor (Todos)</option>
-          {setoresCombinados.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-          <option value="_sem_setor">Sem Setor</option>
-        </select>
+        {!isParceiro && (
+          <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroSetor} onChange={e => {
+            const val = e.target.value;
+            setFiltroSetor(val);
+            try { localStorage.setItem('tarefas_filtro_setor', val); } catch {}
+          }}>
+            <option value="todos">Setor (Todos)</option>
+            {setoresCombinados.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+            <option value="_sem_setor">Sem Setor</option>
+          </select>
+        )}
         <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroPrazo} onChange={e => setFiltroPrazo(e.target.value)}>
           <option value="todas">Prazo</option>
           <option value="atrasadas">Atrasadas</option>
@@ -423,18 +435,22 @@ export default function Tarefas() {
           <option value="concluidas_no_prazo">Concluídas no Prazo</option>
           <option value="concluidas_com_atraso">Concluídas com Atraso</option>
         </select>
-        <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)}>
-          <option value="todos">Responsável</option>
-          {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-        </select>
-        <Button
-          variant={mostrarSoMinhas ? 'default' : 'outline'}
-          size="sm"
-          className={mostrarSoMinhas ? 'bg-[#1e3a5f] text-white h-8 px-3 text-xs' : 'h-8 px-3 text-xs'}
-          onClick={() => setMostrarSoMinhas(p => !p)}
-        >
-          Minhas
-        </Button>
+        {!isParceiro && (
+          <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)}>
+            <option value="todos">Responsável</option>
+            {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        )}
+        {!isParceiro && (
+          <Button
+            variant={mostrarSoMinhas ? 'default' : 'outline'}
+            size="sm"
+            className={mostrarSoMinhas ? 'bg-[#1e3a5f] text-white h-8 px-3 text-xs' : 'h-8 px-3 text-xs'}
+            onClick={() => setMostrarSoMinhas(p => !p)}
+          >
+            Minhas
+          </Button>
+        )}
         <Button
           variant={filtroPrazo === 'criticas' ? 'default' : 'outline'}
           size="sm"
