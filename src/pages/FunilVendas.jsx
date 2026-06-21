@@ -1058,6 +1058,8 @@ export default function FunilVendas() {
     return diffMs / (1000 * 60 * 60) >= 24 && o.status === 'aberta';
   }).length;
   const valorNegociacao = filteredOportunidades.filter(o => o.status === 'aberta').reduce((s, o) => s + (o.valor_estimado || 0), 0);
+  const valorGanhos = filteredOportunidades.filter(o => o.status === 'ganha').reduce((s, o) => s + (o.valor_estimado || 0), 0);
+  const valorPerdidos = filteredOportunidades.filter(o => o.status === 'perdida').reduce((s, o) => s + (o.valor_estimado || 0), 0);
 
   return (
     <div className="space-y-4 pb-24">
@@ -1230,10 +1232,18 @@ export default function FunilVendas() {
       {abaSelecionada === 'funil' && (
         <>
           {/* ── BARRA DE MÉTRICAS (mantida para compatibilidade) ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Card className="p-3 border-l-4 border-l-blue-500 border-t-0 border-r-0 border-b-0 shadow-sm bg-blue-50/50">
           <p className="text-xs text-blue-600 font-medium">💰 Em negociação</p>
           <p className="text-xl font-bold text-blue-700">{formatCurrency(valorNegociacao)}</p>
+        </Card>
+        <Card className="p-3 border-l-4 border-l-green-500 border-t-0 border-r-0 border-b-0 shadow-sm bg-green-50/50">
+          <p className="text-xs text-green-600 font-medium">✅ Ganhos</p>
+          <p className="text-xl font-bold text-green-700">{formatCurrency(valorGanhos)}</p>
+        </Card>
+        <Card className="p-3 border-l-4 border-l-red-500 border-t-0 border-r-0 border-b-0 shadow-sm bg-red-50/50">
+          <p className="text-xs text-red-600 font-medium">❌ Perdidos</p>
+          <p className="text-xl font-bold text-red-700">{formatCurrency(valorPerdidos)}</p>
         </Card>
         <Card className="p-3 border-l-4 border-l-orange-500 border-t-0 border-r-0 border-b-0 shadow-sm bg-orange-50/50">
           <div className="flex items-center justify-between">
@@ -1243,19 +1253,6 @@ export default function FunilVendas() {
             </div>
             {totalAtrasados > 0 && <button onClick={() => setFiltroRapido(filtroRapido === 'atrasados' ? null : 'atrasados')} className="text-xs text-orange-600 underline">ver</button>}
           </div>
-        </Card>
-        <Card className="p-3 border-l-4 border-l-red-500 border-t-0 border-r-0 border-b-0 shadow-sm bg-red-50/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-red-600 font-medium">🔕 Sem resposta</p>
-              <p className="text-xl font-bold text-red-700">{totalSemResposta}</p>
-            </div>
-            {totalSemResposta > 0 && <button onClick={() => setFiltroRapido(filtroRapido === 'sem_resposta' ? null : 'sem_resposta')} className="text-xs text-red-600 underline">ver</button>}
-          </div>
-        </Card>
-        <Card className="p-3 border-l-4 border-l-green-500 border-t-0 border-r-0 border-b-0 shadow-sm bg-green-50/50">
-          <p className="text-xs text-green-600 font-medium">✅ Ganhos</p>
-          <p className="text-xl font-bold text-green-700">{totalGanhos}</p>
         </Card>
       </div>
 
