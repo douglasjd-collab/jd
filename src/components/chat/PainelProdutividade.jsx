@@ -166,7 +166,7 @@ export default function PainelProdutividade({ empresaId, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" onClick={e => e.target === e.currentTarget && onClose()}>
       <div
         className="relative w-full max-w-5xl max-h-[92vh] overflow-hidden flex flex-col rounded-2xl shadow-2xl"
         style={{ background: '#0b0f14', color: '#e2eaf4', fontFamily: 'DM Sans, sans-serif' }}
