@@ -31,7 +31,9 @@
         "gerente",
         "vendedor",
         "colaborador",
-        "funcionario"
+        "funcionario",
+        "parceiro",
+        "colaborador_vendedor"
       ],
       "default": "vendedor",
       "description": "Perfil do colaborador"

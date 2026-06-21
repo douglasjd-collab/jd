@@ -143,13 +143,13 @@
   ],
   "security": {
     "read": {
-      "rule": "if (user.perfil === 'super_admin') return true; if (!record.empresa_id || record.empresa_id !== user.empresa_id) return false; if (user.perfil === 'admin' || user.perfil === 'gerente' || user.perfil === 'colaborador' || user.perfil === 'funcionario') return true; return record.vendedor_id === user.id;"
+      "rule": "if (user.perfil === 'super_admin') return true; if (!record.empresa_id || record.empresa_id !== user.empresa_id) return false; if (user.perfil === 'admin' || user.perfil === 'gerente' || user.perfil === 'colaborador' || user.perfil === 'funcionario' || user.perfil === 'colaborador_vendedor') return true; return record.vendedor_id === user.id;"
     },
     "create": {
-      "rule": "if (user.perfil === 'super_admin') return true; return ['admin', 'gerente', 'vendedor', 'colaborador', 'funcionario'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+      "rule": "if (user.perfil === 'super_admin') return true; return ['admin','gerente','vendedor','colaborador','funcionario','colaborador_vendedor','parceiro'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
     },
     "update": {
-      "rule": "if (user.perfil === 'super_admin') return true; if (!record.empresa_id || record.empresa_id !== user.empresa_id) return false; if (user.perfil === 'admin' || user.perfil === 'gerente' || user.perfil === 'colaborador' || user.perfil === 'funcionario') return true; return record.vendedor_id === user.id;"
+      "rule": "if (user.perfil === 'super_admin') return true; if (!record.empresa_id || record.empresa_id !== user.empresa_id) return false; if (user.perfil === 'admin' || user.perfil === 'gerente' || user.perfil === 'colaborador' || user.perfil === 'funcionario' || user.perfil === 'colaborador_vendedor') return true; return record.vendedor_id === user.id;"
     },
     "delete": {
       "rule": "if (user.perfil === 'super_admin') return true; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"

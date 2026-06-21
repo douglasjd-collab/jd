@@ -294,17 +294,17 @@ export default function Layout({ children, currentPageName }) {
   const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
   const isGerente = user?.perfil === 'gerente';
 
-  const ALL_ROLES = ['master', 'super_admin', 'admin', 'gerente', 'vendedor', 'colaborador', 'funcionario'];
+  const ALL_ROLES = ['master', 'super_admin', 'admin', 'gerente', 'vendedor', 'colaborador', 'funcionario', 'colaborador_vendedor'];
 
   const menuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: ALL_ROLES },
+    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: [...ALL_ROLES, 'parceiro'] },
     { name: 'Bate - Papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
-    { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: ALL_ROLES },
+    { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: [...ALL_ROLES, 'parceiro'] },
     { name: 'Call Center', icon: Phone, page: 'CallCenter', roles: ALL_ROLES },
     { 
       name: 'Empréstimos', 
       icon: FileText, 
-      roles: ALL_ROLES,
+      roles: [...ALL_ROLES, 'parceiro'],
       submenu: [
         { name: 'Nova Venda', page: 'NovaVendaConsignado' },
         { name: 'Propostas', page: 'VendasEmprestimos' },
@@ -314,7 +314,7 @@ export default function Layout({ children, currentPageName }) {
     { 
       name: 'Consórcio', 
       icon: ShoppingCart, 
-      roles: ALL_ROLES,
+      roles: [...ALL_ROLES, 'parceiro'],
       submenu: [
         { name: '+ Nova Venda', page: 'NovaVenda?tipo=consorcio' },
         { name: 'Propostas', page: 'Vendas' },
@@ -329,7 +329,7 @@ export default function Layout({ children, currentPageName }) {
     {
       name: 'Seguros',
       icon: Shield,
-      roles: ALL_ROLES,
+      roles: [...ALL_ROLES, 'parceiro'],
       submenu: [
         { name: 'Dashboard', page: 'DashboardSeguros' },
         { name: 'Propostas', page: 'Seguros' },
@@ -341,7 +341,7 @@ export default function Layout({ children, currentPageName }) {
     { 
       name: 'Financiamentos', 
       icon: Car, 
-      roles: ALL_ROLES,
+      roles: [...ALL_ROLES, 'parceiro'],
       submenu: [
         { name: 'Dashboard', page: 'FinanciamentoVeiculos?tab=dashboard' },
         { name: 'Propostas', page: 'FinanciamentoVeiculos?tab=propostas' },
@@ -352,14 +352,14 @@ export default function Layout({ children, currentPageName }) {
     },
 
     { name: 'Tarefas', icon: CheckSquare, page: 'Tarefas', roles: ALL_ROLES },
-    { name: 'Clientes', icon: Users, page: 'Clientes', roles: ALL_ROLES },
+    { name: 'Clientes', icon: Users, page: 'Clientes', roles: [...ALL_ROLES, 'parceiro'] },
 
     { name: 'Agenda', icon: Calendar, page: 'Agenda', roles: ALL_ROLES },
     { name: 'Contatos CRM', icon: Users, page: 'ContatosCRM', roles: ALL_ROLES },
     { 
       name: 'Financeiro', 
       icon: Wallet, 
-      roles: ['master', 'super_admin', 'admin'],
+      roles: ['master', 'super_admin', 'admin', 'parceiro'],
       submenu: [
         { name: 'Dashboard Financeiro', page: 'RelatoriosFinanceiros' },
         { name: 'Contas Bancárias', page: 'ContasBancarias' },
@@ -408,8 +408,8 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Histórico Geral', page: 'Importacao' },
       ]
     },
-    { name: 'Minhas Comissões', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor', 'colaborador', 'funcionario'] },
-    { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario'] },
+    { name: 'Minhas Comissões', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor', 'colaborador', 'funcionario', 'colaborador_vendedor', 'parceiro'] },
+    { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario', 'colaborador_vendedor', 'parceiro'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
     { 
       name: 'Campanhas', 
@@ -584,7 +584,7 @@ export default function Layout({ children, currentPageName }) {
                   )}
                   <div className="flex-1 min-w-0 text-left">
                     <p className="font-medium truncate">{user.nome_perfil || user.full_name}</p>
-                    <p className="text-xs text-white/60 capitalize">{user.perfil === 'funcionario' ? 'Colaborador' : (user.perfil || 'Vendedor')}</p>
+                    <p className="text-xs text-white/60 capitalize">{user.perfil === 'funcionario' ? 'Colaborador' : user.perfil === 'colaborador_vendedor' ? 'Colaborador/Vendedor' : (user.perfil || 'Vendedor')}</p>
                   </div>
                   <ChevronDown className="w-4 h-4" />
                 </button>
@@ -606,7 +606,7 @@ export default function Layout({ children, currentPageName }) {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold truncate">{user.nome_perfil || user.full_name}</p>
-                      <p className="text-xs text-slate-500 capitalize">{user.perfil === 'funcionario' ? 'Colaborador' : user.perfil}</p>
+                      <p className="text-xs text-slate-500 capitalize">{user.perfil === 'funcionario' ? 'Colaborador' : user.perfil === 'colaborador_vendedor' ? 'Colaborador/Vendedor' : user.perfil}</p>
                     </div>
                   </div>
                 </div>
