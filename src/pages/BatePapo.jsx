@@ -298,6 +298,7 @@ export default function BatePapo() {
   const [produtividadeOpen, setProdutividadeOpen] = useState(false);
   const [coachIAOpen, setCoachIAOpen] = useState(false);
   const [scriptCoach, setScriptCoach] = useState(null);
+  const [campanhasConversaIds, setCampanhasConversaIds] = useState(new Set());
 
   useEffect(() => {
     if (!user?.id) return;
@@ -435,6 +436,20 @@ export default function BatePapo() {
       console.log(`🏢 EmpresaId definido: ${empresaId}`);
       refetchConversas();
     }
+  }, [empresaId]);
+
+  // Carregar IDs de conversas vinculadas a campanhas
+  useEffect(() => {
+    if (!empresaId) return;
+    base44.entities.CampanhaDisparoJob.filter({ empresa_id: empresaId }, '-created_date', 500)
+      .then(jobs => {
+        const ids = new Set();
+        jobs.forEach(j => {
+          if (j.conversa_id) ids.add(j.conversa_id);
+        });
+        setCampanhasConversaIds(ids);
+      })
+      .catch(() => {});
   }, [empresaId]);
 
   const loadUser = async () => {
@@ -1156,6 +1171,7 @@ export default function BatePapo() {
       if (filtroStatus === 'encerrada') return c.status === 'encerrada' && !c.responsavel_id;
       if (filtroStatus === 'grupos_bloqueados') return isGrupo(c) && c.bloqueado === true;
       if (filtroStatus === 'meu') return c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id);
+      if (filtroStatus === 'campanhas') return c.status === 'ativa' && campanhasConversaIds.has(c.id);
       
       return false;
     })
@@ -1625,6 +1641,11 @@ export default function BatePapo() {
                   <button onClick={() => setFiltroStatus('transferida')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'transferida' ? 'bg-purple-600' : 'bg-slate-100'}`}>
                     <span className={`text-sm font-bold ${filtroStatus === 'transferida' ? 'text-white' : 'text-purple-500'}`}>{conversasValidas.filter(c => !isGrupo(c) && c.status === 'encerrada' && !!c.responsavel_id).length}</span>
                     <span className={`text-[10px] font-medium ${filtroStatus === 'transferida' ? 'text-white' : 'text-slate-600'}`}>Transferidos</span>
+                  </button>
+
+                  <button onClick={() => setFiltroStatus('campanhas')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'campanhas' ? 'bg-cyan-600' : 'bg-slate-100'}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'campanhas' ? 'text-white' : 'text-cyan-600'}`}>{conversasValidas.filter(c => !isGrupo(c) && c.status === 'ativa' && campanhasConversaIds.has(c.id)).length}</span>
+                    <span className={`text-[10px] font-medium ${filtroStatus === 'campanhas' ? 'text-white' : 'text-slate-600'}`}>Campanhas</span>
                   </button>
                 </div>
               </div>
