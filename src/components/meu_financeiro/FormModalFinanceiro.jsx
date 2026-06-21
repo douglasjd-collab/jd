@@ -177,8 +177,8 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
             </div>
 
             {/* Status toggle — barra larga ocupando toda a coluna */}
-            <div className="flex items-center justify-between bg-white border rounded-lg px-4 py-2.5">
-              <span className="text-sm font-medium text-slate-700">{tipo === 'receita' ? 'Foi recebida' : 'Foi paga'}</span>
+            <div className="flex items-center justify-between bg-white border rounded-lg px-4 py-4">
+              <span className="text-base font-medium text-slate-700">{tipo === 'receita' ? 'Foi recebida' : 'Foi paga'}</span>
               <Switch checked={statusPago} onCheckedChange={setStatusPago} className={corToggle} />
             </div>
 
