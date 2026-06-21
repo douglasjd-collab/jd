@@ -114,6 +114,18 @@ export default function Clientes() {
         return base44.entities.Cliente.list('-created_date', 5000);
       }
       
+      // Parceiro vê apenas seus próprios clientes
+      if (currentUser?.perfil === 'parceiro') {
+        if (currentUser?.colaborador_id && currentUser?.empresa_id) {
+          return base44.entities.Cliente.filter(
+            { empresa_id: currentUser.empresa_id, vendedor_id: currentUser.colaborador_id },
+            '-created_date',
+            5000
+          );
+        }
+        return [];
+      }
+
       // Vendedor vê todos os clientes da empresa (a regra de segurança já restringe por empresa_id)
       if (currentUser?.perfil === 'vendedor') {
         if (currentUser?.empresa_id) {
@@ -281,6 +293,7 @@ export default function Clientes() {
   };
 
   const isAdmin = ['admin', 'gerente', 'master', 'super_admin'].includes(currentUser?.perfil);
+  const isParceiro = currentUser?.perfil === 'parceiro';
 
   const handleDeduplicar = async () => {
     setConfirmDedup(false);
@@ -372,13 +385,15 @@ export default function Clientes() {
               <Pencil className="w-4 h-4 mr-2" />
               Editar
             </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={() => { setClienteParaExcluir(row); setOpenDelete(true); }}
-              className="text-red-600"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Excluir
-            </DropdownMenuItem>
+            {!isParceiro && (
+              <DropdownMenuItem 
+                onClick={() => { setClienteParaExcluir(row); setOpenDelete(true); }}
+                className="text-red-600"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       )
