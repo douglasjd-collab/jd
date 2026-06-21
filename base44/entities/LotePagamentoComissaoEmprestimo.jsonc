@@ -70,6 +70,10 @@
     "conta_bancaria_id": {
       "type": "string",
       "description": "ID da conta banc\u00e1ria utilizada para retirada no pagamento"
+    },
+    "meu_financeiro_receita_id": {
+      "type": "string",
+      "description": "ID da receita vinculada no Meu Financeiro"
     }
   },
   "required": [

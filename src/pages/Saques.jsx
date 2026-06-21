@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip, FileSpreadsheet, FileText, ExternalLink, Trash2 } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip, FileSpreadsheet, FileText, ExternalLink, Trash2, ArrowUpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -476,6 +476,7 @@ export default function Saques() {
   const [quitando, setQuitando] = useState(false);
   const [reprogramando, setReprogramando] = useState(false);
   const [anexandoComprovante, setAnexandoComprovante] = useState(false);
+  const [lancandoFinanceiro, setLancandoFinanceiro] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
@@ -607,6 +608,52 @@ export default function Saques() {
       toast.error('Erro ao anexar comprovante');
     } finally {
       setAnexandoComprovante(false);
+    }
+  };
+
+  const handleLancarFinanceiro = async () => {
+    const pendentes = quitados.filter(l => !l.meu_financeiro_receita_id && !l.isLegado);
+    if (pendentes.length === 0) {
+      toast.info('Todas as comissões quitadas já foram lançadas no Meu Financeiro.');
+      return;
+    }
+    setLancandoFinanceiro(true);
+    let sucessos = 0;
+    let erros = 0;
+    for (const lote of pendentes) {
+      try {
+        const receita = await base44.entities.MeuFinanceiroReceita.create({
+          empresa_id: empresaId,
+          usuario_id: colab?.user_id || user?.id,
+          usuario_nome: colab?.nome || user?.full_name || '',
+          descricao: `Comissão — ${lote._protocolo}`,
+          categoria: 'Comissão',
+          valor: lote._total,
+          data: lote.data_quitacao || lote.data_pagamento || new Date().toISOString().slice(0, 10),
+          status: 'recebida',
+          data_recebimento: lote.data_quitacao || lote.data_pagamento || new Date().toISOString().slice(0, 10),
+          conta_bancaria_id: null,
+          observacao: `Lançamento automático da comissão ${lote._protocolo} — ${lote._tipo === 'emp' ? 'Empréstimo' : lote._tipo === 'consorcio' ? 'Consórcio' : 'Legado'}`,
+        });
+        // Atualizar o lote com o ID da receita
+        if (lote._tipo === 'emp') {
+          await base44.entities.LotePagamentoComissaoEmprestimo.update(lote.id, { meu_financeiro_receita_id: receita.id });
+        } else if (lote._tipo === 'consorcio') {
+          await base44.entities.PagamentoComissaoLote.update(lote.id, { meu_financeiro_receita_id: receita.id });
+        }
+        sucessos++;
+      } catch (e) {
+        console.error('Erro ao lançar comissão:', lote._protocolo, e);
+        erros++;
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ['lotes-emp'] });
+    queryClient.invalidateQueries({ queryKey: ['lotes-consorcio'] });
+    setLancandoFinanceiro(false);
+    if (erros === 0) {
+      toast.success(`${sucessos} comissão(ões) lançada(s) no Meu Financeiro!`);
+    } else {
+      toast.warning(`${sucessos} lançada(s), ${erros} erro(s).`);
     }
   };
 
@@ -801,6 +848,24 @@ export default function Saques() {
             podeQuitar={isMaster}
             onExcluir={isMaster ? setLoteParaExcluir : undefined}
           />
+          {/* Botão Lançar no Meu Financeiro */}
+          {quitados.filter(l => !l.meu_financeiro_receita_id && !l.isLegado).length > 0 && (
+            <div className="flex items-center gap-2 justify-end">
+              <span className="text-xs text-slate-400">{quitados.filter(l => !l.meu_financeiro_receita_id && !l.isLegado).length} comissão(ões) pendente(s) de lançamento</span>
+              <Button
+                size="sm"
+                onClick={handleLancarFinanceiro}
+                disabled={lancandoFinanceiro}
+                className="bg-emerald-600 hover:bg-emerald-700 gap-1.5"
+              >
+                {lancandoFinanceiro ? (
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Lançando...</>
+                ) : (
+                  <><ArrowUpCircle className="w-3.5 h-3.5" /> Lançar no Meu Financeiro</>
+                )}
+              </Button>
+            </div>
+          )}
           <TabelaLotes
             titulo="Comissões Quitadas"
             lotes={quitados}
