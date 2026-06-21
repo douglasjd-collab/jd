@@ -79,7 +79,7 @@ export default function MeuFinanceiro() {
         <TabsContent value="transacoes"><TransacoesTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="receitas"><ReceitasTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="despesas"><DespesasTab user={user} refreshKey={refreshKey} /></TabsContent>
-        <TabsContent value="contas"><ContasTab user={user} /></TabsContent>
+        <TabsContent value="contas"><ContasTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="dre"><DRETab user={user} refreshKey={refreshKey} /></TabsContent>
       </Tabs>
 
@@ -481,7 +481,7 @@ function BancoAvatar({ banco, logoUrl = '', size = 'md' }) {
   return <div className={`${cfg.bg} ${cfg.text} ${sz} rounded-xl flex items-center justify-center font-bold flex-shrink-0`}>{cfg.abbr}</div>;
 }
 
-function ContasTab({ user }) {
+function ContasTab({ user, refreshKey }) {
   const [contas, setContas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -495,7 +495,7 @@ function ContasTab({ user }) {
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [user]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => { carregar(); }, [carregar, refreshKey]);
 
   const contasAtivas = contas.filter(c => c.status === 'ativa');
   const saldoTotal = contasAtivas.reduce((s, c) => s + (c.saldo_atual || 0), 0);

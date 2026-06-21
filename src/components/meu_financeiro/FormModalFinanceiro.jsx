@@ -107,6 +107,17 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
     } catch (err) { toast.error('Erro ao enviar arquivo'); } finally { setUploading(false); e.target.value = ''; }
   };
 
+  const atualizarSaldoConta = async (contaId, ajuste) => {
+    if (!contaId || ajuste === 0) return;
+    try {
+      const conta = await base44.entities.MeuFinanceiroContaBancaria.get(contaId);
+      if (conta) {
+        const novoSaldo = (conta.saldo_atual || 0) + ajuste;
+        await base44.entities.MeuFinanceiroContaBancaria.update(contaId, { saldo_atual: novoSaldo });
+      }
+    } catch (e) { console.error('Erro ao atualizar saldo:', e); }
+  };
+
   const handleSalvar = async () => {
     const v = parseNum(valor);
     if (!v || v <= 0) { toast.error('Informe um valor válido'); return; }
@@ -138,6 +149,37 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
         payload.data_vencimento = data;
         payload.data_pagamento = statusPago ? data : null;
       }
+
+      // Atualizar saldo da conta bancária
+      const novoStatus = payload.status;
+      const novaContaId = contaBancariaId || null;
+      const novoPago = tipo === 'receita' ? novoStatus === 'recebida' : novoStatus === 'pago';
+
+      if (editando) {
+        const oldValor = item.valor || 0;
+        const oldContaId = item.conta_bancaria_id || null;
+        const oldStatus = item.status;
+        const oldPago = tipo === 'receita' ? oldStatus === 'recebida' : oldStatus === 'pago';
+
+        // Desfazer ajuste antigo
+        if (oldPago) {
+          const ajuste = tipo === 'receita' ? -oldValor : oldValor;
+          await atualizarSaldoConta(oldContaId, ajuste);
+        }
+
+        // Aplicar novo ajuste
+        if (novoPago) {
+          const ajuste = tipo === 'receita' ? v : -v;
+          await atualizarSaldoConta(novaContaId, ajuste);
+        }
+      } else {
+        // Novo lançamento
+        if (novoPago) {
+          const ajuste = tipo === 'receita' ? v : -v;
+          await atualizarSaldoConta(novaContaId, ajuste);
+        }
+      }
+
       const entidade = tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
       if (editando) await base44.entities[entidade].update(item.id, payload);
       else await base44.entities[entidade].create(payload);
