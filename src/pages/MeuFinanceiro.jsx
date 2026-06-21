@@ -486,6 +486,8 @@ function BancoAvatar({ banco, logoUrl = '', size = 'md' }) {
 
 function ContasTab({ user, refreshKey }) {
   const [contas, setContas] = useState([]);
+  const [receitas, setReceitas] = useState([]);
+  const [despesas, setDespesas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState(null);
@@ -493,15 +495,36 @@ function ContasTab({ user, refreshKey }) {
   const carregar = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await base44.entities.MeuFinanceiroContaBancaria.filter({ usuario_id: user.id, empresa_id: user.empresa_id }, 'nome_conta', 50);
-      setContas(data);
+      const filtro = { usuario_id: user.id, empresa_id: user.empresa_id };
+      const [c, r, d] = await Promise.all([
+        base44.entities.MeuFinanceiroContaBancaria.filter(filtro, 'nome_conta', 50),
+        base44.entities.MeuFinanceiroReceita.filter(filtro, '-data', 2000),
+        base44.entities.MeuFinanceiroDespesa.filter(filtro, '-data', 2000),
+      ]);
+      setContas(c); setReceitas(r); setDespesas(d);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [user]);
 
   useEffect(() => { carregar(); }, [carregar, refreshKey]);
 
+  // Calcular saldo por conta dinamicamente
+  const saldoPorConta = useMemo(() => {
+    const map = {};
+    contas.forEach(c => { map[c.id] = c.saldo_inicial || 0; });
+    receitas.filter(r => r.status === 'recebida' && r.conta_bancaria_id).forEach(r => {
+      if (map[r.conta_bancaria_id] !== undefined) map[r.conta_bancaria_id] += (r.valor || 0);
+    });
+    despesas.filter(d => d.status === 'pago' && d.conta_bancaria_id).forEach(d => {
+      if (map[d.conta_bancaria_id] !== undefined) map[d.conta_bancaria_id] -= (d.valor || 0);
+    });
+    // Transações sem conta vinculada: distribuir entre contas ativas ou somar ao total geral
+    const semConta = receitas.filter(r => r.status === 'recebida' && !r.conta_bancaria_id).reduce((s, r) => s + (r.valor || 0), 0)
+      - despesas.filter(d => d.status === 'pago' && !d.conta_bancaria_id).reduce((s, d) => s + (d.valor || 0), 0);
+    return { map, semConta };
+  }, [contas, receitas, despesas]);
+
   const contasAtivas = contas.filter(c => c.status === 'ativa');
-  const saldoTotal = contasAtivas.reduce((s, c) => s + (c.saldo_atual || 0), 0);
+  const saldoTotal = contasAtivas.reduce((s, c) => s + (saldoPorConta.map[c.id] || 0), 0) + saldoPorConta.semConta;
 
   const toggleStatus = async (conta) => {
     const novoStatus = conta.status === 'ativa' ? 'inativa' : 'ativa';
@@ -563,7 +586,7 @@ function ContasTab({ user, refreshKey }) {
 
                 <div className="bg-slate-50 rounded-lg p-3">
                   <p className="text-xs text-slate-500 mb-1">Saldo Atual</p>
-                  <p className={`text-2xl font-bold ${(conta.saldo_atual || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtMoeda(conta.saldo_atual)}</p>
+                  <p className={`text-2xl font-bold ${(saldoPorConta.map[conta.id] || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtMoeda(saldoPorConta.map[conta.id] || 0)}</p>
                 </div>
               </CardContent>
             </Card>
