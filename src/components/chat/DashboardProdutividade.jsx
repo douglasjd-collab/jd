@@ -25,21 +25,28 @@ export default function DashboardProdutividade({ empresaId, onClose }) {
   const hoje = useMemo(() => startOfDay(new Date()), []);
 
   const loadData = useCallback(async () => {
-    if (!empresaId) return;
+    if (!empresaId) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [colabs, convs, msgs, ops, vendasData] = await Promise.all([
+      const [colabs, convs, msgs, ops] = await Promise.all([
         base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome', 100),
         base44.entities.ConversaWhatsapp.filter({ empresa_id: empresaId }, '-data_ultima_mensagem', 5000),
         base44.entities.MensagemWhatsapp.filter({ empresa_id: empresaId }, '-data_envio', 10000),
         base44.entities.Oportunidade.filter({ empresa_id: empresaId }, '-created_date', 2000),
-        base44.entities.Venda.filter({ empresa_id: empresaId }, '-created_date', 1000).catch(() => []),
       ]);
       setColaboradores(colabs || []);
       setConversas(convs || []);
       setMensagens(msgs || []);
       setOportunidades(ops || []);
-      setVendas(vendasData || []);
+      setVendas([]);
+      // Buscar vendas separadamente (entidade pode não existir para algumas empresas)
+      try {
+        const vendasData = await base44.entities.Venda.filter({ empresa_id: empresaId }, '-created_date', 1000);
+        setVendas(vendasData || []);
+      } catch (e2) {
+        console.warn('Vendas não disponíveis:', e2.message);
+        setVendas([]);
+      }
       setLastUpdate(new Date());
     } catch (e) {
       console.error('Erro ao carregar dashboard:', e);
