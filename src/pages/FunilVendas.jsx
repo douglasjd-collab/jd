@@ -1057,9 +1057,17 @@ export default function FunilVendas() {
     const diffMs = agora2 - new Date(o.data_ultima_movimentacao || o.created_date || agora2);
     return diffMs / (1000 * 60 * 60) >= 24 && o.status === 'aberta';
   }).length;
-  const valorNegociacao = filteredOportunidades.filter(o => o.status === 'aberta').reduce((s, o) => s + (o.valor_estimado || 0), 0);
-  const valorGanhos = filteredOportunidades.filter(o => o.status === 'ganha').reduce((s, o) => s + (o.valor_estimado || 0), 0);
-  const valorPerdidos = filteredOportunidades.filter(o => o.status === 'perdida').reduce((s, o) => s + (o.valor_estimado || 0), 0);
+  // Usar o tipo da ETAPA (não o status da oportunidade) para garantir consistência com as colunas do Kanban
+  const getTipoEtapa = (etapaId) => etapasComProduto.find(e => e.id === etapaId)?.tipo || 'aberta';
+  const valorNegociacao = filteredOportunidades
+    .filter(o => { const t = getTipoEtapa(o.etapa_id); return t !== 'ganho' && t !== 'perdida'; })
+    .reduce((s, o) => s + (o.valor_estimado || 0), 0);
+  const valorGanhos = filteredOportunidades
+    .filter(o => getTipoEtapa(o.etapa_id) === 'ganho')
+    .reduce((s, o) => s + (o.valor_estimado || 0), 0);
+  const valorPerdidos = filteredOportunidades
+    .filter(o => getTipoEtapa(o.etapa_id) === 'perdida')
+    .reduce((s, o) => s + (o.valor_estimado || 0), 0);
 
   return (
     <div className="space-y-4 pb-24">
