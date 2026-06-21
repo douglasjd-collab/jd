@@ -483,6 +483,8 @@ export default function Layout({ children, currentPageName }) {
     if (!item.roles.includes(userRole)) return false;
     // Admin/master/super_admin/gerente/vendedor nunca são bloqueados por permissões customizadas
     if (isAdminRole) return true;
+    // Meu Financeiro e Meus Dados são sempre visíveis para parceiro
+    if (userRole === 'parceiro' && (item.name === 'Meu Financeiro' || item.name === 'Meus Dados')) return true;
     // Se não há permissões customizadas, libera tudo
     if (!temPermissoesCustomizadas) return true;
     const key = menuPermissaoKey[item.name];
