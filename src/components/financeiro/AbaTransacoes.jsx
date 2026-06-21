@@ -71,7 +71,22 @@ export default function AbaTransacoes({ despesas, receitas, categoriasDespesa, c
     onSuccess: () => { refetchAll(); setPagandoConta(null); setEditingDespesa(null); toast.success('Atualizado!'); },
   });
   const updateReceita = useMutation({
-    mutationFn: ({id,data}) => base44.entities.Receita.update(id, data),
+    mutationFn: async ({id, data}) => {
+      const result = await base44.entities.Receita.update(id, data);
+      // Se está marcando como recebida, verifica se é tarifa cadastral de financiamento
+      if (data.status === 'recebida') {
+        try {
+          const fins = await base44.entities.FinanciamentoVeiculo.filter({ tarifa_receita_id: id }, null, 1);
+          if (fins.length > 0) {
+            await base44.entities.FinanciamentoVeiculo.update(fins[0].id, {
+              tarifa_cadastral_status: 'recebida',
+              tarifa_cadastral_data_recebimento: data.data_recebimento || moment().format('YYYY-MM-DD'),
+            });
+          }
+        } catch (e) { /* Silencioso — a receita já foi atualizada */ }
+      }
+      return result;
+    },
     onSuccess: () => { refetchAll(); setRecebendoReceita(null); setEditingReceita(null); toast.success('Atualizado!'); },
   });
   const deleteDespesa = useMutation({
