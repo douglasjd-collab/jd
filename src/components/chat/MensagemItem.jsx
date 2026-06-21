@@ -632,7 +632,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             </div>
 
             <Dialog open={pdfAberto} onOpenChange={(v) => { setPdfAberto(v); if (!v) setPdfCarregado(false); }}>
-              <DialogContent className="max-w-4xl w-full h-[90vh] p-0 overflow-hidden flex flex-col">
+              <DialogContent className="max-w-4xl w-full h-[90vh] p-0 overflow-hidden flex flex-col [&>button.absolute]:hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b bg-white shrink-0">
                   <div className="flex items-center gap-2">
                     <FileText className="w-5 h-5 text-red-500" />
@@ -644,9 +644,13 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                         <Download className="w-3.5 h-3.5" /> Baixar
                       </Button>
                     )}
-                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setPdfAberto(false)}>
-                      <X className="w-4 h-4" />
-                    </Button>
+                    <button
+                      onClick={() => setPdfAberto(false)}
+                      className="flex items-center justify-center w-8 h-8 rounded-full border border-slate-300 hover:bg-slate-100 transition-colors"
+                      aria-label="Fechar"
+                    >
+                      <X className="w-4 h-4 text-slate-600" />
+                    </button>
                   </div>
                 </div>
                 <div className="flex-1 overflow-hidden relative">
