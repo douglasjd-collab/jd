@@ -68,7 +68,7 @@ import MensagensAgendadasModal from '@/components/chat/MensagensAgendadasModal';
 import AgendarReuniaoModal from '@/components/chat/AgendarReuniaoModal';
 import useSoftphone from '@/components/callcenter/useSoftphone';
 import ChamadaAtivaBar from '@/components/chat/ChamadaAtivaBar.jsx';
-import PainelProdutividade from '@/components/chat/PainelProdutividade';
+import DashboardProdutividade from '@/components/chat/DashboardProdutividade';
 import CoachIAPanel from '@/components/chat/CoachIAPanel';
 
 function classNames(...classes) {
@@ -1321,9 +1321,9 @@ export default function BatePapo() {
             opacity: 1;
           }
         `}</style>
-        {/* Painel de Produtividade */}
+        {/* Dashboard de Produtividade */}
         {produtividadeOpen && (
-          <PainelProdutividade
+          <DashboardProdutividade
             empresaId={empresaId}
             onClose={() => setProdutividadeOpen(false)}
           />
