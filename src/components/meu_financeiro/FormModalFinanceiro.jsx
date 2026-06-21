@@ -12,8 +12,16 @@ import { format } from 'date-fns';
 
 const hoje = () => format(new Date(), 'yyyy-MM-dd');
 const fmtMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-const fmtNum = (v) => { const n = parseFloat(v); return isNaN(n) ? '' : n.toFixed(2).replace('.', ','); };
-const parseNum = (v) => { if (!v) return 0; return parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0; };
+const parseNum = (v) => { if (!v) return 0; const n = String(v).replace(/\D/g, ''); return n ? parseFloat(n) / 100 : 0; };
+const formatCurrency = (v) => { if (!v) return ''; const n = parseFloat(v); return isNaN(n) ? '' : n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+
+// Formata o input monetário enquanto digita — retorna string formatada "X.XXX,XX"
+const handleCurrencyInput = (raw, setter) => {
+  const digits = String(raw).replace(/\D/g, '');
+  if (!digits) { setter(''); return; }
+  const num = parseFloat(digits) / 100;
+  setter(num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+};
 
 export default function FormModalFinanceiro({ open, onClose, item, tipo, user, onSaved }) {
   const editando = !!item;
@@ -58,7 +66,7 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
   useEffect(() => {
     if (!open) return;
     if (item) {
-      setValor(fmtNum(item.valor));
+      setValor(formatCurrency(item.valor));
       setStatusPago(tipo === 'receita' ? item.status === 'recebida' : item.status === 'pago');
       setData(item.data || hoje());
       setDescricao(item.descricao || '');
@@ -150,10 +158,11 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">R$</span>
                 <Input
-                  className="pl-10 text-2xl font-bold h-14"
-                  value={valor}
-                  onChange={e => setValor(e.target.value)}
-                  placeholder="0,00"
+                 className="pl-10 text-2xl font-bold h-14"
+                 inputMode="decimal"
+                 value={valor}
+                 onChange={e => handleCurrencyInput(e.target.value, setValor)}
+                 placeholder="0,00"
                 />
               </div>
             </div>
