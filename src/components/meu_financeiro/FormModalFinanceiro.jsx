@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Loader2, Paperclip, X, Calculator, Building2 } from 'lucide-react';
+import { Loader2, Paperclip, X, Calculator, Building2, Settings } from 'lucide-react';
 import { format } from 'date-fns';
+import GerenciarCategoriasModal from '@/components/meu_financeiro/GerenciarCategoriasModal';
 
 const hoje = () => format(new Date(), 'yyyy-MM-dd');
 const fmtMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
@@ -31,7 +32,8 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
   const [statusPago, setStatusPago] = useState(tipo === 'receita' ? true : false);
   const [data, setData] = useState(hoje());
   const [descricao, setDescricao] = useState('');
-  const [categoria, setCategoria] = useState('');
+  const [categoriaId, setCategoriaId] = useState('');
+  const [subcategoriaId, setSubcategoriaId] = useState('');
   const [contaBancariaId, setContaBancariaId] = useState('');
   const [observacao, setObservacao] = useState('');
   const [fixa, setFixa] = useState(false);
@@ -40,9 +42,10 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
   const [fileName, setFileName] = useState('');
   const [salvando, setSalvando] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [categorias, setCategorias] = useState([]);
+  const [categoriasList, setCategoriasList] = useState([]);
   const [contas, setContas] = useState([]);
   const [carregandoOpc, setCarregandoOpc] = useState(false);
+  const [modalCategoriasOpen, setModalCategoriasOpen] = useState(false);
 
   // Carregar opções ao abrir
   useEffect(() => {
@@ -50,12 +53,11 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
     const carregar = async () => {
       setCarregandoOpc(true);
       try {
-        const entidade = tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
-        const [dados, contasData] = await Promise.all([
-          base44.entities[entidade].filter({ usuario_id: user.id }, '-data', 500),
+        const [catsData, contasData] = await Promise.all([
+          base44.entities.MeuFinanceiroCategoria.filter({ usuario_id: user.id, empresa_id: user.empresa_id, tipo }, 'ordem', 200),
           base44.entities.MeuFinanceiroContaBancaria.filter({ usuario_id: user.id, empresa_id: user.empresa_id, status: 'ativa' }, 'nome_conta', 30),
         ]);
-        setCategorias([...new Set(dados.map(d => d.categoria).filter(Boolean))]);
+        setCategoriasList(catsData);
         setContas(contasData);
       } catch (e) { /* silencioso */ } finally { setCarregandoOpc(false); }
     };
@@ -70,7 +72,8 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
       setStatusPago(tipo === 'receita' ? item.status === 'recebida' : item.status === 'pago');
       setData(item.data || hoje());
       setDescricao(item.descricao || '');
-      setCategoria(item.categoria || '');
+      setCategoriaId(item.categoria_id || '');
+      setSubcategoriaId(item.subcategoria_id || '');
       setContaBancariaId(item.conta_bancaria_id || '');
       setObservacao(item.observacao || '');
       setFixa(!!item.fixa);
@@ -82,7 +85,8 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
       setStatusPago(tipo === 'receita' ? true : false);
       setData(hoje());
       setDescricao('');
-      setCategoria('');
+      setCategoriaId('');
+      setSubcategoriaId('');
       setContaBancariaId('');
       setObservacao('');
       setFixa(false);
@@ -109,9 +113,12 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
     if (!descricao.trim()) { toast.error('Informe a descrição'); return; }
     setSalvando(true);
     try {
+      const catPrincipal = categoriasList.find(c => c.id === categoriaId);
+      const catSub = categoriasList.find(c => c.id === subcategoriaId);
+      const categoriaLabel = catSub ? `${catPrincipal?.nome || ''} > ${catSub.nome}` : (catPrincipal?.nome || 'Geral');
       const payload = {
         descricao: descricao.trim(),
-        categoria: categoria.trim() || 'Geral',
+        categoria: categoriaLabel,
         valor: v,
         data,
         observacao: observacao.trim(),
@@ -119,6 +126,8 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
         usuario_id: user.id,
         usuario_nome: user.nome_perfil || user.full_name,
         conta_bancaria_id: contaBancariaId || null,
+        categoria_id: categoriaId || null,
+        subcategoria_id: subcategoriaId || null,
         comprovante_url: fileUrl || null,
       };
       if (tipo === 'receita') {
@@ -203,11 +212,37 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
 
             {/* Categoria */}
             <div>
-              <Label className="text-xs uppercase tracking-wider text-slate-500">Categoria</Label>
-              <div className="flex gap-2 mt-1">
-                <Input value={categoria} onChange={e => setCategoria(e.target.value)} placeholder="Selecione ou digite" list={`catlist-${tipo}`} />
-                <datalist id={`catlist-${tipo}`}>{categorias.map(c => <option key={c} value={c} />)}</datalist>
+              <div className="flex items-center gap-1 mb-1">
+                <Label className="text-xs uppercase tracking-wider text-slate-500">Categoria</Label>
+                <button onClick={() => setModalCategoriasOpen(true)} className="p-1 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors" title="Gerenciar categorias">
+                  <Settings className="w-3.5 h-3.5" />
+                </button>
               </div>
+              <div className="flex gap-2 mt-1">
+                <Select value={categoriaId} onValueChange={v => { setCategoriaId(v); setSubcategoriaId(''); }}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Selecione a categoria..." /></SelectTrigger>
+                  <SelectContent>
+                    {categoriasList.filter(c => !c.parent_id).map(cat => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Subcategoria — aparece ao selecionar categoria que possui subs */}
+              {categoriaId && categoriasList.filter(c => c.parent_id === categoriaId).length > 0 && (
+                <div className="mt-2">
+                  <Label className="text-xs text-slate-400 mb-1 block">Subcategoria</Label>
+                  <Select value={subcategoriaId} onValueChange={setSubcategoriaId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione a subcategoria..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={null}>Nenhuma</SelectItem>
+                      {categoriasList.filter(c => c.parent_id === categoriaId).map(sub => (
+                        <SelectItem key={sub.id} value={sub.id}>{sub.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             {/* Conta Bancária */}
@@ -286,6 +321,11 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
             </div>
           </div>
         </div>
+
+        <GerenciarCategoriasModal open={modalCategoriasOpen} onClose={() => setModalCategoriasOpen(false)} tipo={tipo} user={user} onSaved={() => {
+          // Recarregar categorias
+          base44.entities.MeuFinanceiroCategoria.filter({ usuario_id: user.id, empresa_id: user.empresa_id, tipo }, 'ordem', 200).then(setCategoriasList).catch(() => {});
+        }} />
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={salvando}>Cancelar</Button>

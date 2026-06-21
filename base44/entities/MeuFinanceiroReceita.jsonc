@@ -20,7 +20,15 @@
     },
     "categoria": {
       "type": "string",
-      "description": "Categoria da receita"
+      "description": "Categoria da receita (texto de exibi\u00e7\u00e3o)"
+    },
+    "categoria_id": {
+      "type": "string",
+      "description": "ID da categoria na entidade MeuFinanceiroCategoria"
+    },
+    "subcategoria_id": {
+      "type": "string",
+      "description": "ID da subcategoria na entidade MeuFinanceiroCategoria"
     },
     "valor": {
       "type": "number",

@@ -1,5 +1,5 @@
 {
-  "name": "MeuFinanceiroDespesa",
+  "name": "MeuFinanceiroCategoria",
   "type": "object",
   "properties": {
     "empresa_id": {
@@ -8,76 +8,35 @@
     },
     "usuario_id": {
       "type": "string",
-      "description": "ID do usu\u00e1rio parceiro (obrigat\u00f3rio)"
+      "description": "ID do usu\u00e1rio parceiro"
     },
-    "usuario_nome": {
-      "type": "string",
-      "description": "Nome do parceiro (denormalizado)"
-    },
-    "descricao": {
-      "type": "string",
-      "description": "Descri\u00e7\u00e3o da despesa"
-    },
-    "categoria": {
-      "type": "string",
-      "description": "Categoria da despesa (texto de exibi\u00e7\u00e3o)"
-    },
-    "categoria_id": {
-      "type": "string",
-      "description": "ID da categoria na entidade MeuFinanceiroCategoria"
-    },
-    "subcategoria_id": {
-      "type": "string",
-      "description": "ID da subcategoria na entidade MeuFinanceiroCategoria"
-    },
-    "valor": {
-      "type": "number",
-      "description": "Valor da despesa"
-    },
-    "data": {
-      "type": "string",
-      "format": "date",
-      "description": "Data da despesa"
-    },
-    "data_vencimento": {
-      "type": "string",
-      "format": "date",
-      "description": "Data de vencimento"
-    },
-    "status": {
+    "tipo": {
       "type": "string",
       "enum": [
-        "pendente",
-        "pago",
-        "cancelado"
+        "receita",
+        "despesa"
       ],
-      "default": "pendente",
-      "description": "Status da despesa"
+      "description": "Tipo: receita ou despesa"
     },
-    "data_pagamento": {
+    "nome": {
       "type": "string",
-      "format": "date",
-      "description": "Data do pagamento"
+      "description": "Nome da categoria ou subcategoria"
     },
-    "observacao": {
+    "parent_id": {
       "type": "string",
-      "description": "Observa\u00e7\u00f5es"
+      "description": "ID da categoria pai (null = categoria principal)"
     },
-    "comprovante_url": {
-      "type": "string",
-      "description": "URL do comprovante anexado"
-    },
-    "conta_bancaria_id": {
-      "type": "string",
-      "description": "ID da conta banc\u00e1ria vinculada"
+    "ordem": {
+      "type": "number",
+      "default": 0,
+      "description": "Ordem de exibi\u00e7\u00e3o"
     }
   },
   "required": [
     "empresa_id",
     "usuario_id",
-    "descricao",
-    "valor",
-    "data"
+    "tipo",
+    "nome"
   ],
   "security": {
     "read": {
