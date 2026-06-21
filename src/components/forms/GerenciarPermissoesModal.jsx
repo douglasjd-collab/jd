@@ -62,6 +62,7 @@ const MENU_ESTRUTURA = [
   { key: 'agenda',       label: 'Agenda',           descricao: 'Compromissos e lembretes' },
   { key: 'contatos_crm', label: 'Contatos CRM',     descricao: 'Contatos e leads do CRM' },
   { key: 'campanhas',    label: 'Campanhas',        descricao: 'Campanhas de marketing e mensagens em massa' },
+  { key: 'meu_financeiro', label: 'Meu Financeiro',  descricao: 'Gestão financeira exclusiva do parceiro' },
   { key: 'saques',       label: 'Minhas Comissões', descricao: 'Solicitação e gerenciamento de saques' },
   { key: 'relatorios',   label: 'Relatórios',       descricao: 'Relatórios de vendas e comissões' },
   { key: 'finanto_bank', label: 'FinantoBank INSS', descricao: 'Integração com FinantoBank para propostas INSS' },

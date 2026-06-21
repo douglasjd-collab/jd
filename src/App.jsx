@@ -47,6 +47,7 @@ import SimuladorInteligente from './pages/SimuladorInteligente';
 import DiagnosticoNvoip from './pages/DiagnosticoNvoip';
 import Filiais from './pages/Filiais';
 import CentrosCusto from './pages/CentrosCusto';
+import MeuFinanceiro from './pages/MeuFinanceiro';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -138,6 +139,7 @@ const AuthenticatedApp = () => {
       <Route path="/DiagnosticoNvoip" element={<LayoutWrapper currentPageName="DiagnosticoNvoip"><DiagnosticoNvoip /></LayoutWrapper>} />
       <Route path="/Filiais" element={<LayoutWrapper currentPageName="Filiais"><Filiais /></LayoutWrapper>} />
       <Route path="/CentrosCusto" element={<LayoutWrapper currentPageName="CentrosCusto"><CentrosCusto /></LayoutWrapper>} />
+      <Route path="/MeuFinanceiro" element={<LayoutWrapper currentPageName="MeuFinanceiro"><MeuFinanceiro /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
