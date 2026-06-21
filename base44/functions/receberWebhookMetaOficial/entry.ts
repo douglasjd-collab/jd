@@ -173,7 +173,20 @@ async function processarMensagensRecebidas(base44, value) {
   let conversa;
   if (conversas.length > 0) {
     conversa = conversas[0];
-    if (conversa.tipo_conexao !== 'meta_oficial' || conversa.instancia !== 'META_OFICIAL') {
+    // Se a conversa estava como campanha e o cliente respondeu, promover para ativa
+    if (conversa.status === 'campanha') {
+      await base44.entities.ConversaWhatsapp.update(conversa.id, {
+        status: 'ativa',
+        cliente_respondeu: true,
+        data_primeira_resposta: new Date().toISOString(),
+        tipo_conexao: 'meta_oficial',
+        instancia: 'META_OFICIAL',
+      });
+      conversa.status = 'ativa';
+      conversa.cliente_respondeu = true;
+      conversa.data_primeira_resposta = new Date().toISOString();
+      console.log(`🔄 Conversa promovida de campanha → ativa: ${conversa.id}`);
+    } else if (conversa.tipo_conexao !== 'meta_oficial' || conversa.instancia !== 'META_OFICIAL') {
       await base44.entities.ConversaWhatsapp.update(conversa.id, { tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL' });
       conversa.tipo_conexao = 'meta_oficial';
       conversa.instancia = 'META_OFICIAL';

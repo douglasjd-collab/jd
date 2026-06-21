@@ -36,10 +36,30 @@
       "enum": [
         "ativa",
         "encerrada",
-        "arquivada"
+        "arquivada",
+        "campanha"
       ],
       "default": "ativa",
-      "description": "Status da conversa"
+      "description": "Status da conversa: ativa, encerrada, arquivada ou campanha (lead de disparo sem resposta)"
+    },
+    "origem": {
+      "type": "string",
+      "enum": [
+        "campanha",
+        "normal"
+      ],
+      "default": "normal",
+      "description": "Origem da conversa: campanha (disparo API Oficial) ou normal"
+    },
+    "cliente_respondeu": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se o cliente j\u00e1 respondeu a uma mensagem de campanha"
+    },
+    "data_primeira_resposta": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora da primeira resposta do cliente ap\u00f3s campanha"
     },
     "ultima_mensagem": {
       "type": "string",
@@ -88,7 +108,7 @@
         "instagram"
       ],
       "default": "empresa",
-      "description": "Canal/provedor ativo da conversa: empresa=Evolution inst\u00e2ncia empresa, usuario=Evolution inst\u00e2ncia colaborador, meta_oficial=API Oficial Meta, instagram=Instagram Direct"
+      "description": "Canal/provedor ativo da conversa"
     },
     "canal_origem": {
       "type": "string",
@@ -97,7 +117,7 @@
         "evolution",
         "instagram"
       ],
-      "description": "Canal de origem fixo da conversa \u2014 definido na cria\u00e7\u00e3o e NUNCA sobrescrito automaticamente. meta=API Oficial Meta, evolution=Evolution API, instagram=Instagram Direct"
+      "description": "Canal de origem fixo da conversa"
     },
     "provider": {
       "type": "string",
@@ -106,40 +126,40 @@
         "evolution",
         "instagram"
       ],
-      "description": "Provider t\u00e9cnico usado para envio/recebimento. whatsapp_meta=API Oficial Meta, evolution=Evolution API"
+      "description": "Provider t\u00e9cnico usado para envio/recebimento"
     },
     "locked_provider": {
       "type": "boolean",
       "default": false,
-      "description": "Se true, o provider est\u00e1 travado e n\u00e3o pode ser alterado automaticamente por webhooks"
+      "description": "Se true, o provider est\u00e1 travado"
     },
     "last_inbound_provider": {
       "type": "string",
-      "description": "Provider da \u00faltima mensagem RECEBIDA (inbound). Usado apenas para diagn\u00f3stico, n\u00e3o para envio."
+      "description": "Provider da \u00faltima mensagem RECEBIDA"
     },
     "colaborador_id": {
       "type": "string",
-      "description": "ID do colaborador dono da inst\u00e2ncia (quando tipo_conexao = usuario)"
+      "description": "ID do colaborador dono da inst\u00e2ncia"
     },
     "instancia": {
       "type": "string",
-      "description": "Nome da inst\u00e2ncia Evolution que originou a conversa (ex: JD_PROMOTORA). Para Meta: META_OFICIAL"
+      "description": "Nome da inst\u00e2ncia Evolution"
     },
     "instance_id": {
       "type": "string",
-      "description": "ID da inst\u00e2ncia Evolution (para provider=evolution). Null quando provider=whatsapp_meta."
+      "description": "ID da inst\u00e2ncia Evolution"
     },
     "phone_number_id_meta": {
       "type": "string",
-      "description": "Phone Number ID da API Meta Oficial que recebeu/enviou a \u00faltima mensagem desta conversa"
+      "description": "Phone Number ID da API Meta"
     },
     "canal_atendimento": {
       "type": "string",
-      "description": "Canal fixo de atendimento (legado \u2014 usar canal_origem/provider)"
+      "description": "Canal fixo de atendimento (legado)"
     },
     "canal_preferencial": {
       "type": "string",
-      "description": "Canal preferencial (legado \u2014 usar canal_origem/provider)"
+      "description": "Canal preferencial (legado)"
     },
     "ultima_origem_recebida": {
       "type": "string",

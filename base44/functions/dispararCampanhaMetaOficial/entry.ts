@@ -211,12 +211,13 @@ Deno.serve(async (req) => {
           if (conversas.length > 0) {
             convId = conversas[0].id;
           } else {
-            // Criar nova conversa
+            // Criar nova conversa como campanha
             const nova = await base44.asServiceRole.entities.ConversaWhatsapp.create({
               empresa_id,
               cliente_telefone: numeroLimpo,
               cliente_nome: numeroLimpo,
-              status: 'ativa',
+              status: 'campanha',
+              origem: 'campanha',
               tipo_conexao: 'meta_oficial',
               canal_origem: 'meta',
               provider: 'whatsapp_meta',
