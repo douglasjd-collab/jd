@@ -103,11 +103,11 @@ function DashboardTab({ user, refreshKey }) {
   const carregar = useCallback(async () => {
     setLoading(true);
     try {
-      const filtro = { usuario_id: user.auth_id, empresa_id: user.empresa_id };
+      const filtro = { usuario_id: user.id, empresa_id: user.empresa_id };
       const [r, d, c] = await Promise.all([
         base44.entities.MeuFinanceiroReceita.filter(filtro, '-data', 2000),
         base44.entities.MeuFinanceiroDespesa.filter(filtro, '-data', 2000),
-        base44.entities.MeuFinanceiroContaBancaria.filter({ usuario_id: user.auth_id, empresa_id: user.empresa_id }, 'nome_conta', 50),
+        base44.entities.MeuFinanceiroContaBancaria.filter({ usuario_id: user.id, empresa_id: user.empresa_id }, 'nome_conta', 50),
       ]);
       setReceitas(r); setDespesas(d); setContas(c);
     } catch (e) { console.error(e); } finally { setLoading(false); }
@@ -324,7 +324,7 @@ function ReceitasTab({ user, refreshKey }) {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, item: null });
 
-  const filtroBase = { usuario_id: user.auth_id, empresa_id: user.empresa_id };
+  const filtroBase = { usuario_id: user.id, empresa_id: user.empresa_id };
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -391,7 +391,7 @@ function DespesasTab({ user, refreshKey }) {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, item: null });
 
-  const filtroBase = { usuario_id: user.auth_id, empresa_id: user.empresa_id };
+  const filtroBase = { usuario_id: user.id, empresa_id: user.empresa_id };
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -490,7 +490,7 @@ function ContasTab({ user }) {
   const carregar = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await base44.entities.MeuFinanceiroContaBancaria.filter({ usuario_id: user.auth_id, empresa_id: user.empresa_id }, 'nome_conta', 50);
+      const data = await base44.entities.MeuFinanceiroContaBancaria.filter({ usuario_id: user.id, empresa_id: user.empresa_id }, 'nome_conta', 50);
       setContas(data);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [user]);
@@ -607,7 +607,7 @@ function ContaBancariaModal({ open, onClose, conta, user, onSaved }) {
     setSalvando(true);
     const saldoInicial = parseFloat(form.saldo_inicial) || 0;
     const payload = {
-      empresa_id: user.empresa_id, usuario_id: user.auth_id, usuario_nome: user.nome_perfil || user.full_name,
+      empresa_id: user.empresa_id, usuario_id: user.id, usuario_nome: user.nome_perfil || user.full_name,
       nome_conta: form.nome_conta, banco: form.banco, tipo_conta: form.tipo_conta,
       agencia: form.agencia, conta: form.conta, chave_pix: form.chave_pix,
       saldo_inicial: saldoInicial,

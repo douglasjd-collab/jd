@@ -44,8 +44,8 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
       try {
         const entidade = tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
         const [dados, contasData] = await Promise.all([
-          base44.entities[entidade].filter({ usuario_id: user.auth_id }, '-data', 500),
-          base44.entities.MeuFinanceiroContaBancaria.filter({ usuario_id: user.auth_id, empresa_id: user.empresa_id, status: 'ativa' }, 'nome_conta', 30),
+          base44.entities[entidade].filter({ usuario_id: user.id }, '-data', 500),
+          base44.entities.MeuFinanceiroContaBancaria.filter({ usuario_id: user.id, empresa_id: user.empresa_id, status: 'ativa' }, 'nome_conta', 30),
         ]);
         setCategorias([...new Set(dados.map(d => d.categoria).filter(Boolean))]);
         setContas(contasData);
@@ -108,7 +108,7 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
         data,
         observacao: observacao.trim(),
         empresa_id: user.empresa_id,
-        usuario_id: user.auth_id,
+        usuario_id: user.id,
         usuario_nome: user.nome_perfil || user.full_name,
         conta_bancaria_id: contaBancariaId || null,
         comprovante_url: fileUrl || null,

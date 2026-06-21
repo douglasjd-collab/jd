@@ -19,7 +19,7 @@ export default function DRETab({ user, refreshKey }) {
   const carregar = useCallback(async () => {
     setLoading(true);
     try {
-      const filtro = { usuario_id: user.auth_id, empresa_id: user.empresa_id };
+      const filtro = { usuario_id: user.id, empresa_id: user.empresa_id };
       const [r, d] = await Promise.all([
         base44.entities.MeuFinanceiroReceita.filter(filtro, '-data', 2000),
         base44.entities.MeuFinanceiroDespesa.filter(filtro, '-data', 2000),

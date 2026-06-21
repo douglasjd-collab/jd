@@ -68,16 +68,16 @@
   ],
   "security": {
     "read": {
-      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'parceiro') return record.usuario_id === user.user_id; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'parceiro') return record.usuario_id === user.id; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
     },
     "create": {
-      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'parceiro') return record.usuario_id === user.user_id && record.empresa_id === user.empresa_id; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'parceiro') return record.usuario_id === user.id && record.empresa_id === user.empresa_id; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
     },
     "update": {
-      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'parceiro') return record.usuario_id === user.user_id; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'parceiro') return record.usuario_id === user.id; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
     },
     "delete": {
-      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'parceiro') return record.usuario_id === user.user_id; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (user.perfil === 'parceiro') return record.usuario_id === user.id; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
     }
   }
 }
