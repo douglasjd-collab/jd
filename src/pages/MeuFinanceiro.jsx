@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Plus, Pencil, Trash2, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Upload, X, Calendar, Building2, CreditCard, Hash, Key, MoreVertical, Eye } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Upload, X, Calendar, Building2, CreditCard, Hash, Key, MoreVertical, Eye, AlertTriangle, DollarSign, Clock, PieChart, BarChart3 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts';
 import { format, startOfMonth, endOfMonth, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -23,6 +24,9 @@ export default function MeuFinanceiro() {
   const [user, setUser] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [aba, setAba] = useState('dashboard');
+  const [modalNovaDespesa, setModalNovaDespesa] = useState(false);
+  const [modalNovaReceita, setModalNovaReceita] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -36,15 +40,26 @@ export default function MeuFinanceiro() {
     })();
   }, []);
 
+  const onSaved = () => setRefreshKey(k => k + 1);
+
   if (carregando) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>;
   if (!user) return <div className="text-center py-20 text-slate-500">Usuário não encontrado.</div>;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      {/* Header */}
+      <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Meu Financeiro</h1>
-          <p className="text-sm text-slate-500 mt-1">Gestão financeira independente do parceiro</p>
+          <h1 className="text-2xl font-bold text-slate-800">Meu Financeiro</h1>
+          <p className="text-sm text-slate-500 mt-1">{user.nome_perfil || user.full_name} — Gestão financeira independente</p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => setModalNovaDespesa(true)} className="bg-red-600 hover:bg-red-700 gap-2">
+            <ArrowDownCircle className="w-4 h-4" /> Nova Despesa
+          </Button>
+          <Button onClick={() => setModalNovaReceita(true)} className="bg-green-600 hover:bg-green-700 gap-2">
+            <ArrowUpCircle className="w-4 h-4" /> Nova Receita
+          </Button>
         </div>
       </div>
 
@@ -55,150 +70,249 @@ export default function MeuFinanceiro() {
           <TabsTrigger value="despesas">Despesas</TabsTrigger>
           <TabsTrigger value="contas">Contas</TabsTrigger>
           </TabsList>
-        <TabsContent value="dashboard"><DashboardTab user={user} /></TabsContent>
-        <TabsContent value="receitas"><ReceitasTab user={user} /></TabsContent>
-        <TabsContent value="despesas"><DespesasTab user={user} /></TabsContent>
+        <TabsContent value="dashboard"><DashboardTab user={user} refreshKey={refreshKey} /></TabsContent>
+        <TabsContent value="receitas"><ReceitasTab user={user} refreshKey={refreshKey} /></TabsContent>
+        <TabsContent value="despesas"><DespesasTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="contas"><ContasTab user={user} /></TabsContent>
       </Tabs>
+
+      {/* Modais rápidos */}
+      {modalNovaReceita && <FormModal open={modalNovaReceita} onClose={() => setModalNovaReceita(false)} item={null} tipo="receita" user={user} onSaved={() => { onSaved(); setModalNovaReceita(false); }} />}
+      {modalNovaDespesa && <FormModal open={modalNovaDespesa} onClose={() => setModalNovaDespesa(false)} item={null} tipo="despesa" user={user} onSaved={() => { onSaved(); setModalNovaDespesa(false); }} />}
     </div>
   );
 }
 
 // ─── Dashboard ─────────────────────────────────────────────
-function DashboardTab({ user }) {
+const PIE_COLORS = ['#22c55e', '#f97316', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#eab308'];
+
+function DashboardTab({ user, refreshKey }) {
   const [receitas, setReceitas] = useState([]);
   const [despesas, setDespesas] = useState([]);
+  const [contas, setContas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mesFiltro, setMesFiltro] = useState(format(new Date(), 'yyyy-MM'));
 
   const carregar = useCallback(async () => {
     setLoading(true);
     try {
       const filtro = { usuario_id: user.auth_id, empresa_id: user.empresa_id };
-      const [r, d] = await Promise.all([
+      const [r, d, c] = await Promise.all([
         base44.entities.MeuFinanceiroReceita.filter(filtro, '-data', 2000),
         base44.entities.MeuFinanceiroDespesa.filter(filtro, '-data', 2000),
+        base44.entities.MeuFinanceiroContaBancaria.filter({ usuario_id: user.auth_id, empresa_id: user.empresa_id }, 'nome_conta', 50),
       ]);
-      setReceitas(r);
-      setDespesas(d);
+      setReceitas(r); setDespesas(d); setContas(c);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [user]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => { carregar(); }, [carregar, refreshKey]);
 
-  const totalReceitas = receitas.filter(r => r.status === 'recebida').reduce((s, r) => s + (r.valor || 0), 0);
-  const totalDespesas = despesas.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
-  const receitasPendentes = receitas.filter(r => r.status === 'pendente').reduce((s, r) => s + (r.valor || 0), 0);
-  const despesasPendentes = despesas.filter(d => d.status === 'pendente').reduce((s, d) => s + (d.valor || 0), 0);
-  const saldo = totalReceitas - totalDespesas;
+  const filtrarPorMes = (arr) => arr.filter(item => item.data?.startsWith(mesFiltro));
+  const receitasMes = filtrarPorMes(receitas);
+  const despesasMes = filtrarPorMes(despesas);
 
-  // Por mês (últimos 6 meses)
+  // Totais do mês
+  const receitaRealizada = receitasMes.filter(r => r.status === 'recebida').reduce((s, r) => s + (r.valor || 0), 0);
+  const receitaPrevista = receitasMes.filter(r => r.status === 'pendente').reduce((s, r) => s + (r.valor || 0), 0) + receitaRealizada;
+  const totalDespesas = despesasMes.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
+  const lucroLiquido = receitaRealizada - totalDespesas;
+  const aReceber = receitas.filter(r => r.status === 'pendente').reduce((s, r) => s + (r.valor || 0), 0);
+  const aPagar = despesas.filter(d => d.status === 'pendente').reduce((s, d) => s + (d.valor || 0), 0);
+
+  // Contas atrasadas (despesas pendentes com vencimento anterior a hoje)
+  const hojeStr = hoje();
+  const contasAtrasadas = despesas.filter(d => d.status === 'pendente' && d.data_vencimento && d.data_vencimento < hojeStr).reduce((s, d) => s + (d.valor || 0), 0);
+  const qtdAtrasadas = despesas.filter(d => d.status === 'pendente' && d.data_vencimento && d.data_vencimento < hojeStr).length;
+
+  // Saldo bancário
+  const saldoBancario = contas.filter(c => c.status === 'ativa').reduce((s, c) => s + (c.saldo_atual || 0), 0);
+
+  // Dados por mês (últimos 6 meses)
   const mesesMap = useMemo(() => {
     const map = {};
     for (let i = 5; i >= 0; i--) {
       const mes = format(subMonths(new Date(), i), 'yyyy-MM');
-      map[mes] = { receitas: 0, despesas: 0 };
+      map[mes] = { mes: format(subMonths(new Date(), i), 'MMM/yy', { locale: ptBR }), receitas: 0, despesas: 0 };
     }
     receitas.forEach(r => {
       if (!r.data) return;
       const mes = r.data.substring(0, 7);
-      if (map[mes] !== undefined) map[mes].receitas += r.valor || 0;
+      if (map[mes]) map[mes].receitas += r.valor || 0;
     });
     despesas.forEach(d => {
       if (!d.data) return;
       const mes = d.data.substring(0, 7);
-      if (map[mes] !== undefined) map[mes].despesas += d.valor || 0;
+      if (map[mes]) map[mes].despesas += d.valor || 0;
     });
-    return Object.entries(map).map(([mes, vals]) => ({ mes: format(parseISO(mes + '-01'), 'MMM/yy', { locale: ptBR }), ...vals }));
+    return Object.values(map);
   }, [receitas, despesas]);
 
-  // Despesas por categoria
-  const categoriasMap = useMemo(() => {
+  // Receitas por categoria (para o gráfico de pizza)
+  const receitasPorCategoria = useMemo(() => {
     const map = {};
-    despesas.filter(d => d.status === 'pago').forEach(d => {
-      const cat = d.categoria || 'Sem categoria';
-      map[cat] = (map[cat] || 0) + (d.valor || 0);
+    receitas.filter(r => r.status === 'recebida').forEach(r => {
+      const cat = r.categoria || 'Geral';
+      map[cat] = (map[cat] || 0) + (r.valor || 0);
     });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]);
-  }, [despesas]);
+    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [receitas]);
+
+  // Opções de meses para o filtro
+  const opcoesMeses = useMemo(() => {
+    const meses = [];
+    for (let i = 0; i < 12; i++) {
+      const d = subMonths(new Date(), i);
+      meses.push({ value: format(d, 'yyyy-MM'), label: format(d, 'MMMM/yyyy', { locale: ptBR }) });
+    }
+    return meses;
+  }, []);
 
   if (loading) return <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
 
   return (
-    <div className="space-y-6 mt-4">
-      {/* Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-green-700 flex items-center gap-2"><ArrowUpCircle className="w-4 h-4" /> Entradas</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold text-green-700">{fmtMoeda(totalReceitas)}</p></CardContent>
+    <div className="space-y-5 mt-4">
+      {/* Filtros e Alertas */}
+      <div className="flex flex-wrap items-center gap-3">
+        <Select value={mesFiltro} onValueChange={setMesFiltro}>
+          <SelectTrigger className="w-44 h-9"><SelectValue /></SelectTrigger>
+          <SelectContent>{opcoesMeses.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+        </Select>
+        <span className="text-xs text-slate-400">Filtrar por mês</span>
+      </div>
+
+      {/* Alerta de contas atrasadas */}
+      {qtdAtrasadas > 0 && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span><strong>{qtdAtrasadas} conta(s) vencida(s)</strong> — {fmtMoeda(contasAtrasadas)}</span>
+        </div>
+      )}
+
+      {/* Cards Métricos — 2 linhas de 4 */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="bg-white border-l-4 border-l-green-500">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-xs font-medium text-slate-500">Receita Realizada</p>
+              <ArrowUpCircle className="w-4 h-4 text-green-500" />
+            </div>
+            <p className="text-xl font-bold text-green-600">{fmtMoeda(receitaRealizada)}</p>
+          </CardContent>
         </Card>
-        <Card className="border-red-200 bg-red-50">
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-red-700 flex items-center gap-2"><ArrowDownCircle className="w-4 h-4" /> Saídas</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold text-red-700">{fmtMoeda(totalDespesas)}</p></CardContent>
+        <Card className="bg-white border-l-4 border-l-blue-500">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-xs font-medium text-slate-500">Receita Prevista</p>
+              <TrendingUp className="w-4 h-4 text-blue-500" />
+            </div>
+            <p className="text-xl font-bold text-blue-600">{fmtMoeda(receitaPrevista)}</p>
+          </CardContent>
         </Card>
-        <Card className={saldo >= 0 ? "border-blue-200 bg-blue-50" : "border-orange-200 bg-orange-50"}>
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-blue-700 flex items-center gap-2"><Wallet className="w-4 h-4" /> Saldo</CardTitle></CardHeader>
-          <CardContent><p className={`text-2xl font-bold ${saldo >= 0 ? 'text-blue-700' : 'text-orange-600'}`}>{fmtMoeda(saldo)}</p></CardContent>
+        <Card className="bg-white border-l-4 border-l-red-500">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-xs font-medium text-slate-500">Total Despesas</p>
+              <ArrowDownCircle className="w-4 h-4 text-red-500" />
+            </div>
+            <p className="text-xl font-bold text-red-600">{fmtMoeda(totalDespesas)}</p>
+          </CardContent>
         </Card>
-        <Card className="border-amber-200 bg-amber-50">
-          <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-amber-700 flex items-center gap-2"><Calendar className="w-4 h-4" /> A Receber</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold text-amber-700">{fmtMoeda(receitasPendentes)}</p></CardContent>
+        <Card className="bg-white border-l-4 border-l-indigo-500">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-xs font-medium text-slate-500">Lucro Líquido</p>
+              <DollarSign className="w-4 h-4 text-indigo-500" />
+            </div>
+            <p className={`text-xl font-bold ${lucroLiquido >= 0 ? 'text-indigo-600' : 'text-red-600'}`}>{fmtMoeda(lucroLiquido)}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-l-4 border-l-amber-500">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-xs font-medium text-slate-500">A Receber</p>
+              <Clock className="w-4 h-4 text-amber-500" />
+            </div>
+            <p className="text-xl font-bold text-amber-600">{fmtMoeda(aReceber)}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-l-4 border-l-orange-500">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-xs font-medium text-slate-500">A Pagar</p>
+              <Calendar className="w-4 h-4 text-orange-500" />
+            </div>
+            <p className="text-xl font-bold text-orange-600">{fmtMoeda(aPagar)}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-l-4 border-l-rose-500">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-xs font-medium text-slate-500">Contas Atrasadas</p>
+              <AlertTriangle className="w-4 h-4 text-rose-500" />
+            </div>
+            <p className="text-xl font-bold text-rose-600">{fmtMoeda(contasAtrasadas)}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-l-4 border-l-violet-500">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between mb-1">
+              <p className="text-xs font-medium text-slate-500">Saldo Bancário</p>
+              <Building2 className="w-4 h-4 text-violet-500" />
+            </div>
+            <p className={`text-xl font-bold ${saldoBancario >= 0 ? 'text-violet-600' : 'text-red-600'}`}>{fmtMoeda(saldoBancario)}</p>
+          </CardContent>
         </Card>
       </div>
 
-      {/* Gráfico de barras mensais */}
-      <Card>
-        <CardHeader><CardTitle className="text-base">Resultado Mensal</CardTitle></CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {mesesMap.map(m => {
-              const resultado = m.receitas - m.despesas;
-              const maxVal = Math.max(...mesesMap.flatMap(x => [x.receitas, x.despesas]), 1);
-              return (
-                <div key={m.mes}>
-                  <div className="flex justify-between text-xs text-slate-500 mb-1">
-                    <span className="font-medium capitalize">{m.mes}</span>
-                    <span className={resultado >= 0 ? 'text-green-600' : 'text-red-600'}>{fmtMoeda(resultado)}</span>
-                  </div>
-                  <div className="flex gap-1 h-5">
-                    <div className="bg-green-400 rounded" style={{ width: `${(m.receitas / maxVal) * 100}%`, minWidth: m.receitas > 0 ? 4 : 0 }} title={`Receitas: ${fmtMoeda(m.receitas)}`} />
-                    <div className="bg-red-400 rounded" style={{ width: `${(m.despesas / maxVal) * 100}%`, minWidth: m.despesas > 0 ? 4 : 0 }} title={`Despesas: ${fmtMoeda(m.despesas)}`} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex gap-4 mt-3 text-xs text-slate-400">
-            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-green-400 rounded" /> Receitas</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-red-400 rounded" /> Despesas</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Despesas por categoria */}
-      {categoriasMap.length > 0 && (
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Barras — Receitas x Despesas */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Despesas por Categoria</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><BarChart3 className="w-5 h-5 text-slate-500" /> Receitas x Despesas (6 meses)</CardTitle></CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {categoriasMap.map(([cat, val]) => {
-                const pct = totalDespesas > 0 ? (val / totalDespesas) * 100 : 0;
-                return (
-                  <div key={cat}>
-                    <div className="flex justify-between text-sm mb-0.5"><span className="text-slate-700">{cat}</span><span className="text-slate-500">{fmtMoeda(val)}</span></div>
-                    <div className="w-full bg-slate-100 rounded-full h-2"><div className="bg-red-400 h-2 rounded-full" style={{ width: `${pct}%` }} /></div>
-                  </div>
-                );
-              })}
-            </div>
+            {mesesMap.every(m => m.receitas === 0 && m.despesas === 0) ? (
+              <div className="text-center py-10 text-slate-400 text-sm">Sem dados no período</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={mesesMap} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="mes" tick={{ fontSize: 11 }} stroke="#94a3b8" />
+                  <YAxis tick={{ fontSize: 11 }} stroke="#94a3b8" tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} />
+                  <RechartsTooltip formatter={(v) => [fmtMoeda(v), '']} contentStyle={{ fontSize: 12 }} />
+                  <Bar dataKey="receitas" name="Receitas" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="despesas" name="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
-      )}
+
+        {/* Pizza — Receita por Categoria */}
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><PieChart className="w-5 h-5 text-slate-500" /> Receita por Categoria</CardTitle></CardHeader>
+          <CardContent>
+            {receitasPorCategoria.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-sm">Sem receitas registradas</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <RechartsPieChart>
+                  <Pie data={receitasPorCategoria} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={45} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    {receitasPorCategoria.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                  </Pie>
+                  <RechartsTooltip formatter={(v) => [fmtMoeda(v), '']} contentStyle={{ fontSize: 12 }} />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
 
 // ─── Lista de Receitas ─────────────────────────────────────
-function ReceitasTab({ user }) {
+function ReceitasTab({ user, refreshKey }) {
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, item: null });
@@ -210,7 +324,7 @@ function ReceitasTab({ user }) {
     try { setItens(await base44.entities.MeuFinanceiroReceita.filter(filtroBase, '-data', 1000)); } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [user]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => { carregar(); }, [carregar, refreshKey]);
 
   const excluir = async (id) => {
     if (!confirm('Excluir esta receita?')) return;
@@ -265,7 +379,7 @@ function ReceitasTab({ user }) {
 }
 
 // ─── Lista de Despesas ─────────────────────────────────────
-function DespesasTab({ user }) {
+function DespesasTab({ user, refreshKey }) {
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, item: null });
@@ -277,7 +391,7 @@ function DespesasTab({ user }) {
     try { setItens(await base44.entities.MeuFinanceiroDespesa.filter(filtroBase, '-data', 1000)); } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [user]);
 
-  useEffect(() => { carregar(); }, [carregar]);
+  useEffect(() => { carregar(); }, [carregar, refreshKey]);
 
   const excluir = async (id) => {
     if (!confirm('Excluir esta despesa?')) return;
