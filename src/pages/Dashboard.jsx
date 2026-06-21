@@ -89,49 +89,67 @@ export default function Dashboard() {
   const isAdmin = ['master', 'super_admin', 'admin'].includes(user?.perfil);
   const isGerente = user?.perfil === 'gerente';
   const isVendedor = ['vendedor', 'colaborador', 'funcionario'].includes(user?.perfil);
+  const isParceiro = user?.perfil === 'parceiro';
 
   const { data: vendas = [] } = useQuery({
-    queryKey: ['vendas-exec', user?.empresa_id, user?.perfil],
+    queryKey: ['vendas-exec', user?.empresa_id, user?.perfil, user?.colaborador_id],
     enabled: !!user,
-    queryFn: () => user?.empresa_id ? base44.entities.Venda.filter({ empresa_id: user.empresa_id }, '-data_venda', 300) : base44.entities.Venda.list('-data_venda', 300),
-    staleTime: 120000, // 2 minutos
+    queryFn: () => {
+      const f = {};
+      if (user?.empresa_id) f.empresa_id = user.empresa_id;
+      if (isParceiro && user?.colaborador_id) f.vendedor_id = user.colaborador_id;
+      return Object.keys(f).length > 0
+        ? base44.entities.Venda.filter(f, '-data_venda', 300)
+        : base44.entities.Venda.list('-data_venda', 300);
+    },
+    staleTime: 120000,
   });
 
   const { data: oportunidades = [] } = useQuery({
-    queryKey: ['oport-exec', user?.empresa_id],
+    queryKey: ['oport-exec', user?.empresa_id, isParceiro, user?.colaborador_id],
     enabled: !!user,
-    queryFn: () => user?.empresa_id ? base44.entities.Oportunidade.filter({ empresa_id: user.empresa_id }, '-data_ultima_movimentacao', 200) : base44.entities.Oportunidade.list('-data_ultima_movimentacao', 200),
+    queryFn: () => {
+      const f = {};
+      if (user?.empresa_id) f.empresa_id = user.empresa_id;
+      if (isParceiro && user?.colaborador_id) f.vendedor_id = user.colaborador_id;
+      return Object.keys(f).length > 0
+        ? base44.entities.Oportunidade.filter(f, '-data_ultima_movimentacao', 200)
+        : base44.entities.Oportunidade.list('-data_ultima_movimentacao', 200);
+    },
     staleTime: 120000,
   });
 
   const { data: propostasEmprestimo = [] } = useQuery({
-    queryKey: ['prop-emp-exec', user?.empresa_id],
+    queryKey: ['prop-emp-exec', user?.empresa_id, isParceiro, user?.colaborador_id],
     enabled: !!user,
     queryFn: () => {
       const f = { produto: 'emprestimo' };
       if (user?.empresa_id) f.empresa_id = user.empresa_id;
+      if (isParceiro && user?.colaborador_id) f.vendedor_id = user.colaborador_id;
       return base44.entities.Proposta.filter(f, '-data_venda', 300);
     },
     staleTime: 120000,
   });
 
   const { data: propostasFinanciamento = [] } = useQuery({
-    queryKey: ['prop-fin-exec', user?.empresa_id],
+    queryKey: ['prop-fin-exec', user?.empresa_id, isParceiro, user?.colaborador_id],
     enabled: !!user,
     queryFn: () => {
       const f = { produto: 'financiamento' };
       if (user?.empresa_id) f.empresa_id = user.empresa_id;
+      if (isParceiro && user?.colaborador_id) f.vendedor_id = user.colaborador_id;
       return base44.entities.Proposta.filter(f, '-data_venda', 200);
     },
     staleTime: 120000,
   });
 
   const { data: propostasSeguros = [] } = useQuery({
-    queryKey: ['prop-seg-exec', user?.empresa_id],
+    queryKey: ['prop-seg-exec', user?.empresa_id, isParceiro, user?.colaborador_id],
     enabled: !!user,
     queryFn: () => {
       const f = {};
       if (user?.empresa_id) f.empresa_id = user.empresa_id;
+      if (isParceiro && user?.colaborador_id) f.vendedor_id = user.colaborador_id;
       return base44.entities.PropostaSeguro.filter(f, '-data_inicio', 200);
     },
     staleTime: 120000,
@@ -149,11 +167,12 @@ export default function Dashboard() {
   });
 
   const { data: clientes = [] } = useQuery({
-    queryKey: ['clientes-exec', user?.empresa_id],
+    queryKey: ['clientes-exec', user?.empresa_id, isParceiro, user?.colaborador_id],
     enabled: !!user,
     queryFn: () => {
       const f = { status: 'ativo' };
       if (user?.empresa_id) f.empresa_id = user.empresa_id;
+      if (isParceiro && user?.colaborador_id) f.vendedor_id = user.colaborador_id;
       return base44.entities.Cliente.filter(f, '-created_date', 500);
     },
     staleTime: 300000,
@@ -227,6 +246,7 @@ export default function Dashboard() {
       const hoje = format(new Date(), 'yyyy-MM-dd');
       const f = { produto: 'emprestimo' };
       if (user.empresa_id) f.empresa_id = user.empresa_id;
+      if (isParceiro && user.colaborador_id) f.vendedor_id = user.colaborador_id;
       const todas = await base44.entities.Proposta.filter(f, '-created_date', 200);
       return todas.filter(p => p.cip_data_retorno_prevista === hoje);
     },
@@ -236,7 +256,7 @@ export default function Dashboard() {
   // Filtros aplicados
   const vendasFiltradas = useMemo(() => vendas.filter(v => {
     if (v.status === 'cancelada') return false;
-    if (isVendedor && user?.colaborador_id && v.vendedor_id !== user.colaborador_id) return false;
+    if ((isVendedor || isParceiro) && user?.colaborador_id && v.vendedor_id !== user.colaborador_id) return false;
     if (isGerente && user?.colaborador_id && v.gerente_id !== user.colaborador_id && v.vendedor_id !== user.colaborador_id) return false;
     if (filtroVendedor !== 'todos' && v.vendedor_nome !== filtroVendedor) return false;
     if (filtroFilial !== 'todos' && v.filial_nome !== filtroFilial) return false;
@@ -244,13 +264,13 @@ export default function Dashboard() {
   }), [vendas, isVendedor, isGerente, user, filtroVendedor, filtroFilial]);
 
   const oportunidadesFiltradas = useMemo(() => oportunidades.filter(o => {
-    if (isVendedor && user?.colaborador_id && o.vendedor_id !== user.colaborador_id) return false;
+    if ((isVendedor || isParceiro) && user?.colaborador_id && o.vendedor_id !== user.colaborador_id) return false;
     if (filtroVendedor !== 'todos' && o.vendedor_nome !== filtroVendedor) return false;
     return true;
   }), [oportunidades, isVendedor, user, filtroVendedor]);
 
   // Aniversariantes
-  const clientesFiltrados = useMemo(() => isVendedor && user?.colaborador_id ? clientes.filter(c => c.vendedor_id === user.colaborador_id) : clientes, [clientes, isVendedor, user]);
+  const clientesFiltrados = useMemo(() => (isVendedor || isParceiro) && user?.colaborador_id ? clientes.filter(c => c.vendedor_id === user.colaborador_id) : clientes, [clientes, isVendedor, isParceiro, user]);
   const hoje = new Date();
   const aniversariantesHoje = useMemo(() => clientesFiltrados.filter(c => {
     if (!c.data_nascimento) return false;
