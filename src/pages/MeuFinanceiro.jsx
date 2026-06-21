@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Loader2, Plus, Pencil, Trash2, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Upload, X, Calendar, Building2, CreditCard, Hash, Key, MoreVertical, Eye, AlertTriangle, DollarSign, Clock, PieChart, BarChart3 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts';
 import TransacoesTab from '@/components/meu_financeiro/TransacoesTab';
+import DRETab from '@/components/meu_financeiro/DRETab';
 import FormModalFinanceiro from '@/components/meu_financeiro/FormModalFinanceiro';
 import { format, startOfMonth, endOfMonth, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -72,12 +73,14 @@ export default function MeuFinanceiro() {
           <TabsTrigger value="receitas">Receitas</TabsTrigger>
           <TabsTrigger value="despesas">Despesas</TabsTrigger>
           <TabsTrigger value="contas">Contas</TabsTrigger>
+          <TabsTrigger value="dre">DRE</TabsTrigger>
           </TabsList>
         <TabsContent value="dashboard"><DashboardTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="transacoes"><TransacoesTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="receitas"><ReceitasTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="despesas"><DespesasTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="contas"><ContasTab user={user} /></TabsContent>
+        <TabsContent value="dre"><DRETab user={user} refreshKey={refreshKey} /></TabsContent>
       </Tabs>
 
       {/* Modais rápidos */}
