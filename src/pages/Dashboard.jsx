@@ -102,7 +102,8 @@ export default function Dashboard() {
         ? base44.entities.Venda.filter(f, '-data_venda', 300)
         : base44.entities.Venda.list('-data_venda', 300);
     },
-    staleTime: 120000,
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: oportunidades = [] } = useQuery({
@@ -116,7 +117,8 @@ export default function Dashboard() {
         ? base44.entities.Oportunidade.filter(f, '-data_ultima_movimentacao', 200)
         : base44.entities.Oportunidade.list('-data_ultima_movimentacao', 200);
     },
-    staleTime: 120000,
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: propostasEmprestimo = [] } = useQuery({
@@ -128,7 +130,8 @@ export default function Dashboard() {
       if (isParceiro && user?.colaborador_id) f.vendedor_id = user.colaborador_id;
       return base44.entities.Proposta.filter(f, '-data_venda', 300);
     },
-    staleTime: 120000,
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: propostasFinanciamento = [] } = useQuery({
@@ -140,7 +143,8 @@ export default function Dashboard() {
       if (isParceiro && user?.colaborador_id) f.vendedor_id = user.colaborador_id;
       return base44.entities.Proposta.filter(f, '-data_venda', 200);
     },
-    staleTime: 120000,
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: propostasSeguros = [] } = useQuery({
@@ -152,7 +156,8 @@ export default function Dashboard() {
       if (isParceiro && user?.colaborador_id) f.vendedor_id = user.colaborador_id;
       return base44.entities.PropostaSeguro.filter(f, '-data_inicio', 200);
     },
-    staleTime: 120000,
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: statusPropostaList = [] } = useQuery({
@@ -185,7 +190,8 @@ export default function Dashboard() {
       const f = user?.empresa_id ? { empresa_id: user.empresa_id } : {};
       return base44.entities.Receita.filter(f, '-data', 300);
     },
-    staleTime: 120000,
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: despesas = [] } = useQuery({
@@ -195,7 +201,8 @@ export default function Dashboard() {
       const f = user?.empresa_id ? { empresa_id: user.empresa_id } : {};
       return base44.entities.Despesa.filter(f, '-data', 300);
     },
-    staleTime: 120000,
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: etapas = [] } = useQuery({
@@ -213,7 +220,8 @@ export default function Dashboard() {
     queryKey: ['parcelas-exec'],
     enabled: !!user,
     queryFn: () => base44.entities.Parcela.list('-created_date', 200),
-    staleTime: 120000,
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: importacoes = [] } = useQuery({
