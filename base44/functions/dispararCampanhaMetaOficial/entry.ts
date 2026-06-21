@@ -210,6 +210,15 @@ Deno.serve(async (req) => {
           );
           if (conversas.length > 0) {
             convId = conversas[0].id;
+            // Marcar conversa existente como campanha
+            await base44.asServiceRole.entities.ConversaWhatsapp.update(convId, {
+              status: 'campanha',
+              origem: 'campanha',
+              tipo_conexao: 'meta_oficial',
+              canal_origem: 'meta',
+              provider: 'whatsapp_meta',
+              phone_number_id_meta: phoneNumberId,
+            }).catch(() => {});
           } else {
             // Criar nova conversa como campanha
             const nova = await base44.asServiceRole.entities.ConversaWhatsapp.create({
@@ -245,11 +254,13 @@ Deno.serve(async (req) => {
             provider: 'whatsapp_meta',
           });
 
-          // Atualizar última mensagem da conversa
+          // Atualizar última mensagem da conversa (mantendo status campanha)
           await base44.asServiceRole.entities.ConversaWhatsapp.update(convId, {
             ultima_mensagem: `📋 ${template_name}`,
             data_ultima_mensagem: new Date().toISOString(),
             ultimo_remetente: 'vendedor',
+            status: 'campanha',
+            origem: 'campanha',
           }).catch(() => {});
         }
 

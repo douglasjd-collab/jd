@@ -107,6 +107,40 @@ Deno.serve(async (req) => {
             cliente_nome: nome_campanha || 'Campanha Texto',
             status: 'enviada',
           });
+
+          // Criar ou marcar conversa como campanha
+          const convs = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
+            { empresa_id, cliente_telefone: numeroLimpo }, '-data_ultima_mensagem', 1
+          );
+          if (convs.length > 0) {
+            await base44.asServiceRole.entities.ConversaWhatsapp.update(convs[0].id, {
+              status: 'campanha',
+              origem: 'campanha',
+              ultima_mensagem: mensagem_texto.trim().substring(0, 200),
+              data_ultima_mensagem: new Date().toISOString(),
+              ultimo_remetente: 'vendedor',
+              tipo_conexao: 'meta_oficial',
+              canal_origem: 'meta',
+              provider: 'whatsapp_meta',
+            }).catch(() => {});
+          } else {
+            const phoneNumberId = empresa.whatsapp_phone_number_id;
+            await base44.asServiceRole.entities.ConversaWhatsapp.create({
+              empresa_id,
+              cliente_telefone: numeroLimpo,
+              cliente_nome: numeroLimpo,
+              status: 'campanha',
+              origem: 'campanha',
+              tipo_conexao: 'meta_oficial',
+              canal_origem: 'meta',
+              provider: 'whatsapp_meta',
+              phone_number_id_meta: phoneNumberId || null,
+              data_ultima_mensagem: new Date().toISOString(),
+              ultima_mensagem: mensagem_texto.trim().substring(0, 200),
+              ultimo_remetente: 'vendedor',
+            }).catch(() => {});
+          }
+
           enviados++;
         } else {
           erros++;
