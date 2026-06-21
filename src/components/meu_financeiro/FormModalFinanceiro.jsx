@@ -161,7 +161,7 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 py-2">
           {/* Coluna Principal */}
           <div className="md:col-span-3 space-y-4">
-            {/* Valor */}
+            {/* Valor + Status toggle */}
             <div>
               <Label className="text-xs uppercase tracking-wider text-slate-500">Valor</Label>
               <div className="relative mt-1">
@@ -174,12 +174,10 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
                  placeholder="0,00"
                 />
               </div>
-            </div>
-
-            {/* Status toggle */}
-            <div className="flex items-center justify-between py-2">
-              <Label className="text-sm text-slate-700">{tipo === 'receita' ? 'Foi recebida' : 'Foi paga'}</Label>
-              <Switch checked={statusPago} onCheckedChange={setStatusPago} className={corToggle} />
+              <div className="flex items-center justify-between mt-1">
+                <Label className="text-sm text-slate-700">{tipo === 'receita' ? 'Foi recebida' : 'Foi paga'}</Label>
+                <Switch checked={statusPago} onCheckedChange={setStatusPago} className={corToggle} />
+              </div>
             </div>
 
             {/* Data */}
