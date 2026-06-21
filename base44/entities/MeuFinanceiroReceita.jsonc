@@ -53,6 +53,10 @@
     "comprovante_url": {
       "type": "string",
       "description": "URL do comprovante anexado"
+    },
+    "conta_bancaria_id": {
+      "type": "string",
+      "description": "ID da conta banc\u00e1ria vinculada"
     }
   },
   "required": [

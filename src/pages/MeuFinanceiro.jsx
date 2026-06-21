@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { Loader2, Plus, Pencil, Trash2, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Upload, X, Calendar, Building2, CreditCard, Hash, Key, MoreVertical, Eye, AlertTriangle, DollarSign, Clock, PieChart, BarChart3 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts';
+import TransacoesTab from '@/components/meu_financeiro/TransacoesTab';
+import FormModalFinanceiro from '@/components/meu_financeiro/FormModalFinanceiro';
 import { format, startOfMonth, endOfMonth, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -66,19 +68,21 @@ export default function MeuFinanceiro() {
       <Tabs value={aba} onValueChange={setAba}>
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="transacoes">Transações</TabsTrigger>
           <TabsTrigger value="receitas">Receitas</TabsTrigger>
           <TabsTrigger value="despesas">Despesas</TabsTrigger>
           <TabsTrigger value="contas">Contas</TabsTrigger>
           </TabsList>
         <TabsContent value="dashboard"><DashboardTab user={user} refreshKey={refreshKey} /></TabsContent>
+        <TabsContent value="transacoes"><TransacoesTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="receitas"><ReceitasTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="despesas"><DespesasTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="contas"><ContasTab user={user} /></TabsContent>
       </Tabs>
 
       {/* Modais rápidos */}
-      {modalNovaReceita && <FormModal open={modalNovaReceita} onClose={() => setModalNovaReceita(false)} item={null} tipo="receita" user={user} onSaved={() => { onSaved(); setModalNovaReceita(false); }} />}
-      {modalNovaDespesa && <FormModal open={modalNovaDespesa} onClose={() => setModalNovaDespesa(false)} item={null} tipo="despesa" user={user} onSaved={() => { onSaved(); setModalNovaDespesa(false); }} />}
+      {modalNovaReceita && <FormModalFinanceiro open={modalNovaReceita} onClose={() => setModalNovaReceita(false)} item={null} tipo="receita" user={user} onSaved={() => { onSaved(); setModalNovaReceita(false); }} />}
+      {modalNovaDespesa && <FormModalFinanceiro open={modalNovaDespesa} onClose={() => setModalNovaDespesa(false)} item={null} tipo="despesa" user={user} onSaved={() => { onSaved(); setModalNovaDespesa(false); }} />}
     </div>
   );
 }
@@ -373,7 +377,7 @@ function ReceitasTab({ user, refreshKey }) {
         </div>
       )}
 
-      {modal.open && <FormModal open={modal.open} onClose={() => setModal({ open: false, item: null })} item={modal.item} tipo="receita" user={user} onSaved={carregar} />}
+      {modal.open && <FormModalFinanceiro open={modal.open} onClose={() => setModal({ open: false, item: null })} item={modal.item} tipo="receita" user={user} onSaved={carregar} />}
     </div>
   );
 }
@@ -441,7 +445,7 @@ function DespesasTab({ user, refreshKey }) {
         </div>
       )}
 
-      {modal.open && <FormModal open={modal.open} onClose={() => setModal({ open: false, item: null })} item={modal.item} tipo="despesa" user={user} onSaved={carregar} />}
+      {modal.open && <FormModalFinanceiro open={modal.open} onClose={() => setModal({ open: false, item: null })} item={modal.item} tipo="despesa" user={user} onSaved={carregar} />}
     </div>
   );
 }
@@ -671,161 +675,6 @@ function ContaBancariaModal({ open, onClose, conta, user, onSaved }) {
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={salvando}>Cancelar</Button>
           <Button onClick={salvar} disabled={salvando} className="bg-blue-600 hover:bg-blue-700">{salvando ? 'Salvando...' : editando ? 'Salvar' : 'Criar Conta'}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Modal de Formulário ──────────────────────────────────
-function FormModal({ open, onClose, item, tipo, user, onSaved }) {
-  const [form, setForm] = useState({
-    descricao: '', categoria: '', valor: '', data: hoje(),
-    status: tipo === 'receita' ? 'recebida' : 'pendente',
-    data_recebimento: '', data_vencimento: '', data_pagamento: '',
-    observacao: '',
-  });
-  const [salvando, setSalvando] = useState(false);
-  const [categoriasSugestoes, setCategoriasSugestoes] = useState([]);
-  const editando = !!item;
-
-  useEffect(() => {
-    if (open) carregarCategorias();
-    if (item) {
-      setForm({
-        descricao: item.descricao || '',
-        categoria: item.categoria || '',
-        valor: item.valor || '',
-        data: item.data || hoje(),
-        status: item.status || (tipo === 'receita' ? 'recebida' : 'pendente'),
-        data_recebimento: item.data_recebimento || '',
-        data_vencimento: item.data_vencimento || '',
-        data_pagamento: item.data_pagamento || '',
-        observacao: item.observacao || '',
-      });
-    } else {
-      setForm({
-        descricao: '', categoria: '', valor: '', data: hoje(),
-        status: tipo === 'receita' ? 'recebida' : 'pendente',
-        data_recebimento: '', data_vencimento: '', data_pagamento: '',
-        observacao: '',
-      });
-    }
-  }, [open, item]);
-
-  const carregarCategorias = async () => {
-    try {
-      const filtro = { usuario_id: user.auth_id };
-      const entidade = tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
-      const dados = await base44.entities[entidade].filter(filtro, '-data', 500);
-      const cats = [...new Set(dados.map(d => d.categoria).filter(Boolean))];
-      setCategoriasSugestoes(cats);
-    } catch (e) { /* silencioso */ }
-  };
-
-  const handleSalvar = async () => {
-    if (!form.descricao.trim()) { toast.error('Informe a descrição'); return; }
-    if (!form.valor || parseFloat(form.valor) <= 0) { toast.error('Informe um valor válido'); return; }
-    setSalvando(true);
-    try {
-      const payload = {
-        descricao: form.descricao.trim(),
-        categoria: form.categoria.trim() || 'Geral',
-        valor: parseFloat(form.valor),
-        data: form.data,
-        status: form.status,
-        observacao: form.observacao.trim(),
-        empresa_id: user.empresa_id,
-        usuario_id: user.auth_id,
-        usuario_nome: user.nome_perfil || user.full_name,
-      };
-      if (tipo === 'receita') {
-        payload.data_recebimento = form.data_recebimento || null;
-      } else {
-        payload.data_vencimento = form.data_vencimento || null;
-        payload.data_pagamento = form.data_pagamento || null;
-      }
-      const entidade = tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
-      if (editando) await base44.entities[entidade].update(item.id, payload);
-      else await base44.entities[entidade].create(payload);
-      toast.success(editando ? 'Atualizado com sucesso!' : 'Criado com sucesso!');
-      onSaved();
-      onClose();
-    } catch (e) { toast.error('Erro ao salvar'); console.error(e); } finally { setSalvando(false); }
-  };
-
-  const titulo = tipo === 'receita' ? (editando ? 'Editar Receita' : 'Nova Receita') : (editando ? 'Editar Despesa' : 'Nova Despesa');
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle className="flex items-center gap-2">{tipo === 'receita' ? <TrendingUp className="w-5 h-5 text-green-600" /> : <TrendingDown className="w-5 h-5 text-red-600" />}{titulo}</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-slate-700">Descrição *</label>
-            <Input value={form.descricao} onChange={e => setForm(p => ({ ...p, descricao: e.target.value }))} placeholder="Ex: Comissão de venda" className="mt-1" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Categoria</label>
-            <div className="flex gap-2 mt-1">
-              <Input value={form.categoria} onChange={e => setForm(p => ({ ...p, categoria: e.target.value }))} placeholder="Ex: Comissões" className="flex-1" list={`catlist-${tipo}`} />
-              <datalist id={`catlist-${tipo}`}>
-                {categoriasSugestoes.map(c => <option key={c} value={c} />)}
-              </datalist>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium text-slate-700">Valor (R$) *</label>
-              <Input type="number" step="0.01" min="0" value={form.valor} onChange={e => setForm(p => ({ ...p, valor: e.target.value }))} placeholder="0,00" className="mt-1" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700">Data *</label>
-              <Input type="date" value={form.data} onChange={e => setForm(p => ({ ...p, data: e.target.value }))} className="mt-1" />
-            </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-slate-700">Status</label>
-            <Select value={form.status} onValueChange={v => setForm(p => ({ ...p, status: v }))}>
-              <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {tipo === 'receita' ? (
-                  <><SelectItem value="recebida">Recebida</SelectItem><SelectItem value="pendente">Pendente</SelectItem><SelectItem value="cancelada">Cancelada</SelectItem></>
-                ) : (
-                  <><SelectItem value="pago">Pago</SelectItem><SelectItem value="pendente">Pendente</SelectItem><SelectItem value="cancelado">Cancelado</SelectItem></>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          {tipo === 'receita' && (
-            <div>
-              <label className="text-sm font-medium text-slate-700">Data de Recebimento</label>
-              <Input type="date" value={form.data_recebimento} onChange={e => setForm(p => ({ ...p, data_recebimento: e.target.value }))} className="mt-1" />
-            </div>
-          )}
-          {tipo === 'despesa' && (
-            <>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Data de Vencimento</label>
-                <Input type="date" value={form.data_vencimento} onChange={e => setForm(p => ({ ...p, data_vencimento: e.target.value }))} className="mt-1" />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Data de Pagamento</label>
-                <Input type="date" value={form.data_pagamento} onChange={e => setForm(p => ({ ...p, data_pagamento: e.target.value }))} className="mt-1" />
-              </div>
-            </>
-          )}
-          <div>
-            <label className="text-sm font-medium text-slate-700">Observação</label>
-            <Input value={form.observacao} onChange={e => setForm(p => ({ ...p, observacao: e.target.value }))} placeholder="Opcional" className="mt-1" />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={salvando}>Cancelar</Button>
-          <Button onClick={handleSalvar} disabled={salvando} className={tipo === 'receita' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
-            {salvando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
-            {editando ? 'Salvar' : 'Criar'}
-          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
