@@ -38,7 +38,6 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
   const [observacao, setObservacao] = useState('');
   const [tipoLancamento, setTipoLancamento] = useState('unico');
   const [frequencia, setFrequencia] = useState('mensal');
-  const [diaVencimento, setDiaVencimento] = useState(1);
   const [repetirAte, setRepetirAte] = useState('fim_ano');
   const [repetirAteMeses, setRepetirAteMeses] = useState(12);
   const [repetirAteData, setRepetirAteData] = useState('');
@@ -82,7 +81,6 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
       setObservacao(item.observacao || '');
       setTipoLancamento(item.tipo_lancamento || 'unico');
       setFrequencia(item.frequencia || 'mensal');
-      setDiaVencimento(item.dia_vencimento || parseInt(item.data?.split('-')[2] || '1'));
       setRepetirAte(item.repetir_ate_tipo || 'fim_ano');
       setRepetirAteMeses(item.repetir_ate_meses || 12);
       setRepetirAteData(item.repetir_ate_data || '');
@@ -99,7 +97,6 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
       setObservacao('');
       setTipoLancamento('unico');
       setFrequencia('mensal');
-      setDiaVencimento(1);
       setRepetirAte('fim_ano');
       setRepetirAteMeses(12);
       setRepetirAteData('');
@@ -156,7 +153,7 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
         tipo_lancamento: ehRecorrente ? 'recorrente' : 'unico',
         ...(ehRecorrente ? {
           frequencia,
-          dia_vencimento: diaVencimento,
+          dia_vencimento: parseInt(data.split('-')[2]) || 1,
           repetir_ate_tipo: repetirAte,
           repetir_ate_meses: repetirAte === 'meses' ? repetirAteMeses : null,
           repetir_ate_data: repetirAte === 'data' ? repetirAteData : null,
@@ -219,7 +216,7 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
               ...payload,
               origem_id: savedItem.id,
               frequencia,
-              dia_vencimento: diaVencimento,
+              dia_vencimento: parseInt(data.split('-')[2]) || 1,
               repetir_ate_tipo: repetirAte,
               repetir_ate_meses: repetirAteMeses,
               repetir_ate_data: repetirAteData,
@@ -422,10 +419,6 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
                         <SelectItem value="semanal">Semanal</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-slate-600">Dia do Vencimento</label>
-                    <Input type="number" min="1" max="31" className="mt-1 h-9" value={diaVencimento} onChange={e => setDiaVencimento(parseInt(e.target.value) || 1)} />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-slate-600">Repetir Até</label>
