@@ -607,6 +607,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                             <SelectItem value="BLOCO">Bloco</SelectItem>
                             <SelectItem value="CONJUNTO">Conjunto</SelectItem>
                             <SelectItem value="QUADRA">Quadra</SelectItem>
+                            <SelectItem value="SITIO">Sítio</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -697,6 +698,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                             <SelectItem value="BLOCO">Bloco</SelectItem>
                             <SelectItem value="CONJUNTO">Conjunto</SelectItem>
                             <SelectItem value="QUADRA">Quadra</SelectItem>
+                            <SelectItem value="SITIO">Sítio</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1172,6 +1174,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                             <SelectItem value="BLOCO">Bloco</SelectItem>
                             <SelectItem value="CONJUNTO">Conjunto</SelectItem>
                             <SelectItem value="QUADRA">Quadra</SelectItem>
+                            <SelectItem value="SITIO">Sítio</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
