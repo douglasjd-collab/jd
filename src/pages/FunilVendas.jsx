@@ -1408,6 +1408,8 @@ export default function FunilVendas() {
                                          setFormData({
                                           titulo: oport.titulo,
                                           cliente_id: oport.cliente_id || '',
+                                          cliente_nome: oport.cliente_nome || '',
+                                          cliente_telefone: oport.cliente_telefone || '',
                                           valor_estimado: oport.valor_estimado?.toString() || '',
                                           etapa_id: oport.etapa_id,
                                           produto: oport.produto || '',
@@ -1676,7 +1678,7 @@ export default function FunilVendas() {
                   onClick={() => setClienteSearchOpen(true)}
                 >
                   {formData.cliente_id ? (
-                    clienteSelecionado?.nome_completo || clienteSelecionado?.pj_razao_social || 'Cliente selecionado'
+                    clienteSelecionado?.nome_completo || clienteSelecionado?.pj_razao_social || formData.cliente_nome || 'Cliente selecionado'
                   ) : (
                     <span className="text-slate-500">Buscar cliente...</span>
                   )}
