@@ -1934,8 +1934,9 @@ export default function FunilVendas() {
         open={clienteSearchOpen}
         onOpenChange={setClienteSearchOpen}
         onSelectCliente={(cliente) => {
+          const telefoneCliente = cliente.celular || cliente.pj_celular || '';
           setClienteSelecionado(cliente);
-          setFormData({ ...formData, cliente_id: cliente.id, cliente_nome: cliente.nome_completo || cliente.pj_razao_social || '', cliente_telefone: cliente.celular || cliente.pj_celular || '' });
+          setFormData({ ...formData, cliente_id: cliente.id, cliente_nome: cliente.nome_completo || cliente.pj_razao_social || '', cliente_telefone: telefoneCliente, telefone_lead: telefoneCliente });
           setClienteSearchOpen(false);
         }}
         currentUser={currentUser}
