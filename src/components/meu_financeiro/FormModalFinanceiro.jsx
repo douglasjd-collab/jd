@@ -36,8 +36,12 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
   const [subcategoriaId, setSubcategoriaId] = useState('');
   const [contaBancariaId, setContaBancariaId] = useState('');
   const [observacao, setObservacao] = useState('');
-  const [fixa, setFixa] = useState(false);
-  const [repetir, setRepetir] = useState(false);
+  const [tipoLancamento, setTipoLancamento] = useState('unico');
+  const [frequencia, setFrequencia] = useState('mensal');
+  const [diaVencimento, setDiaVencimento] = useState(1);
+  const [repetirAte, setRepetirAte] = useState('fim_ano');
+  const [repetirAteMeses, setRepetirAteMeses] = useState(12);
+  const [repetirAteData, setRepetirAteData] = useState('');
   const [fileUrl, setFileUrl] = useState('');
   const [fileName, setFileName] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -76,8 +80,12 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
       setSubcategoriaId(item.subcategoria_id || '');
       setContaBancariaId(item.conta_bancaria_id || '');
       setObservacao(item.observacao || '');
-      setFixa(!!item.fixa);
-      setRepetir(!!item.repetir);
+      setTipoLancamento(item.tipo_lancamento || 'unico');
+      setFrequencia(item.frequencia || 'mensal');
+      setDiaVencimento(item.dia_vencimento || parseInt(item.data?.split('-')[2] || '1'));
+      setRepetirAte(item.repetir_ate_tipo || 'fim_ano');
+      setRepetirAteMeses(item.repetir_ate_meses || 12);
+      setRepetirAteData(item.repetir_ate_data || '');
       setFileUrl(item.comprovante_url || '');
       setFileName(item.comprovante_nome || '');
     } else {
@@ -89,8 +97,12 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
       setSubcategoriaId('');
       setContaBancariaId('');
       setObservacao('');
-      setFixa(false);
-      setRepetir(false);
+      setTipoLancamento('unico');
+      setFrequencia('mensal');
+      setDiaVencimento(1);
+      setRepetirAte('fim_ano');
+      setRepetirAteMeses(12);
+      setRepetirAteData('');
       setFileUrl('');
       setFileName('');
     }
@@ -127,6 +139,7 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
       const catPrincipal = categoriasList.find(c => c.id === categoriaId);
       const catSub = categoriasList.find(c => c.id === subcategoriaId);
       const categoriaLabel = catSub ? `${catPrincipal?.nome || ''} > ${catSub.nome}` : (catPrincipal?.nome || 'Geral');
+      const ehRecorrente = tipoLancamento === 'recorrente';
       const payload = {
         descricao: descricao.trim(),
         categoria: categoriaLabel,
@@ -140,6 +153,14 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
         categoria_id: categoriaId || null,
         subcategoria_id: subcategoriaId || null,
         comprovante_url: fileUrl || null,
+        tipo_lancamento: ehRecorrente ? 'recorrente' : 'unico',
+        ...(ehRecorrente ? {
+          frequencia,
+          dia_vencimento: diaVencimento,
+          repetir_ate_tipo: repetirAte,
+          repetir_ate_meses: repetirAte === 'meses' ? repetirAteMeses : null,
+          repetir_ate_data: repetirAte === 'data' ? repetirAteData : null,
+        } : {}),
       };
       if (tipo === 'receita') {
         payload.status = statusPago ? 'recebida' : 'pendente';
@@ -181,9 +202,43 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
       }
 
       const entidade = tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
-      if (editando) await base44.entities[entidade].update(item.id, payload);
-      else await base44.entities[entidade].create(payload);
-      toast.success(editando ? 'Atualizado com sucesso!' : `${tipo === 'receita' ? 'Receita' : 'Despesa'} lançada!`);
+      let savedItem;
+      if (editando) {
+        savedItem = await base44.entities[entidade].update(item.id, payload);
+        savedItem = { ...payload, id: item.id };
+      } else {
+        savedItem = await base44.entities[entidade].create(payload);
+      }
+
+      // Se for recorrente, gerar lançamentos futuros
+      if (ehRecorrente && !editando) {
+        try {
+          const res = await base44.functions.invoke('gerarLancamentosRecorrentes', {
+            tipo,
+            dados: {
+              ...payload,
+              origem_id: savedItem.id,
+              frequencia,
+              dia_vencimento: diaVencimento,
+              repetir_ate_tipo: repetirAte,
+              repetir_ate_meses: repetirAteMeses,
+              repetir_ate_data: repetirAteData,
+            },
+            user_id: user.id,
+            empresa_id: user.empresa_id,
+          });
+          if (res.data?.gerados > 0) {
+            toast.success(`${editando ? 'Atualizado' : 'Lançado'} com sucesso! +${res.data.gerados} previsões geradas.`);
+          } else {
+            toast.success(editando ? 'Atualizado com sucesso!' : `${tipo === 'receita' ? 'Receita' : 'Despesa'} lançada!`);
+          }
+        } catch (e) {
+          toast.success(editando ? 'Atualizado!' : 'Lançado! (geração de recorrência falhou)');
+          console.error('Erro ao gerar recorrentes:', e);
+        }
+      } else {
+        toast.success(editando ? 'Atualizado com sucesso!' : `${tipo === 'receita' ? 'Receita' : 'Despesa'} lançada!`);
+      }
       onSaved();
       onClose();
     } catch (e) { toast.error('Erro ao salvar'); console.error(e); } finally { setSalvando(false); }
@@ -344,22 +399,59 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
               />
             </div>
 
-            {/* Toggles */}
+            {/* Tipo de Lançamento */}
             <div className="space-y-3 bg-white border rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-700">{tipo === 'receita' ? 'Receita fixa' : 'Despesa fixa'}</p>
-                  <p className="text-xs text-slate-400">Recorrente todo mês</p>
+                  <p className="text-sm font-medium text-slate-700">Lançamento Recorrente</p>
+                  <p className="text-xs text-slate-400">Gera parcelas futuras automaticamente</p>
                 </div>
-                <Switch checked={fixa} onCheckedChange={setFixa} className={corToggle} />
+                <Switch checked={tipoLancamento === 'recorrente'} onCheckedChange={(v) => setTipoLancamento(v ? 'recorrente' : 'unico')} className={corToggle} />
               </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-700">Repetir</p>
-                  <p className="text-xs text-slate-400">Repetir este lançamento</p>
+
+              {/* Campos de recorrência */}
+              {tipoLancamento === 'recorrente' && (
+                <div className="space-y-3 pt-2 border-t border-slate-100">
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">Frequência</label>
+                    <Select value={frequencia} onValueChange={setFrequencia}>
+                      <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mensal">Mensal</SelectItem>
+                        <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                        <SelectItem value="semanal">Semanal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">Dia do Vencimento</label>
+                    <Input type="number" min="1" max="31" className="mt-1 h-9" value={diaVencimento} onChange={e => setDiaVencimento(parseInt(e.target.value) || 1)} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600">Repetir Até</label>
+                    <Select value={repetirAte} onValueChange={setRepetirAte}>
+                      <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="fim_ano">Final do ano atual</SelectItem>
+                        <SelectItem value="meses">Quantidade de meses</SelectItem>
+                        <SelectItem value="data">Data específica</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {repetirAte === 'meses' && (
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Quantos meses?</label>
+                      <Input type="number" min="1" max="120" className="mt-1 h-9" value={repetirAteMeses} onChange={e => setRepetirAteMeses(parseInt(e.target.value) || 12)} />
+                    </div>
+                  )}
+                  {repetirAte === 'data' && (
+                    <div>
+                      <label className="text-xs font-medium text-slate-600">Data Limite</label>
+                      <Input type="date" className="mt-1 h-9" value={repetirAteData} onChange={e => setRepetirAteData(e.target.value)} />
+                    </div>
+                  )}
                 </div>
-                <Switch checked={repetir} onCheckedChange={setRepetir} className={corToggle} />
-              </div>
+              )}
             </div>
           </div>
         </div>

@@ -73,6 +73,7 @@ export default function MeuFinanceiro() {
           <TabsTrigger value="receitas">Receitas</TabsTrigger>
           <TabsTrigger value="despesas">Despesas</TabsTrigger>
           <TabsTrigger value="contas">Contas</TabsTrigger>
+          <TabsTrigger value="projecao">Projeção</TabsTrigger>
           <TabsTrigger value="dre">DRE</TabsTrigger>
           </TabsList>
         <TabsContent value="dashboard"><DashboardTab user={user} refreshKey={refreshKey} /></TabsContent>
@@ -80,6 +81,7 @@ export default function MeuFinanceiro() {
         <TabsContent value="receitas"><ReceitasTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="despesas"><DespesasTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="contas"><ContasTab user={user} refreshKey={refreshKey} /></TabsContent>
+        <TabsContent value="projecao"><ProjecaoTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="dre"><DRETab user={user} refreshKey={refreshKey} /></TabsContent>
       </Tabs>
 
@@ -124,13 +126,13 @@ function DashboardTab({ user, refreshKey }) {
   const receitaPrevista = receitasMes.filter(r => r.status === 'pendente').reduce((s, r) => s + (r.valor || 0), 0) + receitaRealizada;
   const totalDespesas = despesasMes.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
   const lucroLiquido = receitaRealizada - totalDespesas;
-  const aReceber = receitas.filter(r => r.status === 'pendente').reduce((s, r) => s + (r.valor || 0), 0);
-  const aPagar = despesas.filter(d => d.status === 'pendente').reduce((s, d) => s + (d.valor || 0), 0);
+  const aReceber = receitas.filter(r => r.status === 'pendente' || r.status === 'previsto').reduce((s, r) => s + (r.valor || 0), 0);
+  const aPagar = despesas.filter(d => d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado').reduce((s, d) => s + (d.valor || 0), 0);
 
-  // Contas atrasadas (despesas pendentes com vencimento anterior a hoje)
+  // Contas atrasadas (despesas pendentes/previstas com vencimento anterior a hoje)
   const hojeStr = hoje();
-  const contasAtrasadas = despesas.filter(d => d.status === 'pendente' && d.data_vencimento && d.data_vencimento < hojeStr).reduce((s, d) => s + (d.valor || 0), 0);
-  const qtdAtrasadas = despesas.filter(d => d.status === 'pendente' && d.data_vencimento && d.data_vencimento < hojeStr).length;
+  const contasAtrasadas = despesas.filter(d => (d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado') && d.data_vencimento && d.data_vencimento < hojeStr).reduce((s, d) => s + (d.valor || 0), 0);
+  const qtdAtrasadas = despesas.filter(d => (d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado') && d.data_vencimento && d.data_vencimento < hojeStr).length;
 
   // Saldo bancário — calculado das movimentações (não depende do campo saldo_atual)
   const saldoInicialContas = contas.filter(c => c.status === 'ativa').reduce((s, c) => s + (c.saldo_inicial || 0), 0);
@@ -275,6 +277,9 @@ function DashboardTab({ user, refreshKey }) {
         </Card>
       </div>
 
+      {/* Despesas Fixas / Recorrentes */}
+      <DespesasFixasCard despesas={despesas} />
+
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Barras — Receitas x Despesas */}
@@ -369,7 +374,7 @@ function ReceitasTab({ user, refreshKey }) {
                   <td className="px-4 py-3 text-slate-500">{item.categoria || '-'}</td>
                   <td className="px-4 py-3 text-slate-500">{item.data ? format(parseISO(item.data), 'dd/MM/yy') : '-'}</td>
                   <td className="px-4 py-3 text-right font-medium text-green-700">{fmtMoeda(item.valor)}</td>
-                  <td className="px-4 py-3 text-center"><Badge className={item.status === 'recebida' ? 'bg-green-100 text-green-700' : item.status === 'pendente' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}>{item.status === 'recebida' ? 'Recebida' : item.status === 'pendente' ? 'Pendente' : 'Cancelada'}</Badge></td>
+                  <td className="px-4 py-3 text-center"><StatusBadgeMeuFin status={item.status} tipo="receita" /></td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setModal({ open: true, item, tipo: 'receita' })}><Pencil className="w-3.5 h-3.5" /></Button>
@@ -409,14 +414,14 @@ function DespesasTab({ user, refreshKey }) {
   };
 
   const total = itens.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
-  const pendente = itens.filter(d => d.status === 'pendente').reduce((s, d) => s + (d.valor || 0), 0);
+  const pendente = itens.filter(d => d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado').reduce((s, d) => s + (d.valor || 0), 0);
 
   return (
     <div className="space-y-4 mt-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex gap-3 text-sm">
           <span className="text-red-600 font-medium">Pago: {fmtMoeda(total)}</span>
-          <span className="text-amber-600 font-medium">Pendente: {fmtMoeda(pendente)}</span>
+          <span className="text-amber-600 font-medium">Pendente/Previsto: {fmtMoeda(pendente)}</span>
         </div>
         <Button size="sm" className="bg-red-600 hover:bg-red-700" onClick={() => setModal({ open: true, item: null, tipo: 'despesa' })}><Plus className="w-4 h-4 mr-1" /> Nova Despesa</Button>
       </div>
@@ -437,7 +442,7 @@ function DespesasTab({ user, refreshKey }) {
                   <td className="px-4 py-3 text-slate-500">{item.data ? format(parseISO(item.data), 'dd/MM/yy') : '-'}</td>
                   <td className="px-4 py-3 text-slate-500">{item.data_vencimento ? format(parseISO(item.data_vencimento), 'dd/MM/yy') : '-'}</td>
                   <td className="px-4 py-3 text-right font-medium text-red-600">{fmtMoeda(item.valor)}</td>
-                  <td className="px-4 py-3 text-center"><Badge className={item.status === 'pago' ? 'bg-green-100 text-green-700' : item.status === 'pendente' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'}>{item.status === 'pago' ? 'Pago' : item.status === 'pendente' ? 'Pendente' : 'Cancelado'}</Badge></td>
+                  <td className="px-4 py-3 text-center"><StatusBadgeMeuFin status={item.status} tipo="despesa" /></td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setModal({ open: true, item, tipo: 'despesa' })}><Pencil className="w-3.5 h-3.5" /></Button>
@@ -454,6 +459,266 @@ function DespesasTab({ user, refreshKey }) {
       {modal.open && <FormModalFinanceiro open={modal.open} onClose={() => setModal({ open: false, item: null })} item={modal.item} tipo="despesa" user={user} onSaved={carregar} />}
     </div>
   );
+}
+
+// ─── Despesas Fixas Card ──────────────────────────────────
+function DespesasFixasCard({ despesas }) {
+  const hojeStr = hoje();
+  const anoAtual = new Date().getFullYear();
+  const fimAno = `${anoAtual}-12-31`;
+
+  const recorrentes = despesas.filter(d =>
+    d.tipo_lancamento === 'recorrente' && !d.recorrencia_origem_id
+  );
+
+  const fixas = despesas
+    .filter(d => d.recorrencia_origem_id && d.status !== 'cancelado')
+    .reduce((acc, d) => {
+      const chave = d.recorrencia_origem_id;
+      if (!acc[chave]) acc[chave] = { descricao: d.descricao, valor: d.valor, categorias: new Set(), quantidade: 0, total: 0 };
+      acc[chave].quantidade++;
+      acc[chave].total += d.valor || 0;
+      acc[chave].categorias.add(d.categoria);
+      return acc;
+    }, {});
+
+  // Também incluir originais recorrentes que podem não ter gerado previstos ainda
+  recorrentes.forEach(r => {
+    const previstas = despesas.filter(d => d.recorrencia_origem_id === r.id);
+    if (!fixas[r.id]) {
+      fixas[r.id] = { descricao: r.descricao, valor: r.valor, categorias: new Set([r.categoria]), quantidade: previstas.length, total: r.valor * Math.max(1, previstas.length || 1) };
+    }
+  });
+
+  const entries = Object.values(fixas);
+
+  if (entries.length === 0) return null;
+
+  return (
+    <Card className="border-l-4 border-l-amber-500">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Calendar className="w-5 h-5 text-amber-500" /> Minhas Despesas Fixas
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          {entries.map((f, i) => (
+            <div key={i} className="flex items-center justify-between border-b border-slate-100 pb-2 last:border-0">
+              <div>
+                <p className="text-sm font-medium text-slate-700">{f.descricao}</p>
+                <p className="text-xs text-slate-400">{f.quantidade} mes{f.quantidade > 1 ? 'es' : ''} restante{f.quantidade > 1 ? 's' : ''} · Total previsto: {fmtMoeda(f.total)}</p>
+              </div>
+              <span className="text-sm font-bold text-amber-600">{fmtMoeda(f.valor)}/mês</span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Projeção Financeira ───────────────────────────────────
+function ProjecaoTab({ user, refreshKey }) {
+  const [receitas, setReceitas] = useState([]);
+  const [despesas, setDespesas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showAlertaRenovacao, setShowAlertaRenovacao] = useState(false);
+  const [recorrentesEncerrando, setRecorrentesEncerrando] = useState([]);
+
+  const carregar = useCallback(async () => {
+    setLoading(true);
+    try {
+      const filtro = { usuario_id: user.id, empresa_id: user.empresa_id };
+      const [r, d] = await Promise.all([
+        base44.entities.MeuFinanceiroReceita.filter(filtro, '-data', 2000),
+        base44.entities.MeuFinanceiroDespesa.filter(filtro, '-data', 2000),
+      ]);
+      setReceitas(r); setDespesas(d);
+    } catch (e) { console.error(e); } finally { setLoading(false); }
+  }, [user]);
+
+  useEffect(() => { carregar(); }, [carregar, refreshKey]);
+
+  // Detectar dezembro — alerta de renovação
+  useEffect(() => {
+    const mesAtual = new Date().getMonth() + 1; // 1-12
+    if (mesAtual === 12) {
+      const encerrando = despesas.filter(d =>
+        d.tipo_lancamento === 'recorrente' &&
+        !d.recorrencia_origem_id &&
+        d.repetir_ate_tipo === 'fim_ano'
+      );
+      if (encerrando.length > 0) {
+        setRecorrentesEncerrando(encerrando);
+        setShowAlertaRenovacao(true);
+      }
+    }
+  }, [despesas]);
+
+  const hojeStr = hoje();
+  const anoAtual = new Date().getFullYear();
+  const fimAno = `${anoAtual}-12-31`;
+
+  // Próximo mês
+  const agora = new Date();
+  const proxMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 1);
+  const proxMesStr = format(proxMes, 'yyyy-MM');
+  const fimProxMes = format(new Date(agora.getFullYear(), agora.getMonth() + 2, 0), 'yyyy-MM-dd');
+
+  const despesasProxMes = despesas.filter(d =>
+    d.status !== 'cancelado' && d.data >= format(proxMes, 'yyyy-MM-01') && d.data <= fimProxMes
+  ).reduce((s, d) => s + (d.valor || 0), 0);
+
+  const receitasProxMes = receitas.filter(r =>
+    r.status !== 'cancelada' && r.data >= format(proxMes, 'yyyy-MM-01') && r.data <= fimProxMes
+  ).reduce((s, r) => s + (r.valor || 0), 0);
+
+  const saldoPrevisto = receitasProxMes - despesasProxMes;
+
+  // Total comprometido até dezembro (despesas previstas + pendentes do ano)
+  const totalComprometido = despesas.filter(d =>
+    d.status !== 'cancelado' && d.data <= fimAno && d.data >= hojeStr
+  ).reduce((s, d) => s + (d.valor || 0), 0);
+
+  // Despesas fixas restantes do ano
+  const fixasRestantes = despesas.filter(d =>
+    (d.tipo_lancamento === 'recorrente' || d.recorrencia_origem_id) &&
+    d.status !== 'cancelado' && d.data >= hojeStr && d.data <= fimAno
+  ).reduce((s, d) => s + (d.valor || 0), 0);
+
+  const renovarRecorrentes = async (alterarValores) => {
+    try {
+      for (const r of recorrentesEncerrando) {
+        const novoAno = anoAtual + 1;
+        const novaDataLimite = `${novoAno}-12-31`;
+        await base44.entities.MeuFinanceiroDespesa.update(r.id, {
+          repetir_ate_tipo: 'fim_ano',
+          repetir_ate_data: null,
+          repetir_ate_meses: null,
+        });
+        // Gerar novos lançamentos para o próximo ano
+        await base44.functions.invoke('gerarLancamentosRecorrentes', {
+          tipo: 'despesa',
+          dados: {
+            ...r,
+            origem_id: r.id,
+            frequencia: r.frequencia || 'mensal',
+            dia_vencimento: r.dia_vencimento || parseInt(r.data?.split('-')[2] || '1'),
+            repetir_ate_tipo: 'data',
+            repetir_ate_data: novaDataLimite,
+          },
+          user_id: user.id,
+          empresa_id: user.empresa_id,
+        });
+      }
+      toast.success('Recorrentes renovadas para o próximo ano!');
+      setShowAlertaRenovacao(false);
+      carregar();
+    } catch (e) {
+      toast.error('Erro ao renovar');
+      console.error(e);
+    }
+  };
+
+  const encerrarRecorrencia = async (id) => {
+    try {
+      await base44.entities.MeuFinanceiroDespesa.update(id, { tipo_lancamento: 'unico' });
+      toast.success('Recorrência encerrada');
+      carregar();
+    } catch (e) { toast.error('Erro ao encerrar'); }
+  };
+
+  if (loading) return <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
+
+  return (
+    <div className="space-y-5 mt-4">
+      {/* Alerta de renovação (dezembro) */}
+      {showAlertaRenovacao && recorrentesEncerrando.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-amber-800">Existem despesas recorrentes encerrando em 31/12. Deseja renovar para o próximo ano?</p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={() => renovarRecorrentes(false)}>
+                  Renovar mantendo valores
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => renovarRecorrentes(true)}>
+                  Renovar alterando valores
+                </Button>
+                <Button size="sm" variant="ghost" className="text-red-500" onClick={() => setShowAlertaRenovacao(false)}>
+                  Encerrar recorrência
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cards de projeção */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="bg-white border-l-4 border-l-orange-500">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-slate-500 mb-1">Despesas Previstas (Próx. Mês)</p>
+            <p className="text-xl font-bold text-orange-600">{fmtMoeda(despesasProxMes)}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-l-4 border-l-green-500">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-slate-500 mb-1">Receitas Previstas (Próx. Mês)</p>
+            <p className="text-xl font-bold text-green-600">{fmtMoeda(receitasProxMes)}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-l-4 border-l-blue-500">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-slate-500 mb-1">Saldo Previsto</p>
+            <p className={`text-xl font-bold ${saldoPrevisto >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{fmtMoeda(saldoPrevisto)}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-white border-l-4 border-l-violet-500">
+          <CardContent className="p-4">
+            <p className="text-xs font-medium text-slate-500 mb-1">Total Comprometido até Dez</p>
+            <p className="text-xl font-bold text-violet-600">{fmtMoeda(totalComprometido)}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Resumo despesas fixas restantes */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingDown className="w-5 h-5 text-red-500" /> Despesas Fixas Restantes do Ano
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-bold text-slate-800">{fmtMoeda(fixasRestantes)}</p>
+          <p className="text-xs text-slate-400 mt-1">Soma de todas as despesas recorrentes previstas até 31/12/{anoAtual}</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Status Badge para Meu Financeiro ─────────────────────
+function StatusBadgeMeuFin({ status, tipo }) {
+  const mapa = {
+    receita: {
+      previsto: { label: 'Previsto', classes: 'bg-blue-100 text-blue-700' },
+      pendente: { label: 'Pendente', classes: 'bg-amber-100 text-amber-700' },
+      recebida: { label: 'Recebida', classes: 'bg-green-100 text-green-700' },
+      cancelada: { label: 'Cancelada', classes: 'bg-slate-100 text-slate-500' },
+    },
+    despesa: {
+      previsto: { label: 'Previsto', classes: 'bg-blue-100 text-blue-700' },
+      pendente: { label: 'Pendente', classes: 'bg-amber-100 text-amber-700' },
+      pago: { label: 'Pago', classes: 'bg-green-100 text-green-700' },
+      atrasado: { label: 'Atrasado', classes: 'bg-red-100 text-red-700' },
+      cancelado: { label: 'Cancelado', classes: 'bg-slate-100 text-slate-500' },
+    },
+  };
+  const cfg = (mapa[tipo] || {})[status] || { label: status, classes: 'bg-slate-100 text-slate-500' };
+  return <Badge className={cfg.classes}>{cfg.label}</Badge>;
 }
 
 // ─── Contas Bancárias ─────────────────────────────────────

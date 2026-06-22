@@ -47,12 +47,14 @@
     "status": {
       "type": "string",
       "enum": [
+        "previsto",
         "pendente",
         "pago",
+        "atrasado",
         "cancelado"
       ],
       "default": "pendente",
-      "description": "Status da despesa"
+      "description": "Status da despesa: previsto (gerado automaticamente), pendente, pago, atrasado ou cancelado"
     },
     "data_pagamento": {
       "type": "string",
@@ -70,6 +72,51 @@
     "conta_bancaria_id": {
       "type": "string",
       "description": "ID da conta banc\u00e1ria vinculada"
+    },
+    "tipo_lancamento": {
+      "type": "string",
+      "enum": [
+        "unico",
+        "recorrente"
+      ],
+      "default": "unico",
+      "description": "Tipo de lan\u00e7amento"
+    },
+    "frequencia": {
+      "type": "string",
+      "enum": [
+        "mensal",
+        "semanal",
+        "quinzenal"
+      ],
+      "description": "Frequ\u00eancia da recorr\u00eancia"
+    },
+    "dia_vencimento": {
+      "type": "number",
+      "description": "Dia do vencimento (1-31)"
+    },
+    "repetir_ate_tipo": {
+      "type": "string",
+      "enum": [
+        "fim_ano",
+        "meses",
+        "data"
+      ],
+      "default": "fim_ano",
+      "description": "Tipo de limite da recorr\u00eancia"
+    },
+    "repetir_ate_meses": {
+      "type": "number",
+      "description": "Quantidade de meses (quando repetir_ate_tipo=meses)"
+    },
+    "repetir_ate_data": {
+      "type": "string",
+      "format": "date",
+      "description": "Data limite (quando repetir_ate_tipo=data)"
+    },
+    "recorrencia_origem_id": {
+      "type": "string",
+      "description": "ID do lan\u00e7amento original (para lan\u00e7amentos gerados automaticamente)"
     }
   },
   "required": [
