@@ -64,10 +64,10 @@ export default function ImportacaoDetalhes() {
     enabled: !!importacao?.empresa_id && !!importacao?.administradora_id && importacao?.produto === 'consorcio',
   });
 
-  // Mapa grupo+cota → nome do vendedor ou parceiro
+  // Mapa grupo+cota e contrato → nome do vendedor ou parceiro
   const vendedorMap = useMemo(() => {
     const map = {};
-    // Primeiro preenche com Vendas (vendedor interno)
+    // Preenche com Vendas (vendedor interno) — chave grupo|cota e contrato
     vendas.forEach(v => {
       if (v.grupo && v.cota) {
         const key = `${v.grupo}|${v.cota}`;
@@ -75,13 +75,25 @@ export default function ImportacaoDetalhes() {
           map[key] = v.vendedor_nome || null;
         }
       }
+      if (v.contrato) {
+        const cKey = `C:${v.contrato}`;
+        if (!map[cKey]) {
+          map[cKey] = v.vendedor_nome || null;
+        }
+      }
     });
-    // Depois preenche com Propostas (empresa parceira)
+    // Preenche com Propostas (empresa parceira) — chave grupo|cota e contrato
     propostas.forEach(p => {
       if (p.grupo && p.cota) {
         const key = `${p.grupo}|${p.cota}`;
         if (!map[key] && p.empresa_parceira_nome) {
           map[key] = p.empresa_parceira_nome;
+        }
+      }
+      if (p.contrato) {
+        const cKey = `C:${p.contrato}`;
+        if (!map[cKey] && p.empresa_parceira_nome) {
+          map[cKey] = p.empresa_parceira_nome;
         }
       }
     });
@@ -297,7 +309,7 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
               <TableCell>{item.cota || '-'}</TableCell>
               <TableCell>{item.parcela}</TableCell>
               <TableCell>{formatCurrency(item.valor_recebido)}</TableCell>
-              <TableCell>{vendedorMap[`${item.grupo}|${item.cota}`] || '-'}</TableCell>
+              <TableCell>{vendedorMap[`${item.grupo}|${item.cota}`] || (item.contrato ? vendedorMap[`C:${item.contrato}`] : null) || '-'}</TableCell>
               <TableCell><StatusBadge status={item.status} /></TableCell>
               {showMotivo && (
                 <TableCell className="max-w-xs">
