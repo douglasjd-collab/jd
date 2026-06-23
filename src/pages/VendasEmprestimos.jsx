@@ -349,7 +349,7 @@ export default function VendasEmprestimos() {
     }
   };
 
-  const podeVerTodos = isAdmin || ['gerente', 'colaborador', 'funcionario'].includes(currentUser?.perfil);
+  const podeVerTodos = isAdmin || ['gerente', 'colaborador', 'funcionario', 'colaborador_vendedor'].includes(currentUser?.perfil);
   const podeVerEmpresaParceira = ['master', 'super_admin', 'admin', 'gerente', 'colaborador'].includes(currentUser?.perfil);
 
   const filteredByRole = (propostas || []).filter(p => {
