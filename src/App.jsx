@@ -48,6 +48,7 @@ import DiagnosticoNvoip from './pages/DiagnosticoNvoip';
 import Filiais from './pages/Filiais';
 import CentrosCusto from './pages/CentrosCusto';
 import MeuFinanceiro from './pages/MeuFinanceiro';
+import ImportacaoComissao from './pages/ImportacaoComissao';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -140,6 +141,7 @@ const AuthenticatedApp = () => {
       <Route path="/Filiais" element={<LayoutWrapper currentPageName="Filiais"><Filiais /></LayoutWrapper>} />
       <Route path="/CentrosCusto" element={<LayoutWrapper currentPageName="CentrosCusto"><CentrosCusto /></LayoutWrapper>} />
       <Route path="/MeuFinanceiro" element={<LayoutWrapper currentPageName="MeuFinanceiro"><MeuFinanceiro /></LayoutWrapper>} />
+      <Route path="/ImportacaoComissao" element={<LayoutWrapper currentPageName="ImportacaoComissao"><ImportacaoComissao /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

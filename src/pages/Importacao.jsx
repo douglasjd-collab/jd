@@ -182,7 +182,7 @@ export default function Importacao() {
 
       {/* Ações de Importação */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Link to={createPageUrl('ImportacaoComissaoEmprestimo')}>
+        <Link to={createPageUrl('ImportacaoComissao')}>
           <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
@@ -190,15 +190,15 @@ export default function Importacao() {
                   <Upload className="w-6 h-6 text-blue-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-slate-900 mb-1">Importar Comissões</h3>
-                  <p className="text-sm text-slate-600">Importe arquivos CSV comissões de Empréstimos</p>
+                  <h3 className="font-semibold text-lg text-slate-900 mb-1">Imp. Comissão Consórcio</h3>
+                  <p className="text-sm text-slate-600">Importe arquivos CSV de comissões de Consórcio</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </Link>
 
-        <Link to={createPageUrl('ImportacaoPlanos')}>
+        <Link to={createPageUrl('ImportacaoComissaoEmprestimo')}>
           <Card className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
@@ -206,8 +206,8 @@ export default function Importacao() {
                   <FileUp className="w-6 h-6 text-emerald-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-slate-900 mb-1">Importar Planos</h3>
-                  <p className="text-sm text-slate-600">Importe planos via PDF com extração automática</p>
+                  <h3 className="font-semibold text-lg text-slate-900 mb-1">Imp. Comissão Empréstimo</h3>
+                  <p className="text-sm text-slate-600">Importe arquivos CSV de comissões de Empréstimos</p>
                 </div>
               </div>
             </CardContent>
@@ -222,8 +222,8 @@ export default function Importacao() {
                   <TrendingUp className="w-6 h-6 text-purple-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-slate-900 mb-1">Importar Produção</h3>
-                  <p className="text-sm text-slate-600">Importe dados de produção e vendas</p>
+                  <h3 className="font-semibold text-lg text-slate-900 mb-1">Imp. Proposta Empréstimos</h3>
+                  <p className="text-sm text-slate-600">Importe dados de propostas de empréstimos</p>
                 </div>
               </div>
             </CardContent>
