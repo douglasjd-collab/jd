@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
@@ -42,6 +42,51 @@ export default function ImportacaoDetalhes() {
     queryFn: () => base44.entities.ImportacaoItem.filter({ importacao_id: importacaoId }),
     enabled: !!importacaoId
   });
+
+  // Buscar Vendas da mesma administradora para cruzar vendedor por grupo+cota
+  const { data: vendas = [] } = useQuery({
+    queryKey: ['importacao-vendas-vendedor', importacao?.empresa_id, importacao?.administradora_id],
+    queryFn: () => base44.entities.Venda.filter({
+      empresa_id: importacao.empresa_id,
+      administradora_id: importacao.administradora_id,
+    }, null, 3000),
+    enabled: !!importacao?.empresa_id && !!importacao?.administradora_id && importacao?.produto === 'consorcio',
+  });
+
+  // Buscar Propostas de consórcio para pegar empresa parceira
+  const { data: propostas = [] } = useQuery({
+    queryKey: ['importacao-propostas-parceiro', importacao?.empresa_id, importacao?.administradora_id],
+    queryFn: () => base44.entities.Proposta.filter({
+      empresa_id: importacao.empresa_id,
+      administradora_id: importacao.administradora_id,
+      produto: 'consorcio',
+    }, null, 3000),
+    enabled: !!importacao?.empresa_id && !!importacao?.administradora_id && importacao?.produto === 'consorcio',
+  });
+
+  // Mapa grupo+cota → nome do vendedor ou parceiro
+  const vendedorMap = useMemo(() => {
+    const map = {};
+    // Primeiro preenche com Vendas (vendedor interno)
+    vendas.forEach(v => {
+      if (v.grupo && v.cota) {
+        const key = `${v.grupo}|${v.cota}`;
+        if (!map[key]) {
+          map[key] = v.vendedor_nome || null;
+        }
+      }
+    });
+    // Depois preenche com Propostas (empresa parceira)
+    propostas.forEach(p => {
+      if (p.grupo && p.cota) {
+        const key = `${p.grupo}|${p.cota}`;
+        if (!map[key] && p.empresa_parceira_nome) {
+          map[key] = p.empresa_parceira_nome;
+        }
+      }
+    });
+    return map;
+  }, [vendas, propostas]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -162,13 +207,13 @@ export default function ImportacaoDetalhes() {
           </CardHeader>
           <CardContent>
             <TabsContent value="todos">
-               <ItemsTable itens={itens} formatCurrency={formatCurrency} produto={produto} />
+               <ItemsTable itens={itens} formatCurrency={formatCurrency} produto={produto} vendedorMap={vendedorMap} />
              </TabsContent>
              <TabsContent value="processados">
-               <ItemsTable itens={itensProcessados} formatCurrency={formatCurrency} produto={produto} />
+               <ItemsTable itens={itensProcessados} formatCurrency={formatCurrency} produto={produto} vendedorMap={vendedorMap} />
              </TabsContent>
              <TabsContent value="divergencias">
-               <ItemsTable itens={itensDivergencia} formatCurrency={formatCurrency} produto={produto} showMotivo />
+               <ItemsTable itens={itensDivergencia} formatCurrency={formatCurrency} produto={produto} showMotivo vendedorMap={vendedorMap} />
              </TabsContent>
           </CardContent>
         </Tabs>
@@ -177,7 +222,7 @@ export default function ImportacaoDetalhes() {
   );
 }
 
-function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo = false }) {
+function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo = false, vendedorMap = {} }) {
   if (itens.length === 0) {
     return (
       <div className="text-center py-8 text-slate-500">
@@ -238,6 +283,7 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
             <TableHead>Cota</TableHead>
             <TableHead>Parcela</TableHead>
             <TableHead>Valor</TableHead>
+            <TableHead>Vendedor/Parceiro</TableHead>
             <TableHead>Status</TableHead>
             {showMotivo && <TableHead>Motivo</TableHead>}
           </TableRow>
@@ -251,6 +297,7 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
               <TableCell>{item.cota || '-'}</TableCell>
               <TableCell>{item.parcela}</TableCell>
               <TableCell>{formatCurrency(item.valor_recebido)}</TableCell>
+              <TableCell>{vendedorMap[`${item.grupo}|${item.cota}`] || '-'}</TableCell>
               <TableCell><StatusBadge status={item.status} /></TableCell>
               {showMotivo && (
                 <TableCell className="max-w-xs">
