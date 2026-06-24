@@ -130,17 +130,15 @@ function DashboardTab({ user, refreshKey }) {
   const aReceber = receitasMes.filter(r => r.status === 'pendente' || r.status === 'previsto').reduce((s, r) => s + (r.valor || 0), 0);
 
   // A Pagar: despesas não pagas do mês filtrado + todas as atrasadas (vencidas antes do mês filtrado)
-  const fimMesFiltrado = format(endOfMonth(new Date(`${mesFiltro}-01`)), 'yyyy-MM-dd');
+  const [mesFiltroAno, mesFiltroMes] = mesFiltro.split('-').map(Number);
   const inicioMesFiltrado = `${mesFiltro}-01`;
+  const fimMesFiltrado = format(endOfMonth(new Date(mesFiltroAno, mesFiltroMes - 1, 1)), 'yyyy-MM-dd');
   const aPagar = despesas.filter(d => {
     if (d.status === 'pago' || d.status === 'cancelado') return false;
     const dataRef = d.data_vencimento || d.data;
     if (!dataRef) return false;
-    // Do mês filtrado
-    if (dataRef >= inicioMesFiltrado && dataRef <= fimMesFiltrado) return true;
-    // Atrasadas: vencidas antes do mês filtrado
-    if (dataRef < inicioMesFiltrado) return true;
-    return false;
+    // Do mês filtrado ou antes (atrasadas)
+    return dataRef <= fimMesFiltrado;
   }).reduce((s, d) => s + (d.valor || 0), 0);
 
   // Contas atrasadas: sempre baseado na data atual (independente do filtro)
