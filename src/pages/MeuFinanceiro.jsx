@@ -445,9 +445,9 @@ function DespesasTab({ user, refreshKey }) {
           if (d.status === 'cancelado') return false;
           const dataRef = d.data_vencimento || d.data;
           if (!dataRef) return false;
-          // Atrasadas: pendentes com vencimento antes do mês atual
-          if (dataRef < inicioMesAtual && (d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado')) return true;
-          // Do mês atual: qualquer status
+          // Atrasadas: pendentes/previstas com vencimento antes de hoje (qualquer mês)
+          if (dataRef < hojeStr && (d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado')) return true;
+          // Do mês atual: qualquer status (inclui as de hoje em diante até fim do mês)
           if (dataRef >= inicioMesAtual && dataRef <= fimMesAtual) return true;
           return false;
         });
