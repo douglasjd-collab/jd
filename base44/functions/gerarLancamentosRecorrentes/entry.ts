@@ -36,12 +36,10 @@ Deno.serve(async (req) => {
     }
 
     // Gerar datas de vencimento
+    // Começa sempre no mês seguinte ao da data original do lançamento
     const datas = [];
-    let dataAtual = new Date(hoje.getFullYear(), hoje.getMonth(), diaVencimento);
-    // Se o dia já passou neste mês, começa no próximo
-    if (dataAtual <= hoje) {
-      dataAtual.setMonth(dataAtual.getMonth() + 1);
-    }
+    const dataOrigem = dados.data ? new Date(dados.data + 'T12:00:00') : hoje;
+    let dataAtual = new Date(dataOrigem.getFullYear(), dataOrigem.getMonth() + 1, diaVencimento);
 
     while (dataAtual <= dataLimite) {
       const dia = Math.min(diaVencimento, new Date(dataAtual.getFullYear(), dataAtual.getMonth() + 1, 0).getDate());
