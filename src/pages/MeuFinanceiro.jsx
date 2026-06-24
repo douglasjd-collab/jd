@@ -401,16 +401,26 @@ function ReceitasTab({ user, refreshKey }) {
 }
 
 // ─── Lista de Despesas ─────────────────────────────────────
+const FILTROS_DESPESA = [
+  { key: 'mes_atual_atrasadas', label: 'Mês Atual + Atrasadas' },
+  { key: 'todas', label: 'Todas' },
+  { key: 'atrasadas', label: 'Atrasadas' },
+  { key: 'este_mes', label: 'Este Mês' },
+  { key: 'proximo_mes', label: 'Próximo Mês' },
+  { key: 'pagas', label: 'Pagas' },
+];
+
 function DespesasTab({ user, refreshKey }) {
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, item: null });
+  const [filtroAtivo, setFiltroAtivo] = useState('mes_atual_atrasadas');
 
   const filtroBase = { usuario_id: user.id, empresa_id: user.empresa_id };
 
   const carregar = useCallback(async () => {
     setLoading(true);
-    try { setItens(await base44.entities.MeuFinanceiroDespesa.filter(filtroBase, '-data', 1000)); } catch (e) { console.error(e); } finally { setLoading(false); }
+    try { setItens(await base44.entities.MeuFinanceiroDespesa.filter(filtroBase, '-data_vencimento', 2000)); } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [user]);
 
   useEffect(() => { carregar(); }, [carregar, refreshKey]);
@@ -420,21 +430,83 @@ function DespesasTab({ user, refreshKey }) {
     try { await base44.entities.MeuFinanceiroDespesa.delete(id); toast.success('Despesa excluída'); carregar(); } catch (e) { toast.error('Erro ao excluir'); }
   };
 
-  const total = itens.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
-  const pendente = itens.filter(d => d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado').reduce((s, d) => s + (d.valor || 0), 0);
+  const hojeStr = hoje();
+  const mesAtualStr = format(new Date(), 'yyyy-MM');
+  const inicioMesAtual = `${mesAtualStr}-01`;
+  const fimMesAtual = format(endOfMonth(new Date()), 'yyyy-MM-dd');
+  const proxMesDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
+  const inicioProxMes = format(proxMesDate, 'yyyy-MM-01');
+  const fimProxMes = format(endOfMonth(proxMesDate), 'yyyy-MM-dd');
+
+  const itensFiltrados = useMemo(() => {
+    switch (filtroAtivo) {
+      case 'mes_atual_atrasadas':
+        return itens.filter(d => {
+          if (d.status === 'cancelado') return false;
+          const dataRef = d.data_vencimento || d.data;
+          if (!dataRef) return false;
+          // Atrasadas: pendentes com vencimento antes do mês atual
+          if (dataRef < inicioMesAtual && (d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado')) return true;
+          // Do mês atual: qualquer status
+          if (dataRef >= inicioMesAtual && dataRef <= fimMesAtual) return true;
+          return false;
+        });
+      case 'atrasadas':
+        return itens.filter(d => {
+          const dataRef = d.data_vencimento || d.data;
+          return (d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado') && dataRef && dataRef < hojeStr;
+        });
+      case 'este_mes':
+        return itens.filter(d => {
+          const dataRef = d.data_vencimento || d.data;
+          return dataRef && dataRef >= inicioMesAtual && dataRef <= fimMesAtual;
+        });
+      case 'proximo_mes':
+        return itens.filter(d => {
+          const dataRef = d.data_vencimento || d.data;
+          return dataRef && dataRef >= inicioProxMes && dataRef <= fimProxMes;
+        });
+      case 'pagas':
+        return itens.filter(d => d.status === 'pago');
+      case 'todas':
+      default:
+        return itens;
+    }
+  }, [itens, filtroAtivo, hojeStr, inicioMesAtual, fimMesAtual, inicioProxMes, fimProxMes]);
+
+  const totalPago = itensFiltrados.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
+  const totalPendente = itensFiltrados.filter(d => d.status !== 'pago' && d.status !== 'cancelado').reduce((s, d) => s + (d.valor || 0), 0);
 
   return (
     <div className="space-y-4 mt-4">
+      {/* Filtros rápidos */}
+      <div className="flex flex-wrap gap-2">
+        {FILTROS_DESPESA.map(f => (
+          <button
+            key={f.key}
+            onClick={() => setFiltroAtivo(f.key)}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+              filtroAtivo === f.key
+                ? 'bg-red-600 text-white border-red-600'
+                : 'bg-white text-slate-600 border-slate-300 hover:border-red-400 hover:text-red-600'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex gap-3 text-sm">
-          <span className="text-red-600 font-medium">Pago: {fmtMoeda(total)}</span>
-          <span className="text-amber-600 font-medium">Pendente/Previsto: {fmtMoeda(pendente)}</span>
+          <span className="text-red-600 font-medium">Pago: {fmtMoeda(totalPago)}</span>
+          <span className="text-amber-600 font-medium">Pendente/Previsto: {fmtMoeda(totalPendente)}</span>
+          <span className="text-slate-400 text-xs">{itensFiltrados.length} registro(s)</span>
         </div>
         <Button size="sm" className="bg-red-600 hover:bg-red-700" onClick={() => setModal({ open: true, item: null, tipo: 'despesa' })}><Plus className="w-4 h-4 mr-1" /> Nova Despesa</Button>
       </div>
 
-      {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div> : itens.length === 0 ? (
-        <div className="text-center py-10 text-slate-400">Nenhuma despesa cadastrada.</div>
+      {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div> : itensFiltrados.length === 0 ? (
+        <div className="text-center py-10 text-slate-400">Nenhuma despesa encontrada para este filtro.</div>
       ) : (
         <div className="bg-white rounded-lg border overflow-hidden">
           <table className="w-full text-sm">
@@ -442,22 +514,28 @@ function DespesasTab({ user, refreshKey }) {
               <tr><th className="text-left px-4 py-3">Descrição</th><th className="text-left px-4 py-3">Categoria</th><th className="text-left px-4 py-3">Data</th><th className="text-left px-4 py-3">Vencimento</th><th className="text-right px-4 py-3">Valor</th><th className="text-center px-4 py-3">Status</th><th className="text-right px-4 py-3">Ações</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {itens.map(item => (
-                <tr key={item.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-800">{item.descricao}</td>
-                  <td className="px-4 py-3 text-slate-500">{item.categoria || '-'}</td>
-                  <td className="px-4 py-3 text-slate-500">{item.data ? format(parseISO(item.data), 'dd/MM/yy') : '-'}</td>
-                  <td className="px-4 py-3 text-slate-500">{item.data_vencimento ? format(parseISO(item.data_vencimento), 'dd/MM/yy') : '-'}</td>
-                  <td className="px-4 py-3 text-right font-medium text-red-600">{fmtMoeda(item.valor)}</td>
-                  <td className="px-4 py-3 text-center"><StatusBadgeMeuFin status={item.status} tipo="despesa" /></td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setModal({ open: true, item, tipo: 'despesa' })}><Pencil className="w-3.5 h-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => excluir(item.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {itensFiltrados.map(item => {
+                const atrasada = (item.status === 'pendente' || item.status === 'previsto') && item.data_vencimento && item.data_vencimento < hojeStr;
+                return (
+                  <tr key={item.id} className={`hover:bg-slate-50 ${atrasada ? 'bg-red-50' : ''}`}>
+                    <td className="px-4 py-3 font-medium text-slate-800">
+                      {item.descricao}
+                      {atrasada && <span className="ml-2 text-xs text-red-500 font-normal">• atrasada</span>}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">{item.categoria || '-'}</td>
+                    <td className="px-4 py-3 text-slate-500">{item.data ? format(parseISO(item.data), 'dd/MM/yy') : '-'}</td>
+                    <td className={`px-4 py-3 ${atrasada ? 'text-red-600 font-medium' : 'text-slate-500'}`}>{item.data_vencimento ? format(parseISO(item.data_vencimento), 'dd/MM/yy') : '-'}</td>
+                    <td className="px-4 py-3 text-right font-medium text-red-600">{fmtMoeda(item.valor)}</td>
+                    <td className="px-4 py-3 text-center"><StatusBadgeMeuFin status={item.status} tipo="despesa" /></td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setModal({ open: true, item, tipo: 'despesa' })}><Pencil className="w-3.5 h-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => excluir(item.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
