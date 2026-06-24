@@ -183,7 +183,8 @@ function DashboardTab({ user, refreshKey }) {
   // Opções de meses para o filtro
   const opcoesMeses = useMemo(() => {
     const meses = [];
-    for (let i = 0; i < 12; i++) {
+    // 6 meses futuros + mês atual + 12 meses passados
+    for (let i = -6; i <= 12; i++) {
       const d = subMonths(new Date(), i);
       meses.push({ value: format(d, 'yyyy-MM'), label: format(d, 'MMMM/yyyy', { locale: ptBR }) });
     }
