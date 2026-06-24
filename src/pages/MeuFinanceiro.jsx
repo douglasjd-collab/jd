@@ -517,7 +517,9 @@ function DespesasTab({ user, refreshKey }) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {itensFiltrados.map(item => {
-                const atrasada = (item.status === 'pendente' || item.status === 'previsto') && item.data_vencimento && item.data_vencimento < hojeStr;
+                const dataVencRef = item.data_vencimento || item.data;
+                const atrasada = (item.status === 'pendente' || item.status === 'previsto' || item.status === 'atrasado') && dataVencRef && dataVencRef < hojeStr;
+                const statusVisual = atrasada && item.status === 'previsto' ? 'atrasado' : item.status;
                 return (
                   <tr key={item.id} className={`hover:bg-slate-50 ${atrasada ? 'bg-red-50' : ''}`}>
                     <td className="px-4 py-3 font-medium text-slate-800">
@@ -528,7 +530,7 @@ function DespesasTab({ user, refreshKey }) {
                     <td className="px-4 py-3 text-slate-500">{item.data ? format(parseISO(item.data), 'dd/MM/yy') : '-'}</td>
                     <td className={`px-4 py-3 ${atrasada ? 'text-red-600 font-medium' : 'text-slate-500'}`}>{item.data_vencimento ? format(parseISO(item.data_vencimento), 'dd/MM/yy') : '-'}</td>
                     <td className="px-4 py-3 text-right font-medium text-red-600">{fmtMoeda(item.valor)}</td>
-                    <td className="px-4 py-3 text-center"><StatusBadgeMeuFin status={item.status} tipo="despesa" /></td>
+                    <td className="px-4 py-3 text-center"><StatusBadgeMeuFin status={statusVisual} tipo="despesa" /></td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setModal({ open: true, item, tipo: 'despesa' })}><Pencil className="w-3.5 h-3.5" /></Button>
