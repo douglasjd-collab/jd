@@ -94,16 +94,28 @@ export default function TransacoesTab({ user, refreshKey }) {
     carregar();
   };
 
-  const statusBadge = (status) => {
+  const hoje = new Date().toISOString().slice(0, 10);
+
+  const statusBadge = (item) => {
+    const { status, _tipo, data_vencimento, data } = item;
+    // Verifica atraso: despesa pendente/previsto com data de vencimento (ou data) no passado
+    const isAtrasado = _tipo === 'despesa'
+      && ['pendente', 'previsto'].includes(status)
+      && (data_vencimento || data) < hoje;
+
+    if (isAtrasado) {
+      return <Badge className="bg-red-100 text-red-700 border-0">⚠ Em atraso</Badge>;
+    }
     const map = {
       'recebida': 'bg-green-100 text-green-700 border-0',
       'pendente': 'bg-amber-100 text-amber-700 border-0',
+      'previsto': 'bg-blue-100 text-blue-700 border-0',
       'cancelada': 'bg-slate-100 text-slate-500 border-0',
       'pago': 'bg-green-100 text-green-700 border-0',
       'cancelado': 'bg-slate-100 text-slate-500 border-0',
     };
     const labels = {
-      'recebida': 'Recebida', 'pendente': 'Pendente', 'cancelada': 'Cancelada',
+      'recebida': 'Recebida', 'pendente': 'Pendente', 'previsto': 'Previsto', 'cancelada': 'Cancelada',
       'pago': 'Pago', 'cancelado': 'Cancelado',
     };
     return <Badge className={map[status] || 'bg-slate-100 text-slate-500 border-0'}>{labels[status] || status}</Badge>;
@@ -185,7 +197,7 @@ export default function TransacoesTab({ user, refreshKey }) {
                     <td className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${t._tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
                       {t._tipo === 'receita' ? '+ ' : '- '}{fmtMoeda(t.valor)}
                     </td>
-                    <td className="px-4 py-3 text-center">{statusBadge(t.status)}</td>
+                    <td className="px-4 py-3 text-center">{statusBadge(t)}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-1 relative">
                         {(t._tipo === 'receita' && t.status !== 'recebida') || (t._tipo === 'despesa' && t.status !== 'pago') ? (
