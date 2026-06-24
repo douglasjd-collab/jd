@@ -127,7 +127,17 @@ function DashboardTab({ user, refreshKey }) {
   const totalDespesas = despesasMes.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
   const lucroLiquido = receitaRealizada - totalDespesas;
   const aReceber = receitas.filter(r => r.status === 'pendente' || r.status === 'previsto').reduce((s, r) => s + (r.valor || 0), 0);
-  const aPagar = despesas.filter(d => d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado').reduce((s, d) => s + (d.valor || 0), 0);
+
+  // A Pagar = despesas não pagas do mês atual + despesas atrasadas (de meses anteriores)
+  const inicioMesStr = inicioMes();
+  const fimMesStr = fimMes();
+  const aPagar = despesas.filter(d => {
+    if (d.status === 'pago' || d.status === 'cancelado') return false;
+    const dataRef = d.data_vencimento || d.data;
+    if (!dataRef) return false;
+    // Do mês atual OU atrasadas (anteriores ao mês atual)
+    return dataRef <= fimMesStr;
+  }).reduce((s, d) => s + (d.valor || 0), 0);
 
   // Contas atrasadas (despesas pendentes/previstas com vencimento anterior a hoje)
   const hojeStr = hoje();
