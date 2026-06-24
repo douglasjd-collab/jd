@@ -34,6 +34,10 @@
     },
     "responsavel_mencionado_nome": {
       "type": "string"
+    },
+    "visualizacoes_json": {
+      "type": "string",
+      "description": "JSON array com [{id, nome, foto}] das pessoas que visualizaram"
     }
   },
   "required": [

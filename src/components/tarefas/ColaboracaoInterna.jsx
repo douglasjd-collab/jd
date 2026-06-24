@@ -80,6 +80,12 @@ function MensagemItem({ comentario, currentUser, colaboradores, onReagir, reacoe
   const colab = colaboradores.find(c => c.id === comentario.usuario_id || c.user_id === comentario.usuario_id);
   const foto = colab?.foto_perfil || null;
 
+  // Visualizações: quem viu este comentário (exceto o próprio autor)
+  let visualizacoes = [];
+  try { visualizacoes = comentario.visualizacoes_json ? JSON.parse(comentario.visualizacoes_json) : []; } catch {}
+  // Remover o próprio autor da lista de visualizações
+  visualizacoes = visualizacoes.filter(v => v.id !== comentario.usuario_id);
+
   return (
     <div className={`flex gap-3 group ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
       <UserAvatar
@@ -152,6 +158,26 @@ function MensagemItem({ comentario, currentUser, colaboradores, onReagir, reacoe
                 <span className="text-slate-600 font-medium">{count}</span>
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Visualizações: fotos de quem viu */}
+        {visualizacoes.length > 0 && (
+          <div className={`flex items-center gap-1 mt-0.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div className="flex -space-x-1.5">
+              {visualizacoes.slice(0, 5).map((v, i) => (
+                <div key={v.id || i} title={`Visto por ${v.nome}`} className="w-4 h-4 rounded-full border border-white overflow-hidden flex-shrink-0">
+                  {v.foto ? (
+                    <img src={v.foto} alt={v.nome} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className={`w-full h-full flex items-center justify-center text-white font-bold ${AVATAR_COLORS[(v.nome?.charCodeAt(0) || 0) % AVATAR_COLORS.length]}`} style={{ fontSize: '6px' }}>
+                      {(v.nome || '?').charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <span className="text-slate-300" style={{ fontSize: '9px' }}>✓ visto</span>
           </div>
         )}
       </div>
@@ -332,6 +358,25 @@ export default function ColaboracaoInterna({ tarefa, currentUser, colaboradores 
     queryFn: () => base44.entities.ComentarioTarefa.filter({ tarefa_id: tarefa.id }, 'created_date'),
     refetchInterval: 15000,
   });
+
+  // Marcar comentários como visualizados (dos outros usuários que o currentUser ainda não viu)
+  useEffect(() => {
+    if (!comentarios.length || !currentUser?.id) return;
+    const naoVistos = comentarios.filter(c => {
+      if (c.usuario_id === currentUser.id) return false; // não marca o próprio comentário
+      let vis = [];
+      try { vis = c.visualizacoes_json ? JSON.parse(c.visualizacoes_json) : []; } catch {}
+      return !vis.some(v => v.id === currentUser.id);
+    });
+    if (!naoVistos.length) return;
+    const minhafoto = colaboradores.find(col => col.id === currentUser.id || col.user_id === currentUser.id)?.foto_perfil || null;
+    naoVistos.forEach(async (c) => {
+      let vis = [];
+      try { vis = c.visualizacoes_json ? JSON.parse(c.visualizacoes_json) : []; } catch {}
+      vis.push({ id: currentUser.id, nome: currentUser.nome_perfil || currentUser.full_name || '', foto: minhafoto });
+      await base44.entities.ComentarioTarefa.update(c.id, { visualizacoes_json: JSON.stringify(vis) });
+    });
+  }, [comentarios, currentUser?.id]);
 
   const { data: historico = [] } = useQuery({
     queryKey: ['historico-tarefa', tarefa?.id],
