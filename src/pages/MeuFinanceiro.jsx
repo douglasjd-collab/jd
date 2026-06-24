@@ -430,11 +430,12 @@ function DespesasTab({ user, refreshKey }) {
     try { await base44.entities.MeuFinanceiroDespesa.delete(id); toast.success('Despesa excluída'); carregar(); } catch (e) { toast.error('Erro ao excluir'); }
   };
 
-  const hojeStr = hoje();
-  const mesAtualStr = format(new Date(), 'yyyy-MM');
+  const agora = new Date();
+  const hojeStr = format(agora, 'yyyy-MM-dd');
+  const mesAtualStr = format(agora, 'yyyy-MM');
   const inicioMesAtual = `${mesAtualStr}-01`;
-  const fimMesAtual = format(endOfMonth(new Date()), 'yyyy-MM-dd');
-  const proxMesDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
+  const fimMesAtual = format(endOfMonth(agora), 'yyyy-MM-dd');
+  const proxMesDate = new Date(agora.getFullYear(), agora.getMonth() + 1, 1);
   const inicioProxMes = format(proxMesDate, 'yyyy-MM-01');
   const fimProxMes = format(endOfMonth(proxMesDate), 'yyyy-MM-dd');
 
@@ -443,12 +444,13 @@ function DespesasTab({ user, refreshKey }) {
       case 'mes_atual_atrasadas':
         return itens.filter(d => {
           if (d.status === 'cancelado') return false;
-          const dataRef = d.data_vencimento || d.data;
-          if (!dataRef) return false;
-          // Atrasadas: pendentes/previstas com vencimento antes de hoje (qualquer mês)
-          if (dataRef < hojeStr && (d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado')) return true;
-          // Do mês atual: qualquer status (inclui as de hoje em diante até fim do mês)
-          if (dataRef >= inicioMesAtual && dataRef <= fimMesAtual) return true;
+          // Atrasadas: qualquer despesa não paga com data ou vencimento antes de hoje
+          const dataVenc = d.data_vencimento || d.data;
+          const isPendente = d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado';
+          if (isPendente && dataVenc && dataVenc < hojeStr) return true;
+          // Do mês atual pela data principal
+          const dataLanc = d.data_vencimento || d.data;
+          if (dataLanc && dataLanc >= inicioMesAtual && dataLanc <= fimMesAtual) return true;
           return false;
         });
       case 'atrasadas':
