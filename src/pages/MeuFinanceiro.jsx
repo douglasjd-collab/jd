@@ -519,7 +519,7 @@ function DespesasTab({ user, refreshKey }) {
               {itensFiltrados.map(item => {
                 const dataVencRef = item.data_vencimento || item.data;
                 const atrasada = (item.status === 'pendente' || item.status === 'previsto' || item.status === 'atrasado') && dataVencRef && dataVencRef < hojeStr;
-                const statusVisual = atrasada && item.status === 'previsto' ? 'atrasado' : item.status;
+                const statusVisual = atrasada && (item.status === 'previsto' || item.status === 'pendente') ? 'atrasado' : item.status;
                 return (
                   <tr key={item.id} className={`hover:bg-slate-50 ${atrasada ? 'bg-red-50' : ''}`}>
                     <td className="px-4 py-3 font-medium text-slate-800">
