@@ -22,7 +22,18 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
   const [kbUrl, setKbUrl] = useState('');
   const [kbUploading, setKbUploading] = useState(false);
   const [kbItems, setKbItems] = useState([]);
+  const [kbLoaded, setKbLoaded] = useState(false);
   const kbFileRef = useRef(null);
+
+  useEffect(() => {
+    if (tab === 'kb' && empresaId && !kbLoaded) {
+      base44.entities.BaseConhecimentoIA.filter({ empresa_id: empresaId }, '-created_date', 50)
+        .then(items => {
+          setKbItems(items.map(i => ({ ...i, tags: i.tags ? JSON.parse(i.tags) : [i.tipo] })));
+          setKbLoaded(true);
+        }).catch(() => {});
+    }
+  }, [tab, empresaId, kbLoaded]);
 
   useEffect(() => {
     if (visible && conversaId && mensagens?.length > 0) {
@@ -66,22 +77,38 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
     toast.success(`"${acao.label}" executado!`);
   };
 
+  const salvarNaBase = async (novoItem) => {
+    if (!empresaId) return novoItem;
+    const saved = await base44.entities.BaseConhecimentoIA.create({
+      empresa_id: empresaId,
+      tipo: novoItem.tipo,
+      titulo: novoItem.titulo,
+      resumo: novoItem.resumo,
+      file_url: novoItem.file_url,
+      tags: JSON.stringify(novoItem.tags || [])
+    });
+    return { ...novoItem, id: saved.id };
+  };
+
   const handleKbFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setKbUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const uploadResp = await base44.integrations.Core.UploadFile({ file });
+      const file_url = uploadResp.file_url;
       const isImage = file.type.startsWith('image/');
       const isVideo = file.type.startsWith('video/');
       const tipo = isImage ? 'imagem' : isVideo ? 'video' : 'documento';
       const resp = await base44.integrations.Core.InvokeLLM({
-        prompt: `Analise este ${tipo} e extraia o conteúdo relevante para usar como base de conhecimento de vendas. Retorne um título curto e um resumo do conteúdo.`,
+        prompt: `Analise este ${tipo} e extraia o conteúdo relevante para base de conhecimento de vendas. Retorne título curto (máx 60 chars) e resumo (máx 300 chars).`,
         file_urls: [file_url],
         response_json_schema: { type: 'object', properties: { titulo: { type: 'string' }, resumo: { type: 'string' } } }
       });
-      setKbItems(prev => [...prev, { tipo, titulo: resp.titulo || file.name, resumo: resp.resumo || 'Arquivo processado.', file_url, tags: [tipo] }]);
-      toast.success('Arquivo adicionado à base!');
+      const novoItem = { tipo, titulo: resp.titulo || file.name, resumo: resp.resumo || 'Arquivo processado.', file_url, tags: [tipo] };
+      const salvo = await salvarNaBase(novoItem);
+      setKbItems(prev => [salvo, ...prev]);
+      toast.success('✅ Arquivo analisado e salvo na base!');
     } catch (err) {
       toast.error('Erro ao processar arquivo: ' + err.message);
     } finally {
@@ -95,14 +122,16 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
     setKbUploading(true);
     try {
       const resp = await base44.integrations.Core.InvokeLLM({
-        prompt: `Acesse este link e extraia o conteúdo relevante para usar como base de conhecimento de vendas: ${kbUrl}. Retorne título curto e resumo.`,
+        prompt: `Acesse este link e extraia o conteúdo relevante para base de conhecimento de vendas: ${kbUrl}. Retorne título curto (máx 60 chars) e resumo (máx 300 chars).`,
         add_context_from_internet: true,
         model: 'gemini_3_flash',
         response_json_schema: { type: 'object', properties: { titulo: { type: 'string' }, resumo: { type: 'string' } } }
       });
-      setKbItems(prev => [...prev, { tipo: 'url', titulo: resp.titulo || kbUrl, resumo: resp.resumo || 'Conteúdo extraído.', file_url: kbUrl, tags: ['site'] }]);
+      const novoItem = { tipo: 'url', titulo: resp.titulo || kbUrl, resumo: resp.resumo || 'Conteúdo extraído.', file_url: kbUrl, tags: ['site'] };
+      const salvo = await salvarNaBase(novoItem);
+      setKbItems(prev => [salvo, ...prev]);
       setKbUrl('');
-      toast.success('Site/URL adicionado à base!');
+      toast.success('✅ Site analisado e salvo na base!');
     } catch (err) {
       toast.error('Erro ao processar URL: ' + err.message);
     } finally {
@@ -414,9 +443,13 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
                             <div className="kb-excerpt">{k.resumo?.substring(0,130)}{k.resumo?.length > 130 ? '...' : ''}</div>
                             <div className="mt-1.5">{k.tags?.map((t,j) => <span key={j} className="kb-tag">{t}</span>)}</div>
                           </div>
-                          <button onClick={() => setKbItems(prev => prev.filter((_,idx)=>idx!==i))} style={{background:'none',border:'none',cursor:'pointer',color:'#52525b',padding:2,flexShrink:0}}>
-                            <Trash2 size={11}/>
-                          </button>
+                          <button onClick={async () => {
+                              if (k.id) { try { await base44.entities.BaseConhecimentoIA.delete(k.id); } catch {} }
+                              setKbItems(prev => prev.filter((_,idx)=>idx!==i));
+                              toast.success('Removido da base.');
+                            }} style={{background:'none',border:'none',cursor:'pointer',color:'#52525b',padding:2,flexShrink:0}}>
+                             <Trash2 size={11}/>
+                           </button>
                         </div>
                       </div>
                     );

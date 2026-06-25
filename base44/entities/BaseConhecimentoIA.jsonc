@@ -1,0 +1,63 @@
+{
+  "name": "BaseConhecimentoIA",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "documento",
+        "imagem",
+        "video",
+        "url"
+      ],
+      "description": "Tipo do material"
+    },
+    "titulo": {
+      "type": "string",
+      "description": "T\u00edtulo extra\u00eddo pela IA"
+    },
+    "resumo": {
+      "type": "string",
+      "description": "Resumo do conte\u00fado extra\u00eddo"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL do arquivo ou link original"
+    },
+    "tags": {
+      "type": "string",
+      "description": "Tags em JSON array"
+    },
+    "criado_por_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que adicionou"
+    },
+    "criado_por_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "tipo",
+    "titulo"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    }
+  }
+}
