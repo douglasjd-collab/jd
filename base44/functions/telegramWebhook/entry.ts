@@ -144,16 +144,9 @@ Retorne APENAS um JSON com esta estrutura exata (sem texto adicional):
       type: "object",
       properties: {
         action: { type: "string" },
-        opportunity: { type: "object" },
-        expense: { type: "object" },
-        revenue: { type: "object" },
-        financial_transaction: { type: "object" },
-        advance: { type: "object" },
-        agenda: { type: "object" },
-        list: { type: "object" },
-        clarify: { type: "object" },
         reply: { type: "string" }
-      }
+      },
+      required: ["action", "reply"]
     }
   });
 
@@ -603,12 +596,13 @@ Deno.serve(async (req) => {
         data_pagamento: hoje,
         responsavel_id: sessaoAdvDesc.colaborador_id || 'telegram',
         responsavel_nome: sessaoAdvDesc.colaborador_nome,
-        usuario_id: usuarioId,
+        usuario_id: sessaoAdvDesc.colaborador_id || 'telegram',
         usuario_nome: 'Telegram Bot',
         observacao: `Adiantamento ${tipoLabel} lançado via Telegram - ID: ${adiantamentoId}`,
       });
 
       const valorFmt = sessaoAdvDesc.valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
       await sendTelegram(chatId,
         `✅ <b>Adiantamento Cadastrado com Sucesso!</b>\n\n` +
         `👤 ${sessaoAdvDesc.colaborador_nome}\n` +
@@ -650,18 +644,6 @@ Deno.serve(async (req) => {
       timezone: "-03:00",
       chat_id: chatId,
     };
-
-    // Carregar configuração customizada do robô (se existir)
-    let configRobo = null;
-    try {
-      const configs = await base44.asServiceRole.entities.ConfiguracaoRoboTelegram.filter(
-        empresaId ? { empresa_id: empresaId } : {},
-        '-created_date', 1
-      );
-      if (configs && configs.length > 0) configRobo = configs[0];
-    } catch (_) {}
-
-    const intent = await callLLM(base44, original, context, configRobo);
 
     // Buscar primeira empresa com contas cadastradas
     let empresaId = null;
@@ -710,6 +692,18 @@ Deno.serve(async (req) => {
         console.error('Erro ao buscar colaborador fallback:', err);
       }
     }
+
+    // Carregar configuração customizada do robô (se existir)
+    let configRobo = null;
+    try {
+      const configs = await base44.asServiceRole.entities.ConfiguracaoRoboTelegram.filter(
+        empresaId ? { empresa_id: empresaId } : {},
+        '-created_date', 1
+      );
+      if (configs && configs.length > 0) configRobo = configs[0];
+    } catch (_) {}
+
+    const intent = await callLLM(base44, original, context, configRobo);
 
     if (intent.action === "clarify") {
       await sendTelegram(chatId, `❓ ${intent.clarify?.question || "Me diga mais detalhes, por favor."}`);
