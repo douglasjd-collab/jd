@@ -1084,7 +1084,10 @@ export default function SimuladorNormal() {
                   <Label className="text-sm font-medium">Deseja usar Lance Embutido?</Label>
                   <p className="text-xs text-emerald-600 mt-1">Lance pago com o próprio crédito (% do crédito total)</p>
                 </div>
-                <Switch checked={usarLanceEmbutido} onCheckedChange={setUsarLanceEmbutido} />
+                <Switch checked={usarLanceEmbutido} onCheckedChange={(v) => {
+                  setUsarLanceEmbutido(v);
+                  if (v) setModalidadeLance('livre');
+                }} />
               </div>
               {usarLanceEmbutido && (
                 <div className="space-y-3">
