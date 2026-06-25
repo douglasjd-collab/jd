@@ -163,9 +163,15 @@ export default function SimuladorNormal() {
   });
 
   // Estados para o Relógio de Contemplação
-  const [menorLanceHistorico, setMenorLanceHistorico] = useState(null);
-  const [maiorLanceHistorico, setMaiorLanceHistorico] = useState(null);
+  const [menorLanceLimitado, setMenorLanceLimitado] = useState(null);
+  const [maiorLanceLimitado, setMaiorLanceLimitado] = useState(null);
+  const [menorLanceLivre, setMenorLanceLivre] = useState(null);
+  const [maiorLanceLivre, setMaiorLanceLivre] = useState(null);
   const [relogioContemplacao, setRelogioContemplacao] = useState(null);
+
+  // Seleciona menor/maior lance conforme modalidade
+  const menorLanceHistorico = modalidadeLance === 'livre' ? menorLanceLivre : menorLanceLimitado;
+  const maiorLanceHistorico = modalidadeLance === 'livre' ? maiorLanceLivre : maiorLanceLimitado;
 
   const adicionarCarta = () => {
     setCartas([...cartas, { credito: '', parcela: '', prazo: '', parcelaReduzida: '', planoDecrescente: false, parcelaMeio: '', ultimaParcela: '', nomePlano: '' }]);
@@ -870,8 +876,10 @@ export default function SimuladorNormal() {
           {grupo && (
             <LancesDoGrupoPanel 
               grupo={grupo}
-              onMenorLanceLimitadoChange={setMenorLanceHistorico}
-              onMaiorLanceLimitadoChange={setMaiorLanceHistorico}
+              onMenorLanceLimitadoChange={setMenorLanceLimitado}
+              onMaiorLanceLimitadoChange={setMaiorLanceLimitado}
+              onMenorLanceLivreChange={setMenorLanceLivre}
+              onMaiorLanceLivreChange={setMaiorLanceLivre}
             />
           )}
 
