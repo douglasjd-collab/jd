@@ -261,7 +261,7 @@ Deno.serve(async (req) => {
 
           await sendTelegram(chatId,
             `🏦 Em qual conta foi pago?`,
-            buildContasKeyboard(contas, 'despesa_quitada')
+            buildContasKeyboard(contas, 'conta_despesa')
           );
         } else {
           await answerCallback(cq.id, "📅 Informe a data de vencimento");
@@ -301,7 +301,7 @@ Deno.serve(async (req) => {
 
         if (!jdEmpresaId) {
           await sendTelegram(chatId, "⚠️ Empresa JD Promotora não encontrada.");
-          pendingSessions.delete(`adiantamento_tipo_${chatId}`);
+          await sessionDelete(base44, `adiantamento_tipo_${chatId}`);
           return Response.json({ ok: true });
         }
 
@@ -406,7 +406,7 @@ Deno.serve(async (req) => {
 
           await sendTelegram(chatId,
             `🏦 Em qual conta foi recebido?`,
-            buildContasKeyboard(contas, 'receita_recebida')
+            buildContasKeyboard(contas, 'conta_receita')
           );
         } else {
           await answerCallback(cq.id, "📅 Informe a data prevista");
@@ -418,108 +418,112 @@ Deno.serve(async (req) => {
         return Response.json({ ok: true });
       }
 
-      // ── Seleção de conta (quitada/recebida) ──────────────────────────────
-      // formato: "despesa_quitada:<contaId>" ou "receita_recebida:<contaId>" ou "despesa:<contaId>" ou "receita:<contaId>"
-      const [tipo, contaId] = data.split(":");
-      const sessionKey = `conta_${chatId}`;
-      const session = await sessionGet(base44, sessionKey);
+      // ── Seleção de conta (conta_despesa:<contaId> ou conta_receita:<contaId>) ──
+      if (data.startsWith("conta_despesa:") || data.startsWith("conta_receita:")) {
+        const colonIdx = data.indexOf(":");
+        const tipoConta = data.substring(0, colonIdx); // "conta_despesa" ou "conta_receita"
+        const contaId = data.substring(colonIdx + 1);
+        const sessionKey = `conta_${chatId}`;
+        const session = await sessionGet(base44, sessionKey);
 
-      await answerCallback(cq.id, "✅ Conta selecionada!");
+        await answerCallback(cq.id, "✅ Conta selecionada!");
 
-      if (!session) {
-        await sendTelegram(chatId, "⚠️ Sessão expirada. Lance novamente a transação.");
+        if (!session) {
+          await sendTelegram(chatId, "⚠️ Sessão expirada. Lance novamente a transação.");
+          return Response.json({ ok: true });
+        }
+
+        await sessionDelete(base44, sessionKey);
+        const contaSelecionada = session.contas.find(c => c.id === contaId);
+
+        if (!contaSelecionada) {
+          await sendTelegram(chatId, "⚠️ Conta não encontrada. Tente novamente.");
+          return Response.json({ ok: true });
+        }
+
+        if (tipoConta === 'conta_despesa') {
+          const ex = session.data;
+          let responsavelNome = 'Telegram Bot';
+          try {
+            const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: session.usuarioId }, null, 1);
+            if (colabs.length > 0) responsavelNome = colabs[0].nome || responsavelNome;
+          } catch (_) {}
+
+          const created = await base44.asServiceRole.entities.Despesa.create({
+            empresa_id: session.empresaId,
+            valor: Number(ex.valor),
+            descricao: ex.descricao,
+            categoria: ex.categoria || 'Outros',
+            data: ex.data,
+            data_vencimento: ex.data,
+            status: 'pago',
+            data_pagamento: ex.data,
+            responsavel_id: session.usuarioId || 'telegram',
+            responsavel_nome: responsavelNome,
+            usuario_id: session.usuarioId,
+            usuario_nome: responsavelNome,
+            observacao: 'Lançado via Telegram',
+            conta_bancaria_id: contaSelecionada.id,
+          });
+
+          let novoSaldo = contaSelecionada.saldo_atual || 0;
+          novoSaldo -= Number(ex.valor);
+          await base44.asServiceRole.entities.ContaBancaria.update(contaSelecionada.id, { saldo_atual: novoSaldo });
+
+          const valorFmt = Number(ex.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          const saldoFmt = novoSaldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          await sendTelegram(chatId,
+            `✅ <b>Despesa lançada!</b>\n\n` +
+            `📉 ${ex.descricao}\n` +
+            `💰 Valor: <b>${valorFmt}</b>\n` +
+            `📅 Data: ${ex.data}\n` +
+            `🏦 Conta: <b>${contaSelecionada.nome_conta} (${contaSelecionada.banco})</b>\n` +
+            `💳 Saldo: <b>${saldoFmt}</b>\n` +
+            `🏷️ Categoria: ${ex.categoria || 'Outros'}\n` +
+            `<code>ID ${created.id}</code>`
+          );
+          return Response.json({ ok: true });
+        }
+
+        if (tipoConta === 'conta_receita') {
+          const r = session.data;
+          const created = await base44.asServiceRole.entities.Receita.create({
+            empresa_id: session.empresaId,
+            valor: Number(r.valor),
+            descricao: r.descricao,
+            categoria_id: r.categoria_id || 'telegram',
+            categoria_nome: r.categoria || 'Outros',
+            data: r.data,
+            status: 'recebida',
+            data_recebimento: r.data,
+            origem: 'Telegram',
+            usuario_id: session.usuarioId,
+            conta_bancaria_id: contaSelecionada.id,
+          });
+
+          let novoSaldo = contaSelecionada.saldo_atual || 0;
+          novoSaldo += Number(r.valor);
+          await base44.asServiceRole.entities.ContaBancaria.update(contaSelecionada.id, { saldo_atual: novoSaldo });
+
+          const valorFmt = Number(r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          const saldoFmt = novoSaldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          await sendTelegram(chatId,
+            `✅ <b>Receita lançada!</b>\n\n` +
+            `📈 ${r.descricao}\n` +
+            `💰 Valor: <b>${valorFmt}</b>\n` +
+            `📅 Data: ${r.data}\n` +
+            `🏦 Conta: <b>${contaSelecionada.nome_conta} (${contaSelecionada.banco})</b>\n` +
+            `💳 Saldo: <b>${saldoFmt}</b>\n` +
+            `🏷️ Categoria: ${r.categoria || 'Outros'}\n` +
+            `<code>ID ${created.id}</code>`
+          );
+          return Response.json({ ok: true });
+        }
+
         return Response.json({ ok: true });
       }
 
-      await sessionDelete(base44, sessionKey);
-      const contaSelecionada = session.contas.find(c => c.id === contaId);
-
-      if (!contaSelecionada) {
-        await sendTelegram(chatId, "⚠️ Conta não encontrada. Tente novamente.");
-        return Response.json({ ok: true });
-      }
-
-      if (tipo === 'despesa_quitada') {
-        const ex = session.data;
-        let responsavelNome = 'Telegram Bot';
-        try {
-          const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: session.usuarioId }, null, 1);
-          if (colabs.length > 0) responsavelNome = colabs[0].nome || responsavelNome;
-        } catch (_) {}
-
-        const created = await base44.asServiceRole.entities.Despesa.create({
-          empresa_id: session.empresaId,
-          valor: Number(ex.valor),
-          descricao: ex.descricao,
-          categoria: ex.categoria || 'Outros',
-          data: ex.data,
-          data_vencimento: ex.data,
-          status: 'pago',
-          data_pagamento: ex.data,
-          responsavel_id: session.usuarioId || 'telegram',
-          responsavel_nome: responsavelNome,
-          usuario_id: session.usuarioId,
-          usuario_nome: responsavelNome,
-          observacao: 'Lançado via Telegram',
-          conta_bancaria_id: contaSelecionada.id,
-        });
-
-        // Atualizar saldo da conta
-        let novoSaldo = contaSelecionada.saldo_atual || 0;
-        novoSaldo -= Number(ex.valor);
-        await base44.asServiceRole.entities.ContaBancaria.update(contaSelecionada.id, { saldo_atual: novoSaldo });
-
-        const valorFmt = Number(ex.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const saldoFmt = novoSaldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        await sendTelegram(chatId,
-          `✅ <b>Despesa lançada!</b>\n\n` +
-          `📉 ${ex.descricao}\n` +
-          `💰 Valor: <b>${valorFmt}</b>\n` +
-          `📅 Data: ${ex.data}\n` +
-          `🏦 Conta: <b>${contaSelecionada.nome_conta} (${contaSelecionada.banco})</b>\n` +
-          `💳 Saldo: <b>${saldoFmt}</b>\n` +
-          `🏷️ Categoria: ${ex.categoria || 'Outros'}\n` +
-          `<code>ID ${created.id}</code>`
-        );
-        return Response.json({ ok: true });
-      }
-
-      if (tipo === 'receita_recebida') {
-        const r = session.data;
-        const created = await base44.asServiceRole.entities.Receita.create({
-          empresa_id: session.empresaId,
-          valor: Number(r.valor),
-          descricao: r.descricao,
-          categoria_id: r.categoria_id || 'telegram',
-          categoria_nome: r.categoria || 'Outros',
-          data: r.data,
-          status: 'recebida',
-          data_recebimento: r.data,
-          origem: 'Telegram',
-          usuario_id: session.usuarioId,
-          conta_bancaria_id: contaSelecionada.id,
-        });
-
-        // Atualizar saldo da conta
-        let novoSaldo = contaSelecionada.saldo_atual || 0;
-        novoSaldo += Number(r.valor);
-        await base44.asServiceRole.entities.ContaBancaria.update(contaSelecionada.id, { saldo_atual: novoSaldo });
-
-        const valorFmt = Number(r.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        const saldoFmt = novoSaldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        await sendTelegram(chatId,
-          `✅ <b>Receita lançada!</b>\n\n` +
-          `📈 ${r.descricao}\n` +
-          `💰 Valor: <b>${valorFmt}</b>\n` +
-          `📅 Data: ${r.data}\n` +
-          `🏦 Conta: <b>${contaSelecionada.nome_conta} (${contaSelecionada.banco})</b>\n` +
-          `💳 Saldo: <b>${saldoFmt}</b>\n` +
-          `🏷️ Categoria: ${r.categoria || 'Outros'}\n` +
-          `<code>ID ${created.id}</code>`
-        );
-        return Response.json({ ok: true });
-      }
-
+      await answerCallback(cq.id);
       return Response.json({ ok: true });
     }
     // ─────────────────────────────────────────────────────────────────────
