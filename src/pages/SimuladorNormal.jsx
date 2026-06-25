@@ -338,7 +338,8 @@ export default function SimuladorNormal() {
       return;
     }
 
-    const lancePercentualNum = parseFloat(lanceProprioPercentual);
+    // Usar percentualExibido: soma próprio + embutido no modo livre, ou só próprio
+    const lancePercentualNum = parseFloat(percentualExibido);
     if (isNaN(lancePercentualNum)) {
       setRelogioContemplacao(null);
       return;
@@ -352,7 +353,7 @@ export default function SimuladorNormal() {
     });
 
     setRelogioContemplacao(relogio);
-  }, [usarLanceProprio, lanceProprio, lanceProprioPercentual, menorLanceHistorico, maiorLanceHistorico]);
+  }, [usarLanceProprio, lanceProprio, percentualExibido, menorLanceHistorico, maiorLanceHistorico]);
 
   // Verificar se alguma carta tem plano decrescente
   const temPlanoDecrescente = cartas.some(c => c.planoDecrescente);
@@ -1247,7 +1248,7 @@ export default function SimuladorNormal() {
                     <div className="mt-4">
                       <RelogioContemplacao 
                         relogio={relogioContemplacao}
-                        lanceOfertado={parseFloat(lanceProprioPercentual)}
+                        lanceOfertado={parseFloat(percentualExibido)}
                       />
                     </div>
                   )}
