@@ -1,0 +1,73 @@
+{
+  "name": "MenorLanceAssembleia",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "administradora": {
+      "type": "string",
+      "description": "Nome da administradora"
+    },
+    "grupo": {
+      "type": "string",
+      "description": "N\u00famero do grupo"
+    },
+    "tipo_bem": {
+      "type": "string",
+      "enum": [
+        "automovel",
+        "imovel",
+        "motocicleta",
+        "servico",
+        "outros"
+      ],
+      "description": "Tipo de bem"
+    },
+    "modalidade": {
+      "type": "string",
+      "enum": [
+        "livre",
+        "limitado"
+      ],
+      "description": "Modalidade do lance: livre ou limitado"
+    },
+    "menor_lance_percentual": {
+      "type": "number",
+      "description": "Menor lance contemplado em percentual (%)"
+    },
+    "data_assembleia": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da assembleia"
+    },
+    "observacao": {
+      "type": "string",
+      "description": "Observa\u00e7\u00e3o opcional"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "administradora",
+    "grupo",
+    "tipo_bem",
+    "modalidade",
+    "menor_lance_percentual",
+    "data_assembleia"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,13 +13,15 @@ import {
   SelectValue,
 } from '@/components/ui/select.jsx';
 import { Switch } from '@/components/ui/switch';
-import { Calculator, Plus, Download, Loader2, TrendingUp, X, Copy, ShoppingBag } from 'lucide-react';
+import { Calculator, Plus, Download, Loader2, TrendingUp, X, Copy, ShoppingBag, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import SelecionarPlanoCanopusModal from '@/components/simulador/SelecionarPlanoCanopusModal';
 import LancesDoGrupoPanel from '@/components/simulador/LancesDoGrupoPanel';
 import RelogioContemplacao from '@/components/simulador/RelogioContemplacao';
 import { calcularRelogioContemplacao } from '@/components/utils/calcularRelogioContemplacao';
+import AnaliseContemplacao from '@/components/simulador/AnaliseContemplacao';
+import CadastroMenorLanceModal from '@/components/simulador/CadastroMenorLanceModal';
 
 export default function SimuladorNormal() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -44,6 +46,9 @@ export default function SimuladorNormal() {
   const [cartaIndex, setCartaIndex] = useState(null);
   const [historicoLances, setHistoricoLances] = useState(null);
   const [planoSelecionadoInfo, setPlanoSelecionadoInfo] = useState('');
+  const [modalidadeLance, setModalidadeLance] = useState('limitado'); // 'livre' | 'limitado'
+  const [analiseContemplacao, setAnaliseContemplacao] = useState(null);
+  const [cadastroLanceOpen, setCadastroLanceOpen] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -183,6 +188,41 @@ export default function SimuladorNormal() {
       ? ((parseFloat(lanceProprio) / creditoTotal) * 100).toFixed(2) 
       : '0';
   }, [lanceProprio, creditoTotal]);
+
+  // Buscar análise de contemplação quando houver lances e grupo/empresa
+  useEffect(() => {
+    const buscarAnalise = async () => {
+      if (!empresaId) { setAnaliseContemplacao(null); return; }
+      // Só analisa se houver lance ativo
+      const temLance = usarLanceProprio || usarLanceEmbutido;
+      if (!temLance) { setAnaliseContemplacao(null); return; }
+
+      const lanceProprioVal = usarLanceProprio ? (parseFloat(lanceProprio) || 0) : 0;
+      const lanceEmbutidoVal = usarLanceEmbutido ? (creditoTotal * parseFloat(lanceEmbutidoPercentual || 0) / 100) : 0;
+      const lanceTotal = lanceProprioVal + lanceEmbutidoVal;
+      const lanceOfertadoPct = creditoTotal > 0 ? (lanceTotal / creditoTotal) * 100 : 0;
+
+      if (lanceOfertadoPct <= 0) { setAnaliseContemplacao(null); return; }
+
+      try {
+        // Buscar menor lance cadastrado para o grupo+modalidade ou administradora+tipo_bem+modalidade
+        const filtro = { empresa_id: empresaId, modalidade: modalidadeLance };
+        if (grupo) filtro.grupo = grupo;
+        const registros = await base44.entities.MenorLanceAssembleia.filter(filtro, '-data_assembleia', 10);
+
+        if (!registros || registros.length === 0) {
+          setAnaliseContemplacao({ sem_historico: true, modalidade: modalidadeLance, lanceOfertadoPct });
+          return;
+        }
+
+        const menorLancePct = registros[0].menor_lance_percentual;
+        setAnaliseContemplacao({ modalidade: modalidadeLance, menorLancePct, lanceOfertadoPct, registro: registros[0] });
+      } catch {
+        setAnaliseContemplacao(null);
+      }
+    };
+    buscarAnalise();
+  }, [usarLanceProprio, usarLanceEmbutido, lanceProprio, lanceEmbutidoPercentual, creditoTotal, grupo, empresaId, modalidadeLance]);
 
   // Buscar dados históricos do grupo quando disponível
   useEffect(() => {
@@ -554,6 +594,7 @@ export default function SimuladorNormal() {
         lance_total: resultado.lanceTotal || 0,
         usuario_id: currentUser.id,
         usuario_nome: colab.nome || currentUser.full_name,
+        analise_contemplacao_json: analiseContemplacao ? JSON.stringify(analiseContemplacao) : null,
         status: 'ativa'
       });
 
@@ -702,16 +743,22 @@ export default function SimuladorNormal() {
 
   return (
     <div className="space-y-6">
-      <div className="text-center mb-6">
-        <div className="flex justify-center mb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div className="flex items-center gap-4">
           <img 
             src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" 
             alt="JD Promotora" 
-            className="h-12 w-auto object-contain"
+            className="h-10 w-auto object-contain"
           />
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Simulação de Consórcio</h1>
+            <p className="text-slate-500 text-sm">Simulação completa com análise de contemplação</p>
+          </div>
         </div>
-        <h1 className="text-3xl font-bold text-slate-900 mb-2">Simulação via CRM</h1>
-        <p className="text-slate-500">Simulação simplificada</p>
+        <Button onClick={() => setCadastroLanceOpen(true)} variant="outline" size="sm" className="gap-2 border-[#10353C] text-[#10353C]">
+          <History className="w-4 h-4" />
+          Cadastrar Menor Lance de Assembleia
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1024,6 +1071,11 @@ export default function SimuladorNormal() {
             </CardContent>
           </Card>
 
+          {/* Análise de Contemplação */}
+          {analiseContemplacao && (
+            <AnaliseContemplacao analise={analiseContemplacao} />
+          )}
+
           <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">💰 Lance Próprio (Opcional)</CardTitle>
@@ -1039,6 +1091,27 @@ export default function SimuladorNormal() {
 
               {usarLanceProprio && (
                 <div className="space-y-3">
+                  {/* Modalidade de lance */}
+                  <div>
+                    <Label className="text-xs font-semibold text-slate-600 uppercase">Modalidade do Lance</Label>
+                    <div className="grid grid-cols-2 gap-2 mt-1.5">
+                      <button
+                        onClick={() => setModalidadeLance('livre')}
+                        className={`p-2.5 rounded-lg border-2 text-left transition-all text-xs ${modalidadeLance === 'livre' ? 'border-blue-500 bg-blue-50 text-blue-700 font-semibold' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                      >
+                        Lance Livre
+                        <p className="text-xs font-normal opacity-70 mt-0.5">Próprio + Embutido</p>
+                      </button>
+                      <button
+                        onClick={() => setModalidadeLance('limitado')}
+                        className={`p-2.5 rounded-lg border-2 text-left transition-all text-xs ${modalidadeLance === 'limitado' ? 'border-orange-500 bg-orange-50 text-orange-700 font-semibold' : 'border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                      >
+                        Lance Limitado
+                        <p className="text-xs font-normal opacity-70 mt-0.5">Regra da administradora</p>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Modo de redução */}
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -1402,6 +1475,14 @@ export default function SimuladorNormal() {
           </Card>
         </div>
       </div>
+
+      {/* Modal Cadastro Menor Lance */}
+      <CadastroMenorLanceModal
+        open={cadastroLanceOpen}
+        onOpenChange={setCadastroLanceOpen}
+        empresaId={empresaId}
+        onSaved={() => setCadastroLanceOpen(false)}
+      />
 
       {/* Modal Seleção de Plano */}
       <SelecionarPlanoCanopusModal

@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Loader2, Printer, ArrowLeft } from 'lucide-react';
+import { Printer, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
+import { calcularChanceContemplacao } from '@/components/simulador/AnaliseContemplacao';
 
 export default function ImprimirSimulacao() {
   const [simulacao, setSimulacao] = useState(null);
@@ -145,25 +144,74 @@ export default function ImprimirSimulacao() {
   }
 
   let cartas = [];
-  try {
-    cartas = JSON.parse(simulacao.cartas || '[]');
-  } catch (e) {
-    cartas = [];
-  }
-  const modelo = simulacao.opcao_pos_contemplacao === 'prazo' ? 'Canopus (Recomendado)' : 'Simples';
+  try { cartas = JSON.parse(simulacao.cartas || '[]'); } catch { cartas = []; }
 
-  // Calcular percentual do lance próprio em relação ao crédito
+  const primeiraParcelaNoAto = Number(simulacao?.primeira_parcela_no_ato ?? 0);
+
   const lanceProprioPercentual = simulacao.lance_proprio_ativo && simulacao.credito_total > 0
-    ? ((simulacao.lance_proprio_valor / simulacao.credito_total) * 100).toFixed(2)
-    : '0';
-  
-  // Calcular percentual total ofertado (lance embutido + lance próprio)
+    ? ((simulacao.lance_proprio_valor / simulacao.credito_total) * 100).toFixed(2) : '0';
   const percentualTotalOfertado = simulacao.credito_total > 0
-    ? (((simulacao.lance_embutido_valor || 0) + (simulacao.lance_proprio_valor || 0)) / simulacao.credito_total * 100).toFixed(2)
-    : '0';
+    ? (((simulacao.lance_embutido_valor || 0) + (simulacao.lance_proprio_valor || 0)) / simulacao.credito_total * 100).toFixed(2) : '0';
 
-  // Calcula a primeira parcela no ato usando lógica robusta
-  const { primeiraParcelaNoAto, isParcelaReduzida } = calcularPrimeiraParcelaNoAto();
+  // Análise de contemplação
+  let analise = null;
+  try { analise = simulacao.analise_contemplacao_json ? JSON.parse(simulacao.analise_contemplacao_json) : null; } catch { analise = null; }
+
+  const CHANCE_LABELS = ['Baixa chance', 'Média chance', 'Boa chance', 'Forte chance'];
+  const CHANCE_COLORS = ['text-red-600', 'text-yellow-600', 'text-blue-600', 'text-green-700'];
+  const CHANCE_BG = ['bg-red-50 border-red-200', 'bg-yellow-50 border-yellow-200', 'bg-blue-50 border-blue-200', 'bg-green-50 border-green-200'];
+
+  const renderAnalise = () => {
+    if (!analise) return null;
+    const modalidadeLabel = analise.modalidade === 'livre' ? 'Lance Livre' : 'Lance Limitado';
+    if (analise.sem_historico) {
+      return (
+        <div className="section mb-3">
+          <h2 className="text-base font-bold text-slate-900 mb-2 pb-1 border-b-2 border-[#083942] flex items-center gap-2">
+            <span className="w-2 h-5 bg-[#083942] rounded inline-block" /> Análise de Contemplação
+          </h2>
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded text-sm text-slate-500">
+            Análise de contemplação indisponível por falta de histórico da última assembleia.
+          </div>
+        </div>
+      );
+    }
+    const diff = analise.lanceOfertadoPct - analise.menorLancePct;
+    let nivel = 0;
+    if (diff > 10) nivel = 3; else if (diff >= 0) nivel = 2; else if (diff >= -10) nivel = 1;
+    const diffSinal = diff >= 0 ? '+' : '';
+    return (
+      <div className="section mb-3">
+        <h2 className="text-base font-bold text-slate-900 mb-2 pb-1 border-b-2 border-[#083942] flex items-center gap-2">
+          <span className="w-2 h-5 bg-[#083942] rounded inline-block" /> Análise de Contemplação — {modalidadeLabel}
+        </h2>
+        <div className="grid grid-cols-3 gap-2 mb-3 text-center text-sm">
+          <div className="bg-slate-50 border border-slate-200 rounded p-2">
+            <p className="text-xs text-slate-500">Menor lance histórico</p>
+            <p className="text-xl font-bold">{analise.menorLancePct?.toFixed(2)}%</p>
+          </div>
+          <div className="bg-slate-50 border border-slate-200 rounded p-2">
+            <p className="text-xs text-slate-500">Lance ofertado</p>
+            <p className="text-xl font-bold">{analise.lanceOfertadoPct?.toFixed(2)}%</p>
+          </div>
+          <div className={`rounded p-2 border ${CHANCE_BG[nivel]}`}>
+            <p className={`text-xs ${CHANCE_COLORS[nivel]}`}>Diferença</p>
+            <p className={`text-xl font-bold ${CHANCE_COLORS[nivel]}`}>{diffSinal}{diff.toFixed(2)}%</p>
+          </div>
+        </div>
+        {/* Medidor */}
+        <div className="grid grid-cols-4 gap-1 mb-2">
+          {CHANCE_LABELS.map((l, i) => (
+            <div key={i} className={`py-1.5 px-1 rounded text-center text-xs font-semibold ${i === nivel ? (i === 0 ? 'bg-red-500 text-white' : i === 1 ? 'bg-yellow-400 text-white' : i === 2 ? 'bg-blue-500 text-white' : 'bg-green-600 text-white') : 'bg-slate-100 text-slate-400'}`}>{l}</div>
+          ))}
+        </div>
+        <div className={`rounded p-2 text-center border ${CHANCE_BG[nivel]}`}>
+          <p className={`text-base font-bold ${CHANCE_COLORS[nivel]}`}>{CHANCE_LABELS[nivel]} de contemplação</p>
+          <p className={`text-xs ${CHANCE_COLORS[nivel]}`}>Lance {diffSinal}{diff.toFixed(2)}% em relação ao menor lance da última assembleia</p>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -172,278 +220,177 @@ export default function ImprimirSimulacao() {
           .no-print { display: none !important; }
           body { background: white !important; margin: 0; padding: 0; }
           * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          @page { 
-            margin: 0.3cm;
-            size: A4;
-          }
-          html, body {
-            height: auto !important;
-            overflow: hidden !important;
-          }
-          
-          /* Ocultar sidebar/menu lateral */
-          aside { display: none !important; }
-          nav { display: none !important; }
-          header { display: none !important; }
-          
-          /* Garantir que o conteúdo use largura total */
+          @page { margin: 0.5cm; size: A4; }
+          aside, nav, header { display: none !important; }
           main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-          
-          .compact-print { 
-            font-size: 11px !important; 
-            line-height: 1.3 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          .compact-print h1 { font-size: 20px !important; margin-bottom: 4px !important; }
-          .compact-print h2 { font-size: 14px !important; margin-bottom: 6px !important; padding-bottom: 2px !important; }
-          .compact-print .section { margin-bottom: 8px !important; }
-          .compact-print .card-section { padding: 6px !important; }
         }
       `}</style>
 
-      <div className="bg-white print:h-auto">
-        {/* Botões - não aparecem na impressão */}
+      <div className="bg-white">
+        {/* Botões */}
         <div className="no-print fixed top-4 left-4 right-4 z-50 flex justify-between">
-          <Button
-            variant="outline"
-            className="gap-2 shadow-lg"
+          <Button variant="outline" className="gap-2 shadow-lg"
             onClick={() => {
-              if (simulacao) {
-                localStorage.setItem('simulacao_ultima_nome', simulacao.cliente_nome || '');
-                localStorage.setItem('simulacao_ultimo_telefone', simulacao.telefone || '');
-              }
+              localStorage.setItem('simulacao_ultima_nome', simulacao.cliente_nome || '');
+              localStorage.setItem('simulacao_ultimo_telefone', simulacao.telefone || '');
               window.location.href = '/SimuladorNormal';
-            }}
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Voltar ao Simulador
+            }}>
+            <ArrowLeft className="w-4 h-4" /> Voltar ao Simulador
           </Button>
-          <Button onClick={handleImprimir} className="gap-2 shadow-lg bg-[#23BE84] hover:bg-[#1da570] px-6">
-            <Printer className="w-4 h-4" />
-            <span>Imprimir</span>
+          <Button onClick={handleImprimir} className="gap-2 shadow-lg bg-[#083942] hover:bg-[#10353C] px-6">
+            <Printer className="w-4 h-4" /> Imprimir / Salvar PDF
           </Button>
         </div>
 
-        {/* Conteúdo para impressão */}
-        <div className="max-w-4xl mx-auto p-4 print:p-1 compact-print">
+        <div className="max-w-3xl mx-auto p-6 pt-16 print:pt-0 print:p-3">
+
           {/* Cabeçalho */}
-          <div className="text-center mb-2 pb-2 border-b-2 border-slate-800">
-            <div className="flex justify-center mb-1">
-              <img 
-                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" 
-                alt="JD Promotora" 
-                className="h-8 w-auto object-contain print:h-7"
-              />
+          <div className="bg-[#083942] text-white rounded-xl p-5 mb-4 flex justify-between items-start">
+            <div>
+              <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" alt="JD Promotora" className="h-9 mb-2 object-contain" />
+              <h1 className="text-xl font-bold tracking-wide">JD PROMOTORA</h1>
+              <p className="text-sm opacity-75">Simulação de Consórcio</p>
             </div>
-            <h1 className="text-2xl font-bold text-slate-900 mb-0">
-              Simulação de Consórcio
-            </h1>
-            <p className="text-xs text-slate-600">
-              {new Date(simulacao.created_date).toLocaleDateString('pt-BR')} às {new Date(simulacao.created_date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}
-            </p>
+            <div className="text-right text-sm opacity-80">
+              <p>{new Date(simulacao.created_date || Date.now()).toLocaleDateString('pt-BR')}</p>
+              <p>Vendedor: <strong className="text-white">{simulacao.usuario_nome}</strong></p>
+              <p className="text-xs opacity-60 mt-1">Validade: 30 dias</p>
+            </div>
           </div>
 
-          {/* Dados do Cliente */}
-          <div className="section mb-2">
-            <h2 className="text-lg font-bold text-slate-900 mb-1 pb-1 border-b border-slate-300">
-              📋 Dados do Cliente
+          {/* Bloco 1: Cliente */}
+          <div className="section mb-3">
+            <h2 className="text-sm font-bold text-slate-700 mb-2 pb-1 border-b-2 border-[#083942] uppercase tracking-wide flex items-center gap-2">
+              <span className="w-2 h-4 bg-[#083942] rounded inline-block" /> Dados do Cliente
             </h2>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <span className="font-semibold">Nome:</span> {simulacao.cliente_nome}
-              </div>
-              <div>
-                <span className="font-semibold">Telefone:</span> {simulacao.telefone}
-              </div>
-              <div>
-                <span className="font-semibold">Tipo:</span> <span className="capitalize">{simulacao.tipo_grupo || 'Automóvel'}</span>
-              </div>
-              <div>
-                <span className="font-semibold">Administradora:</span> {simulacao.administradora || 'Canopus'}
-              </div>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+              <div><span className="text-slate-500">Nome:</span> <span className="font-semibold">{simulacao.cliente_nome}</span></div>
+              <div><span className="text-slate-500">Telefone:</span> <span className="font-semibold">{simulacao.telefone}</span></div>
+              <div><span className="text-slate-500">Tipo de Bem:</span> <span className="font-semibold capitalize">{simulacao.tipo_grupo || 'Automóvel'}</span></div>
+              <div><span className="text-slate-500">Administradora:</span> <span className="font-semibold">{simulacao.administradora || 'Canopus'}</span></div>
             </div>
           </div>
 
-          {/* Cartas de Crédito */}
-          <div className="section mb-2">
-            <h2 className="text-lg font-bold text-slate-900 mb-1 pb-1 border-b border-slate-300">
-              💳 Cartas de Crédito
+          {/* Bloco 2: Resumo */}
+          <div className="section mb-3">
+            <h2 className="text-sm font-bold text-slate-700 mb-2 pb-1 border-b-2 border-[#083942] uppercase tracking-wide flex items-center gap-2">
+              <span className="w-2 h-4 bg-[#083942] rounded inline-block" /> Resumo da Simulação
             </h2>
-            <div className="space-y-0.5 mb-1">
-              {cartas.map((carta, i) => (
-                <div key={i} className="text-xs bg-slate-50 p-1.5 rounded">
-                  <strong>Carta {i + 1}:</strong> {formatCurrency(parseFloat(carta.credito))} • Parcela {formatCurrency(parseFloat(carta.parcela))} • {carta.prazo} Meses
-                </div>
-              ))}
-            </div>
-            <div className="card-section bg-blue-50 p-2 rounded text-xs space-y-0.5">
-              <div className="flex justify-between">
-                <span className="font-semibold">💰 Crédito Total:</span>
-                <span className="text-base font-bold text-blue-900">
-                  {formatCurrency(simulacao.credito_total)}
-                </span>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="bg-[#083942] text-white rounded-lg p-2">
+                <p className="text-xs opacity-75">Crédito Total</p>
+                <p className="text-lg font-bold">{formatCurrency(simulacao.credito_total)}</p>
               </div>
-              <div className="flex justify-between">
-                <span className="font-semibold">📅 Parcela Total:</span>
-                <span className="text-base font-bold text-blue-900">
-                  {formatCurrency(simulacao.parcela_total)}
-                </span>
+              <div className="bg-slate-700 text-white rounded-lg p-2">
+                <p className="text-xs opacity-75">Parcela Total</p>
+                <p className="text-lg font-bold">{formatCurrency(simulacao.parcela_total)}</p>
               </div>
-              <div className="flex justify-between">
-                <span className="font-semibold">⏱️ Prazo:</span>
-                <span className="text-base font-bold text-blue-900">
-                  {simulacao.prazo_original} Meses
-                </span>
+              <div className="bg-slate-600 text-white rounded-lg p-2">
+                <p className="text-xs opacity-75">Prazo</p>
+                <p className="text-lg font-bold">{simulacao.prazo_original} meses</p>
               </div>
             </div>
           </div>
 
-          {/* Lances */}
+          {/* Bloco 3: Cartas */}
+          <div className="section mb-3">
+            <h2 className="text-sm font-bold text-slate-700 mb-2 pb-1 border-b-2 border-[#083942] uppercase tracking-wide flex items-center gap-2">
+              <span className="w-2 h-4 bg-[#083942] rounded inline-block" /> Cartas de Crédito
+            </h2>
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-[#083942] text-white">
+                  <th className="p-2 text-left text-xs font-semibold">Carta</th>
+                  <th className="p-2 text-right text-xs font-semibold">Crédito</th>
+                  <th className="p-2 text-right text-xs font-semibold">Parcela</th>
+                  <th className="p-2 text-right text-xs font-semibold">Prazo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cartas.map((carta, i) => (
+                  <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                    <td className="p-2 text-xs">Carta {i + 1}</td>
+                    <td className="p-2 text-xs text-right font-semibold">{formatCurrency(parseFloat(carta.credito))}</td>
+                    <td className="p-2 text-xs text-right">{formatCurrency(parseFloat(carta.parcela))}</td>
+                    <td className="p-2 text-xs text-right">{carta.prazo} meses</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Bloco 4: Lances */}
           {simulacao.lance_total > 0 && (
-            <div className="section mb-2">
-              <h2 className="text-lg font-bold text-slate-900 mb-1 pb-1 border-b border-slate-300">
-                🎯 Lances
+            <div className="section mb-3">
+              <h2 className="text-sm font-bold text-slate-700 mb-2 pb-1 border-b-2 border-[#083942] uppercase tracking-wide flex items-center gap-2">
+                <span className="w-2 h-4 bg-[#083942] rounded inline-block" /> Lances
               </h2>
-              <div className="space-y-1 text-xs">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg divide-y divide-slate-100">
                 {simulacao.lance_embutido_ativo && (
-                  <div className="flex justify-between">
-                    <span>Lance Embutido ({simulacao.lance_embutido_percentual}%):</span>
-                    <span className="font-semibold">
-                      {formatCurrency(simulacao.lance_embutido_valor)}
-                    </span>
+                  <div className="flex justify-between p-2 text-sm">
+                    <span className="text-slate-600">Lance Embutido ({simulacao.lance_embutido_percentual}%)</span>
+                    <span className="font-semibold">{formatCurrency(simulacao.lance_embutido_valor)}</span>
                   </div>
                 )}
                 {simulacao.lance_proprio_ativo && (
-                  <div className="flex justify-between">
-                    <span>Lance Próprio ({lanceProprioPercentual}%):</span>
-                    <span className="font-semibold">
-                      {formatCurrency(simulacao.lance_proprio_valor)}
-                    </span>
+                  <div className="flex justify-between p-2 text-sm">
+                    <span className="text-slate-600">Lance Próprio ({lanceProprioPercentual}%)</span>
+                    <span className="font-semibold">{formatCurrency(simulacao.lance_proprio_valor)}</span>
                   </div>
                 )}
-                <div className="card-section flex justify-between pt-1 border-t border-emerald-200 bg-emerald-50 p-1.5 rounded">
-                  <span className="font-bold">🏆 Lance Total:</span>
-                  <span className="text-base font-bold text-emerald-900">
-                    {formatCurrency(simulacao.lance_total)}
-                  </span>
+                <div className="flex justify-between p-2 bg-green-50 font-bold text-sm">
+                  <span className="text-green-800">Lance Total</span>
+                  <span className="text-green-800 text-base">{formatCurrency(simulacao.lance_total)}</span>
                 </div>
-                {(simulacao.lance_embutido_ativo || simulacao.lance_proprio_ativo) && (
-                  <div className="card-section flex justify-between pt-1 mt-1 bg-orange-50 p-1.5 rounded border border-orange-200">
-                    <span className="font-bold text-orange-900">🎯 Percentual Total Ofertado:</span>
-                    <span className="text-base font-bold text-orange-900">
-                      {percentualTotalOfertado}%
-                    </span>
-                  </div>
-                )}
+                <div className="flex justify-between p-2 text-sm">
+                  <span className="text-slate-600">Percentual Total Ofertado</span>
+                  <span className="font-bold text-[#083942]">{percentualTotalOfertado}%</span>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Valor a Receber */}
-          <div className="section card-section mb-2 p-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg text-white">
-            <h2 className="text-sm font-bold mb-1">💰 Valor que o Cliente Recebe</h2>
-            <p className="text-2xl font-bold mb-0.5">
-              {formatCurrency(simulacao.credito_total - (simulacao.lance_embutido_valor || 0))}
-            </p>
-            <p className="text-xs opacity-90">
-              (Crédito {formatCurrency(simulacao.credito_total)}
-              {simulacao.lance_embutido_valor > 0 && ` - Lance Emb. ${formatCurrency(simulacao.lance_embutido_valor)}`})
-            </p>
+          {/* Bloco 5: Análise de Contemplação */}
+          {renderAnalise()}
+
+          {/* Bloco 6: Valor que o Cliente Recebe */}
+          <div className="mb-3 bg-[#083942] text-white rounded-xl p-4">
+            <p className="text-xs uppercase tracking-wide opacity-75 mb-1">Valor que o Cliente Recebe</p>
+            <p className="text-3xl font-bold">{formatCurrency(simulacao.credito_total - (simulacao.lance_embutido_valor || 0))}</p>
+            <p className="text-xs opacity-70 mt-1">Crédito {formatCurrency(simulacao.credito_total)}{simulacao.lance_embutido_valor > 0 ? ` menos Lance Embutido ${formatCurrency(simulacao.lance_embutido_valor)}` : ''}</p>
           </div>
 
-          {/* Cálculos */}
-          <div className="section mb-2">
-            <h2 className="text-lg font-bold text-slate-900 mb-1 pb-1 border-b border-slate-300">
-              🧮 Cálculos
-            </h2>
-            <div className="space-y-0.5 text-xs">
-              <div className="flex justify-between">
-                <span>Total do Plano:</span>
-                <span className="font-semibold">
-                  {formatCurrency(simulacao.prazo_original * simulacao.parcela_total)}
-                </span>
-              </div>
-              {simulacao.lance_embutido_ativo && simulacao.lance_embutido_valor > 0 && (
-                <div className="flex justify-between text-emerald-700">
-                  <span>✨ Lance Embutido incluso na parcela reduzida (não desconta do saldo):</span>
-                  <span className="font-semibold">
-                    {formatCurrency(simulacao.lance_embutido_valor)}
-                  </span>
-                </div>
-              )}
+          {/* Bloco 7: Resultado Final */}
+          <div className="mb-4 bg-purple-50 border-2 border-purple-300 rounded-xl p-4">
+            <h2 className="text-sm font-bold text-purple-800 uppercase tracking-wide mb-3 text-center">Resultado Final</h2>
+            <div className="divide-y divide-purple-100 text-sm">
+              <div className="flex justify-between py-1.5"><span className="text-slate-600">Total do Plano:</span><span className="font-semibold">{formatCurrency(simulacao.prazo_original * simulacao.parcela_total)}</span></div>
               {simulacao.lance_proprio_ativo && simulacao.lance_proprio_valor > 0 && (
-                <div className="flex justify-between text-red-600">
-                  <span>(-) Lance Próprio:</span>
-                  <span className="font-semibold">
-                    -{formatCurrency(simulacao.lance_proprio_valor)}
-                  </span>
-                </div>
+                <div className="flex justify-between py-1.5 text-purple-700"><span>(-) Lance Próprio:</span><span className="font-semibold">- {formatCurrency(simulacao.lance_proprio_valor)}</span></div>
               )}
-              <div className="flex justify-between text-red-600">
-                <span>(-) 1ª Parcela (no ato):</span>
-                <span className="font-semibold">
-                  -{formatCurrency(primeiraParcelaNoAto)}
-                </span>
-              </div>
-              <div className="card-section flex justify-between pt-1 border-t border-blue-200 bg-blue-50 p-1.5 rounded">
-                <span className="font-bold">Saldo Restante:</span>
-                <span className="text-base font-bold text-blue-900">
-                  {formatCurrency(simulacao.saldo_apos_contemplacao)}
-                </span>
-              </div>
+              <div className="flex justify-between py-1.5 text-orange-700"><span>(-) 1ª Parcela (no ato):</span><span className="font-semibold">- {formatCurrency(primeiraParcelaNoAto)}</span></div>
+              <div className="flex justify-between py-1.5"><span className="font-semibold">Saldo Restante:</span><span className="font-bold">{formatCurrency(simulacao.saldo_apos_contemplacao)}</span></div>
               {simulacao.novo_prazo && simulacao.prazo_original && simulacao.novo_prazo < simulacao.prazo_original && (
                 <>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Carência:</span>
-                    <span className="font-semibold">{simulacao.prazo_original - simulacao.novo_prazo - 1} meses</span>
-                  </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Parcelas Restantes:</span>
-                    <span className="font-semibold">{simulacao.novo_prazo} meses</span>
-                  </div>
+                  <div className="flex justify-between py-1.5 text-slate-500 text-xs"><span>Carência:</span><span>{simulacao.prazo_original - simulacao.novo_prazo - 1} meses</span></div>
+                  <div className="flex justify-between py-1.5 text-slate-500 text-xs"><span>Parcelas Restantes:</span><span>{simulacao.novo_prazo} meses</span></div>
                 </>
               )}
-              {simulacao.opcao_pos_contemplacao === 'prazo' && (
-                <p className="text-xs text-slate-600 italic mt-1">
-                  ⏱️ Carência 3 meses reduz prazo
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Resultado Final */}
-          <div className="card-section bg-gradient-to-r from-purple-100 to-purple-50 border-2 border-purple-300 rounded-lg p-2">
-            <h2 className="text-base font-bold text-purple-900 mb-1 text-center">
-              ✨ Resultado Final
-            </h2>
-            <div className="space-y-1">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-semibold text-purple-800">Novo Prazo:</span>
-                <span className="text-lg font-bold text-purple-900">
-                  {simulacao.novo_prazo} meses
-                </span>
+              <div className="flex justify-between py-2 border-t-2 border-purple-300 mt-1">
+                <span className="font-bold text-purple-800 text-base">Novo Prazo:</span>
+                <span className="font-bold text-purple-900 text-xl">{simulacao.novo_prazo} meses</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-semibold text-purple-800">Nova Parcela:</span>
-                <span className="text-lg font-bold text-purple-900">
-                  {formatCurrency(simulacao.nova_parcela)}
-                </span>
+              <div className="flex justify-between py-1.5">
+                <span className="font-bold text-purple-800 text-base">Nova Parcela:</span>
+                <span className="font-bold text-purple-900 text-xl">{formatCurrency(simulacao.nova_parcela)}</span>
               </div>
-              {simulacao.opcao_pos_contemplacao === 'prazo' && (
-                <div className="pt-1 border-t border-purple-200 text-xs text-purple-700">
-                  ✓ 3 meses de carência após contemplação
-                </div>
-              )}
             </div>
           </div>
 
           {/* Rodapé */}
-          <div className="mt-2 pt-1.5 border-t border-slate-300 text-center text-xs text-slate-500">
-            <p>Modelo: {modelo} • Vendedor: {simulacao.usuario_nome}</p>
-            <p className="mt-1">
-              Simulação sujeita a alterações conforme condições da administradora.
-            </p>
+          <div className="border-t border-slate-300 pt-3 text-center">
+            <p className="text-xs text-slate-600 font-semibold">JD Promotora — Vendedor: {simulacao.usuario_nome} — Emissão: {new Date(simulacao.created_date || Date.now()).toLocaleDateString('pt-BR')}</p>
+            <p className="text-xs text-slate-400 mt-1 italic">Simulação sujeita à alteração conforme regras da administradora, disponibilidade do grupo e resultado da assembleia. A análise de contemplação é baseada no histórico da última assembleia e não garante contemplação.</p>
           </div>
         </div>
       </div>

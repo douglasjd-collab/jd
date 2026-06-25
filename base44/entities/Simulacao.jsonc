@@ -2,6 +2,10 @@
   "name": "Simulacao",
   "type": "object",
   "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
     "cliente_nome": {
       "type": "string",
       "description": "Nome do cliente"
@@ -15,10 +19,11 @@
       "enum": [
         "automovel",
         "imovel",
-        "motocicleta"
+        "motocicleta",
+        "servico"
       ],
       "default": "automovel",
-      "description": "Tipo do grupo (autom\u00f3vel, im\u00f3vel, motocicleta)"
+      "description": "Tipo do grupo"
     },
     "cartas": {
       "type": "string",
@@ -26,7 +31,7 @@
     },
     "credito_total": {
       "type": "number",
-      "description": "Cr\u00e9dito total (soma de todas as cotas)"
+      "description": "Cr\u00e9dito total"
     },
     "parcela_total": {
       "type": "number",
@@ -39,11 +44,11 @@
     },
     "administradora": {
       "type": "string",
-      "description": "Administradora do lance embutido (canopus, outra)"
+      "description": "Administradora"
     },
     "lance_embutido_percentual": {
       "type": "number",
-      "description": "Percentual do lance embutido (25-50%)"
+      "description": "Percentual do lance embutido"
     },
     "lance_embutido_valor": {
       "type": "number",
@@ -56,7 +61,7 @@
     },
     "percentual_reducao": {
       "type": "number",
-      "description": "Percentual de redu\u00e7\u00e3o da parcela (30% ou 50%)"
+      "description": "Percentual de redu\u00e7\u00e3o da parcela"
     },
     "tipo_lance_reduzida": {
       "type": "string",
@@ -66,11 +71,11 @@
         "fixo_50",
         "fixo_30"
       ],
-      "description": "Tipo de lance quando parcela reduzida (lance livre, lance limitado, fixo 50%, fixo 30%)"
+      "description": "Tipo de lance quando parcela reduzida"
     },
     "lance_limitado_valor": {
       "type": "number",
-      "description": "Valor do lance limitado (quando aplic\u00e1vel)"
+      "description": "Valor do lance limitado"
     },
     "lance_proprio_ativo": {
       "type": "boolean",
@@ -83,11 +88,11 @@
     },
     "lance_total": {
       "type": "number",
-      "description": "Total de lance (embutido + pr\u00f3prio)"
+      "description": "Total de lance"
     },
     "lance_considerado_no_saldo": {
       "type": "number",
-      "description": "Lance efetivamente considerado no c\u00e1lculo (pode ser diferente do total se Canopus+embutido)"
+      "description": "Lance efetivamente considerado no c\u00e1lculo"
     },
     "opcao_pos_contemplacao": {
       "type": "string",
@@ -95,7 +100,7 @@
         "prazo",
         "parcela"
       ],
-      "description": "Op\u00e7\u00e3o escolhida: reduzir prazo ou parcela"
+      "description": "Op\u00e7\u00e3o escolhida"
     },
     "prazo_original": {
       "type": "number",
@@ -103,11 +108,11 @@
     },
     "novo_prazo": {
       "type": "number",
-      "description": "Novo prazo ap\u00f3s contempla\u00e7\u00e3o (se escolheu reduzir prazo)"
+      "description": "Novo prazo ap\u00f3s contempla\u00e7\u00e3o"
     },
     "nova_parcela": {
       "type": "number",
-      "description": "Nova parcela ap\u00f3s contempla\u00e7\u00e3o (se escolheu reduzir parcela)"
+      "description": "Nova parcela ap\u00f3s contempla\u00e7\u00e3o"
     },
     "saldo_apos_contemplacao": {
       "type": "number",
@@ -115,11 +120,15 @@
     },
     "primeira_parcela_reduzida_total": {
       "type": "number",
-      "description": "Soma total das primeiras parcelas reduzidas de todas as cartas"
+      "description": "Soma das primeiras parcelas reduzidas"
     },
     "primeira_parcela_no_ato": {
       "type": "number",
-      "description": "Valor da primeira parcela no ato (reduzida se houver, sen\u00e3o parcela total)"
+      "description": "Valor da primeira parcela no ato"
+    },
+    "analise_contemplacao_json": {
+      "type": "string",
+      "description": "JSON com an\u00e1lise de contempla\u00e7\u00e3o (modalidade, menorLancePct, lanceOfertadoPct)"
     },
     "usuario_id": {
       "type": "string",
