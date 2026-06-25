@@ -1,7 +1,49 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.25";
 
-// Sessões pendentes de seleção de conta (em memória, por chat_id)
-const pendingSessions = new Map();
+// Sessões persistidas no banco (TelegramSession) — sobrevivem a restarts
+async function sessionGet(base44, key) {
+  try {
+    const rows = await base44.asServiceRole.entities.TelegramSession.filter({ session_key: key }, '-created_date', 1);
+    if (!rows || rows.length === 0) return null;
+    const row = rows[0];
+    // Verificar expiração
+    if (row.expires_at && new Date(row.expires_at) < new Date()) {
+      await base44.asServiceRole.entities.TelegramSession.delete(row.id);
+      return null;
+    }
+    return JSON.parse(row.session_data);
+  } catch (_) { return null; }
+}
+
+async function sessionSet(base44, key, value) {
+  try {
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString(); // 30 min
+    const rows = await base44.asServiceRole.entities.TelegramSession.filter({ session_key: key }, '-created_date', 1);
+    if (rows && rows.length > 0) {
+      await base44.asServiceRole.entities.TelegramSession.update(rows[0].id, {
+        session_data: JSON.stringify(value),
+        expires_at: expiresAt,
+      });
+    } else {
+      const chatId = key.split('_').pop();
+      await base44.asServiceRole.entities.TelegramSession.create({
+        chat_id: chatId,
+        session_key: key,
+        session_data: JSON.stringify(value),
+        expires_at: expiresAt,
+      });
+    }
+  } catch (_) {}
+}
+
+async function sessionDelete(base44, key) {
+  try {
+    const rows = await base44.asServiceRole.entities.TelegramSession.filter({ session_key: key }, '-created_date', 1);
+    if (rows && rows.length > 0) {
+      await base44.asServiceRole.entities.TelegramSession.delete(rows[0].id);
+    }
+  } catch (_) {}
+}
 
 const ENTITY_AGENDA = "Agenda";
 const ENTITY_OPORTUNIDADES = "Oportunidade";
@@ -188,7 +230,7 @@ Deno.serve(async (req) => {
 
       // ── Fluxo de status de despesa (quitada/agendada) ─────────────────────
       if (data === "despesa_quitada" || data === "despesa_agendada") {
-        const session = pendingSessions.get(`despesa_status_${chatId}`);
+        const session = await sessionGet(base44, `despesa_status_${chatId}`);
         if (!session) {
           await answerCallback(cq.id, "⚠️ Sessão expirada");
           return Response.json({ ok: true });
@@ -197,7 +239,6 @@ Deno.serve(async (req) => {
         if (data === "despesa_quitada") {
           await answerCallback(cq.id, "✅ Agora selecione a conta...");
           
-          // Buscar contas da empresa JD Promotora
           const contas = await base44.asServiceRole.entities.ContaBancaria.filter(
             { empresa_id: session.empresaId, status: 'ativa' },
             'nome_conta', 20
@@ -205,29 +246,27 @@ Deno.serve(async (req) => {
 
           if (!contas || contas.length === 0) {
             await sendTelegram(chatId, "⚠️ Nenhuma conta bancária cadastrada para a empresa.");
-            pendingSessions.delete(`despesa_status_${chatId}`);
+            await sessionDelete(base44, `despesa_status_${chatId}`);
             return Response.json({ ok: true });
           }
 
-          // Guardar para próximo step de seleção de conta
-          pendingSessions.set(`conta_${chatId}`, {
+          await sessionSet(base44, `conta_${chatId}`, {
             tipo: 'despesa_quitada',
             empresaId: session.empresaId,
             usuarioId: session.usuarioId,
             contas,
             data: session.data,
           });
-          pendingSessions.delete(`despesa_status_${chatId}`);
+          await sessionDelete(base44, `despesa_status_${chatId}`);
 
           await sendTelegram(chatId,
             `🏦 Em qual conta foi pago?`,
             buildContasKeyboard(contas, 'despesa_quitada')
           );
         } else {
-          // Despesa agendada: pedir data de vencimento
           await answerCallback(cq.id, "📅 Informe a data de vencimento");
-          pendingSessions.set(`despesa_vencimento_${chatId}`, session);
-          pendingSessions.delete(`despesa_status_${chatId}`);
+          await sessionSet(base44, `despesa_vencimento_${chatId}`, session);
+          await sessionDelete(base44, `despesa_status_${chatId}`);
           
           await sendTelegram(chatId, "📅 Em que data vence? (formato: DD/MM/YYYY ou ex: amanhã, próxima segunda)");
         }
@@ -236,7 +275,7 @@ Deno.serve(async (req) => {
 
       // ── Fluxo de tipo de adiantamento (funcionário/vendedor) ──────────────
       if (data === "adv_funcionario" || data === "adv_vendedor") {
-        const session = pendingSessions.get(`adiantamento_tipo_${chatId}`);
+        const session = await sessionGet(base44, `adiantamento_tipo_${chatId}`);
         if (!session) {
           await answerCallback(cq.id, "⚠️ Sessão expirada");
           return Response.json({ ok: true });
@@ -286,14 +325,14 @@ Deno.serve(async (req) => {
         if (!lista || lista.length === 0) {
           const tipoLabel = session.tipo === "funcionario" ? "funcionários" : "vendedores";
           await sendTelegram(chatId, `⚠️ Nenhum ${tipoLabel} encontrado.`);
-          pendingSessions.delete(`adiantamento_tipo_${chatId}`);
+          await sessionDelete(base44, `adiantamento_tipo_${chatId}`);
           return Response.json({ ok: true });
         }
 
         // Guardar lista na sessão
         session.lista = lista;
-        pendingSessions.set(`adiantamento_selecao_${chatId}`, session);
-        pendingSessions.delete(`adiantamento_tipo_${chatId}`);
+        await sessionSet(base44, `adiantamento_selecao_${chatId}`, session);
+        await sessionDelete(base44, `adiantamento_tipo_${chatId}`);
 
         // Criar keyboard com botões de seleção
         const inline_keyboard = lista.slice(0, 10).map(item => ([{
@@ -309,7 +348,7 @@ Deno.serve(async (req) => {
       // ── Seleção de funcionário/vendedor ──────────────────────────────────
       if (data.startsWith("adv_select:")) {
         const colaboradorId = data.split(":")[1];
-        const session = pendingSessions.get(`adiantamento_selecao_${chatId}`);
+        const session = await sessionGet(base44, `adiantamento_selecao_${chatId}`);
         
         if (!session) {
           await answerCallback(cq.id, "⚠️ Sessão expirada");
@@ -327,8 +366,8 @@ Deno.serve(async (req) => {
         // Guardar pessoa selecionada e solicitar valor
         session.colaborador_id = encontrado.id;
         session.colaborador_nome = encontrado.nome;
-        pendingSessions.set(`adiantamento_valor_${chatId}`, session);
-        pendingSessions.delete(`adiantamento_selecao_${chatId}`);
+        await sessionSet(base44, `adiantamento_valor_${chatId}`, session);
+        await sessionDelete(base44, `adiantamento_selecao_${chatId}`);
 
         await sendTelegram(chatId, `✅ ${encontrado.nome}\n\n💰 Qual é o <b>valor</b> do adiantamento?\n\n(exemplo: 100,00 ou 500)`);
         return Response.json({ ok: true });
@@ -336,7 +375,7 @@ Deno.serve(async (req) => {
 
       // ── Fluxo de status de receita (recebida/agendada) ───────────────────
       if (data === "receita_recebida" || data === "receita_agendada") {
-        const session = pendingSessions.get(`receita_status_${chatId}`);
+        const session = await sessionGet(base44, `receita_status_${chatId}`);
         if (!session) {
           await answerCallback(cq.id, "⚠️ Sessão expirada");
           return Response.json({ ok: true });
@@ -345,7 +384,6 @@ Deno.serve(async (req) => {
         if (data === "receita_recebida") {
           await answerCallback(cq.id, "✅ Agora selecione a conta...");
           
-          // Buscar contas da empresa JD Promotora
           const contas = await base44.asServiceRole.entities.ContaBancaria.filter(
             { empresa_id: session.empresaId, status: 'ativa' },
             'nome_conta', 20
@@ -353,29 +391,27 @@ Deno.serve(async (req) => {
 
           if (!contas || contas.length === 0) {
             await sendTelegram(chatId, "⚠️ Nenhuma conta bancária cadastrada para a empresa.");
-            pendingSessions.delete(`receita_status_${chatId}`);
+            await sessionDelete(base44, `receita_status_${chatId}`);
             return Response.json({ ok: true });
           }
 
-          // Guardar para próximo step de seleção de conta
-          pendingSessions.set(`conta_${chatId}`, {
+          await sessionSet(base44, `conta_${chatId}`, {
             tipo: 'receita_recebida',
             empresaId: session.empresaId,
             usuarioId: session.usuarioId,
             contas,
             data: session.data,
           });
-          pendingSessions.delete(`receita_status_${chatId}`);
+          await sessionDelete(base44, `receita_status_${chatId}`);
 
           await sendTelegram(chatId,
             `🏦 Em qual conta foi recebido?`,
             buildContasKeyboard(contas, 'receita_recebida')
           );
         } else {
-          // Receita agendada: pedir data de recebimento
           await answerCallback(cq.id, "📅 Informe a data prevista");
-          pendingSessions.set(`receita_vencimento_${chatId}`, session);
-          pendingSessions.delete(`receita_status_${chatId}`);
+          await sessionSet(base44, `receita_vencimento_${chatId}`, session);
+          await sessionDelete(base44, `receita_status_${chatId}`);
           
           await sendTelegram(chatId, "📅 Em que data será recebida? (formato: DD/MM/YYYY ou ex: amanhã, próxima segunda)");
         }
@@ -386,7 +422,7 @@ Deno.serve(async (req) => {
       // formato: "despesa_quitada:<contaId>" ou "receita_recebida:<contaId>" ou "despesa:<contaId>" ou "receita:<contaId>"
       const [tipo, contaId] = data.split(":");
       const sessionKey = `conta_${chatId}`;
-      const session = pendingSessions.get(sessionKey);
+      const session = await sessionGet(base44, sessionKey);
 
       await answerCallback(cq.id, "✅ Conta selecionada!");
 
@@ -395,7 +431,7 @@ Deno.serve(async (req) => {
         return Response.json({ ok: true });
       }
 
-      pendingSessions.delete(sessionKey);
+      await sessionDelete(base44, sessionKey);
       const contaSelecionada = session.contas.find(c => c.id === contaId);
 
       if (!contaSelecionada) {
@@ -506,7 +542,7 @@ Deno.serve(async (req) => {
 
 
     // ── Fluxo de valor de adiantamento
-    const sessaoAdvValor = pendingSessions.get(`adiantamento_valor_${chatId}`);
+    const sessaoAdvValor = await sessionGet(base44, `adiantamento_valor_${chatId}`);
     if (sessaoAdvValor) {
       // Parsear valor
       const valorMatch = original.match(/[\d.,]+/);
@@ -523,8 +559,8 @@ Deno.serve(async (req) => {
 
       // Guardar valor e solicitar descrição
       sessaoAdvValor.valor = valor;
-      pendingSessions.set(`adiantamento_descricao_${chatId}`, sessaoAdvValor);
-      pendingSessions.delete(`adiantamento_valor_${chatId}`);
+      await sessionSet(base44, `adiantamento_descricao_${chatId}`, sessaoAdvValor);
+      await sessionDelete(base44, `adiantamento_valor_${chatId}`);
 
       const valorFmt = valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       await sendTelegram(chatId, `✅ Valor: ${valorFmt}\n\n📝 Qual é a <b>descrição/motivo</b> do adiantamento?\n\n(exemplo: Adiantamento salarial, Emergência, etc)`);
@@ -532,11 +568,11 @@ Deno.serve(async (req) => {
     }
 
     // ── Fluxo de descrição de adiantamento
-    const sessaoAdvDesc = pendingSessions.get(`adiantamento_descricao_${chatId}`);
+    const sessaoAdvDesc = await sessionGet(base44, `adiantamento_descricao_${chatId}`);
     if (sessaoAdvDesc) {
       const descricao = original.trim();
       sessaoAdvDesc.descricao = descricao;
-      pendingSessions.delete(`adiantamento_descricao_${chatId}`);
+      await sessionDelete(base44, `adiantamento_descricao_${chatId}`);
 
       // Buscar empresa JD Promotora
       let jdEmpresaId = null;
@@ -713,7 +749,7 @@ Deno.serve(async (req) => {
 
     if (intent.action === "create_advance") {
       // Iniciar fluxo: perguntar tipo
-      pendingSessions.set(`adiantamento_tipo_${chatId}`, {});
+      await sessionSet(base44, `adiantamento_tipo_${chatId}`, {});
 
       await sendTelegram(chatId,
         `💰 <b>Novo Adiantamento</b>\n\n` +
@@ -738,7 +774,7 @@ Deno.serve(async (req) => {
       }
 
       // Guardar sessão e solicitar telefone
-      pendingSessions.set(`oportunidade_${chatId}`, {
+      await sessionSet(base44, `oportunidade_${chatId}`, {
         nome: op.nome,
         produto: op.produto || 'consorcio',
         observacao: op.observacao || null,
@@ -750,10 +786,10 @@ Deno.serve(async (req) => {
     }
 
     // ── Fluxo de oportunidade - recebendo telefone ────────────────────────
-    const sessaoOp = pendingSessions.get(`oportunidade_${chatId}`);
+    const sessaoOp = await sessionGet(base44, `oportunidade_${chatId}`);
     if (sessaoOp) {
       const telefone = original === "skip" ? null : original;
-      pendingSessions.delete(`oportunidade_${chatId}`);
+      await sessionDelete(base44, `oportunidade_${chatId}`);
 
       // Buscar primeira etapa ativa do funil
       let etapaId = null;
@@ -845,7 +881,7 @@ Deno.serve(async (req) => {
       }
 
       // Guardar sessão e perguntar status
-      pendingSessions.set(`despesa_status_${chatId}`, {
+      await sessionSet(base44, `despesa_status_${chatId}`, {
         tipo: 'despesa',
         empresaId: jdEmpresaId,
         usuarioId,
@@ -896,7 +932,7 @@ Deno.serve(async (req) => {
       }
 
       // Guardar sessão e perguntar status
-      pendingSessions.set(`receita_status_${chatId}`, {
+      await sessionSet(base44, `receita_status_${chatId}`, {
         tipo: 'receita',
         empresaId: jdEmpresaId,
         usuarioId,

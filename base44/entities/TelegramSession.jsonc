@@ -1,0 +1,42 @@
+{
+  "name": "TelegramSession",
+  "type": "object",
+  "properties": {
+    "chat_id": {
+      "type": "string",
+      "description": "ID do chat do Telegram"
+    },
+    "session_key": {
+      "type": "string",
+      "description": "Chave da sess\u00e3o (ex: despesa_status_12345)"
+    },
+    "session_data": {
+      "type": "string",
+      "description": "JSON serializado com os dados da sess\u00e3o"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Quando a sess\u00e3o expira"
+    }
+  },
+  "required": [
+    "chat_id",
+    "session_key",
+    "session_data"
+  ],
+  "security": {
+    "read": {
+      "rule": "return true;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return true;"
+    },
+    "delete": {
+      "rule": "return true;"
+    }
+  }
+}
