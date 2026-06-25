@@ -203,6 +203,16 @@ export default function SimuladorNormal() {
       : '0';
   }, [lanceProprio, creditoTotal]);
 
+  // Percentual total exibido: no Lance Livre soma embutido + próprio
+  const percentualExibido = React.useMemo(() => {
+    if (modalidadeLance === 'livre' && usarLanceEmbutido && lanceEmbutidoPercentual && lanceProprio && creditoTotal > 0) {
+      const pctProprio = (parseFloat(lanceProprio) / creditoTotal) * 100;
+      const pctEmbutido = parseFloat(lanceEmbutidoPercentual) || 0;
+      return (pctProprio + pctEmbutido).toFixed(2);
+    }
+    return lanceProprioPercentual;
+  }, [modalidadeLance, usarLanceEmbutido, lanceEmbutidoPercentual, lanceProprio, creditoTotal, lanceProprioPercentual]);
+
   // Buscar análise de contemplação quando houver lances e grupo/empresa
   useEffect(() => {
     const buscarAnalise = async () => {
@@ -1193,10 +1203,10 @@ export default function SimuladorNormal() {
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Percentual (%)</Label>
+                      <Label className="text-xs">Percentual {modalidadeLance === 'livre' && usarLanceEmbutido ? '(Próprio + Embutido)' : '(%)'}</Label>
                       <Input
                         type="text"
-                        value={lanceProprioPercentual + '%'}
+                        value={percentualExibido + '%'}
                         disabled
                         className="bg-slate-100 text-slate-700 font-semibold"
                       />
@@ -1207,7 +1217,7 @@ export default function SimuladorNormal() {
                       <p className="text-xs text-purple-700">💎 Lance Próprio</p>
                       <p className="text-xl font-bold text-purple-900">{formatCurrency(parseFloat(lanceProprio))}</p>
                       <p className="text-xs text-purple-700 mt-1">
-                        {lanceProprioPercentual}% do crédito total
+                        {percentualExibido}% do crédito total{modalidadeLance === 'livre' && usarLanceEmbutido ? ' (próprio + embutido)' : ''}
                       </p>
                     </div>
                   )}
