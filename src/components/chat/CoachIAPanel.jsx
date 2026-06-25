@@ -139,8 +139,8 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex border-b border-zinc-800 px-4 shrink-0 overflow-x-auto bg-[#0d0d0f]">
-        {[['agora','Agora'],['cadencia','Cadência'],['nao-fechou','Não Fechou'],['analise','Análise'],['kb','📚 Base']].map(([k,v]) => (
+      <div className="flex border-b border-zinc-800 px-2 shrink-0 overflow-x-auto bg-[#0d0d0f]" style={{scrollbarWidth:'none'}}>
+        {[['agora','Agora'],['cadencia','Cadência'],['nao-fechou','Não Fechou'],['analise','Análise'],['kb','📚 Base'],['memoria','🧠 Memória'],['emocao','😐 Emoção'],['aprende','🎓 Aprende'],['prosp','🎯 Prospecção'],['pm','💀 Pós-mortem']].map(([k,v]) => (
           <button key={k} onClick={() => setTab(k)} className={`text-[11px] font-medium px-2.5 py-2 border-b-2 whitespace-nowrap transition-colors ${tab === k ? 'text-violet-400 border-violet-600' : 'text-zinc-500 border-transparent hover:text-zinc-400'}`}>{v}</button>
         ))}
       </div>
@@ -313,6 +313,115 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
                     </div>
                   ))}
                   <button className="execute-btn" onClick={() => toast.success('Novo item adicionado à base!')}>+ Adicionar ao conhecimento</button>
+                </>
+              )}
+
+              {/* ═══ TAB: MEMÓRIA ═══ */}
+              {tab === 'memoria' && (
+                <>
+                  <div className="cs-t">Histórico de conversas</div>
+                  {[{canal:'💬',titulo:'Primeiro contato',data:'Conversa anterior',resumo:'Lead manifestou interesse inicial. Perguntou sobre valores e prazo.',cor:'#a78bfa'},{canal:'💬',titulo:'Conversa atual',data:'Hoje',resumo:'Análise em andamento com base na conversa atual.',cor:'#34d399'}].map((c,i) => (
+                    <div key={i} className="kb-card">
+                      <div className="flex items-center gap-1.5 mb-1"><span>{c.canal}</span><span className="kb-title" style={{margin:0}}>{c.titulo}</span><span className="text-[10px] text-zinc-500 ml-auto">{c.data}</span></div>
+                      <div className="kb-excerpt">{c.resumo}</div>
+                      <span className="text-[9px] font-semibold mt-1.5 block" style={{color:c.cor}}>● {i===1?'ativo':'concluído'}</span>
+                    </div>
+                  ))}
+                  <hr className="div-line" />
+                  <div className="cs-t">O que a IA lembra</div>
+                  {[['Principal objeção', analise.objecoes?.[0] || 'Não detectada', '#f87171'],['Resumo', analise.resumo?.slice(0,80)+'...', '#a1a1aa'],['Risco atual', `${analise.risco_percentual ?? 0}%`, '#fbbf24']].map(([label,valor,cor],i) => (
+                    <div key={i} className="flex gap-2 py-1.5 border-b border-zinc-800 text-[11px]">
+                      <span className="text-zinc-500 w-28 shrink-0">{label}</span>
+                      <span className="font-medium" style={{color:cor}}>{valor}</span>
+                    </div>
+                  ))}
+                  <hr className="div-line" />
+                  <div className="cs-t">Tom de voz aplicado</div>
+                  <div style={{background:'#13111f',border:'1px solid rgba(124,58,237,.2)',borderRadius:7,padding:'9px 11px',fontSize:11,color:'#a78bfa',lineHeight:1.6}}>
+                    IA usa tom direto e consultivo. Evita jargões técnicos e sempre termina com pergunta de fechamento.
+                  </div>
+                  <button className="execute-btn" onClick={() => toast.success('Histórico exportado!')}>📄 Exportar histórico do lead</button>
+                </>
+              )}
+
+              {/* ═══ TAB: EMOÇÃO ═══ */}
+              {tab === 'emocao' && (
+                <>
+                  <div className="cs-t">Temperatura emocional</div>
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    {[{emoji:'😊',label:'Animado',pct:12,cor:'#34d399'},{emoji:'😐',label:'Hesitante',pct:58,cor:'#fbbf24',destaque:true},{emoji:'😤',label:'Com pressa',pct:8,cor:'#f87171'},{emoji:'🤔',label:'Comparando',pct:22,cor:'#60a5fa'}].map((e,i) => (
+                      <div key={i} style={{background:e.destaque?'rgba(124,58,237,.06)':'#0f0f11',border:`1px solid ${e.destaque?'rgba(124,58,237,.3)':'#27272a'}`,borderRadius:8,padding:'8px 10px',textAlign:'center',cursor:'pointer'}}>
+                        <div style={{fontSize:18}}>{e.emoji}</div>
+                        <div style={{fontSize:9,color:'#52525b',fontWeight:500,marginTop:2}}>{e.label}</div>
+                        <div style={{fontSize:11,fontWeight:700,color:e.cor}}>{e.pct}%</div>
+                      </div>
+                    ))}
+                  </div>
+                  <hr className="div-line" />
+                  <div className="cs-t">Como a IA adapta o tom</div>
+                  <div className="kb-card"><span style={{color:'#fbbf24',fontWeight:600}}>Hesitante detectado →</span><span className="kb-excerpt"> IA reduz urgência, usa dados concretos, evita pressão direta.</span></div>
+                  <hr className="div-line" />
+                  <div className="cs-t">Script adaptado para a emoção</div>
+                  <div className="script-box">{analise.script_ideal || '"Sem pressão! Vamos entender o que faz mais sentido para você. Qual é a maior dificuldade hoje?"'}</div>
+                </>
+              )}
+
+              {/* ═══ TAB: APRENDE ═══ */}
+              {tab === 'aprende' && (
+                <>
+                  <div className="cs-t">Padrões aprendidos</div>
+                  {[{icon:'🏆',bg:'rgba(16,185,129,.1)',titulo:'ROI antes do preço',desc:'Conversas que mostraram ROI antes de citar preço fecharam 3x mais.',qtd:14},{icon:'🏆',bg:'rgba(16,185,129,.1)',titulo:'Incluir decisor cedo',desc:'Leads com todos decisores na reunião fecharam 2.4x mais.',qtd:9},{icon:'❌',bg:'rgba(239,68,68,.1)',titulo:'Falar preço sem perguntar',desc:'Citar preço sem entender o problema aumentou perdas em 78%.',qtd:22},{icon:'💡',bg:'rgba(96,165,250,.1)',titulo:'Novo padrão detectado',desc:'Múltiplos leads mencionaram obstáculo técnico similar.',qtd:4}].map((p,i) => (
+                    <div key={i} className="flex gap-2 py-2 border-b border-zinc-800">
+                      <div style={{width:24,height:24,borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,flexShrink:0,background:p.bg}}>{p.icon}</div>
+                      <div><div className="kb-title">{p.titulo}</div><div className="kb-excerpt">{p.desc}</div><div style={{fontSize:10,color:'#52525b',marginTop:2}}>{p.qtd} conversas</div></div>
+                    </div>
+                  ))}
+                  <hr className="div-line" />
+                  <div className="cs-t">Taxa de fechamento</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="kb-card" style={{textAlign:'center'}}><div style={{fontSize:22,fontWeight:700,color:'#34d399'}}>47%</div><div style={{fontSize:10,color:'#52525b'}}>Com Coach IA</div></div>
+                    <div className="kb-card" style={{textAlign:'center'}}><div style={{fontSize:22,fontWeight:700,color:'#f87171'}}>18%</div><div style={{fontSize:10,color:'#52525b'}}>Sem Coach IA</div></div>
+                  </div>
+                  <button className="execute-btn" onClick={() => toast.success('Fechamento registrado!', {description:'IA vai aprender com esta conversa.'})}>🎓 Marcar fechamento e ensinar IA</button>
+                </>
+              )}
+
+              {/* ═══ TAB: PROSPECÇÃO ═══ */}
+              {tab === 'prosp' && (
+                <>
+                  <div className="cs-t">Leads similares encontrados</div>
+                  <p className="text-[11px] text-zinc-400 leading-relaxed mb-3">IA encontrou leads parados com perfil similar a este contato.</p>
+                  {[{iniciais:'RS',nome:'Ricardo Souza',sub:'Diretor · WhatsApp · Parado 7d',score:91,bg:'linear-gradient(135deg,#3b82f6,#1d4ed8)'},{iniciais:'AL',nome:'Ana Lima',sub:'Sócia · PME · Parada 14d',score:87,bg:'linear-gradient(135deg,#f59e0b,#b45309)'},{iniciais:'CF',nome:'Carlos Ferreira',sub:'CEO · 8 pessoas · Parado 7d',score:82,bg:'linear-gradient(135deg,#8b5cf6,#6d28d9)'}].map((l,i) => (
+                    <div key={i} className="kb-card" style={{display:'flex',gap:9,alignItems:'flex-start',cursor:'pointer'}}>
+                      <div style={{width:30,height:30,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700,color:'#fff',flexShrink:0,background:l.bg}}>{l.iniciais}</div>
+                      <div style={{flex:1}}><div className="kb-title">{l.nome}</div><div className="kb-excerpt">{l.sub}</div></div>
+                      <div style={{fontSize:12,fontWeight:700,color:'#4ade80'}}>{l.score}%</div>
+                    </div>
+                  ))}
+                  <button className="execute-btn" onClick={() => toast.success('Reativação iniciada!', {description:'IA vai abordar leads com script personalizado.'})}>🚀 Reativar todos com script personalizado</button>
+                </>
+              )}
+
+              {/* ═══ TAB: PÓS-MORTEM ═══ */}
+              {tab === 'pm' && (
+                <>
+                  <div className="cs-t">Diagnóstico de perdas</div>
+                  {[{titulo:'Lead Perdido — Objeção',motivo:'Objeção preço',corM:'#f87171',erros:['Preço citado antes de entender o problema','Decisor adicional nunca incluído'],pos:['Engajamento alto no início — lead tinha potencial'],rec:'Reativar com case de ROI específico para o segmento.'},{titulo:'Lead Perdido — Silêncio',motivo:'Silêncio',corM:'#fbbf24',erros:['Follow-up feito muito tarde','Mensagem genérica sem personalização'],pos:['Respondeu antes de parar — havia interesse real'],rec:'Follow-up automático ativado em D+1 para leads similares.'}].map((c,i) => (
+                    <div key={i} className="kb-card" style={{marginBottom:6}}>
+                      <div className="flex items-center gap-2 mb-2"><span>💀</span><span className="kb-title" style={{margin:0}}>{c.titulo}</span><span style={{fontSize:9,padding:'2px 6px',borderRadius:10,background:'rgba(239,68,68,.1)',color:c.corM,border:`1px solid ${c.corM}40`,marginLeft:'auto'}}>{c.motivo}</span></div>
+                      {c.erros.map((e,j) => <div key={j} className="err-item">{e}</div>)}
+                      {c.pos.map((p,j) => <div key={j} className="win-item">{p}</div>)}
+                      <div style={{fontSize:11,color:'#a78bfa',padding:'5px 9px',background:'rgba(124,58,237,.06)',borderRadius:6,borderLeft:'2px solid rgba(124,58,237,.25)',marginTop:4}}>💡 {c.rec}</div>
+                    </div>
+                  ))}
+                  <hr className="div-line" />
+                  <div className="cs-t">Principais causas — 30 dias</div>
+                  {[['Objeção sem ROI','#f87171',34],['Silêncio · follow-up tardio','#fbbf24',28],['Decisor não incluído','#60a5fa',21],['Concorrente escolhido','#a78bfa',17]].map(([label,cor,pct],i) => (
+                    <div key={i} className="flex justify-between py-1.5 border-b border-zinc-800 text-[11px]">
+                      <span style={{color:cor}}>{label}</span><span style={{fontWeight:600,color:cor}}>{pct}%</span>
+                    </div>
+                  ))}
+                  <button className="execute-btn" style={{marginTop:8}} onClick={() => toast.success('Relatório gerado!')}>📄 Gerar relatório completo</button>
                 </>
               )}
 
