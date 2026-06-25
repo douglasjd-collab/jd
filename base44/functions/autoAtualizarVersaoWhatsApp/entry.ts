@@ -51,19 +51,58 @@ function buildEnvStr(vars) {
   return Object.entries(vars).map(([k, v]) => `${k}=${v}`).join('\n');
 }
 
-// Lê env vars atuais tentando múltiplos formatos do endpoint tRPC.
+// Lê env vars atuais tentando múltiplos formatos do endpoint tRPC EasyPanel.
 // Retorna null se não conseguir ler pelo menos 5 variáveis (proteção).
 async function lerEnvVarsAtuais(epUrl, epToken, epProject, epService) {
+  const base = epUrl.replace(/\/$/, '');
+
+  // Todas as variações de payload/endpoint conhecidas do EasyPanel
   const tentativas = [
     async () => {
-      const d = await epGet(epUrl, epToken, '/api/trpc/services.app.inspectService', { json: { projectName: epProject, serviceName: epService } });
+      const url = `${base}/api/trpc/services.app.inspectService?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, serviceName: epService } }))}`;
+      const resp = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, signal: AbortSignal.timeout(15000) });
+      const raw = JSON.parse(await resp.text());
+      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
       return d?.env || d?.source?.env || d?.config?.env || null;
     },
     async () => {
-      const d = await epGet(epUrl, epToken, '/api/trpc/services.app.inspectService', { projectName: epProject, serviceName: epService });
+      const url = `${base}/api/trpc/services.app.inspectService?input=${encodeURIComponent(JSON.stringify({ projectName: epProject, serviceName: epService }))}`;
+      const resp = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, signal: AbortSignal.timeout(15000) });
+      const raw = JSON.parse(await resp.text());
+      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
+      return d?.env || d?.source?.env || d?.config?.env || null;
+    },
+    async () => {
+      // POST direto
+      const url = `${base}/api/trpc/services.app.inspectService`;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': epToken },
+        body: JSON.stringify({ json: { projectName: epProject, serviceName: epService } }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const raw = JSON.parse(await resp.text());
+      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
+      return d?.env || d?.source?.env || d?.config?.env || null;
+    },
+    async () => {
+      // Endpoint alternativo apps.inspect
+      const url = `${base}/api/trpc/apps.inspect?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, appName: epService } }))}`;
+      const resp = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, signal: AbortSignal.timeout(15000) });
+      const raw = JSON.parse(await resp.text());
+      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
+      return d?.env || d?.source?.env || null;
+    },
+    async () => {
+      // Endpoint services.getService
+      const url = `${base}/api/trpc/services.getService?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, serviceName: epService } }))}`;
+      const resp = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, signal: AbortSignal.timeout(15000) });
+      const raw = JSON.parse(await resp.text());
+      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
       return d?.env || d?.source?.env || d?.config?.env || null;
     },
   ];
+
   for (let i = 0; i < tentativas.length; i++) {
     try {
       const envStr = await tentativas[i]();
@@ -94,31 +133,63 @@ Deno.serve(async (req) => {
     const tgToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
     const tgChat = Deno.env.get('TELEGRAM_CHAT_ID');
 
-    // 1. Buscar versão mais recente
+    // 1. Buscar versão mais recente (suporta formato com -alpha e sem)
     let versaoRecente = null;
-    try {
-      const resp = await fetch('https://wppconnect.io/whatsapp-versions/', {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CRM-Bot/1.0)' },
-        signal: AbortSignal.timeout(10000)
-      });
-      if (resp.ok) {
+    const FONTES_VERSAO = [
+      'https://wppconnect.io/pt-BR/whatsapp-versions/',
+      'https://wppconnect.io/whatsapp-versions/',
+    ];
+
+    for (const url of FONTES_VERSAO) {
+      if (versaoRecente) break;
+      try {
+        const resp = await fetch(url, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+          signal: AbortSignal.timeout(12000)
+        });
+        if (!resp.ok) continue;
         const html = await resp.text();
-        const matches = html.match(/(\d+\.\d+\.\d+[\.\d]*)/g) || [];
+        // Captura versões com ou sem sufixo -alpha, -beta etc.
+        const matches = html.match(/(\d+\.\d+\.\d+[\d.]*(?:-[a-zA-Z0-9]+)?)/g) || [];
         const versoes = matches.filter(v => v.startsWith('2.') && v.split('.').length >= 3);
+
+        // Função para extrair número base (sem sufixo) para comparação
+        const numBase = (v) => v.replace(/-.*$/, '').split('.').map(Number);
+
         versoes.sort((a, b) => {
-          const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+          const pa = numBase(a), pb = numBase(b);
           for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
             const d = (pb[i] || 0) - (pa[i] || 0);
             if (d !== 0) return d;
           }
           return 0;
         });
-        if (versoes.length > 0) versaoRecente = versoes[0];
+
+        if (versoes.length > 0) {
+          versaoRecente = versoes[0];
+          console.log(`✅ Versão detectada em ${url}: ${versaoRecente}`);
+        }
+      } catch (e) {
+        console.warn(`⚠️ Falha ao buscar versão em ${url}: ${e.message}`);
       }
-    } catch (_) {}
+    }
+
+    // Fallback: buscar via API JSON do wppconnect se HTML falhar
+    if (!versaoRecente) {
+      try {
+        const resp = await fetch('https://web.whatsapp.com/check-update?version=1&branch=RELEASE', {
+          headers: { 'User-Agent': 'Mozilla/5.0' },
+          signal: AbortSignal.timeout(8000)
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data?.currentVersion) versaoRecente = data.currentVersion;
+        }
+      } catch (_) {}
+    }
 
     if (!versaoRecente) {
-      console.log('⚠️ Não foi possível buscar versão');
+      console.log('⚠️ Não foi possível buscar versão em nenhuma fonte');
       return Response.json({ success: false, motivo: 'Não foi possível buscar versão' });
     }
 
@@ -129,9 +200,11 @@ Deno.serve(async (req) => {
       if (configs.length > 0) { versaoAtual = configs[0].valor; versaoConfigId = configs[0].id; }
     } catch (_) {}
 
-    console.log(`📊 Versão atual: ${versaoAtual} | Versão recente: ${versaoRecente}`);
+    console.log(`📊 Versão salva no banco: ${versaoAtual} | Versão recente detectada: ${versaoRecente}`);
 
-    if (versaoAtual === versaoRecente) {
+    // Compara versões ignorando sufixo -alpha/-beta para evitar loops
+    const baseVersao = (v) => (v || '').replace(/-.*$/, '').trim();
+    if (baseVersao(versaoAtual) === baseVersao(versaoRecente) && versaoAtual === versaoRecente) {
       console.log('✅ Versão já atualizada.');
       return Response.json({ success: true, motivo: 'Versão já atualizada', versao: versaoRecente });
     }

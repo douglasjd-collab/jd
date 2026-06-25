@@ -39,27 +39,31 @@ Deno.serve(async (req) => {
     let fonteVersao = null;
     const errosVersao = [];
 
-    // Fonte 1: wppconnect.io
-    try {
-      const resp = await fetch('https://wppconnect.io/whatsapp-versions/', {
-        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CRM-Bot/1.0)' },
-        signal: AbortSignal.timeout(10000)
-      });
-      if (resp.ok) {
+    // Fonte 1: wppconnect.io (tenta URL pt-BR e en)
+    const wppUrls = [
+      'https://wppconnect.io/pt-BR/whatsapp-versions/',
+      'https://wppconnect.io/whatsapp-versions/',
+    ];
+    for (const wppUrl of wppUrls) {
+      if (versaoMaisRecente) break;
+      try {
+        const resp = await fetch(wppUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+          signal: AbortSignal.timeout(12000)
+        });
+        if (!resp.ok) continue;
         const html = await resp.text();
-        // Extrair versão do HTML - formato típico: 2.3000.XX ou similar
-        const matches = html.match(/(\d+\.\d+\.\d+[\.\d]*)/g);
+        // Captura versões com ou sem sufixo -alpha/-beta
+        const matches = html.match(/(\d+\.\d+\.\d+[\d.]*(?:-[a-zA-Z0-9]+)?)/g);
         if (matches && matches.length > 0) {
-          // Filtrar versões do WhatsApp (geralmente 2.xxxx.xx)
           const versoes = matches.filter(v => v.startsWith('2.') && v.split('.').length >= 3);
           if (versoes.length > 0) {
-            // Ordenar e pegar a mais recente
+            const numBase = (v) => v.replace(/-.*$/, '').split('.').map(Number);
             versoes.sort((a, b) => {
-              const partsA = a.split('.').map(Number);
-              const partsB = b.split('.').map(Number);
-              for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
-                const diff = (partsB[i] || 0) - (partsA[i] || 0);
-                if (diff !== 0) return diff;
+              const pa = numBase(a), pb = numBase(b);
+              for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+                const d = (pb[i] || 0) - (pa[i] || 0);
+                if (d !== 0) return d;
               }
               return 0;
             });
@@ -67,9 +71,9 @@ Deno.serve(async (req) => {
             fonteVersao = 'wppconnect.io';
           }
         }
+      } catch (e) {
+        errosVersao.push(`${wppUrl}: ${e.message}`);
       }
-    } catch (e) {
-      errosVersao.push(`wppconnect.io: ${e.message}`);
     }
 
     // Fonte 2: GitHub WhatsApp Web releases (fallback)
@@ -142,7 +146,9 @@ Deno.serve(async (req) => {
     // Verificar se há instâncias desconectadas
     const instanciasDesconectadas = statusInstancias.filter(i => !i.conectado);
     const todasConectadas = statusInstancias.length > 0 && instanciasDesconectadas.length === 0;
-    const precisaAtualizacao = versaoMaisRecente && versaoConfigurada && versaoMaisRecente !== versaoConfigurada;
+    // Compara ignorando sufixo -alpha/-beta
+    const baseVersao = (v) => (v || '').replace(/-.*$/, '').trim();
+    const precisaAtualizacao = versaoMaisRecente && versaoConfigurada && baseVersao(versaoMaisRecente) !== baseVersao(versaoConfigurada);
 
     // Salvar log se solicitado
     if (salvar_log) {

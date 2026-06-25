@@ -56,24 +56,42 @@ function buildEnvStr(vars) {
 }
 
 async function lerEnvVarsAtuais(epUrl, epToken, epProject, epService) {
-  // Tenta múltiplos formatos do endpoint EasyPanel tRPC
+  const base = epUrl.replace(/\/$/, '');
   const tentativas = [
     async () => {
-      const data = await epGet(epUrl, epToken, `/api/trpc/services.app.inspectService`, {
-        projectName: epProject, serviceName: epService
-      });
-      const d = data?.result?.data?.json ?? data?.result?.data ?? data;
+      const url = `${base}/api/trpc/services.app.inspectService?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, serviceName: epService } }))}`;
+      const resp = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, signal: AbortSignal.timeout(15000) });
+      const raw = JSON.parse(await resp.text());
+      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
       return d?.env || d?.source?.env || d?.config?.env || null;
     },
     async () => {
-      const data = await epGet(epUrl, epToken, `/api/trpc/services.app.inspectService?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, serviceName: epService } }))}`);
-      const d = data?.result?.data?.json ?? data?.result?.data ?? data;
+      const url = `${base}/api/trpc/services.app.inspectService?input=${encodeURIComponent(JSON.stringify({ projectName: epProject, serviceName: epService }))}`;
+      const resp = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, signal: AbortSignal.timeout(15000) });
+      const raw = JSON.parse(await resp.text());
+      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
       return d?.env || d?.source?.env || d?.config?.env || null;
     },
     async () => {
-      const data = await epGet(epUrl, epToken, `/api/trpc/apps.inspect?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, appName: epService } }))}`);
-      const d = data?.result?.data?.json ?? data?.result?.data ?? data;
+      const url = `${base}/api/trpc/services.app.inspectService`;
+      const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, body: JSON.stringify({ json: { projectName: epProject, serviceName: epService } }), signal: AbortSignal.timeout(15000) });
+      const raw = JSON.parse(await resp.text());
+      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
+      return d?.env || d?.source?.env || d?.config?.env || null;
+    },
+    async () => {
+      const url = `${base}/api/trpc/apps.inspect?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, appName: epService } }))}`;
+      const resp = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, signal: AbortSignal.timeout(15000) });
+      const raw = JSON.parse(await resp.text());
+      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
       return d?.env || d?.source?.env || null;
+    },
+    async () => {
+      const url = `${base}/api/trpc/services.getService?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, serviceName: epService } }))}`;
+      const resp = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, signal: AbortSignal.timeout(15000) });
+      const raw = JSON.parse(await resp.text());
+      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
+      return d?.env || d?.source?.env || d?.config?.env || null;
     },
   ];
 
@@ -84,7 +102,7 @@ async function lerEnvVarsAtuais(epUrl, epToken, epProject, epService) {
         const vars = parseEnvStr(envStr);
         const qtd = Object.keys(vars).length;
         console.log(`✅ Env lida na tentativa ${i + 1}: ${qtd} variáveis`);
-        if (qtd >= 5) return { envStr, vars }; // mínimo 5 vars para ser válido
+        if (qtd >= 5) return { envStr, vars };
       }
     } catch (e) {
       console.warn(`⚠️ Tentativa ${i + 1} falhou: ${e.message}`);
@@ -152,26 +170,33 @@ Deno.serve(async (req) => {
     // ──────────────────────────────────────────────────────────────────────
     let versaoAlvo = versao_nova;
     if (!versaoAlvo) {
-      try {
-        const resp = await fetch('https://wppconnect.io/whatsapp-versions/', {
-          headers: { 'User-Agent': 'Mozilla/5.0' },
-          signal: AbortSignal.timeout(10000)
-        });
-        if (resp.ok) {
+      const FONTES = [
+        'https://wppconnect.io/pt-BR/whatsapp-versions/',
+        'https://wppconnect.io/whatsapp-versions/',
+      ];
+      for (const srcUrl of FONTES) {
+        if (versaoAlvo) break;
+        try {
+          const resp = await fetch(srcUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+            signal: AbortSignal.timeout(12000)
+          });
+          if (!resp.ok) continue;
           const html = await resp.text();
-          const matches = html.match(/(\d+\.\d+\.\d+[\.\d]*)/g) || [];
+          const matches = html.match(/(\d+\.\d+\.\d+[\d.]*(?:-[a-zA-Z0-9]+)?)/g) || [];
           const versoes = matches.filter(v => v.startsWith('2.') && v.split('.').length >= 3);
+          const numBase = (v) => v.replace(/-.*$/, '').split('.').map(Number);
           versoes.sort((a, b) => {
-            const pa = a.split('.').map(Number), pb = b.split('.').map(Number);
+            const pa = numBase(a), pb = numBase(b);
             for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
               const d = (pb[i] || 0) - (pa[i] || 0);
               if (d !== 0) return d;
             }
             return 0;
           });
-          if (versoes.length > 0) versaoAlvo = versoes[0];
-        }
-      } catch (_) {}
+          if (versoes.length > 0) { versaoAlvo = versoes[0]; console.log(`✅ Versão detectada: ${versaoAlvo}`); }
+        } catch (e) { console.warn(`⚠️ Falha ao buscar em ${srcUrl}: ${e.message}`); }
+      }
     }
     if (!versaoAlvo) return Response.json({ success: false, error: 'Não foi possível detectar a versão mais recente.' }, { status: 400 });
 
