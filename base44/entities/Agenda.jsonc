@@ -56,6 +56,11 @@
       "type": "string",
       "description": "ID do chat do Telegram para notifica\u00e7\u00f5es"
     },
+    "lembrete_60_enviado_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp de quando o lembrete de 60 minutos foi enviado (opcional)"
+    },
     "lembrete_30_enviado_em": {
       "type": "string",
       "format": "date-time",

@@ -24,9 +24,9 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date();
-    // Buscar compromissos nas próximas 2h E os que começaram há até 5 min (para o lembrete "na hora")
+    // Buscar compromissos nas próximas 65min E os que começaram há até 5 min
     const pastWindow = new Date(now.getTime() - 5 * 60 * 1000);
-    const future = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    const future = new Date(now.getTime() + 65 * 60 * 1000);
 
     const items = await base44.asServiceRole.entities.Agenda.filter({
       telegram_chat_id: chatId,
@@ -34,61 +34,49 @@ Deno.serve(async (req) => {
       inicio: { $gte: pastWindow.toISOString(), $lte: future.toISOString() },
     }, 'inicio', 200);
 
-    let lembretes30 = 0;
-    let lembretes10 = 0;
-    let lembretesNaHora = 0;
+    let lembretes60 = 0;
+    let lembretes20 = 0;
+    let lembretes5 = 0;
 
     for (const it of (items || [])) {
       const start = new Date(it.inicio);
-      const diffMs = start.getTime() - now.getTime();
-      const diffMin = diffMs / 60000; // com decimais para maior precisão
+      const diffMin = (start.getTime() - now.getTime()) / 60000;
 
-      const hh = String(start.getHours()).padStart(2, '0');
-      const mm = String(start.getMinutes()).padStart(2, '0');
+      // Formatar horário no fuso de Brasília
+      const startBR = new Date(start.getTime() - 3 * 60 * 60 * 1000);
+      const hh = String(startBR.getUTCHours()).padStart(2, '0');
+      const mm = String(startBR.getUTCMinutes()).padStart(2, '0');
 
-      // Lembrete de 30 minutos (entre 31 e 25 min antes)
-      if (diffMin <= 31 && diffMin > 10 && !it.lembrete_30_enviado_em) {
-        await sendTelegram(
-          chatId,
-          `⏰ <b>Lembrete — 30 minutos</b>\n\n📌 <b>${it.titulo}</b>\n🕐 Hoje às ${hh}:${mm}\n📋 Tipo: <i>${it.tipo}</i>${it.local ? `\n📍 Local: ${it.local}` : ''}${it.descricao ? `\n📝 ${it.descricao}` : ''}`
-        );
-        await base44.asServiceRole.entities.Agenda.update(it.id, { 
-          lembrete_30_enviado_em: new Date().toISOString() 
-        });
-        lembretes30++;
+      const base = `📌 <b>${it.titulo}</b>\n🕐 Às ${hh}:${mm}${it.local ? `\n📍 ${it.local}` : ''}${it.descricao ? `\n📝 ${it.descricao}` : ''}`;
+
+      // Lembrete de 1 hora (entre 65 e 55 min antes)
+      if (diffMin <= 65 && diffMin > 55 && !it.lembrete_60_enviado_em) {
+        await sendTelegram(chatId, `🕐 <b>Reunião em 1 hora!</b>\n\n${base}`);
+        await base44.asServiceRole.entities.Agenda.update(it.id, { lembrete_60_enviado_em: new Date().toISOString() });
+        lembretes60++;
       }
 
-      // Lembrete de 10 minutos (entre 11 e 2 min antes)
-      if (diffMin <= 11 && diffMin > 1 && !it.lembrete_10_enviado_em) {
-        await sendTelegram(
-          chatId,
-          `🚨 <b>Lembrete — 10 minutos</b>\n\n📌 <b>${it.titulo}</b>\n🕐 Hoje às ${hh}:${mm}\n📋 Tipo: <i>${it.tipo}</i>${it.local ? `\n📍 Local: ${it.local}` : ''}${it.descricao ? `\n📝 ${it.descricao}` : ''}`
-        );
-        await base44.asServiceRole.entities.Agenda.update(it.id, { 
-          lembrete_10_enviado_em: new Date().toISOString() 
-        });
-        lembretes10++;
+      // Lembrete de 20 minutos (entre 25 e 15 min antes)
+      if (diffMin <= 25 && diffMin > 15 && !it.lembrete_30_enviado_em) {
+        await sendTelegram(chatId, `⏰ <b>Reunião em 20 minutos!</b>\n\n${base}`);
+        await base44.asServiceRole.entities.Agenda.update(it.id, { lembrete_30_enviado_em: new Date().toISOString() });
+        lembretes20++;
       }
 
-      // Lembrete NA HORA (entre 1 min antes e 5 min depois)
-      if (diffMin <= 1 && diffMin >= -5 && !it.lembrete_0_enviado_em) {
-        await sendTelegram(
-          chatId,
-          `🔔 <b>Está começando AGORA!</b>\n\n📌 <b>${it.titulo}</b>\n🕐 Hoje às ${hh}:${mm}\n📋 Tipo: <i>${it.tipo}</i>${it.local ? `\n📍 Local: ${it.local}` : ''}${it.descricao ? `\n📝 ${it.descricao}` : ''}`
-        );
-        await base44.asServiceRole.entities.Agenda.update(it.id, { 
-          lembrete_0_enviado_em: new Date().toISOString() 
-        });
-        lembretesNaHora++;
+      // Lembrete de 5 minutos (entre 8 e 2 min antes)
+      if (diffMin <= 8 && diffMin > 2 && !it.lembrete_10_enviado_em) {
+        await sendTelegram(chatId, `🚨 <b>Reunião em 5 minutos!</b>\n\n${base}`);
+        await base44.asServiceRole.entities.Agenda.update(it.id, { lembrete_10_enviado_em: new Date().toISOString() });
+        lembretes5++;
       }
     }
 
     return Response.json({ 
       success: true, 
       count: items?.length || 0,
-      lembretes_30: lembretes30,
-      lembretes_10: lembretes10,
-      lembretes_na_hora: lembretesNaHora
+      lembretes_60: lembretes60,
+      lembretes_20: lembretes20,
+      lembretes_5: lembretes5,
     });
   } catch (e) {
     console.error('Erro ao verificar lembretes:', e);
