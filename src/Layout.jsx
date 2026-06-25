@@ -412,6 +412,7 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Meu Financeiro', icon: TrendingUp, page: 'MeuFinanceiro', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor', 'colaborador', 'funcionario', 'colaborador_vendedor', 'parceiro'] },
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario', 'colaborador_vendedor', 'parceiro'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
+    { name: 'Robôs e Integrações', icon: Zap, page: 'RobosIntegracoes', roles: ['master', 'super_admin', 'admin'] },
     { 
       name: 'Campanhas', 
       icon: Send, 
