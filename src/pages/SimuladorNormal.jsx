@@ -731,6 +731,7 @@ export default function SimuladorNormal() {
         }
       }
       
+      const nomePlanoFinal = plano.nome_bem || '';
       const novasCartas = [...cartas];
       novasCartas[cartaIndex] = {
         ...novasCartas[cartaIndex],
@@ -738,10 +739,28 @@ export default function SimuladorNormal() {
         parcela: plano.parcela.toString(),
         prazo: plano.prazo.toString(),
         parcelaReduzida: parcelaReduzida,
-        nomePlano: plano.nome_bem || ''
+        nomePlano: nomePlanoFinal
       };
       setCartas(novasCartas);
-      setPlanoSelecionadoInfo(plano.nome_bem || '');
+      setPlanoSelecionadoInfo(nomePlanoFinal);
+
+      // Detectar 50%/70% também quando o nome vem do modal (caso não tenha sido detectado acima)
+      if (!ativarLanceEmbutido) {
+        const upper = nomePlanoFinal.toUpperCase();
+        if (upper.includes('50%')) {
+          setUsarLanceEmbutido(true);
+          setLanceEmbutidoPercentual('50');
+          setLanceEmbutidoJaIncluso(true);
+          ativarLanceEmbutido = true;
+          lanceEmbutidoPercentualAuto = '50';
+        } else if (upper.includes('70%')) {
+          setUsarLanceEmbutido(true);
+          setLanceEmbutidoPercentual('30');
+          setLanceEmbutidoJaIncluso(true);
+          ativarLanceEmbutido = true;
+          lanceEmbutidoPercentualAuto = '30';
+        }
+      }
       
       // Ativar lance embutido automaticamente se plano é 50% ou 70%
       if (ativarLanceEmbutido) {
