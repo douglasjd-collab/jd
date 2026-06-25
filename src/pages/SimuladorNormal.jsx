@@ -172,6 +172,20 @@ export default function SimuladorNormal() {
     const novasCartas = [...cartas];
     novasCartas[index][field] = value;
     setCartas(novasCartas);
+
+    // Quando o nome do plano é alterado manualmente, verificar se tem 50%/70%
+    if (field === 'nomePlano') {
+      const upper = (value || '').toUpperCase();
+      if (upper.includes('50%')) {
+        setUsarLanceEmbutido(true);
+        setLanceEmbutidoPercentual('50');
+        setLanceEmbutidoJaIncluso(true);
+      } else if (upper.includes('70%')) {
+        setUsarLanceEmbutido(true);
+        setLanceEmbutidoPercentual('30');
+        setLanceEmbutidoJaIncluso(true);
+      }
+    }
   };
 
   const creditoTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.credito) || 0), 0);
