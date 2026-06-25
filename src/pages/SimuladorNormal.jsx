@@ -109,11 +109,28 @@ export default function SimuladorNormal() {
           }
         }
         
+        const nomePlanoCarregado = plano.nome_bem || '';
+        // Verificar também o campo "plano" (ex: "21 - PLANO EXCLUSIVO 70%") para detectar embutido
+        const textoCompleto = (nomePlanoCarregado + ' ' + (plano.plano || '')).toUpperCase();
+        if (textoCompleto.includes('50%')) {
+          setUsarLanceEmbutido(true);
+          setLanceEmbutidoPercentual('50');
+          setLanceEmbutidoJaIncluso(true);
+        } else if (textoCompleto.includes('70%')) {
+          setUsarLanceEmbutido(true);
+          setLanceEmbutidoPercentual('30');
+          setLanceEmbutidoJaIncluso(true);
+        }
+        setPlanoSelecionadoInfo(nomePlanoCarregado);
         setCartas([{
           credito: plano.valor_credito?.toString() || '',
           parcela: plano.parcela?.toString() || '',
           prazo: plano.prazo?.toString() || '',
-          parcelaReduzida: parcelaReduzida
+          parcelaReduzida: parcelaReduzida,
+          nomePlano: nomePlanoCarregado,
+          planoDecrescente: false,
+          parcelaMeio: '',
+          ultimaParcela: ''
         }]);
         
         localStorage.removeItem('planoSelecionado');

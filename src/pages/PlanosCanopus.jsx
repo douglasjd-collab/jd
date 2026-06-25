@@ -163,7 +163,8 @@ export default function PlanosCanopusPage() {
           parcela: plano.parcela,
           taxa_adm: plano.taxa_adm,
           plano: plano.plano,
-          tipo_venda: plano.tipo_venda
+          tipo_venda: plano.tipo_venda,
+          nome_bem: plano.nome_bem
         });
       }
     });
@@ -225,13 +226,15 @@ export default function PlanosCanopusPage() {
   const handleAbrirSimulador = (variacao) => {
     if (!selectedGroup) return;
     const grupoNumero = selectedGroup.plano?.split('|')[0]?.trim() || '';
+    // Usar nome_bem da variação se disponível (pode ter "50%" no nome), senão usa o do grupo
+    const nomeBemFinal = variacao.nome_bem || selectedGroup.nome_bem || '';
     const dadosPlano = {
       credito: selectedGroup.valor_bem,
       valor_credito: selectedGroup.valor_bem,
       parcela: variacao.parcela,
       prazo: variacao.prazo_meses,
-      nome_bem: selectedGroup.nome_bem,
-      plano: selectedGroup.plano,
+      nome_bem: nomeBemFinal,
+      plano: variacao.plano || selectedGroup.plano,
       grupo: grupoNumero
     };
     localStorage.setItem('planoSelecionado', JSON.stringify(dadosPlano));
