@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Copy, Send, RefreshCw, X, Search, Plus } from 'lucide-react';
+import { Loader2, Copy, Send, RefreshCw, X, Search, Plus, Upload, Link, FileText, Image, Video, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const tagColors = { red: 'border-red-300/20 bg-red-500/10 text-red-400', amber: 'border-amber-300/20 bg-amber-500/10 text-amber-400', blue: 'border-blue-300/20 bg-blue-500/10 text-blue-400', green: 'border-green-300/20 bg-green-500/10 text-green-400', purple: 'border-purple-300/20 bg-purple-500/10 text-purple-400' };
@@ -19,6 +19,10 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
   const [scriptIdx, setScriptIdx] = useState(0);
   const [kbSearch, setKbSearch] = useState('');
   const [executadas, setExecutadas] = useState([]);
+  const [kbUrl, setKbUrl] = useState('');
+  const [kbUploading, setKbUploading] = useState(false);
+  const [kbItems, setKbItems] = useState([]);
+  const kbFileRef = useRef(null);
 
   useEffect(() => {
     if (visible && conversaId && mensagens?.length > 0) {
@@ -60,6 +64,50 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
     if (executadas.includes(key)) return;
     setExecutadas(p => [...p, key]);
     toast.success(`"${acao.label}" executado!`);
+  };
+
+  const handleKbFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setKbUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      const tipo = isImage ? 'imagem' : isVideo ? 'video' : 'documento';
+      const resp = await base44.integrations.Core.InvokeLLM({
+        prompt: `Analise este ${tipo} e extraia o conteúdo relevante para usar como base de conhecimento de vendas. Retorne um título curto e um resumo do conteúdo.`,
+        file_urls: [file_url],
+        response_json_schema: { type: 'object', properties: { titulo: { type: 'string' }, resumo: { type: 'string' } } }
+      });
+      setKbItems(prev => [...prev, { tipo, titulo: resp.titulo || file.name, resumo: resp.resumo || 'Arquivo processado.', file_url, tags: [tipo] }]);
+      toast.success('Arquivo adicionado à base!');
+    } catch (err) {
+      toast.error('Erro ao processar arquivo: ' + err.message);
+    } finally {
+      setKbUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleKbUrl = async () => {
+    if (!kbUrl.trim()) return;
+    setKbUploading(true);
+    try {
+      const resp = await base44.integrations.Core.InvokeLLM({
+        prompt: `Acesse este link e extraia o conteúdo relevante para usar como base de conhecimento de vendas: ${kbUrl}. Retorne título curto e resumo.`,
+        add_context_from_internet: true,
+        model: 'gemini_3_flash',
+        response_json_schema: { type: 'object', properties: { titulo: { type: 'string' }, resumo: { type: 'string' } } }
+      });
+      setKbItems(prev => [...prev, { tipo: 'url', titulo: resp.titulo || kbUrl, resumo: resp.resumo || 'Conteúdo extraído.', file_url: kbUrl, tags: ['site'] }]);
+      setKbUrl('');
+      toast.success('Site/URL adicionado à base!');
+    } catch (err) {
+      toast.error('Erro ao processar URL: ' + err.message);
+    } finally {
+      setKbUploading(false);
+    }
   };
 
   const executarTodasAcoes = () => {
@@ -312,6 +360,69 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
                 <>
                   <div className="cs-t">Base de conhecimento da empresa</div>
                   <input className="kb-search" placeholder="🔍 Buscar serviço, objeção, case..." value={kbSearch} onChange={e => setKbSearch(e.target.value)} />
+
+                  {/* Adicionar novo material */}
+                  <div style={{background:'#0f0f11',border:'1px solid #27272a',borderRadius:9,padding:'10px 11px',marginBottom:8}}>
+                    <div className="cs-t" style={{marginBottom:8}}>➕ Adicionar material de treinamento</div>
+
+                    {/* Upload de arquivo */}
+                    <input ref={kbFileRef} type="file" accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp,.mp4,.mov,.webm" style={{display:'none'}} onChange={handleKbFile} />
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:5,marginBottom:8}}>
+                      <button onClick={() => { kbFileRef.current.accept='.pdf,.doc,.docx,.txt'; kbFileRef.current.click(); }} disabled={kbUploading} style={{height:34,borderRadius:6,border:'1px solid #27272a',background:'#18181b',color:'#a1a1aa',fontSize:10,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                        <FileText size={12}/> Documento
+                      </button>
+                      <button onClick={() => { kbFileRef.current.accept='image/*'; kbFileRef.current.click(); }} disabled={kbUploading} style={{height:34,borderRadius:6,border:'1px solid #27272a',background:'#18181b',color:'#a1a1aa',fontSize:10,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                        <Image size={12}/> Imagem
+                      </button>
+                      <button onClick={() => { kbFileRef.current.accept='video/*'; kbFileRef.current.click(); }} disabled={kbUploading} style={{height:34,borderRadius:6,border:'1px solid #27272a',background:'#18181b',color:'#a1a1aa',fontSize:10,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                        <Video size={12}/> Vídeo
+                      </button>
+                      <button onClick={() => { kbFileRef.current.accept='*/*'; kbFileRef.current.click(); }} disabled={kbUploading} style={{height:34,borderRadius:6,border:'1px solid #27272a',background:'#18181b',color:'#a1a1aa',fontSize:10,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                        <Upload size={12}/> Outro
+                      </button>
+                    </div>
+
+                    {/* URL/Site */}
+                    <div style={{display:'flex',gap:5}}>
+                      <input
+                        value={kbUrl} onChange={e => setKbUrl(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleKbUrl()}
+                        placeholder="🔗 Cole URL de site, vídeo ou artigo..."
+                        style={{flex:1,height:30,background:'#18181b',border:'1px solid #27272a',borderRadius:6,padding:'0 8px',fontSize:11,color:'#e4e4e7',outline:'none',fontFamily:'inherit'}}
+                      />
+                      <button onClick={handleKbUrl} disabled={kbUploading || !kbUrl.trim()} style={{height:30,padding:'0 10px',borderRadius:6,border:'none',background:'#7c3aed',color:'#fff',fontSize:11,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',gap:3,opacity:kbUploading||!kbUrl.trim()?0.5:1}}>
+                        {kbUploading ? <Loader2 size={11} className="animate-spin"/> : <Link size={11}/>} {kbUploading ? '...' : 'Analisar'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {kbUploading && (
+                    <div style={{display:'flex',alignItems:'center',gap:6,padding:'8px 10px',background:'rgba(124,58,237,.08)',borderRadius:7,border:'1px solid rgba(124,58,237,.2)',fontSize:11,color:'#a78bfa',marginBottom:6}}>
+                      <Loader2 size={12} className="animate-spin"/> IA analisando e extraindo conteúdo...
+                    </div>
+                  )}
+
+                  {/* Itens adicionados pelo usuário */}
+                  {kbItems.map((k, i) => {
+                    const typeIcon = k.tipo === 'imagem' ? '🖼' : k.tipo === 'video' ? '🎬' : k.tipo === 'url' ? '🌐' : '📄';
+                    return (
+                      <div key={`custom-${i}`} className="kb-card" style={{position:'relative'}}>
+                        <div style={{display:'flex',alignItems:'flex-start',gap:6}}>
+                          <span style={{fontSize:14}}>{typeIcon}</span>
+                          <div style={{flex:1}}>
+                            <div className="kb-title">{k.titulo}</div>
+                            <div className="kb-excerpt">{k.resumo?.substring(0,130)}{k.resumo?.length > 130 ? '...' : ''}</div>
+                            <div className="mt-1.5">{k.tags?.map((t,j) => <span key={j} className="kb-tag">{t}</span>)}</div>
+                          </div>
+                          <button onClick={() => setKbItems(prev => prev.filter((_,idx)=>idx!==i))} style={{background:'none',border:'none',cursor:'pointer',color:'#52525b',padding:2,flexShrink:0}}>
+                            <Trash2 size={11}/>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Itens da IA */}
                   {(analise.base_conhecimento || [])
                     .filter(k => !kbSearch || k.titulo?.toLowerCase().includes(kbSearch.toLowerCase()) || k.conteudo?.toLowerCase().includes(kbSearch.toLowerCase()) || k.tags?.some(t => t.toLowerCase().includes(kbSearch.toLowerCase())))
                     .map((k, i) => (
@@ -321,7 +432,6 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
                       <div className="mt-1.5">{k.tags?.map((t,j) => <span key={j} className="kb-tag">{t}</span>)}</div>
                     </div>
                   ))}
-                  <button className="execute-btn" onClick={() => toast.success('Novo item adicionado à base!')}>+ Adicionar ao conhecimento</button>
                 </>
               )}
 
