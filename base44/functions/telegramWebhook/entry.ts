@@ -426,7 +426,7 @@ Deno.serve(async (req) => {
           await answerCallback(cq.id, "⚠️ Sessão expirada");
           return Response.json({ ok: true });
         }
-        await answerCallback(cq.id, "✅ Categoria selecionada!");
+        await answerCallback(cq.id, "✅ Salvando...");
         await sessionDelete(base44, `despesa_categoria_${chatId}`);
 
         const ex = session.data;
@@ -436,6 +436,7 @@ Deno.serve(async (req) => {
           const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: session.usuarioId }, null, 1);
           if (colabs.length > 0) responsavelNome = colabs[0].nome || responsavelNome;
         } catch (_) {}
+
         // Buscar filial da empresa
         let filialId = null;
         try {
@@ -443,9 +444,14 @@ Deno.serve(async (req) => {
           if (filiais.length > 0) filialId = filiais[0].id;
         } catch (_) {}
 
+        if (!filialId) {
+          await sendTelegram(chatId, "⚠️ Nenhuma filial encontrada para a empresa. Cadastre uma filial primeiro.");
+          return Response.json({ ok: true });
+        }
+
         const created = await base44.asServiceRole.entities.Despesa.create({
           empresa_id: session.empresaId,
-          filial_id: filialId || session.empresaId,
+          filial_id: filialId,
           valor: Number(ex.valor),
           descricao: ex.descricao,
           categoria: categoriaNome,
@@ -453,9 +459,9 @@ Deno.serve(async (req) => {
           data_vencimento: ex.data,
           status: 'pago',
           data_pagamento: ex.data,
-          responsavel_id: session.usuarioId || 'telegram',
+          responsavel_id: session.usuarioId || null,
           responsavel_nome: responsavelNome,
-          usuario_id: session.usuarioId,
+          usuario_id: session.usuarioId || null,
           usuario_nome: responsavelNome,
           observacao: 'Lançado via Telegram',
           conta_bancaria_id: contaSelecionada.id,
@@ -468,7 +474,7 @@ Deno.serve(async (req) => {
         const valorFmt = Number(ex.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         const saldoFmt = novoSaldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         await sendTelegram(chatId,
-          `✅ <b>Despesa lançada!</b>\n\n` +
+          `✅ <b>Despesa lançada no CRM!</b>\n\n` +
           `📉 ${ex.descricao}\n` +
           `💰 Valor: <b>${valorFmt}</b>\n` +
           `📅 Data: ${ex.data}\n` +
@@ -526,52 +532,11 @@ Deno.serve(async (req) => {
             }]));
             await sendTelegram(chatId, `🏷️ Qual é a <b>categoria</b> da despesa?`, { inline_keyboard });
           } else {
-            // Sem categorias cadastradas — usar categoria do LLM e finalizar
-            await sessionDelete(base44, `despesa_categoria_${chatId}`);
-            const ex = session.data;
-            let responsavelNome = 'Telegram Bot';
-            try {
-              const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: session.usuarioId }, null, 1);
-              if (colabs.length > 0) responsavelNome = colabs[0].nome || responsavelNome;
-            } catch (_) {}
-            // Buscar filial da empresa
-            let filialId = null;
-            try {
-              const filiais = await base44.asServiceRole.entities.Filial.filter({ empresa_id: session.empresaId }, null, 1);
-              if (filiais.length > 0) filialId = filiais[0].id;
-            } catch (_) {}
-            const created = await base44.asServiceRole.entities.Despesa.create({
-              empresa_id: session.empresaId,
-              filial_id: filialId || session.empresaId,
-              valor: Number(ex.valor),
-              descricao: ex.descricao,
-              categoria: ex.categoria || 'Outros',
-              data: ex.data,
-              data_vencimento: ex.data,
-              status: 'pago',
-              data_pagamento: ex.data,
-              responsavel_id: session.usuarioId || 'telegram',
-              responsavel_nome: responsavelNome,
-              usuario_id: session.usuarioId,
-              usuario_nome: responsavelNome,
-              observacao: 'Lançado via Telegram',
-              conta_bancaria_id: contaSelecionada.id,
-            });
-            let novoSaldo = contaSelecionada.saldo_atual || 0;
-            novoSaldo -= Number(ex.valor);
-            await base44.asServiceRole.entities.ContaBancaria.update(contaSelecionada.id, { saldo_atual: novoSaldo });
-            const valorFmt = Number(ex.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            const saldoFmt = novoSaldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            // Sem categorias cadastradas — pedir digitação manual de categoria
             await sendTelegram(chatId,
-              `✅ <b>Despesa lançada!</b>\n\n` +
-              `📉 ${ex.descricao}\n` +
-              `💰 Valor: <b>${valorFmt}</b>\n` +
-              `📅 Data: ${ex.data}\n` +
-              `🏦 Conta: <b>${contaSelecionada.nome_conta} (${contaSelecionada.banco})</b>\n` +
-              `💳 Saldo: <b>${saldoFmt}</b>\n` +
-              `🏷️ Categoria: ${ex.categoria || 'Outros'}\n` +
-              `<code>ID ${created.id}</code>`
+              `🏷️ Nenhuma categoria cadastrada encontrada.\n\nDigite a <b>categoria</b> da despesa (ex: Combustível, Almoço, Escritório):`,
             );
+            // sessão já foi salva com contaSelecionada — aguarda texto
           }
           return Response.json({ ok: true });
         }
@@ -635,6 +600,68 @@ Deno.serve(async (req) => {
     // ──────────────────────────────────────────────────────────────────────
     
 
+
+    // ── Fluxo de categoria de despesa digitada manualmente
+    const sessaoDespesaCategoria = await sessionGet(base44, `despesa_categoria_${chatId}`);
+    if (sessaoDespesaCategoria) {
+      const categoriaNome = original.trim();
+      await sessionDelete(base44, `despesa_categoria_${chatId}`);
+
+      const ex = sessaoDespesaCategoria.data;
+      const contaSelecionada = sessaoDespesaCategoria.contaSelecionada;
+      let responsavelNome = 'Telegram Bot';
+      try {
+        const colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: sessaoDespesaCategoria.usuarioId }, null, 1);
+        if (colabs.length > 0) responsavelNome = colabs[0].nome || responsavelNome;
+      } catch (_) {}
+
+      let filialId = null;
+      try {
+        const filiais = await base44.asServiceRole.entities.Filial.filter({ empresa_id: sessaoDespesaCategoria.empresaId }, null, 1);
+        if (filiais.length > 0) filialId = filiais[0].id;
+      } catch (_) {}
+
+      if (!filialId) {
+        await sendTelegram(chatId, "⚠️ Nenhuma filial encontrada para a empresa. Cadastre uma filial primeiro.");
+        return Response.json({ ok: true });
+      }
+
+      const created = await base44.asServiceRole.entities.Despesa.create({
+        empresa_id: sessaoDespesaCategoria.empresaId,
+        filial_id: filialId,
+        valor: Number(ex.valor),
+        descricao: ex.descricao,
+        categoria: categoriaNome,
+        data: ex.data,
+        data_vencimento: ex.data,
+        status: 'pago',
+        data_pagamento: ex.data,
+        responsavel_id: sessaoDespesaCategoria.usuarioId || null,
+        responsavel_nome: responsavelNome,
+        usuario_id: sessaoDespesaCategoria.usuarioId || null,
+        usuario_nome: responsavelNome,
+        observacao: 'Lançado via Telegram',
+        conta_bancaria_id: contaSelecionada.id,
+      });
+
+      let novoSaldo = contaSelecionada.saldo_atual || 0;
+      novoSaldo -= Number(ex.valor);
+      await base44.asServiceRole.entities.ContaBancaria.update(contaSelecionada.id, { saldo_atual: novoSaldo });
+
+      const valorFmt = Number(ex.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      const saldoFmt = novoSaldo.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      await sendTelegram(chatId,
+        `✅ <b>Despesa lançada no CRM!</b>\n\n` +
+        `📉 ${ex.descricao}\n` +
+        `💰 Valor: <b>${valorFmt}</b>\n` +
+        `📅 Data: ${ex.data}\n` +
+        `🏦 Conta: <b>${contaSelecionada.nome_conta} (${contaSelecionada.banco})</b>\n` +
+        `💳 Saldo: <b>${saldoFmt}</b>\n` +
+        `🏷️ Categoria: <b>${categoriaNome}</b>\n` +
+        `<code>ID ${created.id}</code>`
+      );
+      return Response.json({ ok: true });
+    }
 
     // ── Fluxo de valor de adiantamento
     const sessaoAdvValor = await sessionGet(base44, `adiantamento_valor_${chatId}`);
