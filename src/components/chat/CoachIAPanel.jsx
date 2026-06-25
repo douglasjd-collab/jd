@@ -139,10 +139,19 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
       </div>
 
       {/* ── Tabs ── */}
-      <div className="flex border-b border-zinc-800 px-2 shrink-0 overflow-x-auto bg-[#0d0d0f]" style={{scrollbarWidth:'none'}}>
-        {[['agora','Agora'],['cadencia','Cadência'],['nao-fechou','Não Fechou'],['analise','Análise'],['kb','📚 Base'],['memoria','🧠 Memória'],['emocao','😐 Emoção'],['aprende','🎓 Aprende'],['prosp','🎯 Prospecção'],['pm','💀 Pós-mortem']].map(([k,v]) => (
-          <button key={k} onClick={() => setTab(k)} className={`text-[11px] font-medium px-2.5 py-2 border-b-2 whitespace-nowrap transition-colors ${tab === k ? 'text-violet-400 border-violet-600' : 'text-zinc-500 border-transparent hover:text-zinc-400'}`}>{v}</button>
-        ))}
+      <div className="shrink-0 bg-[#0d0d0f] border-b border-zinc-800">
+        {/* Linha 1 */}
+        <div className="flex">
+          {[['agora','Agora'],['cadencia','Cadência'],['nao-fechou','Não Fechou'],['analise','Análise'],['kb','📚 Base']].map(([k,v]) => (
+            <button key={k} onClick={() => setTab(k)} className={`flex-1 text-[10px] font-medium py-2 border-b-2 whitespace-nowrap transition-colors ${tab === k ? 'text-violet-400 border-violet-600' : 'text-zinc-500 border-transparent hover:text-zinc-400'}`}>{v}</button>
+          ))}
+        </div>
+        {/* Linha 2 */}
+        <div className="flex border-t border-zinc-800/60">
+          {[['memoria','🧠 Mem.'],['emocao','😐 Emoção'],['aprende','🎓 Aprende'],['prosp','🎯 Prosp.'],['pm','💀 Pós-m.']].map(([k,v]) => (
+            <button key={k} onClick={() => setTab(k)} className={`flex-1 text-[10px] font-medium py-2 border-b-2 whitespace-nowrap transition-colors ${tab === k ? 'text-violet-400 border-violet-600' : 'text-zinc-500 border-transparent hover:text-zinc-400'}`}>{v}</button>
+          ))}
+        </div>
       </div>
 
       {/* ── Body ── */}
