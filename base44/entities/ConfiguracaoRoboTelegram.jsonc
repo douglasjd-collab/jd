@@ -1,0 +1,56 @@
+{
+  "name": "ConfiguracaoRoboTelegram",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "prompt_adicional": {
+      "type": "string",
+      "description": "Instru\u00e7\u00f5es adicionais para o rob\u00f4 (treinamento customizado)"
+    },
+    "categorias_despesa": {
+      "type": "string",
+      "description": "Lista de categorias de despesa separadas por v\u00edrgula"
+    },
+    "categorias_receita": {
+      "type": "string",
+      "description": "Lista de categorias de receita separadas por v\u00edrgula"
+    },
+    "nome_empresa_padrao": {
+      "type": "string",
+      "description": "Nome da empresa que o rob\u00f4 deve usar por padr\u00e3o (ex: JD Promotora)"
+    },
+    "exemplos_treinamento": {
+      "type": "string",
+      "description": "JSON array de exemplos: [{entrada, saida_esperada}]"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se o prompt customizado est\u00e1 ativo"
+    },
+    "atualizado_por": {
+      "type": "string",
+      "description": "Nome de quem atualizou"
+    }
+  },
+  "required": [
+    "empresa_id"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return ['admin'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return ['admin'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "return user.perfil === 'super_admin' || user.perfil === 'master';"
+    }
+  }
+}

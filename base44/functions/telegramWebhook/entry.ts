@@ -69,13 +69,18 @@ function matchConta(nomeBuscado, contas) {
   return found || null;
 }
 
-async function callLLM(base44, message, context) {
+async function callLLM(base44, message, context, configRobo = null) {
   const hoje = new Date().toLocaleDateString('fr-CA'); // YYYY-MM-DD
 
   // Calcular "amanhã" corretamente no fuso Brasil
   const amanhaDate = new Date();
   amanhaDate.setDate(amanhaDate.getDate() + 1);
   const amanha = amanhaDate.toLocaleDateString('fr-CA');
+
+  // Categorias customizadas (se configuradas)
+  const catDespesa = configRobo?.categorias_despesa || 'Almoço, Reunião, Visita externa, Combustível, Escritório, Marketing, Outros';
+  const catReceita = configRobo?.categorias_receita || 'Bônus, Repasse, Comissão, Ajuste, Outros';
+  const promptAdicional = (configRobo?.ativo && configRobo?.prompt_adicional) ? `\n\nINSTRUÇÕES CUSTOMIZADAS:\n${configRobo.prompt_adicional}` : '';
 
   const prompt = `
 Você é um assistente para um CRM/Financeiro via Telegram.
@@ -92,10 +97,10 @@ Regras gerais:
 - Datas: se o usuário disser "hoje" use ${hoje}, "amanhã" use ${amanha}. Formato YYYY-MM-DD.
 - Valores: "35,90" -> 35.90, "1.500" -> 1500, "R$ 1.500,00" -> 1500
 - Telefone: normalize apenas números quando possível.
-- Categorias de despesa: Almoço, Reunião, Visita externa, Combustível, Escritório, Marketing, Outros
-- Categorias de receita: Bônus, Repasse, Comissão, Ajuste, Outros
+- Categorias de despesa: ${catDespesa}
+- Categorias de receita: ${catReceita}
 - Para oportunidades no funil: produto pode ser "consorcio" (padrão) ou "emprestimo". nome = título da oportunidade (ex: "João Silva" ou "Venda consórcio João"). Telefone opcional.
-- Use action=create_opportunity quando o usuário mencionar: criar lead, novo cliente, nova oportunidade, funil, consórcio (nome de pessoa), empréstimo (nome de pessoa)
+- Use action=create_opportunity quando o usuário mencionar: criar lead, novo cliente, nova oportunidade, funil, consórcio (nome de pessoa), empréstimo (nome de pessoa)${promptAdicional}
 
 REGRA CRÍTICA PARA HORÁRIOS (agenda):
 - O usuário está no fuso horário de Brasília (UTC-3).
@@ -646,7 +651,17 @@ Deno.serve(async (req) => {
       chat_id: chatId,
     };
 
-    const intent = await callLLM(base44, original, context);
+    // Carregar configuração customizada do robô (se existir)
+    let configRobo = null;
+    try {
+      const configs = await base44.asServiceRole.entities.ConfiguracaoRoboTelegram.filter(
+        empresaId ? { empresa_id: empresaId } : {},
+        '-created_date', 1
+      );
+      if (configs && configs.length > 0) configRobo = configs[0];
+    } catch (_) {}
+
+    const intent = await callLLM(base44, original, context, configRobo);
 
     // Buscar primeira empresa com contas cadastradas
     let empresaId = null;

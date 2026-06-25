@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,9 +10,10 @@ import { toast } from 'sonner';
 import {
   Bot, Send, MessageSquare, Activity, Loader2, CheckCircle2,
   XCircle, RefreshCw, Webhook, Copy, AlertTriangle, Clock,
-  ArrowUpCircle, ArrowDownCircle, Info, Eye, EyeOff
+  ArrowUpCircle, ArrowDownCircle, Info, Eye, EyeOff, BookOpen, Save, Plus, Trash2
 } from 'lucide-react';
 import PageHeader from '@/components/ui/PageHeader';
+import { Textarea } from '@/components/ui/textarea';
 import IntegracaoInstagram from '@/components/configuracoes/IntegracaoInstagram';
 
 // ─── Helpers ────────────────────────────────────────────────
@@ -55,6 +56,7 @@ export default function RobosIntegracoes() {
       <Tabs defaultValue="telegram">
         <TabsList className="flex-wrap">
           <TabsTrigger value="telegram"><Send className="w-4 h-4 mr-1.5" />Telegram</TabsTrigger>
+          <TabsTrigger value="treinamento"><BookOpen className="w-4 h-4 mr-1.5" />Treinamento do Robô</TabsTrigger>
           <TabsTrigger value="instagram"><span className="mr-1.5">📸</span>Instagram</TabsTrigger>
           <TabsTrigger value="ia"><Bot className="w-4 h-4 mr-1.5" />IA</TabsTrigger>
           <TabsTrigger value="logs"><Activity className="w-4 h-4 mr-1.5" />Logs</TabsTrigger>
@@ -62,6 +64,10 @@ export default function RobosIntegracoes() {
 
         <TabsContent value="telegram" className="mt-4">
           <TelegramTab empresa={empresa} />
+        </TabsContent>
+
+        <TabsContent value="treinamento" className="mt-4">
+          <TreinamentoTab empresa={empresa} user={user} />
         </TabsContent>
 
         <TabsContent value="instagram" className="mt-4">
@@ -238,6 +244,278 @@ function TelegramTab({ empresa }) {
 // ─── Aba Instagram ───────────────────────────────────────────
 function InstagramTab({ empresa }) {
   return <IntegracaoInstagram empresaId={empresa?.id} />;
+}
+
+// ─── Aba Treinamento ─────────────────────────────────────────
+function TreinamentoTab({ empresa, user }) {
+  const [config, setConfig] = useState(null);
+  const [configId, setConfigId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [salvando, setSalvando] = useState(false);
+  const [form, setForm] = useState({
+    prompt_adicional: '',
+    categorias_despesa: 'Almoço, Reunião, Visita externa, Combustível, Escritório, Marketing, Outros',
+    categorias_receita: 'Bônus, Repasse, Comissão, Ajuste, Outros',
+    nome_empresa_padrao: '',
+    ativo: true,
+  });
+  const [novoExemplo, setNovoExemplo] = useState({ entrada: '', saida_esperada: '' });
+  const [exemplos, setExemplos] = useState([]);
+
+  const carregar = useCallback(async () => {
+    if (!empresa?.id) { setLoading(false); return; }
+    setLoading(true);
+    try {
+      const configs = await base44.entities.ConfiguracaoRoboTelegram.filter(
+        { empresa_id: empresa.id }, '-created_date', 1
+      );
+      if (configs?.length > 0) {
+        const c = configs[0];
+        setConfigId(c.id);
+        setForm({
+          prompt_adicional: c.prompt_adicional || '',
+          categorias_despesa: c.categorias_despesa || 'Almoço, Reunião, Visita externa, Combustível, Escritório, Marketing, Outros',
+          categorias_receita: c.categorias_receita || 'Bônus, Repasse, Comissão, Ajuste, Outros',
+          nome_empresa_padrao: c.nome_empresa_padrao || '',
+          ativo: c.ativo !== false,
+        });
+        try {
+          setExemplos(c.exemplos_treinamento ? JSON.parse(c.exemplos_treinamento) : []);
+        } catch { setExemplos([]); }
+      }
+    } catch (e) { console.error(e); } finally { setLoading(false); }
+  }, [empresa]);
+
+  useEffect(() => { carregar(); }, [carregar]);
+
+  const salvar = async () => {
+    if (!empresa?.id) { toast.error('Empresa não encontrada'); return; }
+    setSalvando(true);
+    try {
+      const payload = {
+        empresa_id: empresa.id,
+        prompt_adicional: form.prompt_adicional,
+        categorias_despesa: form.categorias_despesa,
+        categorias_receita: form.categorias_receita,
+        nome_empresa_padrao: form.nome_empresa_padrao,
+        ativo: form.ativo,
+        exemplos_treinamento: JSON.stringify(exemplos),
+        atualizado_por: user?.nome_perfil || user?.full_name || '',
+      };
+      if (configId) {
+        await base44.entities.ConfiguracaoRoboTelegram.update(configId, payload);
+      } else {
+        const created = await base44.entities.ConfiguracaoRoboTelegram.create(payload);
+        setConfigId(created.id);
+      }
+      toast.success('Configuração do robô salva com sucesso!');
+    } catch (e) { toast.error('Erro ao salvar: ' + e.message); } finally { setSalvando(false); }
+  };
+
+  const adicionarExemplo = () => {
+    if (!novoExemplo.entrada.trim()) { toast.error('Preencha a mensagem de exemplo'); return; }
+    setExemplos(prev => [...prev, { ...novoExemplo, id: Date.now() }]);
+    setNovoExemplo({ entrada: '', saida_esperada: '' });
+  };
+
+  const removerExemplo = (id) => setExemplos(prev => prev.filter(e => e.id !== id));
+
+  const PROMPT_PADRAO = `Você é um assistente para um CRM/Financeiro via Telegram.
+Transforme a mensagem do usuário em UMA ação do sistema.`;
+
+  if (loading) return <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50 to-white">
+        <CardHeader>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-xl bg-blue-600 text-white">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <div>
+                <CardTitle>Treinamento do Robô Telegram</CardTitle>
+                <CardDescription>Personalize o comportamento do robô sem alterar o código</CardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer text-sm">
+                <span className="text-slate-600">Prompt customizado</span>
+                <button
+                  onClick={() => setForm(f => ({ ...f, ativo: !f.ativo }))}
+                  className={`w-10 h-5 rounded-full transition-colors ${form.ativo ? 'bg-blue-600' : 'bg-slate-300'}`}
+                >
+                  <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform mx-0.5 ${form.ativo ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+                <Badge className={form.ativo ? 'bg-green-100 text-green-700 border-0' : 'bg-slate-100 text-slate-500 border-0'}>
+                  {form.ativo ? 'Ativo' : 'Inativo'}
+                </Badge>
+              </label>
+              <Button onClick={salvar} disabled={salvando} className="bg-blue-600 hover:bg-blue-700 gap-2">
+                {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* Prompt Base (somente leitura para referência) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Info className="w-4 h-4 text-slate-400" /> Prompt Base do Sistema (somente leitura)
+          </CardTitle>
+          <CardDescription>Este é o comportamento padrão do robô. Use o campo abaixo para adicionar instruções extras.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <pre className="text-xs text-slate-500 bg-slate-50 rounded-lg p-3 whitespace-pre-wrap font-mono">{PROMPT_PADRAO}</pre>
+        </CardContent>
+      </Card>
+
+      {/* Instruções Adicionais */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Instruções Adicionais para o Robô</CardTitle>
+          <CardDescription>Escreva regras extras que serão adicionadas ao prompt. Ex: "Sempre confirme o nome do cliente antes de criar uma oportunidade."</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Textarea
+            value={form.prompt_adicional}
+            onChange={e => setForm(f => ({ ...f, prompt_adicional: e.target.value }))}
+            placeholder="Ex: Sempre pergunte a categoria antes de criar uma despesa. Quando o usuário mencionar 'comissão', use categoria=Comissão."
+            rows={6}
+            className="font-mono text-sm"
+          />
+          <p className="text-xs text-slate-400 mt-2">{form.prompt_adicional.length} caracteres</p>
+        </CardContent>
+      </Card>
+
+      {/* Categorias */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Categorias de Despesa</CardTitle>
+            <CardDescription>Separadas por vírgula</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={form.categorias_despesa}
+              onChange={e => setForm(f => ({ ...f, categorias_despesa: e.target.value }))}
+              rows={4}
+              placeholder="Almoço, Combustível, Escritório..."
+              className="text-sm"
+            />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Categorias de Receita</CardTitle>
+            <CardDescription>Separadas por vírgula</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              value={form.categorias_receita}
+              onChange={e => setForm(f => ({ ...f, categorias_receita: e.target.value }))}
+              rows={4}
+              placeholder="Comissão, Bônus, Repasse..."
+              className="text-sm"
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Nome Empresa Padrão */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Nome da Empresa Padrão</CardTitle>
+          <CardDescription>O robô usa este nome para localizar a empresa no sistema. Deixe vazio para usar a primeira empresa ativa.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Input
+            value={form.nome_empresa_padrao}
+            onChange={e => setForm(f => ({ ...f, nome_empresa_padrao: e.target.value }))}
+            placeholder="Ex: JD Promotora"
+            className="max-w-sm"
+          />
+        </CardContent>
+      </Card>
+
+      {/* Exemplos de Treinamento */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-blue-500" /> Exemplos de Treinamento
+          </CardTitle>
+          <CardDescription>Exemplos de mensagens e o comportamento esperado. Servem como referência futura para treino avançado (Fase 2).</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Adicionar novo exemplo */}
+          <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+            <p className="text-sm font-medium text-slate-700">Adicionar Exemplo</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Mensagem do usuário</Label>
+                <Input
+                  value={novoExemplo.entrada}
+                  onChange={e => setNovoExemplo(p => ({ ...p, entrada: e.target.value }))}
+                  placeholder="Ex: paguei 350 combustível hoje conta itaú"
+                  className="mt-1 text-sm"
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Comportamento esperado</Label>
+                <Input
+                  value={novoExemplo.saida_esperada}
+                  onChange={e => setNovoExemplo(p => ({ ...p, saida_esperada: e.target.value }))}
+                  placeholder="Ex: Despesa 350 categoria=Combustível conta=Itaú status=pago"
+                  className="mt-1 text-sm"
+                />
+              </div>
+            </div>
+            <Button onClick={adicionarExemplo} size="sm" variant="outline" className="gap-1.5">
+              <Plus className="w-3.5 h-3.5" /> Adicionar Exemplo
+            </Button>
+          </div>
+
+          {/* Lista de exemplos */}
+          {exemplos.length === 0 ? (
+            <div className="text-center py-6 text-slate-400 text-sm">Nenhum exemplo adicionado ainda.</div>
+          ) : (
+            <div className="space-y-2">
+              {exemplos.map((ex, i) => (
+                <div key={ex.id || i} className="flex items-start gap-3 bg-white border rounded-lg p-3">
+                  <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-xs text-slate-400 mb-0.5">Entrada</p>
+                      <p className="text-sm text-slate-700 font-mono">{ex.entrada}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 mb-0.5">Esperado</p>
+                      <p className="text-sm text-slate-600">{ex.saida_esperada || '—'}</p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 shrink-0" onClick={() => removerExemplo(ex.id || i)}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Botão salvar final */}
+      <div className="flex justify-end">
+        <Button onClick={salvar} disabled={salvando} className="bg-blue-600 hover:bg-blue-700 gap-2">
+          {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          Salvar Configurações
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 // ─── Aba IA ──────────────────────────────────────────────────
