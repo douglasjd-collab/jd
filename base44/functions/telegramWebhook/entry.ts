@@ -138,17 +138,18 @@ Retorne APENAS um JSON com esta estrutura exata (sem texto adicional):
 }
 `;
 
-  const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
-    prompt,
-    response_json_schema: {
-      type: "object",
-      properties: {
-        action: { type: "string" },
-        reply: { type: "string" }
-      },
-      required: ["action", "reply"]
-    }
-  });
+  const raw = await base44.asServiceRole.integrations.Core.InvokeLLM({ prompt });
+
+  // O LLM retorna string — extrair o JSON
+  let result;
+  try {
+    // Tenta extrair bloco ```json ... ``` ou JSON puro
+    const match = raw.match(/```json\s*([\s\S]*?)```/) || raw.match(/(\{[\s\S]*\})/);
+    result = JSON.parse(match ? match[1] : raw);
+  } catch (_) {
+    // fallback: não conseguiu parsear
+    result = { action: "clarify", clarify: { question: "Não entendi. Pode reformular?" }, reply: raw };
+  }
 
   return result;
 }
