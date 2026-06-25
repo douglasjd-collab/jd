@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare, XCircle, Wifi, QrCode, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare, XCircle, Wifi, QrCode, RefreshCw, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Select,
@@ -52,6 +52,7 @@ export default function ConfiguracaoWhatsApp() {
   const [qrStatus, setQrStatus] = useState(null); // null | 'connected' | 'waiting'
   const [qrPolling, setQrPolling] = useState(null);
   const [criandoInstancia, setCriandoInstancia] = useState(false);
+  const [desconectando, setDesconectando] = useState(false);
 
   useEffect(() => {
     carregarDados();
@@ -342,6 +343,35 @@ export default function ConfiguracaoWhatsApp() {
       if (conectado) clearInterval(interval);
     }, 4000);
     setQrPolling(interval);
+  };
+
+  const desconectarWhatsApp = async () => {
+    const url = evolutionUrl || tempUrl;
+    const instance = instanceName || tempInstance;
+    if (!url || !instance) {
+      toast.error('Instância não configurada');
+      return;
+    }
+    if (!window.confirm('Deseja realmente desconectar o WhatsApp? Você precisará escanear o QR Code novamente para reconectar.')) return;
+    setDesconectando(true);
+    try {
+      const resp = await base44.functions.invoke('desconectarWhatsappEvolution', {
+        evolution_url: url,
+        instance_name: instance,
+        api_key: apiKey || tempApiKey,
+      });
+      if (resp.data?.success) {
+        setQrStatus(null);
+        setQrCode(null);
+        toast.success('WhatsApp desconectado com sucesso!');
+      } else {
+        toast.error('Erro ao desconectar: ' + (resp.data?.error || 'Erro desconhecido'));
+      }
+    } catch (e) {
+      toast.error('Erro ao desconectar: ' + e.message);
+    } finally {
+      setDesconectando(false);
+    }
   };
 
   const criarInstancia = async () => {
@@ -644,12 +674,24 @@ export default function ConfiguracaoWhatsApp() {
                     <QrCode className="w-4 h-4" /> Conectar WhatsApp via QR Code
                   </p>
                   {qrStatus === 'connected' ? (
-                    <div className="flex items-center gap-3 p-4 bg-green-50 border-2 border-green-400 rounded-xl">
-                      <CheckCircle2 className="w-8 h-8 text-green-500 flex-shrink-0" />
-                      <div>
-                        <p className="font-bold text-green-800">✅ WhatsApp Conectado!</p>
-                        <p className="text-sm text-green-700">A instância está ativa e pronta para uso.</p>
+                    <div className="flex items-center justify-between gap-3 p-4 bg-green-50 border-2 border-green-400 rounded-xl flex-wrap">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="w-8 h-8 text-green-500 flex-shrink-0" />
+                        <div>
+                          <p className="font-bold text-green-800">✅ WhatsApp Conectado!</p>
+                          <p className="text-sm text-green-700">A instância está ativa e pronta para uso.</p>
+                        </div>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={desconectarWhatsApp}
+                        disabled={desconectando}
+                        className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                      >
+                        {desconectando ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <WifiOff className="w-4 h-4 mr-2" />}
+                        {desconectando ? 'Desconectando...' : 'Desconectar'}
+                      </Button>
                     </div>
                   ) : qrCode ? (
                     <div className="flex flex-col items-center gap-4 p-4 bg-slate-50 border rounded-xl">
