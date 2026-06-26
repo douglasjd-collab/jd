@@ -47,6 +47,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
     return isPermanente || isUrlPublica;
   };
+  const urlFalhouRef = useRef(null); // rastrear URL que deu erro para não re-setar
   const [mediaUrl, setMediaUrl] = useState(() => isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [transcricao, setTranscricao] = useState(
@@ -157,7 +158,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     if (mensagem.id?.startsWith('temp_')) return;
 
     // Se já tem URL permanente válida no banco (independente do download_status), usar direto
-    if (isUrlValida(mensagem.arquivo_url)) {
+    // Mas não usar URL que já falhou (arquivo corrompido/inexistente)
+    if (isUrlValida(mensagem.arquivo_url) && mensagem.arquivo_url !== urlFalhouRef.current) {
       setMediaUrl(mensagem.arquivo_url);
       return;
     }
@@ -181,8 +183,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   }, [mensagem.id]);
 
   // Quando o banco atualizar arquivo_url (ex: download feito em background), refletir no estado
+  // Mas não re-setar URL que já falhou (causaria loop)
   useEffect(() => {
-    if (isUrlValida(mensagem.arquivo_url) && !mediaUrl) {
+    if (isUrlValida(mensagem.arquivo_url) && !mediaUrl && mensagem.arquivo_url !== urlFalhouRef.current) {
       setMediaUrl(mensagem.arquivo_url);
     }
   }, [mensagem.arquivo_url]);
@@ -477,7 +480,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                     src={mediaUrl}
                     alt="Imagem"
                     className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
-                    onError={(e) => { e.target.onerror = null; setMediaUrl(null); }}
+                    onError={(e) => { e.target.onerror = null; urlFalhouRef.current = mediaUrl; setMediaUrl(null); }}
                     onClick={() => setImagemAberta(true)}
                   />
                   <button
@@ -595,7 +598,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             loadingMedia={loadingMedia}
             onCarregar={handleCarregarMidia}
             onDownload={() => handleDownload(mediaUrl, mensagem.arquivo_nome || `video_${mensagem.id}.mp4`)}
-            onErro={() => setMediaUrl(null)}
+            onErro={() => { urlFalhouRef.current = mediaUrl; setMediaUrl(null); }}
             arquivoNome={mensagem.arquivo_nome}
             texto={mensagem.texto}
             textoIsPadrao={textoIsPadraoMidia}
@@ -755,7 +758,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 src={mediaUrl}
                 alt="Imagem"
                 style={{ display: 'block', maxWidth: '100%', height: 'auto', cursor: 'pointer' }}
-                onError={(e) => { e.target.onerror = null; setMediaUrl(null); }}
+                onError={(e) => { e.target.onerror = null; urlFalhouRef.current = mediaUrl; setMediaUrl(null); }}
                 onClick={() => setImagemAberta(true)}
               />
               {/* Hora + status overlay */}
