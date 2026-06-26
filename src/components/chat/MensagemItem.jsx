@@ -217,11 +217,18 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     if (loadingMedia) return;
     if (mediaUrl && isUrlValida(mediaUrl)) return;
 
-    // Se já tem URL permanente válida no banco, usar direto sem chamar backend
-    if (isUrlValida(mensagem.arquivo_url, mensagem.download_status)) {
-      setMediaUrl(mensagem.arquivo_url);
-      return;
+    // Se já tem URL do storage, tentar usar diretamente (ignorar download_status ao clicar manualmente)
+    const url = mensagem.arquivo_url || '';
+    if (url.includes('base44.app/api/apps') && url.startsWith('https://') && !url.includes('.enc')) {
+      const nomeArquivo = url.split('?')[0].split('/').pop();
+      if (/\.[a-zA-Z0-9]{2,5}$/.test(nomeArquivo)) {
+        setMediaUrl(url);
+        return;
+      }
     }
+
+    // Sem URL do storage: tentar baixar via backend
+    if (!url && !mensagem.media_id) return;
 
     setLoadingMedia(true);
     base44.functions.invoke('baixarMidiaWhatsApp', {
