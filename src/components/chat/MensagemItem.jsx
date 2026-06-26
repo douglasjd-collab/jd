@@ -36,7 +36,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
     return isPermanente || isUrlPublica;
   };
-  const [mediaUrl, setMediaUrl] = useState(isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);
+  const [mediaUrl, setMediaUrl] = useState(() => isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   // Refs para evitar stale closure no auto-download
   const mediaUrlRef = React.useRef(isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);
@@ -144,27 +144,30 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
-  // Auto-carregar mídia (áudio, imagem, vídeo) — dispara download automático ao montar
+  // Auto-carregar mídia ao montar — sempre tenta buscar se não tiver URL válida
   useEffect(() => {
     const tiposMidia = ['audio', 'imagem', 'video'];
     if (!tiposMidia.includes(mensagem.tipo_conteudo)) return;
-    // Se já tem URL válida permanente, usar direto
+    if (mensagem.id?.startsWith('temp_')) return;
+
+    // Se já tem URL válida, usar direto sem chamar backend
     if (isUrlValida(mensagem.arquivo_url)) {
       setMediaUrl(mensagem.arquivo_url);
       return;
     }
-    // Qualquer mensagem de mídia sem URL válida: baixar automaticamente
-    if (!mensagem.id?.startsWith('temp_')) {
-      setLoadingMedia(true);
-      base44.functions.invoke('baixarMidiaWhatsApp', {
-        mensagem_id: mensagem.id,
-        arquivo_url: mensagem.arquivo_url || null,
-        conversa_id: conversaId || mensagem.conversa_id
-      }).then(res => {
-        const url = res?.data?.arquivo_url;
-        if (url && isUrlValida(url)) setMediaUrl(url);
-      }).catch(() => {}).finally(() => setLoadingMedia(false));
-    }
+
+    // URL inválida/vazia: chamar backend para baixar
+    setLoadingMedia(true);
+    base44.functions.invoke('baixarMidiaWhatsApp', {
+      mensagem_id: mensagem.id,
+      arquivo_url: mensagem.arquivo_url || null,
+      conversa_id: conversaId || mensagem.conversa_id
+    }).then(res => {
+      const url = res?.data?.arquivo_url;
+      if (url && isUrlValida(url)) setMediaUrl(url);
+    }).catch(err => {
+      console.warn('baixarMidia falhou:', err?.message);
+    }).finally(() => setLoadingMedia(false));
   }, [mensagem.id]);
 
   const handleDeletar = async () => {
@@ -198,9 +201,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   };
 
-  // Atualizar mediaUrl se mensagem for atualizada externamente (só URLs válidas, não sobrescreve URL já carregada)
+  // Atualizar mediaUrl se mensagem for atualizada externamente
   useEffect(() => {
-    if (mensagem.arquivo_url && isUrlValida(mensagem.arquivo_url) && !mediaUrl) {
+    if (mensagem.arquivo_url && isUrlValida(mensagem.arquivo_url)) {
       setMediaUrl(mensagem.arquivo_url);
     }
   }, [mensagem.arquivo_url]);
