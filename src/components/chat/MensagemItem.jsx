@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Copy, Pin } from 'lucide-react';
+import VideoMensagem from './VideoMensagem';
 import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -476,7 +477,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                     src={mediaUrl}
                     alt="Imagem"
                     className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
-                    onError={() => setMediaUrl(null)}
+                    onError={(e) => { e.target.onerror = null; setMediaUrl(null); }}
                     onClick={() => setImagemAberta(true)}
                   />
                   <button
@@ -589,26 +590,16 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
       case 'video':
         return (
-          <div className="max-w-sm">
-            {loadingMedia ? (
-              <div className="flex items-center justify-center gap-2 bg-white/10 rounded-lg p-4 w-48 h-32">
-                <Loader2 className="w-5 h-5 animate-spin" />
-              </div>
-            ) : mediaUrl ? (
-              <video controls className="rounded-lg max-w-full h-auto bg-black">
-                <source src={mediaUrl} type={mensagem.arquivo_nome?.endsWith('.webm') || mediaUrl?.endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
-                <source src={mediaUrl} type="video/webm" />
-                <source src={mediaUrl} type="video/mp4" />
-              </video>
-            ) : (
-              <button onClick={handleCarregarMidia} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-lg p-4 text-sm opacity-75 transition-colors cursor-pointer">
-                <Download className="w-4 h-4" /> Carregar vídeo
-              </button>
-            )}
-            {mensagem.texto && !textoIsPadraoMidia(mensagem.texto) && (
-              <p className="text-xs mt-1 break-words whitespace-pre-wrap opacity-90">{mensagem.texto}</p>
-            )}
-          </div>
+          <VideoMensagem
+            mediaUrl={mediaUrl}
+            loadingMedia={loadingMedia}
+            onCarregar={handleCarregarMidia}
+            onDownload={() => handleDownload(mediaUrl, mensagem.arquivo_nome || `video_${mensagem.id}.mp4`)}
+            onErro={() => setMediaUrl(null)}
+            arquivoNome={mensagem.arquivo_nome}
+            texto={mensagem.texto}
+            textoIsPadrao={textoIsPadraoMidia}
+          />
         );
 
       case 'pdf':
@@ -764,7 +755,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 src={mediaUrl}
                 alt="Imagem"
                 style={{ display: 'block', maxWidth: '100%', height: 'auto', cursor: 'pointer' }}
-                onError={() => setMediaUrl(null)}
+                onError={(e) => { e.target.onerror = null; setMediaUrl(null); }}
                 onClick={() => setImagemAberta(true)}
               />
               {/* Hora + status overlay */}
