@@ -713,7 +713,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
   // Imagem sem texto = sem balão azul, renderizar direto como bloco limpo
   // Se tiver texto (legenda), cai no bloco padrão com balão para mostrar a legenda
-  const textoVazio = !mensagem.texto || mensagem.texto.trim() === '';
+  // Textos padrão gerados pelo webhook não são legendas reais
+  const TEXTOS_PADRAO_MIDIA = ['Imagem', 'Áudio', 'Vídeo', 'Video', 'Audio', 'imagem', 'audio', 'video'];
+  const textoVazio = !mensagem.texto || mensagem.texto.trim() === '' || TEXTOS_PADRAO_MIDIA.includes(mensagem.texto.trim());
   const isContatoMsg = !!(mensagem.texto && (mensagem.texto.includes('contactMessage') || mensagem.texto.includes('BEGIN:VCARD')));
   const isImagemLimpa = mensagem.tipo_conteudo === 'imagem' && textoVazio && !isContatoMsg;
 
