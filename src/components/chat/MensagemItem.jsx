@@ -16,7 +16,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     if (!url) return false;
     if (typeof url !== 'string') return false;
 
-    // Bloquear URLs temporárias/privadas do WhatsApp/Meta
+    // Bloquear URLs temporárias/privadas do WhatsApp/Meta (expiram rapidamente)
     if (url.includes('pps.whatsapp.net')) return false;
     if (url.includes('mmg.whatsapp.net')) return false;
     if (url.includes('lookaside.fbsbx.com')) return false;
@@ -29,6 +29,16 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     if (url.includes('/media/') && !url.includes('base44') && !url.includes('supabase') && !url.includes('amazonaws')) return false;
     // Deve ser uma URL válida começando com http
     if (!url.startsWith('http')) return false;
+
+    // Bloquear URLs truncadas do nosso storage (sem extensão de arquivo no path final)
+    // URLs válidas do storage terminam em .mp4, .jpg, .png, .ogg, .webm, .pdf, .mp3, etc.
+    if (url.includes('base44.app/api/apps') && url.includes('/files/')) {
+      const pathFinal = url.split('?')[0]; // remover query string
+      const nomeArquivo = pathFinal.split('/').pop();
+      // Se o nome do arquivo não tem extensão (ex: "eedf76", "05f41c"), a URL está truncada
+      const temExtensao = /\.[a-zA-Z0-9]{2,5}$/.test(nomeArquivo);
+      if (!temExtensao) return false;
+    }
 
     // Deve ser URL do nosso storage ou URL pública conhecida
     const isPermanente = url.includes('base44') || url.includes('supabase') || url.includes('amazonaws');
@@ -151,12 +161,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       return;
     }
 
-    // Sem URL válida: tentar baixar via backend apenas se não for URL temporária de WhatsApp
-    // (evitar tentar baixar URLs expiradas que vão falhar de qualquer jeito)
+    // Sem URL válida: tentar baixar via backend
+    // Não tentar se não tiver nenhuma referência (sem URL e sem media_id)
     const urlAtual = mensagem.arquivo_url || '';
-    const isUrlTemporariaWpp = urlAtual.includes('mmg.whatsapp.net') || urlAtual.includes('pps.whatsapp.net') || urlAtual.includes('.enc');
-    
-    // Só chamar backend se tiver media_id ou URL temporária válida que pode ser baixada
     if (!urlAtual && !mensagem.media_id) return;
 
     setLoadingMedia(true);
