@@ -38,11 +38,6 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   };
   const [mediaUrl, setMediaUrl] = useState(() => isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);
   const [loadingMedia, setLoadingMedia] = useState(false);
-  // Refs para evitar stale closure no auto-download
-  const mediaUrlRef = React.useRef(isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);
-  const loadingMediaRef = React.useRef(false);
-  React.useEffect(() => { mediaUrlRef.current = mediaUrl; }, [mediaUrl]);
-  React.useEffect(() => { loadingMediaRef.current = loadingMedia; }, [loadingMedia]);
   const [transcricao, setTranscricao] = useState(
     mensagem.tipo_conteudo === 'audio' && mensagem.texto && mensagem.texto !== 'Áudio'
       ? mensagem.texto : null
@@ -144,13 +139,13 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
-  // Auto-carregar mídia ao montar — sempre tenta buscar se não tiver URL válida
+  // Auto-carregar mídia ao montar ou quando arquivo_url mudar
   useEffect(() => {
     const tiposMidia = ['audio', 'imagem', 'video'];
     if (!tiposMidia.includes(mensagem.tipo_conteudo)) return;
     if (mensagem.id?.startsWith('temp_')) return;
 
-    // Se já tem URL válida, usar direto sem chamar backend
+    // Se já tem URL válida no banco, usar direto
     if (isUrlValida(mensagem.arquivo_url)) {
       setMediaUrl(mensagem.arquivo_url);
       return;
@@ -168,7 +163,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }).catch(err => {
       console.warn('baixarMidia falhou:', err?.message);
     }).finally(() => setLoadingMedia(false));
-  }, [mensagem.id]);
+  }, [mensagem.id, mensagem.arquivo_url]);
 
   const handleDeletar = async () => {
     if (mensagem.id?.startsWith('temp_')) {
@@ -201,12 +196,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   };
 
-  // Atualizar mediaUrl se mensagem for atualizada externamente
-  useEffect(() => {
-    if (mensagem.arquivo_url && isUrlValida(mensagem.arquivo_url)) {
-      setMediaUrl(mensagem.arquivo_url);
-    }
-  }, [mensagem.arquivo_url]);
+
 
   const handleCarregarMidia = () => {
     if (loadingMedia) return;
