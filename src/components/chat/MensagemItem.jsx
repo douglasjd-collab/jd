@@ -144,7 +144,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
-  // Auto-carregar mídia (áudio, imagem, vídeo) recebida pela Evolution — dispara download automático
+  // Auto-carregar mídia (áudio, imagem, vídeo) — dispara download automático ao montar
   useEffect(() => {
     const tiposMidia = ['audio', 'imagem', 'video'];
     if (!tiposMidia.includes(mensagem.tipo_conteudo)) return;
@@ -153,18 +153,13 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       setMediaUrl(mensagem.arquivo_url);
       return;
     }
-    // Se é mensagem da Evolution com mídia pendente, baixar automaticamente
-    if (
-      mensagem.provider === 'evolution' &&
-      mensagem.remetente === 'cliente' &&
-      !mediaUrl &&
-      !loadingMedia
-    ) {
+    // Qualquer mensagem de mídia sem URL válida: baixar automaticamente
+    if (!mensagem.id?.startsWith('temp_')) {
       setLoadingMedia(true);
       base44.functions.invoke('baixarMidiaWhatsApp', {
         mensagem_id: mensagem.id,
         arquivo_url: mensagem.arquivo_url || null,
-        conversa_id: mensagem.conversa_id
+        conversa_id: conversaId || mensagem.conversa_id
       }).then(res => {
         const url = res?.data?.arquivo_url;
         if (url && isUrlValida(url)) setMediaUrl(url);
