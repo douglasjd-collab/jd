@@ -148,14 +148,33 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     if (mensagem.id?.startsWith('temp_')) return;
 
     // Se já tem URL permanente válida no banco, usar direto
-    // Mas não usar URL que já falhou (arquivo corrompido/inexistente)
     if (isUrlValida(mensagem.arquivo_url, mensagem.download_status) && mensagem.arquivo_url !== urlFalhouRef.current) {
       setMediaUrl(mensagem.arquivo_url);
       return;
     }
 
-    // Sem URL válida: tentar baixar via backend
-    // Não tentar se não tiver nenhuma referência (sem URL e sem media_id)
+    // Se download está pendente (webhook ainda processando), aguardar 6s antes de tentar
+    // Isso evita corrida com o auto-download do webhook
+    if (mensagem.download_status === 'pendente') {
+      const timer = setTimeout(() => {
+        // Re-verificar — pode ter sido baixado pelo webhook nesse intervalo
+        // O useEffect de mensagem.arquivo_url já cuida de setar mediaUrl quando atualizar
+        // Só chamar backend se ainda não foi baixado
+        if (!mediaUrl) {
+          base44.functions.invoke('baixarMidiaWhatsApp', {
+            mensagem_id: mensagem.id,
+            arquivo_url: mensagem.arquivo_url || null,
+            conversa_id: conversaId || mensagem.conversa_id
+          }).then(res => {
+            const url = res?.data?.arquivo_url;
+            if (url && isUrlValida(url)) setMediaUrl(url);
+          }).catch(() => {});
+        }
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+
+    // Sem URL válida e sem download pendente: tentar baixar imediatamente
     const urlAtual = mensagem.arquivo_url || '';
     if (!urlAtual && !mensagem.media_id) return;
 
