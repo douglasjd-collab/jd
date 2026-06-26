@@ -1002,10 +1002,10 @@ async function processarWebhook(req, rawBody, base44) {
                 body: JSON.stringify({ message: { key: keyObj }, convertToMp4: false })
               });
               if (b64Res.ok) {
-                const b64Data = await b64Res.json();
-                if (b64Data?.base64) {
-                  base64Data = b64Data.base64;
-                  mimeType = b64Data.mimetype || mimeType;
+                const b64DataRes = await b64Res.json();
+                if (b64DataRes?.base64) {
+                  base64Data = b64DataRes.base64;
+                  mimeType = b64DataRes.mimetype || mimeType;
                 }
               }
             } catch (_) {}
