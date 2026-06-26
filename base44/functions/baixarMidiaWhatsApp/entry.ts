@@ -360,12 +360,20 @@ Deno.serve(async (req) => {
     }
 
     // Converter base64 → upload permanente
-    const binaryStr = atob(base64Data);
+    // Limpar base64 antes de decodificar (remover espaços/quebras que causam corrupção)
+    const b64Clean = base64Data.replace(/[\s\r\n]/g, '');
+    const binaryStr = atob(b64Clean);
     const bytes = new Uint8Array(binaryStr.length);
     for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+    // Validar tamanho mínimo
+    if (bytes.length < 500) {
+      console.warn(`⚠️ Arquivo muito pequeno após decodificação: ${bytes.length} bytes — descartando`);
+      return Response.json({ error: 'Arquivo corrompido ou vazio' }, { status: 400 });
+    }
+
     const blob = new Blob([bytes], { type: mimeType });
     const extRaw = mimeType.split('/')[1]?.split(';')[0] || 'bin';
-    // Normalizar extensões que o storage rejeita
     const extMap = { 'jpeg': 'jpg', 'mpeg': 'mp3', 'x-m4a': 'm4a', 'ogg': 'ogg', 'webm': 'webm', 'mp4': 'mp4', 'png': 'png', 'gif': 'gif', 'webp': 'webp', 'pdf': 'pdf' };
     const ext = extMap[extRaw] || extRaw;
     const file = new File([blob], `media_${mensagem_id}.${ext}`, { type: mimeType });
@@ -375,13 +383,21 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Upload para storage falhou' }, { status: 500 });
     }
 
+    // Verificar se o upload ficou válido
+    const checkRes = await fetch(uploadRes.file_url, { method: 'HEAD' }).catch(() => null);
+    const uploadSize = parseInt(checkRes?.headers.get('content-length') || '0');
+    if (!checkRes || checkRes.status !== 200 || uploadSize < 500) {
+      console.warn(`⚠️ Upload inválido: status=${checkRes?.status} size=${uploadSize} — não salvando URL corrompida`);
+      return Response.json({ error: 'Upload resultou em arquivo inválido no storage' }, { status: 500 });
+    }
+
     // Salvar URL permanente na mensagem e marcar como baixado
     await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagem_id, {
       arquivo_url: uploadRes.file_url,
       download_status: 'baixado'
     });
 
-    console.log(`✅ Mídia salva permanentemente: ${uploadRes.file_url}`);
+    console.log(`✅ Mídia salva permanentemente: ${uploadRes.file_url} (${uploadSize} bytes)`);
     return Response.json({ ok: true, arquivo_url: uploadRes.file_url });
 
   } catch (error) {

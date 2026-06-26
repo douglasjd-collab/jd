@@ -1103,9 +1103,18 @@ async function processarWebhook(req, rawBody, base44) {
           return;
         }
 
-        const binaryStr = atob(base64Data);
+        // Decodificar base64 de forma segura
+        const b64Clean = base64Data.replace(/\s/g, '');
+        const binaryStr = atob(b64Clean);
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+        // Validar tamanho mínimo (arquivo corrompido tem < 500 bytes)
+        if (bytes.length < 500) {
+          console.warn(`⚠️ Auto-download: arquivo muito pequeno (${bytes.length} bytes) — descartado`);
+          return;
+        }
+
         const extRaw = mimeType.split('/')[1]?.split(';')[0] || 'bin';
         const extMap = { 'jpeg': 'jpg', 'mpeg': 'mp3', 'x-m4a': 'm4a', 'ogg': 'ogg', 'webm': 'webm', 'mp4': 'mp4', 'png': 'png', 'gif': 'gif', 'webp': 'webp', 'pdf': 'pdf' };
         const ext = extMap[extRaw] || extRaw;
@@ -1114,11 +1123,18 @@ async function processarWebhook(req, rawBody, base44) {
 
         const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file });
         if (uploadRes?.file_url) {
-          await base44.asServiceRole.entities.MensagemWhatsapp.update(novaMensagem.id, {
-            arquivo_url: uploadRes.file_url,
-            download_status: 'baixado'
-          });
-          console.log(`✅ Auto-download OK: ${uploadRes.file_url}`);
+          // Verificar se o upload foi bem-sucedido (não retornou arquivo corrompido)
+          const checkRes = await fetch(uploadRes.file_url, { method: 'HEAD' }).catch(() => null);
+          const uploadOk = checkRes && checkRes.status === 200 && parseInt(checkRes.headers.get('content-length') || '0') > 500;
+          if (uploadOk) {
+            await base44.asServiceRole.entities.MensagemWhatsapp.update(novaMensagem.id, {
+              arquivo_url: uploadRes.file_url,
+              download_status: 'baixado'
+            });
+            console.log(`✅ Auto-download OK: ${uploadRes.file_url}`);
+          } else {
+            console.warn(`⚠️ Upload retornou arquivo inválido (status=${checkRes?.status}) — não salvando`);
+          }
         }
       } catch (e) {
         console.warn(`⚠️ Auto-download falhou ${novaMensagem.id}: ${e.message}`);
