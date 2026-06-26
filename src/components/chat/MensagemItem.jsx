@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 
 export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null }) {
   // Não auto-carregar arquivos .enc (criptografados do WhatsApp — causam download indesejado no browser)
-  const isUrlValida = (url) => {
+  const isUrlValida = (url, downloadStatus = null) => {
     if (!url) return false;
     if (typeof url !== 'string') return false;
 
@@ -21,34 +21,24 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     if (url.includes('pps.whatsapp.net')) return false;
     if (url.includes('mmg.whatsapp.net')) return false;
     if (url.includes('lookaside.fbsbx.com')) return false;
-
-    // Bloquear media_id numérico da Meta
-    if (/^\d+$/.test(url.trim())) return false;
-    // Bloquear arquivos .enc (criptografados)
     if (url.includes('.enc')) return false;
-    // Bloquear URLs internas da Evolution que não são do nosso storage
-    if (url.includes('/media/') && !url.includes('base44') && !url.includes('supabase') && !url.includes('amazonaws')) return false;
-    // Deve ser uma URL válida começando com http
+    if (/^\d+$/.test(url.trim())) return false;
     if (!url.startsWith('http')) return false;
+    if (url.includes('/media/') && !url.includes('base44') && !url.includes('supabase') && !url.includes('amazonaws')) return false;
 
-    // Bloquear URLs truncadas do nosso storage (sem extensão de arquivo no path final)
-    // URLs válidas do storage terminam em .mp4, .jpg, .png, .ogg, .webm, .pdf, .mp3, etc.
+    // URLs do nosso storage com download_status "pendente" = upload incompleto/corrompido
+    if (downloadStatus === 'pendente') return false;
+
+    // Bloquear URLs do storage sem extensão (truncadas)
     if (url.includes('base44.app/api/apps') && url.includes('/files/')) {
-      const pathFinal = url.split('?')[0]; // remover query string
-      const nomeArquivo = pathFinal.split('/').pop();
-      // Se o nome do arquivo não tem extensão (ex: "eedf76", "05f41c"), a URL está truncada
-      const temExtensao = /\.[a-zA-Z0-9]{2,5}$/.test(nomeArquivo);
-      if (!temExtensao) return false;
+      const nomeArquivo = url.split('?')[0].split('/').pop();
+      if (!/\.[a-zA-Z0-9]{2,5}$/.test(nomeArquivo)) return false;
     }
 
-    // Deve ser URL do nosso storage ou URL pública conhecida
-    const isPermanente = url.includes('base44') || url.includes('supabase') || url.includes('amazonaws');
-    const isUrlPublica = url.startsWith('https://') && !url.includes('localhost');
-
-    return isPermanente || isUrlPublica;
+    return url.includes('base44') || url.includes('supabase') || url.includes('amazonaws') || url.startsWith('https://');
   };
   const urlFalhouRef = useRef(null); // rastrear URL que deu erro para não re-setar
-  const [mediaUrl, setMediaUrl] = useState(() => isUrlValida(mensagem.arquivo_url) ? mensagem.arquivo_url : null);
+  const [mediaUrl, setMediaUrl] = useState(() => isUrlValida(mensagem.arquivo_url, mensagem.download_status) ? mensagem.arquivo_url : null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [transcricao, setTranscricao] = useState(
     mensagem.tipo_conteudo === 'audio' && mensagem.texto && mensagem.texto !== 'Áudio'
@@ -157,9 +147,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     if (!tiposMidia.includes(mensagem.tipo_conteudo)) return;
     if (mensagem.id?.startsWith('temp_')) return;
 
-    // Se já tem URL permanente válida no banco (independente do download_status), usar direto
+    // Se já tem URL permanente válida no banco, usar direto
     // Mas não usar URL que já falhou (arquivo corrompido/inexistente)
-    if (isUrlValida(mensagem.arquivo_url) && mensagem.arquivo_url !== urlFalhouRef.current) {
+    if (isUrlValida(mensagem.arquivo_url, mensagem.download_status) && mensagem.arquivo_url !== urlFalhouRef.current) {
       setMediaUrl(mensagem.arquivo_url);
       return;
     }
@@ -185,10 +175,10 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   // Quando o banco atualizar arquivo_url (ex: download feito em background), refletir no estado
   // Mas não re-setar URL que já falhou (causaria loop)
   useEffect(() => {
-    if (isUrlValida(mensagem.arquivo_url) && !mediaUrl && mensagem.arquivo_url !== urlFalhouRef.current) {
+    if (isUrlValida(mensagem.arquivo_url, mensagem.download_status) && !mediaUrl && mensagem.arquivo_url !== urlFalhouRef.current) {
       setMediaUrl(mensagem.arquivo_url);
     }
-  }, [mensagem.arquivo_url]);
+  }, [mensagem.arquivo_url, mensagem.download_status]);
 
   const handleDeletar = async () => {
     if (mensagem.id?.startsWith('temp_')) {
@@ -228,7 +218,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     if (mediaUrl && isUrlValida(mediaUrl)) return;
 
     // Se já tem URL permanente válida no banco, usar direto sem chamar backend
-    if (isUrlValida(mensagem.arquivo_url)) {
+    if (isUrlValida(mensagem.arquivo_url, mensagem.download_status)) {
       setMediaUrl(mensagem.arquivo_url);
       return;
     }
