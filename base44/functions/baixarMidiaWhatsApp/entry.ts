@@ -364,7 +364,10 @@ Deno.serve(async (req) => {
     const bytes = new Uint8Array(binaryStr.length);
     for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
     const blob = new Blob([bytes], { type: mimeType });
-    const ext = mimeType.split('/')[1]?.split(';')[0] || 'bin';
+    const extRaw = mimeType.split('/')[1]?.split(';')[0] || 'bin';
+    // Normalizar extensões que o storage rejeita
+    const extMap = { 'jpeg': 'jpg', 'mpeg': 'mp3', 'x-m4a': 'm4a', 'ogg': 'ogg', 'webm': 'webm', 'mp4': 'mp4', 'png': 'png', 'gif': 'gif', 'webp': 'webp', 'pdf': 'pdf' };
+    const ext = extMap[extRaw] || extRaw;
     const file = new File([blob], `media_${mensagem_id}.${ext}`, { type: mimeType });
 
     const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file });

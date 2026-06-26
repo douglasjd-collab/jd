@@ -1043,7 +1043,9 @@ async function processarWebhook(req, rawBody, base44) {
         const binaryStr = atob(base64Data);
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-        const ext = mimeType.split('/')[1]?.split(';')[0]?.replace('jpeg', 'jpg') || 'bin';
+        const extRaw = mimeType.split('/')[1]?.split(';')[0] || 'bin';
+        const extMap = { 'jpeg': 'jpg', 'mpeg': 'mp3', 'x-m4a': 'm4a', 'ogg': 'ogg', 'webm': 'webm', 'mp4': 'mp4', 'png': 'png', 'gif': 'gif', 'webp': 'webp', 'pdf': 'pdf' };
+        const ext = extMap[extRaw] || extRaw;
         const blob = new Blob([bytes], { type: mimeType });
         const file = new File([blob], `media_${novaMensagem.id}.${ext}`, { type: mimeType });
 
