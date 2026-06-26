@@ -258,7 +258,13 @@ export default function SimuladorNormal() {
         const registros = await base44.entities.MenorLanceAssembleia.filter(filtro, '-data_assembleia', 10);
 
         if (!registros || registros.length === 0) {
-          setAnaliseContemplacao({ sem_historico: true, modalidade: modalidadeLance, lanceOfertadoPct });
+          // Fallback: usar dados do histórico de lances do grupo já carregados no painel
+          const menorDoHistorico = modalidadeLance === 'livre' ? menorLanceLivre : menorLanceLimitado;
+          if (menorDoHistorico !== null && menorDoHistorico !== undefined) {
+            setAnaliseContemplacao({ modalidade: modalidadeLance, menorLancePct: menorDoHistorico, lanceOfertadoPct });
+          } else {
+            setAnaliseContemplacao({ sem_historico: true, modalidade: modalidadeLance, lanceOfertadoPct });
+          }
           return;
         }
 
@@ -269,7 +275,7 @@ export default function SimuladorNormal() {
       }
     };
     buscarAnalise();
-  }, [usarLanceProprio, usarLanceEmbutido, lanceProprio, lanceEmbutidoPercentual, creditoTotal, grupo, empresaId, modalidadeLance]);
+  }, [usarLanceProprio, usarLanceEmbutido, lanceProprio, lanceEmbutidoPercentual, creditoTotal, grupo, empresaId, modalidadeLance, menorLanceLivre, menorLanceLimitado]);
 
   // Buscar dados históricos do grupo quando disponível
   useEffect(() => {
