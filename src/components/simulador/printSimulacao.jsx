@@ -134,13 +134,14 @@ export function imprimirSimulacao(simulacao) {
   .wrap { max-width: 780px; margin: 0 auto; }
 
   /* Cabeçalho */
-  .header { background: #083942; color: #fff; padding: 16px 20px; border-radius: 10px 10px 0 0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; }
-  .header-left h1 { font-size: 20px; font-weight: 700; margin: 0 0 2px; letter-spacing: 0.5px; }
-  .header-left p { font-size: 11px; opacity: .75; margin: 0; }
-  .header-right { text-align: right; font-size: 10px; opacity: .8; line-height: 1.6; }
-  .header-logo { height: 36px; object-fit: contain; }
-  .header-sub { background: #10353C; padding: 8px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 0 10px 10px; margin-bottom: 16px; }
-  .header-sub span { font-size: 10px; color: rgba(255,255,255,0.7); }
+  .header { background: #083942; color: #fff; padding: 8px 16px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0; }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .header-left h1 { font-size: 14px; font-weight: 700; margin: 0; letter-spacing: 0.5px; }
+  .header-left p { font-size: 10px; opacity: .75; margin: 0; }
+  .header-right { text-align: right; font-size: 10px; opacity: .85; line-height: 1.5; }
+  .header-logo { height: 28px; object-fit: contain; filter: brightness(0) invert(1); }
+  .header-sub { background: #10353C; padding: 4px 16px; display: flex; justify-content: space-between; align-items: center; border-radius: 0 0 8px 8px; margin-bottom: 12px; }
+  .header-sub span { font-size: 9px; color: rgba(255,255,255,0.7); }
   .header-sub strong { color: #fff; }
 
   /* Seções */
@@ -196,8 +197,10 @@ export function imprimirSimulacao(simulacao) {
     <div class="header">
       <div class="header-left">
         <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" alt="JD Promotora" class="header-logo" />
-        <h1>JD PROMOTORA</h1>
-        <p>Simulação de Consórcio</p>
+        <div>
+          <h1>JD PROMOTORA</h1>
+          <p>Simulação de Consórcio</p>
+        </div>
       </div>
       <div class="header-right">
         <p>${esc(dataStr)}</p>
