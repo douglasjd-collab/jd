@@ -128,14 +128,16 @@ Deno.serve(async (req) => {
     }
     // ─────────────────────────────────────────────────────────────────────
 
-    // Se phone_number_id_meta está preenchido na conversa, é Meta — independente de outros campos
+    // Fonte de verdade: canal_origem e provider são campos travados definidos no webhook.
+    // phone_number_id_meta NÃO deve forçar Meta sozinho — ele é apenas uma credencial auxiliar.
+    // Se canal_origem for 'evolution', é Evolution mesmo que haja phone_number_id_meta.
     const canalAtendimento =
       canalOrigem === 'meta' ? 'meta_oficial' :
       canalOrigem === 'instagram' ? 'instagram' :
       canalOrigem === 'evolution' ? 'evolution' :
       providerSalvo === 'whatsapp_meta' ? 'meta_oficial' :
       providerSalvo === 'instagram' ? 'instagram' :
-      phoneNumberIdConversa ? 'meta_oficial' :
+      providerSalvo === 'evolution' ? 'evolution' :
       conversaDoBanco?.canal_atendimento ||
       conversaDoBanco?.canal_preferencial ||
       tipoConexaoConversa ||

@@ -131,13 +131,14 @@ export default function ChatHeader({
                   Instagram
                 </span>
               ) : ehMeta ? (
-                <span
-                  title="Respondendo via Meta Oficial"
-                  className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm bg-green-500 cursor-default"
+                <button
+                  onClick={alternarApi}
+                  title="Respondendo via Meta Oficial — clique para trocar para Evolution"
+                  className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 bg-green-500"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
                   Meta Oficial
-                </span>
+                </button>
               ) : (
                 <button
                   onClick={alternarApi}
@@ -267,12 +268,12 @@ export default function ChatHeader({
               <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
               Reabrir conversa
             </DropdownMenuItem>
-            {!ehInstagram && !ehMeta && (
+            {!ehInstagram && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => alternarApi()}>
                   <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                  Usar Meta Oficial nesta conversa
+                  {ehMeta ? 'Usar Evolution nesta conversa' : 'Usar Meta Oficial nesta conversa'}
                 </DropdownMenuItem>
               </>
             )}
