@@ -139,7 +139,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }
   }, [mensagem.id]);
 
-  // Auto-carregar mídia ao montar ou quando arquivo_url mudar
+  // Auto-carregar mídia ao montar
   useEffect(() => {
     const tiposMidia = ['audio', 'imagem', 'video'];
     if (!tiposMidia.includes(mensagem.tipo_conteudo)) return;
@@ -151,7 +151,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       return;
     }
 
-    // URL inválida/vazia: chamar backend para baixar
+    // URL inválida/vazia: chamar backend para baixar automaticamente
     setLoadingMedia(true);
     base44.functions.invoke('baixarMidiaWhatsApp', {
       mensagem_id: mensagem.id,
@@ -163,7 +163,14 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     }).catch(err => {
       console.warn('baixarMidia falhou:', err?.message);
     }).finally(() => setLoadingMedia(false));
-  }, [mensagem.id, mensagem.arquivo_url]);
+  }, [mensagem.id]);
+
+  // Quando o banco atualizar arquivo_url (ex: download feito em background), refletir no estado
+  useEffect(() => {
+    if (isUrlValida(mensagem.arquivo_url) && !mediaUrl) {
+      setMediaUrl(mensagem.arquivo_url);
+    }
+  }, [mensagem.arquivo_url]);
 
   const handleDeletar = async () => {
     if (mensagem.id?.startsWith('temp_')) {
