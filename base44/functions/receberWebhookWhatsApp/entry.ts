@@ -773,7 +773,7 @@ async function processarWebhook(req, rawBody, base44) {
       });
       
       if (existentesCross.length === 0) {
-        await base44.asServiceRole.entities.MensagemWhatsapp.create({
+        const novaMsgCross = await base44.asServiceRole.entities.MensagemWhatsapp.create({
           conversa_id: conversa.id, empresa_id: empresaId,
           remetente: remetenteMsg, tipo_conteudo: tipo, texto: conteudo,
           arquivo_url: arquivo_url || null,
@@ -786,6 +786,50 @@ async function processarWebhook(req, rawBody, base44) {
           status: statusMsg
         });
         console.log(`✅ Mensagem cross-canal salva: provider=${providerMensagem} | remetente=${remetenteMsg} | id=${messageId}`);
+
+        // Auto-download de mídia para mensagens cross-canal
+        const tiposMidiaCross = ['imagem', 'audio', 'video', 'pdf', 'documento'];
+        if (tiposMidiaCross.includes(tipo) && messageId && novaMsgCross) {
+          (async () => {
+            try {
+              const tipoParaMimeCross = {
+                'audio': message.audioMessage?.mimetype || message.pttMessage?.mimetype || 'audio/ogg',
+                'imagem': message.imageMessage?.mimetype || 'image/jpeg',
+                'video': message.videoMessage?.mimetype || 'video/mp4',
+                'pdf': message.documentMessage?.mimetype || 'application/pdf',
+                'documento': message.documentMessage?.mimetype || 'application/octet-stream'
+              };
+              let mimeTypeCross = tipoParaMimeCross[tipo] || 'application/octet-stream';
+              const evoUrl = (empresaEvolutionUrl || '').replace(/\/$/, '');
+              const evoKey = empresaEvolutionKey;
+              let b64Cross = null;
+              if (messageId && remoteJidOriginal && evoUrl && evoKey) {
+                for (const fmVal of [false, true]) {
+                  if (b64Cross) break;
+                  const res = await fetch(`${evoUrl}/chat/getBase64FromMediaMessage/${instanceFinal}`, {
+                    method: 'POST',
+                    headers: { 'apikey': evoKey, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: { key: { remoteJid: remoteJidOriginal, fromMe: fmVal, id: messageId } }, convertToMp4: false })
+                  });
+                  if (res.ok) { const d = await res.json(); if (d?.base64) { b64Cross = d.base64; mimeTypeCross = d.mimetype || mimeTypeCross; } }
+                }
+              }
+              if (!b64Cross && arquivo_url && !arquivo_url.includes('.enc')) {
+                const fr = await fetch(arquivo_url, { headers: { 'apikey': evoKey || '' } });
+                if (fr.ok) { const ab = await fr.arrayBuffer(); const ua = new Uint8Array(ab); if (ua.length > 1000) { let bin = ''; for (let i = 0; i < ua.length; i += 8192) bin += String.fromCharCode(...ua.slice(i, i+8192)); b64Cross = btoa(bin); } }
+              }
+              if (!b64Cross) return;
+              const bStr = atob(b64Cross); const bts = new Uint8Array(bStr.length); for (let i = 0; i < bStr.length; i++) bts[i] = bStr.charCodeAt(i);
+              const extMapC = { 'jpeg': 'jpg', 'mpeg': 'mp3', 'ogg': 'ogg', 'webm': 'webm', 'mp4': 'mp4', 'png': 'png', 'webp': 'webp', 'pdf': 'pdf' };
+              const extC = extMapC[mimeTypeCross.split('/')[1]?.split(';')[0]] || 'bin';
+              const upRes = await base44.asServiceRole.integrations.Core.UploadFile({ file: new File([new Blob([bts], { type: mimeTypeCross })], `media_${novaMsgCross.id}.${extC}`, { type: mimeTypeCross }) });
+              if (upRes?.file_url) {
+                await base44.asServiceRole.entities.MensagemWhatsapp.update(novaMsgCross.id, { arquivo_url: upRes.file_url, download_status: 'baixado' });
+                console.log(`✅ Auto-download cross-canal: ${upRes.file_url}`);
+              }
+            } catch (e) { console.warn(`⚠️ Auto-download cross-canal falhou: ${e.message}`); }
+          })();
+        }
       } else {
         console.log(`⏭️ Mensagem cross-canal duplicada ignorada: ${messageId}`);
       }
@@ -986,7 +1030,8 @@ async function processarWebhook(req, rawBody, base44) {
         const evolutionKey = empresaEvolutionKey;
         const evolutionInstance = instanceFinal;
         const telefoneFinal = telefoneLimpo;
-        const remoteJidFinal = `${telefoneFinal}@s.whatsapp.net`;
+        // Usar o remoteJid original do payload — é o identificador correto para a API Evolution
+        const remoteJidFinal = remoteJidOriginal || `${telefoneFinal}@s.whatsapp.net`;
 
         let base64Data = null;
 
