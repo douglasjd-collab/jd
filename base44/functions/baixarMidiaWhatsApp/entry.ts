@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     const mensagem = mensagens?.[0];
     if (!mensagem) return Response.json({ error: 'Mensagem não encontrada' }, { status: 404 });
 
-    // Se já tem URL permanente do nosso storage, retornar ela
+    // Se já tem URL permanente do nosso storage, verificar se o arquivo é válido antes de retornar
     const urlAtual = mensagem.arquivo_url;
     const isUrlPermanente = urlAtual && (
       urlAtual.includes('base44') || urlAtual.includes('supabase') || urlAtual.includes('amazonaws')
@@ -26,7 +26,19 @@ Deno.serve(async (req) => {
     // Nunca retornar URLs .enc (criptografadas da CDN do WhatsApp) como definitivas
     const isUrlEnc = urlAtual && (urlAtual.includes('.enc') || urlAtual.includes('.enc?'));
     if (isUrlPermanente && !isUrlEnc) {
-      return Response.json({ ok: true, arquivo_url: urlAtual });
+      // Verificar se o arquivo existe e não está corrompido (>1KB)
+      try {
+        const headRes = await fetch(urlAtual, { method: 'HEAD' });
+        const size = parseInt(headRes.headers.get('content-length') || '0');
+        const ct = headRes.headers.get('content-type') || '';
+        const isValido = headRes.status === 200 && size > 1000 && !ct.startsWith('text/plain');
+        if (isValido) {
+          return Response.json({ ok: true, arquivo_url: urlAtual });
+        }
+        console.warn(`⚠️ URL do storage inválida (status=${headRes.status}, size=${size}, ct=${ct}) — rebaixando...`);
+      } catch (e) {
+        console.warn('⚠️ HEAD check falhou, tentando rebaixar:', e.message);
+      }
     }
 
     // Buscar conversa e empresa
