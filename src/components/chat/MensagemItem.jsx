@@ -145,13 +145,20 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     if (!tiposMidia.includes(mensagem.tipo_conteudo)) return;
     if (mensagem.id?.startsWith('temp_')) return;
 
-    // Se já tem URL válida no banco, usar direto
+    // Se já tem URL permanente válida no banco (independente do download_status), usar direto
     if (isUrlValida(mensagem.arquivo_url)) {
       setMediaUrl(mensagem.arquivo_url);
       return;
     }
 
-    // URL inválida/vazia: chamar backend para baixar automaticamente
+    // Sem URL válida: tentar baixar via backend apenas se não for URL temporária de WhatsApp
+    // (evitar tentar baixar URLs expiradas que vão falhar de qualquer jeito)
+    const urlAtual = mensagem.arquivo_url || '';
+    const isUrlTemporariaWpp = urlAtual.includes('mmg.whatsapp.net') || urlAtual.includes('pps.whatsapp.net') || urlAtual.includes('.enc');
+    
+    // Só chamar backend se tiver media_id ou URL temporária válida que pode ser baixada
+    if (!urlAtual && !mensagem.media_id) return;
+
     setLoadingMedia(true);
     base44.functions.invoke('baixarMidiaWhatsApp', {
       mensagem_id: mensagem.id,
@@ -208,6 +215,13 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const handleCarregarMidia = () => {
     if (loadingMedia) return;
     if (mediaUrl && isUrlValida(mediaUrl)) return;
+
+    // Se já tem URL permanente válida no banco, usar direto sem chamar backend
+    if (isUrlValida(mensagem.arquivo_url)) {
+      setMediaUrl(mensagem.arquivo_url);
+      return;
+    }
+
     setLoadingMedia(true);
     base44.functions.invoke('baixarMidiaWhatsApp', {
       mensagem_id: mensagem.id,
@@ -574,7 +588,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 <Loader2 className="w-5 h-5 animate-spin" />
               </div>
             ) : mediaUrl ? (
-              <video controls className="rounded-lg max-w-full h-auto bg-black" src={mediaUrl} />
+              <video controls className="rounded-lg max-w-full h-auto bg-black">
+                <source src={mediaUrl} type={mensagem.arquivo_nome?.endsWith('.webm') || mediaUrl?.endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
+                <source src={mediaUrl} type="video/webm" />
+                <source src={mediaUrl} type="video/mp4" />
+              </video>
             ) : (
               <button onClick={handleCarregarMidia} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-lg p-4 text-sm opacity-75 transition-colors cursor-pointer">
                 <Download className="w-4 h-4" /> Carregar vídeo
