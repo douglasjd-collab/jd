@@ -967,8 +967,9 @@ async function processarWebhook(req, rawBody, base44) {
   // ── DOWNLOAD AUTOMÁTICO DE MÍDIA EM BACKGROUND ──────────────────────────
   // Se a mensagem tem mídia (imagem, audio, video, documento), baixar agora
   // em vez de esperar o usuário clicar.
+  // IMPORTANTE: disparar mesmo sem arquivo_url — usamos messageId para buscar via getBase64
   const tiposMidia = ['imagem', 'audio', 'video', 'pdf', 'documento'];
-  if (tiposMidia.includes(tipo) && arquivo_url) {
+  if (tiposMidia.includes(tipo) && messageId) {
     (async () => {
       try {
         // Determinar MIME type correto com base no tipo de mídia
