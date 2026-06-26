@@ -18,9 +18,14 @@ Deno.serve(async (req) => {
     const mensagem = mensagens?.[0];
     if (!mensagem) return Response.json({ error: 'Mensagem não encontrada' }, { status: 404 });
 
-    // Se já tem URL permanente, retornar ela
+    // Se já tem URL permanente do nosso storage, retornar ela
     const urlAtual = mensagem.arquivo_url;
-    if (urlAtual && (urlAtual.includes('base44') || urlAtual.includes('supabase') || urlAtual.includes('amazonaws'))) {
+    const isUrlPermanente = urlAtual && (
+      urlAtual.includes('base44') || urlAtual.includes('supabase') || urlAtual.includes('amazonaws')
+    );
+    // Nunca retornar URLs .enc (criptografadas da CDN do WhatsApp) como definitivas
+    const isUrlEnc = urlAtual && (urlAtual.includes('.enc') || urlAtual.includes('.enc?'));
+    if (isUrlPermanente && !isUrlEnc) {
       return Response.json({ ok: true, arquivo_url: urlAtual });
     }
 
@@ -355,9 +360,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Upload para storage falhou' }, { status: 500 });
     }
 
-    // Salvar URL permanente na mensagem
+    // Salvar URL permanente na mensagem e marcar como baixado
     await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagem_id, {
-      arquivo_url: uploadRes.file_url
+      arquivo_url: uploadRes.file_url,
+      download_status: 'baixado'
     });
 
     console.log(`✅ Mídia salva permanentemente: ${uploadRes.file_url}`);

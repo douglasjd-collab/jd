@@ -780,7 +780,7 @@ async function processarWebhook(req, rawBody, base44) {
           arquivo_nome: arquivo_nome || null,
           arquivo_tamanho: arquivo_tamanho || 0,
           provider: providerMensagem,
-          download_status: arquivo_url ? 'baixado' : 'nao_aplicavel',
+          download_status: arquivo_url ? 'pendente' : 'nao_aplicavel',
           whatsapp_message_id: messageId,
           data_envio: new Date().toISOString(),
           status: statusMsg
@@ -956,7 +956,7 @@ async function processarWebhook(req, rawBody, base44) {
     arquivo_nome: arquivo_nome || null,
     arquivo_tamanho: arquivo_tamanho || 0,
     provider: 'evolution',
-    download_status: arquivo_url ? 'baixado' : 'nao_aplicavel',
+    download_status: arquivo_url ? 'pendente' : 'nao_aplicavel',
     whatsapp_message_id: messageId,
     data_envio: new Date().toISOString(),
     status: remetente === 'vendedor' ? 'enviada' : 'pendente'
