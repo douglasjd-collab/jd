@@ -33,9 +33,35 @@ export function imprimirSimulacao(simulacao) {
     automovel: 'Automóvel', imovel: 'Imóvel', motocicleta: 'Motocicleta', servico: 'Serviço'
   }[simulacao.tipo_grupo] || (simulacao.tipo_grupo || 'Automóvel');
 
-  // Análise de contemplação
+  // Relógio de contemplação (baseado nos dados do histórico do grupo)
+  let relogioHtml = '';
+  if (simulacao.analise_contemplacao && !simulacao.analise_contemplacao.sem_historico) {
+    const a = simulacao.analise_contemplacao;
+    const diff = a.lanceOfertadoPct - a.menorLancePct;
+    let nivel = 0;
+    if (diff > 10) nivel = 3;
+    else if (diff >= 0) nivel = 2;
+    else if (diff >= -10) nivel = 1;
+    const pct = Math.min(100, Math.max(0, ((a.lanceOfertadoPct - (a.menorLancePct - 15)) / 30) * 100));
+    const cor = CHANCE_COLORS[nivel];
+    relogioHtml = `
+    <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 12px;">
+      <p style="font-size:10px;font-weight:700;color:#083942;margin:0 0 6px;">🕐 Relógio de Contemplação</p>
+      <div style="background:#e2e8f0;border-radius:4px;height:10px;overflow:hidden;margin-bottom:6px;">
+        <div style="height:10px;width:${pct.toFixed(1)}%;background:${cor};border-radius:4px;transition:width 0.3s;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:#64748b;margin-bottom:6px;">
+        <span>${(a.menorLancePct - 15).toFixed(1)}%</span>
+        <span style="font-weight:700;color:${cor};">${a.lanceOfertadoPct.toFixed(2)}% ofertado</span>
+        <span>${(a.menorLancePct + 15).toFixed(1)}%</span>
+      </div>
+      <p style="font-size:9px;color:#64748b;margin:0;">Menor lance histórico: <strong>${a.menorLancePct.toFixed(2)}%</strong></p>
+    </div>`;
+  }
+
+  // Análise de contemplação — só conteúdo interno (sem wrapper de seção)
   const analise = simulacao.analise_contemplacao || null;
-  let analiseHtml = '';
+  let analiseInnerHtml = '';
   if (analise && !analise.sem_historico) {
     const diff = analise.lanceOfertadoPct - analise.menorLancePct;
     let nivel = 0;
@@ -46,39 +72,26 @@ export function imprimirSimulacao(simulacao) {
     const chanceCor = CHANCE_COLORS[nivel];
     const diffSinal = diff >= 0 ? '+' : '';
     const modalidadeLabel = analise.modalidade === 'livre' ? 'Lance Livre' : 'Lance Limitado';
-
-    // Medidor visual
     const medidorItems = CHANCE_LABELS.map((l, i) => {
       const ativo = i === nivel;
       return `<div style="flex:1;text-align:center;padding:5px 2px;border-radius:4px;background:${ativo ? CHANCE_COLORS[i] : '#e2e8f0'};color:${ativo ? '#fff' : '#94a3b8'};font-size:9px;font-weight:${ativo ? '700' : '400'};">${l}</div>`;
     }).join('');
-
-    analiseHtml = `
-    <div class="section">
-      <h2 style="color:#083942;border-color:#083942;">Bloco 5 — Análise de Contemplação</h2>
+    analiseInnerHtml = `
       <table class="data-table">
-        <tr><td>Modalidade analisada</td><td class="b">${esc(modalidadeLabel)}</td></tr>
-        <tr><td>Menor lance da última assembleia</td><td class="b">${analise.menorLancePct.toFixed(2)}%</td></tr>
-        <tr><td>Lance ofertado pelo cliente</td><td class="b">${analise.lanceOfertadoPct.toFixed(2)}%</td></tr>
+        <tr><td>Modalidade</td><td class="b">${esc(modalidadeLabel)}</td></tr>
+        <tr><td>Menor lance histórico</td><td class="b">${analise.menorLancePct.toFixed(2)}%</td></tr>
+        <tr><td>Lance ofertado</td><td class="b">${analise.lanceOfertadoPct.toFixed(2)}%</td></tr>
         <tr><td>Diferença</td><td class="b" style="color:${chanceCor}">${diffSinal}${diff.toFixed(2)}%</td></tr>
       </table>
-      <div style="margin-top:10px;">
-        <p style="font-size:10px;color:#64748b;margin-bottom:4px;">Medidor de Chance:</p>
+      <div style="margin-top:8px;">
         <div style="display:flex;gap:3px;">${medidorItems}</div>
       </div>
-      <div style="margin-top:8px;padding:10px;border-radius:6px;background:${chanceCor}15;border:1.5px solid ${chanceCor};text-align:center;">
-        <p style="margin:0;font-size:14px;font-weight:700;color:${chanceCor};">${chanceLabel} de contemplação</p>
-        <p style="margin:2px 0 0;font-size:10px;color:${chanceCor};">Lance ${diffSinal}${diff.toFixed(2)}% em relação ao menor lance da última assembleia</p>
-      </div>
-    </div>`;
+      <div style="margin-top:6px;padding:8px;border-radius:6px;background:${chanceCor}15;border:1.5px solid ${chanceCor};text-align:center;">
+        <p style="margin:0;font-size:12px;font-weight:700;color:${chanceCor};">${chanceLabel} de contemplação</p>
+        <p style="margin:2px 0 0;font-size:9px;color:${chanceCor};">Lance ${diffSinal}${diff.toFixed(2)}% vs último menor lance</p>
+      </div>`;
   } else if (analise && analise.sem_historico) {
-    analiseHtml = `
-    <div class="section">
-      <h2 style="color:#083942;border-color:#083942;">Bloco 5 — Análise de Contemplação</h2>
-      <div style="padding:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;color:#64748b;font-size:11px;">
-        Análise de contemplação indisponível por falta de histórico da última assembleia.
-      </div>
-    </div>`;
+    analiseInnerHtml = `<div style="padding:10px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;color:#64748b;font-size:11px;">Análise indisponível — sem histórico da última assembleia.</div>`;
   }
 
   // Cartas
@@ -252,8 +265,15 @@ export function imprimirSimulacao(simulacao) {
     <!-- Bloco 4: Lances -->
     ${lancesHtml}
 
-    <!-- Bloco 5: Análise de Contemplação -->
-    ${analiseHtml}
+    <!-- Bloco 5: Relógio + Análise de Contemplação lado a lado -->
+    ${(relogioHtml || analiseInnerHtml) ? `
+    <div class="section">
+      <h2 style="color:#083942;border-color:#083942;">Bloco 5 — Análise de Contemplação</h2>
+      <div style="display:grid;grid-template-columns:${relogioHtml && analiseInnerHtml ? '1fr 1fr' : '1fr'};gap:12px;align-items:start;">
+        ${relogioHtml}
+        ${analiseInnerHtml ? `<div>${analiseInnerHtml}</div>` : ''}
+      </div>
+    </div>` : ''}
 
     <!-- Bloco 6: Valor que o Cliente Recebe -->
     <div class="box-recebe">

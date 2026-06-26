@@ -1149,12 +1149,7 @@ export default function SimuladorNormal() {
             </CardContent>
           </Card>
 
-          {/* Análise de Contemplação */}
-          {analiseContemplacao && (
-            <AnaliseContemplacao analise={analiseContemplacao} />
-          )}
-
-          <Card className="border-0 shadow-sm">
+          <Card className="border-0 shadow-sm" id="card-lance-proprio">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">💰 Lance Próprio (Opcional)</CardTitle>
             </CardHeader>
@@ -1257,13 +1252,18 @@ export default function SimuladorNormal() {
                     </div>
                   )}
 
-                  {/* Relógio de Contemplação */}
-                  {relogioContemplacao && grupo && (
-                    <div className="mt-4">
-                      <RelogioContemplacao 
-                        relogio={relogioContemplacao}
-                        lanceOfertado={parseFloat(percentualExibido)}
-                      />
+                  {/* Relógio + Análise de Contemplação lado a lado */}
+                  {(relogioContemplacao || analiseContemplacao) && (
+                    <div className={`mt-4 grid gap-4 ${relogioContemplacao && analiseContemplacao ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                      {relogioContemplacao && grupo && (
+                        <RelogioContemplacao 
+                          relogio={relogioContemplacao}
+                          lanceOfertado={parseFloat(percentualExibido)}
+                        />
+                      )}
+                      {analiseContemplacao && (
+                        <AnaliseContemplacao analise={analiseContemplacao} />
+                      )}
                     </div>
                   )}
                 </div>
