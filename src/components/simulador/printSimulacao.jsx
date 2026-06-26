@@ -183,7 +183,8 @@ export function imprimirSimulacao(simulacao) {
   .footer .aviso { color: #94a3b8; font-style: italic; }
 
   @media print {
-    body { padding: 8px; }
+    @page { margin: 15mm 12mm; }
+    body { padding: 0; }
     .wrap { max-width: 100%; }
   }
 </style>
