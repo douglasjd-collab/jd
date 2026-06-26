@@ -1009,14 +1009,10 @@ async function processarWebhook(req, rawBody, base44) {
   console.log(`✅ Mensagem salva: ${novaMensagem.id} | remetente: ${remetente}`);
 
   // ── DOWNLOAD AUTOMÁTICO DE MÍDIA EM BACKGROUND ──────────────────────────
-  // Se a mensagem tem mídia (imagem, audio, video, documento), baixar agora
-  // em vez de esperar o usuário clicar.
-  // IMPORTANTE: disparar mesmo sem arquivo_url — usamos messageId para buscar via getBase64
   const tiposMidia = ['imagem', 'audio', 'video', 'pdf', 'documento'];
   if (tiposMidia.includes(tipo) && messageId) {
     (async () => {
       try {
-        // Determinar MIME type correto com base no tipo de mídia
         const tipoParaMime = {
           'audio': message.audioMessage?.mimetype || message.pttMessage?.mimetype || 'audio/ogg',
           'imagem': message.imageMessage?.mimetype || 'image/jpeg',
@@ -1028,64 +1024,85 @@ async function processarWebhook(req, rawBody, base44) {
 
         const evolutionUrl = (empresaEvolutionUrl || '').replace(/\/$/, '');
         const evolutionKey = empresaEvolutionKey;
-        const evolutionInstance = instanceFinal;
-        const telefoneFinal = telefoneLimpo;
-        // Usar o remoteJid original do payload — é o identificador correto para a API Evolution
-        const remoteJidFinal = remoteJidOriginal || `${telefoneFinal}@s.whatsapp.net`;
+        const remoteJidFinal = remoteJidOriginal || `${telefoneLimpo}@s.whatsapp.net`;
 
         let base64Data = null;
 
-        // Método 1: getBase64FromMediaMessage com key direto
-        if (messageId && remoteJidFinal && evolutionUrl && evolutionKey) {
+        // Detectar se a URL é da CDN privada da Meta (não acessível sem token)
+        const isUrlMetaCDN = arquivo_url && (
+          arquivo_url.includes('mmg.whatsapp.net') ||
+          arquivo_url.includes('pps.whatsapp.net') ||
+          arquivo_url.includes('lookaside.fbsbx.com')
+        );
+
+        if (isUrlMetaCDN) {
+          // Buscar token Meta da empresa para download direto
+          const empresaObj = await base44.asServiceRole.entities.Empresa.filter({ id: empresaId }, null, 1).then(r => r[0]).catch(() => null);
+          const metaToken = empresaObj?.whatsapp_access_token || Deno.env.get('META_WHATSAPP_ACCESS_TOKEN');
+          if (metaToken && arquivo_url) {
+            try {
+              const fetchRes = await fetch(arquivo_url, {
+                headers: { 'Authorization': `Bearer ${metaToken}`, 'User-Agent': 'Base44-WhatsApp-CRM' }
+              });
+              if (fetchRes.ok) {
+                const ct = fetchRes.headers.get('content-type') || '';
+                if (ct && ct !== 'application/octet-stream' && !ct.startsWith('text/')) mimeType = ct.split(';')[0].trim();
+                const ab = await fetchRes.arrayBuffer();
+                const ua = new Uint8Array(ab);
+                if (ua.length > 500) {
+                  let bin = '';
+                  for (let i = 0; i < ua.length; i += 8192) bin += String.fromCharCode(...ua.slice(i, i + 8192));
+                  base64Data = btoa(bin);
+                  console.log(`✅ Auto-download Meta CDN direto | mime: ${mimeType} | bytes: ${ua.length}`);
+                }
+              } else {
+                console.warn(`⚠️ Meta CDN retornou ${fetchRes.status} — URL pode ter expirado`);
+              }
+            } catch (e) { console.warn(`⚠️ Download Meta CDN falhou: ${e.message}`); }
+          }
+        }
+
+        // Evolution: getBase64FromMediaMessage (para URLs não-Meta ou fallback)
+        if (!base64Data && evolutionUrl && evolutionKey) {
           for (const fromMeVal of [false, true]) {
             if (base64Data) break;
             try {
-              const keyObj = { remoteJid: remoteJidFinal, fromMe: fromMeVal, id: messageId };
-              const b64Res = await fetch(`${evolutionUrl}/chat/getBase64FromMediaMessage/${evolutionInstance}`, {
+              const b64Res = await fetch(`${evolutionUrl}/chat/getBase64FromMediaMessage/${instanceFinal}`, {
                 method: 'POST',
                 headers: { 'apikey': evolutionKey, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: { key: keyObj }, convertToMp4: false })
+                body: JSON.stringify({ message: { key: { remoteJid: remoteJidFinal, fromMe: fromMeVal, id: messageId } }, convertToMp4: false })
               });
               if (b64Res.ok) {
-                const b64DataRes = await b64Res.json();
-                if (b64DataRes?.base64) {
-                  base64Data = b64DataRes.base64;
-                  mimeType = b64DataRes.mimetype || mimeType;
-                }
+                const d = await b64Res.json();
+                if (d?.base64) { base64Data = d.base64; mimeType = d.mimetype || mimeType; }
               }
             } catch (_) {}
           }
         }
 
-        // Método 2: download direto da URL temporária (se não for .enc)
-        if (!base64Data && arquivo_url && !arquivo_url.includes('.enc')) {
+        // Fallback: download direto da URL (se não for CDN Meta privada e não for .enc)
+        if (!base64Data && arquivo_url && !isUrlMetaCDN && !arquivo_url.includes('.enc')) {
           try {
-            const fetchRes = await fetch(arquivo_url, {
-              headers: { 'apikey': evolutionKey || '', 'User-Agent': 'Base44-WhatsApp-CRM' }
-            });
+            const fetchRes = await fetch(arquivo_url, { headers: { 'apikey': evolutionKey || '' } });
             if (fetchRes.ok) {
               const ct = fetchRes.headers.get('content-type') || '';
               if (ct && ct !== 'application/octet-stream' && !ct.startsWith('text/')) mimeType = ct.split(';')[0].trim();
-              const arrayBuffer = await fetchRes.arrayBuffer();
-              const uint8Array = new Uint8Array(arrayBuffer);
-              // Verificar se o conteúdo parece válido (não texto/json)
-              if (uint8Array.length > 1000) {
-                let binary = '';
-                for (let i = 0; i < uint8Array.length; i += 8192) {
-                  binary += String.fromCharCode(...uint8Array.slice(i, i + 8192));
-                }
-                base64Data = btoa(binary);
+              const ab = await fetchRes.arrayBuffer();
+              const ua = new Uint8Array(ab);
+              if (ua.length > 1000) {
+                let bin = '';
+                for (let i = 0; i < ua.length; i += 8192) bin += String.fromCharCode(...ua.slice(i, i + 8192));
+                base64Data = btoa(bin);
               }
             }
           } catch (_) {}
         }
 
         if (!base64Data) {
-          console.warn(`⚠️ Auto-download: não foi possível baixar mídia da mensagem ${novaMensagem.id}`);
+          console.warn(`⚠️ Auto-download: não foi possível baixar mídia ${novaMensagem.id}`);
           return;
         }
 
-        // Converter base64 → upload permanente no storage
         const binaryStr = atob(base64Data);
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
@@ -1101,10 +1118,10 @@ async function processarWebhook(req, rawBody, base44) {
             arquivo_url: uploadRes.file_url,
             download_status: 'baixado'
           });
-          console.log(`✅ Auto-download mídia: ${uploadRes.file_url}`);
+          console.log(`✅ Auto-download OK: ${uploadRes.file_url}`);
         }
       } catch (e) {
-        console.warn(`⚠️ Auto-download falhou para ${novaMensagem.id}: ${e.message}`);
+        console.warn(`⚠️ Auto-download falhou ${novaMensagem.id}: ${e.message}`);
       }
     })();
   }
