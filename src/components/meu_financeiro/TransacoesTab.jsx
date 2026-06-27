@@ -1,13 +1,20 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
-import { Loader2, Search, ArrowUpCircle, ArrowDownCircle, ChevronLeft, ChevronRight, Plus, Wallet, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Search, ArrowUpCircle, ArrowDownCircle, ChevronLeft, ChevronRight, Plus, Wallet, Building2, MoreVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FormModalFinanceiro from '@/components/meu_financeiro/FormModalFinanceiro';
-import TransacaoDetalheDrawer from '@/components/meu_financeiro/TransacaoDetalheDrawer';
-import ConfirmarPagamentoDrawer from '@/components/meu_financeiro/ConfirmarPagamentoDrawer';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const fmtMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
@@ -21,38 +28,10 @@ function CatIcon({ tipo, categoria }) {
   const bg = colors[idx];
   const Icon = isReceita ? ArrowUpCircle : ArrowDownCircle;
   return (
-    <div className={`relative flex-shrink-0`}>
-      <div className={`w-9 h-9 rounded-full ${bg} flex items-center justify-center`}>
-        <Icon className="w-4 h-4 text-white" />
-      </div>
+    <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center flex-shrink-0`}>
+      <Icon className="w-4 h-4 text-white" />
     </div>
   );
-}
-
-// Status pill compacto
-function StatusPill({ item }) {
-  const hoje = new Date().toISOString().slice(0, 10);
-  const isAtrasado = item._tipo === 'despesa'
-    && ['pendente', 'previsto'].includes(item.status)
-    && (item.data_vencimento || item.data) < hoje;
-
-  if (isAtrasado) return <span className="text-[10px] font-semibold text-red-400">⚠ Atrasado</span>;
-  const map = {
-    recebida: 'text-green-400', pago: 'text-green-400',
-    pendente: 'text-amber-400', previsto: 'text-blue-400',
-    cancelada: 'text-slate-400', cancelado: 'text-slate-400',
-  };
-  const labels = { recebida: '✓ Recebida', pago: '✓ Pago', pendente: '• Pendente', previsto: '• Previsto', cancelada: '✗ Cancelada', cancelado: '✗ Cancelado' };
-  return <span className={`text-[10px] font-semibold ${map[item.status] || 'text-slate-400'}`}>{labels[item.status] || item.status}</span>;
-}
-
-function formatDayHeader(dateStr) {
-  const d = parseISO(dateStr);
-  const hoje = new Date();
-  const ontem = new Date(hoje); ontem.setDate(ontem.getDate() - 1);
-  if (dateStr === hoje.toISOString().slice(0, 10)) return 'Hoje';
-  if (dateStr === ontem.toISOString().slice(0, 10)) return 'Ontem';
-  return format(d, "EEEE, dd", { locale: ptBR });
 }
 
 export default function TransacoesTab({ user, refreshKey }) {
@@ -60,13 +39,9 @@ export default function TransacoesTab({ user, refreshKey }) {
   const [despesas, setDespesas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filtroTipo, setFiltroTipo] = useState('todos'); // todos | receita | despesa
   const [mesAtual, setMesAtual] = useState(new Date());
   const [modal, setModal] = useState({ open: false, item: null, tipo: 'receita' });
-  const [novoModal, setNovoModal] = useState(false);
   const [novoTipo, setNovoTipo] = useState('despesa');
-  const [detalheItem, setDetalheItem] = useState(null);
-  const [pagarItem, setPagarItem] = useState(null);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -95,45 +70,37 @@ export default function TransacoesTab({ user, refreshKey }) {
       const data = t.data || '';
       return data >= inicioMes && data <= fimMes;
     });
-    items.sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+    items.sort((a, b) => (a.data || '').localeCompare(b.data || ''));
     return items;
   }, [receitas, despesas, inicioMes, fimMes]);
 
-  // Filtrar por busca e tipo
+  // Filtrar por busca
   const transacoesFiltradas = useMemo(() => {
     return transacoesMes.filter(t => {
-      if (filtroTipo !== 'todos' && t._tipo !== filtroTipo) return false;
       if (search) {
         const s = search.toLowerCase();
         return (t.descricao || '').toLowerCase().includes(s) || (t.categoria || '').toLowerCase().includes(s);
       }
       return true;
     });
-  }, [transacoesMes, filtroTipo, search]);
+  }, [transacoesMes, search]);
 
-  // Agrupar por dia
-  const porDia = useMemo(() => {
-    const map = {};
-    transacoesFiltradas.forEach(t => {
-      const d = t.data || 'sem-data';
-      if (!map[d]) map[d] = [];
-      map[d].push(t);
-    });
-    return Object.entries(map).sort(([a], [b]) => b.localeCompare(a));
-  }, [transacoesFiltradas]);
-
-  // Saldo e balanço do mês
-  const saldoTotal = useMemo(() => {
+  // KPIs do mês
+  const saldoAtual = useMemo(() => {
     const recRec = receitas.filter(r => r.status === 'recebida').reduce((s, r) => s + (r.valor || 0), 0);
     const despPag = despesas.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
     return recRec - despPag;
   }, [receitas, despesas]);
 
-  const balancoMes = useMemo(() => {
-    const recMes = transacoesMes.filter(t => t._tipo === 'receita' && t.status === 'recebida').reduce((s, r) => s + (r.valor || 0), 0);
-    const despMes = transacoesMes.filter(t => t._tipo === 'despesa' && t.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
-    return recMes - despMes;
+  const totalReceitas = useMemo(() => {
+    return transacoesMes.filter(t => t._tipo === 'receita').reduce((s, r) => s + (r.valor || 0), 0);
   }, [transacoesMes]);
+
+  const totalDespesas = useMemo(() => {
+    return transacoesMes.filter(t => t._tipo === 'despesa').reduce((s, d) => s + (d.valor || 0), 0);
+  }, [transacoesMes]);
+
+  const balancoMensal = totalReceitas - totalDespesas;
 
   const excluir = async (item) => {
     if (!confirm(`Excluir esta ${item._tipo === 'receita' ? 'receita' : 'despesa'}?`)) return;
@@ -144,160 +111,197 @@ export default function TransacoesTab({ user, refreshKey }) {
     } catch { toast.error('Erro ao excluir'); }
   };
 
-  const alterarStatus = async (item) => {
-    const entidade = item._tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
-    let novoStatus;
-    if (item._tipo === 'receita') {
-      novoStatus = item.status === 'recebida' ? 'pendente' : 'recebida';
-      await base44.entities[entidade].update(item.id, { status: novoStatus, data_recebimento: novoStatus === 'recebida' ? (item.data_recebimento || item.data) : null });
-    } else {
-      novoStatus = item.status === 'pago' ? 'pendente' : 'pago';
-      await base44.entities[entidade].update(item.id, { status: novoStatus, data_pagamento: novoStatus === 'pago' ? (item.data_pagamento || item.data) : null });
-    }
-    toast.success('Status alterado!');
-    carregar();
-  };
-
-  const confirmarPagamento = async (dataEfetiva) => {
-    const item = pagarItem;
-    if (!item) return;
-    const entidade = item._tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
-    const jaQuitado = item._tipo === 'receita' ? item.status === 'recebida' : item.status === 'pago';
-    let novoStatus;
-    if (item._tipo === 'receita') {
-      novoStatus = jaQuitado ? 'pendente' : 'recebida';
-      await base44.entities[entidade].update(item.id, { status: novoStatus, data_recebimento: novoStatus === 'recebida' ? dataEfetiva : null });
-    } else {
-      novoStatus = jaQuitado ? 'pendente' : 'pago';
-      await base44.entities[entidade].update(item.id, { status: novoStatus, data_pagamento: novoStatus === 'pago' ? dataEfetiva : null });
-    }
-    toast.success('Status atualizado!');
-    setPagarItem(null);
-    setDetalheItem(null);
-    carregar();
+  const editar = (item) => {
+    setNovoTipo(item._tipo);
+    setModal({ open: true, item, tipo: item._tipo });
   };
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-slate-400" /></div>;
 
+  const mesLabel = format(mesAtual, 'MMMM yyyy', { locale: ptBR });
+  const mesLabelCapitalizado = mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1);
+
   return (
-    <div className="mt-2 space-y-0">
-
-      {/* Navegação de mês */}
-      <div className="flex items-center justify-between py-1 px-1">
-        <button
-          onClick={() => setMesAtual(m => subMonths(m, 1))}
-          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <span className="font-semibold text-base text-slate-800 dark:text-slate-100 capitalize">
-          {format(mesAtual, 'MMMM yyyy', { locale: ptBR })}
-        </span>
-        <button
-          onClick={() => setMesAtual(m => addMonths(m, 1))}
-          className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-      </div>
-
-      {/* Cards de saldo */}
-      <div className="grid grid-cols-2 gap-2 mb-2">
-        <div className="bg-white dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-100 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <Wallet className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-[11px] text-slate-400">Saldo atual</span>
-          </div>
-          <p className={`text-sm font-bold ${saldoTotal >= 0 ? 'text-green-500' : 'text-red-500'}`}>{fmtMoeda(saldoTotal)}</p>
+    <div className="mt-4 space-y-4">
+      {/* Header com navegação de mês */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Transações</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{mesLabelCapitalizado}</p>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-100 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-[11px] text-slate-400">Balanço mensal</span>
-          </div>
-          <p className={`text-sm font-bold ${balancoMes >= 0 ? 'text-green-500' : 'text-red-500'}`}>{fmtMoeda(balancoMes)}</p>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => setMesAtual(m => subMonths(m, 1))}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="font-semibold text-slate-700 dark:text-slate-200">{mesLabelCapitalizado}</span>
+          <Button variant="outline" size="sm" className="rounded-full" onClick={() => setMesAtual(m => addMonths(m, 1))}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
-      {/* Busca */}
-      <div className="relative mb-2">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+      {/* Cards KPI em linha */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card className="bg-white border-slate-200 dark:border-slate-700 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-slate-500" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Saldo atual</p>
+                <p className={`text-lg font-bold ${saldoAtual >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtMoeda(saldoAtual)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-slate-200 dark:border-slate-700 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                <ArrowUpCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Receitas</p>
+                <p className="text-lg font-bold text-green-600">{fmtMoeda(totalReceitas)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-slate-200 dark:border-slate-700 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <ArrowDownCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Despesas</p>
+                <p className="text-lg font-bold text-red-600">{fmtMoeda(totalDespesas)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-slate-200 dark:border-slate-700 shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Balanço mensal</p>
+                <p className={`text-lg font-bold ${balancoMensal >= 0 ? 'text-blue-600' : 'text-red-600'}`}>{fmtMoeda(balancoMensal)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Barra de busca */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <Input
-          className="pl-9 h-8 text-sm rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
-          placeholder="Buscar..."
+          className="pl-9 h-10 rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+          placeholder="Buscar transações..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
       </div>
 
-
-      {/* Lista agrupada por dia */}
-      {porDia.length === 0 ? (
-        <div className="text-center py-16 text-slate-400 dark:text-slate-500">
-          <p className="font-medium">Nenhuma transação neste mês</p>
-          <p className="text-xs mt-1">Use o botão + para adicionar</p>
-        </div>
-      ) : (
-        <div className="space-y-5 pb-24">
-          {porDia.map(([dia, items]) => (
-            <div key={dia}>
-              {/* Header do dia */}
-              <p className="text-sm font-semibold text-slate-500 dark:text-slate-400 capitalize mb-2 px-1">
-                {dia !== 'sem-data' ? formatDayHeader(dia) : 'Sem data'}
-              </p>
-              {/* Itens do dia */}
-              <div className="space-y-2">
-                {items.map(t => (
-                  <div
-                    key={`${t._tipo}-${t.id}`}
-                    onClick={() => setDetalheItem(t)}
-                    className="bg-white dark:bg-slate-800 rounded-xl px-3 py-2 flex items-center gap-2.5 border border-slate-100 dark:border-slate-700 shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
-                  >
-                    <CatIcon tipo={t._tipo} categoria={t.categoria} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">{t.descricao}</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                        {[t.categoria, t.tipo_lancamento === 'recorrente' ? 'Fixa' : null].filter(Boolean).join(' | ') || 'Sem categoria'}
-                      </p>
-                      <StatusPill item={t} />
-                    </div>
-                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <p className={`text-sm font-bold px-2.5 py-1 rounded-full ${t._tipo === 'receita' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+      {/* Tabela de transações */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+              <tr className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                <th className="px-4 py-3 text-left w-10">Situação</th>
+                <th className="px-4 py-3 text-left">Data</th>
+                <th className="px-4 py-3 text-left">Descrição</th>
+                <th className="px-4 py-3 text-left">Categoria</th>
+                <th className="px-4 py-3 text-left">Conta</th>
+                <th className="px-4 py-3 text-right">Valor</th>
+                <th className="px-4 py-3 text-center w-16">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              {transacoesFiltradas.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-slate-400 dark:text-slate-500">
+                    Nenhuma transação neste mês
+                  </td>
+                </tr>
+              ) : (
+                transacoesFiltradas.map(t => {
+                  const hoje = new Date().toISOString().slice(0, 10);
+                  const dataRef = t.data_vencimento || t.data;
+                  const atrasada = t._tipo === 'despesa' && ['pendente', 'previsto'].includes(t.status) && dataRef && dataRef < hoje;
+                  
+                  return (
+                    <tr key={`${t._tipo}-${t.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                      <td className="px-4 py-3">
+                        {atrasada ? (
+                          <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Atrasado</Badge>
+                        ) : t.status === 'pago' || t.status === 'recebida' ? (
+                          <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                            <ArrowUpCircle className="w-3 h-3 mr-1" />
+                            {t._tipo === 'receita' ? 'Recebida' : 'Pago'}
+                          </Badge>
+                        ) : t.status === 'cancelado' || t.status === 'cancelada' ? (
+                          <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-100">Cancelado</Badge>
+                        ) : (
+                          <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Pendente</Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">
+                        {dataRef ? format(parseISO(dataRef), 'dd/MM/yyyy') : '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <CatIcon tipo={t._tipo} categoria={t.categoria} />
+                          <span className="font-medium text-sm text-slate-800 dark:text-slate-100">{t.descricao}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                        {t.categoria || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                        {t.conta_bancaria_id ? 'Conta vinculada' : '-'}
+                      </td>
+                      <td className={`px-4 py-3 text-right font-bold text-sm ${t._tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
                         {t._tipo === 'receita' ? '+' : '-'} {fmtMoeda(t.valor)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+                      </td>
+                      <td className="px-4 py-3">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => editar(t)}>Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => excluir(t)} className="text-red-600">Excluir</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
       {/* FAB — botão fixo de adicionar */}
-      <div className="fixed bottom-6 right-6 flex flex-col items-end gap-2 z-30">
-        {novoModal && (
-          <div className="flex flex-col gap-2 mb-1">
-            <button
-              onClick={() => { setNovoTipo('receita'); setNovoModal(false); setModal({ open: true, item: null, tipo: 'receita' }); }}
-              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-full shadow-lg text-sm font-semibold"
-            >
-              <ArrowUpCircle className="w-4 h-4" /> Receita
-            </button>
-            <button
-              onClick={() => { setNovoTipo('despesa'); setNovoModal(false); setModal({ open: true, item: null, tipo: 'despesa' }); }}
-              className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-full shadow-lg text-sm font-semibold"
-            >
-              <ArrowDownCircle className="w-4 h-4" /> Despesa
-            </button>
-          </div>
-        )}
-        <button
-          onClick={() => setNovoModal(v => !v)}
-          className="w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-700 text-white shadow-xl flex items-center justify-center transition-transform active:scale-95"
+      <div className="fixed bottom-6 right-6 z-30">
+        <Button
+          className="w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-700 shadow-xl"
+          onClick={() => { setNovoTipo('despesa'); setModal({ open: true, item: null, tipo: 'despesa' }); }}
         >
           <Plus className="w-7 h-7" />
-        </button>
+        </Button>
       </div>
 
       {modal.open && (
@@ -308,33 +312,6 @@ export default function TransacoesTab({ user, refreshKey }) {
           tipo={modal.tipo}
           user={user}
           onSaved={() => { carregar(); setModal({ open: false, item: null, tipo: 'receita' }); }}
-        />
-      )}
-
-      {/* Drawer de detalhes da transação */}
-      {detalheItem && !pagarItem && (
-        <TransacaoDetalheDrawer
-          item={detalheItem}
-          onClose={() => setDetalheItem(null)}
-          onEditar={() => {
-            setModal({ open: true, item: detalheItem, tipo: detalheItem._tipo });
-            setDetalheItem(null);
-          }}
-          onExcluir={() => {
-            excluir(detalheItem);
-            setDetalheItem(null);
-          }}
-          onPagar={() => setPagarItem(detalheItem)}
-          onSaved={carregar}
-        />
-      )}
-
-      {/* Drawer de confirmação de pagamento */}
-      {pagarItem && (
-        <ConfirmarPagamentoDrawer
-          item={pagarItem}
-          onClose={() => setPagarItem(null)}
-          onConfirmar={confirmarPagamento}
         />
       )}
     </div>
