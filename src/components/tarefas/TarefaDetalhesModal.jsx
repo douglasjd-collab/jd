@@ -202,7 +202,7 @@ export default function TarefaDetalhesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden flex flex-col gap-0 [&>button:last-of-type]:hidden" style={{ maxHeight: '92vh' }}>
+      <DialogContent className="max-w-4xl p-0 overflow-hidden flex flex-col gap-0 [&>button:last-of-type]:hidden w-full h-full sm:h-[92vh] sm:max-h-[92vh] sm:w-[95vw] sm:rounded-2xl rounded-none" style={{ maxHeight: undefined }}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b bg-white flex-shrink-0">
           <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -305,7 +305,7 @@ export default function TarefaDetalhesModal({
         </div>
 
         {/* Conteúdo */}
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0 overflow-y-auto sm:overflow-y-hidden">
           {/* Detalhes */}
           {aba === 'detalhes' && (
             <div className="p-4 lg:p-6 space-y-4 lg:space-y-5 overflow-y-auto flex-1">

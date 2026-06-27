@@ -82,7 +82,8 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes }) 
   return (
     <div
       className={`rounded-xl border-2 shadow-sm hover:shadow-md transition-all cursor-pointer ${cardBg}`}
-      onDoubleClick={() => onVerDetalhes(tarefa)}
+      onClick={() => onVerDetalhes(tarefa)}
+      onDoubleClick={(e) => { e.stopPropagation(); onEdit(tarefa); }}
     >
       {/* ══ TOPO: setor + menu ══ */}
       <div className="px-3 pt-3 pb-1 flex items-center justify-between gap-2">
