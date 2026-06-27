@@ -50,26 +50,38 @@ Deno.serve(async (req) => {
     let versaoAlvo = versao_nova;
     if (!versaoAlvo) {
       try {
-        const resp = await fetch('https://wppconnect.io/whatsapp-versions/', {
-          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; CRM-Bot/1.0)' },
-          signal: AbortSignal.timeout(10000)
-        });
-        if (resp.ok) {
+        const versaoUrls = [
+          'https://wppconnect.io/pt-BR/whatsapp-versions/',
+          'https://wppconnect.io/whatsapp-versions/',
+        ];
+        for (const wUrl of versaoUrls) {
+          if (versaoAlvo) break;
+          const resp = await fetch(wUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            },
+            signal: AbortSignal.timeout(15000)
+          });
+          if (!resp.ok) continue;
           const html = await resp.text();
-          const matches = html.match(/(\d+\.\d+\.\d+[\.\d]*)/g);
-          if (matches) {
-            const versoes = matches.filter(v => v.startsWith('2.') && v.split('.').length >= 3);
-            versoes.sort((a, b) => {
-              const pa = a.split('.').map(Number);
-              const pb = b.split('.').map(Number);
-              for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-                const d = (pb[i] || 0) - (pa[i] || 0);
-                if (d !== 0) return d;
-              }
-              return 0;
-            });
-            if (versoes.length > 0) versaoAlvo = versoes[0];
-          }
+          const matches = html.match(/\b(2\.\d{3,4}\.\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?)\b/g) || [];
+          const versoes = [...new Set(matches)].filter(v => v.split('.').length >= 3);
+          const numBase = (v) => v.replace(/-.*$/, '').split('.').map(Number);
+          versoes.sort((a, b) => {
+            const pa = numBase(a), pb = numBase(b);
+            for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+              const d = (pb[i] || 0) - (pa[i] || 0);
+              if (d !== 0) return d;
+            }
+            return 0;
+          });
+          if (versoes.length > 0) versaoAlvo = versoes[0];
+        }
+        // Fallback GitHub
+        if (!versaoAlvo) {
+          const gr = await fetch('https://raw.githubusercontent.com/nicekiwi/whatsapp-web-versions/main/versions.json', { signal: AbortSignal.timeout(8000) });
+          if (gr.ok) { const d = await gr.json(); if (Array.isArray(d) && d.length > 0) versaoAlvo = d[d.length - 1]; }
         }
       } catch (_) {}
     }

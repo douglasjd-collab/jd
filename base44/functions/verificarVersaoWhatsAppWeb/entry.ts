@@ -48,15 +48,19 @@ Deno.serve(async (req) => {
       if (versaoMaisRecente) break;
       try {
         const resp = await fetch(wppUrl, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-          signal: AbortSignal.timeout(12000)
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+          },
+          signal: AbortSignal.timeout(15000)
         });
         if (!resp.ok) continue;
         const html = await resp.text();
-        // Captura versões com ou sem sufixo -alpha/-beta
-        const matches = html.match(/(\d+\.\d+\.\d+[\d.]*(?:-[a-zA-Z0-9]+)?)/g);
+        // Regex mais amplo: captura versões como 2.3000.1042251103-alpha
+        const matches = html.match(/\b(2\.\d{3,4}\.\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?)\b/g);
         if (matches && matches.length > 0) {
-          const versoes = matches.filter(v => v.startsWith('2.') && v.split('.').length >= 3);
+          const versoes = [...new Set(matches)].filter(v => v.split('.').length >= 3);
           if (versoes.length > 0) {
             const numBase = (v) => v.replace(/-.*$/, '').split('.').map(Number);
             versoes.sort((a, b) => {

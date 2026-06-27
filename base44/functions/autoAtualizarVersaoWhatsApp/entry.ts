@@ -144,18 +144,22 @@ Deno.serve(async (req) => {
       if (versaoRecente) break;
       try {
         const resp = await fetch(url, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-          signal: AbortSignal.timeout(12000)
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+          },
+          signal: AbortSignal.timeout(15000)
         });
-        if (!resp.ok) continue;
+        if (!resp.ok) { console.warn(`⚠️ ${url} retornou ${resp.status}`); continue; }
         const html = await resp.text();
-        // Captura versões com ou sem sufixo -alpha, -beta etc.
-        const matches = html.match(/(\d+\.\d+\.\d+[\d.]*(?:-[a-zA-Z0-9]+)?)/g) || [];
-        const versoes = matches.filter(v => v.startsWith('2.') && v.split('.').length >= 3);
+        console.log(`📄 HTML de ${url}: ${html.length} bytes | preview: ${html.substring(0, 500)}`);
 
-        // Função para extrair número base (sem sufixo) para comparação
+        // Regex mais amplo: captura versões como 2.3000.1042251103-alpha, 2.2346.12, etc.
+        const matches = html.match(/\b(2\.\d{3,4}\.\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?)\b/g) || [];
+        const versoes = [...new Set(matches)].filter(v => v.split('.').length >= 3);
+
         const numBase = (v) => v.replace(/-.*$/, '').split('.').map(Number);
-
         versoes.sort((a, b) => {
           const pa = numBase(a), pb = numBase(b);
           for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
@@ -167,14 +171,30 @@ Deno.serve(async (req) => {
 
         if (versoes.length > 0) {
           versaoRecente = versoes[0];
-          console.log(`✅ Versão detectada em ${url}: ${versaoRecente}`);
+          console.log(`✅ Versão detectada em ${url}: ${versaoRecente} | todas: ${versoes.slice(0, 5).join(', ')}`);
         }
       } catch (e) {
         console.warn(`⚠️ Falha ao buscar versão em ${url}: ${e.message}`);
       }
     }
 
-    // Fallback: buscar via API JSON do wppconnect se HTML falhar
+    // Fallback 1: GitHub nicekiwi/whatsapp-web-versions
+    if (!versaoRecente) {
+      try {
+        const resp = await fetch('https://raw.githubusercontent.com/nicekiwi/whatsapp-web-versions/main/versions.json', {
+          signal: AbortSignal.timeout(10000)
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (Array.isArray(data) && data.length > 0) {
+            versaoRecente = data[data.length - 1];
+            console.log(`✅ Versão do GitHub (nicekiwi): ${versaoRecente}`);
+          }
+        }
+      } catch (e) { console.warn(`⚠️ GitHub nicekiwi falhou: ${e.message}`); }
+    }
+
+    // Fallback 2: API do próprio WhatsApp Web
     if (!versaoRecente) {
       try {
         const resp = await fetch('https://web.whatsapp.com/check-update?version=1&branch=RELEASE', {
@@ -183,7 +203,7 @@ Deno.serve(async (req) => {
         });
         if (resp.ok) {
           const data = await resp.json();
-          if (data?.currentVersion) versaoRecente = data.currentVersion;
+          if (data?.currentVersion) { versaoRecente = data.currentVersion; console.log(`✅ Versão do WhatsApp Web direto: ${versaoRecente}`); }
         }
       } catch (_) {}
     }
