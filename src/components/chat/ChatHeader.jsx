@@ -45,6 +45,7 @@ export default function ChatHeader({
 }) {
   // Canal override local: permite que o usuário troque o canal sem ser revertido pelo polling
   const [canalOverride, setCanalOverride] = React.useState(null);
+  const [fotoModalOpen, setFotoModalOpen] = React.useState(false);
 
   // Resetar override ao trocar de conversa
   React.useEffect(() => {
@@ -114,12 +115,45 @@ export default function ChatHeader({
       <div className="flex flex-row items-center justify-between gap-2 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           <div className="relative flex-shrink-0">
-            <AvatarContato
-              contato={contatoAtual || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_telefone, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.foto_url }}
-              className="h-9 w-9 sm:h-11 sm:w-11"
-            />
+            <div
+              className="cursor-pointer"
+              onClick={() => {
+                const foto = contatoAtual?.foto_url || conversaSelecionada.foto_url;
+                if (foto) setFotoModalOpen(true);
+              }}
+            >
+              <AvatarContato
+                contato={contatoAtual || conversaSelecionada.contato || { nome: conversaSelecionada.cliente_telefone, telefone: conversaSelecionada.cliente_telefone, foto_url: conversaSelecionada.foto_url }}
+                className="h-9 w-9 sm:h-11 sm:w-11 hover:opacity-80 transition-opacity"
+              />
+            </div>
             <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" />
           </div>
+
+          {/* Modal foto ampliada */}
+          {fotoModalOpen && (
+            <div
+              className="fixed inset-0 z-[999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+              onClick={() => setFotoModalOpen(false)}
+            >
+              <div className="relative" onClick={e => e.stopPropagation()}>
+                <img
+                  src={contatoAtual?.foto_url || conversaSelecionada.foto_url}
+                  alt="Foto do contato"
+                  className="max-w-[90vw] max-h-[90vh] rounded-2xl shadow-2xl object-contain"
+                />
+                <button
+                  onClick={() => setFotoModalOpen(false)}
+                  className="absolute -top-3 -right-3 h-8 w-8 rounded-full bg-white shadow-md flex items-center justify-center text-slate-700 hover:text-slate-900 font-bold text-sm"
+                >
+                  ✕
+                </button>
+                <p className="text-center text-white/80 text-sm mt-3 font-medium">
+                  {contatoAtual?.nome || conversaSelecionada.cliente_telefone}
+                </p>
+              </div>
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold leading-tight truncate">
               {contatoAtual?.nome || conversaSelecionada.cliente_telefone}
