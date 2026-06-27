@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { format, parseISO, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FormModalFinanceiro from '@/components/meu_financeiro/FormModalFinanceiro';
-import ConfirmarPagamentoDrawer from '@/components/meu_financeiro/ConfirmarPagamentoDrawer';
+import ReceberPagarModal from '@/components/meu_financeiro/ReceberPagarModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,12 +43,27 @@ export default function TransacoesTab({ user, refreshKey }) {
   const [mesAtual, setMesAtual] = useState(new Date());
   const [modal, setModal] = useState({ open: false, item: null, tipo: 'receita' });
   const [menuAberto, setMenuAberto] = useState(false);
-  const [confirmarModal, setConfirmarModal] = useState({ open: false, item: null, tipo: 'receita' });
+  const [receberPagarModal, setReceberPagarModal] = useState({ open: false, item: null, tipo: 'receita' });
 
   // Handler para abrir modal de nova transação
   const abrirNovaTransacao = (tipo) => {
     setMenuAberto(false);
     setModal({ open: true, item: null, tipo });
+  };
+
+  // Handler para abrir modal de receber/pagar
+  const abrirReceberPagar = (item) => {
+    setReceberPagarModal({ open: true, item, tipo: item._tipo });
+  };
+
+  const confirmarPagamento = async () => {
+    const item = receberPagarModal.item;
+    if (!item) return;
+    // A confirmação é feita dentro do próprio modal
+  };
+
+  const abrirConfirmacao = (item) => {
+    setReceberPagarModal({ open: true, item, tipo: item._tipo });
   };
 
   const carregar = useCallback(async () => {
@@ -120,35 +135,19 @@ export default function TransacoesTab({ user, refreshKey }) {
   };
 
   const editar = (item) => {
-    setModal({ open: true, item, tipo: item._tipo });
-  };
-
-  const confirmarPagamento = async () => {
-    const item = confirmarModal.item;
-    if (!item) return;
+    // Se já estiver pago/recebido, abre modal de edição completa
+    // Se estiver pendente, abre modal rápido de receber/pagar
+    const isPago = item._tipo === 'receita' ? item.status === 'recebida' : item.status === 'pago';
+    const isCancelado = item._tipo === 'receita' ? item.status === 'cancelada' : item.status === 'cancelado';
     
-    try {
-      const entidade = item._tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
-      const campoStatus = item._tipo === 'receita' ? 'status' : 'status';
-      const campoData = item._tipo === 'receita' ? 'data_recebimento' : 'data_pagamento';
-      
-      await base44.entities[entidade].update(item.id, {
-        [campoStatus]: item._tipo === 'receita' ? 'recebida' : 'pago',
-        [campoData]: new Date().toISOString().split('T')[0],
-      });
-      
-      toast.success(item._tipo === 'receita' ? 'Recebimento confirmado!' : 'Pagamento confirmado!');
-      setConfirmarModal({ open: false, item: null, tipo: 'receita' });
-      carregar();
-    } catch (e) {
-      toast.error('Erro ao confirmar');
-      console.error(e);
+    if (isPago || isCancelado) {
+      setModal({ open: true, item, tipo: item._tipo });
+    } else {
+      abrirReceberPagar(item);
     }
   };
 
-  const abrirConfirmacao = (item) => {
-    setConfirmarModal({ open: true, item, tipo: item._tipo });
-  };
+
 
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-slate-400" /></div>;
 
@@ -318,12 +317,7 @@ export default function TransacoesTab({ user, refreshKey }) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                            {t._tipo === 'receita' && t.status !== 'recebida' && t.status !== 'cancelada' && (
-                              <DropdownMenuItem onClick={() => abrirConfirmacao(t)}>Confirmar Recebimento</DropdownMenuItem>
-                            )}
-                            {t._tipo === 'despesa' && t.status !== 'pago' && t.status !== 'cancelado' && (
-                              <DropdownMenuItem onClick={() => abrirConfirmacao(t)}>Confirmar Pagamento</DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem onClick={() => { setModal({ open: true, item: t, tipo: t._tipo }); }}>Ver detalhes</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => editar(t)}>Editar</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => excluir(t)} className="text-red-600">Excluir</DropdownMenuItem>
                           </DropdownMenuContent>
@@ -379,13 +373,14 @@ export default function TransacoesTab({ user, refreshKey }) {
         />
       )}
 
-      {confirmarModal.open && (
-        <ConfirmarPagamentoDrawer
-          open={confirmarModal.open}
-          onClose={() => setConfirmarModal({ open: false, item: null, tipo: 'receita' })}
-          transacao={confirmarModal.item}
-          tipo={confirmarModal.tipo}
-          onConfirmar={confirmarPagamento}
+      {receberPagarModal.open && (
+        <ReceberPagarModal
+          open={receberPagarModal.open}
+          onClose={() => setReceberPagarModal({ open: false, item: null, tipo: 'receita' })}
+          item={receberPagarModal.item}
+          tipo={receberPagarModal.tipo}
+          user={user}
+          onConfirmar={() => { carregar(); setReceberPagarModal({ open: false, item: null, tipo: 'receita' }); }}
         />
       )}
     </div>
