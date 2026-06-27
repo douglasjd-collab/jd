@@ -381,7 +381,7 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg p-0 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent showCloseButton={false} className="max-w-lg p-0 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
