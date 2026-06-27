@@ -358,7 +358,7 @@ export default function Tarefas() {
             title="Lista"
           >
             <LayoutList className="w-4 h-4" />
-            <span className="text-xs">Lista</span>
+            <span className="text-xs hidden sm:inline">Lista</span>
           </Button>
           <Button
             variant={modoVisualizacao === 'kanban' ? 'default' : 'ghost'}
@@ -368,97 +368,98 @@ export default function Tarefas() {
             title="Kanban"
           >
             <Kanban className="w-4 h-4" />
-            <span className="text-xs">Kanban</span>
+            <span className="text-xs hidden sm:inline">Kanban</span>
           </Button>
         </div>
         {!isParceiro && (
-          <Button variant="outline" className="gap-2" onClick={() => setConfigOpen(true)}>
+          <Button variant="outline" size="sm" className="gap-1.5 px-2 sm:px-3" onClick={() => setConfigOpen(true)}>
             <Layers className="w-4 h-4" />
-            <span className="hidden sm:inline">Gerenciar Etapas</span>
+            <span className="hidden sm:inline text-xs">Gerenciar Etapas</span>
           </Button>
         )}
       </PageHeader>
 
-      {/* Abas + Filtros na mesma linha */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 bg-white border rounded-xl p-1 shadow-sm flex-shrink-0">
-          <button
-            onClick={() => setAbaAtiva('andamento')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'andamento' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Em andamento
-          </button>
-          <button
-            onClick={() => setAbaAtiva('finalizados')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'finalizados' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Finalizados
-          </button>
-        </div>
-
-        <div className="w-px h-6 bg-slate-200 flex-shrink-0" />
-
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-          <Input placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 text-xs w-36" />
-        </div>
-        <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
-          <option value="todos">Status</option>
-          {statusList.filter(s => s && s.nome).map(s => <option key={s.slug || s.id || s.nome} value={s.slug || s.nome}>{s.nome}</option>)}
-        </select>
-        <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)}>
-          <option value="todas">Prioridade</option>
-          <option value="baixa">Baixa</option>
-          <option value="media">Média</option>
-          <option value="alta">Alta</option>
-          <option value="urgente">Urgente</option>
-        </select>
-        {!isParceiro && (
-          <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroSetor} onChange={e => {
-            const val = e.target.value;
-            setFiltroSetor(val);
-            try { localStorage.setItem('tarefas_filtro_setor', val); } catch {}
-          }}>
-            <option value="todos">Setor (Todos)</option>
-            {setoresCombinados.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-            <option value="_sem_setor">Sem Setor</option>
-          </select>
-        )}
-        <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroPrazo} onChange={e => setFiltroPrazo(e.target.value)}>
-          <option value="todas">Prazo</option>
-          <option value="atrasadas">Atrasadas</option>
-          <option value="vencem_hoje">Vencem Hoje</option>
-          <option value="vencem_amanha">Vencem Amanhã</option>
-          <option value="proximos_7_dias">Próximos 7 Dias</option>
-          <option value="proximos_30_dias">Próximos 30 Dias</option>
-          <option value="sem_prazo">Sem Prazo</option>
-          <option value="concluidas_no_prazo">Concluídas no Prazo</option>
-          <option value="concluidas_com_atraso">Concluídas com Atraso</option>
-        </select>
-        {!isParceiro && (
-          <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)}>
-            <option value="todos">Responsável</option>
-            {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-          </select>
-        )}
-        {!isParceiro && (
-          <Button
-            variant={mostrarSoMinhas ? 'default' : 'outline'}
-            size="sm"
-            className={mostrarSoMinhas ? 'bg-[#1e3a5f] text-white h-8 px-3 text-xs' : 'h-8 px-3 text-xs'}
-            onClick={() => setMostrarSoMinhas(p => !p)}
-          >
-            Minhas
-          </Button>
-        )}
-        <Button
-          variant={filtroPrazo === 'criticas' ? 'default' : 'outline'}
-          size="sm"
-          className={filtroPrazo === 'criticas' ? 'bg-red-600 hover:bg-red-700 text-white h-8 px-3 text-xs' : 'h-8 px-3 text-xs border-red-300 text-red-600 hover:bg-red-50'}
-          onClick={() => setFiltroPrazo(p => p === 'criticas' ? 'todas' : 'criticas')}
+      {/* Abas */}
+      <div className="flex items-center gap-1 bg-white border rounded-xl p-1 shadow-sm w-fit">
+        <button
+          onClick={() => setAbaAtiva('andamento')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'andamento' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
         >
-          ⚠ Pendências Críticas
-        </Button>
+          Em andamento
+        </button>
+        <button
+          onClick={() => setAbaAtiva('finalizados')}
+          className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'finalizados' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          Finalizados
+        </button>
+      </div>
+
+      {/* Filtros — scroll horizontal no mobile */}
+      <div className="overflow-x-auto -mx-4 px-4 pb-1 md:mx-0 md:px-0">
+        <div className="flex items-center gap-2 min-w-max">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <Input placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 text-xs w-36" />
+          </div>
+          <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
+            <option value="todos">Status</option>
+            {statusList.filter(s => s && s.nome).map(s => <option key={s.slug || s.id || s.nome} value={s.slug || s.nome}>{s.nome}</option>)}
+          </select>
+          <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)}>
+            <option value="todas">Prioridade</option>
+            <option value="baixa">Baixa</option>
+            <option value="media">Média</option>
+            <option value="alta">Alta</option>
+            <option value="urgente">Urgente</option>
+          </select>
+          {!isParceiro && (
+            <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroSetor} onChange={e => {
+              const val = e.target.value;
+              setFiltroSetor(val);
+              try { localStorage.setItem('tarefas_filtro_setor', val); } catch {}
+            }}>
+              <option value="todos">Setor (Todos)</option>
+              {setoresCombinados.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+              <option value="_sem_setor">Sem Setor</option>
+            </select>
+          )}
+          <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroPrazo} onChange={e => setFiltroPrazo(e.target.value)}>
+            <option value="todas">Prazo</option>
+            <option value="atrasadas">Atrasadas</option>
+            <option value="vencem_hoje">Vencem Hoje</option>
+            <option value="vencem_amanha">Vencem Amanhã</option>
+            <option value="proximos_7_dias">Próximos 7 Dias</option>
+            <option value="proximos_30_dias">Próximos 30 Dias</option>
+            <option value="sem_prazo">Sem Prazo</option>
+            <option value="concluidas_no_prazo">Concluídas no Prazo</option>
+            <option value="concluidas_com_atraso">Concluídas com Atraso</option>
+          </select>
+          {!isParceiro && (
+            <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroResponsavel} onChange={e => setFiltroResponsavel(e.target.value)}>
+              <option value="todos">Responsável</option>
+              {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+          )}
+          {!isParceiro && (
+            <Button
+              variant={mostrarSoMinhas ? 'default' : 'outline'}
+              size="sm"
+              className={mostrarSoMinhas ? 'bg-[#1e3a5f] text-white h-8 px-3 text-xs flex-shrink-0' : 'h-8 px-3 text-xs flex-shrink-0'}
+              onClick={() => setMostrarSoMinhas(p => !p)}
+            >
+              Minhas
+            </Button>
+          )}
+          <Button
+            variant={filtroPrazo === 'criticas' ? 'default' : 'outline'}
+            size="sm"
+            className={`flex-shrink-0 ${filtroPrazo === 'criticas' ? 'bg-red-600 hover:bg-red-700 text-white h-8 px-3 text-xs' : 'h-8 px-3 text-xs border-red-300 text-red-600 hover:bg-red-50'}`}
+            onClick={() => setFiltroPrazo(p => p === 'criticas' ? 'todas' : 'criticas')}
+          >
+            ⚠ Pendências Críticas
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
