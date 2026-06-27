@@ -303,24 +303,24 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
           <label className="text-sm font-semibold text-slate-700">Comprovante (opcional)</label>
         </div>
         {comprovanteUrl ? (
-          <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-3 bg-slate-50">
-            <Paperclip className="w-4 h-4 text-slate-400" />
-            <span className="text-sm text-slate-600 flex-1 truncate">{comprovanteNome}</span>
+          <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-2 bg-slate-50">
+            <Paperclip className="w-3 h-3 text-slate-400" />
+            <span className="text-xs text-slate-600 flex-1 truncate">{comprovanteNome}</span>
             <Button 
               size="sm" 
               variant="ghost" 
-              className="h-7 w-7 p-0" 
+              className="h-6 w-6 p-0" 
               onClick={() => { setComprovanteUrl(''); setComprovanteNome(''); }}
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
             </Button>
           </div>
         ) : (
-          <label className="cursor-pointer flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-6 hover:bg-slate-50 transition-colors" style={{ borderColor: corPrimaria }}>
-            <Upload className="w-8 h-8" style={{ color: corPrimaria }} />
-            <div className="text-center">
+          <label className="cursor-pointer flex items-center gap-3 border-2 border-dashed rounded-lg px-4 py-3 hover:bg-slate-50 transition-colors" style={{ borderColor: corPrimaria }}>
+            <Upload className="w-5 h-5 flex-shrink-0" style={{ color: corPrimaria }} />
+            <div>
               <p className="text-sm font-semibold text-slate-700">Clique para anexar ou arraste o arquivo aqui</p>
-              <p className="text-xs text-slate-500 mt-1">PDF, JPG, PNG (máx. 10MB)</p>
+              <p className="text-xs text-slate-500">PDF, JPG, PNG (máx. 10MB)</p>
             </div>
             <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} accept=".pdf,.jpg,.jpeg,.png" />
           </label>
