@@ -295,18 +295,24 @@ export default function TransacoesTab({ user, refreshKey }) {
 
       {/* Botões de Receita e Despesa (aparecem quando menuAberto está true) */}
       {menuAberto && (
-        <div className="fixed bottom-24 right-6 z-40 flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-24 right-6 z-50 flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4">
           {/* Botão Receita (Verde) */}
           <Button
             className="w-14 h-14 rounded-full bg-green-600 hover:bg-green-700 shadow-lg"
-            onClick={() => { setModal({ open: true, item: null, tipo: 'receita' }); setMenuAberto(false); }}
+            onClick={() => {
+              setMenuAberto(false);
+              setModal({ open: true, item: null, tipo: 'receita' });
+            }}
           >
             <Plus className="w-7 h-7" />
           </Button>
           {/* Botão Despesa (Vermelho) */}
           <Button
             className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 shadow-lg"
-            onClick={() => { setModal({ open: true, item: null, tipo: 'despesa' }); setMenuAberto(false); }}
+            onClick={() => {
+              setMenuAberto(false);
+              setModal({ open: true, item: null, tipo: 'despesa' });
+            }}
           >
             <Plus className="w-7 h-7" />
           </Button>
@@ -314,7 +320,7 @@ export default function TransacoesTab({ user, refreshKey }) {
       )}
 
       {/* FAB Principal (Roxo) */}
-      <div className="fixed bottom-6 right-6 z-30">
+      <div className="fixed bottom-6 right-6 z-40">
         <Button
           className="w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-700 shadow-xl"
           onClick={() => setMenuAberto(!menuAberto)}
