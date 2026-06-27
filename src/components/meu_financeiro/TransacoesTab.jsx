@@ -179,20 +179,20 @@ export default function TransacoesTab({ user, refreshKey }) {
       </div>
 
       {/* Cards de saldo */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
-            <Wallet className="w-4 h-4 text-slate-400" />
-            <span className="text-xs text-slate-400 dark:text-slate-400">Saldo atual</span>
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <div className="bg-white dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-100 dark:border-slate-700 shadow-sm">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <Wallet className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-[11px] text-slate-400">Saldo atual</span>
           </div>
-          <p className={`text-lg font-bold ${saldoTotal >= 0 ? 'text-green-500' : 'text-red-500'}`}>{fmtMoeda(saldoTotal)}</p>
+          <p className={`text-sm font-bold ${saldoTotal >= 0 ? 'text-green-500' : 'text-red-500'}`}>{fmtMoeda(saldoTotal)}</p>
         </div>
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="w-4 h-4 text-slate-400" />
-            <span className="text-xs text-slate-400 dark:text-slate-400">Balanço mensal</span>
+        <div className="bg-white dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-100 dark:border-slate-700 shadow-sm">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <TrendingUp className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-[11px] text-slate-400">Balanço mensal</span>
           </div>
-          <p className={`text-lg font-bold ${balancoMes >= 0 ? 'text-green-500' : 'text-red-500'}`}>{fmtMoeda(balancoMes)}</p>
+          <p className={`text-sm font-bold ${balancoMes >= 0 ? 'text-green-500' : 'text-red-500'}`}>{fmtMoeda(balancoMes)}</p>
         </div>
       </div>
 
