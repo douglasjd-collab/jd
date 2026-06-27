@@ -1,4 +1,5 @@
 import React from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { MoreHorizontal, CheckSquare, Paperclip, MessageCircle, Phone } from 'lucide-react';
 import {
@@ -35,6 +36,15 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes }) 
   const diasPrazo = prazoDate ? differenceInDays(prazoDate, new Date()) : null;
   const atrasada  = !finalizado && diasPrazo !== null && diasPrazo < 0;
   const venceHoje = !finalizado && diasPrazo === 0;
+
+  // Responsáveis
+  let respNomes = [];
+  let respFotos = [];
+  try { respNomes = tarefa.responsaveis_nomes ? JSON.parse(tarefa.responsaveis_nomes) : []; } catch {}
+  try { respFotos = tarefa.responsaveis_fotos ? JSON.parse(tarefa.responsaveis_fotos) : []; } catch {}
+  if (respNomes.length === 0 && tarefa.responsavel_principal_nome) {
+    respNomes = [tarefa.responsavel_principal_nome];
+  }
 
   // Checklist
   let checklist = [];
@@ -142,6 +152,28 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes }) 
             <span>📌</span>
             <span className="truncate">{tarefa.subsetor_nome}</span>
           </p>
+        )}
+
+        {/* Responsáveis */}
+        {respNomes.length > 0 && (
+          <div className="flex items-center gap-1.5 pt-0.5">
+            <div className="flex items-center -space-x-1.5">
+              {respNomes.slice(0, 3).map((nome, idx) => (
+                <Avatar key={idx} className="h-5 w-5 border-2 border-white" title={nome}>
+                  <AvatarImage src={respFotos[idx]} alt={nome} />
+                  <AvatarFallback className="text-[8px] bg-gradient-to-br from-blue-400 to-purple-500 text-white font-bold">
+                    {(nome.trim().split(/\s+/)[0]?.[0] || '') + (nome.trim().split(/\s+/)[1]?.[0] || '')}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+              {respNomes.length > 3 && (
+                <div className="h-5 w-5 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[8px] text-slate-600 font-bold">
+                  +{respNomes.length - 3}
+                </div>
+              )}
+            </div>
+            <span className="text-xs text-slate-500 truncate">{respNomes[0]}{respNomes.length > 1 ? ` +${respNomes.length - 1}` : ''}</span>
+          </div>
         )}
       </div>
 
