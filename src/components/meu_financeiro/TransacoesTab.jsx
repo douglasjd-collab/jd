@@ -160,7 +160,7 @@ export default function TransacoesTab({ user, refreshKey }) {
     <div className="mt-2 space-y-0">
 
       {/* Navegação de mês */}
-      <div className="flex items-center justify-between py-3 px-1">
+      <div className="flex items-center justify-between py-1 px-1">
         <button
           onClick={() => setMesAtual(m => subMonths(m, 1))}
           className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
