@@ -207,26 +207,6 @@ export default function TransacoesTab({ user, refreshKey }) {
         />
       </div>
 
-      {/* Filtro por tipo */}
-      <div className="flex gap-2 mb-4">
-        {[
-          { key: 'todos', label: 'Todos' },
-          { key: 'receita', label: 'Receitas' },
-          { key: 'despesa', label: 'Despesas' },
-        ].map(f => (
-          <button
-            key={f.key}
-            onClick={() => setFiltroTipo(f.key)}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-              filtroTipo === f.key
-                ? 'bg-slate-800 dark:bg-slate-100 text-white dark:text-slate-900 border-transparent'
-                : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
 
       {/* Lista agrupada por dia */}
       {porDia.length === 0 ? (
