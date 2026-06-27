@@ -452,7 +452,11 @@ async function processarWebhook(req, rawBody, base44) {
     else if (message.audioMessage || message.pttMessage) { tipoG = 'audio'; conteudoG = 'Áudio'; }
     else if (message.videoMessage) { tipoG = 'video'; conteudoG = message.videoMessage.caption || 'Vídeo'; }
     else if (message.documentMessage) { tipoG = 'pdf'; conteudoG = message.documentMessage.title || 'Documento'; }
-    else conteudoG = JSON.stringify(message).substring(0, 200);
+    else if (message.messageContextInfo || message.deviceListMetadata || message.secretEncryptedMessage || message.senderKeyDistributionMessage || message.protocolMessage || message.deviceSentMessage) {
+      console.log(`⏭️ Mensagem técnica de grupo ignorada: ${Object.keys(message).join(', ')}`);
+      return;
+    }
+    else { console.log(`⏭️ Tipo desconhecido em grupo ignorado: ${Object.keys(message).join(', ')}`); return; }
 
     if (convsGrupo.length > 0) {
       conversaGrupo = convsGrupo[0];
@@ -679,7 +683,21 @@ async function processarWebhook(req, rawBody, base44) {
     console.log(`⏭️ Mensagem técnica interna ignorada: ${Object.keys(message).join(', ')}`);
     return;
   }
-  else conteudo = JSON.stringify(message).substring(0, 200);
+  else if (message.messageContextInfo || message.deviceListMetadata || message.deviceSentMessage) {
+    // Mensagens de contexto/sincronização de dispositivo — ignorar silenciosamente
+    console.log(`⏭️ Mensagem de contexto de dispositivo ignorada: ${Object.keys(message).join(', ')}`);
+    return;
+  }
+  else if (Object.keys(message).length === 0) {
+    // Mensagem vazia — ignorar
+    console.log(`⏭️ Mensagem vazia ignorada`);
+    return;
+  }
+  else {
+    // Tipo desconhecido: não salvar JSON bruto, apenas logar e ignorar
+    console.log(`⏭️ Tipo de mensagem desconhecido ignorado: ${Object.keys(message).join(', ')}`);
+    return;
+  }
 
   console.log(`📝 Tipo: ${tipo} | Conteúdo: "${conteudo.substring(0, 100)}" | URL: ${arquivo_url ? '✓' : '✗'}`);
 
