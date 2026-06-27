@@ -660,14 +660,6 @@ export default function FunilVendas() {
       return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: false };
     },
 
-    onSuccess: (data) => {
-      if (data?.abrirFormVenda && data?.oportunidade) {
-        setOportunidadeParaVenda(data.oportunidade);
-        setVendaFormOpen(true);
-        toast.success('Oportunidade movida para "Ganho". Registre a venda agora!');
-      }
-    },
-
     onMutate: async ({ oportunidadeId, novaEtapaId }) => {
       await queryClient.cancelQueries({ queryKey: ['oportunidades'] });
       const previousOportunidades = queryClient.getQueryData(['oportunidades']);
@@ -701,11 +693,21 @@ export default function FunilVendas() {
         queryClient.setQueryData(['oportunidades'], context.previousOportunidades);
       }
       toast.error(error.message || 'Erro ao mover oportunidade');
+      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
     },
 
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
-    }
+    onSuccess: (data, variables, context) => {
+      // Invalidar em background após sucesso (sem flash visual)
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+      }, 1500);
+
+      if (data?.abrirFormVenda && data?.oportunidade) {
+        setOportunidadeParaVenda(data.oportunidade);
+        setVendaFormOpen(true);
+        toast.success('Oportunidade movida para "Ganho". Registre a venda agora!');
+      }
+    },
   });
 
   const handleDragEnd = async (result) => {
