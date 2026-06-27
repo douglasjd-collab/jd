@@ -284,50 +284,37 @@ export default function ConfiguracaoWhatsApp() {
     setQrCode(null);
     setQrStatus(null);
     try {
-      const base = limparUrlEvolution(url);
+      // Usa backend function para evitar CORS
+      const resp = await base44.functions.invoke('gerarQrCodeEvolution', {
+        empresa_id: empresa?.id,
+      });
+      const data = resp.data;
 
-      const headers = getEvolutionHeaders();
-
-      // Primeiro verifica se já está conectada
-      const statusResp = await fetch(`${base}/instance/connectionState/${instance}`, { headers });
-      const statusData = await statusResp.json();
-      const state = statusData?.instance?.state || statusData?.state;
-      if (state === 'open') {
+      if (data?.state === 'open') {
         setQrStatus('connected');
-        setQrLoading(false);
         return;
       }
 
-      // Busca QR Code via /instance/connect/{instance}
-      const resp = await fetch(`${base}/instance/connect/${instance}`, { headers });
-      const data = await resp.json();
-
-      // Suporta diferentes formatos da Evolution API v1 e v2
-      const qr = data?.base64 || data?.qrcode?.base64 || data?.qr?.base64 || data?.code;
-
-      if (qr) {
+      if (data?.base64 || data?.code) {
+        const qr = data.base64 || data.code;
         setQrCode(qr);
         setQrStatus('waiting');
-        iniciarPolling(url, instance);
+        iniciarPolling();
       } else {
-        // Log para debug
-        console.error('Resposta Evolution API:', JSON.stringify(data));
-        toast.error('QR Code não encontrado. Resposta: ' + JSON.stringify(data).slice(0, 200));
+        toast.error(data?.erro || data?.error || 'QR Code não disponível. Tente novamente.');
       }
     } catch (e) {
-      toast.error('Erro ao conectar à Evolution API: ' + e.message);
+      toast.error('Erro ao gerar QR Code: ' + e.message);
     } finally {
       setQrLoading(false);
     }
   };
 
-  const verificarStatus = async (url, instance) => {
+  const verificarStatus = async () => {
     try {
-      const resp = await fetch(`${limparUrlEvolution(url)}/instance/connectionState/${instance}`, {
-        headers: getEvolutionHeaders(),
-      });
-      const data = await resp.json();
-      if (data?.instance?.state === 'open' || data?.state === 'open') {
+      const resp = await base44.functions.invoke('gerarQrCodeEvolution', { empresa_id: empresa?.id });
+      const data = resp.data;
+      if (data?.state === 'open') {
         setQrStatus('connected');
         setQrCode(null);
         return true;
@@ -336,10 +323,10 @@ export default function ConfiguracaoWhatsApp() {
     return false;
   };
 
-  const iniciarPolling = (url, instance) => {
+  const iniciarPolling = () => {
     if (qrPolling) clearInterval(qrPolling);
     const interval = setInterval(async () => {
-      const conectado = await verificarStatus(url, instance);
+      const conectado = await verificarStatus();
       if (conectado) clearInterval(interval);
     }, 4000);
     setQrPolling(interval);
