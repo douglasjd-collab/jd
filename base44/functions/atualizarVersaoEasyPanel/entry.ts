@@ -48,11 +48,12 @@ Deno.serve(async (req) => {
 
     const epUrl = Deno.env.get('EASYPANEL_URL');
     const epToken = Deno.env.get('EASYPANEL_TOKEN');
-    const epProject = Deno.env.get('EASYPANEL_PROJECT');
-    const epService = Deno.env.get('EASYPANEL_SERVICE');
+    // Projeto e serviço fixos — o evolution-api fica sempre em supabase/evolution-api
+    const epProject = 'supabase';
+    const epService = 'evolution-api';
 
-    if (!epUrl || !epToken || !epProject || !epService) {
-      return Response.json({ success: false, error: 'Secrets do EasyPanel não configurados.' }, { status: 400 });
+    if (!epUrl || !epToken) {
+      return Response.json({ success: false, error: 'Secrets EASYPANEL_URL e EASYPANEL_TOKEN não configurados.' }, { status: 400 });
     }
 
     // MODO APENAS INSPECIONAR

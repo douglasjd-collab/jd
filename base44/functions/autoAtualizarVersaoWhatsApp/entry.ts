@@ -65,10 +65,11 @@ Deno.serve(async (req) => {
 
     const epUrl = Deno.env.get('EASYPANEL_URL');
     const epToken = Deno.env.get('EASYPANEL_TOKEN');
-    const epProject = Deno.env.get('EASYPANEL_PROJECT');
-    const epService = Deno.env.get('EASYPANEL_SERVICE');
-    const evolutionUrl = (Deno.env.get('EVOLUTION_API_URL') || '').replace(/\/$/, '');
-    const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
+    // Projeto e serviço fixos — o evolution-api fica sempre em supabase/evolution-api
+    const epProject = 'supabase';
+    const epService = 'evolution-api';
+    const evolutionUrl = 'https://supabase-evolution-api.0ntuaf.easypanel.host';
+    const evolutionKey = '429683C4C977415CAAFCCE10F7D57E11';
     const tgToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
     const tgChat = Deno.env.get('TELEGRAM_CHAT_ID');
 
