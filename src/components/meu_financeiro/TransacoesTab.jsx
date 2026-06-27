@@ -197,10 +197,10 @@ export default function TransacoesTab({ user, refreshKey }) {
       </div>
 
       {/* Busca */}
-      <div className="relative mb-3">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      <div className="relative mt-3 mb-3">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
         <Input
-          className="pl-10 h-10 rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
+          className="pl-9 h-8 text-sm rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
           placeholder="Buscar..."
           value={search}
           onChange={e => setSearch(e.target.value)}
