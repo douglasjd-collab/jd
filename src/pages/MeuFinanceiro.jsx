@@ -1100,6 +1100,7 @@ function ContasTab({ user, refreshKey }) {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editando, setEditando] = useState(null);
+  const [contaAcoes, setContaAcoes] = useState(null); // id da conta com menu aberto
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -1116,7 +1117,6 @@ function ContasTab({ user, refreshKey }) {
 
   useEffect(() => { carregar(); }, [carregar, refreshKey]);
 
-  // Calcular saldo por conta dinamicamente
   const saldoPorConta = useMemo(() => {
     const map = {};
     contas.forEach(c => { map[c.id] = c.saldo_inicial || 0; });
@@ -1126,7 +1126,6 @@ function ContasTab({ user, refreshKey }) {
     despesas.filter(d => d.status === 'pago' && d.conta_bancaria_id).forEach(d => {
       if (map[d.conta_bancaria_id] !== undefined) map[d.conta_bancaria_id] -= (d.valor || 0);
     });
-    // Transações sem conta vinculada: distribuir entre contas ativas ou somar ao total geral
     const semConta = receitas.filter(r => r.status === 'recebida' && !r.conta_bancaria_id).reduce((s, r) => s + (r.valor || 0), 0)
       - despesas.filter(d => d.status === 'pago' && !d.conta_bancaria_id).reduce((s, d) => s + (d.valor || 0), 0);
     return { map, semConta };
@@ -1135,71 +1134,68 @@ function ContasTab({ user, refreshKey }) {
   const contasAtivas = contas.filter(c => c.status === 'ativa');
   const saldoTotal = contasAtivas.reduce((s, c) => s + (saldoPorConta.map[c.id] || 0), 0) + saldoPorConta.semConta;
 
-  const toggleStatus = async (conta) => {
-    const novoStatus = conta.status === 'ativa' ? 'inativa' : 'ativa';
-    await base44.entities.MeuFinanceiroContaBancaria.update(conta.id, { status: novoStatus });
-    toast.success(`Conta ${novoStatus === 'ativa' ? 'ativada' : 'desativada'}!`);
-    carregar();
-  };
-
   const excluir = async (id) => {
     if (!confirm('Excluir esta conta bancária?')) return;
     try { await base44.entities.MeuFinanceiroContaBancaria.delete(id); toast.success('Conta excluída'); carregar(); } catch (e) { toast.error('Erro ao excluir'); }
   };
 
   return (
-    <div className="space-y-4 mt-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-3 text-sm">
-          <span className="text-slate-600">Saldo Total: <strong className="text-slate-800">{fmtMoeda(saldoTotal)}</strong></span>
-          <span className="text-slate-400">{contasAtivas.length} conta{contasAtivas.length !== 1 ? 's' : ''} ativa{contasAtivas.length !== 1 ? 's' : ''}</span>
+    <div className="mt-4 pb-24">
+      {/* Header: saldo total + botão nova conta */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-xs text-slate-400 uppercase tracking-wide">Saldo Total</p>
+          <p className={`text-2xl font-bold ${saldoTotal >= 0 ? 'text-green-500' : 'text-red-500'}`}>{fmtMoeda(saldoTotal)}</p>
+          <p className="text-xs text-slate-400">{contasAtivas.length} conta{contasAtivas.length !== 1 ? 's' : ''} ativa{contasAtivas.length !== 1 ? 's' : ''}</p>
         </div>
-        <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => { setEditando(null); setModalOpen(true); }}><Plus className="w-4 h-4 mr-1" /> Nova Conta</Button>
+        <button
+          onClick={() => { setEditando(null); setModalOpen(true); }}
+          className="w-11 h-11 rounded-full bg-violet-600 hover:bg-violet-700 text-white flex items-center justify-center shadow-md transition-transform active:scale-95"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
       </div>
 
-      {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div> : contas.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+      ) : contas.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
           <Building2 className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-          <p>Nenhuma conta bancária cadastrada.</p>
-          <Button variant="outline" size="sm" className="mt-3" onClick={() => { setEditando(null); setModalOpen(true); }}><Plus className="w-4 h-4 mr-1" /> Cadastrar primeira conta</Button>
+          <p className="text-sm">Nenhuma conta bancária cadastrada.</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={() => { setEditando(null); setModalOpen(true); }}>
+            <Plus className="w-4 h-4 mr-1" /> Cadastrar primeira conta
+          </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {contas.map(conta => (
-            <Card key={conta.id} className={`border border-slate-200 hover:shadow-md transition-shadow ${conta.status === 'inativa' ? 'opacity-60' : ''}`}>
-              <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${conta.status === 'ativa' ? 'bg-green-500' : 'bg-slate-300'}`} />
-              <CardContent className="p-4 pl-5">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <BancoAvatar banco={conta.banco} logoUrl={conta.logo_url} size="md" />
-                    <div className="min-w-0">
-                      <p className="font-bold text-slate-800 text-sm leading-tight truncate">{conta.nome_conta}</p>
-                      <p className="text-xs text-slate-400 truncate">{conta.banco}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Badge className={conta.status === 'ativa' ? 'bg-green-100 text-green-700 border-0' : 'bg-slate-100 text-slate-500 border-0'}>
-                      {conta.status === 'ativa' ? 'Ativa' : 'Inativa'}
-                    </Badge>
-                    <button onClick={() => { setEditando(conta); setModalOpen(true); }} className="p-1 rounded hover:bg-slate-100"><Pencil className="w-3.5 h-3.5 text-slate-400" /></button>
-                    <button onClick={() => excluir(conta.id)} className="p-1 rounded hover:bg-red-50"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
-                  </div>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700 shadow-sm">
+          {contas.map((conta) => {
+            const saldo = saldoPorConta.map[conta.id] || 0;
+            const inativa = conta.status === 'inativa';
+            return (
+              <div
+                key={conta.id}
+                className={`flex items-center gap-3 px-4 py-3.5 ${inativa ? 'opacity-50' : ''}`}
+              >
+                <BancoAvatar banco={conta.banco} logoUrl={conta.logo_url} size="md" />
+                <div className="flex-1 min-w-0" onClick={() => setContaAcoes(contaAcoes === conta.id ? null : conta.id)}>
+                  <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">{conta.nome_conta}</p>
+                  <p className={`text-sm font-bold ${saldo >= 0 ? 'text-green-500' : 'text-red-500'}`}>{fmtMoeda(saldo)}</p>
                 </div>
-
-                <div className="space-y-1 text-xs text-slate-500 mb-3">
-                  {conta.tipo_conta && <div className="flex items-center gap-1.5"><CreditCard className="w-3 h-3 shrink-0" /><span>{conta.tipo_conta}</span></div>}
-                  {conta.agencia && <div className="flex items-center gap-1.5"><Hash className="w-3 h-3 shrink-0" /><span>Agência: {conta.agencia}</span></div>}
-                  {conta.conta && <div className="flex items-center gap-1.5"><Hash className="w-3 h-3 shrink-0" /><span>Conta: {conta.conta}</span></div>}
-                  {conta.chave_pix && <div className="flex items-center gap-1.5"><Key className="w-3 h-3 shrink-0" /><span className="truncate">PIX: {conta.chave_pix}</span></div>}
-                </div>
-
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Saldo Atual</p>
-                  <p className={`text-2xl font-bold ${(saldoPorConta.map[conta.id] || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmtMoeda(saldoPorConta.map[conta.id] || 0)}</p>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                <button
+                  onClick={() => { setEditando(conta); setModalOpen(true); }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors flex-shrink-0"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => excluir(conta.id)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
