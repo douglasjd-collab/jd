@@ -175,12 +175,22 @@ function DashboardTab({ user, refreshKey }) {
   // Receitas por categoria (para o gráfico de pizza)
   const receitasPorCategoria = useMemo(() => {
     const map = {};
-    receitas.filter(r => r.status === 'recebida').forEach(r => {
-      const cat = r.categoria || 'Geral';
+    receitasMes.filter(r => r.status === 'recebida').forEach(r => {
+      const cat = r.categoria || 'Sem categoria';
       map[cat] = (map[cat] || 0) + (r.valor || 0);
     });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [receitas]);
+  }, [receitasMes]);
+
+  // Despesas por categoria (para o gráfico de pizza)
+  const despesasPorCategoria = useMemo(() => {
+    const map = {};
+    despesasMes.filter(d => d.status === 'pago').forEach(d => {
+      const cat = d.categoria || 'Sem categoria';
+      map[cat] = (map[cat] || 0) + (d.valor || 0);
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [despesasMes]);
 
   // Opções de meses para o filtro
   const opcoesMeses = useMemo(() => {
@@ -321,14 +331,35 @@ function DashboardTab({ user, refreshKey }) {
           <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><PieChart className="w-5 h-5 text-slate-500" /> Receita por Categoria</CardTitle></CardHeader>
           <CardContent>
             {receitasPorCategoria.length === 0 ? (
-              <div className="text-center py-10 text-slate-400 text-sm">Sem receitas registradas</div>
+              <div className="text-center py-10 text-slate-400 text-sm">Sem receitas recebidas no mês</div>
             ) : (
               <ResponsiveContainer width="100%" height={250}>
                 <RechartsPieChart>
                   <Pie data={receitasPorCategoria} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={45} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
                     {receitasPorCategoria.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
-                  <RechartsTooltip formatter={(v) => [fmtMoeda(v), '']} contentStyle={{ fontSize: 12 }} />
+                  <RechartsTooltip formatter={(v, name) => [fmtMoeda(v), name]} contentStyle={{ fontSize: 12 }} />
+                  <Legend />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pizza — Despesa por Categoria */}
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><PieChart className="w-5 h-5 text-red-500" /> Despesa por Categoria</CardTitle></CardHeader>
+          <CardContent>
+            {despesasPorCategoria.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-sm">Sem despesas pagas no mês</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={250}>
+                <RechartsPieChart>
+                  <Pie data={despesasPorCategoria} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={45} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    {despesasPorCategoria.map((_, i) => <Cell key={i} fill={['#ef4444','#f97316','#eab308','#8b5cf6','#ec4899','#14b8a6','#3b82f6'][i % 7]} />)}
+                  </Pie>
+                  <RechartsTooltip formatter={(v, name) => [fmtMoeda(v), name]} contentStyle={{ fontSize: 12 }} />
+                  <Legend />
                 </RechartsPieChart>
               </ResponsiveContainer>
             )}
