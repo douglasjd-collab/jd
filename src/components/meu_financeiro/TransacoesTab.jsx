@@ -45,6 +45,12 @@ export default function TransacoesTab({ user, refreshKey }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const [confirmarModal, setConfirmarModal] = useState({ open: false, item: null, tipo: 'receita' });
 
+  // Handler para abrir modal de nova transação
+  const abrirNovaTransacao = (tipo) => {
+    setMenuAberto(false);
+    setModal({ open: true, item: null, tipo });
+  };
+
   const carregar = useCallback(async () => {
     setLoading(true);
     try {
@@ -334,20 +340,14 @@ export default function TransacoesTab({ user, refreshKey }) {
           {/* Botão Receita (Verde) */}
           <Button
             className="w-14 h-14 rounded-full bg-green-600 hover:bg-green-700 shadow-lg"
-            onClick={() => {
-              setMenuAberto(false);
-              setModal({ open: true, item: null, tipo: 'receita' });
-            }}
+            onClick={() => abrirNovaTransacao('receita')}
           >
             <Plus className="w-7 h-7" />
           </Button>
           {/* Botão Despesa (Vermelho) */}
           <Button
             className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 shadow-lg"
-            onClick={() => {
-              setMenuAberto(false);
-              setModal({ open: true, item: null, tipo: 'despesa' });
-            }}
+            onClick={() => abrirNovaTransacao('despesa')}
           >
             <Plus className="w-7 h-7" />
           </Button>
