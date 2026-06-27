@@ -201,7 +201,7 @@ export default function TransacoesTab({ user, refreshKey }) {
       {/* Header - versão mobile */}
       {isMobile ? (
         <div className="bg-slate-50 rounded-lg p-3">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between">
             <button onClick={() => setMesAtual(m => subMonths(m, 1))} className="p-1 hover:bg-slate-200 rounded-full">
               <ChevronLeft className="w-5 h-5 text-slate-600" />
             </button>
@@ -209,14 +209,6 @@ export default function TransacoesTab({ user, refreshKey }) {
             <button onClick={() => setMesAtual(m => addMonths(m, 1))} className="p-1 hover:bg-slate-200 rounded-full">
               <ChevronRight className="w-5 h-5 text-slate-600" />
             </button>
-          </div>
-          <div className="flex gap-2">
-            <div className="flex-1 bg-green-50 rounded-full px-3 py-2 text-center">
-              <p className="text-xs text-green-700 font-medium">Recebido: {fmtMoeda(totalReceitas)}</p>
-            </div>
-            <div className="flex-1 bg-amber-50 rounded-full px-3 py-2 text-center">
-              <p className="text-xs text-amber-700 font-medium">Pendente: {fmtMoeda(totalDespesas)}</p>
-            </div>
           </div>
         </div>
       ) : (
