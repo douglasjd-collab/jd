@@ -156,20 +156,57 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
 
   const formatarTempo = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  const lerArquivoBase64 = (file) => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+  // Converte HEIC/HEIF para JPEG usando Canvas (WhatsApp não suporta HEIC)
+  const converterHeicParaJpeg = (file) => new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((blob) => {
+        if (!blob) return reject(new Error('Falha ao converter HEIC'));
+        const nomeJpeg = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+        resolve(new File([blob], nomeJpeg, { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.92);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Não foi possível carregar a imagem HEIC para conversão'));
+    };
+    img.src = url;
   });
+
+  const prepararArquivo = async (file) => {
+    const nome = file.name?.toLowerCase() || '';
+    if (nome.endsWith('.heic') || nome.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif') {
+      return await converterHeicParaJpeg(file);
+    }
+    return file;
+  };
+
+  const lerArquivoBase64 = async (file) => {
+    const filePreparado = await prepararArquivo(file);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({ base64: reader.result.split(',')[1], file: filePreparado });
+      reader.onerror = reject;
+      reader.readAsDataURL(filePreparado);
+    });
+  };
 
   const getMimeType = (file) => {
     let tipo = file.type || '';
     if (!tipo) {
       const ext = file.name.split('.').pop()?.toLowerCase();
-      const mimeMap = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', mp3: 'audio/mpeg', mp4: 'video/mp4', webm: 'audio/webm', ogg: 'audio/ogg', heic: 'image/heic', heif: 'image/heif' };
+      const mimeMap = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', mp3: 'audio/mpeg', mp4: 'video/mp4', webm: 'audio/webm', ogg: 'audio/ogg', heic: 'image/jpeg', heif: 'image/jpeg' };
       tipo = mimeMap[ext] || 'application/octet-stream';
     }
+    // HEIC/HEIF serão convertidos para JPEG antes do envio
+    if (tipo === 'image/heic' || tipo === 'image/heif') return 'image/jpeg';
     return tipo;
   };
 
@@ -198,20 +235,19 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
         await onEnviar({ texto: textoEnviar, arquivo: null });
       } else if (arquivosParaEnviar.length === 1) {
         // Um arquivo + texto opcional
-        const base64 = await lerArquivoBase64(arquivosParaEnviar[0]);
+        const { base64, file: filePreparado } = await lerArquivoBase64(arquivosParaEnviar[0]);
         await onEnviar({
           texto: textoEnviar,
-          arquivo: { base64, nome: arquivosParaEnviar[0].name, tipo: getMimeType(arquivosParaEnviar[0]) }
+          arquivo: { base64, nome: filePreparado.name, tipo: getMimeType(filePreparado) }
         });
       } else {
         // Múltiplos arquivos: enviar cada um separadamente
         for (let i = 0; i < arquivosParaEnviar.length; i++) {
-          const f = arquivosParaEnviar[i];
-          const base64 = await lerArquivoBase64(f);
+          const { base64, file: filePreparado } = await lerArquivoBase64(arquivosParaEnviar[i]);
           // Texto só na primeira mensagem
           await onEnviar({
             texto: i === 0 ? textoEnviar : '',
-            arquivo: { base64, nome: f.name, tipo: getMimeType(f) }
+            arquivo: { base64, nome: filePreparado.name, tipo: getMimeType(filePreparado) }
           });
         }
       }
