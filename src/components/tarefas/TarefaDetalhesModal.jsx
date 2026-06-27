@@ -5,12 +5,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  X, Calendar, User, Tag, CheckSquare, MessageSquare, Clock, AlertTriangle, Paperclip, FileText, Download, MoreVertical,
-  Sparkles, AlertCircle, Timer, CheckCircle2, Zap, RefreshCw, Loader2, ChevronDown, Check, UserPlus, Search, ArrowLeft
+  X, Calendar, User, Tag, CheckSquare, MessageSquare, Clock, AlertTriangle, Paperclip, FileText, Download,
+  Sparkles, AlertCircle, Timer, CheckCircle2, Zap, RefreshCw, Loader2, ChevronDown, Check, UserPlus, Search
 } from 'lucide-react';
 import ColaboracaoInterna from './ColaboracaoInterna';
 import ChecklistAba from './ChecklistAba';
-import { ParticipantesBottomSheet, AtividadeRecenteBottomSheet, MenuMobileDropdown } from './TarefaMobileSheets';
+import { ParticipantesBottomSheet, AtividadeRecenteBottomSheet } from './TarefaMobileSheets';
 
 const PRIORIDADE_CORES = {
   baixa: 'bg-slate-100 text-slate-600',
@@ -46,7 +46,6 @@ export default function TarefaDetalhesModal({
   onUpdate, colaboradores = [], subsetoresList = [], abaAtiva: abaInicial
 }) {
   const [aba, setAba] = useState(abaInicial || 'detalhes');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [participantesSheetOpen, setParticipantesSheetOpen] = useState(false);
   const [atividadeSheetOpen, setAtividadeSheetOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -102,7 +101,6 @@ export default function TarefaDetalhesModal({
   const responsaveisDropdownRef = useRef(null);
   const [searchResponsavel, setSearchResponsavel] = useState('');
   const [salvandoResponsaveis, setSalvandoResponsaveis] = useState(false);
-  const [menuMobileOpen, setMenuMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!responsaveisDropdownOpen) return;
@@ -218,82 +216,32 @@ export default function TarefaDetalhesModal({
               <h2 className="text-base font-bold text-slate-900 leading-tight line-clamp-2">{tarefa.titulo}</h2>
             </div>
           </div>
-          {/* Menu mobile (⋮) */}
-          <div className="relative">
-            <button
-              onClick={() => setMobileMenuOpen(v => !v)}
-              className="lg:hidden p-2 rounded-full hover:bg-slate-100 transition-colors"
-            >
-              <svg className="w-5 h-5 text-slate-600" fill="currentColor" viewBox="0 0 24 24">
-                <circle cx="12" cy="5" r="2" />
-                <circle cx="12" cy="12" r="2" />
-                <circle cx="12" cy="19" r="2" />
-              </svg>
-            </button>
-            {/* Botão fechar desktop */}
-            <button
-              onClick={() => onOpenChange(false)}
-              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          
-          {/* Menu dropdown mobile */}
-          {mobileMenuOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setMobileMenuOpen(false)} />
-              <div className="absolute right-0 top-full mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden min-w-[200px]">
-                <button
-                  onClick={() => { setParticipantesSheetOpen(true); setMobileMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  <User className="w-4 h-4 text-slate-400" />
-                  Participantes
-                </button>
-                <button
-                  onClick={() => { setAtividadeSheetOpen(true); setMobileMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  <Clock className="w-4 h-4 text-slate-400" />
-                  Atividade recente
-                </button>
-                <button
-                  onClick={() => { setAba('anexos'); setMobileMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  <Paperclip className="w-4 h-4 text-slate-400" />
-                  Adicionar anexo
-                </button>
-                <button
-                  onClick={() => { setAba('historico'); setMobileMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  <FileText className="w-4 h-4 text-slate-400" />
-                  Histórico
-                </button>
-              </div>
-            </>
-          )}
+          {/* Botão fechar */}
+          <button
+            onClick={() => onOpenChange(false)}
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Abas com scroll horizontal no mobile */}
         <div className="border-b bg-white flex-shrink-0">
-          <div className="flex overflow-x-auto scrollbar-hide px-4 gap-1 py-2">
+          <div className="flex overflow-x-auto scrollbar-hide px-2 sm:px-4 gap-1 py-2">
             {abas.map(a => (
               <button
                 key={a.key}
                 onClick={() => setAba(a.key)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors flex-shrink-0 ${
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors flex-shrink-0 ${
                   aba === a.key
                     ? 'bg-blue-50 text-blue-600'
                     : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
                 }`}
               >
-                <a.icon className="w-4 h-4" />
+                <a.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 {a.label}
                 {a.badge != null && a.badge !== 0 && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold leading-none ${
+                  <span className={`text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full font-semibold leading-none ${
                     aba === a.key ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-600'
                   }`}>
                     {a.badge}
