@@ -167,7 +167,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     let tipo = file.type || '';
     if (!tipo) {
       const ext = file.name.split('.').pop()?.toLowerCase();
-      const mimeMap = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', mp3: 'audio/mpeg', mp4: 'video/mp4', webm: 'audio/webm', ogg: 'audio/ogg' };
+      const mimeMap = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', mp3: 'audio/mpeg', mp4: 'video/mp4', webm: 'audio/webm', ogg: 'audio/ogg', heic: 'image/heic', heif: 'image/heif' };
       tipo = mimeMap[ext] || 'application/octet-stream';
     }
     return tipo;
@@ -252,10 +252,12 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       const tipo = file.type || '';
       return tipo.startsWith('image/') || tipo.startsWith('audio/') || tipo.startsWith('video/') ||
         tipo === 'application/pdf' || tipo.includes('pdf') ||
+        tipo === 'image/heic' || tipo === 'image/heif' ||
         nome.endsWith('.pdf') || nome.endsWith('.jpg') || nome.endsWith('.jpeg') ||
         nome.endsWith('.png') || nome.endsWith('.gif') || nome.endsWith('.mp3') ||
         nome.endsWith('.mp4') || nome.endsWith('.webm') || nome.endsWith('.ogg') ||
-        nome.endsWith('.doc') || nome.endsWith('.docx') || nome.endsWith('.xls') || nome.endsWith('.xlsx');
+        nome.endsWith('.doc') || nome.endsWith('.docx') || nome.endsWith('.xls') || nome.endsWith('.xlsx') ||
+        nome.endsWith('.heic') || nome.endsWith('.heif');
     });
     if (aceitos.length < files.length) {
       setErro('Alguns arquivos não são suportados e foram ignorados.');
@@ -318,7 +320,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
         multiple
         onChange={handleArquivo}
         className="hidden"
-        accept="image/*,audio/*,video/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx"
+        accept="image/*,audio/*,video/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.heic,.heif"
       />
 
       {/* Quick Replies Popup */}
