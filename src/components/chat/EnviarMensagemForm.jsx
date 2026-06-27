@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import heic2any from 'heic2any';
 import { Button } from '@/components/ui/button';
 import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Plus } from 'lucide-react';
 import MensagensRapidasModal from './MensagensRapidasModal';
@@ -156,29 +157,13 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
 
   const formatarTempo = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-  // Converte HEIC/HEIF para JPEG usando Canvas (WhatsApp não suporta HEIC)
-  const converterHeicParaJpeg = (file) => new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      canvas.toBlob((blob) => {
-        if (!blob) return reject(new Error('Falha ao converter HEIC'));
-        const nomeJpeg = file.name.replace(/\.(heic|heif)$/i, '.jpg');
-        resolve(new File([blob], nomeJpeg, { type: 'image/jpeg' }));
-      }, 'image/jpeg', 0.92);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Não foi possível carregar a imagem HEIC para conversão'));
-    };
-    img.src = url;
-  });
+  // Converte HEIC/HEIF para JPEG usando heic2any
+  const converterHeicParaJpeg = async (file) => {
+    const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+    const resultBlob = Array.isArray(blob) ? blob[0] : blob;
+    const nomeJpeg = file.name.replace(/\.(heic|heif)$/i, '.jpg');
+    return new File([resultBlob], nomeJpeg, { type: 'image/jpeg' });
+  };
 
   const prepararArquivo = async (file) => {
     const nome = file.name?.toLowerCase() || '';
