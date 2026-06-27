@@ -1,15 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { X, Calculator, Calendar, Building2, ChevronDown } from 'lucide-react';
+import { X, Calculator, Calendar, Building2, ChevronDown, Paperclip } from 'lucide-react';
 import { format, parseISO, subDays } from 'date-fns';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const fmtMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
 export default function ReceberPagarModal({ open, onClose, item, tipo, user, onConfirmar }) {
+  const isMobile = useIsMobile();
   const editando = !!item;
   const titulo = tipo === 'receita' 
     ? (item?.status === 'recebida' ? 'Deseja editar este recebimento?' : 'Deseja efetivar esta receita?') 
@@ -24,7 +28,11 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
   const [dataPersonalizada, setDataPersonalizada] = useState('');
   const [contaBancariaId, setContaBancariaId] = useState('');
   const [contas, setContas] = useState([]);
+  const [observacao, setObservacao] = useState('');
+  const [comprovanteUrl, setComprovanteUrl] = useState('');
+  const [comprovanteNome, setComprovanteNome] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Carregar contas bancárias
   useEffect(() => {
@@ -66,7 +74,27 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
     }
     
     setContaBancariaId(item.conta_bancaria_id || '');
+    setObservacao(item.observacao || '');
+    setComprovanteUrl(item.comprovante_url || '');
+    setComprovanteNome(item.comprovante_nome || '');
   }, [open, item]);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setComprovanteUrl(file_url);
+      setComprovanteNome(file.name);
+      toast.success('Arquivo enviado!');
+    } catch (err) { 
+      toast.error('Erro ao enviar arquivo'); 
+    } finally { 
+      setUploading(false); 
+      e.target.value = ''; 
+    }
+  };
 
   const getDataFinal = () => {
     if (dataSelecionada === 'hoje') return new Date().toISOString().split('T')[0];
@@ -92,6 +120,9 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
         [campoStatus]: novoStatus,
         [campoData]: dataFinal,
         conta_bancaria_id: contaBancariaId,
+        observacao: observacao.trim(),
+        comprovante_url: comprovanteUrl || null,
+        comprovante_nome: comprovanteNome || null,
       });
 
       // Atualizar saldo da conta bancária
@@ -117,9 +148,8 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
   const corTexto = tipo === 'receita' ? 'text-green-600' : 'text-red-600';
   const corBorda = tipo === 'receita' ? 'border-green-500' : 'border-red-500';
 
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden rounded-xl shadow-2xl">
+  const ConteudoModal = () => (
+    <>
         {/* Header */}
         <div className="bg-white px-6 py-4 border-b border-slate-100">
           <div className="flex items-center justify-between">
@@ -229,6 +259,42 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
             </div>
             <ChevronDown className="w-5 h-5 text-slate-400" />
           </div>
+
+          {/* Observação */}
+          <div className="py-3">
+            <label className="text-sm font-medium text-slate-700 mb-2 block">Observação (opcional)</label>
+            <textarea
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none"
+              value={observacao}
+              onChange={e => setObservacao(e.target.value)}
+              placeholder="Detalhes adicionais..."
+            />
+          </div>
+
+          {/* Anexar Comprovante */}
+          <div className="py-3">
+            <label className="text-sm font-medium text-slate-700 mb-2 block">Comprovante (opcional)</label>
+            {comprovanteUrl ? (
+              <div className="flex items-center gap-2 border rounded-lg p-3 bg-slate-50">
+                <Paperclip className="w-4 h-4 text-slate-400" />
+                <span className="text-sm text-slate-600 flex-1 truncate">{comprovanteNome}</span>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-7 px-2" 
+                  onClick={() => { setComprovanteUrl(''); setComprovanteNome(''); }}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <label className="cursor-pointer flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 border border-dashed rounded-lg p-3 justify-center hover:bg-slate-50 transition-colors">
+                <Paperclip className="w-4 h-4" />
+                {uploading ? 'Enviando...' : 'Escolher arquivo (PDF, JPG, PNG)'}
+                <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} accept=".pdf,.jpg,.jpeg,.png" />
+              </label>
+            )}
+          </div>
         </div>
 
         {/* Footer */}
@@ -248,6 +314,35 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
           >
             {salvando ? 'CONFIRMANDO...' : (tipo === 'receita' ? 'RECEBER' : 'PAGAR')}
           </Button>
+        </div>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={onClose}>
+        <SheetContent side="bottom" className="h-[90vh] max-h-[90vh] p-0 flex flex-col">
+          <SheetHeader className="px-6 py-4 border-b border-slate-100">
+            <SheetTitle className="text-lg font-semibold text-slate-800">{titulo}</SheetTitle>
+            <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-4">
+            <ConteudoModal />
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md p-0 overflow-hidden rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="px-6 py-4 border-b border-slate-100">
+          <DialogTitle className="text-lg font-semibold text-slate-800">{titulo}</DialogTitle>
+          <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+        </DialogHeader>
+        <div className="px-6 py-4">
+          <ConteudoModal />
         </div>
       </DialogContent>
     </Dialog>

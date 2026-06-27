@@ -134,17 +134,9 @@ export default function TransacoesTab({ user, refreshKey }) {
     } catch { toast.error('Erro ao excluir'); }
   };
 
-  const editar = (item) => {
-    // Se já estiver pago/recebido, abre modal de edição completa
-    // Se estiver pendente, abre modal rápido de receber/pagar
-    const isPago = item._tipo === 'receita' ? item.status === 'recebida' : item.status === 'pago';
-    const isCancelado = item._tipo === 'receita' ? item.status === 'cancelada' : item.status === 'cancelado';
-    
-    if (isPago || isCancelado) {
-      setModal({ open: true, item, tipo: item._tipo });
-    } else {
-      abrirReceberPagar(item);
-    }
+  const abrirEfetivacao = (item) => {
+    // Clique na linha SEMPRE abre modal de efetivação
+    setReceberPagarModal({ open: true, item, tipo: item._tipo });
   };
 
 
@@ -275,7 +267,7 @@ export default function TransacoesTab({ user, refreshKey }) {
                     <tr 
                       key={`${t._tipo}-${t.id}`} 
                       className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
-                      onClick={() => editar(t)}
+                      onClick={() => abrirEfetivacao(t)}
                     >
                       <td className="px-4 py-3">
                         {atrasada ? (
@@ -317,8 +309,7 @@ export default function TransacoesTab({ user, refreshKey }) {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenuItem onClick={() => { setModal({ open: true, item: t, tipo: t._tipo }); }}>Ver detalhes</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => editar(t)}>Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { setModal({ open: true, item: t, tipo: t._tipo }); }}>Editar</DropdownMenuItem>
                             <DropdownMenuItem onClick={() => excluir(t)} className="text-red-600">Excluir</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
