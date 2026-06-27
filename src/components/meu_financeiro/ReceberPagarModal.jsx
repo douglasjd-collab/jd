@@ -364,12 +364,6 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
                 <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
               </div>
             </div>
-            <button 
-              onClick={onClose} 
-              className="w-8 h-8 rounded-full border border-slate-300 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:border-slate-400 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-6 py-4">
             <ConteudoModal />
