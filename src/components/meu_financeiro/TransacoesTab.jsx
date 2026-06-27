@@ -179,7 +179,7 @@ export default function TransacoesTab({ user, refreshKey }) {
       </div>
 
       {/* Cards de saldo */}
-      <div className="grid grid-cols-2 gap-2 mb-8">
+      <div className="grid grid-cols-2 gap-2 mb-2">
         <div className="bg-white dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-100 dark:border-slate-700 shadow-sm">
           <div className="flex items-center gap-1.5 mb-0.5">
             <Wallet className="w-3.5 h-3.5 text-slate-400" />
@@ -197,7 +197,7 @@ export default function TransacoesTab({ user, refreshKey }) {
       </div>
 
       {/* Busca */}
-      <div className="relative mt-3 mb-3">
+      <div className="relative mb-2">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
         <Input
           className="pl-9 h-8 text-sm rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
