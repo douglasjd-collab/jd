@@ -255,14 +255,14 @@ export default function TransacoesTab({ user, refreshKey }) {
                   >
                     <CatIcon tipo={t._tipo} categoria={t.categoria} />
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-xs text-slate-800 dark:text-slate-100 truncate">{t.descricao}</p>
-                      <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
+                      <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">{t.descricao}</p>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
                         {[t.categoria, t.tipo_lancamento === 'recorrente' ? 'Fixa' : null].filter(Boolean).join(' | ') || 'Sem categoria'}
                       </p>
                       <StatusPill item={t} />
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <p className={`text-xs font-bold ${t._tipo === 'receita' ? 'text-green-500' : 'text-red-500'}`}>
+                      <p className={`text-sm font-bold ${t._tipo === 'receita' ? 'text-green-500' : 'text-red-500'}`}>
                         {t._tipo === 'receita' ? '+' : '-'} {fmtMoeda(t.valor)}
                       </p>
                     </div>
