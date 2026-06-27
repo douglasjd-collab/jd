@@ -23,12 +23,20 @@ const inicioMes = () => format(startOfMonth(new Date()), 'yyyy-MM-dd');
 const fimMes = () => format(endOfMonth(new Date()), 'yyyy-MM-dd');
 
 // ─── Componente Principal ──────────────────────────────────
+const ABAS_OPTIONS = [
+  { value: 'dashboard', label: 'Dashboard' },
+  { value: 'transacoes', label: 'Transações' },
+  { value: 'receitas', label: 'Receitas' },
+  { value: 'despesas', label: 'Despesas' },
+  { value: 'contas', label: 'Contas' },
+  { value: 'projecao', label: 'Projeção' },
+  { value: 'dre', label: 'DRE' },
+];
+
 export default function MeuFinanceiro() {
   const [user, setUser] = useState(null);
   const [carregando, setCarregando] = useState(true);
   const [aba, setAba] = useState('dashboard');
-  const [modalNovaDespesa, setModalNovaDespesa] = useState(false);
-  const [modalNovaReceita, setModalNovaReceita] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -48,46 +56,36 @@ export default function MeuFinanceiro() {
   if (carregando) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>;
   if (!user) return <div className="text-center py-20 text-slate-500">Usuário não encontrado.</div>;
 
+  const abaLabel = ABAS_OPTIONS.find(a => a.value === aba)?.label || 'Dashboard';
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
+    <div className="space-y-4">
+      {/* Header com select de navegação estilo app */}
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Meu Financeiro</h1>
-          <p className="text-sm text-slate-500 mt-1">{user.nome_perfil || user.full_name} — Gestão financeira independente</p>
+          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Meu Financeiro</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{user.nome_perfil || user.full_name}</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setModalNovaDespesa(true)} className="bg-red-600 hover:bg-red-700 gap-2">
-            <ArrowDownCircle className="w-4 h-4" /> Nova Despesa
-          </Button>
-          <Button onClick={() => setModalNovaReceita(true)} className="bg-green-600 hover:bg-green-700 gap-2">
-            <ArrowUpCircle className="w-4 h-4" /> Nova Receita
-          </Button>
-        </div>
+        {/* Select estilo pill roxo */}
+        <Select value={aba} onValueChange={setAba}>
+          <SelectTrigger className="w-auto gap-2 bg-violet-600 hover:bg-violet-700 text-white border-0 rounded-full px-5 h-10 font-semibold text-sm focus:ring-0 [&>svg]:text-white">
+            <SelectValue>{abaLabel} ▾</SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {ABAS_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <Tabs value={aba} onValueChange={setAba}>
-        <TabsList>
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="transacoes">Transações</TabsTrigger>
-          <TabsTrigger value="receitas">Receitas</TabsTrigger>
-          <TabsTrigger value="despesas">Despesas</TabsTrigger>
-          <TabsTrigger value="contas">Contas</TabsTrigger>
-          <TabsTrigger value="projecao">Projeção</TabsTrigger>
-          <TabsTrigger value="dre">DRE</TabsTrigger>
-          </TabsList>
         <TabsContent value="dashboard"><DashboardTab user={user} refreshKey={refreshKey} /></TabsContent>
-        <TabsContent value="transacoes"><TransacoesTab user={user} refreshKey={refreshKey} /></TabsContent>
-        <TabsContent value="receitas"><ReceitasTab user={user} refreshKey={refreshKey} /></TabsContent>
-        <TabsContent value="despesas"><DespesasTab user={user} refreshKey={refreshKey} /></TabsContent>
+        <TabsContent value="transacoes"><TransacoesTab user={user} refreshKey={refreshKey} onSaved={onSaved} /></TabsContent>
+        <TabsContent value="receitas"><ReceitasTab user={user} refreshKey={refreshKey} onSaved={onSaved} /></TabsContent>
+        <TabsContent value="despesas"><DespesasTab user={user} refreshKey={refreshKey} onSaved={onSaved} /></TabsContent>
         <TabsContent value="contas"><ContasTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="projecao"><ProjecaoTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="dre"><DRETab user={user} refreshKey={refreshKey} /></TabsContent>
       </Tabs>
-
-      {/* Modais rápidos */}
-      {modalNovaReceita && <FormModalFinanceiro open={modalNovaReceita} onClose={() => setModalNovaReceita(false)} item={null} tipo="receita" user={user} onSaved={() => { onSaved(); setModalNovaReceita(false); }} />}
-      {modalNovaDespesa && <FormModalFinanceiro open={modalNovaDespesa} onClose={() => setModalNovaDespesa(false)} item={null} tipo="despesa" user={user} onSaved={() => { onSaved(); setModalNovaDespesa(false); }} />}
     </div>
   );
 }
@@ -371,7 +369,7 @@ function DashboardTab({ user, refreshKey }) {
 }
 
 // ─── Lista de Receitas ─────────────────────────────────────
-function ReceitasTab({ user, refreshKey }) {
+function ReceitasTab({ user, refreshKey, onSaved }) {
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, item: null });
@@ -394,45 +392,47 @@ function ReceitasTab({ user, refreshKey }) {
   const pendente = itens.filter(r => r.status === 'pendente').reduce((s, r) => s + (r.valor || 0), 0);
 
   return (
-    <div className="space-y-4 mt-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-3 text-sm">
-          <span className="text-green-700 font-medium">Recebido: {fmtMoeda(total)}</span>
-          <span className="text-amber-600 font-medium">Pendente: {fmtMoeda(pendente)}</span>
-        </div>
-        <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => setModal({ open: true, item: null, tipo: 'receita' })}><Plus className="w-4 h-4 mr-1" /> Nova Receita</Button>
+    <div className="space-y-4 mt-4 pb-24">
+      <div className="flex gap-4 text-sm">
+        <span className="text-green-700 dark:text-green-400 font-semibold">Recebido: {fmtMoeda(total)}</span>
+        <span className="text-amber-600 dark:text-amber-400 font-semibold">Pendente: {fmtMoeda(pendente)}</span>
       </div>
 
       {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div> : itens.length === 0 ? (
         <div className="text-center py-10 text-slate-400">Nenhuma receita cadastrada.</div>
       ) : (
-        <div className="bg-white rounded-lg border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-              <tr><th className="text-left px-4 py-3">Descrição</th><th className="text-left px-4 py-3">Categoria</th><th className="text-left px-4 py-3">Data</th><th className="text-right px-4 py-3">Valor</th><th className="text-center px-4 py-3">Status</th><th className="text-right px-4 py-3">Ações</th></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {itens.map(item => (
-                <tr key={item.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-800">{item.descricao}</td>
-                  <td className="px-4 py-3 text-slate-500">{item.categoria || '-'}</td>
-                  <td className="px-4 py-3 text-slate-500">{item.data ? format(parseISO(item.data), 'dd/MM/yy') : '-'}</td>
-                  <td className="px-4 py-3 text-right font-medium text-green-700">{fmtMoeda(item.valor)}</td>
-                  <td className="px-4 py-3 text-center"><StatusBadgeMeuFin status={item.status} tipo="receita" /></td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setModal({ open: true, item, tipo: 'receita' })}><Pencil className="w-3.5 h-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => excluir(item.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-2">
+          {itens.map(item => (
+            <div key={item.id} className="bg-white dark:bg-slate-800 rounded-2xl px-4 py-3 flex items-center gap-3 border border-slate-100 dark:border-slate-700 shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+                <ArrowUpCircle className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">{item.descricao}</p>
+                <p className="text-xs text-slate-400 truncate">{item.categoria || 'Sem categoria'} · {item.data ? format(parseISO(item.data), 'dd/MM/yy') : '-'}</p>
+                <StatusBadgeMeuFin status={item.status} tipo="receita" />
+              </div>
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <p className="text-sm font-bold text-green-600">+{fmtMoeda(item.valor)}</p>
+                <div className="flex gap-1">
+                  <button onClick={() => setModal({ open: true, item })} className="p-1 text-slate-400 hover:text-slate-600"><Pencil className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => excluir(item.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {modal.open && <FormModalFinanceiro open={modal.open} onClose={() => setModal({ open: false, item: null })} item={modal.item} tipo="receita" user={user} onSaved={carregar} />}
+      {/* FAB verde */}
+      <button
+        onClick={() => setModal({ open: true, item: null })}
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-xl flex items-center justify-center z-30 transition-transform active:scale-95"
+      >
+        <Plus className="w-7 h-7" />
+      </button>
+
+      {modal.open && <FormModalFinanceiro open={modal.open} onClose={() => setModal({ open: false, item: null })} item={modal.item} tipo="receita" user={user} onSaved={() => { carregar(); onSaved?.(); setModal({ open: false, item: null }); }} />}
     </div>
   );
 }
@@ -447,7 +447,7 @@ const FILTROS_DESPESA = [
   { key: 'pagas', label: 'Pagas' },
 ];
 
-function DespesasTab({ user, refreshKey }) {
+function DespesasTab({ user, refreshKey, onSaved }) {
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, item: null });
@@ -535,54 +535,57 @@ function DespesasTab({ user, refreshKey }) {
         ))}
       </div>
 
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-3 text-sm">
-          <span className="text-red-600 font-medium">Pago: {fmtMoeda(totalPago)}</span>
-          <span className="text-amber-600 font-medium">Pendente/Previsto: {fmtMoeda(totalPendente)}</span>
-          <span className="text-slate-400 text-xs">{itensFiltrados.length} registro(s)</span>
-        </div>
-        <Button size="sm" className="bg-red-600 hover:bg-red-700" onClick={() => setModal({ open: true, item: null, tipo: 'despesa' })}><Plus className="w-4 h-4 mr-1" /> Nova Despesa</Button>
+      <div className="flex gap-4 text-sm">
+        <span className="text-red-600 dark:text-red-400 font-semibold">Pago: {fmtMoeda(totalPago)}</span>
+        <span className="text-amber-600 dark:text-amber-400 font-semibold">Pendente: {fmtMoeda(totalPendente)}</span>
+        <span className="text-slate-400 text-xs self-center">{itensFiltrados.length} item(s)</span>
       </div>
 
       {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div> : itensFiltrados.length === 0 ? (
         <div className="text-center py-10 text-slate-400">Nenhuma despesa encontrada para este filtro.</div>
       ) : (
-        <div className="bg-white rounded-lg border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500 text-xs uppercase">
-              <tr><th className="text-left px-4 py-3">Descrição</th><th className="text-left px-4 py-3">Categoria</th><th className="text-left px-4 py-3">Data</th><th className="text-left px-4 py-3">Vencimento</th><th className="text-right px-4 py-3">Valor</th><th className="text-center px-4 py-3">Status</th><th className="text-right px-4 py-3">Ações</th></tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {itensFiltrados.map(item => {
-                const dataVencRef = item.data_vencimento || item.data;
-                const atrasada = (item.status === 'pendente' || item.status === 'previsto' || item.status === 'atrasado') && dataVencRef && dataVencRef < hojeStr;
-                const statusVisual = atrasada && (item.status === 'previsto' || item.status === 'pendente') ? 'atrasado' : item.status;
-                return (
-                  <tr key={item.id} className={`hover:bg-slate-50 ${atrasada ? 'bg-red-50' : ''}`}>
-                    <td className="px-4 py-3 font-medium text-slate-800">
-                      {item.descricao}
-                      {atrasada && <span className="ml-2 text-xs text-red-500 font-normal">• atrasada</span>}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500">{item.categoria || '-'}</td>
-                    <td className="px-4 py-3 text-slate-500">{item.data ? format(parseISO(item.data), 'dd/MM/yy') : '-'}</td>
-                    <td className={`px-4 py-3 ${atrasada ? 'text-red-600 font-medium' : 'text-slate-500'}`}>{item.data_vencimento ? format(parseISO(item.data_vencimento), 'dd/MM/yy') : '-'}</td>
-                    <td className="px-4 py-3 text-right font-medium text-red-600">{fmtMoeda(item.valor)}</td>
-                    <td className="px-4 py-3 text-center"><StatusBadgeMeuFin status={statusVisual} tipo="despesa" /></td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setModal({ open: true, item, tipo: 'despesa' })}><Pencil className="w-3.5 h-3.5" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500" onClick={() => excluir(item.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="space-y-2 pb-24">
+          {itensFiltrados.map(item => {
+            const dataVencRef = item.data_vencimento || item.data;
+            const atrasada = (item.status === 'pendente' || item.status === 'previsto' || item.status === 'atrasado') && dataVencRef && dataVencRef < hojeStr;
+            const statusVisual = atrasada && (item.status === 'previsto' || item.status === 'pendente') ? 'atrasado' : item.status;
+            return (
+              <div key={item.id} className={`bg-white dark:bg-slate-800 rounded-2xl px-4 py-3 flex items-center gap-3 border shadow-sm ${atrasada ? 'border-red-200 dark:border-red-800' : 'border-slate-100 dark:border-slate-700'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${atrasada ? 'bg-red-600' : 'bg-orange-500'}`}>
+                  <ArrowDownCircle className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">
+                    {item.descricao}
+                    {atrasada && <span className="ml-1 text-xs text-red-500">⚠</span>}
+                  </p>
+                  <p className="text-xs text-slate-400 truncate">
+                    {item.categoria || 'Sem categoria'} · {item.data_vencimento ? format(parseISO(item.data_vencimento), 'dd/MM/yy') : item.data ? format(parseISO(item.data), 'dd/MM/yy') : '-'}
+                  </p>
+                  <StatusBadgeMeuFin status={statusVisual} tipo="despesa" />
+                </div>
+                <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                  <p className="text-sm font-bold text-red-600">-{fmtMoeda(item.valor)}</p>
+                  <div className="flex gap-1">
+                    <button onClick={() => setModal({ open: true, item })} className="p-1 text-slate-400 hover:text-slate-600"><Pencil className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => excluir(item.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {modal.open && <FormModalFinanceiro open={modal.open} onClose={() => setModal({ open: false, item: null })} item={modal.item} tipo="despesa" user={user} onSaved={carregar} />}
+      {/* FAB vermelho */}
+      <button
+        onClick={() => setModal({ open: true, item: null })}
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-xl flex items-center justify-center z-30 transition-transform active:scale-95"
+      >
+        <Plus className="w-7 h-7" />
+      </button>
+
+      {modal.open && <FormModalFinanceiro open={modal.open} onClose={() => setModal({ open: false, item: null })} item={modal.item} tipo="despesa" user={user} onSaved={() => { carregar(); setModal({ open: false, item: null }); }} />}
     </div>
   );
 }
