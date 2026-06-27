@@ -325,6 +325,7 @@ export default function TransacoesTab({ user, refreshKey }) {
             setDetalheItem(null);
           }}
           onPagar={() => setPagarItem(detalheItem)}
+          onSaved={carregar}
         />
       )}
 

@@ -1,19 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { ArrowUpCircle, ArrowDownCircle, DollarSign, Calendar, Tag, FileText, Pencil, Trash2, X } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { base44 } from '@/api/base44Client';
+import { toast } from 'sonner';
 
 const fmtMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
-export default function TransacaoDetalheDrawer({ item, onClose, onEditar, onExcluir, onPagar }) {
+export default function TransacaoDetalheDrawer({ item, onClose, onEditar, onExcluir, onPagar, onSaved }) {
+  const [editandoData, setEditandoData] = useState(false);
+  const [novaData, setNovaData] = useState(item?.data || '');
+  const [salvandoData, setSalvandoData] = useState(false);
+  const inputDataRef = useRef(null);
+
   if (!item) return null;
 
   const isReceita = item._tipo === 'receita';
   const jaQuitado = isReceita ? item.status === 'recebida' : item.status === 'pago';
 
-  const dataFormatada = item.data
-    ? format(parseISO(item.data), "d 'de' MMM. 'de' yyyy", { locale: ptBR })
+  const dataFormatada = novaData
+    ? format(parseISO(novaData), "d 'de' MMM. 'de' yyyy", { locale: ptBR })
     : '—';
+
+  const handleSalvarData = async () => {
+    if (!novaData) return;
+    setSalvandoData(true);
+    try {
+      const entidade = isReceita ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
+      await base44.entities[entidade].update(item.id, { data: novaData });
+      toast.success('Data atualizada!');
+      setEditandoData(false);
+      if (onSaved) onSaved();
+    } catch {
+      toast.error('Erro ao salvar data');
+    } finally {
+      setSalvandoData(false);
+    }
+  };
 
   return (
     <>
@@ -56,10 +79,41 @@ export default function TransacaoDetalheDrawer({ item, onClose, onEditar, onExcl
             </span>
           </div>
 
-          {/* Data */}
+          {/* Data — clicável para editar */}
           <div className="flex items-center gap-3 py-3">
             <Calendar className="w-5 h-5 text-slate-400 flex-shrink-0" />
-            <span className="text-sm text-slate-700 dark:text-slate-200">{dataFormatada}</span>
+            {editandoData ? (
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  ref={inputDataRef}
+                  type="date"
+                  value={novaData}
+                  onChange={e => setNovaData(e.target.value)}
+                  className="border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  autoFocus
+                />
+                <button
+                  onClick={handleSalvarData}
+                  disabled={salvandoData}
+                  className="text-xs font-semibold text-white bg-violet-600 hover:bg-violet-700 px-3 py-1.5 rounded-lg disabled:opacity-60"
+                >
+                  {salvandoData ? '...' : 'OK'}
+                </button>
+                <button
+                  onClick={() => { setEditandoData(false); setNovaData(item.data || ''); }}
+                  className="text-xs text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setEditandoData(true)}
+                className="text-sm text-slate-700 dark:text-slate-200 hover:text-violet-600 dark:hover:text-violet-400 underline underline-offset-2 text-left"
+              >
+                {dataFormatada}
+              </button>
+            )}
           </div>
 
           {/* Categoria */}
