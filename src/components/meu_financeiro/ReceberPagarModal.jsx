@@ -165,18 +165,18 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
   const ConteudoModal = () => (
     <div className="space-y-4">
       {/* Valor e Moeda */}
-      <div className="bg-slate-50 rounded-xl p-4">
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <p className="text-xs text-slate-500 mb-1">{labelValor}</p>
-            <p className={`text-2xl font-bold ${corTexto}`}>{fmtMoeda(valor)}</p>
+      <div className="bg-[#F9F7F7] rounded-lg p-4">
+        <div className="flex items-center">
+          <div className="flex-[3] pr-4">
+            <p className="text-xs text-[#757575] mb-1">{labelValor}</p>
+            <p className={`text-3xl font-bold ${corTexto}`}>{fmtMoeda(valor)}</p>
           </div>
-          <div className="w-px h-12 bg-slate-200"></div>
-          <div className="flex-1">
-            <p className="text-xs text-slate-500 mb-1">Moeda</p>
-            <div className="flex items-center gap-1 text-slate-700">
-              <span className="font-semibold">BRL</span>
-              <select className="bg-transparent text-sm outline-none cursor-pointer">
+          <div className="w-px h-10 bg-[#E0E0E0]"></div>
+          <div className="flex-1 pl-4">
+            <p className="text-xs text-[#757575] mb-1">Moeda</p>
+            <div className="flex items-center gap-1">
+              <span className="font-semibold text-[#263238]">BRL</span>
+              <select className="bg-transparent text-sm outline-none cursor-pointer text-[#263238]">
                 <option value="BRL">BRL</option>
               </select>
             </div>
