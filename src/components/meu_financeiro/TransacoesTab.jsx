@@ -262,7 +262,7 @@ export default function TransacoesTab({ user, refreshKey }) {
                       <StatusPill item={t} />
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <p className={`text-sm font-bold ${t._tipo === 'receita' ? 'text-green-500' : 'text-red-500'}`}>
+                      <p className={`text-sm font-bold px-2.5 py-1 rounded-full ${t._tipo === 'receita' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
                         {t._tipo === 'receita' ? '+' : '-'} {fmtMoeda(t.valor)}
                       </p>
                     </div>
