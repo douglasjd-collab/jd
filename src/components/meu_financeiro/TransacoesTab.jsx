@@ -273,7 +273,11 @@ export default function TransacoesTab({ user, refreshKey }) {
                   const atrasada = t._tipo === 'despesa' && ['pendente', 'previsto'].includes(t.status) && dataRef && dataRef < hoje;
                   
                   return (
-                    <tr key={`${t._tipo}-${t.id}`} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                    <tr 
+                      key={`${t._tipo}-${t.id}`} 
+                      className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+                      onClick={() => editar(t)}
+                    >
                       <td className="px-4 py-3">
                         {atrasada ? (
                           <Badge className="bg-red-100 text-red-700 hover:bg-red-100">Atrasado</Badge>
@@ -308,12 +312,12 @@ export default function TransacoesTab({ user, refreshKey }) {
                       </td>
                       <td className="px-4 py-3">
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" size="icon" className="h-8 w-8">
                               <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                             {t._tipo === 'receita' && t.status !== 'recebida' && t.status !== 'cancelada' && (
                               <DropdownMenuItem onClick={() => abrirConfirmacao(t)}>Confirmar Recebimento</DropdownMenuItem>
                             )}

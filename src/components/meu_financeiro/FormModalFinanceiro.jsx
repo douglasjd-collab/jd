@@ -454,12 +454,31 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
           base44.entities.MeuFinanceiroCategoria.filter({ usuario_id: user.id, empresa_id: user.empresa_id, tipo }, 'ordem', 200).then(setCategoriasList).catch(() => {});
         }} />
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={salvando}>Cancelar</Button>
-          <Button onClick={handleSalvar} disabled={salvando} className={corBotao}>
-            {salvando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
-            {botaoSalvar}
-          </Button>
+        <DialogFooter className="flex items-center justify-between">
+          {editando && (
+            <Button 
+              variant="ghost" 
+              onClick={async () => {
+                if (!confirm(`Excluir esta ${tipo === 'receita' ? 'receita' : 'despesa'}?`)) return;
+                try {
+                  await base44.entities[tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa'].delete(item.id);
+                  toast.success('Excluído!');
+                  onSaved();
+                  onClose();
+                } catch { toast.error('Erro ao excluir'); }
+              }}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              Excluir
+            </Button>
+          )}
+          <div className="flex gap-2 ml-auto">
+            <Button variant="outline" onClick={onClose} disabled={salvando}>Cancelar</Button>
+            <Button onClick={handleSalvar} disabled={salvando} className={corBotao}>
+              {salvando ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+              {editando ? 'Salvar Alterações' : botaoSalvar}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
