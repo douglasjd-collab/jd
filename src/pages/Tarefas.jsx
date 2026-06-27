@@ -531,7 +531,31 @@ export default function Tarefas() {
         onDragEnd={({ source, destination, draggableId }) => {
           stopScroll();
           if (!destination || destination.droppableId === source.droppableId) return;
-          handleUpdate(draggableId, { status: destination.droppableId });
+
+          const novoStatus = destination.droppableId;
+
+          // Atualiza o cache imediatamente (sem await) para movimento instantâneo
+          queryClient.setQueryData(
+            ['tarefas', empresaId, currentUser?.colaborador_id, isAdminPerfil, isParceiro, currentUser?.id],
+            (old) => {
+              if (!old || !Array.isArray(old)) return old;
+              return old.map(t => t.id === draggableId ? { ...t, status: novoStatus } : t);
+            }
+          );
+
+          // API em background
+          const tarefaOriginal = tarefas.find(t => t.id === draggableId);
+          base44.entities.Tarefa.update(draggableId, { status: novoStatus })
+            .then(() => {
+              if (tarefaOriginal?.status && tarefaOriginal.status !== novoStatus) {
+                registrarHistorico({ tarefaId: draggableId, acao: 'moveu_status', descricao: 'Status alterado', statusAnterior: tarefaOriginal.status, statusNovo: novoStatus });
+              }
+            })
+            .catch(() => {
+              // Reverte em caso de erro
+              queryClient.invalidateQueries({ queryKey: ['tarefas'] });
+              toast.error('Erro ao mover tarefa');
+            });
         }}
       >
         <div
