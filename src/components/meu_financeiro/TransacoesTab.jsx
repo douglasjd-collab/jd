@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
-import { Loader2, Search, ArrowUpCircle, ArrowDownCircle, ChevronLeft, ChevronRight, Pencil, Trash2, Plus, Wallet, TrendingUp } from 'lucide-react';
+import { Loader2, Search, ArrowUpCircle, ArrowDownCircle, ChevronLeft, ChevronRight, Plus, Wallet, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import FormModalFinanceiro from '@/components/meu_financeiro/FormModalFinanceiro';
+import TransacaoDetalheDrawer from '@/components/meu_financeiro/TransacaoDetalheDrawer';
+import ConfirmarPagamentoDrawer from '@/components/meu_financeiro/ConfirmarPagamentoDrawer';
 
 const fmtMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
@@ -63,6 +65,8 @@ export default function TransacoesTab({ user, refreshKey }) {
   const [modal, setModal] = useState({ open: false, item: null, tipo: 'receita' });
   const [novoModal, setNovoModal] = useState(false);
   const [novoTipo, setNovoTipo] = useState('despesa');
+  const [detalheItem, setDetalheItem] = useState(null);
+  const [pagarItem, setPagarItem] = useState(null);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -154,6 +158,25 @@ export default function TransacoesTab({ user, refreshKey }) {
     carregar();
   };
 
+  const confirmarPagamento = async (dataEfetiva) => {
+    const item = pagarItem;
+    if (!item) return;
+    const entidade = item._tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
+    const jaQuitado = item._tipo === 'receita' ? item.status === 'recebida' : item.status === 'pago';
+    let novoStatus;
+    if (item._tipo === 'receita') {
+      novoStatus = jaQuitado ? 'pendente' : 'recebida';
+      await base44.entities[entidade].update(item.id, { status: novoStatus, data_recebimento: novoStatus === 'recebida' ? dataEfetiva : null });
+    } else {
+      novoStatus = jaQuitado ? 'pendente' : 'pago';
+      await base44.entities[entidade].update(item.id, { status: novoStatus, data_pagamento: novoStatus === 'pago' ? dataEfetiva : null });
+    }
+    toast.success('Status atualizado!');
+    setPagarItem(null);
+    setDetalheItem(null);
+    carregar();
+  };
+
   if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-7 h-7 animate-spin text-slate-400" /></div>;
 
   return (
@@ -227,7 +250,8 @@ export default function TransacoesTab({ user, refreshKey }) {
                 {items.map(t => (
                   <div
                     key={`${t._tipo}-${t.id}`}
-                    className="bg-white dark:bg-slate-800 rounded-xl px-3 py-2 flex items-center gap-2.5 border border-slate-100 dark:border-slate-700 shadow-sm"
+                    onClick={() => setDetalheItem(t)}
+                    className="bg-white dark:bg-slate-800 rounded-xl px-3 py-2 flex items-center gap-2.5 border border-slate-100 dark:border-slate-700 shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
                   >
                     <CatIcon tipo={t._tipo} categoria={t.categoria} />
                     <div className="flex-1 min-w-0">
@@ -241,22 +265,6 @@ export default function TransacoesTab({ user, refreshKey }) {
                       <p className={`text-xs font-bold ${t._tipo === 'receita' ? 'text-green-500' : 'text-red-500'}`}>
                         {t._tipo === 'receita' ? '+' : '-'} {fmtMoeda(t.valor)}
                       </p>
-                      <div className="flex items-center gap-1">
-                        {((t._tipo === 'receita' && t.status !== 'recebida') || (t._tipo === 'despesa' && t.status !== 'pago')) && (
-                          <button
-                            onClick={() => alterarStatus(t)}
-                            className="text-[10px] font-semibold text-green-500 hover:text-green-600 border border-green-300 rounded-full px-2 py-0.5"
-                          >
-                            {t._tipo === 'receita' ? 'Receber' : 'Pagar'}
-                          </button>
-                        )}
-                        <button onClick={() => setModal({ open: true, item: t, tipo: t._tipo })} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                        <button onClick={() => excluir(t)} className="p-1 text-slate-400 hover:text-red-500">
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
                     </div>
                   </div>
                 ))}
@@ -300,6 +308,32 @@ export default function TransacoesTab({ user, refreshKey }) {
           tipo={modal.tipo}
           user={user}
           onSaved={() => { carregar(); setModal({ open: false, item: null, tipo: 'receita' }); }}
+        />
+      )}
+
+      {/* Drawer de detalhes da transação */}
+      {detalheItem && !pagarItem && (
+        <TransacaoDetalheDrawer
+          item={detalheItem}
+          onClose={() => setDetalheItem(null)}
+          onEditar={() => {
+            setModal({ open: true, item: detalheItem, tipo: detalheItem._tipo });
+            setDetalheItem(null);
+          }}
+          onExcluir={() => {
+            excluir(detalheItem);
+            setDetalheItem(null);
+          }}
+          onPagar={() => setPagarItem(detalheItem)}
+        />
+      )}
+
+      {/* Drawer de confirmação de pagamento */}
+      {pagarItem && (
+        <ConfirmarPagamentoDrawer
+          item={pagarItem}
+          onClose={() => setPagarItem(null)}
+          onConfirmar={confirmarPagamento}
         />
       )}
     </div>
