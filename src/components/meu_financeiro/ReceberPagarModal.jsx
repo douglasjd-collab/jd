@@ -1,33 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { X, Calculator, Calendar, Building2, ChevronDown, Paperclip } from 'lucide-react';
-import { format, parseISO, subDays } from 'date-fns';
+import { X, Calculator, Calendar, Building2, Paperclip, Upload, Check } from 'lucide-react';
+import { subDays } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const fmtMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
 export default function ReceberPagarModal({ open, onClose, item, tipo, user, onConfirmar }) {
   const isMobile = useIsMobile();
-  const editando = !!item;
-  const titulo = tipo === 'receita' 
-    ? 'Deseja efetivar esta receita?' 
-    : 'Deseja efetivar esta despesa?';
-  
-  const subtitle = tipo === 'receita'
-    ? 'Ao efetivar esta receita, o valor será creditado na conta.'
-    : 'Ao efetivar esta despesa, o valor será descontado na conta.';
+  const corPrimaria = tipo === 'receita' ? '#10b981' : '#e03131';
+  const corTexto = tipo === 'receita' ? 'text-green-600' : 'text-red-600';
+  const bgIcon = tipo === 'receita' ? 'bg-green-100' : 'bg-red-100';
 
   const [valor, setValor] = useState('');
   const [dataSelecionada, setDataSelecionada] = useState('hoje');
   const [dataPersonalizada, setDataPersonalizada] = useState('');
   const [contaBancariaId, setContaBancariaId] = useState('');
   const [contas, setContas] = useState([]);
+  const [saldoConta, setSaldoConta] = useState(0);
   const [observacao, setObservacao] = useState('');
   const [comprovanteUrl, setComprovanteUrl] = useState('');
   const [comprovanteNome, setComprovanteNome] = useState('');
@@ -47,11 +42,21 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
         setContas(contasData);
         if (contasData.length > 0 && !contaBancariaId) {
           setContaBancariaId(contasData[0].id);
+          setSaldoConta(contasData[0].saldo_atual || 0);
         }
       } catch (e) { console.error(e); }
     };
     carregarContas();
   }, [open, user]);
+
+  // Atualizar saldo quando mudar conta
+  useEffect(() => {
+    if (!contaBancariaId) return;
+    const conta = contas.find(c => c.id === contaBancariaId);
+    if (conta) {
+      setSaldoConta(conta.saldo_atual || 0);
+    }
+  }, [contaBancariaId, contas]);
 
   // Preencher formulário ao editar
   useEffect(() => {
@@ -144,152 +149,202 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
     }
   };
 
-  const corPrimaria = tipo === 'receita' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600';
-  const corTexto = tipo === 'receita' ? 'text-green-600' : 'text-red-600';
-  const corBorda = tipo === 'receita' ? 'border-green-500' : 'border-red-500';
+  const titulo = tipo === 'receita' 
+    ? 'Deseja efetivar esta receita?' 
+    : 'Deseja efetivar esta despesa?';
+  
+  const subtitle = tipo === 'receita'
+    ? 'Ao efetivar esta receita, o valor será creditado na conta.'
+    : 'Ao efetivar esta despesa, o valor será descontado na conta.';
+
+  const labelValor = tipo === 'receita' ? 'Valor da receita' : 'Valor da despesa';
+  const labelData = tipo === 'receita' ? 'Data do recebimento' : 'Data do pagamento';
+  const labelConta = 'Conta bancária';
+  const btnConfirmar = tipo === 'receita' ? 'Receber receita' : 'Pagar despesa';
 
   const ConteudoModal = () => (
-    <div className="space-y-3">
-      {/* Valor e Data - Linha única */}
-      <div className="flex gap-3">
-        {/* Valor */}
-        <div className="flex-1 flex items-center gap-2 p-3 rounded-xl bg-slate-50 border border-slate-100">
-          <div className={`w-8 h-8 rounded-full ${tipo === 'receita' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center flex-shrink-0`}>
-            <Calculator className={`w-4 h-4 ${corTexto}`} />
-          </div>
-          <div>
-            <p className="text-lg font-bold text-slate-800">{fmtMoeda(valor)}</p>
-            <p className="text-xs text-slate-500">Valor</p>
-          </div>
-        </div>
-
-        {/* Data */}
-        <div className="flex-1 flex items-center gap-2 p-3 rounded-xl bg-slate-50 border border-slate-100">
-          <div className={`w-8 h-8 rounded-full ${tipo === 'receita' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center flex-shrink-0`}>
-            <Calendar className={`w-4 h-4 ${corTexto}`} />
-          </div>
+    <div className="space-y-4">
+      {/* Valor e Moeda */}
+      <div className="bg-slate-50 rounded-xl p-4">
+        <div className="flex items-center gap-4">
           <div className="flex-1">
-            <div className="flex gap-1">
-              <button
-                onClick={() => setDataSelecionada('hoje')}
-                className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                  dataSelecionada === 'hoje' 
-                    ? `${corPrimaria} text-white` 
-                    : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                }`}
-              >
-                Hoje
-              </button>
-              <button
-                onClick={() => setDataSelecionada('ontem')}
-                className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                  dataSelecionada === 'ontem' 
-                    ? `${corPrimaria} text-white` 
-                    : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-                }`}
-              >
-                Ontem
-              </button>
+            <p className="text-xs text-slate-500 mb-1">{labelValor}</p>
+            <p className={`text-2xl font-bold ${corTexto}`}>{fmtMoeda(valor)}</p>
+          </div>
+          <div className="w-px h-12 bg-slate-200"></div>
+          <div className="flex-1">
+            <p className="text-xs text-slate-500 mb-1">Moeda</p>
+            <div className="flex items-center gap-1 text-slate-700">
+              <span className="font-semibold">BRL</span>
+              <select className="bg-transparent text-sm outline-none cursor-pointer">
+                <option value="BRL">BRL</option>
+              </select>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Campo de data personalizada (se selecionado) */}
-      {dataSelecionada === 'outros' && (
-        <div className="pl-11">
-          <input
-            type="date"
-            value={dataPersonalizada}
-            onChange={e => setDataPersonalizada(e.target.value)}
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
-          />
+      {/* Data */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`w-6 h-6 rounded ${bgIcon} flex items-center justify-center`}>
+            <Calendar className={`w-3.5 h-3.5 ${corTexto}`} />
+          </div>
+          <label className="text-sm font-semibold text-slate-700">{labelData}</label>
         </div>
-      )}
+        <div className="flex gap-2 mb-2">
+          <button
+            onClick={() => setDataSelecionada('hoje')}
+            className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${
+              dataSelecionada === 'hoje' 
+                ? 'bg-slate-200 text-slate-700' 
+                : 'bg-transparent text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Hoje
+          </button>
+          <button
+            onClick={() => setDataSelecionada('ontem')}
+            className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${
+              dataSelecionada === 'ontem' 
+                ? 'bg-slate-200 text-slate-700' 
+                : 'bg-transparent text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            Ontem
+          </button>
+          <button
+            onClick={() => setDataSelecionada('outros')}
+            className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${
+              dataSelecionada === 'outros' 
+                ? 'text-white' 
+                : 'bg-transparent text-slate-600 hover:bg-slate-100'
+            }`}
+            style={{ backgroundColor: dataSelecionada === 'outros' ? corPrimaria : 'transparent' }}
+          >
+            Outros...
+          </button>
+        </div>
+        {dataSelecionada === 'outros' && (
+          <div className="relative">
+            <input
+              type="date"
+              value={dataPersonalizada}
+              onChange={e => setDataPersonalizada(e.target.value)}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+            />
+            <Calendar className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+          </div>
+        )}
+      </div>
 
       {/* Conta Bancária */}
-      <div className="flex items-center gap-3">
-        <div className={`w-8 h-8 rounded-full ${tipo === 'receita' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center flex-shrink-0`}>
-          <Building2 className={`w-4 h-4 ${corTexto}`} />
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`w-6 h-6 rounded ${bgIcon} flex items-center justify-center`}>
+            <Building2 className={`w-3.5 h-3.5 ${corTexto}`} />
+          </div>
+          <label className="text-sm font-semibold text-slate-700">{labelConta}</label>
         </div>
-        <div className="flex-1">
-          <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
-            <SelectTrigger className="w-full border border-slate-200 bg-white rounded-lg px-3 py-2 h-10">
+        <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
+          <SelectTrigger className="w-full border-2 border-yellow-400 bg-white rounded-lg px-3 py-2.5 h-auto">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-slate-400" />
               <SelectValue placeholder="Selecione a conta..." />
-            </SelectTrigger>
-            <SelectContent>
-              {contas.map(c => (
-                <SelectItem key={c.id} value={c.id}>
-                  <div className="flex items-center gap-2">
-                    {c.logo_url ? (
-                      <img src={c.logo_url} alt={c.banco} className="w-4 h-4 object-contain" />
-                    ) : (
-                      <Building2 className="w-3 h-3" />
-                    )}
-                    <span className="text-sm">{c.nome_conta}</span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            {contas.map(c => (
+              <SelectItem key={c.id} value={c.id}>
+                <div className="flex items-center gap-2">
+                  {c.logo_url ? (
+                    <img src={c.logo_url} alt={c.banco} className="w-4 h-4 object-contain" />
+                  ) : (
+                    <Building2 className="w-3 h-3" />
+                  )}
+                  <span>{c.nome_conta}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-slate-500 mt-1">
+          Saldo atual: <span className="text-green-600 font-semibold">{fmtMoeda(saldoConta)}</span>
+        </p>
+      </div>
+
+      {/* Observação */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`w-6 h-6 rounded ${bgIcon} flex items-center justify-center`}>
+            <Paperclip className={`w-3.5 h-3.5 ${corTexto}`} />
+          </div>
+          <label className="text-sm font-semibold text-slate-700">Observação (opcional)</label>
+        </div>
+        <div className="relative">
+          <textarea
+            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none"
+            value={observacao}
+            onChange={e => setObservacao(e.target.value)}
+            placeholder="Detalhes adicionais..."
+          />
+          <span className="text-xs text-slate-400 absolute bottom-2 right-3">
+            {observacao.length}/250
+          </span>
         </div>
       </div>
 
-      {/* Observação e Comprovante - Grid */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Observação */}
-        <div>
-          <label className="text-xs font-medium text-slate-600 mb-1 block">Observação</label>
-          <textarea
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm min-h-[70px] focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none"
-            value={observacao}
-            onChange={e => setObservacao(e.target.value)}
-            placeholder="Opcional"
-          />
+      {/* Comprovante */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <div className={`w-6 h-6 rounded ${bgIcon} flex items-center justify-center`}>
+            <Paperclip className={`w-3.5 h-3.5 ${corTexto}`} />
+          </div>
+          <label className="text-sm font-semibold text-slate-700">Comprovante (opcional)</label>
         </div>
-
-        {/* Comprovante */}
-        <div>
-          <label className="text-xs font-medium text-slate-600 mb-1 block">Comprovante</label>
-          {comprovanteUrl ? (
-            <div className="flex items-center gap-1 border rounded-lg p-2 bg-slate-50">
-              <Paperclip className="w-3 h-3 text-slate-400 flex-shrink-0" />
-              <span className="text-xs text-slate-600 flex-1 truncate">{comprovanteNome}</span>
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                className="h-6 w-6 p-0" 
-                onClick={() => { setComprovanteUrl(''); setComprovanteNome(''); }}
-              >
-                <X className="w-3 h-3" />
-              </Button>
+        {comprovanteUrl ? (
+          <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-3 bg-slate-50">
+            <Paperclip className="w-4 h-4 text-slate-400" />
+            <span className="text-sm text-slate-600 flex-1 truncate">{comprovanteNome}</span>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-7 w-7 p-0" 
+              onClick={() => { setComprovanteUrl(''); setComprovanteNome(''); }}
+            >
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <label className="cursor-pointer flex flex-col items-center justify-center gap-2 border-2 border-dashed rounded-xl p-6 hover:bg-slate-50 transition-colors" style={{ borderColor: corPrimaria }}>
+            <Upload className="w-8 h-8" style={{ color: corPrimaria }} />
+            <div className="text-center">
+              <p className="text-sm font-semibold text-slate-700">Clique para anexar ou arraste o arquivo aqui</p>
+              <p className="text-xs text-slate-500 mt-1">PDF, JPG, PNG (máx. 10MB)</p>
             </div>
-          ) : (
-            <label className="cursor-pointer flex flex-col items-center justify-center gap-1 text-xs text-slate-500 hover:text-slate-700 border border-dashed rounded-lg p-3 h-[70px] hover:bg-slate-50 transition-colors">
-              <Paperclip className="w-3 h-3" />
-              <span className="text-center leading-tight">{uploading ? 'Enviando...' : 'Anexar'}</span>
-              <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} accept=".pdf,.jpg,.jpeg,.png" />
-            </label>
-          )}
-        </div>
+            <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} accept=".pdf,.jpg,.jpeg,.png" />
+          </label>
+        )}
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+      <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
         <Button 
           variant="outline" 
           onClick={onClose} 
           disabled={salvando}
-          className={`border ${tipo === 'receita' ? 'border-green-500 text-green-600 hover:bg-green-50' : 'border-red-500 text-red-600 hover:bg-red-50'} rounded-full px-6 h-9 text-sm`}
+          className="flex-1 h-11 rounded-lg border-slate-300 text-slate-700 hover:bg-slate-50"
         >
           Cancelar
         </Button>
         <Button 
           onClick={handleConfirmar} 
           disabled={salvando}
-          className={`${corPrimaria} rounded-full px-6 h-9 text-sm font-semibold shadow`}
+          className="flex-[2] h-11 rounded-lg text-white font-semibold shadow-lg flex items-center justify-center gap-2"
+          style={{ backgroundColor: corPrimaria }}
         >
-          {salvando ? 'Confirmando...' : (tipo === 'receita' ? 'Receber' : 'Pagar')}
+          <Check className="w-4 h-4" />
+          {salvando ? 'Confirmando...' : btnConfirmar}
         </Button>
       </div>
     </div>
@@ -298,12 +353,22 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={onClose}>
-        <SheetContent side="bottom" className="h-[90vh] max-h-[90vh] p-0 flex flex-col">
-          <SheetHeader className="px-6 py-4 border-b border-slate-100">
-            <SheetTitle className="text-lg font-semibold text-slate-800">{titulo}</SheetTitle>
-            <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+        <SheetContent side="bottom" className="h-[95vh] max-h-[95vh] p-0 flex flex-col">
+          <SheetHeader className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg ${bgIcon} flex items-center justify-center`}>
+                <Calculator className={`w-5 h-5 ${corTexto}`} />
+              </div>
+              <div>
+                <SheetTitle className="text-lg font-bold text-slate-800">{titulo}</SheetTitle>
+                <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
+              </div>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+              <X className="w-5 h-5" />
+            </button>
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto px-6 pb-6">
+          <div className="flex-1 overflow-y-auto px-6 py-4">
             <ConteudoModal />
           </div>
         </SheetContent>
@@ -313,12 +378,25 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="px-6 py-4 border-b border-slate-100">
-          <DialogTitle className="text-lg font-semibold text-slate-800">{titulo}</DialogTitle>
-          <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
-        </DialogHeader>
-        <div className="px-6 pb-6">
+      <DialogContent className="max-w-lg p-0 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-lg ${bgIcon} flex items-center justify-center`}>
+              <Calculator className={`w-5 h-5 ${corTexto}`} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">{titulo}</h2>
+              <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-4">
           <ConteudoModal />
         </div>
       </DialogContent>
