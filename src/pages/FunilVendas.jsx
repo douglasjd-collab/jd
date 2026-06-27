@@ -203,6 +203,7 @@ export default function FunilVendas() {
   const { data: oportunidades = [], isLoading: loadingOportunidades } = useQuery({
     queryKey: ['oportunidades', currentUser?.empresa_id],
     enabled: !!currentUser?.empresa_id,
+    staleTime: 30000,
     queryFn: async () => {
       if (!currentUser?.empresa_id) return [];
       return base44.entities.Oportunidade.filter(
@@ -696,12 +697,7 @@ export default function FunilVendas() {
       queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
     },
 
-    onSuccess: (data, variables, context) => {
-      // Invalidar em background após sucesso (sem flash visual)
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
-      }, 1500);
-
+    onSuccess: (data) => {
       if (data?.abrirFormVenda && data?.oportunidade) {
         setOportunidadeParaVenda(data.oportunidade);
         setVendaFormOpen(true);
