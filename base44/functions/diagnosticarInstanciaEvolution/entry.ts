@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Instância não informada' }, { status: 400 });
     }
 
-    // Buscar configurações da Evolution
+    // Buscar configurações da Evolution (do banco ou env)
     const configs = await base44.entities.ConfiguracaoSistema.filter({ 
       chave: { $in: ['evolution_api_url', 'evolution_api_key'] }
     });
@@ -21,11 +21,15 @@ Deno.serve(async (req) => {
     const configMap = {};
     configs.forEach(c => { configMap[c.chave] = c.valor; });
 
-    const apiUrl = configMap['evolution_api_url'];
-    const apiKey = configMap['evolution_api_key'];
+    let apiUrl = configMap['evolution_api_url'];
+    let apiKey = configMap['evolution_api_key'];
+
+    // Fallback: usar secrets do ambiente se não estiver no banco
+    if (!apiUrl) apiUrl = Deno.env.get('EVOLUTION_API_URL');
+    if (!apiKey) apiKey = Deno.env.get('EVOLUTION_API_KEY');
 
     if (!apiUrl || !apiKey) {
-      return Response.json({ error: 'Configurações da Evolution não encontradas' }, { status: 400 });
+      return Response.json({ error: 'Configurações da Evolution não encontradas. Verifique EVOLUTION_API_URL e EVOLUTION_API_KEY.' }, { status: 400 });
     }
 
     // 1. Verificar status da instância

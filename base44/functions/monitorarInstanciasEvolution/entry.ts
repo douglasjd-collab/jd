@@ -12,8 +12,12 @@ Deno.serve(async (req) => {
     const apiUrlConfig = await base44.entities.ConfiguracaoSistema.filter({ chave: 'evolution_api_url' });
     const apiKeyConfig = await base44.entities.ConfiguracaoSistema.filter({ chave: 'evolution_api_key' });
     
-    const apiUrl = apiUrlConfig[0]?.valor;
-    const apiKey = apiKeyConfig[0]?.valor;
+    let apiUrl = apiUrlConfig[0]?.valor;
+    let apiKey = apiKeyConfig[0]?.valor;
+
+    // Fallback: usar secrets do ambiente
+    if (!apiUrl) apiUrl = Deno.env.get('EVOLUTION_API_URL');
+    if (!apiKey) apiKey = Deno.env.get('EVOLUTION_API_KEY');
 
     if (!apiUrl || !apiKey) {
       console.log('Configurações da Evolution não encontradas');
