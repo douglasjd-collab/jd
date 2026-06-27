@@ -149,173 +149,159 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
   const corBorda = tipo === 'receita' ? 'border-green-500' : 'border-red-500';
 
   const ConteudoModal = () => (
-    <>
-        {/* Header */}
-        <div className="bg-white px-6 py-4 border-b border-slate-100">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-800">{titulo}</h2>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-              <X className="w-5 h-5" />
-            </button>
+    <div className="space-y-4">
+      {/* Valor */}
+      <div className="flex items-center justify-between py-3 border-b border-slate-100">
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-full ${tipo === 'receita' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center`}>
+            <Calculator className={`w-5 h-5 ${corTexto}`} />
           </div>
-          <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
-        </div>
-
-        {/* Body */}
-        <div className="bg-white px-6 py-4 space-y-4">
-          {/* Valor */}
-          <div className="flex items-center justify-between py-3 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-full ${tipo === 'receita' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center`}>
-                <Calculator className={`w-5 h-5 ${corTexto}`} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-800">{fmtMoeda(valor)}</p>
-                <p className="text-xs text-slate-400">Valor {tipo === 'receita' ? 'da receita' : 'da despesa'}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <span>BRL</span>
-              <ChevronDown className="w-4 h-4" />
-            </div>
-          </div>
-
-          {/* Data */}
-          <div className="flex items-center gap-3 py-3 border-b border-slate-100">
-            <div className={`w-10 h-10 rounded-full ${tipo === 'receita' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center flex-shrink-0`}>
-              <Calendar className={`w-5 h-5 ${corTexto}`} />
-            </div>
-            <div className="flex-1 flex gap-2">
-              <button
-                onClick={() => setDataSelecionada('hoje')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  dataSelecionada === 'hoje' 
-                    ? `${corPrimaria} text-white shadow-md` 
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Hoje
-              </button>
-              <button
-                onClick={() => setDataSelecionada('ontem')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  dataSelecionada === 'ontem' 
-                    ? `${corPrimaria} text-white shadow-md` 
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Ontem
-              </button>
-              <button
-                onClick={() => setDataSelecionada('outros')}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  dataSelecionada === 'outros' 
-                    ? `${corPrimaria} text-white shadow-md` 
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Outros...
-              </button>
-            </div>
-          </div>
-
-          {/* Campo de data personalizada (se selecionado) */}
-          {dataSelecionada === 'outros' && (
-            <div className="px-14 pb-2">
-              <input
-                type="date"
-                value={dataPersonalizada}
-                onChange={e => setDataPersonalizada(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
-              />
-            </div>
-          )}
-
-          {/* Conta Bancária */}
-          <div className="flex items-center gap-3 py-3">
-            <div className={`w-10 h-10 rounded-full ${tipo === 'receita' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center flex-shrink-0`}>
-              <Building2 className={`w-5 h-5 ${corTexto}`} />
-            </div>
-            <div className="flex-1">
-              <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
-                <SelectTrigger className="w-full border-2 border-yellow-400 bg-white rounded-full px-4 py-3 h-auto">
-                  <SelectValue placeholder="Selecione a conta..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {contas.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      <div className="flex items-center gap-2">
-                        {c.logo_url ? (
-                          <img src={c.logo_url} alt={c.banco} className="w-5 h-5 object-contain" />
-                        ) : (
-                          <Building2 className="w-4 h-4" />
-                        )}
-                        <span>{c.nome_conta} {c.banco && `- ${c.banco}`}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <ChevronDown className="w-5 h-5 text-slate-400" />
-          </div>
-
-          {/* Observação */}
-          <div className="py-3">
-            <label className="text-sm font-medium text-slate-700 mb-2 block">Observação (opcional)</label>
-            <textarea
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none"
-              value={observacao}
-              onChange={e => setObservacao(e.target.value)}
-              placeholder="Detalhes adicionais..."
-            />
-          </div>
-
-          {/* Anexar Comprovante */}
-          <div className="py-3">
-            <label className="text-sm font-medium text-slate-700 mb-2 block">Comprovante (opcional)</label>
-            {comprovanteUrl ? (
-              <div className="flex items-center gap-2 border rounded-lg p-3 bg-slate-50">
-                <Paperclip className="w-4 h-4 text-slate-400" />
-                <span className="text-sm text-slate-600 flex-1 truncate">{comprovanteNome}</span>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  className="h-7 px-2" 
-                  onClick={() => { setComprovanteUrl(''); setComprovanteNome(''); }}
-                >
-                  <X className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            ) : (
-              <label className="cursor-pointer flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 border border-dashed rounded-lg p-3 justify-center hover:bg-slate-50 transition-colors">
-                <Paperclip className="w-4 h-4" />
-                {uploading ? 'Enviando...' : 'Escolher arquivo (PDF, JPG, PNG)'}
-                <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} accept=".pdf,.jpg,.jpeg,.png" />
-              </label>
-            )}
+          <div>
+            <p className="text-2xl font-bold text-slate-800">{fmtMoeda(valor)}</p>
+            <p className="text-xs text-slate-400">Valor {tipo === 'receita' ? 'da receita' : 'da despesa'}</p>
           </div>
         </div>
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <span>BRL</span>
+          <ChevronDown className="w-4 h-4" />
+        </div>
+      </div>
 
-        {/* Footer */}
-        <div className="bg-slate-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-slate-100">
-          <Button 
-            variant="outline" 
-            onClick={onClose} 
-            disabled={salvando}
-            className={`border-2 ${tipo === 'receita' ? 'border-green-500 text-green-600 hover:bg-green-50' : 'border-red-500 text-red-600 hover:bg-red-50'} rounded-full px-6`}
+      {/* Data */}
+      <div className="flex items-center gap-3 py-3 border-b border-slate-100">
+        <div className={`w-10 h-10 rounded-full ${tipo === 'receita' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center flex-shrink-0`}>
+          <Calendar className={`w-5 h-5 ${corTexto}`} />
+        </div>
+        <div className="flex-1 flex gap-2">
+          <button
+            onClick={() => setDataSelecionada('hoje')}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              dataSelecionada === 'hoje' 
+                ? `${corPrimaria} text-white shadow-md` 
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
           >
-            CANCELAR
-          </Button>
-          <Button 
-            onClick={handleConfirmar} 
-            disabled={salvando}
-            className={`${corPrimaria} rounded-full px-8 font-semibold shadow-lg`}
+            Hoje
+          </button>
+          <button
+            onClick={() => setDataSelecionada('ontem')}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              dataSelecionada === 'ontem' 
+                ? `${corPrimaria} text-white shadow-md` 
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
           >
-            {salvando ? 'CONFIRMANDO...' : (tipo === 'receita' ? 'RECEBER' : 'PAGAR')}
-          </Button>
+            Ontem
+          </button>
+          <button
+            onClick={() => setDataSelecionada('outros')}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              dataSelecionada === 'outros' 
+                ? `${corPrimaria} text-white shadow-md` 
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Outros...
+          </button>
         </div>
-    </>
+      </div>
+
+      {/* Campo de data personalizada (se selecionado) */}
+      {dataSelecionada === 'outros' && (
+        <div className="px-14 pb-2">
+          <input
+            type="date"
+            value={dataPersonalizada}
+            onChange={e => setDataPersonalizada(e.target.value)}
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+          />
+        </div>
+      )}
+
+      {/* Conta Bancária */}
+      <div className="flex items-center gap-3 py-3">
+        <div className={`w-10 h-10 rounded-full ${tipo === 'receita' ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center flex-shrink-0`}>
+          <Building2 className={`w-5 h-5 ${corTexto}`} />
+        </div>
+        <div className="flex-1">
+          <Select value={contaBancariaId} onValueChange={setContaBancariaId}>
+            <SelectTrigger className="w-full border-2 border-yellow-400 bg-white rounded-full px-4 py-3 h-auto">
+              <SelectValue placeholder="Selecione a conta..." />
+            </SelectTrigger>
+            <SelectContent>
+              {contas.map(c => (
+                <SelectItem key={c.id} value={c.id}>
+                  <div className="flex items-center gap-2">
+                    {c.logo_url ? (
+                      <img src={c.logo_url} alt={c.banco} className="w-5 h-5 object-contain" />
+                    ) : (
+                      <Building2 className="w-4 h-4" />
+                    )}
+                    <span>{c.nome_conta} {c.banco && `- ${c.banco}`}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <ChevronDown className="w-5 h-5 text-slate-400" />
+      </div>
+
+      {/* Observação */}
+      <div className="py-3">
+        <label className="text-sm font-medium text-slate-700 mb-2 block">Observação (opcional)</label>
+        <textarea
+          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none"
+          value={observacao}
+          onChange={e => setObservacao(e.target.value)}
+          placeholder="Detalhes adicionais..."
+        />
+      </div>
+
+      {/* Anexar Comprovante */}
+      <div className="py-3">
+        <label className="text-sm font-medium text-slate-700 mb-2 block">Comprovante (opcional)</label>
+        {comprovanteUrl ? (
+          <div className="flex items-center gap-2 border rounded-lg p-3 bg-slate-50">
+            <Paperclip className="w-4 h-4 text-slate-400" />
+            <span className="text-sm text-slate-600 flex-1 truncate">{comprovanteNome}</span>
+            <Button 
+              size="sm" 
+              variant="ghost" 
+              className="h-7 px-2" 
+              onClick={() => { setComprovanteUrl(''); setComprovanteNome(''); }}
+            >
+              <X className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <label className="cursor-pointer flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 border border-dashed rounded-lg p-3 justify-center hover:bg-slate-50 transition-colors">
+            <Paperclip className="w-4 h-4" />
+            {uploading ? 'Enviando...' : 'Escolher arquivo (PDF, JPG, PNG)'}
+            <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} accept=".pdf,.jpg,.jpeg,.png" />
+          </label>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="bg-slate-50 px-6 py-4 flex items-center justify-end gap-3 border-t border-slate-100 -mx-6 -mb-6 mt-6">
+        <Button 
+          variant="outline" 
+          onClick={onClose} 
+          disabled={salvando}
+          className={`border-2 ${tipo === 'receita' ? 'border-green-500 text-green-600 hover:bg-green-50' : 'border-red-500 text-red-600 hover:bg-red-50'} rounded-full px-6`}
+        >
+          CANCELAR
+        </Button>
+        <Button 
+          onClick={handleConfirmar} 
+          disabled={salvando}
+          className={`${corPrimaria} rounded-full px-8 font-semibold shadow-lg`}
+        >
+          {salvando ? 'CONFIRMANDO...' : (tipo === 'receita' ? 'RECEBER' : 'PAGAR')}
+        </Button>
+      </div>
+    </div>
   );
 
   if (isMobile) {
