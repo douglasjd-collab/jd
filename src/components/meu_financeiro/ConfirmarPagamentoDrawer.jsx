@@ -1,98 +1,91 @@
-import React, { useState } from 'react';
-import { ArrowUpCircle, ArrowDownCircle, DollarSign, Calendar, X } from 'lucide-react';
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { ArrowUpCircle, ArrowDownCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const fmtMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
-export default function ConfirmarPagamentoDrawer({ item, onClose, onConfirmar }) {
-  const hoje = new Date().toISOString().slice(0, 10);
-  const [dataEfetiva, setDataEfetiva] = useState(hoje);
-  const [salvando, setSalvando] = useState(false);
+export default function ConfirmarPagamentoDrawer({ open, onClose, transacao, onConfirmar, tipo }) {
+  if (!transacao) return null;
 
-  if (!item) return null;
+  const isReceita = tipo === 'receita';
+  const statusAtual = transacao.status;
+  const jaPago = isReceita ? statusAtual === 'recebida' : statusAtual === 'pago';
+  const estaPendente = ['pendente', 'previsto'].includes(statusAtual);
 
-  const isReceita = item._tipo === 'receita';
+  const titulo = isReceita 
+    ? (jaPago ? 'Receita já Recebida' : 'Confirmar Recebimento') 
+    : (jaPago ? 'Despesa já Paga' : 'Confirmar Pagamento');
 
-  const dataFormatada = item.data
-    ? format(parseISO(item.data), "d 'de' MMM. 'de' yyyy", { locale: ptBR })
-    : '—';
-
-  const handleConfirmar = async () => {
-    setSalvando(true);
-    await onConfirmar(dataEfetiva);
-    setSalvando(false);
-  };
+  const icone = isReceita ? ArrowUpCircle : ArrowDownCircle;
+  const corIcone = isReceita ? 'text-green-600' : 'text-red-600';
+  const corBg = isReceita ? 'bg-green-100' : 'bg-red-100';
 
   return (
-    <>
-      {/* Overlay */}
-      <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold text-slate-800">{titulo}</DialogTitle>
+        </DialogHeader>
 
-      {/* Drawer */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 rounded-t-2xl shadow-2xl">
-        {/* Handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
+        <div className="py-4 space-y-4">
+          {/* Informações da transação */}
+          <div className={`${corBg} rounded-lg p-4 flex items-start gap-3`}>
+            <div className={`w-10 h-10 rounded-full ${corBg} flex items-center justify-center flex-shrink-0`}>
+              <icone className={`w-5 h-5 ${corIcone}`} />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-slate-800">{transacao.descricao}</p>
+              <p className="text-sm text-slate-500">{transacao.categoria || 'Sem categoria'}</p>
+              <p className={`text-lg font-bold mt-1 ${isReceita ? 'text-green-600' : 'text-red-600'}`}>
+                {isReceita ? '+' : '-'} {fmtMoeda(transacao.valor)}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                Vencimento: {transacao.data_vencimento || transacao.data ? format(parseISO(transacao.data_vencimento || transacao.data), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
+              </p>
+            </div>
+          </div>
+
+          {/* Status atual */}
+          <div className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
+            <span className="text-sm font-medium text-slate-700">Status atual:</span>
+            <Badge className={jaPago ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}>
+              {jaPago ? (isReceita ? 'Recebida' : 'Pago') : 'Pendente'}
+            </Badge>
+          </div>
+
+          {jaPago ? (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+              <CheckCircle2 className="w-8 h-8 text-green-600 mx-auto mb-2" />
+              <p className="text-sm text-green-700 font-medium">Esta transação já foi {isReceita ? 'recebida' : 'paga'}!</p>
+            </div>
+          ) : (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-center">
+              <p className="text-sm text-amber-700 font-medium">
+                Deseja marcar esta transação como {isReceita ? 'recebida' : 'paga'}?
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isReceita ? 'bg-green-500' : 'bg-red-500'}`}>
-            {isReceita
-              ? <ArrowUpCircle className="w-5 h-5 text-white" />
-              : <ArrowDownCircle className="w-5 h-5 text-white" />}
-          </div>
-          <p className="flex-1 font-bold text-base text-slate-800 dark:text-slate-100 truncate">{item.descricao}</p>
-          <button onClick={onClose} className="p-1 text-slate-400">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Infos */}
-        <div className="px-5 py-4 space-y-0 divide-y divide-slate-100 dark:divide-slate-700">
-          <div className="flex items-center gap-3 py-3">
-            <DollarSign className="w-5 h-5 text-slate-400 flex-shrink-0" />
-            <span className={`text-base font-bold ${isReceita ? 'text-green-500' : 'text-red-500'}`}>
-              {isReceita ? '+' : '-'} {fmtMoeda(item.valor)}
-            </span>
-          </div>
-          <div className="flex items-center gap-3 py-3">
-            <Calendar className="w-5 h-5 text-slate-400 flex-shrink-0" />
-            <span className="text-sm text-slate-600 dark:text-slate-300">{dataFormatada}</span>
-          </div>
-
-          {/* Seleção de data efetiva */}
-          <div className="py-4">
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-              Data de {isReceita ? 'recebimento' : 'pagamento'}
-            </p>
-            <input
-              type="date"
-              value={dataEfetiva}
-              onChange={e => setDataEfetiva(e.target.value)}
-              className="w-full border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-400"
-            />
-          </div>
-        </div>
-
-        {/* Botões */}
-        <div className="px-5 pb-8 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 rounded-full border-2 border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-semibold text-sm"
-          >
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onClose}>
             Cancelar
-          </button>
-          <button
-            onClick={handleConfirmar}
-            disabled={salvando}
-            className={`flex-1 py-3 rounded-full font-semibold text-sm text-white ${isReceita ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} disabled:opacity-60`}
-          >
-            {salvando ? 'Salvando...' : (isReceita ? 'Receber' : 'Pagar')}
-          </button>
-        </div>
-      </div>
-    </>
+          </Button>
+          {!jaPago && (
+            <Button 
+              onClick={onConfirmar}
+              className={isReceita ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
+            >
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              Confirmar {isReceita ? 'Recebimento' : 'Pagamento'}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
