@@ -5,11 +5,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  X, Calendar, User, Tag, CheckSquare, MessageSquare, Clock, AlertTriangle, Paperclip, FileText, Download,
-  Sparkles, AlertCircle, Timer, CheckCircle2, Zap, RefreshCw, Loader2, ChevronDown, Check, UserPlus, Search, UserMinus
+  X, Calendar, User, Tag, CheckSquare, MessageSquare, Clock, AlertTriangle, Paperclip, FileText, Download, MoreVertical,
+  Sparkles, AlertCircle, Timer, CheckCircle2, Zap, RefreshCw, Loader2, ChevronDown, Check, UserPlus, Search, ArrowLeft
 } from 'lucide-react';
 import ColaboracaoInterna from './ColaboracaoInterna';
 import ChecklistAba from './ChecklistAba';
+import { ParticipantesBottomSheet, AtividadeRecenteBottomSheet, MenuMobileDropdown } from './TarefaMobileSheets';
 
 const PRIORIDADE_CORES = {
   baixa: 'bg-slate-100 text-slate-600',
@@ -45,6 +46,9 @@ export default function TarefaDetalhesModal({
   onUpdate, colaboradores = [], subsetoresList = [], abaAtiva: abaInicial
 }) {
   const [aba, setAba] = useState(abaInicial || 'detalhes');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [participantesSheetOpen, setParticipantesSheetOpen] = useState(false);
+  const [atividadeSheetOpen, setAtividadeSheetOpen] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -98,6 +102,7 @@ export default function TarefaDetalhesModal({
   const responsaveisDropdownRef = useRef(null);
   const [searchResponsavel, setSearchResponsavel] = useState('');
   const [salvandoResponsaveis, setSalvandoResponsaveis] = useState(false);
+  const [menuMobileOpen, setMenuMobileOpen] = useState(false);
 
   useEffect(() => {
     if (!responsaveisDropdownOpen) return;
@@ -199,44 +204,111 @@ export default function TarefaDetalhesModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl p-0 overflow-hidden flex flex-col gap-0 [&>button:last-of-type]:hidden" style={{ maxHeight: '92vh' }}>
         {/* Header */}
-        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b bg-white">
-          <div className="flex-1 min-w-0 pr-4">
-            <h2 className="text-lg font-bold text-slate-900 leading-tight">{tarefa.titulo}</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-white flex-shrink-0">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            {/* Botão voltar (mobile) */}
+            <button
+              onClick={() => onOpenChange(false)}
+              className="lg:hidden p-2 -ml-2 rounded-full hover:bg-slate-100 transition-colors"
+            >
+              <ChevronDown className="w-5 h-5 text-slate-600" />
+            </button>
+            {/* Título */}
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base font-bold text-slate-900 leading-tight line-clamp-2">{tarefa.titulo}</h2>
+            </div>
           </div>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors mt-1"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {/* Menu mobile (⋮) */}
+          <div className="relative">
+            <button
+              onClick={() => setMobileMenuOpen(v => !v)}
+              className="lg:hidden p-2 rounded-full hover:bg-slate-100 transition-colors"
+            >
+              <svg className="w-5 h-5 text-slate-600" fill="currentColor" viewBox="0 0 24 24">
+                <circle cx="12" cy="5" r="2" />
+                <circle cx="12" cy="12" r="2" />
+                <circle cx="12" cy="19" r="2" />
+              </svg>
+            </button>
+            {/* Botão fechar desktop */}
+            <button
+              onClick={() => onOpenChange(false)}
+              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          
+          {/* Menu dropdown mobile */}
+          {mobileMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setMobileMenuOpen(false)} />
+              <div className="absolute right-0 top-full mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden min-w-[200px]">
+                <button
+                  onClick={() => { setParticipantesSheetOpen(true); setMobileMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <User className="w-4 h-4 text-slate-400" />
+                  Participantes
+                </button>
+                <button
+                  onClick={() => { setAtividadeSheetOpen(true); setMobileMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <Clock className="w-4 h-4 text-slate-400" />
+                  Atividade recente
+                </button>
+                <button
+                  onClick={() => { setAba('anexos'); setMobileMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <Paperclip className="w-4 h-4 text-slate-400" />
+                  Adicionar anexo
+                </button>
+                <button
+                  onClick={() => { setAba('historico'); setMobileMenuOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <FileText className="w-4 h-4 text-slate-400" />
+                  Histórico
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Abas */}
-        <div className="flex border-b bg-white px-6 gap-1">
-          {abas.map(a => (
-            <button
-              key={a.key}
-              onClick={() => setAba(a.key)}
-              className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                aba === a.key ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <a.icon className="w-4 h-4" />
-              {a.label}
-              {a.badge != null && a.badge !== 0 && (
-                <span className="text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full font-semibold leading-none">
-                  {a.badge}
-                </span>
-              )}
-            </button>
-          ))}
+        {/* Abas com scroll horizontal no mobile */}
+        <div className="border-b bg-white flex-shrink-0">
+          <div className="flex overflow-x-auto scrollbar-hide px-4 gap-1 py-2">
+            {abas.map(a => (
+              <button
+                key={a.key}
+                onClick={() => setAba(a.key)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors flex-shrink-0 ${
+                  aba === a.key
+                    ? 'bg-blue-50 text-blue-600'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <a.icon className="w-4 h-4" />
+                {a.label}
+                {a.badge != null && a.badge !== 0 && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold leading-none ${
+                    aba === a.key ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {a.badge}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Conteúdo */}
-        <div className="flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           {/* Detalhes */}
           {aba === 'detalhes' && (
-            <div className="p-6 space-y-5 overflow-y-auto flex-1">
+            <div className="p-4 lg:p-6 space-y-4 lg:space-y-5 overflow-y-auto flex-1">
               {/* Cliente */}
               {tarefa.cliente_nome && (
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
@@ -244,6 +316,14 @@ export default function TarefaDetalhesModal({
                   <p className="text-base font-bold text-slate-900 mb-2">{tarefa.cliente_nome}</p>
                   {tarefa.cliente_cpf && <p className="text-sm text-slate-600 mb-1"><span className="font-medium">CPF:</span> {tarefa.cliente_cpf}</p>}
                   {tarefa.cliente_telefone && <p className="text-sm text-slate-600"><span className="font-medium">Tel:</span> {tarefa.cliente_telefone}</p>}
+                </div>
+              )}
+              
+              {/* Prioridade - Mobile */}
+              {tarefa.prioridade && (
+                <div className={`rounded-xl p-4 ${PRIORIDADE_CORES[tarefa.prioridade] || 'bg-slate-100'}`}>
+                  <p className="text-xs font-semibold uppercase tracking-wide mb-1 opacity-80">Prioridade</p>
+                  <p className="text-base font-bold">{PRIORIDADE_LABEL[tarefa.prioridade] || tarefa.prioridade}</p>
                 </div>
               )}
 
@@ -621,6 +701,97 @@ export default function TarefaDetalhesModal({
           )}
         </div>
       </DialogContent>
+      
+      {/* Bottom Sheet - Participantes (Mobile) */}
+      {participantesSheetOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center lg:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setParticipantesSheetOpen(false)} />
+          <div className="relative bg-white rounded-t-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h3 className="text-base font-bold text-slate-900">Participantes</h3>
+              <button
+                onClick={() => setParticipantesSheetOpen(false)}
+                className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            
+            {/* Lista */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {responsaveisColabs.map(c => (
+                <div key={c.id} className="flex items-center gap-3">
+                  <Iniciais nome={c.nome} foto={c.foto_perfil} size="sm" />
+                  <span className="text-sm font-medium text-slate-700 flex-1">{c.nome}</span>
+                  {c.id !== tarefa.responsavel_principal_id && (
+                    <button
+                      onClick={() => handleToggleResponsavel(c.id)}
+                      className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {responsaveisColabs.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-4">Nenhum responsável adicional</p>
+              )}
+            </div>
+            
+            {/* Botão adicionar */}
+            <div className="p-4 border-t">
+              <button
+                onClick={() => { setParticipantesSheetOpen(false); setResponsaveisDropdownOpen(true); }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+              >
+                <UserPlus className="w-4 h-4" />
+                Adicionar participante
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Bottom Sheet - Atividade Recente (Mobile) */}
+      {atividadeSheetOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center lg:hidden">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setAtividadeSheetOpen(false)} />
+          <div className="relative bg-white rounded-t-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <h3 className="text-base font-bold text-slate-900">Atividade recente</h3>
+              <button
+                onClick={() => setAtividadeSheetOpen(false)}
+                className="p-2 rounded-full hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+            
+            {/* Timeline */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {historico.length > 0 ? (
+                historico.map(h => (
+                  <div key={h.id} className="flex gap-3">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Clock className="w-4 h-4 text-slate-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-slate-700">{h.descricao}</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {h.usuario_nome} · {h.created_date ? format(new Date(h.created_date), 'dd/MM/yyyy HH:mm') : ''}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-400 text-center py-8">Nenhuma atividade recente</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Dialog>
   );
 }

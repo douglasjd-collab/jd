@@ -87,3 +87,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* Esconder scrollbar mas manter scroll */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
