@@ -1882,12 +1882,14 @@ export default function BatePapo() {
                 />
                 <ChamadaAtivaBar chamadaAtiva={chamadaAtiva} onEncerrar={encerrarChamada} />
 
-        {/* Mobile Bottom Navigation */}
-        <MobileBottomNav 
-          filtroStatus={filtroStatus}
-          setFiltroStatus={setFiltroStatus}
-          contadores={contadores}
-        />
+        {/* Mobile Bottom Navigation - apenas na lista de conversas (não quando conversa estiver aberta) */}
+        {!conversaSelecionada && (
+          <MobileBottomNav 
+            filtroStatus={filtroStatus}
+            setFiltroStatus={setFiltroStatus}
+            contadores={contadores}
+          />
+        )}
 
         {/* Mobile Conversation Actions Sheet */}
         <MobileConversationActions
