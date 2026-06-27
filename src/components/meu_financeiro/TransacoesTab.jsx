@@ -30,8 +30,10 @@ function CatIcon({ tipo, categoria }) {
   const bg = colors[idx];
   const Icon = isReceita ? ArrowUpCircle : ArrowDownCircle;
   return (
-    <div className={`w-8 h-8 rounded-full ${bg} flex items-center justify-center flex-shrink-0`}>
-      <Icon className="w-4 h-4 text-white" />
+    <div className={`w-8 h-8 rounded-full ${isReceita ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center flex-shrink-0`}>
+      <div className={`w-6 h-6 rounded-full ${bg} flex items-center justify-center`}>
+        <Icon className="w-3.5 h-3.5 text-white" />
+      </div>
     </div>
   );
 }
@@ -162,9 +164,13 @@ export default function TransacoesTab({ user, refreshKey }) {
       >
         <div className="flex items-center gap-3">
           {/* Ícone */}
-          <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-            <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center">
-              <ArrowUpCircle className={`w-3.5 h-3.5 ${isReceita ? 'text-green-500' : 'text-red-500'}`} />
+          <div className={`w-10 h-10 rounded-full ${isReceita ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center flex-shrink-0`}>
+            <div className={`w-7 h-7 rounded-full ${isReceita ? 'bg-green-500' : 'bg-red-500'} flex items-center justify-center`}>
+              {isReceita ? (
+                <ArrowUpCircle className="w-4 h-4 text-white" />
+              ) : (
+                <ArrowDownCircle className="w-4 h-4 text-white" />
+              )}
             </div>
           </div>
           
