@@ -26,6 +26,7 @@ import {
   Search, Plus, MoreVertical, PhoneCall, PhoneOff, Tag, ArrowRightLeft,
   BellOff, Pin, Check, Clock, Loader2, MessageCircle, AlignJustify,
   X, Trash2, RefreshCw, Contact, Pencil, Lock, Unlock, TrendingUp, BarChart2,
+  User, ClipboardList, Phone, Users,
 } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -70,6 +71,8 @@ import useSoftphone from '@/components/callcenter/useSoftphone';
 import ChamadaAtivaBar from '@/components/chat/ChamadaAtivaBar.jsx';
 import DashboardProdutividade from '@/components/chat/DashboardProdutividade';
 import CoachIAPanel from '@/components/chat/CoachIAPanel';
+import MobileBottomNav from '@/components/chat/MobileBottomNav';
+import MobileConversationActions from '@/components/chat/MobileConversationActions';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -298,6 +301,7 @@ export default function BatePapo() {
   const [produtividadeOpen, setProdutividadeOpen] = useState(false);
   const [coachIAOpen, setCoachIAOpen] = useState(false);
   const [scriptCoach, setScriptCoach] = useState(null);
+  const [mobileActionSheet, setMobileActionSheet] = useState({ open: false, conversa: null });
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1816,6 +1820,16 @@ export default function BatePapo() {
                                   </DropdownMenuContent>
                                   </DropdownMenuPortal>
                                   </DropdownMenu>
+                                  {/* Botão menu mobile */}
+                                  <button
+                                    className="mobile-action-btn lg:hidden p-1.5 hover:bg-black/5 rounded ml-auto"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setMobileActionSheet({ open: true, conversa: c });
+                                    }}
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </button>
                                   </div>
                                   </div>
                                   </div>
@@ -1867,6 +1881,31 @@ export default function BatePapo() {
                 setCoachIAOpen={setCoachIAOpen}
                 />
                 <ChamadaAtivaBar chamadaAtiva={chamadaAtiva} onEncerrar={encerrarChamada} />
+
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav 
+          filtroStatus={filtroStatus}
+          setFiltroStatus={setFiltroStatus}
+          contadores={contadores}
+        />
+
+        {/* Mobile Conversation Actions Sheet */}
+        <MobileConversationActions
+          open={mobileActionSheet.open}
+          onOpenChange={(open) => setMobileActionSheet({ open, conversa: open ? mobileActionSheet.conversa : null })}
+          conversa={mobileActionSheet.conversa}
+          contatosWhatsapp={contatosWhatsapp}
+          actions={[
+            { id: 'salvar_crm', label: 'Salvar CRM', icon: User, color: 'blue', action: (c) => abrirSalvarCrm(c) },
+            { id: 'tags', label: 'Tags', icon: Tag, color: 'purple', action: (c) => { setContatoParaTags(contatosWhatsapp[c.id] || c); setTagsModalOpen(true); } },
+            { id: 'tarefa', label: 'Criar Tarefa', icon: ClipboardList, color: 'emerald', action: (c) => { setConversaTarefa(c); setCriarTarefaOpen(true); } },
+            { id: 'funil', label: 'Funil', icon: TrendingUp, color: 'emerald', action: () => setFunilModalOpen(true) },
+            { id: 'ligar', label: 'Ligar', icon: Phone, color: 'emerald', action: (c) => ligarParaContato(c.cliente_telefone) },
+            { id: 'transferir', label: 'Transferir', icon: Users, color: 'slate', action: (c) => setTransferirModal(c) },
+            { id: 'bloquear', label: 'Bloquear/Desbloquear', icon: Lock, color: 'slate', action: async (c) => { await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: !c.bloqueado }); toast.success('Status de bloqueio atualizado'); refetchConversas(); } },
+            { id: 'excluir', label: 'Excluir', icon: Trash2, color: 'slate', danger: true, action: async (c) => { if (confirm('Excluir conversa?')) { const msgs = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id }); for (const m of msgs) await base44.entities.MensagemWhatsapp.delete(m.id); await base44.entities.ConversaWhatsapp.delete(c.id); queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] }); if (conversaSelecionada?.id === c.id) setConversaSelecionada(null); toast.success('Conversa excluída'); } } },
+          ]}
+        />
 
                 {/* Área principal: mensagens + painel lead lado a lado */}
                 <div className="flex flex-1 overflow-hidden">
@@ -2011,6 +2050,24 @@ export default function BatePapo() {
           </Card>
 
         </div>
+
+        {/* Mobile Conversation Actions Sheet */}
+        <MobileConversationActions
+          open={mobileActionSheet.open}
+          onOpenChange={(open) => setMobileActionSheet({ open, conversa: open ? mobileActionSheet.conversa : null })}
+          conversa={mobileActionSheet.conversa}
+          contatosWhatsapp={contatosWhatsapp}
+          actions={[
+            { id: 'salvar_crm', label: 'Salvar CRM', icon: User, color: 'blue', action: (c) => abrirSalvarCrm(c) },
+            { id: 'tags', label: 'Tags', icon: Tag, color: 'purple', action: (c) => { setContatoParaTags(contatosWhatsapp[c.id] || c); setTagsModalOpen(true); } },
+            { id: 'tarefa', label: 'Tarefa', icon: ClipboardList, color: 'emerald', action: (c) => { setConversaTarefa(c); setCriarTarefaOpen(true); } },
+            { id: 'funil', label: 'Funil', icon: TrendingUp, color: 'emerald', action: () => setFunilModalOpen(true) },
+            { id: 'ligar', label: 'Ligar', icon: Phone, color: 'emerald', action: (c) => ligarParaContato(c.cliente_telefone) },
+            { id: 'transferir', label: 'Transferir', icon: Users, color: 'slate', action: (c) => setTransferirModal(c) },
+            { id: 'bloquear', label: 'Bloquear/Desbloquear', icon: Lock, color: 'slate', action: async (c) => { await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: !c.bloqueado }); toast.success('Status de bloqueio atualizado'); refetchConversas(); } },
+            { id: 'excluir', label: 'Excluir', icon: Trash2, color: 'slate', danger: true, action: async (c) => { if (confirm('Excluir conversa?')) { const msgs = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id }); for (const m of msgs) await base44.entities.MensagemWhatsapp.delete(m.id); await base44.entities.ConversaWhatsapp.delete(c.id); queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] }); if (conversaSelecionada?.id === c.id) setConversaSelecionada(null); toast.success('Conversa excluída'); } } },
+          ]}
+        />
       </div>
     </TooltipProvider>
   );
