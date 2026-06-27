@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { Loader2, Plus, Pencil, Trash2, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Upload, X, Calendar, Building2, CreditCard, Hash, Key, MoreVertical, Eye, AlertTriangle, DollarSign, Clock, PieChart, BarChart3 } from 'lucide-react';
+import { Loader2, Plus, Pencil, Trash2, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Upload, X, Calendar, Building2, CreditCard, Hash, Key, MoreVertical, Eye, AlertTriangle, DollarSign, Clock, PieChart, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts';
 import TransacoesTab from '@/components/meu_financeiro/TransacoesTab';
 import DRETab from '@/components/meu_financeiro/DRETab';
@@ -368,17 +368,47 @@ function DashboardTab({ user, refreshKey }) {
   );
 }
 
+// ─── Navegador de Mês (reutilizável) ─────────────────────
+function NavegadorMes({ mesSelecionado, onChange }) {
+  const mesLabel = format(new Date(mesSelecionado + '-15'), 'MMMM yyyy', { locale: ptBR });
+  const capitalizado = mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1);
+
+  const anterior = () => {
+    const [ano, mes] = mesSelecionado.split('-').map(Number);
+    const d = new Date(ano, mes - 2, 1);
+    onChange(format(d, 'yyyy-MM'));
+  };
+  const proximo = () => {
+    const [ano, mes] = mesSelecionado.split('-').map(Number);
+    const d = new Date(ano, mes, 1);
+    onChange(format(d, 'yyyy-MM'));
+  };
+
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700 mb-2">
+      <button onClick={anterior} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500">
+        <ChevronLeft className="w-5 h-5" />
+      </button>
+      <span className="text-base font-semibold text-slate-800 dark:text-slate-100">{capitalizado}</span>
+      <button onClick={proximo} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500">
+        <ChevronRight className="w-5 h-5" />
+      </button>
+    </div>
+  );
+}
+
 // ─── Lista de Receitas ─────────────────────────────────────
 function ReceitasTab({ user, refreshKey, onSaved }) {
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, item: null });
+  const [mesSelecionado, setMesSelecionado] = useState(format(new Date(), 'yyyy-MM'));
 
   const filtroBase = { usuario_id: user.id, empresa_id: user.empresa_id };
 
   const carregar = useCallback(async () => {
     setLoading(true);
-    try { setItens(await base44.entities.MeuFinanceiroReceita.filter(filtroBase, '-data', 1000)); } catch (e) { console.error(e); } finally { setLoading(false); }
+    try { setItens(await base44.entities.MeuFinanceiroReceita.filter(filtroBase, '-data', 2000)); } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [user]);
 
   useEffect(() => { carregar(); }, [carregar, refreshKey]);
@@ -388,21 +418,24 @@ function ReceitasTab({ user, refreshKey, onSaved }) {
     try { await base44.entities.MeuFinanceiroReceita.delete(id); toast.success('Receita excluída'); carregar(); } catch (e) { toast.error('Erro ao excluir'); }
   };
 
-  const total = itens.filter(r => r.status === 'recebida').reduce((s, r) => s + (r.valor || 0), 0);
-  const pendente = itens.filter(r => r.status === 'pendente').reduce((s, r) => s + (r.valor || 0), 0);
+  const itensMes = itens.filter(r => r.data?.startsWith(mesSelecionado));
+  const total = itensMes.filter(r => r.status === 'recebida').reduce((s, r) => s + (r.valor || 0), 0);
+  const pendente = itensMes.filter(r => r.status === 'pendente' || r.status === 'previsto').reduce((s, r) => s + (r.valor || 0), 0);
 
   return (
-    <div className="space-y-4 mt-4 pb-24">
+    <div className="space-y-3 mt-4 pb-24">
+      <NavegadorMes mesSelecionado={mesSelecionado} onChange={setMesSelecionado} />
+
       <div className="flex gap-4 text-sm">
         <span className="text-green-700 dark:text-green-400 font-semibold">Recebido: {fmtMoeda(total)}</span>
         <span className="text-amber-600 dark:text-amber-400 font-semibold">Pendente: {fmtMoeda(pendente)}</span>
       </div>
 
-      {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div> : itens.length === 0 ? (
-        <div className="text-center py-10 text-slate-400">Nenhuma receita cadastrada.</div>
+      {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div> : itensMes.length === 0 ? (
+        <div className="text-center py-10 text-slate-400">Nenhuma receita em {format(new Date(mesSelecionado + '-15'), 'MMMM', { locale: ptBR })}.</div>
       ) : (
         <div className="space-y-2">
-          {itens.map(item => (
+          {itensMes.map(item => (
             <div key={item.id} className="bg-white dark:bg-slate-800 rounded-2xl px-4 py-3 flex items-center gap-3 border border-slate-100 dark:border-slate-700 shadow-sm">
               <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
                 <ArrowUpCircle className="w-5 h-5 text-white" />
@@ -438,20 +471,11 @@ function ReceitasTab({ user, refreshKey, onSaved }) {
 }
 
 // ─── Lista de Despesas ─────────────────────────────────────
-const FILTROS_DESPESA = [
-  { key: 'mes_atual_atrasadas', label: 'Mês Atual + Atrasadas' },
-  { key: 'todas', label: 'Todas' },
-  { key: 'atrasadas', label: 'Atrasadas' },
-  { key: 'este_mes', label: 'Este Mês' },
-  { key: 'proximo_mes', label: 'Próximo Mês' },
-  { key: 'pagas', label: 'Pagas' },
-];
-
 function DespesasTab({ user, refreshKey, onSaved }) {
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, item: null });
-  const [filtroAtivo, setFiltroAtivo] = useState('mes_atual_atrasadas');
+  const [mesSelecionado, setMesSelecionado] = useState(format(new Date(), 'yyyy-MM'));
 
   const filtroBase = { usuario_id: user.id, empresa_id: user.empresa_id };
 
@@ -467,85 +491,33 @@ function DespesasTab({ user, refreshKey, onSaved }) {
     try { await base44.entities.MeuFinanceiroDespesa.delete(id); toast.success('Despesa excluída'); carregar(); } catch (e) { toast.error('Erro ao excluir'); }
   };
 
-  const agora = new Date();
-  const hojeStr = format(agora, 'yyyy-MM-dd');
-  const mesAtualStr = format(agora, 'yyyy-MM');
-  const inicioMesAtual = `${mesAtualStr}-01`;
-  const fimMesAtual = format(endOfMonth(agora), 'yyyy-MM-dd');
-  const proxMesDate = new Date(agora.getFullYear(), agora.getMonth() + 1, 1);
-  const inicioProxMes = format(proxMesDate, 'yyyy-MM-01');
-  const fimProxMes = format(endOfMonth(proxMesDate), 'yyyy-MM-dd');
+  const hojeStr = format(new Date(), 'yyyy-MM-dd');
 
-  const itensFiltrados = useMemo(() => {
-    switch (filtroAtivo) {
-      case 'mes_atual_atrasadas':
-        return itens.filter(d => {
-          if (d.status === 'cancelado') return false;
-          // Atrasadas: qualquer despesa não paga com data ou vencimento antes de hoje
-          const dataVenc = d.data_vencimento || d.data;
-          const isPendente = d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado';
-          if (isPendente && dataVenc && dataVenc < hojeStr) return true;
-          // Do mês atual pela data principal
-          const dataLanc = d.data_vencimento || d.data;
-          if (dataLanc && dataLanc >= inicioMesAtual && dataLanc <= fimMesAtual) return true;
-          return false;
-        });
-      case 'atrasadas':
-        return itens.filter(d => {
-          const dataRef = d.data_vencimento || d.data;
-          return (d.status === 'pendente' || d.status === 'previsto' || d.status === 'atrasado') && dataRef && dataRef < hojeStr;
-        });
-      case 'este_mes':
-        return itens.filter(d => {
-          const dataRef = d.data_vencimento || d.data;
-          return dataRef && dataRef >= inicioMesAtual && dataRef <= fimMesAtual;
-        });
-      case 'proximo_mes':
-        return itens.filter(d => {
-          const dataRef = d.data_vencimento || d.data;
-          return dataRef && dataRef >= inicioProxMes && dataRef <= fimProxMes;
-        });
-      case 'pagas':
-        return itens.filter(d => d.status === 'pago');
-      case 'todas':
-      default:
-        return itens;
-    }
-  }, [itens, filtroAtivo, hojeStr, inicioMesAtual, fimMesAtual, inicioProxMes, fimProxMes]);
+  // Filtrar pelo mês selecionado usando data_vencimento ou data
+  const itensMes = itens.filter(d => {
+    if (d.status === 'cancelado') return false;
+    const dataRef = d.data_vencimento || d.data;
+    return dataRef?.startsWith(mesSelecionado);
+  });
 
-  const totalPago = itensFiltrados.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
-  const totalPendente = itensFiltrados.filter(d => d.status !== 'pago' && d.status !== 'cancelado').reduce((s, d) => s + (d.valor || 0), 0);
+  const totalPago = itensMes.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
+  const totalPendente = itensMes.filter(d => d.status !== 'pago' && d.status !== 'cancelado').reduce((s, d) => s + (d.valor || 0), 0);
 
   return (
-    <div className="space-y-4 mt-4">
-      {/* Filtros rápidos */}
-      <div className="flex flex-wrap gap-2">
-        {FILTROS_DESPESA.map(f => (
-          <button
-            key={f.key}
-            onClick={() => setFiltroAtivo(f.key)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
-              filtroAtivo === f.key
-                ? 'bg-red-600 text-white border-red-600'
-                : 'bg-white text-slate-600 border-slate-300 hover:border-red-400 hover:text-red-600'
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
+    <div className="space-y-3 mt-4 pb-24">
+      <NavegadorMes mesSelecionado={mesSelecionado} onChange={setMesSelecionado} />
 
       <div className="flex gap-4 text-sm">
         <span className="text-red-600 dark:text-red-400 font-semibold">Pago: {fmtMoeda(totalPago)}</span>
         <span className="text-amber-600 dark:text-amber-400 font-semibold">Pendente: {fmtMoeda(totalPendente)}</span>
-        <span className="text-slate-400 text-xs self-center">{itensFiltrados.length} item(s)</span>
+        <span className="text-slate-400 text-xs self-center">{itensMes.length} item(s)</span>
       </div>
 
-      {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div> : itensFiltrados.length === 0 ? (
-        <div className="text-center py-10 text-slate-400">Nenhuma despesa encontrada para este filtro.</div>
+      {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div> : itensMes.length === 0 ? (
+        <div className="text-center py-10 text-slate-400">Nenhuma despesa em {format(new Date(mesSelecionado + '-15'), 'MMMM', { locale: ptBR })}.</div>
       ) : (
-        <div className="space-y-2 pb-24">
-          {itensFiltrados.map(item => {
+        <div className="space-y-2">
+          {itensMes.map(item => {
             const dataVencRef = item.data_vencimento || item.data;
             const atrasada = (item.status === 'pendente' || item.status === 'previsto' || item.status === 'atrasado') && dataVencRef && dataVencRef < hojeStr;
             const statusVisual = atrasada && (item.status === 'previsto' || item.status === 'pendente') ? 'atrasado' : item.status;
