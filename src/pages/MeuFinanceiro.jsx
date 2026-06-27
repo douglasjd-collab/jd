@@ -397,26 +397,255 @@ function NavegadorMes({ mesSelecionado, onChange }) {
   );
 }
 
+// ─── Modal Detalhes do Lançamento ─────────────────────────
+function ModalDetalhesLancamento({ open, onClose, item, tipo, user, onSaved, contas }) {
+  const [modalPagamento, setModalPagamento] = useState(false);
+  const [modalEditar, setModalEditar] = useState(false);
+
+  if (!item) return null;
+
+  const isPago = tipo === 'despesa' ? item.status === 'pago' : item.status === 'recebida';
+  const dataRef = item.data_vencimento || item.data;
+  const contaNome = contas.find(c => c.id === item.conta_bancaria_id)?.nome_conta || item.conta_bancaria_id || 'Não informada';
+
+  return (
+    <>
+      <Dialog open={open && !modalEditar && !modalPagamento} onOpenChange={onClose}>
+        <DialogContent className="max-w-sm w-full p-0 overflow-hidden rounded-3xl">
+          {/* Header colorido */}
+          <div className={`px-6 pt-6 pb-4 ${tipo === 'despesa' ? 'bg-red-50' : 'bg-green-50'}`}>
+            <div className="flex items-center gap-3 mb-1">
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${tipo === 'despesa' ? 'bg-red-500' : 'bg-green-500'}`}>
+                {tipo === 'despesa' ? <ArrowDownCircle className="w-6 h-6 text-white" /> : <ArrowUpCircle className="w-6 h-6 text-white" />}
+              </div>
+              <div>
+                <p className="font-bold text-lg text-slate-800 leading-tight">{item.descricao}</p>
+                <StatusBadgeMeuFin status={item.status} tipo={tipo} />
+              </div>
+            </div>
+          </div>
+
+          {/* Conteúdo */}
+          <div className="px-6 py-4 space-y-3">
+            <div className="flex items-center gap-3 py-2 border-b border-slate-100">
+              <DollarSign className="w-5 h-5 text-slate-400 shrink-0" />
+              <div>
+                <p className="text-xs text-slate-400">Valor</p>
+                <p className={`font-bold text-base ${tipo === 'despesa' ? 'text-red-600' : 'text-green-600'}`}>{fmtMoeda(item.valor)}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 py-2 border-b border-slate-100">
+              <Calendar className="w-5 h-5 text-slate-400 shrink-0" />
+              <div>
+                <p className="text-xs text-slate-400">{tipo === 'despesa' ? 'Vencimento' : 'Data'}</p>
+                <p className="font-medium text-slate-700">{dataRef ? format(parseISO(dataRef), "dd 'de' MMMM 'de' yyyy", { locale: ptBR }) : '-'}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 py-2 border-b border-slate-100">
+              <Building2 className="w-5 h-5 text-slate-400 shrink-0" />
+              <div>
+                <p className="text-xs text-slate-400">Conta</p>
+                <p className="font-medium text-slate-700">{contaNome}</p>
+              </div>
+            </div>
+            {item.categoria && (
+              <div className="flex items-center gap-3 py-2 border-b border-slate-100">
+                <Hash className="w-5 h-5 text-slate-400 shrink-0" />
+                <div>
+                  <p className="text-xs text-slate-400">Categoria</p>
+                  <p className="font-medium text-slate-700">{item.categoria}</p>
+                </div>
+              </div>
+            )}
+            {item.observacao && (
+              <div className="flex items-center gap-3 py-2">
+                <Pencil className="w-5 h-5 text-slate-400 shrink-0" />
+                <div>
+                  <p className="text-xs text-slate-400">Observação</p>
+                  <p className="font-medium text-slate-700">{item.observacao}</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Botões */}
+          <div className="px-6 pb-6 space-y-2">
+            <Button className="w-full rounded-full bg-slate-700 hover:bg-slate-800" onClick={() => setModalEditar(true)}>
+              Editar {tipo === 'despesa' ? 'despesa' : 'receita'}
+            </Button>
+            {!isPago && (
+              <Button
+                className={`w-full rounded-full ${tipo === 'despesa' ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
+                onClick={() => setModalPagamento(true)}
+              >
+                {tipo === 'despesa' ? 'Pagar' : 'Receber'}
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de edição */}
+      {modalEditar && (
+        <FormModalFinanceiro
+          open={modalEditar}
+          onClose={() => setModalEditar(false)}
+          item={item}
+          tipo={tipo}
+          user={user}
+          onSaved={() => { onSaved(); setModalEditar(false); onClose(); }}
+        />
+      )}
+
+      {/* Modal de pagamento/recebimento */}
+      {modalPagamento && (
+        <ModalConfirmarPagamento
+          open={modalPagamento}
+          onClose={() => setModalPagamento(false)}
+          item={item}
+          tipo={tipo}
+          contas={contas}
+          onConfirmar={() => { onSaved(); setModalPagamento(false); onClose(); }}
+        />
+      )}
+    </>
+  );
+}
+
+// ─── Modal Confirmar Pagamento/Recebimento ─────────────────
+function ModalConfirmarPagamento({ open, onClose, item, tipo, contas, onConfirmar }) {
+  const [dataPagamento, setDataPagamento] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [contaSelecionada, setContaSelecionada] = useState(item?.conta_bancaria_id || '');
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    setDataPagamento(format(new Date(), 'yyyy-MM-dd'));
+    setContaSelecionada(item?.conta_bancaria_id || '');
+  }, [item, open]);
+
+  const confirmar = async () => {
+    setSalvando(true);
+    try {
+      if (tipo === 'despesa') {
+        await base44.entities.MeuFinanceiroDespesa.update(item.id, {
+          status: 'pago',
+          data_pagamento: dataPagamento,
+          conta_bancaria_id: contaSelecionada || item.conta_bancaria_id,
+        });
+        toast.success('Despesa marcada como paga!');
+      } else {
+        await base44.entities.MeuFinanceiroReceita.update(item.id, {
+          status: 'recebida',
+          data_recebimento: dataPagamento,
+          conta_bancaria_id: contaSelecionada || item.conta_bancaria_id,
+        });
+        toast.success('Receita marcada como recebida!');
+      }
+      onConfirmar();
+    } catch (e) {
+      toast.error('Erro ao confirmar pagamento');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const contaAtual = contas.find(c => c.id === (contaSelecionada || item?.conta_bancaria_id));
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm w-full p-0 overflow-hidden rounded-3xl">
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center ${tipo === 'despesa' ? 'bg-red-500' : 'bg-green-500'}`}>
+              {tipo === 'despesa' ? <ArrowDownCircle className="w-6 h-6 text-white" /> : <ArrowUpCircle className="w-6 h-6 text-white" />}
+            </div>
+            <div>
+              <p className="font-bold text-slate-800">{item?.descricao}</p>
+              <p className={`text-sm font-semibold ${tipo === 'despesa' ? 'text-red-500' : 'text-green-600'}`}>{fmtMoeda(item?.valor)}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Corpo */}
+        <div className="px-6 py-4 space-y-4">
+          {/* Data */}
+          <div className="flex items-center gap-3 py-2 border-b border-slate-100">
+            <Calendar className="w-5 h-5 text-slate-400 shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs text-slate-400 mb-1">Data do {tipo === 'despesa' ? 'pagamento' : 'recebimento'}</p>
+              <Input
+                type="date"
+                value={dataPagamento}
+                onChange={e => setDataPagamento(e.target.value)}
+                className="h-8 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Conta */}
+          <div className="flex items-center gap-3 py-2">
+            <Building2 className="w-5 h-5 text-slate-400 shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs text-slate-400 mb-1">Conta utilizada</p>
+              {contas.length > 0 ? (
+                <Select value={contaSelecionada} onValueChange={setContaSelecionada}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Selecionar conta..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contas.map(c => <SelectItem key={c.id} value={c.id}>{c.nome_conta} — {c.banco}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="text-sm text-slate-500 italic">Nenhuma conta cadastrada</p>
+              )}
+              {contaAtual && (
+                <p className="text-xs text-slate-400 mt-1">{contaAtual.banco}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Botões */}
+        <div className="px-6 pb-6 flex gap-3">
+          <Button variant="outline" className="flex-1 rounded-full" onClick={onClose} disabled={salvando}>Cancelar</Button>
+          <Button
+            className={`flex-1 rounded-full ${tipo === 'despesa' ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
+            onClick={confirmar}
+            disabled={salvando}
+          >
+            {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : (tipo === 'despesa' ? 'Pagar' : 'Receber')}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Lista de Receitas ─────────────────────────────────────
 function ReceitasTab({ user, refreshKey, onSaved }) {
   const [itens, setItens] = useState([]);
+  const [contas, setContas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState({ open: false, item: null });
+  const [modalForm, setModalForm] = useState({ open: false, item: null });
+  const [detalhes, setDetalhes] = useState(null);
   const [mesSelecionado, setMesSelecionado] = useState(format(new Date(), 'yyyy-MM'));
 
   const filtroBase = { usuario_id: user.id, empresa_id: user.empresa_id };
 
   const carregar = useCallback(async () => {
     setLoading(true);
-    try { setItens(await base44.entities.MeuFinanceiroReceita.filter(filtroBase, '-data', 2000)); } catch (e) { console.error(e); } finally { setLoading(false); }
+    try {
+      const [r, c] = await Promise.all([
+        base44.entities.MeuFinanceiroReceita.filter(filtroBase, '-data', 2000),
+        base44.entities.MeuFinanceiroContaBancaria.filter(filtroBase, 'nome_conta', 50),
+      ]);
+      setItens(r); setContas(c);
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [user]);
 
   useEffect(() => { carregar(); }, [carregar, refreshKey]);
-
-  const excluir = async (id) => {
-    if (!confirm('Excluir esta receita?')) return;
-    try { await base44.entities.MeuFinanceiroReceita.delete(id); toast.success('Receita excluída'); carregar(); } catch (e) { toast.error('Erro ao excluir'); }
-  };
 
   const itensMes = itens.filter(r => r.data?.startsWith(mesSelecionado));
   const total = itensMes.filter(r => r.status === 'recebida').reduce((s, r) => s + (r.valor || 0), 0);
@@ -436,7 +665,7 @@ function ReceitasTab({ user, refreshKey, onSaved }) {
       ) : (
         <div className="space-y-2">
           {itensMes.map(item => (
-            <div key={item.id} className="bg-white dark:bg-slate-800 rounded-2xl px-4 py-3 flex items-center gap-3 border border-slate-100 dark:border-slate-700 shadow-sm">
+            <div key={item.id} onClick={() => setDetalhes(item)} className="bg-white dark:bg-slate-800 rounded-2xl px-4 py-3 flex items-center gap-3 border border-slate-100 dark:border-slate-700 shadow-sm cursor-pointer active:scale-[0.98] transition-transform">
               <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
                 <ArrowUpCircle className="w-5 h-5 text-white" />
               </div>
@@ -445,13 +674,7 @@ function ReceitasTab({ user, refreshKey, onSaved }) {
                 <p className="text-xs text-slate-400 truncate">{item.categoria || 'Sem categoria'} · {item.data ? format(parseISO(item.data), 'dd/MM/yy') : '-'}</p>
                 <StatusBadgeMeuFin status={item.status} tipo="receita" />
               </div>
-              <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <p className="text-sm font-bold text-green-600">+{fmtMoeda(item.valor)}</p>
-                <div className="flex gap-1">
-                  <button onClick={() => setModal({ open: true, item })} className="p-1 text-slate-400 hover:text-slate-600"><Pencil className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => excluir(item.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
-                </div>
-              </div>
+              <p className="text-sm font-bold text-green-600 flex-shrink-0">+{fmtMoeda(item.valor)}</p>
             </div>
           ))}
         </div>
@@ -459,13 +682,25 @@ function ReceitasTab({ user, refreshKey, onSaved }) {
 
       {/* FAB verde */}
       <button
-        onClick={() => setModal({ open: true, item: null })}
+        onClick={e => { e.stopPropagation(); setModalForm({ open: true, item: null }); }}
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-xl flex items-center justify-center z-30 transition-transform active:scale-95"
       >
         <Plus className="w-7 h-7" />
       </button>
 
-      {modal.open && <FormModalFinanceiro open={modal.open} onClose={() => setModal({ open: false, item: null })} item={modal.item} tipo="receita" user={user} onSaved={() => { carregar(); onSaved?.(); setModal({ open: false, item: null }); }} />}
+      {modalForm.open && <FormModalFinanceiro open={modalForm.open} onClose={() => setModalForm({ open: false, item: null })} item={modalForm.item} tipo="receita" user={user} onSaved={() => { carregar(); onSaved?.(); setModalForm({ open: false, item: null }); }} />}
+
+      {detalhes && (
+        <ModalDetalhesLancamento
+          open={!!detalhes}
+          onClose={() => setDetalhes(null)}
+          item={detalhes}
+          tipo="receita"
+          user={user}
+          contas={contas}
+          onSaved={() => { carregar(); onSaved?.(); setDetalhes(null); }}
+        />
+      )}
     </div>
   );
 }
@@ -473,27 +708,29 @@ function ReceitasTab({ user, refreshKey, onSaved }) {
 // ─── Lista de Despesas ─────────────────────────────────────
 function DespesasTab({ user, refreshKey, onSaved }) {
   const [itens, setItens] = useState([]);
+  const [contas, setContas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState({ open: false, item: null });
+  const [modalForm, setModalForm] = useState({ open: false, item: null });
+  const [detalhes, setDetalhes] = useState(null);
   const [mesSelecionado, setMesSelecionado] = useState(format(new Date(), 'yyyy-MM'));
 
   const filtroBase = { usuario_id: user.id, empresa_id: user.empresa_id };
 
   const carregar = useCallback(async () => {
     setLoading(true);
-    try { setItens(await base44.entities.MeuFinanceiroDespesa.filter(filtroBase, '-data_vencimento', 2000)); } catch (e) { console.error(e); } finally { setLoading(false); }
+    try {
+      const [d, c] = await Promise.all([
+        base44.entities.MeuFinanceiroDespesa.filter(filtroBase, '-data_vencimento', 2000),
+        base44.entities.MeuFinanceiroContaBancaria.filter(filtroBase, 'nome_conta', 50),
+      ]);
+      setItens(d); setContas(c);
+    } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [user]);
 
   useEffect(() => { carregar(); }, [carregar, refreshKey]);
 
-  const excluir = async (id) => {
-    if (!confirm('Excluir esta despesa?')) return;
-    try { await base44.entities.MeuFinanceiroDespesa.delete(id); toast.success('Despesa excluída'); carregar(); } catch (e) { toast.error('Erro ao excluir'); }
-  };
-
   const hojeStr = format(new Date(), 'yyyy-MM-dd');
 
-  // Filtrar pelo mês selecionado usando data_vencimento ou data
   const itensMes = itens.filter(d => {
     if (d.status === 'cancelado') return false;
     const dataRef = d.data_vencimento || d.data;
@@ -522,7 +759,7 @@ function DespesasTab({ user, refreshKey, onSaved }) {
             const atrasada = (item.status === 'pendente' || item.status === 'previsto' || item.status === 'atrasado') && dataVencRef && dataVencRef < hojeStr;
             const statusVisual = atrasada && (item.status === 'previsto' || item.status === 'pendente') ? 'atrasado' : item.status;
             return (
-              <div key={item.id} className={`bg-white dark:bg-slate-800 rounded-2xl px-4 py-3 flex items-center gap-3 border shadow-sm ${atrasada ? 'border-red-200 dark:border-red-800' : 'border-slate-100 dark:border-slate-700'}`}>
+              <div key={item.id} onClick={() => setDetalhes(item)} className={`bg-white dark:bg-slate-800 rounded-2xl px-4 py-3 flex items-center gap-3 border shadow-sm cursor-pointer active:scale-[0.98] transition-transform ${atrasada ? 'border-red-200 dark:border-red-800' : 'border-slate-100 dark:border-slate-700'}`}>
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${atrasada ? 'bg-red-600' : 'bg-orange-500'}`}>
                   <ArrowDownCircle className="w-5 h-5 text-white" />
                 </div>
@@ -536,13 +773,7 @@ function DespesasTab({ user, refreshKey, onSaved }) {
                   </p>
                   <StatusBadgeMeuFin status={statusVisual} tipo="despesa" />
                 </div>
-                <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                  <p className="text-sm font-bold text-red-600">-{fmtMoeda(item.valor)}</p>
-                  <div className="flex gap-1">
-                    <button onClick={() => setModal({ open: true, item })} className="p-1 text-slate-400 hover:text-slate-600"><Pencil className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => excluir(item.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
-                  </div>
-                </div>
+                <p className="text-sm font-bold text-red-600 flex-shrink-0">-{fmtMoeda(item.valor)}</p>
               </div>
             );
           })}
@@ -551,13 +782,25 @@ function DespesasTab({ user, refreshKey, onSaved }) {
 
       {/* FAB vermelho */}
       <button
-        onClick={() => setModal({ open: true, item: null })}
+        onClick={e => { e.stopPropagation(); setModalForm({ open: true, item: null }); }}
         className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-xl flex items-center justify-center z-30 transition-transform active:scale-95"
       >
         <Plus className="w-7 h-7" />
       </button>
 
-      {modal.open && <FormModalFinanceiro open={modal.open} onClose={() => setModal({ open: false, item: null })} item={modal.item} tipo="despesa" user={user} onSaved={() => { carregar(); setModal({ open: false, item: null }); }} />}
+      {modalForm.open && <FormModalFinanceiro open={modalForm.open} onClose={() => setModalForm({ open: false, item: null })} item={modalForm.item} tipo="despesa" user={user} onSaved={() => { carregar(); setModalForm({ open: false, item: null }); }} />}
+
+      {detalhes && (
+        <ModalDetalhesLancamento
+          open={!!detalhes}
+          onClose={() => setDetalhes(null)}
+          item={detalhes}
+          tipo="despesa"
+          user={user}
+          contas={contas}
+          onSaved={() => { carregar(); onSaved?.(); setDetalhes(null); }}
+        />
+      )}
     </div>
   );
 }
