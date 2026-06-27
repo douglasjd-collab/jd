@@ -41,7 +41,7 @@ export default function TransacoesTab({ user, refreshKey }) {
   const [search, setSearch] = useState('');
   const [mesAtual, setMesAtual] = useState(new Date());
   const [modal, setModal] = useState({ open: false, item: null, tipo: 'receita' });
-  const [novoTipo, setNovoTipo] = useState('despesa');
+  const [menuAberto, setMenuAberto] = useState(false);
 
   const carregar = useCallback(async () => {
     setLoading(true);
@@ -112,7 +112,6 @@ export default function TransacoesTab({ user, refreshKey }) {
   };
 
   const editar = (item) => {
-    setNovoTipo(item._tipo);
     setModal({ open: true, item, tipo: item._tipo });
   };
 
@@ -294,13 +293,33 @@ export default function TransacoesTab({ user, refreshKey }) {
         </div>
       </div>
 
-      {/* FAB — botão fixo de adicionar */}
+      {/* Botões de Receita e Despesa (aparecem quando menuAberto está true) */}
+      {menuAberto && (
+        <div className="fixed bottom-24 right-6 z-40 flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4">
+          {/* Botão Receita (Verde) */}
+          <Button
+            className="w-14 h-14 rounded-full bg-green-600 hover:bg-green-700 shadow-lg"
+            onClick={() => { setModal({ open: true, item: null, tipo: 'receita' }); setMenuAberto(false); }}
+          >
+            <Plus className="w-7 h-7" />
+          </Button>
+          {/* Botão Despesa (Vermelho) */}
+          <Button
+            className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 shadow-lg"
+            onClick={() => { setModal({ open: true, item: null, tipo: 'despesa' }); setMenuAberto(false); }}
+          >
+            <Plus className="w-7 h-7" />
+          </Button>
+        </div>
+      )}
+
+      {/* FAB Principal (Roxo) */}
       <div className="fixed bottom-6 right-6 z-30">
         <Button
           className="w-14 h-14 rounded-full bg-violet-600 hover:bg-violet-700 shadow-xl"
-          onClick={() => { setNovoTipo('despesa'); setModal({ open: true, item: null, tipo: 'despesa' }); }}
+          onClick={() => setMenuAberto(!menuAberto)}
         >
-          <Plus className="w-7 h-7" />
+          <Plus className={`w-7 h-7 transition-transform ${menuAberto ? 'rotate-45' : ''}`} />
         </Button>
       </div>
 
