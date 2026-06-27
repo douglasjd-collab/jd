@@ -18,6 +18,33 @@ export default function TransacaoDetalheDrawer({ item, onClose, onEditar, onExcl
   const isReceita = item._tipo === 'receita';
   const jaQuitado = isReceita ? item.status === 'recebida' : item.status === 'pago';
 
+  // Calcula o status correto ao desfazer, baseado na data do item vs hoje
+  const calcularStatusDesfazer = () => {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const dataRef = item.data || hoje;
+    if (isReceita) {
+      if (dataRef > hoje) return 'previsto';
+      return 'pendente';
+    } else {
+      if (dataRef > hoje) return 'previsto';
+      if (dataRef < hoje) return 'atrasado';
+      return 'pendente';
+    }
+  };
+
+  const handleDesfazer = async () => {
+    const entidade = isReceita ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
+    const novoStatus = calcularStatusDesfazer();
+    await base44.entities[entidade].update(item.id, {
+      status: novoStatus,
+      data_recebimento: null,
+      data_pagamento: null,
+    });
+    toast.success(`Status alterado para "${novoStatus}"`);
+    if (onSaved) onSaved();
+    onClose();
+  };
+
   const dataFormatada = novaData
     ? format(parseISO(novaData), "d 'de' MMM. 'de' yyyy", { locale: ptBR })
     : '—';
@@ -147,7 +174,7 @@ export default function TransacaoDetalheDrawer({ item, onClose, onEditar, onExcl
           {/* Pagar/Receber ou já quitado */}
           {jaQuitado ? (
             <button
-              onClick={onPagar}
+              onClick={handleDesfazer}
               className="w-full py-3 rounded-full border-2 border-slate-200 dark:border-slate-600 text-slate-400 dark:text-slate-500 font-semibold text-sm"
             >
               ✓ {isReceita ? 'Recebida' : 'Pago'} — Clique para desfazer
