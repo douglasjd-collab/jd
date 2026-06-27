@@ -179,7 +179,7 @@ export default function TransacoesTab({ user, refreshKey }) {
       </div>
 
       {/* Cards de saldo */}
-      <div className="grid grid-cols-2 gap-2 mb-2">
+      <div className="grid grid-cols-2 gap-2 mb-4">
         <div className="bg-white dark:bg-slate-800 rounded-xl px-3 py-2 border border-slate-100 dark:border-slate-700 shadow-sm">
           <div className="flex items-center gap-1.5 mb-0.5">
             <Wallet className="w-3.5 h-3.5 text-slate-400" />
