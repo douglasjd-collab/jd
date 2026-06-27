@@ -223,7 +223,7 @@ function SidebarParticipantes({ tarefa, colaboradores, currentUser, onAdicionarP
   );
 
   return (
-    <div className="w-64 flex-shrink-0 bg-slate-50 border-l flex flex-col overflow-y-auto">
+    <div className="w-full md:w-64 flex-shrink-0 bg-slate-50 md:border-l flex flex-col overflow-y-auto">
       {/* Card Participantes */}
       <div className="p-4 border-b bg-white">
         <div className="flex items-center justify-between mb-3">
@@ -347,6 +347,7 @@ export default function ColaboracaoInterna({ tarefa, currentUser, colaboradores 
   const [filtroColab, setFiltroColab] = useState('');
   const [reacoesLocais, setReacoesLocais] = useState({});
   const [enviandoArquivo, setEnviandoArquivo] = useState(false);
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
   const bottomRef = useRef(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
@@ -516,7 +517,28 @@ export default function ColaboracaoInterna({ tarefa, currentUser, colaboradores 
   if (!tarefa) return null;
 
   return (
-    <div className="flex overflow-hidden flex-1" style={{ minHeight: '400px' }}>
+    <div className="flex flex-col md:flex-row overflow-hidden flex-1" style={{ minHeight: '400px' }}>
+      {/* Sidebar mobile: botão para expandir/colapsar */}
+      <div className="md:hidden border-b bg-white px-4 py-2 flex items-center justify-between flex-shrink-0">
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Participantes & Atividade</span>
+        <button
+          onClick={() => setSidebarMobileOpen(v => !v)}
+          className="text-xs text-blue-600 font-medium"
+        >
+          {sidebarMobileOpen ? 'Fechar ▲' : 'Ver ▼'}
+        </button>
+      </div>
+      {sidebarMobileOpen && (
+        <div className="md:hidden border-b">
+          <SidebarParticipantes
+            tarefa={tarefa}
+            colaboradores={colaboradores}
+            currentUser={currentUser}
+            onAdicionarParticipante={handleAdicionarParticipante}
+          />
+        </div>
+      )}
+
       {/* Área principal: Timeline + Input */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
@@ -679,13 +701,15 @@ export default function ColaboracaoInterna({ tarefa, currentUser, colaboradores 
         </div>
       </div>
 
-      {/* Sidebar direita */}
-      <SidebarParticipantes
-        tarefa={tarefa}
-        colaboradores={colaboradores}
-        currentUser={currentUser}
-        onAdicionarParticipante={handleAdicionarParticipante}
-      />
+      {/* Sidebar direita — só visível em desktop */}
+      <div className="hidden md:flex">
+        <SidebarParticipantes
+          tarefa={tarefa}
+          colaboradores={colaboradores}
+          currentUser={currentUser}
+          onAdicionarParticipante={handleAdicionarParticipante}
+        />
+      </div>
     </div>
   );
 }
