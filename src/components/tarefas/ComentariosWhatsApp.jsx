@@ -131,7 +131,7 @@ export default function ComentariosWhatsApp({
             autoFocus
             type="text"
             placeholder="Buscar colaborador..."
-            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-1.5 mb-2 outline-none focus:border-slate-400"
+            className="w-full text-base border border-slate-200 rounded-lg px-3 py-1.5 mb-2 outline-none focus:border-slate-400"
             value={filtroColab}
             onChange={e => setFiltroColab(e.target.value)}
           />
@@ -159,7 +159,7 @@ export default function ComentariosWhatsApp({
         <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
           <textarea
             rows={2}
-            className="w-full text-sm px-4 pt-3 pb-1 outline-none placeholder:text-slate-400 bg-transparent resize-none leading-5"
+            className="w-full text-base px-4 pt-3 pb-1 outline-none placeholder:text-slate-400 bg-transparent resize-none leading-6"
             placeholder="Escreva um comentário..."
             value={novoComentario}
             onChange={e => {
