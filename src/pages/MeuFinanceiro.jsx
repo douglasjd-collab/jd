@@ -655,9 +655,9 @@ function ReceitasTab({ user, refreshKey, onSaved }) {
     <div className="space-y-3 mt-4 pb-24">
       <NavegadorMes mesSelecionado={mesSelecionado} onChange={setMesSelecionado} />
 
-      <div className="flex gap-4 text-sm">
-        <span className="text-green-700 dark:text-green-400 font-semibold">Recebido: {fmtMoeda(total)}</span>
-        <span className="text-amber-600 dark:text-amber-400 font-semibold">Pendente: {fmtMoeda(pendente)}</span>
+      <div className="flex gap-2 text-sm">
+        <span className="px-2.5 py-1 rounded-full bg-green-50 text-green-600 font-semibold">Recebido: {fmtMoeda(total)}</span>
+        <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 font-semibold">Pendente: {fmtMoeda(pendente)}</span>
       </div>
 
       {loading ? <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div> : itensMes.length === 0 ? (
@@ -744,9 +744,9 @@ function DespesasTab({ user, refreshKey, onSaved }) {
     <div className="space-y-3 mt-4 pb-24">
       <NavegadorMes mesSelecionado={mesSelecionado} onChange={setMesSelecionado} />
 
-      <div className="flex gap-4 text-sm">
-        <span className="text-red-600 dark:text-red-400 font-semibold">Pago: {fmtMoeda(totalPago)}</span>
-        <span className="text-amber-600 dark:text-amber-400 font-semibold">Pendente: {fmtMoeda(totalPendente)}</span>
+      <div className="flex gap-2 text-sm">
+        <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-600 font-semibold">Pago: {fmtMoeda(totalPago)}</span>
+        <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-600 font-semibold">Pendente: {fmtMoeda(totalPendente)}</span>
         <span className="text-slate-400 text-xs self-center">{itensMes.length} item(s)</span>
       </div>
 
