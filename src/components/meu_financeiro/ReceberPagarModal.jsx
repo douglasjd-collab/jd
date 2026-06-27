@@ -16,8 +16,8 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
   const isMobile = useIsMobile();
   const editando = !!item;
   const titulo = tipo === 'receita' 
-    ? (item?.status === 'recebida' ? 'Deseja editar este recebimento?' : 'Deseja efetivar esta receita?') 
-    : (item?.status === 'pago' ? 'Deseja editar este pagamento?' : 'Deseja efetivar esta despesa?');
+    ? 'Deseja efetivar esta receita?' 
+    : 'Deseja efetivar esta despesa?';
   
   const subtitle = tipo === 'receita'
     ? 'Ao efetivar esta receita, o valor será creditado na conta.'
