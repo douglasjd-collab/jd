@@ -1,40 +1,9 @@
 /**
  * Atualiza APENAS CONFIG_SESSION_PHONE_VERSION no EasyPanel.
- * ESTRATÉGIA SEGURA:
- * 1. Lê env vars atuais
- * 2. Faz PATCH apenas nas 3 variáveis CONFIG_SESSION_PHONE_*
- * 3. Se não conseguir ler env atual → ABORTA (não sobrescreve nada)
- * 4. Verifica que todas as outras variáveis foram preservadas antes de salvar
+ * Usa /api/rpc/ com Bearer token (descoberto via OpenAPI).
+ * Lê env via listProjectsAndServices e faz patch via updateEnv.
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
-
-async function epGet(baseUrl, token, path, queryInput = null) {
-  let url = `${baseUrl.replace(/\/$/, '')}${path}`;
-  if (queryInput !== null) {
-    url += `?input=${encodeURIComponent(JSON.stringify(queryInput))}`;
-  }
-  const resp = await fetch(url, {
-    method: 'GET',
-    headers: { 'Content-Type': 'application/json', 'Authorization': token },
-    signal: AbortSignal.timeout(15000),
-  });
-  const text = await resp.text();
-  if (!resp.ok) throw new Error(`EasyPanel GET ${path} [${resp.status}]: ${text.substring(0, 300)}`);
-  return JSON.parse(text);
-}
-
-async function epPost(baseUrl, token, path, body) {
-  const url = `${baseUrl.replace(/\/$/, '')}${path}`;
-  const resp = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': token },
-    body: JSON.stringify({ json: body }),
-    signal: AbortSignal.timeout(15000),
-  });
-  const text = await resp.text();
-  if (!resp.ok) throw new Error(`EasyPanel POST ${path} [${resp.status}]: ${text.substring(0, 300)}`);
-  return JSON.parse(text);
-}
 
 function parseEnvStr(envStr) {
   const vars = {};
@@ -45,7 +14,7 @@ function parseEnvStr(envStr) {
     const idx = trimmed.indexOf('=');
     if (idx === -1) return;
     const k = trimmed.substring(0, idx).trim();
-    const v = trimmed.substring(idx + 1); // NÃO trim() no valor — preservar espaços/vazios
+    const v = trimmed.substring(idx + 1);
     if (k) vars[k] = v;
   });
   return vars;
@@ -55,60 +24,17 @@ function buildEnvStr(vars) {
   return Object.entries(vars).map(([k, v]) => `${k}=${v}`).join('\n');
 }
 
-async function lerEnvVarsAtuais(epUrl, epToken, epProject, epService) {
-  const base = epUrl.replace(/\/$/, '');
-  const tentativas = [
-    async () => {
-      const url = `${base}/api/trpc/services.app.inspectService?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, serviceName: epService } }))}`;
-      const resp = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, signal: AbortSignal.timeout(15000) });
-      const raw = JSON.parse(await resp.text());
-      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
-      return d?.env || d?.source?.env || d?.config?.env || null;
-    },
-    async () => {
-      const url = `${base}/api/trpc/services.app.inspectService?input=${encodeURIComponent(JSON.stringify({ projectName: epProject, serviceName: epService }))}`;
-      const resp = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, signal: AbortSignal.timeout(15000) });
-      const raw = JSON.parse(await resp.text());
-      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
-      return d?.env || d?.source?.env || d?.config?.env || null;
-    },
-    async () => {
-      const url = `${base}/api/trpc/services.app.inspectService`;
-      const resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, body: JSON.stringify({ json: { projectName: epProject, serviceName: epService } }), signal: AbortSignal.timeout(15000) });
-      const raw = JSON.parse(await resp.text());
-      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
-      return d?.env || d?.source?.env || d?.config?.env || null;
-    },
-    async () => {
-      const url = `${base}/api/trpc/apps.inspect?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, appName: epService } }))}`;
-      const resp = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, signal: AbortSignal.timeout(15000) });
-      const raw = JSON.parse(await resp.text());
-      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
-      return d?.env || d?.source?.env || null;
-    },
-    async () => {
-      const url = `${base}/api/trpc/services.getService?input=${encodeURIComponent(JSON.stringify({ json: { projectName: epProject, serviceName: epService } }))}`;
-      const resp = await fetch(url, { headers: { 'Content-Type': 'application/json', 'Authorization': epToken }, signal: AbortSignal.timeout(15000) });
-      const raw = JSON.parse(await resp.text());
-      const d = raw?.result?.data?.json ?? raw?.result?.data ?? raw;
-      return d?.env || d?.source?.env || d?.config?.env || null;
-    },
-  ];
-
-  for (let i = 0; i < tentativas.length; i++) {
-    try {
-      const envStr = await tentativas[i]();
-      if (envStr && typeof envStr === 'string' && envStr.trim().length > 10) {
-        const vars = parseEnvStr(envStr);
-        const qtd = Object.keys(vars).length;
-        console.log(`✅ Env lida na tentativa ${i + 1}: ${qtd} variáveis`);
-        if (qtd >= 5) return { envStr, vars };
-      }
-    } catch (e) {
-      console.warn(`⚠️ Tentativa ${i + 1} falhou: ${e.message}`);
-    }
-  }
-  return null;
+async function lerEnvViaListServices(epUrl, epToken, epProject, epService) {
+  const r = await fetch(`${epUrl.replace(/\/$/, '')}/api/rpc/projects/listProjectsAndServices`, {
+    headers: { 'Authorization': `Bearer ${epToken}` },
+    signal: AbortSignal.timeout(15000)
+  });
+  if (!r.ok) throw new Error(`listProjectsAndServices retornou ${r.status}`);
+  const data = await r.json();
+  const services = data?.json?.services || [];
+  const svc = services.find(s => s.name === epService && s.projectName === epProject);
+  if (!svc) throw new Error(`Serviço "${epService}" não encontrado no projeto "${epProject}". Serviços disponíveis: ${services.filter(s=>s.projectName===epProject).map(s=>s.name).join(', ')}`);
+  return svc.env || '';
 }
 
 Deno.serve(async (req) => {
@@ -129,27 +55,23 @@ Deno.serve(async (req) => {
       return Response.json({ success: false, error: 'Secrets do EasyPanel não configurados.' }, { status: 400 });
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    // MODO APENAS INSPECIONAR: retorna env atual sem modificar nada
-    // ──────────────────────────────────────────────────────────────────────
+    // MODO APENAS INSPECIONAR
     if (apenas_inspecionar) {
-      const resultado = await lerEnvVarsAtuais(epUrl, epToken, epProject, epService);
-      if (!resultado) return Response.json({ success: false, error: 'Não conseguiu ler env vars' });
+      const envStr = await lerEnvViaListServices(epUrl, epToken, epProject, epService);
+      const vars = parseEnvStr(envStr);
       return Response.json({
         success: true,
-        total_vars: Object.keys(resultado.vars).length,
+        total_vars: Object.keys(vars).length,
         vars_config_session: {
-          CONFIG_SESSION_PHONE_VERSION: resultado.vars['CONFIG_SESSION_PHONE_VERSION'] || null,
-          CONFIG_SESSION_PHONE_NAME: resultado.vars['CONFIG_SESSION_PHONE_NAME'] || null,
-          CONFIG_SESSION_PHONE_CLIENT: resultado.vars['CONFIG_SESSION_PHONE_CLIENT'] || null,
+          CONFIG_SESSION_PHONE_VERSION: vars['CONFIG_SESSION_PHONE_VERSION'] || null,
+          CONFIG_SESSION_PHONE_NAME: vars['CONFIG_SESSION_PHONE_NAME'] || null,
+          CONFIG_SESSION_PHONE_CLIENT: vars['CONFIG_SESSION_PHONE_CLIENT'] || null,
         },
-        env_preview: resultado.envStr.substring(0, 500) + '...',
+        env_preview: envStr.substring(0, 500) + '...',
       });
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    // PROTEÇÃO ANTI-LOOP
-    // ──────────────────────────────────────────────────────────────────────
+    // Proteção anti-loop
     const LOCK_KEY = 'easypanel_ultimo_restart';
     let lockId = null, ultimoRestart = null;
     try {
@@ -160,14 +82,11 @@ Deno.serve(async (req) => {
     if (!forcar && ultimoRestart) {
       const minutosPassados = (Date.now() - ultimoRestart.getTime()) / 60000;
       if (minutosPassados < 15) {
-        const restante = Math.ceil(15 - minutosPassados);
-        return Response.json({ success: false, bloqueado: true, error: `Anti-loop: último reinício há ${Math.floor(minutosPassados)} min. Aguarde ${restante} min ou use forcar=true.` });
+        return Response.json({ success: false, bloqueado: true, error: `Anti-loop: aguarde ${Math.ceil(15 - minutosPassados)} min ou use forcar=true.` });
       }
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    // BUSCAR VERSÃO MAIS RECENTE (se não informada)
-    // ──────────────────────────────────────────────────────────────────────
+    // Buscar versão mais recente se não informada
     let versaoAlvo = versao_nova;
     if (!versaoAlvo) {
       const FONTES = [
@@ -178,13 +97,16 @@ Deno.serve(async (req) => {
         if (versaoAlvo) break;
         try {
           const resp = await fetch(srcUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-            signal: AbortSignal.timeout(12000)
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            },
+            signal: AbortSignal.timeout(15000)
           });
           if (!resp.ok) continue;
           const html = await resp.text();
-          const matches = html.match(/(\d+\.\d+\.\d+[\d.]*(?:-[a-zA-Z0-9]+)?)/g) || [];
-          const versoes = matches.filter(v => v.startsWith('2.') && v.split('.').length >= 3);
+          const matches = html.match(/\b(2\.\d{3,4}\.\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?)\b/g) || [];
+          const versoes = [...new Set(matches)].filter(v => v.split('.').length >= 3);
           const numBase = (v) => v.replace(/-.*$/, '').split('.').map(Number);
           versoes.sort((a, b) => {
             const pa = numBase(a), pb = numBase(b);
@@ -197,6 +119,13 @@ Deno.serve(async (req) => {
           if (versoes.length > 0) { versaoAlvo = versoes[0]; console.log(`✅ Versão detectada: ${versaoAlvo}`); }
         } catch (e) { console.warn(`⚠️ Falha ao buscar em ${srcUrl}: ${e.message}`); }
       }
+      // Fallback GitHub
+      if (!versaoAlvo) {
+        try {
+          const gr = await fetch('https://raw.githubusercontent.com/nicekiwi/whatsapp-web-versions/main/versions.json', { signal: AbortSignal.timeout(8000) });
+          if (gr.ok) { const d = await gr.json(); if (Array.isArray(d) && d.length > 0) versaoAlvo = d[d.length - 1]; }
+        } catch (_) {}
+      }
     }
     if (!versaoAlvo) return Response.json({ success: false, error: 'Não foi possível detectar a versão mais recente.' }, { status: 400 });
 
@@ -207,104 +136,65 @@ Deno.serve(async (req) => {
       if (configs.length > 0) { versaoAnterior = configs[0].valor; versaoConfigId = configs[0].id; }
     } catch (_) {}
 
-    // ──────────────────────────────────────────────────────────────────────
-    // PASSO CRÍTICO: LER ENV VARS ATUAIS
-    // Se falhar → ABORTAR COMPLETAMENTE
-    // ──────────────────────────────────────────────────────────────────────
-    console.log('📖 Lendo env vars atuais do EasyPanel...');
-    const leituraAtual = await lerEnvVarsAtuais(epUrl, epToken, epProject, epService);
+    // PASSO CRÍTICO: ler env vars atuais
+    console.log(`📖 Lendo env vars do serviço "${epService}" projeto "${epProject}"...`);
+    const envStrAtual = await lerEnvViaListServices(epUrl, epToken, epProject, epService);
+    const envVarsAtuais = parseEnvStr(envStrAtual);
+    const totalAntes = Object.keys(envVarsAtuais).length;
+    console.log(`✅ ${totalAntes} variáveis lidas. CONFIG_SESSION_PHONE_VERSION atual: ${envVarsAtuais['CONFIG_SESSION_PHONE_VERSION'] || 'não definida'}`);
 
-    if (!leituraAtual) {
-      const msg = '🛑 ABORTADO: Não foi possível ler as variáveis de ambiente atuais. Operação cancelada para proteger o Evolution API.';
-      console.error(msg);
-      try {
-        await base44.asServiceRole.entities.LogVersaoWhatsApp.create({
-          versao_anterior: versaoAnterior, versao_nova: versaoAlvo,
-          acao: 'alerta_falha', sucesso: false, erro: msg
-        });
-      } catch (_) {}
-      return Response.json({ success: false, abortado: true, error: msg }, { status: 500 });
+    if (envVarsAtuais['CONFIG_SESSION_PHONE_VERSION'] === versaoAlvo && !forcar) {
+      return Response.json({ success: true, sem_mudanca: true, mensagem: `Versão ${versaoAlvo} já está configurada.`, versao_atual: versaoAlvo });
     }
 
-    const { vars: envVarsAtuais, envStr: envStrOriginal } = leituraAtual;
-    const totalVarsAntes = Object.keys(envVarsAtuais).length;
-    console.log(`✅ ${totalVarsAntes} variáveis lidas. Fazendo patch apenas nas CONFIG_SESSION_PHONE_*`);
-
-    // ──────────────────────────────────────────────────────────────────────
-    // PATCH: Atualizar SOMENTE as 3 variáveis de versão
-    // Todas as outras (~150 vars) são preservadas intactas
-    // ──────────────────────────────────────────────────────────────────────
-    const versaoAtualNoEasyPanel = envVarsAtuais['CONFIG_SESSION_PHONE_VERSION'];
-    if (versaoAtualNoEasyPanel === versaoAlvo && !forcar) {
-      return Response.json({
-        success: true,
-        sem_mudanca: true,
-        mensagem: `Versão ${versaoAlvo} já está configurada no EasyPanel. Use forcar=true para forçar.`,
-        versao_atual: versaoAtualNoEasyPanel
-      });
-    }
-
-    // Clonar vars e atualizar apenas as 3
+    // Patch: atualizar apenas as 3 variáveis de versão
     const envVarsNovo = { ...envVarsAtuais };
     envVarsNovo['CONFIG_SESSION_PHONE_VERSION'] = versaoAlvo;
     envVarsNovo['CONFIG_SESSION_PHONE_NAME'] = 'Chrome';
     envVarsNovo['CONFIG_SESSION_PHONE_CLIENT'] = 'Evolution API';
 
-    const totalVarsDepois = Object.keys(envVarsNovo).length;
-
-    // VERIFICAÇÃO DE SEGURANÇA: número de vars deve ser igual (só atualizamos, não removemos)
-    if (totalVarsDepois < totalVarsAntes) {
-      const msg = `🛑 ABORTADO: Verificação de segurança falhou. Antes: ${totalVarsAntes} vars, depois: ${totalVarsDepois} vars. Algo removeria variáveis.`;
-      console.error(msg);
-      return Response.json({ success: false, abortado: true, error: msg }, { status: 500 });
+    const totalDepois = Object.keys(envVarsNovo).length;
+    if (totalDepois < totalAntes) {
+      return Response.json({ success: false, abortado: true, error: `Segurança: antes=${totalAntes}, depois=${totalDepois}` }, { status: 500 });
     }
 
     const novaEnvStr = buildEnvStr(envVarsNovo);
 
-    // ──────────────────────────────────────────────────────────────────────
-    // SALVAR ENV ATUALIZADA NO EASYPANEL
-    // ──────────────────────────────────────────────────────────────────────
-    let easypanelAtualizou = false;
-    try {
-      await epPost(epUrl, epToken, '/api/trpc/services.app.updateEnv', {
-        projectName: epProject, serviceName: epService, env: novaEnvStr
-      });
-      easypanelAtualizou = true;
-      console.log(`✅ Env salva: ${totalVarsDepois} vars preservadas, CONFIG_SESSION_PHONE_VERSION=${versaoAlvo}`);
-    } catch (e) {
-      console.error('❌ updateEnv falhou:', e.message);
-      return Response.json({ success: false, error: `Falha ao salvar env no EasyPanel: ${e.message}` }, { status: 500 });
-    }
+    // Salvar env atualizada
+    const updateResp = await fetch(`${epUrl.replace(/\/$/, '')}/api/rpc/services/app/updateEnv`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${epToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ json: { projectName: epProject, serviceName: epService, env: novaEnvStr } }),
+      signal: AbortSignal.timeout(15000)
+    });
+    if (!updateResp.ok) throw new Error(`updateEnv falhou: ${updateResp.status} ${await updateResp.text()}`);
+    console.log(`✅ Env salva: ${totalDepois} vars, CONFIG_SESSION_PHONE_VERSION=${versaoAlvo}`);
 
-    // ──────────────────────────────────────────────────────────────────────
-    // DEPLOY/RESTART
-    // ──────────────────────────────────────────────────────────────────────
+    // Deploy
     let reiniciou = false;
     try {
-      await epPost(epUrl, epToken, '/api/trpc/services.app.deployService', {
-        projectName: epProject, serviceName: epService
+      const deployResp = await fetch(`${epUrl.replace(/\/$/, '')}/api/rpc/services/app/deployService`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${epToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ json: { projectName: epProject, serviceName: epService } }),
+        signal: AbortSignal.timeout(15000)
       });
-      reiniciou = true;
-      console.log('✅ Deploy iniciado');
-    } catch (e) {
-      console.error('❌ deployService falhou:', e.message);
-    }
+      reiniciou = deployResp.ok;
+      console.log(`✅ Deploy iniciado`);
+    } catch (e) { console.error('❌ deployService falhou:', e.message); }
 
     // Lock anti-loop
     if (reiniciou) {
       try {
         const agora = new Date().toISOString();
         if (lockId) await base44.asServiceRole.entities.ConfiguracaoSistema.update(lockId, { valor: agora });
-        else await base44.asServiceRole.entities.ConfiguracaoSistema.create({ chave: LOCK_KEY, valor: agora, descricao: 'Timestamp último restart EasyPanel (anti-loop)' });
+        else await base44.asServiceRole.entities.ConfiguracaoSistema.create({ chave: LOCK_KEY, valor: agora, descricao: 'Timestamp último restart EasyPanel' });
       } catch (_) {}
     }
 
-    // ──────────────────────────────────────────────────────────────────────
-    // AGUARDAR E VERIFICAR INSTÂNCIAS
-    // ──────────────────────────────────────────────────────────────────────
+    // Aguardar e verificar instâncias
     let statusInstancias = [];
     if (reiniciou) {
-      console.log('⏳ Aguardando serviço reiniciar (20s)...');
       await new Promise(r => setTimeout(r, 20000));
       const evolutionUrl = (Deno.env.get('EVOLUTION_API_URL') || '').replace(/\/$/, '');
       const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
@@ -325,9 +215,7 @@ Deno.serve(async (req) => {
           } catch (_) { if (t < 3) await new Promise(r => setTimeout(r, 5000)); }
         }
         for (const inst of statusInstancias.filter(i => !['open', 'connected', 'CONNECTED'].includes(i.status))) {
-          try {
-            await fetch(`${evolutionUrl}/instance/connect/${inst.nome}`, { headers: { 'apikey': evolutionKey }, signal: AbortSignal.timeout(10000) });
-          } catch (_) {}
+          try { await fetch(`${evolutionUrl}/instance/connect/${inst.nome}`, { headers: { 'apikey': evolutionKey }, signal: AbortSignal.timeout(10000) }); } catch (_) {}
         }
       }
     }
@@ -340,21 +228,21 @@ Deno.serve(async (req) => {
 
     const instConectadas = statusInstancias.filter(i => ['open', 'connected', 'CONNECTED'].includes(i.status));
 
-    // Log no banco
+    // Log
     try {
       await base44.asServiceRole.entities.LogVersaoWhatsApp.create({
         versao_anterior: versaoAnterior, versao_nova: versaoAlvo,
         precisou_reiniciar: reiniciou, instancias_reconectadas: instConectadas.length === statusInstancias.length && statusInstancias.length > 0,
-        acao: 'atualizacao_automatica', sucesso: easypanelAtualizou,
-        detalhes: JSON.stringify({ total_vars_preservadas: totalVarsDepois, reiniciou, instancias: statusInstancias }),
+        acao: 'atualizacao_automatica', sucesso: true,
+        detalhes: JSON.stringify({ total_vars_preservadas: totalDepois, reiniciou, instancias: statusInstancias }),
       });
     } catch (_) {}
 
-    // Notificar Telegram
+    // Telegram
     const tgToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
     const tgChat = Deno.env.get('TELEGRAM_CHAT_ID');
     if (tgToken && tgChat) {
-      const msg = `✅ *EasyPanel - Versão WhatsApp Atualizada*\n\n• Versão anterior: \`${versaoAnterior || 'N/A'}\`\n• Nova versão: \`${versaoAlvo}\`\n• Variáveis preservadas: ${totalVarsDepois}\n• Reiniciado: ${reiniciou ? '✅' : '❌'}\n• Instâncias online: ${instConectadas.length}/${statusInstancias.length}`;
+      const msg = `✅ *EasyPanel - Versão WhatsApp Atualizada*\n\n• Versão anterior: \`${versaoAnterior || 'N/A'}\`\n• Nova versão: \`${versaoAlvo}\`\n• Variáveis preservadas: ${totalDepois}\n• Reiniciado: ${reiniciou ? '✅' : '❌'}\n• Instâncias online: ${instConectadas.length}/${statusInstancias.length}`;
       await fetch(`https://api.telegram.org/bot${tgToken}/sendMessage`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chat_id: tgChat, text: msg, parse_mode: 'Markdown' })
@@ -365,7 +253,7 @@ Deno.serve(async (req) => {
       success: true,
       versao_anterior: versaoAnterior,
       versao_nova: versaoAlvo,
-      total_vars_preservadas: totalVarsDepois,
+      total_vars_preservadas: totalDepois,
       reiniciou,
       instancias: statusInstancias,
       instancias_conectadas: instConectadas.length,
