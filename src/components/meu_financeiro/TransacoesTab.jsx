@@ -196,11 +196,8 @@ export default function TransacoesTab({ user, refreshKey }) {
         </div>
       </div>
 
-      {/* Divisor */}
-      <div className="border-t border-slate-200 dark:border-slate-700 my-4" />
-
       {/* Busca */}
-      <div className="relative mb-3">
+      <div className="relative mt-3 mb-3">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
         <Input
           className="pl-9 h-8 text-sm rounded-lg bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
