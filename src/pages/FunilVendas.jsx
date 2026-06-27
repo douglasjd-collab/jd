@@ -661,40 +661,19 @@ export default function FunilVendas() {
       return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: false };
     },
 
-    onMutate: async ({ oportunidadeId, novaEtapaId }) => {
-      await queryClient.cancelQueries({ queryKey: ['oportunidades'] });
-      const previousOportunidades = queryClient.getQueryData(['oportunidades']);
-
-      queryClient.setQueryData(['oportunidades'], (old) => {
-        if (!old || !Array.isArray(old)) return old;
-        const etapaDestino = etapas.find(e => e.id === novaEtapaId);
-
-        return old.map(o => {
-          if (o.id !== oportunidadeId) return o;
-          return {
-            ...o,
-            etapa_id: novaEtapaId,
-            etapa_nome: etapaDestino?.nome || '',
-            data_ultima_movimentacao: new Date().toISOString(),
-            status:
-              etapaDestino?.tipo === 'ganho'
-                ? 'ganha'
-                : etapaDestino?.tipo === 'perdida'
-                ? 'perdida'
-                : 'aberta'
-          };
-        });
-      });
-
+    onMutate: async () => {
+      // Cancela refetches pendentes para não sobrescrever o estado otimista
+      await queryClient.cancelQueries({ queryKey: ['oportunidades', currentUser?.empresa_id] });
+      const previousOportunidades = queryClient.getQueryData(['oportunidades', currentUser?.empresa_id]);
       return { previousOportunidades };
     },
 
     onError: (error, variables, context) => {
       if (context?.previousOportunidades) {
-        queryClient.setQueryData(['oportunidades'], context.previousOportunidades);
+        queryClient.setQueryData(['oportunidades', currentUser?.empresa_id], context.previousOportunidades);
       }
       toast.error(error.message || 'Erro ao mover oportunidade');
-      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
+      queryClient.invalidateQueries({ queryKey: ['oportunidades', currentUser?.empresa_id] });
     },
 
     onSuccess: (data) => {
@@ -706,7 +685,7 @@ export default function FunilVendas() {
     },
   });
 
-  const handleDragEnd = async (result) => {
+  const handleDragEnd = (result) => {
     if (!result.destination) return;
     if (result.source.droppableId === result.destination.droppableId &&
         result.source.index === result.destination.index) return;
@@ -722,12 +701,26 @@ export default function FunilVendas() {
       return;
     }
 
-    try {
-      await moverOportunidadeMutation.mutateAsync({ oportunidadeId, novaEtapaId });
-    } catch (error) {
-      toast.error(`Erro: ${error.message}`);
-      queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
-    }
+    // Aplica otimisticamente no cache imediatamente (sem await)
+    const etapaDestino = etapas.find(e => e.id === novaEtapaId);
+    queryClient.setQueryData(['oportunidades', currentUser?.empresa_id], (old) => {
+      if (!old || !Array.isArray(old)) return old;
+      return old.map(o => {
+        if (o.id !== oportunidadeId) return o;
+        return {
+          ...o,
+          etapa_id: novaEtapaId,
+          etapa_nome: etapaDestino?.nome || '',
+          data_ultima_movimentacao: new Date().toISOString(),
+          status:
+            etapaDestino?.tipo === 'ganho' ? 'ganha' :
+            etapaDestino?.tipo === 'perdida' ? 'perdida' : 'aberta'
+        };
+      });
+    });
+
+    // Chama API em background sem bloquear
+    moverOportunidadeMutation.mutate({ oportunidadeId, novaEtapaId });
   };
 
   const handleSubmit = async () => {
