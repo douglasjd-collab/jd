@@ -44,7 +44,8 @@ import {
   XCircle,
   AlertCircle,
   Eye,
-  EyeOff
+  EyeOff,
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -57,6 +58,8 @@ export default function ConfiguracaoWhatsApp() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [qrCodeImage, setQrCodeImage] = useState(null);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [sessionStatus, setSessionStatus] = useState(null);
+  const [pollingInterval, setPollingInterval] = useState(null);
   const [formData, setFormData] = useState({
     nome: '',
     provider_type: 'dapi',
@@ -158,7 +161,7 @@ export default function ConfiguracaoWhatsApp() {
       try {
         const response = await base44.functions.invoke('whatsappService', {
           connectionId,
-          action: 'health'
+          action: 'healthCheck'
         });
         return response.data;
       } finally {
@@ -166,10 +169,12 @@ export default function ConfiguracaoWhatsApp() {
       }
     },
     onSuccess: (data) => {
-      if (data.success) {
-        toast.success('Conexão com D-API realizada com sucesso!');
+      console.log('Health check result:', data);
+      if (data.success && data.data?.success) {
+        toast.success('D-API online e respondendo corretamente!');
       } else {
-        toast.error('Erro ao conectar com D-API: ' + (data.error || 'Erro desconhecido'));
+        const errorMsg = data.data?.error || data.data?.responseData?.message || data.error || 'Erro desconhecido';
+        toast.error('Erro ao testar conexão: ' + errorMsg);
       }
       refetch();
     },
@@ -187,8 +192,15 @@ export default function ConfiguracaoWhatsApp() {
       });
       return response.data;
     },
-    onSuccess: () => {
-      toast.success('Sessão criada com sucesso!');
+    onSuccess: (data) => {
+      console.log('Create session result:', data);
+      if (data.success) {
+        const msg = data.data?.exists ? 'Sessão já existe' : 'Sessão criada com sucesso!';
+        toast.success(msg);
+      } else {
+        const errorMsg = data.data?.error || data.data?.responseData?.message || data.error || 'Erro desconhecido';
+        toast.error('Erro ao criar sessão: ' + errorMsg);
+      }
       refetch();
     },
     onError: (error) => {
@@ -205,11 +217,14 @@ export default function ConfiguracaoWhatsApp() {
       return response.data;
     },
     onSuccess: (data) => {
-      if (data.success && data.base64) {
-        setQrCodeImage(data.base64);
+      console.log('Get QR result:', data);
+      if (data.success && (data.base64 || data.qrCode)) {
+        // Se vier como base64 direto ou precisar converter
+        setQrCodeImage(data.base64 || `data:image/png;base64,${data.qrCode}`);
         setQrDialogOpen(true);
       } else {
-        toast.error(data.message || 'Erro ao obter QR Code');
+        const errorMsg = data.message || 'QR Code não disponível. Sessão pode estar conectada ou expirada.';
+        toast.error(errorMsg);
       }
       refetch();
     },
@@ -226,12 +241,37 @@ export default function ConfiguracaoWhatsApp() {
       });
       return response.data;
     },
-    onSuccess: () => {
-      toast.success('Conexão desconectada com sucesso!');
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success('Conexão desconectada com sucesso!');
+      } else {
+        toast.error('Erro ao desconectar: ' + (data.data?.error || data.error || 'Erro desconhecido'));
+      }
       refetch();
     },
     onError: (error) => {
       toast.error('Erro ao desconectar: ' + error.message);
+    }
+  });
+
+  const reconnectMutation = useMutation({
+    mutationFn: async (connectionId) => {
+      const response = await base44.functions.invoke('whatsappService', {
+        connectionId,
+        action: 'reconnect'
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success('Sessão reconectando...');
+      } else {
+        toast.error('Erro ao reconectar: ' + (data.data?.error || data.error || 'Erro desconhecido'));
+      }
+      refetch();
+    },
+    onError: (error) => {
+      toast.error('Erro ao reconectar: ' + error.message);
     }
   });
 
@@ -292,6 +332,31 @@ export default function ConfiguracaoWhatsApp() {
 
   const handleGetQrCode = (connectionId) => {
     getQrCodeMutation.mutate(connectionId);
+    // Iniciar polling de status
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
+    const interval = setInterval(async () => {
+      try {
+        const response = await base44.functions.invoke('whatsappService', {
+          connectionId,
+          action: 'getStatus'
+        });
+        const statusData = response.data;
+        setSessionStatus(statusData.data);
+        
+        // Se conectou, parar polling e fechar modal
+        if (statusData.connected) {
+          clearInterval(interval);
+          toast.success('WhatsApp conectado com sucesso!');
+          setQrDialogOpen(false);
+          refetch();
+        }
+      } catch (error) {
+        console.error('Erro ao verificar status:', error);
+      }
+    }, 3000); // Verificar a cada 3 segundos
+    setPollingInterval(interval);
   };
 
   const handleDisconnect = (connectionId) => {
@@ -299,6 +364,19 @@ export default function ConfiguracaoWhatsApp() {
       disconnectMutation.mutate(connectionId);
     }
   };
+
+  const handleReconnect = (connectionId) => {
+    reconnectMutation.mutate(connectionId);
+  };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
 
   const getStatusBadge = (status) => {
     const statusConfig = {
@@ -403,6 +481,14 @@ export default function ConfiguracaoWhatsApp() {
                           title="Testar conexão"
                         >
                           <Zap className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleReconnect(connection.id)}
+                          title="Reiniciar sessão"
+                        >
+                          <RefreshCw className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -572,10 +658,16 @@ export default function ConfiguracaoWhatsApp() {
       </Dialog>
 
       {/* Dialog QR Code */}
-      <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
+      <Dialog open={qrDialogOpen} onOpenChange={(open) => {
+        setQrDialogOpen(open);
+        if (!open && pollingInterval) {
+          clearInterval(pollingInterval);
+          setPollingInterval(null);
+        }
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>QR Code - {selectedConnection?.nome}</DialogTitle>
+            <DialogTitle>Conectar WhatsApp</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center justify-center p-4">
             {qrCodeImage ? (
@@ -585,11 +677,34 @@ export default function ConfiguracaoWhatsApp() {
                 <Loader2 className="w-8 h-8 animate-spin" />
               </div>
             )}
+            
+            {/* Status da sessão */}
+            {sessionStatus && (
+              <div className="mt-4 w-full">
+                <Badge className={sessionStatus.connected ? 'bg-green-500' : 'bg-yellow-500'}>
+                  {sessionStatus.connected ? 'Conectado' : sessionStatus.dapiStatus || 'Aguardando...'}
+                </Badge>
+                {sessionStatus.phoneNumber && (
+                  <p className="text-xs text-slate-600 mt-2">
+                    Telefone: {sessionStatus.phoneNumber}
+                  </p>
+                )}
+              </div>
+            )}
+            
             <p className="text-sm text-slate-600 mt-4 text-center">
-              Escaneie o QR Code com o WhatsApp do seu celular
+              Abra o WhatsApp &gt; Aparelhos conectados &gt; Conectar aparelho
             </p>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => handleGetQrCode(selectedConnection?.id)}
+              disabled={!qrCodeImage}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Atualizar QR Code
+            </Button>
             <Button onClick={() => setQrDialogOpen(false)}>
               Fechar
             </Button>

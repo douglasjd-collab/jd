@@ -59,55 +59,230 @@ Deno.serve(async (req) => {
       },
       
       async healthCheck() {
+        const startTime = Date.now();
         const url = `${this.baseUrl}/health`;
         const headers = { 'Authorization': this.apiKey };
         
-        const response = await fetch(url, { method: 'GET', headers });
-        const responseTime = Date.now();
-        
-        return {
-          success: response.ok,
-          status: response.ok ? 'ok' : 'error',
-          responseTime
-        };
+        try {
+          const response = await fetch(url, { method: 'GET', headers });
+          const responseData = await response.json().catch(() => ({}));
+          const responseTime = Date.now() - startTime;
+          
+          return {
+            success: response.ok,
+            status: response.ok ? 'ok' : 'error',
+            responseTime,
+            httpStatus: response.status,
+            responseData,
+            endpoint: url
+          };
+        } catch (error) {
+          return {
+            success: false,
+            status: 'error',
+            error: error.message,
+            endpoint: url,
+            responseTime: Date.now() - startTime
+          };
+        }
       },
       
       async createSession(webhookUrl) {
+        const startTime = Date.now();
+        
+        // Primeiro, verificar se a sessão já existe
+        try {
+          const statusResponse = await fetch(`${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}/status`, {
+            method: 'GET',
+            headers: { 'Authorization': this.apiKey }
+          });
+          
+          // Se a sessão existe e está conectada, retornar sucesso
+          if (statusResponse.ok) {
+            const statusData = await statusResponse.json().catch(() => ({}));
+            return {
+              success: true,
+              message: 'Sessão já existe',
+              exists: true,
+              status: statusData,
+              responseTime: Date.now() - startTime
+            };
+          }
+        } catch (error) {
+          // Sessão não existe, vamos criar
+          console.log('Sessão não existe, criando nova sessão');
+        }
+        
+        // Criar nova sessão
         const payload = {
           sessionId: this.sessionId,
           connectionMode: 'qr',
           webhookUrl
         };
         
-        return await this.request('/api/v1/sessions', 'POST', payload);
+        const url = `${this.baseUrl}/api/v1/sessions`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': this.apiKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const responseData = await response.json().catch(() => ({}));
+        const responseTime = Date.now() - startTime;
+        
+        if (!response.ok) {
+          return {
+            success: false,
+            error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
+            endpoint: url,
+            payload,
+            responseData,
+            responseTime
+          };
+        }
+        
+        return {
+          success: true,
+          message: 'Sessão criada com sucesso',
+          exists: false,
+          data: responseData,
+          responseTime
+        };
       },
       
       async getQrCode() {
+        const startTime = Date.now();
+        const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}/qr?image=1`;
+        
         try {
-          const response = await this.request(`/api/v1/sessions/${this.sessionId}/qr`);
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Authorization': this.apiKey }
+          });
           
-          if (response.qrCode) {
+          const responseData = await response.json().catch(() => ({}));
+          const responseTime = Date.now() - startTime;
+          
+          if (!response.ok) {
+            return {
+              success: false,
+              error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
+              endpoint: url,
+              responseData,
+              responseTime
+            };
+          }
+          
+          // D-API retorna o QR Code em diferentes formatos
+          const qrCodeBase64 = responseData.qrCodeBase64 || responseData.qrCode || responseData.base64 || responseData.image;
+          const qrCodeText = responseData.qrCode || responseData.text;
+          
+          if (qrCodeBase64 || qrCodeText) {
             return {
               success: true,
-              qrCode: response.qrCode,
-              base64: response.qrCodeBase64 || response.qrCode
+              qrCode: qrCodeText,
+              base64: qrCodeBase64,
+              responseTime,
+              endpoint: url,
+              responseData
             };
           }
           
           return {
             success: false,
-            message: 'QR Code não disponível. Sessão pode estar conectada.'
+            message: 'QR Code não disponível. Sessão pode estar conectada ou expirada.',
+            responseData,
+            responseTime
           };
         } catch (error) {
           return {
             success: false,
-            message: error.message
+            error: error.message,
+            endpoint: url,
+            responseTime: Date.now() - startTime
           };
         }
       },
       
       async disconnect() {
-        return await this.request(`/api/v1/sessions/${this.sessionId}/disconnect`, 'POST');
+        const startTime = Date.now();
+        const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}/disconnect`;
+        
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Authorization': this.apiKey }
+          });
+          
+          const responseData = await response.json().catch(() => ({}));
+          const responseTime = Date.now() - startTime;
+          
+          if (!response.ok) {
+            return {
+              success: false,
+              error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
+              endpoint: url,
+              responseData,
+              responseTime
+            };
+          }
+          
+          return {
+            success: true,
+            message: 'Sessão desconectada com sucesso',
+            data: responseData,
+            responseTime
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: error.message,
+            endpoint: url,
+            responseTime: Date.now() - startTime
+          };
+        }
+      },
+      
+      async reconnect() {
+        const startTime = Date.now();
+        const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}/reconnect`;
+        
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Authorization': this.apiKey }
+          });
+          
+          const responseData = await response.json().catch(() => ({}));
+          const responseTime = Date.now() - startTime;
+          
+          if (!response.ok) {
+            return {
+              success: false,
+              error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
+              endpoint: url,
+              responseData,
+              responseTime
+            };
+          }
+          
+          return {
+            success: true,
+            message: 'Sessão reconectando',
+            data: responseData,
+            responseTime
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: error.message,
+            endpoint: url,
+            responseTime: Date.now() - startTime
+          };
+        }
       },
       
       async sendText(phoneNumber, text) {
@@ -174,18 +349,58 @@ Deno.serve(async (req) => {
       },
       
       async getStatus() {
+        const startTime = Date.now();
+        const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}/status`;
+        
         try {
-          const response = await this.request(`/api/v1/sessions/${this.sessionId}/status`);
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Authorization': this.apiKey }
+          });
+          
+          const responseData = await response.json().catch(() => ({}));
+          const responseTime = Date.now() - startTime;
+          
+          if (!response.ok) {
+            return {
+              connected: false,
+              status: 'erro',
+              error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
+              endpoint: url,
+              responseData,
+              responseTime
+            };
+          }
+          
+          // Mapear status da D-API para status do CRM
+          const dapiStatus = responseData.status || responseData.state || 'unknown';
+          const isConnected = responseData.connected === true || dapiStatus === 'connected' || dapiStatus === 'open';
+          
+          let crmStatus = 'desconectado';
+          if (isConnected) {
+            crmStatus = 'conectado';
+          } else if (dapiStatus === 'qr' || dapiStatus === 'waiting_for_qr') {
+            crmStatus = 'aguardando_qr';
+          } else if (dapiStatus === 'connecting') {
+            crmStatus = 'reiniciando';
+          }
+          
           return {
-            connected: response.connected || false,
-            status: response.connected ? 'conectado' : 'desconectado',
-            data: response
+            connected: isConnected,
+            status: crmStatus,
+            dapiStatus,
+            phoneNumber: responseData.phoneNumber || responseData.phone || null,
+            data: responseData,
+            responseTime,
+            endpoint: url
           };
         } catch (error) {
           return {
             connected: false,
             status: 'erro',
-            error: error.message
+            error: error.message,
+            endpoint: url,
+            responseTime: Date.now() - startTime
           };
         }
       }
@@ -212,6 +427,10 @@ Deno.serve(async (req) => {
         
       case 'disconnect':
         result = await adapter.disconnect();
+        break;
+        
+      case 'reconnect':
+        result = await adapter.reconnect();
         break;
         
       case 'sendText':
