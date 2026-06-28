@@ -5,22 +5,26 @@ import { createClient } from 'npm:@base44/sdk@0.8.31';
  * 
  * Endpoint: POST /functions/receberWebhookDapi
  * 
- * Eventos esperados da D-API:
+ * Eventos suportados:
  * - connection.status - Mudança de status da conexão
  * - connection.qrcode - QR Code gerado/atualizado
  * - logged_out - Sessão deslogada
  * - messages.received - Mensagem recebida
  * - messages.sent - Mensagem enviada
+ * - message.read - Mensagem lida
+ * - message.delivered - Mensagem entregue
+ * - message.update - Atualização de mensagem
+ * - message.deleted - Mensagem apagada
+ * - contacts.upsert - Contato criado/atualizado
+ * - contacts.update - Contato atualizado
+ * - chats.upsert - Chat criado
+ * - chats.update - Chat atualizado
  * 
  * Estrutura do webhook:
  * {
  *   "event": "connection.status",
  *   "sessionId": "CRM JD",
- *   "data": {
- *     "status": "connected",
- *     "phone": "5511999999999",
- *     "profileName": "Nome do Perfil"
- *   },
+ *   "data": { ... },
  *   "timestamp": "2026-06-28T10:00:00Z",
  *   "traceId": "abc123"
  * }
@@ -29,7 +33,6 @@ import { createClient } from 'npm:@base44/sdk@0.8.31';
 Deno.serve(async (req) => {
   try {
     // Não requer autenticação de usuário - é um webhook público
-    // Validação por API Key no header (opcional, configurável na D-API)
     const base44 = createClient({
       appUrl: Deno.env.get('BASE44_APP_URL'),
       serviceRole: true
@@ -42,7 +45,8 @@ Deno.serve(async (req) => {
       event,
       sessionId,
       timestamp,
-      traceId
+      traceId,
+      dataType: typeof data
     });
     
     // Buscar conexão pelo session_id

@@ -48,9 +48,42 @@ Deno.serve(async (req) => {
     }
     
     // D-API Adapter - endpoints oficiais
+    // Descriptografar API Key (armazenada em base64)
+    let apiKeyDecrypted = connection.api_key_encrypted;
+    try {
+      // Tentar descriptografar se estiver em base64
+      const decoded = atob(connection.api_key_encrypted);
+      // Validar se é UUID válido (36 chars, formato xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+      if (decoded && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decoded.trim())) {
+        apiKeyDecrypted = decoded.trim();
+        console.log('✅ API Key descriptografada com sucesso');
+      } else {
+        // Se não for UUID válido, usar o valor original (pode já estar em texto claro)
+        apiKeyDecrypted = connection.api_key_encrypted.trim();
+        console.log('ℹ️ API Key não parece estar em base64, usando valor original');
+      }
+    } catch (error) {
+      // Se falhar descriptografia, usar valor original
+      apiKeyDecrypted = connection.api_key_encrypted.trim();
+      console.log('⚠️ Erro ao descriptografar API Key, usando valor original:', error.message);
+    }
+    
+    // Logs seguros para diagnóstico
+    const apiKeyLength = apiKeyDecrypted.length;
+    const apiKeyLast4 = apiKeyDecrypted.substring(apiKeyDecrypted.length - 4);
+    const apiKeyHasSpaces = apiKeyDecrypted.includes(' ');
+    const authorizationHeaderMasked = `****${apiKeyLast4}`;
+    
+    console.log('🔐 Diagnóstico API Key:', {
+      api_key_length: apiKeyLength,
+      api_key_last4: apiKeyLast4,
+      api_key_has_spaces: apiKeyHasSpaces,
+      authorization_header_masked: authorizationHeaderMasked
+    });
+    
     const adapter = {
       baseUrl: connection.base_url || 'https://api.d-api.cloud',
-      apiKey: connection.api_key_encrypted,
+      apiKey: apiKeyDecrypted,
       sessionId: connection.session_id || 'CRM JD',
       
       // Request genérico com tratamento de erro padrão
@@ -120,9 +153,15 @@ Deno.serve(async (req) => {
         }
       },
       
-      // Criar sessão - POST /api/v1/sessions
+      // Criar sessão - POST /api/v1/sessions com webhookConfig completo
       async createSession(webhookUrl) {
         const startTime = Date.now();
+        
+        console.log('🔧 Criando sessão D-API:', {
+          sessionId: this.sessionId,
+          webhookUrl,
+          baseUrl: this.baseUrl
+        });
         
         // Primeiro verificar se sessão existe usando endpoint oficial
         try {
@@ -133,29 +172,148 @@ Deno.serve(async (req) => {
           
           if (sessionResponse.ok) {
             const sessionData = await sessionResponse.json().catch(() => ({}));
+            console.log('✅ Sessão já existe:', sessionData);
             return {
               success: true,
               message: 'Sessão já existe',
               exists: true,
-              status: this.normalizeStatus(sessionData),
+              status: sessionData.session?.status || 'unknown',
               data: sessionData,
               responseTime: Date.now() - startTime
             };
           }
         } catch (error) {
-          console.log('Sessão não existe, criando nova sessão');
+          console.log('ℹ️ Sessão não existe, criando nova sessão');
         }
         
-        // Criar nova sessão conforme documentação oficial
+        // Criar nova sessão conforme orientação oficial do suporte D-API
         const sessionPayload = {
           sessionId: this.sessionId,
-          type: 'unofficial',
           connectionMode: 'qr',
-          provider: 'whatsmeow',
-          webhookUrl: webhookUrl || undefined
+          webhookUrl: webhookUrl || undefined,
+          webhookConfig: {
+            enabled: true,
+            type: 'single',
+            events: {
+              'messages.received': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              },
+              'messages.sent': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              },
+              'message.read': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              },
+              'message.delivered': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              },
+              'message.update': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              },
+              'message.deleted': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              },
+              'contacts.upsert': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              },
+              'contacts.update': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              },
+              'chats.upsert': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              },
+              'chats.update': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              },
+              'logged_out': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              },
+              'connection.qrcode': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              },
+              'connection.status': {
+                enabled: true,
+                webhookUrl: webhookUrl
+              }
+            }
+          },
+          ignoreGroups: true,
+          ignoreStatus: true,
+          historySync: true
         };
         
-        return await this.request('/api/v1/sessions', 'POST', sessionPayload);
+        console.log('📦 Payload de criação:', JSON.stringify(sessionPayload, null, 2));
+        
+        // POST /api/v1/sessions
+        const url = `${this.baseUrl}/api/v1/sessions`;
+        const headers = {
+          'Authorization': this.apiKey,
+          'Content-Type': 'application/json'
+        };
+        
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(sessionPayload)
+          });
+          
+          const responseData = await response.json().catch(() => ({}));
+          const responseTime = Date.now() - startTime;
+          
+          console.log('📡 Resposta D-API:', {
+            status: response.status,
+            ok: response.ok,
+            traceId: responseData.traceId,
+            data: responseData
+          });
+          
+          if (!response.ok) {
+            return {
+              success: false,
+              error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
+              endpoint: url,
+              httpStatus: response.status,
+              traceId: responseData.traceId,
+              responseData,
+              responseTime,
+              payloadSent: sessionPayload
+            };
+          }
+          
+          return {
+            success: true,
+            message: 'Sessão criada com sucesso',
+            exists: false,
+            data: responseData,
+            session: responseData.session,
+            responseTime,
+            endpoint: url,
+            httpStatus: response.status,
+            traceId: responseData.traceId,
+            payloadSent: sessionPayload
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: error.message,
+            endpoint: url,
+            responseTime: Date.now() - startTime,
+            payloadSent: sessionPayload
+          };
+        }
       },
       
       // Obter QR Code - GET /api/v1/sessions/{sessionId}/qr

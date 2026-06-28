@@ -393,12 +393,50 @@ export default function ConfiguracaoWhatsApp() {
   };
 
   const handleCreateSession = (connection) => {
-    const webhookUrl = `${window.location.origin}/api/webhooks/whatsapp/d-api/${connection.id}`;
+    // URL pública do webhook do CRM para receber eventos da D-API
+    const webhookUrl = `${window.location.origin}/functions/receberWebhookDapi`;
+    
+    console.log('🔗 Criando sessão com webhook:', {
+      connectionId: connection.id,
+      connectionNome: connection.nome,
+      sessionId: connection.session_id,
+      webhookUrl
+    });
+    
     createSessionMutation.mutate({ connectionId: connection.id, webhookUrl });
   };
 
-  const handleGetQrCode = (connectionId) => {
+  const handleGetQrCode = async (connectionId) => {
+    // Primeiro verificar status para ver se sessão existe
+    try {
+      const statusResponse = await base44.functions.invoke('whatsappService', {
+        connectionId,
+        action: 'getStatus'
+      });
+      
+      const statusData = statusResponse.data;
+      
+      // Se sessão não existe (404 ou erro), criar primeiro
+      if (!statusData.success || statusData.httpStatus === 404) {
+        console.log('⚠️ Sessão não existe, criando...');
+        const connection = connections.find(c => c.id === connectionId);
+        if (connection) {
+          const webhookUrl = `${window.location.origin}/functions/receberWebhookDapi`;
+          await base44.functions.invoke('whatsappService', {
+            connectionId,
+            action: 'createSession',
+            webhookUrl
+          });
+          toast.success('Sessão criada! Gerando QR Code...');
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar status:', error);
+    }
+    
+    // Agora buscar QR Code
     getQrCodeMutation.mutate(connectionId);
+    
     // Iniciar polling de status
     if (pollingInterval) {
       clearInterval(pollingInterval);
