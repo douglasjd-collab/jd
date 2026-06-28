@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import {
@@ -43,14 +43,107 @@ export default function ChatHeader({
   coachIAOpen,
   setCoachIAOpen,
 }) {
-  // Canal override local: permite que o usuário troque o canal sem ser revertido pelo polling
-  const [canalOverride, setCanalOverride] = React.useState(null);
-  const [fotoModalOpen, setFotoModalOpen] = React.useState(false);
+  const [canalOverride, setCanalOverride] = useState(null);
+  const [fotoModalOpen, setFotoModalOpen] = useState(false);
+  const [conexoesAtivas, setConexoesAtivas] = useState([]);
+  const [conexaoDapiAtiva, setConexaoDapiAtiva] = useState(null);
+  const [ehDapi, setEhDapi] = useState(false);
+
+  // Buscar conexões ativas ao montar
+  useEffect(() => {
+    if (!empresaId) return;
+    
+    const buscarConexoes = async () => {
+      try {
+        const todas = await base44.entities.WhatsappConnection.filter({
+          empresa_id: empresaId,
+          is_active: true
+        }, '-created_date', 50);
+        
+        setConexoesAtivas(todas || []);
+        
+        const dapi = todas.find(c => c.provider_type === 'dapi' && c.is_active);
+        setConexaoDapiAtiva(dapi || null);
+      } catch (e) {
+        console.error('Erro ao buscar conexões:', e.message);
+      }
+    };
+    
+    buscarConexoes();
+  }, [empresaId]);
+
+  // Verificar se conversa atual é D-API
+  useEffect(() => {
+    if (!conversaSelecionada) {
+      setEhDapi(false);
+      return;
+    }
+    
+    const isDapi = 
+      conversaSelecionada.provider === 'dapi' ||
+      conversaSelecionada.provider_type === 'dapi' ||
+      conversaSelecionada.tipo_conexao === 'dapi' ||
+      (conversaSelecionada.connection_id && conexaoDapiAtiva?.id === conversaSelecionada.connection_id);
+    
+    setEhDapi(isDapi);
+  }, [conversaSelecionada, conexaoDapiAtiva]);
 
   // Resetar override ao trocar de conversa
-  React.useEffect(() => {
+  useEffect(() => {
     setCanalOverride(null);
   }, [conversaSelecionada?.id]);
+
+  // Alternar para uma conexão específica
+  const alternarParaConexao = async (conexao) => {
+    if (!conexao) return;
+    
+    const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
+    if (!isAdmin) {
+      toast.error('Apenas administradores podem alterar o canal de atendimento');
+      return;
+    }
+    
+    try {
+      const updateData = {
+        connection_id: conexao.id,
+        provider_type: conexao.provider_type,
+        locked_provider: true,
+      };
+      
+      if (conexao.provider_type === 'dapi') {
+        updateData.tipo_conexao = 'dapi';
+        updateData.canal_origem = 'dapi';
+        updateData.provider = 'dapi';
+        updateData.instancia = conexao.session_id || 'D-API';
+      } else if (conexao.provider_type === 'meta_oficial') {
+        updateData.tipo_conexao = 'meta_oficial';
+        updateData.canal_origem = 'meta';
+        updateData.provider = 'whatsapp_meta';
+        updateData.instancia = 'META_OFICIAL';
+      } else if (conexao.provider_type === 'evolution') {
+        updateData.tipo_conexao = 'empresa';
+        updateData.canal_origem = 'evolution';
+        updateData.provider = 'evolution';
+        updateData.instancia = conexao.session_id || conexao.nome || '';
+      }
+      
+      await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, updateData);
+      
+      setConversaSelecionada(prev => ({
+        ...prev,
+        ...updateData,
+      }));
+      
+      setCanalOverride(updateData.tipo_conexao);
+      
+      toast.success(`Canal alterado para ${conexao.provider_type === 'dapi' ? `D-API - ${conexao.nome || conexao.session_id}` : conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' : `Evolution - ${conexao.nome || conexao.session_id}`}`);
+      
+      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+    } catch (e) {
+      console.error('Erro ao alternar canal:', e);
+      toast.error('Erro ao alternar canal: ' + e.message);
+    }
+  };
 
   if (!conversaSelecionada) return null;
 
@@ -59,14 +152,10 @@ export default function ChatHeader({
     conversaSelecionada.instancia === 'INSTAGRAM' ||
     String(conversaSelecionada.cliente_telefone || '').startsWith('ig_');
 
-  // ── CANAL FIXO: lido do banco, NÃO recalculado ──────────────────────────
-  // Prioridade: 1) override manual local, 2) provider (mais confiável), 3) canal_origem, 4) campos legados
   const providerBanco = conversaSelecionada.provider || null;
   const canalOrigemBanco = conversaSelecionada.canal_origem || null;
-
-  // Override local só se usuário trocou manualmente
   const tipoConexaoEfetivo = canalOverride || conversaSelecionada.tipo_conexao;
-
+  
   const ehMeta =
     !ehInstagram && (
       canalOverride === 'meta_oficial' ||
@@ -77,34 +166,6 @@ export default function ChatHeader({
         conversaSelecionada.instancia === 'META_OFICIAL'
       ))
     );
-
-  // Troca MANUAL de canal — única forma legítima de alterar canal_origem
-  const alternarApi = async () => {
-    if (ehMeta) {
-      setCanalOverride('empresa');
-      await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
-        tipo_conexao: 'empresa', instancia: '',
-        canal_origem: 'evolution', provider: 'evolution', locked_provider: true
-      });
-      setConversaSelecionada(prev => ({
-        ...prev, tipo_conexao: 'empresa', instancia: '',
-        canal_origem: 'evolution', provider: 'evolution'
-      }));
-      toast.success('Alterado para Evolution API');
-    } else {
-      setCanalOverride('meta_oficial');
-      await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
-        tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL',
-        canal_origem: 'meta', provider: 'whatsapp_meta', locked_provider: true
-      });
-      setConversaSelecionada(prev => ({
-        ...prev, tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL',
-        canal_origem: 'meta', provider: 'whatsapp_meta'
-      }));
-      toast.success('Alterado para API Oficial Meta');
-    }
-    queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-  };
 
   const contatoAtual = contatosWhatsapp[conversaSelecionada?.id];
   const tagsDoContato = tagsDB.filter(t => (contatoAtual?.tags_ids || []).includes(t.id));
@@ -164,24 +225,102 @@ export default function ChatHeader({
                   <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
                   Instagram
                 </span>
+              ) : ehDapi && conexaoDapiAtiva ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      title={`Respondendo via D-API - ${conexaoDapiAtiva.nome || conexaoDapiAtiva.session_id} — clique para trocar`}
+                      className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 bg-cyan-600"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
+                      D-API - {conexaoDapiAtiva.nome || conexaoDapiAtiva.session_id}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" side="bottom" className="z-[200]">
+                    {conexoesAtivas
+                      .filter(c => c.is_active)
+                      .map((conexao) => (
+                        <DropdownMenuItem
+                          key={conexao.id}
+                          onClick={() => alternarParaConexao(conexao)}
+                          className="cursor-pointer"
+                        >
+                          {conexao.provider_type === 'dapi' && '🟦'}
+                          {conexao.provider_type === 'meta_oficial' && '🟢'}
+                          {conexao.provider_type === 'evolution' && '🟣'}
+                          {' '}
+                          {conexao.provider_type === 'dapi' ? `D-API - ${conexao.nome || conexao.session_id}` :
+                           conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' :
+                           `${conexao.provider_type.toUpperCase()} - ${conexao.nome || conexao.session_id}`}
+                          {conexao.id === conversaSelecionada.connection_id && ' ✓'}
+                        </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : ehMeta ? (
-                <button
-                  onClick={alternarApi}
-                  title="Respondendo via Meta Oficial — clique para trocar para Evolution"
-                  className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 bg-green-500"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
-                  Meta Oficial
-                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      title="Respondendo via Meta Oficial — clique para trocar"
+                      className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 bg-green-500"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
+                      Meta Oficial
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" side="bottom" className="z-[200]">
+                    {conexoesAtivas
+                      .filter(c => c.is_active)
+                      .map((conexao) => (
+                        <DropdownMenuItem
+                          key={conexao.id}
+                          onClick={() => alternarParaConexao(conexao)}
+                          className="cursor-pointer"
+                        >
+                          {conexao.provider_type === 'dapi' && '🟦'}
+                          {conexao.provider_type === 'meta_oficial' && '🟢'}
+                          {conexao.provider_type === 'evolution' && '🟣'}
+                          {' '}
+                          {conexao.provider_type === 'dapi' ? `D-API - ${conexao.nome || conexao.session_id}` :
+                           conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' :
+                           `${conexao.provider_type.toUpperCase()} - ${conexao.nome || conexao.session_id}`}
+                          {conexao.id === conversaSelecionada.connection_id && ' ✓'}
+                        </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
-                <button
-                  onClick={alternarApi}
-                  title="Respondendo via Evolution — clique para trocar para Meta Oficial"
-                  className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 bg-blue-500"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
-                  Evolution
-                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      title="Respondendo via Evolution — clique para trocar"
+                      className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 bg-blue-500"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
+                      Evolution
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" side="bottom" className="z-[200]">
+                    {conexoesAtivas
+                      .filter(c => c.is_active)
+                      .map((conexao) => (
+                        <DropdownMenuItem
+                          key={conexao.id}
+                          onClick={() => alternarParaConexao(conexao)}
+                          className="cursor-pointer"
+                        >
+                          {conexao.provider_type === 'dapi' && '🟦'}
+                          {conexao.provider_type === 'meta_oficial' && '🟢'}
+                          {conexao.provider_type === 'evolution' && '🟣'}
+                          {' '}
+                          {conexao.provider_type === 'dapi' ? `D-API - ${conexao.nome || conexao.session_id}` :
+                           conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' :
+                           `${conexao.provider_type.toUpperCase()} - ${conexao.nome || conexao.session_id}`}
+                          {conexao.id === conversaSelecionada.connection_id && ' ✓'}
+                        </DropdownMenuItem>
+                      ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               <p className="text-[11px] text-slate-500 truncate max-w-[120px] sm:max-w-none">{conversaSelecionada.cliente_telefone}</p>
             </div>
@@ -212,135 +351,145 @@ export default function ChatHeader({
             variant="outline"
             size="sm"
             className="gap-1 sm:gap-1.5 rounded-md border-slate-200 text-xs font-medium text-red-600 hover:text-red-700 hover:border-red-300 px-2 sm:px-3"
-          onClick={async () => {
-            const idFinalizar = conversaSelecionada.id;
-            queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
-              old.map(c => c.id === idFinalizar ? { ...c, status: 'encerrada', responsavel_id: null, responsavel_nome: null } : c)
-            );
-            setConversaSelecionada(null);
-            toast.success('Conversa finalizada');
-            base44.entities.ConversaWhatsapp.update(idFinalizar, { status: 'encerrada', responsavel_id: null, responsavel_nome: null }).catch(() => {});
-          }}
-        >
-          <Check className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Finalizar</span>
-        </Button>
+            onClick={async () => {
+              const idFinalizar = conversaSelecionada.id;
+              queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
+                old.map(c => c.id === idFinalizar ? { ...c, status: 'encerrada', responsavel_id: null, responsavel_nome: null } : c)
+              );
+              setConversaSelecionada(null);
+              toast.success('Conversa finalizada');
+              base44.entities.ConversaWhatsapp.update(idFinalizar, { status: 'encerrada', responsavel_id: null, responsavel_nome: null }).catch(() => {});
+            }}
+          >
+            <Check className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Finalizar</span>
+          </Button>
 
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1 sm:gap-1.5 rounded-md border-slate-200 text-xs font-medium text-purple-600 hover:text-purple-700 hover:border-purple-300 px-2 sm:px-3"
-          onClick={() => setTransferirModal(conversaSelecionada)}
-        >
-          <ArrowRightLeft className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Transferir</span>
-        </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 sm:gap-1.5 rounded-md border-slate-200 text-xs font-medium text-purple-600 hover:text-purple-700 hover:border-purple-300 px-2 sm:px-3"
+            onClick={() => setTransferirModal(conversaSelecionada)}
+          >
+            <ArrowRightLeft className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Transferir</span>
+          </Button>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon" className="h-8 w-8 rounded-md border-slate-300 hover:bg-slate-100">
-              <MoreVertical className="h-4 w-4 text-slate-900" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="bottom" sideOffset={4} className="z-[200]">
-            <DropdownMenuItem
-              onClick={async () => {
-                try {
-                  const resp = await base44.functions.invoke('importarMensagensConversa', {
-                    empresa_id: empresaId,
-                    telefone: conversaSelecionada.cliente_telefone,
-                    conversa_id: conversaSelecionada.id
-                  });
-                  toast.success(`✅ ${resp?.data?.message || 'Mensagens sincronizadas!'}`);
-                  queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
-                  setTimeout(() => refetchMensagens?.(), 100);
-                } catch (e) {
-                  toast.error('Erro ao sincronizar: ' + e.message);
-                }
-              }}
-            >
-              <RefreshCw className="mr-2 h-3.5 w-3.5" />
-              Carregar Mensagens
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Tag className="mr-2 h-3.5 w-3.5" />
-              Criar Proposta
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setCriarTarefaOpen(true)}>
-              <Clock className="mr-2 h-3.5 w-3.5" />
-              Criar Tarefa
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onAgendarMensagem?.(conversaSelecionada)}>
-              <CalendarClock className="mr-2 h-3.5 w-3.5" />
-              Agendar mensagem
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setFunilModalOpen?.(true)}>
-              <TrendingUp className="mr-2 h-3.5 w-3.5" />
-              {oportunidadeAtual ? 'Ver no Funil' : 'Adicionar ao Funil'}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
-              <Contact className="mr-2 h-3.5 w-3.5" />
-              {contatosWhatsapp[conversaSelecionada?.id]?.id ? 'Editar contato no CRM' : 'Salvar contato no CRM'}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
-              <Pencil className="mr-2 h-3.5 w-3.5" />
-              Alterar nome do contato
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              setContatoParaTags(conversaSelecionada);
-              setTagsModalOpen(true);
-            }}>
-              <Tag className="mr-2 h-3.5 w-3.5" />
-              Gerenciar Tags
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={async () => {
-              await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { status: 'ativa' });
-              queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-              toast.success('Conversa reaberta');
-            }}>
-              <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
-              Reabrir conversa
-            </DropdownMenuItem>
-            {!ehInstagram && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => alternarApi()}>
-                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                  {ehMeta ? 'Usar Evolution nesta conversa' : 'Usar Meta Oficial nesta conversa'}
-                </DropdownMenuItem>
-              </>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
-              <BellOff className="mr-2 h-3.5 w-3.5" />
-              Silenciar conversa
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
-              <Pin className="mr-2 h-3.5 w-3.5" />
-              Fixar conversa
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={async () => {
-                if (confirm('Tem certeza que deseja excluir esta conversa e todas as mensagens?')) {
-                  const mensagensParaExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: conversaSelecionada.id });
-                  for (const msg of mensagensParaExcluir) {
-                    await base44.entities.MensagemWhatsapp.delete(msg.id);
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-8 w-8 rounded-md border-slate-300 hover:bg-slate-100">
+                <MoreVertical className="h-4 w-4 text-slate-900" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="bottom" sideOffset={4} className="z-[200]">
+              <DropdownMenuItem
+                onClick={async () => {
+                  try {
+                    const resp = await base44.functions.invoke('importarMensagensConversa', {
+                      empresa_id: empresaId,
+                      telefone: conversaSelecionada.cliente_telefone,
+                      conversa_id: conversaSelecionada.id
+                    });
+                    toast.success(`✅ ${resp?.data?.message || 'Mensagens sincronizadas!'}`);
+                    queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+                    setTimeout(() => refetchMensagens?.(), 100);
+                  } catch (e) {
+                    toast.error('Erro ao sincronizar: ' + e.message);
                   }
-                  await base44.entities.ConversaWhatsapp.delete(conversaSelecionada.id);
-                  queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-                  queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
-                  setConversaSelecionada(null);
-                  toast.success('Conversa excluída');
-                }
-              }}
-              className="text-red-600 hover:bg-red-50"
-            >
-              <X className="mr-2 h-3.5 w-3.5" />
-              Excluir conversa
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                }}
+              >
+                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                Carregar Mensagens
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Tag className="mr-2 h-3.5 w-3.5" />
+                Criar Proposta
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setCriarTarefaOpen(true)}>
+                <Clock className="mr-2 h-3.5 w-3.5" />
+                Criar Tarefa
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAgendarMensagem?.(conversaSelecionada)}>
+                <CalendarClock className="mr-2 h-3.5 w-3.5" />
+                Agendar mensagem
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFunilModalOpen?.(true)}>
+                <TrendingUp className="mr-2 h-3.5 w-3.5" />
+                {oportunidadeAtual ? 'Ver no Funil' : 'Adicionar ao Funil'}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
+                <Contact className="mr-2 h-3.5 w-3.5" />
+                {contatosWhatsapp[conversaSelecionada?.id]?.id ? 'Editar contato no CRM' : 'Salvar contato no CRM'}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
+                <Pencil className="mr-2 h-3.5 w-3.5" />
+                Alterar nome do contato
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                setContatoParaTags(conversaSelecionada);
+                setTagsModalOpen(true);
+              }}>
+                <Tag className="mr-2 h-3.5 w-3.5" />
+                Gerenciar Tags
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={async () => {
+                await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, { status: 'ativa' });
+                queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                toast.success('Conversa reaberta');
+              }}>
+                <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
+                Reabrir conversa
+              </DropdownMenuItem>
+              {!ehInstagram && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => {
+                    if (ehMeta) {
+                      if (conexaoDapiAtiva) {
+                        alternarParaConexao(conexaoDapiAtiva);
+                      } else {
+                        alternarParaConexao(conexoesAtivas.find(c => c.provider_type === 'evolution'));
+                      }
+                    } else {
+                      alternarParaConexao(conexoesAtivas.find(c => c.provider_type === 'meta_oficial'));
+                    }
+                  }}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                    Alternar canal
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
+                <BellOff className="mr-2 h-3.5 w-3.5" />
+                Silenciar conversa
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.info('Em desenvolvimento')}>
+                <Pin className="mr-2 h-3.5 w-3.5" />
+                Fixar conversa
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={async () => {
+                  if (confirm('Tem certeza que deseja excluir esta conversa e todas as mensagens?')) {
+                    const mensagensParaExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: conversaSelecionada.id });
+                    for (const msg of mensagensParaExcluir) {
+                      await base44.entities.MensagemWhatsapp.delete(msg.id);
+                    }
+                    await base44.entities.ConversaWhatsapp.delete(conversaSelecionada.id);
+                    queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+                    queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
+                    setConversaSelecionada(null);
+                    toast.success('Conversa excluída');
+                  }
+                }}
+                className="text-red-600 hover:bg-red-50"
+              >
+                <X className="mr-2 h-3.5 w-3.5" />
+                Excluir conversa
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {setCoachIAOpen && (
             <Tooltip>
