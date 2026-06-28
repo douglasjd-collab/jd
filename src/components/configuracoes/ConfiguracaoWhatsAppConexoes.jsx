@@ -342,6 +342,35 @@ export default function ConfiguracaoWhatsApp() {
     }
   });
 
+  const updateWebhookMutation = useMutation({
+    mutationFn: async ({ connectionId, webhookUrl }) => {
+      const response = await base44.functions.invoke('whatsappService', {
+        connectionId,
+        action: 'updateWebhook',
+        webhookUrl
+      });
+      return response.data;
+    },
+    onSuccess: async (data) => {
+      console.log('Update webhook result:', data);
+      if (data.success) {
+        toast.success('Webhook atualizado com sucesso!');
+        // Atualizar status para confirmar webhook configurado
+        const connection = connections.find(c => c.id === data.data?.session?.id);
+        if (connection) {
+          await handleRefreshStatus(connection);
+        }
+      } else {
+        const errorMsg = data.data?.error || data.data?.responseData?.message || data.error || 'Erro desconhecido';
+        toast.error('Erro ao atualizar webhook: ' + errorMsg);
+      }
+      refetch();
+    },
+    onError: (error) => {
+      toast.error('Erro ao atualizar webhook: ' + error.message);
+    }
+  });
+
   const resetForm = () => {
     setFormData({
       nome: '',
@@ -484,6 +513,82 @@ export default function ConfiguracaoWhatsApp() {
     reconnectMutation.mutate(connectionId);
   };
 
+  const handleUpdateWebhook = async (connection) => {
+    const webhookUrl = `${window.location.origin}/functions/receberWebhookDapi`;
+    
+    try {
+      const response = await base44.functions.invoke('whatsappService', {
+        connectionId: connection.id,
+        action: 'updateWebhook',
+        webhookUrl
+      });
+      
+      const result = response.data;
+      console.log('Resultado atualização webhook:', result);
+      
+      if (result.success) {
+        toast.success('Webhook atualizado com sucesso!');
+        
+        // Atualizar webhook no banco
+        await base44.entities.WhatsappConnection.update(connection.id, {
+          webhook_url: webhookUrl
+        });
+        
+        // Verificar status após atualização
+        const statusResponse = await base44.functions.invoke('whatsappService', {
+          connectionId: connection.id,
+          action: 'getStatus'
+        });
+        
+        const statusData = statusResponse.data;
+        console.log('Status após webhook:', statusData);
+        
+        // Mostrar resultado no debug
+        const debugInfo = {
+          connectionNome: connection.nome,
+          sessionId: connection.session_id,
+          endpoint: statusData.endpoint || 'N/A',
+          httpStatus: statusData.httpStatus || 'N/A',
+          statusCRM: statusData.status || 'undefined',
+          statusDapi: statusData.dapiStatus || statusData.status || 'N/A',
+          connected: statusData.connected,
+          phoneNumber: statusData.phoneNumber,
+          profileName: statusData.profileName,
+          webhookUrl: statusData.webhookUrl,
+          webhookConfigurado: !!statusData.webhookUrl,
+          errorMessage: statusData.errorMessage || statusData.error,
+          traceId: statusData.traceId || statusData.responseData?.traceId,
+          responseCompleta: statusData
+        };
+        setDebugData(debugInfo);
+        setDebugDialogOpen(true);
+        
+        // Atualizar status no banco
+        const updateData = {
+          status: statusData.status,
+          last_health_check_at: new Date().toISOString()
+        };
+        
+        if (statusData.phoneNumber) {
+          updateData.phone_number = statusData.phoneNumber;
+        }
+        
+        if (statusData.profileName) {
+          updateData.profile_name = statusData.profileName;
+        }
+        
+        await base44.entities.WhatsappConnection.update(connection.id, updateData);
+        refetch();
+      } else {
+        const errorMsg = result.data?.error || result.error || 'Erro desconhecido';
+        toast.error('Erro ao atualizar webhook: ' + errorMsg);
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar webhook:', error);
+      toast.error('Erro ao atualizar webhook: ' + (error.message || 'Erro desconhecido'));
+    }
+  };
+
   const handleRefreshStatus = async (connection) => {
     try {
       const response = await base44.functions.invoke('whatsappService', {
@@ -505,6 +610,8 @@ export default function ConfiguracaoWhatsApp() {
         connected: statusData.connected,
         phoneNumber: statusData.phoneNumber,
         profileName: statusData.profileName,
+        webhookUrl: statusData.webhookUrl,
+        webhookConfigurado: !!statusData.webhookUrl,
         errorMessage: statusData.errorMessage || statusData.error,
         traceId: statusData.traceId || statusData.responseData?.traceId,
         attempt: statusData.attempt,
@@ -724,6 +831,14 @@ export default function ConfiguracaoWhatsApp() {
                           title="Criar sessão"
                         >
                           <Send className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleUpdateWebhook(connection)}
+                          title="Atualizar Webhook"
+                        >
+                          <Zap className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -1004,6 +1119,20 @@ export default function ConfiguracaoWhatsApp() {
                   <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
                     <p className="text-xs text-blue-700">Nome do Perfil</p>
                     <p className="font-medium text-blue-900">{debugData.profileName}</p>
+                  </div>
+                )}
+
+                {debugData.webhookConfigurado && (
+                  <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                    <p className="text-xs text-green-700">Webhook Configurado</p>
+                    <p className="font-mono text-xs text-green-900 break-all">{debugData.webhookUrl}</p>
+                  </div>
+                )}
+
+                {!debugData.webhookConfigurado && debugData.httpStatus === 200 && (
+                  <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                    <p className="text-xs text-yellow-700">⚠️ Webhook Não Configurado</p>
+                    <p className="font-medium text-yellow-900">Clique no botão "Atualizar Webhook" para configurar</p>
                   </div>
                 )}
 

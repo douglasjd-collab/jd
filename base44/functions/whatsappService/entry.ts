@@ -447,6 +447,104 @@ Deno.serve(async (req) => {
         return await this.request('/api/v1/messages/send/video', 'POST', messagePayload);
       },
       
+      // Atualizar webhook da sessão - PATCH /api/v1/sessions/{sessionId}
+      // Conforme documentação oficial D-API
+      async updateWebhook(webhookUrl) {
+        const startTime = Date.now();
+        const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}`;
+        
+        console.log('🔗 Atualizando webhook da sessão:', {
+          sessionId: this.sessionId,
+          webhookUrl,
+          baseUrl: this.baseUrl
+        });
+        
+        // Payload completo com webhookConfig
+        const updatePayload = {
+          webhookUrl: webhookUrl || undefined,
+          webhookConfig: {
+            enabled: true,
+            type: 'single',
+            events: {
+              'messages.received': { enabled: true, webhookUrl },
+              'messages.sent': { enabled: true, webhookUrl },
+              'message.read': { enabled: true, webhookUrl },
+              'message.delivered': { enabled: true, webhookUrl },
+              'message.update': { enabled: true, webhookUrl },
+              'message.deleted': { enabled: true, webhookUrl },
+              'contacts.upsert': { enabled: true, webhookUrl },
+              'contacts.update': { enabled: true, webhookUrl },
+              'chats.upsert': { enabled: true, webhookUrl },
+              'chats.update': { enabled: true, webhookUrl },
+              'logged_out': { enabled: true, webhookUrl },
+              'connection.qrcode': { enabled: true, webhookUrl },
+              'connection.status': { enabled: true, webhookUrl }
+            }
+          },
+          ignoreGroups: true,
+          ignoreStatus: true,
+          historySync: true
+        };
+        
+        console.log('📦 Payload de atualização:', JSON.stringify(updatePayload, null, 2));
+        
+        const headers = {
+          'Authorization': this.apiKey,
+          'Content-Type': 'application/json'
+        };
+        
+        try {
+          const response = await fetch(url, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(updatePayload)
+          });
+          
+          const responseData = await response.json().catch(() => ({}));
+          const responseTime = Date.now() - startTime;
+          
+          console.log('📡 Resposta D-API (update webhook):', {
+            status: response.status,
+            ok: response.ok,
+            traceId: responseData.traceId,
+            data: responseData
+          });
+          
+          if (!response.ok) {
+            return {
+              success: false,
+              error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
+              endpoint: url,
+              httpStatus: response.status,
+              traceId: responseData.traceId,
+              responseData,
+              responseTime,
+              payloadSent: updatePayload
+            };
+          }
+          
+          return {
+            success: true,
+            message: 'Webhook atualizado com sucesso',
+            data: responseData,
+            session: responseData.session,
+            responseTime,
+            endpoint: url,
+            httpStatus: response.status,
+            traceId: responseData.traceId,
+            payloadSent: updatePayload
+          };
+        } catch (error) {
+          return {
+            success: false,
+            error: error.message,
+            endpoint: url,
+            responseTime: Date.now() - startTime,
+            payloadSent: updatePayload
+          };
+        }
+      },
+      
       // Obter status da sessão - GET /api/v1/sessions/{sessionId}
       // Conforme orientação oficial do suporte D-API
       async getStatus() {
@@ -494,9 +592,10 @@ Deno.serve(async (req) => {
           }
           
           // Extrair dados da sessão conforme estrutura oficial
-          const phoneNumber = session.phone || session.phoneNumber || session.phone_number;
+          // Telefone: session.authData.phone ou session.phone
+          const phoneNumber = session.authData?.phone || session.phone || session.phoneNumber || session.phone_number;
           const profileName = session.profileName || session.profile_name || session.name;
-          const webhookUrl = session.webhookUrl || session.webhook_url;
+          const webhookUrl = session.webhookUrl || session.webhook_url || session.settings?.webhook;
           const qrCodeImage = session.qrCodeImage || session.qr_code_image || session.qrCodeBase64;
           const qrCode = session.qrCode || session.qr_code;
           const connectedAt = session.connectedAt || session.connected_at;
@@ -591,6 +690,13 @@ Deno.serve(async (req) => {
           return Response.json({ error: 'phoneNumber and videoUrl required' }, { status: 400 });
         }
         result = await adapter.sendVideo(phoneNumber, videoUrl, caption);
+        break;
+        
+      case 'updateWebhook':
+        if (!webhookUrl) {
+          return Response.json({ error: 'webhookUrl required' }, { status: 400 });
+        }
+        result = await adapter.updateWebhook(webhookUrl);
         break;
         
       case 'getStatus':
