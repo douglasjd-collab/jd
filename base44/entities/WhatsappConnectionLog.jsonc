@@ -1,0 +1,80 @@
+{
+  "name": "WhatsappConnectionLog",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "connection_id": {
+      "type": "string",
+      "description": "ID da conex\u00e3o WhatsApp"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "message.received",
+        "message.sent",
+        "message.delivered",
+        "message.read",
+        "message.failed",
+        "session.connected",
+        "session.disconnected",
+        "session.qr",
+        "session.error",
+        "health.check",
+        "api.call"
+      ],
+      "description": "Tipo do evento"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "inbound",
+        "outbound",
+        "system"
+      ],
+      "description": "Dire\u00e7\u00e3o do evento"
+    },
+    "payload_json": {
+      "type": "string",
+      "description": "Payload completo em JSON"
+    },
+    "response_json": {
+      "type": "string",
+      "description": "Resposta da API em JSON"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Mensagem de erro, se houver"
+    },
+    "response_time_ms": {
+      "type": "number",
+      "description": "Tempo de resposta em milissegundos"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data do evento"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "connection_id",
+    "event_type"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return true;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

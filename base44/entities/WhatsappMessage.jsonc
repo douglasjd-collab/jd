@@ -1,0 +1,154 @@
+{
+  "name": "WhatsappMessage",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "connection_id": {
+      "type": "string",
+      "description": "ID da conex\u00e3o WhatsApp"
+    },
+    "provider_type": {
+      "type": "string",
+      "enum": [
+        "meta_oficial",
+        "evolution",
+        "dapi",
+        "waha",
+        "wppconnect",
+        "outro"
+      ],
+      "description": "Tipo do provedor"
+    },
+    "conversa_id": {
+      "type": "string",
+      "description": "ID da conversa no CRM"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID do cliente"
+    },
+    "oportunidade_id": {
+      "type": "string",
+      "description": "ID da oportunidade"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "inbound",
+        "outbound"
+      ],
+      "description": "Dire\u00e7\u00e3o: inbound (recebida) ou outbound (enviada)"
+    },
+    "message_type": {
+      "type": "string",
+      "enum": [
+        "text",
+        "image",
+        "audio",
+        "video",
+        "document",
+        "sticker",
+        "contact",
+        "location"
+      ],
+      "description": "Tipo da mensagem"
+    },
+    "content": {
+      "type": "string",
+      "description": "Conte\u00fado da mensagem (texto ou legenda)"
+    },
+    "media_url": {
+      "type": "string",
+      "description": "URL da m\u00eddia (imagem, \u00e1udio, v\u00eddeo, documento)"
+    },
+    "media_mime_type": {
+      "type": "string",
+      "description": "MIME type da m\u00eddia"
+    },
+    "media_size": {
+      "type": "number",
+      "description": "Tamanho da m\u00eddia em bytes"
+    },
+    "external_message_id": {
+      "type": "string",
+      "description": "ID da mensagem no provedor"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "delivered",
+        "read",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "Status da mensagem"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Mensagem de erro, se falhou"
+    },
+    "retry_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade de tentativas de reenvio"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de envio"
+    },
+    "delivered_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de entrega"
+    },
+    "read_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de leitura"
+    },
+    "received_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de recebimento"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que criou (para outbound)"
+    },
+    "created_by_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio"
+    },
+    "metadata_json": {
+      "type": "string",
+      "description": "Metadados adicionais em JSON"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "connection_id",
+    "conversa_id",
+    "direction",
+    "message_type"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return true;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}
