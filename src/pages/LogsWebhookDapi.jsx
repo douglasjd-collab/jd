@@ -5,6 +5,8 @@ import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -17,12 +19,20 @@ import {
   Zap, 
   AlertCircle,
   RefreshCw,
-  Eye
+  Eye,
+  MessageSquare,
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function LogsWebhookDapi() {
   const [selectedLog, setSelectedLog] = useState(null);
+  const [testeOpen, setTesteOpen] = useState(false);
+  const [testeNumero, setTesteNumero] = useState('5587981275628');
+  const [testeMensagem, setTesteMensagem] = useState('Teste de envio via CRM JD');
+  const [testeEnviando, setTesteEnviando] = useState(false);
+  const [testeResultado, setTesteResultado] = useState(null);
 
   const { data: logs = [], isLoading, refetch } = useQuery({
     queryKey: ['webhook-logs-dapi'],
@@ -32,6 +42,58 @@ export default function LogsWebhookDapi() {
     },
     refetchInterval: 5000
   });
+
+  const testarEnvioDapi = async () => {
+    setTesteEnviando(true);
+    setTesteResultado(null);
+    
+    try {
+      // Buscar conexão D-API ativa
+      const conexoes = await base44.entities.WhatsappConnection.filter({
+        provider_type: 'dapi',
+        is_active: true
+      }, '-created_date', 1);
+      
+      if (!conexoes || conexoes.length === 0) {
+        setTesteResultado({ success: false, error: 'Nenhuma conexão D-API ativa encontrada' });
+        toast.error('Nenhuma conexão D-API ativa encontrada');
+        return;
+      }
+      
+      const conexao = conexoes[0];
+      console.log('🧪 Teste D-API:', {
+        connectionId: conexao.id,
+        sessionId: conexao.session_id,
+        phoneNumber: testeNumero,
+        text: testeMensagem
+      });
+      
+      // Chamar whatsappService
+      const resp = await base44.functions.invoke('whatsappService', {
+        connectionId: conexao.id,
+        action: 'sendText',
+        phoneNumber: testeNumero.replace(/\D/g, ''),
+        text: testeMensagem.trim()
+      });
+      
+      const resultado = resp?.data;
+      setTesteResultado(resultado);
+      
+      if (resultado?.success) {
+        toast.success('✅ Mensagem de teste enviada com sucesso!');
+      } else {
+        const erro = resultado?.data?.error || resultado?.error || 'Erro desconhecido';
+        const httpStatus = resultado?.data?.httpStatus || resultado?.httpStatus || 0;
+        toast.error(`❌ Erro ${httpStatus}: ${erro}`);
+      }
+    } catch (error) {
+      console.error('❌ Erro no teste:', error);
+      setTesteResultado({ success: false, error: error.message });
+      toast.error('Erro ao testar: ' + error.message);
+    } finally {
+      setTesteEnviando(false);
+    }
+  };
 
   const getEventBadge = (eventType) => {
     const config = {
@@ -54,6 +116,87 @@ export default function LogsWebhookDapi() {
         title="Logs D-API" 
         subtitle="Webhooks recebidos da D-API"
       />
+
+      {/* Card de Teste de Envio */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-blue-500" />
+            Teste de Envio D-API
+          </CardTitle>
+          <CardDescription>
+            Envie uma mensagem de teste para verificar se a integração está funcionando
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="teste-numero">Número de telefone</Label>
+              <Input
+                id="teste-numero"
+                value={testeNumero}
+                onChange={(e) => setTesteNumero(e.target.value)}
+                placeholder="5587981275628"
+              />
+              <p className="text-xs text-slate-500 mt-1">Formato: 55 + DDD + número (apenas números)</p>
+            </div>
+            <div>
+              <Label htmlFor="teste-mensagem">Mensagem</Label>
+              <Input
+                id="teste-mensagem"
+                value={testeMensagem}
+                onChange={(e) => setTesteMensagem(e.target.value)}
+                placeholder="Teste de envio via CRM JD"
+              />
+            </div>
+          </div>
+          
+          {testeResultado && (
+            <div className={`p-4 rounded-lg border ${testeResultado?.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+              <div className="flex items-start gap-2">
+                {testeResultado?.success ? (
+                  <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
+                ) : (
+                  <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                )}
+                <div className="flex-1">
+                  <p className={`font-medium text-sm ${testeResultado?.success ? 'text-green-900' : 'text-red-900'}`}>
+                    {testeResultado?.success ? 'Sucesso!' : 'Erro no envio'}
+                  </p>
+                  {testeResultado?.success ? (
+                    <p className="text-xs text-green-700 mt-1">
+                      Message ID: {testeResultado?.data?.data?.messageId || testeResultado?.data?.messageId || 'N/A'}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-red-700 mt-1">
+                      {testeResultado?.data?.error || testeResultado?.error || 'Erro desconhecido'}
+                      {testeResultado?.data?.httpStatus && ` (HTTP ${testeResultado.data.httpStatus})`}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <Button 
+            onClick={testarEnvioDapi} 
+            disabled={testeEnviando || !testeNumero || !testeMensagem}
+            className="w-full"
+          >
+            {testeEnviando ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Enviando...
+              </>
+            ) : (
+              <>
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Enviar Mensagem de Teste
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

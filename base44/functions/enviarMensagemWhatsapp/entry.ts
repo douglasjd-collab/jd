@@ -97,18 +97,28 @@ Deno.serve(async (req) => {
 
     const instanciaConversa = conversaDoBanco?.instancia || '';
     const tipoConexaoConversa = conversaDoBanco?.tipo_conexao || '';
+    const providerSalvo = conversaDoBanco?.provider || null;
+    const canalOrigem = conversaDoBanco?.canal_origem || null;
+
+    // ── D-API: Buscar conexão WhatsAppConnection ─────────────────────────────
+    let conexaoDapi = null;
+    if (empresaId) {
+      try {
+        const conexoes = await base44.asServiceRole.entities.WhatsappConnection.filter({
+          empresa_id: empresaId,
+          provider_type: 'dapi',
+          is_active: true
+        }, '-created_date', 1);
+        conexaoDapi = conexoes[0] || null;
+        if (conexaoDapi) {
+          console.log('✅ D-API conexão encontrada:', conexaoDapi.id, conexaoDapi.session_id);
+        }
+      } catch (e) {
+        console.warn('⚠️ Erro ao buscar conexão D-API:', e.message);
+      }
+    }
 
     // ── FONTE DE VERDADE DO CANAL ────────────────────────────────────────────
-    // Regra: o canal é definido pelo número da EMPRESA que recebeu a mensagem (phone_number_id_meta
-    // para Meta, ou instancia para Evolution). NÃO usar o telefone do cliente para decidir o canal.
-    //
-    // Prioridade:
-    // 1. canal_origem (campo travado — definido no webhook, nunca sobrescrito automaticamente)
-    // 2. provider (campo travado equivalente)
-    // 3. phone_number_id_meta presente → forçar Meta
-    // 4. tipo_conexao / canal_atendimento (legado)
-    const canalOrigem = conversaDoBanco?.canal_origem || null;
-    const providerSalvo = conversaDoBanco?.provider || null;
     const phoneNumberIdConversa = conversaDoBanco?.phone_number_id_meta || null;
 
     // ── VERSÃO DINÂMICA DA API META ──────────────────────────────────────
@@ -280,6 +290,182 @@ Deno.serve(async (req) => {
       console.log('⚙️ Provedor por preferência da empresa:', usaMetaOficial ? 'Meta' : 'Evolution');
     }
 
+    // ── ENVIO VIA D-API ──────────────────────────────────────────────────────
+    if (conexaoDapi) {
+      console.log('🟦 Provedor automático: D-API (session_id:', conexaoDapi.session_id, ')');
+      
+      // Normalizar número para D-API: apenas números, com DDI
+      let numeroDapi = numero_cliente.replace(/\D/g, '');
+      // Se não começar com 55 e for número BR (10-11 dígitos), adicionar 55
+      if (!numeroDapi.startsWith('55') && numeroDapi.length >= 10 && numeroDapi.length <= 11) {
+        numeroDapi = '55' + numeroDapi;
+      }
+      // Remover @lid, @g.us, etc
+      numeroDapi = numeroDapi.replace(/@.*$/, '');
+      
+      console.log('📱 Número D-API:', numeroDapi);
+      
+      // Validar texto
+      if (!mensagem_texto || !mensagem_texto.trim()) {
+        return Response.json({ error: 'Mensagem de texto é obrigatória para D-API' }, { status: 400 });
+      }
+      
+      const textoEnviar = mensagem_texto.trim();
+      
+      // Chamar whatsappService para envio D-API
+      try {
+        const startTime = Date.now();
+        const respService = await base44.functions.invoke('whatsappService', {
+          connectionId: conexaoDapi.id,
+          action: 'sendText',
+          phoneNumber: numeroDapi,
+          text: textoEnviar
+        });
+        
+        const serviceResult = respService?.data;
+        const responseTime = Date.now() - startTime;
+        
+        console.log('📡 Resposta D-API:', serviceResult);
+        
+        if (!serviceResult?.success) {
+          // Erro no envio D-API
+          const erroDetalhes = serviceResult?.data?.error || serviceResult?.error || 'Erro desconhecido';
+          const httpStatus = serviceResult?.data?.httpStatus || serviceResult?.httpStatus || 0;
+          const traceId = serviceResult?.data?.traceId || 'N/A';
+          
+          console.error('❌ Erro D-API:', {
+            error: erroDetalhes,
+            httpStatus,
+            traceId,
+            responseTime,
+            sessionId: conexaoDapi.session_id,
+            phoneNumber: numeroDapi,
+            textLength: textoEnviar.length
+          });
+          
+          // Registrar log de erro
+          try {
+            await base44.entities.WhatsappConnectionLog.create({
+              empresa_id: empresaId,
+              connection_id: conexaoDapi.id,
+              event_type: 'message.sent',
+              direction: 'outbound',
+              payload_json: JSON.stringify({
+                action: 'sendText',
+                sessionId: conexaoDapi.session_id,
+                phoneNumber: numeroDapi,
+                text: textoEnviar
+              }),
+              response_json: JSON.stringify(serviceResult),
+              error_message: `${erroDetalhes} (HTTP ${httpStatus}, traceId: ${traceId})`,
+              response_time_ms: responseTime,
+              created_at: new Date().toISOString()
+            });
+          } catch (logErr) {
+            console.error('⚠️ Erro ao registrar log D-API:', logErr.message);
+          }
+          
+          // Retornar erro claro para o frontend
+          let errorMsg = 'Erro ao enviar mensagem via D-API';
+          if (httpStatus === 400) {
+            errorMsg = `Erro 400: Verifique sessionId, número e texto. ${erroDetalhes}`;
+          } else if (httpStatus === 401) {
+            errorMsg = `Erro 401: API Key inválida ou expirada. ${erroDetalhes}`;
+          } else if (httpStatus === 404) {
+            errorMsg = `Erro 404: Sessão não encontrada. ${erroDetalhes}`;
+          }
+          
+          return Response.json({ 
+            error: errorMsg,
+            details: erroDetalhes,
+            httpStatus,
+            traceId,
+            success: false 
+          }, { status: 400 });
+        }
+        
+        // Sucesso no envio D-API
+        const messageIdDapi = serviceResult?.data?.data?.messageId || serviceResult?.data?.messageId || `dapi_${Date.now()}`;
+        
+        console.log('✅ Mensagem D-API enviada com sucesso:', {
+          messageId: messageIdDapi,
+          responseTime,
+          sessionId: conexaoDapi.session_id
+        });
+        
+        // Registrar log de sucesso
+        try {
+          await base44.entities.WhatsappConnectionLog.create({
+            empresa_id: empresaId,
+            connection_id: conexaoDapi.id,
+            event_type: 'message.sent',
+            direction: 'outbound',
+            payload_json: JSON.stringify({
+              action: 'sendText',
+              sessionId: conexaoDapi.session_id,
+              phoneNumber: numeroDapi,
+              text: textoEnviar
+            }),
+            response_json: JSON.stringify(serviceResult),
+            error_message: null,
+            response_time_ms: responseTime,
+            created_at: new Date().toISOString()
+          });
+        } catch (logErr) {
+          console.error('⚠️ Erro ao registrar log D-API:', logErr.message);
+        }
+        
+        // Salvar mensagem no banco
+        let nomeAtendente = user?.nome_perfil || user?.full_name || user?.email || 'Atendente';
+        try {
+          const cols = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id }, '-created_date', 1);
+          if (cols?.length > 0) nomeAtendente = cols[0].nome || nomeAtendente;
+        } catch (_) {}
+        
+        const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
+          conversa_id: conversa_id,
+          empresa_id: empresaId,
+          remetente: 'vendedor',
+          usuario_id: user.id,
+          usuario_nome: nomeAtendente,
+          atendente_nome: nomeAtendente,
+          tipo_conteudo: 'texto',
+          texto: textoEnviar,
+          provider: 'dapi',
+          download_status: 'nao_aplicavel',
+          resposta_para_texto: resposta_para_texto || null,
+          resposta_para_nome: resposta_para_nome || null,
+          whatsapp_message_id: messageIdDapi,
+          data_envio: new Date().toISOString(),
+          status: 'enviada'
+        });
+        
+        // Atualizar conversa
+        await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+          ultima_mensagem: textoEnviar.substring(0, 200),
+          data_ultima_mensagem: new Date().toISOString(),
+          ultimo_remetente: 'vendedor',
+        });
+        
+        console.log('✅ Mensagem D-API salva:', novaMensagem.id);
+        
+        return Response.json({ 
+          success: true,
+          message_id: novaMensagem.id,
+          whatsapp_id: messageIdDapi,
+          provider: 'dapi'
+        });
+        
+      } catch (serviceError) {
+        console.error('❌ Erro ao chamar whatsappService D-API:', serviceError.message);
+        return Response.json({ 
+          error: 'Erro ao enviar mensagem via D-API: ' + serviceError.message,
+          success: false 
+        }, { status: 500 });
+      }
+    }
+    
+    // ── ENVIO VIA META/EVOLUTION (fluxo existente) ─────────────────────────
     console.log('🔌 Modo de envio:', usaMetaOficial ? '🟢 API Oficial Meta' : '🟣 Evolution API');
 
     // Formatar número
