@@ -290,235 +290,86 @@ Deno.serve(async (req) => {
       },
       
       // Obter status da sessão - GET /api/v1/sessions/{sessionId}
+      // Conforme orientação oficial do suporte D-API
       async getStatus() {
         const startTime = Date.now();
+        const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}`;
         
-        // Normalizar status da D-API para status do CRM
-        const normalizeStatus = (data) => {
-          if (!data) return 'desconectado';
+        try {
+          const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Authorization': this.apiKey }
+          });
           
-          const rawStatus = (data.status || data.state || data.connectionStatus || data.data?.status || '').toLowerCase();
-          const connected = data.connected === true || data.data?.connected === true;
+          const responseData = await response.json().catch(() => ({}));
+          const responseTime = Date.now() - startTime;
           
-          // Status conectado
-          if (connected === true || ['connected', 'open', 'online', 'logged', 'authenticated'].includes(rawStatus)) {
-            return 'conectado';
+          if (!response.ok) {
+            return {
+              success: false,
+              error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
+              endpoint: url,
+              httpStatus: response.status,
+              traceId: responseData.traceId,
+              responseData,
+              responseTime
+            };
           }
           
-          // Status aguardando QR
-          if (['qr', 'qrcode', 'pairing', 'pending', 'waiting_qr', 'waiting_for_qr'].includes(rawStatus)) {
-            return 'aguardando_qr';
+          // Estrutura oficial da resposta: response.session
+          const session = responseData.session || responseData;
+          
+          // Mapear status conforme orientação do suporte
+          const rawStatus = (session.status || '').toLowerCase();
+          let crmStatus = 'desconectado';
+          
+          if (rawStatus === 'connected') {
+            crmStatus = 'conectado';
+          } else if (rawStatus === 'connecting') {
+            crmStatus = 'reiniciando';
+          } else if (rawStatus === 'disconnected') {
+            crmStatus = 'desconectado';
+          } else if (['qr', 'waiting_qr', 'pending'].includes(rawStatus)) {
+            crmStatus = 'aguardando_qr';
+          } else if (['error', 'failed'].includes(rawStatus)) {
+            crmStatus = 'erro_recebimento';
           }
           
-          // Status conectando
-          if (['connecting', 'starting', 'loading'].includes(rawStatus)) {
-            return 'reiniciando';
-          }
-          
-          // Status desconectado
-          if (['disconnected', 'close', 'closed', 'offline', 'logged_out'].includes(rawStatus)) {
-            return 'desconectado';
-          }
-          
-          // Status erro
-          if (['error', 'failed'].includes(rawStatus)) {
-            return 'erro_recebimento';
-          }
-          
-          return 'desconectado';
-        };
-        
-        // Extrair dados da sessão
-        const extractData = (data) => {
-          if (!data) return {};
+          // Extrair dados da sessão conforme estrutura oficial
+          const phoneNumber = session.phone || session.phoneNumber || session.phone_number;
+          const profileName = session.profileName || session.profile_name || session.name;
+          const webhookUrl = session.webhookUrl || session.webhook_url;
+          const qrCodeImage = session.qrCodeImage || session.qr_code_image || session.qrCodeBase64;
+          const qrCode = session.qrCode || session.qr_code;
+          const connectedAt = session.connectedAt || session.connected_at;
           
           return {
-            phoneNumber: data.phoneNumber || data.phone || data.phone_number || data.data?.phoneNumber,
-            profileName: data.profileName || data.profile_name || data.name || data.data?.profileName,
-            errorMessage: data.error || data.message || data.error_message || data.data?.error
+            success: true,
+            endpoint: url,
+            httpStatus: response.status,
+            connected: crmStatus === 'conectado',
+            status: crmStatus,
+            dapiStatus: rawStatus || 'unknown',
+            phoneNumber,
+            profileName,
+            webhookUrl,
+            qrCodeImage,
+            qrCode,
+            connectedAt,
+            data: responseData,
+            session: session,
+            responseTime,
+            traceId: responseData.traceId
           };
-        };
-        
-        // Tentativa 1: GET /api/v1/sessions/{sessionId} (endpoint oficial)
-        const trySessionEndpoint = async () => {
-          const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}`;
-          
-          try {
-            const response = await fetch(url, {
-              method: 'GET',
-              headers: { 'Authorization': this.apiKey }
-            });
-            
-            const responseData = await response.json().catch(() => ({}));
-            const responseTime = Date.now() - startTime;
-            
-            if (response.ok) {
-              const crmStatus = normalizeStatus(responseData);
-              const extraData = extractData(responseData);
-              
-              return {
-                success: true,
-                attempt: 1,
-                endpoint: url,
-                httpStatus: response.status,
-                connected: crmStatus === 'conectado',
-                status: crmStatus,
-                dapiStatus: responseData.status || responseData.state || 'unknown',
-                phoneNumber: extraData.phoneNumber,
-                profileName: extraData.profileName,
-                errorMessage: extraData.errorMessage,
-                data: responseData,
-                responseTime,
-                traceId: responseData.traceId
-              };
-            }
-            
-            return {
-              success: false,
-              attempt: 1,
-              endpoint: url,
-              httpStatus: response.status,
-              error: `HTTP ${response.status}`,
-              traceId: responseData.traceId,
-              responseData,
-              responseTime
-            };
-          } catch (error) {
-            return {
-              success: false,
-              attempt: 1,
-              endpoint: url,
-              httpStatus: 0,
-              error: error.message,
-              responseTime: Date.now() - startTime
-            };
-          }
-        };
-        
-        // Tentativa 2: GET /api/v1/sessions (listar todas)
-        const trySessionsListEndpoint = async () => {
-          const url = `${this.baseUrl}/api/v1/sessions`;
-          
-          try {
-            const response = await fetch(url, {
-              method: 'GET',
-              headers: { 'Authorization': this.apiKey }
-            });
-            
-            const responseData = await response.json().catch(() => ({}));
-            const responseTime = Date.now() - startTime;
-            
-            if (response.ok) {
-              const sessions = Array.isArray(responseData) ? responseData : 
-                               Array.isArray(responseData.sessions) ? responseData.sessions :
-                               Array.isArray(responseData.data) ? responseData.data : [responseData];
-              
-              const session = sessions.find(s => 
-                s.sessionId === this.sessionId || 
-                s.id === this.sessionId || 
-                s.name === this.sessionId
-              );
-              
-              if (session) {
-                const crmStatus = normalizeStatus(session);
-                const extraData = extractData(session);
-                
-                return {
-                  success: true,
-                  attempt: 2,
-                  endpoint: url,
-                  httpStatus: response.status,
-                  connected: crmStatus === 'conectado',
-                  status: crmStatus,
-                  dapiStatus: session.status || session.state || 'unknown',
-                  phoneNumber: extraData.phoneNumber,
-                  profileName: extraData.profileName,
-                  errorMessage: extraData.errorMessage,
-                  data: session,
-                  responseTime,
-                  traceId: session.traceId
-                };
-              }
-              
-              return {
-                success: false,
-                attempt: 2,
-                endpoint: url,
-                httpStatus: response.status,
-                error: `Sessão "${this.sessionId}" não encontrada`,
-                responseData,
-                responseTime
-              };
-            }
-            
-            return {
-              success: false,
-              attempt: 2,
-              endpoint: url,
-              httpStatus: response.status,
-              error: `HTTP ${response.status}`,
-              traceId: responseData.traceId,
-              responseData,
-              responseTime
-            };
-          } catch (error) {
-            return {
-              success: false,
-              attempt: 2,
-              endpoint: url,
-              httpStatus: 0,
-              error: error.message,
-              responseTime: Date.now() - startTime
-            };
-          }
-        };
-        
-        // Tentativa 3: GET /health (fallback)
-        const tryHealthEndpoint = async () => {
-          const url = `${this.baseUrl}/health`;
-          
-          try {
-            const response = await fetch(url, {
-              method: 'GET',
-              headers: { 'Authorization': this.apiKey }
-            });
-            
-            const responseData = await response.json().catch(() => ({}));
-            const responseTime = Date.now() - startTime;
-            
-            return {
-              success: response.ok,
-              attempt: 3,
-              endpoint: url,
-              httpStatus: response.status,
-              connected: false,
-              status: response.ok ? 'api_online_session_unknown' : 'api_offline',
-              dapiStatus: response.ok ? 'ok' : 'error',
-              errorMessage: response.ok ? 'API online, sessão não encontrada' : `HTTP ${response.status}`,
-              data: responseData,
-              responseTime,
-              traceId: responseData.traceId
-            };
-          } catch (error) {
-            return {
-              success: false,
-              attempt: 3,
-              endpoint: url,
-              httpStatus: 0,
-              error: error.message,
-              responseTime: Date.now() - startTime
-            };
-          }
-        };
-        
-        // Executar tentativas em sequência
-        const attempt1 = await trySessionEndpoint();
-        if (attempt1.success) return attempt1;
-        
-        const attempt2 = await trySessionsListEndpoint();
-        if (attempt2.success) return attempt2;
-        
-        return await tryHealthEndpoint();
+        } catch (error) {
+          return {
+            success: false,
+            error: error.message,
+            endpoint: url,
+            httpStatus: 0,
+            responseTime: Date.now() - startTime
+          };
+        }
       }
     };
     
