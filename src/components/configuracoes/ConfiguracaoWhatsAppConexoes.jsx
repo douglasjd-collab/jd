@@ -452,20 +452,26 @@ export default function ConfiguracaoWhatsApp() {
         phoneNumber: statusData.phoneNumber,
         profileName: statusData.profileName,
         errorMessage: statusData.errorMessage || statusData.error,
+        traceId: statusData.traceId || statusData.responseData?.traceId,
+        attempt: statusData.attempt,
         responseCompleta: statusData
       };
       setDebugData(debugInfo);
       setDebugDialogOpen(true);
       
-      // Validar status retornado
-      if (!statusData || !statusData.status || statusData.status === 'undefined') {
+      // Validar status retornado e mostrar erro claro
+      if (statusData.httpStatus === 500) {
+        const traceId = statusData.traceId || statusData.responseData?.traceId || 'N/A';
+        toast.error(
+          `Erro interno da D-API. HTTP 500. TraceId: ${traceId}. ` +
+          `Contate suporte D-API com o traceId.`
+        );
+      } else if (!statusData || !statusData.status || statusData.status === 'undefined') {
         console.error('Status inválido retornado:', statusData);
         toast.error(
           `Status não identificado. HTTP: ${statusData?.httpStatus || 'N/A'}. ` +
-          `Status D-API: ${statusData?.status || 'N/A'}. ` +
           `Verifique modal de diagnóstico.`
         );
-        return;
       }
       
       // Atualizar no banco de dados
@@ -912,6 +918,20 @@ export default function ConfiguracaoWhatsApp() {
                     <p className="font-bold text-slate-800">{debugData.statusDapi}</p>
                   </div>
                 </div>
+
+                {debugData.attempt && (
+                  <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                    <p className="text-xs text-blue-700">Endpoint Usado</p>
+                    <p className="font-medium text-blue-900">Tentativa {debugData.attempt} de 3</p>
+                  </div>
+                )}
+
+                {debugData.traceId && (
+                  <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200">
+                    <p className="text-xs text-yellow-700">TraceId (Suporte D-API)</p>
+                    <p className="font-mono text-sm text-yellow-900">{debugData.traceId}</p>
+                  </div>
+                )}
 
                 {debugData.phoneNumber && (
                   <div className="p-3 rounded-lg bg-green-50 border border-green-200">

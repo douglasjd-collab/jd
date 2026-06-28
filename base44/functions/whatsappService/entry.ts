@@ -350,127 +350,359 @@ Deno.serve(async (req) => {
       
       async getStatus() {
         const startTime = Date.now();
-        const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}/status`;
         
-        try {
-          const response = await fetch(url, {
-            method: 'GET',
-            headers: { 'Authorization': this.apiKey }
-          });
+        // Função normalizadora de status da D-API (usada em todos os endpoints)
+        const normalizeStatus = (rawStatus, connected) => {
+          const statusLower = (rawStatus || '').toLowerCase();
           
-          const responseData = await response.json().catch(() => ({}));
-          const responseTime = Date.now() - startTime;
+          // Status conectado
+          if (connected === true || 
+              ['connected', 'open', 'online', 'logged', 'authenticated'].includes(statusLower)) {
+            return 'conectado';
+          }
           
-          // Log completo da resposta (para diagnóstico)
-          const logData = {
-            endpoint: url,
-            httpStatus: response.status,
-            responseData,
-            timestamp: new Date().toISOString()
+          // Status aguardando QR
+          if (['qr', 'qrcode', 'pairing', 'pending', 'waiting_qr', 'waiting_for_qr'].includes(statusLower)) {
+            return 'aguardando_qr';
+          }
+          
+          // Status conectando
+          if (['connecting', 'starting', 'loading'].includes(statusLower)) {
+            return 'reiniciando';
+          }
+          
+          // Status desconectado
+          if (['disconnected', 'close', 'closed', 'offline', 'logged_out'].includes(statusLower)) {
+            return 'desconectado';
+          }
+          
+          // Status erro
+          if (['error', 'failed'].includes(statusLower)) {
+            return 'erro_recebimento';
+          }
+          
+          // Default: desconectado
+          return 'desconectado';
+        };
+        
+        // Extrair status de qualquer estrutura de resposta
+        const extractStatus = (data) => {
+          if (!data) return { rawStatus: null, connected: null };
+          
+          // Verificar todos os campos possíveis
+          const rawStatus = 
+            data.status || 
+            data.state || 
+            data.connectionStatus || 
+            data.session?.status || 
+            data.session?.state || 
+            data.data?.status || 
+            data.data?.state || 
+            data.data?.connected;
+          
+          const connected = 
+            data.connected === true || 
+            data.session?.connected === true || 
+            data.data?.connected === true;
+          
+          return { rawStatus, connected };
+        };
+        
+        // Extrair dados adicionais de qualquer estrutura
+        const extractData = (data) => {
+          if (!data) return {};
+          
+          return {
+            phoneNumber: data.phoneNumber || data.phone || data.phone_number || data.session?.phoneNumber || data.data?.phoneNumber,
+            profileName: data.profileName || data.profile_name || data.name || data.session?.profileName || data.data?.profileName,
+            errorMessage: data.error || data.message || data.error_message || data.data?.error
           };
-          console.log('D-API Status Response:', logData);
+        };
+        
+        // Tentativa 1: GET /api/v1/sessions/{sessionId} (endpoint principal alternativo)
+        const trySessionEndpoint = async () => {
+          const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}`;
+          console.log('Tentativa 1:', url);
           
-          // Salvar log no banco (opcional - para auditoria)
+          try {
+            const response = await fetch(url, {
+              method: 'GET',
+              headers: { 'Authorization': this.apiKey }
+            });
+            
+            const responseData = await response.json().catch(() => ({}));
+            const responseTime = Date.now() - startTime;
+            
+            console.log('Tentativa 1 - Resultado:', { 
+              httpStatus: response.status, 
+              ok: response.ok,
+              data: responseData 
+            });
+            
+            if (response.ok) {
+              const { rawStatus, connected } = extractStatus(responseData);
+              const extraData = extractData(responseData);
+              const crmStatus = normalizeStatus(rawStatus, connected);
+              
+              return {
+                success: true,
+                attempt: 1,
+                endpoint: url,
+                httpStatus: response.status,
+                connected: connected === true || crmStatus === 'conectado',
+                status: crmStatus,
+                dapiStatus: rawStatus || 'unknown',
+                phoneNumber: extraData.phoneNumber,
+                profileName: extraData.profileName,
+                errorMessage: extraData.errorMessage,
+                data: responseData,
+                responseTime,
+                traceId: responseData.traceId
+              };
+            }
+            
+            return {
+              success: false,
+              attempt: 1,
+              endpoint: url,
+              httpStatus: response.status,
+              error: `HTTP ${response.status}`,
+              traceId: responseData.traceId,
+              responseData,
+              responseTime
+            };
+          } catch (error) {
+            return {
+              success: false,
+              attempt: 1,
+              endpoint: url,
+              httpStatus: 0,
+              error: error.message,
+              responseTime: Date.now() - startTime
+            };
+          }
+        };
+        
+        // Tentativa 2: GET /api/v1/sessions (listar todas e filtrar)
+        const trySessionsListEndpoint = async () => {
+          const url = `${this.baseUrl}/api/v1/sessions`;
+          console.log('Tentativa 2:', url);
+          
+          try {
+            const response = await fetch(url, {
+              method: 'GET',
+              headers: { 'Authorization': this.apiKey }
+            });
+            
+            const responseData = await response.json().catch(() => ({}));
+            const responseTime = Date.now() - startTime;
+            
+            console.log('Tentativa 2 - Resultado:', { 
+              httpStatus: response.status, 
+              ok: response.ok,
+              data: responseData 
+            });
+            
+            if (response.ok) {
+              // Buscar sessão pelo sessionId
+              const sessions = Array.isArray(responseData) ? responseData : 
+                               Array.isArray(responseData.sessions) ? responseData.sessions :
+                               Array.isArray(responseData.data) ? responseData.data : [responseData];
+              
+              const session = sessions.find(s => 
+                s.sessionId === this.sessionId || 
+                s.id === this.sessionId || 
+                s.name === this.sessionId
+              );
+              
+              if (session) {
+                const { rawStatus, connected } = extractStatus(session);
+                const extraData = extractData(session);
+                const crmStatus = normalizeStatus(rawStatus, connected);
+                
+                return {
+                  success: true,
+                  attempt: 2,
+                  endpoint: url,
+                  httpStatus: response.status,
+                  connected: connected === true || crmStatus === 'conectado',
+                  status: crmStatus,
+                  dapiStatus: rawStatus || 'unknown',
+                  phoneNumber: extraData.phoneNumber,
+                  profileName: extraData.profileName,
+                  errorMessage: extraData.errorMessage,
+                  data: session,
+                  responseTime,
+                  traceId: session.traceId
+                };
+              }
+              
+              return {
+                success: false,
+                attempt: 2,
+                endpoint: url,
+                httpStatus: response.status,
+                error: `Sessão "${this.sessionId}" não encontrada na lista`,
+                responseData,
+                responseTime
+              };
+            }
+            
+            return {
+              success: false,
+              attempt: 2,
+              endpoint: url,
+              httpStatus: response.status,
+              error: `HTTP ${response.status}`,
+              traceId: responseData.traceId,
+              responseData,
+              responseTime
+            };
+          } catch (error) {
+            return {
+              success: false,
+              attempt: 2,
+              endpoint: url,
+              httpStatus: 0,
+              error: error.message,
+              responseTime: Date.now() - startTime
+            };
+          }
+        };
+        
+        // Tentativa 3: GET /health (fallback final)
+        const tryHealthEndpoint = async () => {
+          const url = `${this.baseUrl}/health`;
+          console.log('Tentativa 3:', url);
+          
+          try {
+            const response = await fetch(url, {
+              method: 'GET',
+              headers: { 'Authorization': this.apiKey }
+            });
+            
+            const responseData = await response.json().catch(() => ({}));
+            const responseTime = Date.now() - startTime;
+            
+            console.log('Tentativa 3 - Resultado:', { 
+              httpStatus: response.status, 
+              ok: response.ok,
+              data: responseData 
+            });
+            
+            return {
+              success: response.ok,
+              attempt: 3,
+              endpoint: url,
+              httpStatus: response.status,
+              connected: false,
+              status: response.ok ? 'api_online_session_unknown' : 'api_offline',
+              dapiStatus: response.ok ? 'ok' : 'error',
+              errorMessage: response.ok ? 'API online, mas sessão não identificada' : `HTTP ${response.status}`,
+              data: responseData,
+              responseTime,
+              traceId: responseData.traceId
+            };
+          } catch (error) {
+            return {
+              success: false,
+              attempt: 3,
+              endpoint: url,
+              httpStatus: 0,
+              error: error.message,
+              responseTime: Date.now() - startTime
+            };
+          }
+        };
+        
+        // Executar tentativas em sequência
+        console.log('=== Iniciando consulta de status com fallback ===');
+        
+        // Tentativa 1: Endpoint da sessão
+        const attempt1 = await trySessionEndpoint();
+        if (attempt1.success) {
+          console.log('✅ Tentativa 1 bem-sucedida');
+          
+          // Salvar log
           try {
             await base44.entities.WhatsappConnectionLog.create({
               empresa_id: connection.empresa_id,
               connection_id: connectionId,
               event_type: 'api.call',
               direction: 'outbound',
-              payload_json: JSON.stringify({ action: 'getStatus', sessionId: this.sessionId }),
-              response_json: JSON.stringify(logData),
-              response_time_ms: responseTime,
+              payload_json: JSON.stringify({ action: 'getStatus', sessionId: this.sessionId, strategy: 'fallback' }),
+              response_json: JSON.stringify({
+                endpointUsed: attempt1.endpoint,
+                attempts: [1],
+                result: attempt1
+              }),
+              response_time_ms: attempt1.responseTime,
               created_at: new Date().toISOString()
             });
           } catch (logError) {
             console.error('Erro ao salvar log:', logError.message);
           }
           
-          if (!response.ok) {
-            return {
-              connected: false,
-              status: 'api_offline',
-              error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
-              endpoint: url,
-              httpStatus: response.status,
-              responseData,
-              responseTime
-            };
+          return attempt1;
+        }
+        
+        console.log('❌ Tentativa 1 falhou:', attempt1.error);
+        
+        // Tentativa 2: Listar sessões
+        const attempt2 = await trySessionsListEndpoint();
+        if (attempt2.success) {
+          console.log('✅ Tentativa 2 bem-sucedida');
+          
+          // Salvar log
+          try {
+            await base44.entities.WhatsappConnectionLog.create({
+              empresa_id: connection.empresa_id,
+              connection_id: connectionId,
+              event_type: 'api.call',
+              direction: 'outbound',
+              payload_json: JSON.stringify({ action: 'getStatus', sessionId: this.sessionId, strategy: 'fallback' }),
+              response_json: JSON.stringify({
+                endpointsAttempted: [attempt1.endpoint, attempt2.endpoint],
+                successfulEndpoint: attempt2.endpoint,
+                result: attempt2
+              }),
+              response_time_ms: attempt2.responseTime,
+              created_at: new Date().toISOString()
+            });
+          } catch (logError) {
+            console.error('Erro ao salvar log:', logError.message);
           }
           
-          // Função normalizadora de status da D-API
-          const normalizeStatus = (rawStatus, connected) => {
-            const statusLower = (rawStatus || '').toLowerCase();
-            
-            // Status conectado
-            if (connected === true || 
-                ['connected', 'open', 'online', 'logged', 'authenticated'].includes(statusLower)) {
-              return 'conectado';
-            }
-            
-            // Status aguardando QR
-            if (['qr', 'qrcode', 'pairing', 'pending', 'waiting_qr', 'waiting_for_qr'].includes(statusLower)) {
-              return 'aguardando_qr';
-            }
-            
-            // Status conectando
-            if (['connecting', 'starting', 'loading'].includes(statusLower)) {
-              return 'reiniciando';
-            }
-            
-            // Status desconectado
-            if (['disconnected', 'close', 'closed', 'offline', 'logged_out'].includes(statusLower)) {
-              return 'desconectado';
-            }
-            
-            // Status erro
-            if (['error', 'failed'].includes(statusLower)) {
-              return 'erro_recebimento';
-            }
-            
-            // Default: desconectado
-            return 'desconectado';
-          };
-          
-          // Extrair status bruto da resposta
-          const rawStatus = responseData.status || responseData.state || responseData.connectionStatus || 'unknown';
-          const isConnected = responseData.connected === true || 
-                             rawStatus === 'connected' || 
-                             rawStatus === 'open' ||
-                             rawStatus === 'online';
-          
-          // Normalizar status
-          const crmStatus = normalizeStatus(rawStatus, isConnected);
-          
-          // Extrair dados adicionais
-          const phoneNumber = responseData.phoneNumber || responseData.phone || responseData.phone_number || null;
-          const profileName = responseData.profileName || responseData.profile_name || responseData.name || null;
-          const errorMessage = responseData.error || responseData.message || responseData.error_message || null;
-          
-          return {
-            connected: isConnected,
-            status: crmStatus,
-            dapiStatus: rawStatus,
-            phoneNumber,
-            profileName,
-            errorMessage,
-            data: responseData,
-            responseTime,
-            endpoint: url,
-            httpStatus: response.status
-          };
-        } catch (error) {
-          console.error('Erro ao buscar status D-API:', error);
-          return {
-            connected: false,
-            status: 'api_offline',
-            error: error.message,
-            endpoint: url,
-            httpStatus: 0,
-            responseData: { error: error.message },
-            responseTime: Date.now() - startTime
-          };
+          return attempt2;
         }
+        
+        console.log('❌ Tentativa 2 falhou:', attempt2.error);
+        
+        // Tentativa 3: Health check
+        const attempt3 = await tryHealthEndpoint();
+        console.log(attempt3.success ? '✅ Tentativa 3 bem-sucedida' : '❌ Tentativa 3 falhou:', attempt3.error);
+        
+        // Salvar log
+        try {
+          await base44.entities.WhatsappConnectionLog.create({
+            empresa_id: connection.empresa_id,
+            connection_id: connectionId,
+            event_type: 'api.call',
+            direction: 'outbound',
+            payload_json: JSON.stringify({ action: 'getStatus', sessionId: this.sessionId, strategy: 'fallback' }),
+            response_json: JSON.stringify({
+              endpointsAttempted: [attempt1.endpoint, attempt2.endpoint, attempt3.endpoint],
+              allAttemptsFailed: true,
+              result: attempt3
+            }),
+            response_time_ms: attempt3.responseTime,
+            created_at: new Date().toISOString()
+          });
+        } catch (logError) {
+          console.error('Erro ao salvar log:', logError.message);
+        }
+        
+        return attempt3;
       }
     };
     
