@@ -51,6 +51,7 @@ import MeuFinanceiro from './pages/MeuFinanceiro';
 import ImportacaoComissao from './pages/ImportacaoComissao';
 import RobosIntegracoes from './pages/RobosIntegracoes';
 import MonitoramentoInstancias from './pages/MonitoramentoInstancias';
+import ConfiguracaoWhatsAppConexoes from './components/configuracoes/ConfiguracaoWhatsAppConexoes';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -146,6 +147,7 @@ const AuthenticatedApp = () => {
       <Route path="/ImportacaoComissao" element={<LayoutWrapper currentPageName="ImportacaoComissao"><ImportacaoComissao /></LayoutWrapper>} />
       <Route path="/RobosIntegracoes" element={<LayoutWrapper currentPageName="RobosIntegracoes"><RobosIntegracoes /></LayoutWrapper>} />
       <Route path="/MonitoramentoInstancias" element={<LayoutWrapper currentPageName="MonitoramentoInstancias"><MonitoramentoInstancias /></LayoutWrapper>} />
+      <Route path="/ConfiguracaoWhatsAppConexoes" element={<LayoutWrapper currentPageName="ConfiguracaoWhatsAppConexoes"><ConfiguracaoWhatsAppConexoes /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

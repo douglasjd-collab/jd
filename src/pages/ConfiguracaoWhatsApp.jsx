@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare, XCircle, Wifi, QrCode, RefreshCw, WifiOff } from 'lucide-react';
+import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare, XCircle, Wifi, QrCode, RefreshCw, WifiOff, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Select,
@@ -571,9 +571,10 @@ export default function ConfiguracaoWhatsApp() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="evolution" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="evolution">🟣 API Evolution</TabsTrigger>
-                <TabsTrigger value="oficial">🟢 API Oficial</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="evolution">🟣 Evolution</TabsTrigger>
+                <TabsTrigger value="oficial">🟢 Meta Oficial</TabsTrigger>
+                <TabsTrigger value="conexoes">🔗 Conexões</TabsTrigger>
               </TabsList>
 
               {/* TAB EVOLUTION */}
@@ -764,6 +765,44 @@ export default function ConfiguracaoWhatsApp() {
                    </ol>
                  </div>
 
+                </TabsContent>
+
+                {/* TAB CONEXÕES */}
+                <TabsContent value="conexoes" className="space-y-4 mt-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-blue-900 font-semibold mb-2">🔗 Gerenciador de Conexões WhatsApp</p>
+                    <p className="text-sm text-blue-800">
+                      Configure múltiplas conexões WhatsApp (D-API, Evolution, Meta Oficial) e gerencie suas instâncias.
+                    </p>
+                  </div>
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={() => window.location.href = '/ConfiguracaoWhatsAppConexoes'}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Gerenciar Conexões
+                    </Button>
+                  </div>
+
+                  <Card className="border-2 border-slate-200">
+                    <CardHeader>
+                      <CardTitle className="text-sm">Status das Conexões</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-slate-600">
+                        Acesse a página de gerenciamento para:
+                      </p>
+                      <ul className="text-sm text-slate-700 mt-2 space-y-1 list-disc list-inside">
+                        <li>Criar nova conexão D-API</li>
+                        <li>Testar conexão com health check</li>
+                        <li>Gerar QR Code</li>
+                        <li>Enviar mensagens de teste</li>
+                        <li>Visualizar logs de conexão</li>
+                      </ul>
+                    </CardContent>
+                  </Card>
                 </TabsContent>
             </Tabs>
 
