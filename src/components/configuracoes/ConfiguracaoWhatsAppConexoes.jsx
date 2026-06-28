@@ -440,19 +440,19 @@ export default function ConfiguracaoWhatsApp() {
       const statusData = response.data;
       console.log('Status atualizado:', statusData);
       
-      // Salvar dados de debug para exibição
+      // Salvar dados de debug para exibição - estrutura correta
       const debugInfo = {
         connectionNome: connection.nome,
         sessionId: connection.session_id,
-        endpoint: statusData?.endpoint || 'N/A',
-        httpStatus: statusData?.httpStatus || 'N/A',
-        statusCRM: statusData?.status || 'undefined',
-        statusDapi: statusData?.dapiStatus || 'N/A',
-        connected: statusData?.connected,
-        phoneNumber: statusData?.phoneNumber,
-        profileName: statusData?.profileName,
-        errorMessage: statusData?.errorMessage,
-        responseCompleta: statusData?.data
+        endpoint: statusData.endpoint || 'N/A',
+        httpStatus: statusData.httpStatus || 'N/A',
+        statusCRM: statusData.status || 'undefined',
+        statusDapi: statusData.dapiStatus || statusData.status || 'N/A',
+        connected: statusData.connected,
+        phoneNumber: statusData.phoneNumber,
+        profileName: statusData.profileName,
+        errorMessage: statusData.errorMessage || statusData.error,
+        responseCompleta: statusData
       };
       setDebugData(debugInfo);
       setDebugDialogOpen(true);
@@ -462,7 +462,7 @@ export default function ConfiguracaoWhatsApp() {
         console.error('Status inválido retornado:', statusData);
         toast.error(
           `Status não identificado. HTTP: ${statusData?.httpStatus || 'N/A'}. ` +
-          `Status D-API: ${statusData?.dapiStatus || 'N/A'}. ` +
+          `Status D-API: ${statusData?.status || 'N/A'}. ` +
           `Verifique modal de diagnóstico.`
         );
         return;
