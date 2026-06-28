@@ -50,7 +50,6 @@ import SincronizacaoCanopus from '@/components/configuracoes/SincronizacaoCanopu
 import ConfiguracaoWhatsApp from '@/pages/ConfiguracaoWhatsApp';
 import ConfiguracaoApi from '@/pages/ConfiguracaoApi';
 import IntegracaoFinantoBank from '@/pages/IntegracaoFinantoBank';
-import ConfiguracaoWhatsappPessoal from '@/pages/ConfiguracaoWhatsappPessoal';
 import IntegracaoWhatsAppMeta from '@/components/configuracoes/IntegracaoWhatsAppMeta';
 import IntegracaoInstagram from '@/components/configuracoes/IntegracaoInstagram';
 
@@ -226,7 +225,6 @@ export default function Configuracoes() {
         <TabsList className="mb-2">
           <TabsTrigger value="geral"><Settings className="w-4 h-4 mr-1.5" />Geral</TabsTrigger>
           <TabsTrigger value="whatsapp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp</TabsTrigger>
-          <TabsTrigger value="whatsapp-pessoal"><MessageSquare className="w-4 h-4 mr-1.5" />Meu WhatsApp Pessoal</TabsTrigger>
           <TabsTrigger value="api"><Plug className="w-4 h-4 mr-1.5" />API</TabsTrigger>
           <TabsTrigger value="finanto"><FileText className="w-4 h-4 mr-1.5" />FinantoBank INSS</TabsTrigger>
           <TabsTrigger value="meta-wpp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp Oficial Meta</TabsTrigger>
@@ -235,10 +233,6 @@ export default function Configuracoes() {
 
         <TabsContent value="whatsapp">
           <ConfiguracaoWhatsApp />
-        </TabsContent>
-
-        <TabsContent value="whatsapp-pessoal">
-          <ConfiguracaoWhatsappPessoal />
         </TabsContent>
 
         <TabsContent value="api">
