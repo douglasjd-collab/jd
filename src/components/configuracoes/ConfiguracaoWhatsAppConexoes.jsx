@@ -109,14 +109,28 @@ export default function ConfiguracaoWhatsApp() {
 
             const statusData = response.data;
             
-            // Atualizar status no banco se mudou
-            if (statusData.data && statusData.status !== connection.status) {
-              await base44.entities.WhatsappConnection.update(connection.id, {
-                status: statusData.status,
-                phone_number: statusData.phoneNumber || connection.phone_number,
-                last_health_check_at: new Date().toISOString()
-              });
-              refetch();
+            // Atualizar status no banco se foi retornado e é válido
+            if (statusData && statusData.status && statusData.status !== 'undefined') {
+              const needsUpdate = statusData.status !== connection.status ||
+                                 (statusData.phoneNumber && statusData.phoneNumber !== connection.phone_number);
+              
+              if (needsUpdate) {
+                const updateData = {
+                  status: statusData.status,
+                  last_health_check_at: new Date().toISOString()
+                };
+                
+                if (statusData.phoneNumber) {
+                  updateData.phone_number = statusData.phoneNumber;
+                }
+                
+                if (statusData.profileName) {
+                  updateData.profile_name = statusData.profileName;
+                }
+                
+                await base44.entities.WhatsappConnection.update(connection.id, updateData);
+                refetch();
+              }
             }
           } catch (error) {
             console.error('Erro ao verificar status da conexão:', connection.nome, error);
@@ -378,14 +392,24 @@ export default function ConfiguracaoWhatsApp() {
           action: 'getStatus'
         });
         const statusData = response.data;
-        setSessionStatus(statusData.data);
+        console.log('Polling QR Status:', statusData);
         
-        // Se conectou, parar polling e fechar modal
-        if (statusData.connected) {
-          clearInterval(interval);
-          toast.success('WhatsApp conectado com sucesso!');
-          setQrDialogOpen(false);
-          refetch();
+        // Usar o status retornado
+        if (statusData && statusData.status) {
+          setSessionStatus({
+            connected: statusData.connected || statusData.status === 'conectado',
+            dapiStatus: statusData.dapiStatus,
+            status: statusData.status,
+            phoneNumber: statusData.phoneNumber
+          });
+          
+          // Se conectou, parar polling e fechar modal
+          if (statusData.connected || statusData.status === 'conectado') {
+            clearInterval(interval);
+            toast.success('WhatsApp conectado com sucesso!');
+            setQrDialogOpen(false);
+            refetch();
+          }
         }
       } catch (error) {
         console.error('Erro ao verificar status:', error);
@@ -414,19 +438,62 @@ export default function ConfiguracaoWhatsApp() {
       const statusData = response.data;
       console.log('Status atualizado:', statusData);
       
-      // Atualizar no banco de dados
-      if (statusData.data) {
-        await base44.entities.WhatsappConnection.update(connection.id, {
-          status: statusData.status,
-          phone_number: statusData.phoneNumber || connection.phone_number,
-          last_health_check_at: new Date().toISOString()
-        });
-        
-        toast.success(`Status atualizado: ${statusData.status}`);
-        refetch();
+      // Registrar logs de diagnóstico completos
+      const diagnosticLog = {
+        endpoint: statusData?.endpoint || 'N/A',
+        httpStatus: statusData?.httpStatus || 'N/A',
+        statusRetornado: statusData?.status || 'undefined',
+        statusDapi: statusData?.dapiStatus || 'N/A',
+        connected: statusData?.connected,
+        timestamp: new Date().toISOString(),
+        responseCompleta: statusData?.data
+      };
+      console.log('Diagnóstico Status:', diagnosticLog);
+      
+      // Validar status retornado
+      if (!statusData || !statusData.status || statusData.status === 'undefined') {
+        console.error('Status inválido retornado:', statusData);
+        toast.error('Status não identificado. Verifique logs da resposta da D-API.');
+        return;
       }
+      
+      // Atualizar no banco de dados
+      const updateData = {
+        status: statusData.status,
+        last_health_check_at: new Date().toISOString()
+      };
+      
+      if (statusData.phoneNumber) {
+        updateData.phone_number = statusData.phoneNumber;
+      }
+      
+      if (statusData.profileName) {
+        updateData.profile_name = statusData.profileName;
+      }
+      
+      if (statusData.errorMessage) {
+        updateData.last_error_message = statusData.errorMessage;
+      }
+      
+      await base44.entities.WhatsappConnection.update(connection.id, updateData);
+      
+      // Mapear status para exibição amigável
+      const statusMap = {
+        conectado: 'Conectado',
+        desconectado: 'Desconectado',
+        aguardando_qr: 'Aguardando QR Code',
+        reiniciando: 'Conectando',
+        erro_recebimento: 'Erro',
+        erro_envio: 'Erro de Envio',
+        api_offline: 'API Offline'
+      };
+      
+      const statusExibicao = statusMap[statusData.status] || 'Desconhecido';
+      toast.success(`Status atualizado: ${statusExibicao}`);
+      refetch();
     } catch (error) {
-      toast.error('Erro ao atualizar status: ' + error.message);
+      console.error('Erro ao atualizar status:', error);
+      toast.error('Erro ao atualizar status: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
@@ -756,8 +823,16 @@ export default function ConfiguracaoWhatsApp() {
             {/* Status da sessão */}
             {sessionStatus && (
               <div className="mt-4 w-full">
-                <Badge className={sessionStatus.connected ? 'bg-green-500' : 'bg-yellow-500'}>
-                  {sessionStatus.connected ? 'Conectado' : sessionStatus.dapiStatus || 'Aguardando...'}
+                <Badge className={
+                  sessionStatus.connected || sessionStatus.status === 'conectado' ? 'bg-green-500' :
+                  sessionStatus.status === 'aguardando_qr' ? 'bg-yellow-500' :
+                  sessionStatus.status === 'reiniciando' ? 'bg-blue-500' :
+                  'bg-red-500'
+                }>
+                  {sessionStatus.connected || sessionStatus.status === 'conectado' ? 'Conectado' :
+                   sessionStatus.status === 'aguardando_qr' ? 'Aguardando QR Code' :
+                   sessionStatus.status === 'reiniciando' ? 'Conectando' :
+                   sessionStatus.dapiStatus || 'Aguardando...'}
                 </Badge>
                 {sessionStatus.phoneNumber && (
                   <p className="text-xs text-slate-600 mt-2">

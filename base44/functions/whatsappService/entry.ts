@@ -361,45 +361,113 @@ Deno.serve(async (req) => {
           const responseData = await response.json().catch(() => ({}));
           const responseTime = Date.now() - startTime;
           
+          // Log completo da resposta (para diagnóstico)
+          const logData = {
+            endpoint: url,
+            httpStatus: response.status,
+            responseData,
+            timestamp: new Date().toISOString()
+          };
+          console.log('D-API Status Response:', logData);
+          
+          // Salvar log no banco (opcional - para auditoria)
+          try {
+            await base44.entities.WhatsappConnectionLog.create({
+              empresa_id: connection.empresa_id,
+              connection_id: connectionId,
+              event_type: 'api.call',
+              direction: 'outbound',
+              payload_json: JSON.stringify({ action: 'getStatus', sessionId: this.sessionId }),
+              response_json: JSON.stringify(logData),
+              response_time_ms: responseTime,
+              created_at: new Date().toISOString()
+            });
+          } catch (logError) {
+            console.error('Erro ao salvar log:', logError.message);
+          }
+          
           if (!response.ok) {
             return {
               connected: false,
-              status: 'erro',
+              status: 'api_offline',
               error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
               endpoint: url,
+              httpStatus: response.status,
               responseData,
               responseTime
             };
           }
           
-          // Mapear status da D-API para status do CRM
-          const dapiStatus = responseData.status || responseData.state || 'unknown';
-          const isConnected = responseData.connected === true || dapiStatus === 'connected' || dapiStatus === 'open';
+          // Função normalizadora de status da D-API
+          const normalizeStatus = (rawStatus, connected) => {
+            const statusLower = (rawStatus || '').toLowerCase();
+            
+            // Status conectado
+            if (connected === true || 
+                ['connected', 'open', 'online', 'logged', 'authenticated'].includes(statusLower)) {
+              return 'conectado';
+            }
+            
+            // Status aguardando QR
+            if (['qr', 'qrcode', 'pairing', 'pending', 'waiting_qr', 'waiting_for_qr'].includes(statusLower)) {
+              return 'aguardando_qr';
+            }
+            
+            // Status conectando
+            if (['connecting', 'starting', 'loading'].includes(statusLower)) {
+              return 'reiniciando';
+            }
+            
+            // Status desconectado
+            if (['disconnected', 'close', 'closed', 'offline', 'logged_out'].includes(statusLower)) {
+              return 'desconectado';
+            }
+            
+            // Status erro
+            if (['error', 'failed'].includes(statusLower)) {
+              return 'erro_recebimento';
+            }
+            
+            // Default: desconectado
+            return 'desconectado';
+          };
           
-          let crmStatus = 'desconectado';
-          if (isConnected) {
-            crmStatus = 'conectado';
-          } else if (dapiStatus === 'qr' || dapiStatus === 'waiting_for_qr') {
-            crmStatus = 'aguardando_qr';
-          } else if (dapiStatus === 'connecting') {
-            crmStatus = 'reiniciando';
-          }
+          // Extrair status bruto da resposta
+          const rawStatus = responseData.status || responseData.state || responseData.connectionStatus || 'unknown';
+          const isConnected = responseData.connected === true || 
+                             rawStatus === 'connected' || 
+                             rawStatus === 'open' ||
+                             rawStatus === 'online';
+          
+          // Normalizar status
+          const crmStatus = normalizeStatus(rawStatus, isConnected);
+          
+          // Extrair dados adicionais
+          const phoneNumber = responseData.phoneNumber || responseData.phone || responseData.phone_number || null;
+          const profileName = responseData.profileName || responseData.profile_name || responseData.name || null;
+          const errorMessage = responseData.error || responseData.message || responseData.error_message || null;
           
           return {
             connected: isConnected,
             status: crmStatus,
-            dapiStatus,
-            phoneNumber: responseData.phoneNumber || responseData.phone || null,
+            dapiStatus: rawStatus,
+            phoneNumber,
+            profileName,
+            errorMessage,
             data: responseData,
             responseTime,
-            endpoint: url
+            endpoint: url,
+            httpStatus: response.status
           };
         } catch (error) {
+          console.error('Erro ao buscar status D-API:', error);
           return {
             connected: false,
-            status: 'erro',
+            status: 'api_offline',
             error: error.message,
             endpoint: url,
+            httpStatus: 0,
+            responseData: { error: error.message },
             responseTime: Date.now() - startTime
           };
         }
