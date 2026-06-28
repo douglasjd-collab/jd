@@ -90,8 +90,10 @@ Deno.serve(async (req) => {
           updates.status = mapStatus(data.status);
         }
         
-        if (data.phone || data.phoneNumber) {
-          updates.phone_number = data.phone || data.phoneNumber;
+        // Telefone: authData.phone (oficial D-API) ou phone/phoneNumber
+        const phone = data.authData?.phone || data.phone || data.phoneNumber;
+        if (phone) {
+          updates.phone_number = phone;
         }
         
         if (data.profileName || data.profile_name) {
@@ -102,7 +104,7 @@ Deno.serve(async (req) => {
           updates.last_success_at = data.connectedAt || data.connected_at;
         }
         
-        console.log('✅ Status atualizado:', updates.status);
+        console.log('✅ Status atualizado:', updates.status, 'Phone:', phone);
         break;
         
       case 'connection.qrcode':
