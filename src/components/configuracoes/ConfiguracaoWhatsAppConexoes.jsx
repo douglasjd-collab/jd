@@ -90,8 +90,43 @@ export default function ConfiguracaoWhatsApp() {
       const all = await base44.entities.WhatsappConnection.filter({ empresa_id: user.empresa_id });
       return all.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0));
     },
-    enabled: !!user?.empresa_id
+    enabled: !!user?.empresa_id,
+    refetchInterval: 10000 // Atualizar a cada 10 segundos
   });
+
+  // Polling de status para sincronizar com D-API
+  useEffect(() => {
+    if (!connections || connections.length === 0) return;
+
+    const checkStatusInterval = setInterval(async () => {
+      connections.forEach(async (connection) => {
+        if (connection.provider_type === 'dapi' && connection.is_active) {
+          try {
+            const response = await base44.functions.invoke('whatsappService', {
+              connectionId: connection.id,
+              action: 'getStatus'
+            });
+
+            const statusData = response.data;
+            
+            // Atualizar status no banco se mudou
+            if (statusData.data && statusData.status !== connection.status) {
+              await base44.entities.WhatsappConnection.update(connection.id, {
+                status: statusData.status,
+                phone_number: statusData.phoneNumber || connection.phone_number,
+                last_health_check_at: new Date().toISOString()
+              });
+              refetch();
+            }
+          } catch (error) {
+            console.error('Erro ao verificar status da conexão:', connection.nome, error);
+          }
+        }
+      });
+    }, 15000); // Verificar status a cada 15 segundos
+
+    return () => clearInterval(checkStatusInterval);
+  }, [connections, user?.empresa_id]);
 
   const queryClient = useQueryClient();
 
@@ -369,6 +404,32 @@ export default function ConfiguracaoWhatsApp() {
     reconnectMutation.mutate(connectionId);
   };
 
+  const handleRefreshStatus = async (connection) => {
+    try {
+      const response = await base44.functions.invoke('whatsappService', {
+        connectionId: connection.id,
+        action: 'getStatus'
+      });
+      
+      const statusData = response.data;
+      console.log('Status atualizado:', statusData);
+      
+      // Atualizar no banco de dados
+      if (statusData.data) {
+        await base44.entities.WhatsappConnection.update(connection.id, {
+          status: statusData.status,
+          phone_number: statusData.phoneNumber || connection.phone_number,
+          last_health_check_at: new Date().toISOString()
+        });
+        
+        toast.success(`Status atualizado: ${statusData.status}`);
+        refetch();
+      }
+    } catch (error) {
+      toast.error('Erro ao atualizar status: ' + error.message);
+    }
+  };
+
   // Cleanup polling on unmount
   useEffect(() => {
     return () => {
@@ -426,10 +487,16 @@ export default function ConfiguracaoWhatsApp() {
               Configure e gerencie suas conexões com diferentes provedores
             </CardDescription>
           </div>
-          <Button onClick={() => { resetForm(); setEditDialogOpen(true); }}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nova Conexão
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => refetch()}>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Atualizar
+            </Button>
+            <Button onClick={() => { resetForm(); setEditDialogOpen(true); }}>
+              <Plus className="w-4 h-4 mr-2" />
+              Nova Conexão
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -477,6 +544,14 @@ export default function ConfiguracaoWhatsApp() {
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => handleRefreshStatus(connection)}
+                          title="Atualizar status"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleTest(connection.id)}
                           title="Testar conexão"
                         >
@@ -488,7 +563,7 @@ export default function ConfiguracaoWhatsApp() {
                           onClick={() => handleReconnect(connection.id)}
                           title="Reiniciar sessão"
                         >
-                          <RefreshCw className="w-4 h-4" />
+                          <RotateCcw className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -504,7 +579,7 @@ export default function ConfiguracaoWhatsApp() {
                           onClick={() => handleCreateSession(connection)}
                           title="Criar sessão"
                         >
-                          <RotateCcw className="w-4 h-4" />
+                          <Send className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
