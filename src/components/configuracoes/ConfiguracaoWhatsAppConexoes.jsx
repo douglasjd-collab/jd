@@ -60,6 +60,8 @@ export default function ConfiguracaoWhatsApp() {
   const [testingConnection, setTestingConnection] = useState(false);
   const [sessionStatus, setSessionStatus] = useState(null);
   const [pollingInterval, setPollingInterval] = useState(null);
+  const [debugDialogOpen, setDebugDialogOpen] = useState(false);
+  const [debugData, setDebugData] = useState(null);
   const [formData, setFormData] = useState({
     nome: '',
     provider_type: 'dapi',
@@ -438,22 +440,31 @@ export default function ConfiguracaoWhatsApp() {
       const statusData = response.data;
       console.log('Status atualizado:', statusData);
       
-      // Registrar logs de diagnóstico completos
-      const diagnosticLog = {
+      // Salvar dados de debug para exibição
+      const debugInfo = {
+        connectionNome: connection.nome,
+        sessionId: connection.session_id,
         endpoint: statusData?.endpoint || 'N/A',
         httpStatus: statusData?.httpStatus || 'N/A',
-        statusRetornado: statusData?.status || 'undefined',
+        statusCRM: statusData?.status || 'undefined',
         statusDapi: statusData?.dapiStatus || 'N/A',
         connected: statusData?.connected,
-        timestamp: new Date().toISOString(),
+        phoneNumber: statusData?.phoneNumber,
+        profileName: statusData?.profileName,
+        errorMessage: statusData?.errorMessage,
         responseCompleta: statusData?.data
       };
-      console.log('Diagnóstico Status:', diagnosticLog);
+      setDebugData(debugInfo);
+      setDebugDialogOpen(true);
       
       // Validar status retornado
       if (!statusData || !statusData.status || statusData.status === 'undefined') {
         console.error('Status inválido retornado:', statusData);
-        toast.error('Status não identificado. Verifique logs da resposta da D-API.');
+        toast.error(
+          `Status não identificado. HTTP: ${statusData?.httpStatus || 'N/A'}. ` +
+          `Status D-API: ${statusData?.dapiStatus || 'N/A'}. ` +
+          `Verifique modal de diagnóstico.`
+        );
         return;
       }
       
@@ -856,6 +867,103 @@ export default function ConfiguracaoWhatsApp() {
               Atualizar QR Code
             </Button>
             <Button onClick={() => setQrDialogOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Debug Status */}
+      <Dialog open={debugDialogOpen} onOpenChange={setDebugDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-blue-500" />
+              Diagnóstico Status D-API
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            {debugData && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-slate-500">Conexão</p>
+                    <p className="font-medium">{debugData.connectionNome}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Session ID</p>
+                    <p className="font-mono text-sm">{debugData.sessionId}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="p-3 rounded-lg bg-slate-100">
+                    <p className="text-xs text-slate-500">HTTP Status</p>
+                    <p className={`font-bold ${debugData.httpStatus === 200 ? 'text-green-600' : 'text-red-600'}`}>
+                      {debugData.httpStatus}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-slate-100">
+                    <p className="text-xs text-slate-500">Status CRM</p>
+                    <p className="font-bold text-slate-800">{debugData.statusCRM}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-slate-100">
+                    <p className="text-xs text-slate-500">Status D-API</p>
+                    <p className="font-bold text-slate-800">{debugData.statusDapi}</p>
+                  </div>
+                </div>
+
+                {debugData.phoneNumber && (
+                  <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                    <p className="text-xs text-green-700">Telefone</p>
+                    <p className="font-medium text-green-900">{debugData.phoneNumber}</p>
+                  </div>
+                )}
+
+                {debugData.profileName && (
+                  <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                    <p className="text-xs text-blue-700">Nome do Perfil</p>
+                    <p className="font-medium text-blue-900">{debugData.profileName}</p>
+                  </div>
+                )}
+
+                {debugData.errorMessage && (
+                  <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+                    <p className="text-xs text-red-700">Erro</p>
+                    <p className="font-medium text-red-900">{debugData.errorMessage}</p>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-xs text-slate-500 mb-2">Endpoint Chamado</p>
+                  <code className="block p-3 bg-slate-100 rounded text-xs font-mono text-slate-700 break-all">
+                    {debugData.endpoint}
+                  </code>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-slate-500">Resposta Completa da D-API</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(JSON.stringify(debugData.responseCompleta, null, 2));
+                        toast.success('Resposta copiada!');
+                      }}
+                    >
+                      Copiar JSON
+                    </Button>
+                  </div>
+                  <pre className="block p-3 bg-slate-900 rounded text-xs font-mono text-green-400 overflow-auto max-h-64">
+                    {JSON.stringify(debugData.responseCompleta, null, 2)}
+                  </pre>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setDebugDialogOpen(false)}>
               Fechar
             </Button>
           </DialogFooter>
