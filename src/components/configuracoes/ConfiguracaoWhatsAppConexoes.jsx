@@ -148,8 +148,16 @@ export default function ConfiguracaoWhatsApp() {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      // Criptografar API Key (simples - em produção usar função de criptografia)
-      const api_key_encrypted = btoa(data.api_key);
+      // Validar e limpar API Key antes de salvar
+      const apiKeyClean = (data.api_key || '').trim();
+      
+      // Validar formato UUID (opcional, mas recomendado para D-API)
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(apiKeyClean)) {
+        console.warn('⚠️ API Key não parece ser UUID válido');
+      }
+      
+      // Criptografar API Key em base64
+      const api_key_encrypted = btoa(apiKeyClean);
       
       return await base44.entities.WhatsappConnection.create({
         ...data,
@@ -174,7 +182,15 @@ export default function ConfiguracaoWhatsApp() {
       const updateData = { ...data };
       
       if (data.api_key && data.api_key !== '***hidden***') {
-        updateData.api_key_encrypted = btoa(data.api_key);
+        // Validar e limpar API Key antes de salvar
+        const apiKeyClean = (data.api_key || '').trim();
+        
+        // Validar formato UUID (opcional, mas recomendado para D-API)
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(apiKeyClean)) {
+          console.warn('⚠️ API Key não parece ser UUID válido');
+        }
+        
+        updateData.api_key_encrypted = btoa(apiKeyClean);
         updateData.api_key = undefined;
       } else {
         delete updateData.api_key;
@@ -460,7 +476,13 @@ export default function ConfiguracaoWhatsApp() {
       setDebugDialogOpen(true);
       
       // Validar status retornado e mostrar erro claro
-      if (statusData.httpStatus === 500) {
+      if (statusData.httpStatus === 401) {
+        toast.error(
+          `API Key inválida (HTTP 401). ` +
+          `Verifique se a chave cadastrada está correta (6de82303-9c7e-4fef-9732-f00568f6088d), ` +
+          `sem espaços, sem "Bearer", e salve novamente.`
+        );
+      } else if (statusData.httpStatus === 500) {
         const traceId = statusData.traceId || statusData.responseData?.traceId || 'N/A';
         toast.error(
           `Erro interno da D-API. HTTP 500. TraceId: ${traceId}. ` +
