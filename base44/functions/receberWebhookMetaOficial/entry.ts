@@ -134,7 +134,8 @@ async function processarStatusUpdates(base44, statuses, metadata) {
       } else if (novoStatus === 'read') {
         updateData.lida_em = dataTimestamp;
       } else if (novoStatus === 'failed') {
-        updateData.erro = statusUpdate.errors?.[0]?.message || 'Falha no envio';
+        const errObj = statusUpdate.errors?.[0];
+        updateData.erro_envio = errObj ? `${errObj.message}${errObj.error_data?.details ? ' — ' + errObj.error_data.details : ''} (code ${errObj.code})` : 'Falha no envio';
       }
 
       await base44.entities.MensagemWhatsapp.update(mensagem.id, updateData);

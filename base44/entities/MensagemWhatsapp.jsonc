@@ -132,6 +132,10 @@
     "resposta_para_nome": {
       "type": "string",
       "description": "Nome do remetente da mensagem citada"
+    },
+    "erro_envio": {
+      "type": "string",
+      "description": "Motivo do erro reportado pela Meta/Evolution quando o envio falha (status=erro)"
     }
   },
   "required": [

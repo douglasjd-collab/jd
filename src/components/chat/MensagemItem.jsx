@@ -910,7 +910,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 ) : statusAtual === 'enviada' ? (
                   <span className="text-[13px] font-bold leading-none" style={{ color: 'rgba(255,255,255,0.75)', transition: 'color 0.3s' }}>✓</span>
                 ) : statusAtual === 'erro' ? (
-                  <span className="text-[13px] font-bold leading-none text-red-300" title="Falha no envio">✕</span>
+                  <span className="text-[13px] font-bold leading-none text-red-300" title={mensagem.erro_envio || 'Falha no envio'}>✕</span>
                 ) : (
                   <svg className="w-3 h-3 opacity-60 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
