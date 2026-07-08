@@ -492,7 +492,15 @@ async function atualizarStatusMensagem(base44, status) {
     { whatsapp_message_id: String(msgId) }, null, 1
   );
   if (msgs.length > 0) {
-    await base44.asServiceRole.entities.MensagemWhatsapp.update(msgs[0].id, { status: novoStatus });
+    const updateData = { status: novoStatus };
+    if (status.status === 'failed') {
+      const errObj = status.errors?.[0];
+      updateData.erro_envio = errObj
+        ? `${errObj.title || errObj.message || 'Erro'}${errObj.error_data?.details ? ' — ' + errObj.error_data.details : ''} (code ${errObj.code})`
+        : 'Falha no envio';
+      console.log(`❌ [META] Falha no envio ${msgId}:`, JSON.stringify(status.errors));
+    }
+    await base44.asServiceRole.entities.MensagemWhatsapp.update(msgs[0].id, updateData);
     console.log(`📬 [META] Status: ${msgId} → ${novoStatus}`);
   }
 }
