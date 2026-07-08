@@ -291,7 +291,8 @@ Deno.serve(async (req) => {
     }
 
     // ── ENVIO VIA D-API ──────────────────────────────────────────────────────
-    if (conexaoDapi) {
+    // Só usar D-API se a conversa NÃO for da API Oficial Meta — nunca sequestrar conversas Meta.
+    if (conexaoDapi && !conversaEhMetaOficial) {
       console.log('🟦 Provedor automático: D-API (session_id:', conexaoDapi.session_id, ')');
       
       // Normalizar número para D-API: apenas números, com DDI
