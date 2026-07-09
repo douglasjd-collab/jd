@@ -1,5 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.31";
-import { getDocument } from "npm:pdfjs-dist@4.9.155/legacy/build/pdf.mjs";
+import { getDocumentProxy } from "npm:unpdf@0.12.1";
 
 function limparLinhasPDF(texto) {
   return texto
@@ -154,9 +154,8 @@ Deno.serve(async (req) => {
 
     const buf = await fileRes.arrayBuffer();
 
-    // Extrair texto com pdfjs-dist
-    const loadingTask = getDocument({ data: buf });
-    const pdfDoc = await withTimeout(loadingTask.promise, 25000);
+    // Extrair texto com unpdf (wrapper do pdfjs-dist sem worker, compatível com Deno)
+    const pdfDoc = await withTimeout(getDocumentProxy(new Uint8Array(buf)), 25000);
     
     let text = "";
     for (let i = 1; i <= pdfDoc.numPages; i++) {
