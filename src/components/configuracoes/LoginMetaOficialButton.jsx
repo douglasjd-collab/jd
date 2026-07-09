@@ -50,14 +50,6 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
       return;
     }
 
-    // Detecta bloqueio de pop-up ANTES de chamar o FB.login
-    const testPopup = window.open('', '_blank', 'width=1,height=1');
-    if (!testPopup || testPopup.closed || typeof testPopup.closed === 'undefined') {
-      toast.error('Seu navegador bloqueou a janela de login. Permita pop-ups para este site e tente novamente.');
-      return;
-    }
-    testPopup.close();
-
     setConectando(true);
 
     // Failsafe: se o Facebook não responder em 45s, libera o botão e avisa o usuário
