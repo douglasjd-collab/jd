@@ -596,7 +596,7 @@ export default function ConfiguracaoWhatsApp() {
         action: 'getStatus'
       });
       
-      const statusData = response.data;
+      const statusData = response.data?.data || response.data;
       console.log('Status atualizado:', statusData);
       
       // Salvar dados de debug para exibição - estrutura correta
