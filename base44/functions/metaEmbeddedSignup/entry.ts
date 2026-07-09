@@ -1,10 +1,9 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const APP_ID = '26336549645965945';
-const APP_SECRET = 'ab640f4cf87eb2188702e9d469254cdd';
-
 Deno.serve(async (req) => {
   try {
+    const APP_ID = Deno.env.get('META_APP_ID');
+    const APP_SECRET = Deno.env.get('META_APP_SECRET');
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
