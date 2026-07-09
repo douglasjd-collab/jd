@@ -169,9 +169,8 @@ export default function SimuladorNormal() {
   });
 
   const { data: administradoras = [] } = useQuery({
-    queryKey: ['administradoras-ativas', empresaId],
-    enabled: !!empresaId,
-    queryFn: () => base44.entities.Administradora.filter({ empresa_id: empresaId, status: 'ativa' })
+    queryKey: ['administradoras-ativas'],
+    queryFn: () => base44.entities.Administradora.list('-created_date')
   });
 
   // Estados para o Relógio de Contemplação
