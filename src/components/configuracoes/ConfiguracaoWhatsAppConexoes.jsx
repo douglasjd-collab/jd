@@ -678,6 +678,20 @@ export default function ConfiguracaoWhatsApp() {
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       toast.error('Erro ao atualizar status: ' + (error.message || 'Erro desconhecido'));
+
+      // Mesmo com erro na chamada, exibir o diagnóstico com o que temos disponível
+      const errorResponseData = error.response?.data;
+      setDebugData({
+        connectionNome: connection.nome,
+        sessionId: connection.session_id,
+        endpoint: 'N/A',
+        httpStatus: error.response?.status || 'N/A',
+        statusCRM: 'undefined',
+        statusDapi: 'N/A',
+        errorMessage: errorResponseData?.error || error.message,
+        responseCompleta: errorResponseData || { message: error.message }
+      });
+      setDebugDialogOpen(true);
     }
   };
 
