@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { action, empresa_id, code, redirect_uri } = body;
+    const { action, empresa_id, code, redirect_uri, waba_id: wabaIdInformado, phone_number_id: phoneIdInformado } = body;
 
     // Versão dinâmica da API Meta (atualizada automaticamente pelo atualizarVersaoMetaApi)
     let metaApiVersion = 'v23.0';
@@ -37,40 +37,42 @@ Deno.serve(async (req) => {
 
       const userAccessToken = tokenData.access_token;
 
-      // 2. Buscar WABA(s) vinculadas ao usuário
-      const wabaListResp = await fetch(
-        `https://graph.facebook.com/${metaApiVersion}/me/businesses?fields=id,name,whatsapp_business_accounts&access_token=${userAccessToken}`
-      );
-      const wabaListData = await wabaListResp.json();
-
-      console.log('[metaEmbeddedSignup] businesses response:', JSON.stringify(wabaListData));
-
-      // Coletar WABA IDs
-      let wabaId = null;
+      // 2. Usar o WABA/número exato que o usuário selecionou no fluxo do Embedded Signup.
+      // Só cai no fallback de "listar e pegar o primeiro" se o front não conseguiu capturar essa info.
+      let wabaId = wabaIdInformado || null;
       let businessId = null;
 
-      if (wabaListData.data && wabaListData.data.length > 0) {
-        businessId = wabaListData.data[0].id;
-        const wabaAccounts = wabaListData.data[0].whatsapp_business_accounts?.data;
-        if (wabaAccounts && wabaAccounts.length > 0) {
-          wabaId = wabaAccounts[0].id;
-        }
-      }
-
-      // Se não encontrou via businesses, tentar direto
       if (!wabaId) {
-        const meResp = await fetch(
-          `https://graph.facebook.com/${metaApiVersion}/me?fields=id,name&access_token=${userAccessToken}`
+        const wabaListResp = await fetch(
+          `https://graph.facebook.com/${metaApiVersion}/me/businesses?fields=id,name,whatsapp_business_accounts&access_token=${userAccessToken}`
         );
-        const meData = await meResp.json();
-        businessId = meData.id;
+        const wabaListData = await wabaListResp.json();
 
-        const wabaResp = await fetch(
-          `https://graph.facebook.com/${metaApiVersion}/${businessId}/owned_whatsapp_business_accounts?access_token=${userAccessToken}`
-        );
-        const wabaData = await wabaResp.json();
-        if (wabaData.data && wabaData.data.length > 0) {
-          wabaId = wabaData.data[0].id;
+        console.log('[metaEmbeddedSignup] businesses response:', JSON.stringify(wabaListData));
+
+        if (wabaListData.data && wabaListData.data.length > 0) {
+          businessId = wabaListData.data[0].id;
+          const wabaAccounts = wabaListData.data[0].whatsapp_business_accounts?.data;
+          if (wabaAccounts && wabaAccounts.length > 0) {
+            wabaId = wabaAccounts[0].id;
+          }
+        }
+
+        // Se não encontrou via businesses, tentar direto
+        if (!wabaId) {
+          const meResp = await fetch(
+            `https://graph.facebook.com/${metaApiVersion}/me?fields=id,name&access_token=${userAccessToken}`
+          );
+          const meData = await meResp.json();
+          businessId = meData.id;
+
+          const wabaResp = await fetch(
+            `https://graph.facebook.com/${metaApiVersion}/${businessId}/owned_whatsapp_business_accounts?access_token=${userAccessToken}`
+          );
+          const wabaData = await wabaResp.json();
+          if (wabaData.data && wabaData.data.length > 0) {
+            wabaId = wabaData.data[0].id;
+          }
         }
       }
 
@@ -80,15 +82,23 @@ Deno.serve(async (req) => {
         }, { status: 400 });
       }
 
-      // 3. Buscar phone_number_id e detalhes do número
-      const phoneResp = await fetch(
-        `https://graph.facebook.com/${metaApiVersion}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,status,code_verification_status&access_token=${userAccessToken}`
-      );
-      const phoneData = await phoneResp.json();
-
-      console.log('[metaEmbeddedSignup] phone_numbers response:', JSON.stringify(phoneData));
-
-      const phoneInfo = phoneData.data?.[0] || {};
+      // 3. Buscar detalhes do número. Se o front informou o phone_number_id exato escolhido no signup, usar direto.
+      let phoneInfo = {};
+      if (phoneIdInformado) {
+        const phoneResp = await fetch(
+          `https://graph.facebook.com/${metaApiVersion}/${phoneIdInformado}?fields=id,display_phone_number,verified_name,quality_rating,status,code_verification_status&access_token=${userAccessToken}`
+        );
+        const phoneData = await phoneResp.json();
+        console.log('[metaEmbeddedSignup] phone_number (informado) response:', JSON.stringify(phoneData));
+        if (!phoneData.error) phoneInfo = phoneData;
+      } else {
+        const phoneResp = await fetch(
+          `https://graph.facebook.com/${metaApiVersion}/${wabaId}/phone_numbers?fields=id,display_phone_number,verified_name,quality_rating,status,code_verification_status&access_token=${userAccessToken}`
+        );
+        const phoneData = await phoneResp.json();
+        console.log('[metaEmbeddedSignup] phone_numbers response:', JSON.stringify(phoneData));
+        phoneInfo = phoneData.data?.[0] || {};
+      }
 
       // 4. Gerar token permanente via system user (usando app token)
       const appTokenResp = await fetch(

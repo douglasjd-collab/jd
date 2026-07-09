@@ -15,7 +15,27 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
   const [avisoBloqueio, setAvisoBloqueio] = useState(false);
   const timeoutRef = useRef(null);
   const avisoRef = useRef(null);
+  const sessionInfoRef = useRef(null);
   const emIframe = typeof window !== 'undefined' && window.self !== window.top;
+
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (!event.origin.endsWith('facebook.com')) return;
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
+          sessionInfoRef.current = {
+            waba_id: data.data?.waba_id,
+            phone_number_id: data.data?.phone_number_id,
+          };
+        }
+      } catch (_) {
+        // Ignorar mensagens que não são JSON (não relacionadas ao embedded signup)
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   useEffect(() => {
     if (window.FB) {
@@ -58,6 +78,7 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
 
     setConectando(true);
     setAvisoBloqueio(false);
+    sessionInfoRef.current = null;
 
     // Se em poucos segundos não houve resposta, provavelmente o navegador bloqueou o pop-up
     avisoRef.current = setTimeout(() => {
@@ -78,6 +99,8 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
               action: 'exchange_code',
               empresa_id: empresaId,
               code: response.authResponse.code,
+              waba_id: sessionInfoRef.current?.waba_id,
+              phone_number_id: sessionInfoRef.current?.phone_number_id,
             });
             if (resp.data?.ok) {
               toast.success('✅ WhatsApp conectado! Credenciais preenchidas automaticamente.');
