@@ -716,57 +716,12 @@ export default function ConfiguracaoWhatsApp() {
 
                 <LoginMetaOficialButton empresaId={empresa?.id} onSuccess={carregarDados} />
 
-                {[
-                  { label: 'Access Token', key: 'token', value: whatsappAccessToken, tempValue: tempWhatsappAccessToken, setter: setTempWhatsappAccessToken, placeholder: 'seu_access_token_aqui', hint: 'Token de acesso do seu app Meta/WhatsApp' },
-                  { label: 'Phone Number ID', key: 'phone', value: whatsappPhoneNumberId, tempValue: tempWhatsappPhoneNumberId, setter: setTempWhatsappPhoneNumberId, placeholder: 'seu_phone_number_id_aqui', hint: 'ID do número de telefone no WhatsApp Business' },
-                  { label: 'Business Account ID', key: 'account', value: whatsappBusinessAccountId, tempValue: tempWhatsappBusinessAccountId, setter: setTempWhatsappBusinessAccountId, placeholder: 'seu_business_account_id_aqui', hint: 'ID da sua conta comercial no WhatsApp' },
-                  { label: 'Webhook Verification Token', key: 'verify', value: whatsappVerifyToken, tempValue: tempWhatsappVerifyToken, setter: setTempWhatsappVerifyToken, placeholder: 'seu_verification_token_aqui', hint: 'Token para verificação do webhook' },
-                ].map(({ label, key, value, tempValue, setter, placeholder, hint }) => (
-                  <div key={key}>
-                    <Label className="mb-2 block">{label}</Label>
-                    {editMode ? (
-                      <div className="flex gap-2">
-                        <Input
-                          value={tempValue}
-                          onChange={(e) => setter(e.target.value)}
-                          placeholder={placeholder}
-                        />
-                        {key === 'verify' && (
-                          <Button variant="outline" onClick={() => { const t = gerarVerifyToken(); toast.success('Token gerado!'); }} title="Gerar token aleatório">
-                            🔄
-                          </Button>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        {value ? (
-                          <>
-                            <Input value={value} readOnly className="bg-slate-50 font-mono text-sm" />
-                            <Button variant="outline" size="icon" onClick={() => copyToClipboard(value, key)}>
-                              <Copy className="w-4 h-4" />
-                            </Button>
-                          </>
-                        ) : (
-                          <div className="flex-1 px-3 py-2 border rounded-md bg-amber-50 border-amber-200 text-sm text-amber-700 italic">
-                            Não configurado — clique em "Editar" para preencher
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    <p className="text-xs text-slate-500 mt-1">{hint}</p>
+                {whatsappPhoneNumberId && (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+                    <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                    Credenciais conectadas e salvas com segurança.
                   </div>
-                ))}
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                   <p className="text-sm text-blue-900 font-semibold mb-2">📖 Onde encontrar essas credenciais?</p>
-                   <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-                     <li>Acesse <strong>developers.facebook.com</strong></li>
-                     <li>Vá em seu App do WhatsApp Business</li>
-                     <li>Em <strong>Settings → API Setup</strong> encontre o Access Token</li>
-                     <li>Em <strong>Phone Numbers</strong> encontre o Phone Number ID</li>
-                     <li>Em <strong>Settings → Business Accounts</strong> encontre o Account ID</li>
-                   </ol>
-                 </div>
+                )}
 
                 </TabsContent>
 
