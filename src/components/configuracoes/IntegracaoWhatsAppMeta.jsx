@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const APP_ID = '26336549645965945';
+const APP_ID = '1574136874002258';
 
 export default function IntegracaoWhatsAppMeta({ empresaId }) {
   const [status, setStatus] = useState(null);
