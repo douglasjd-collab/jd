@@ -560,7 +560,15 @@ Deno.serve(async (req) => {
             headers: { 'Authorization': this.apiKey }
           });
           
-          const responseData = await response.json().catch(() => ({}));
+          console.log("=== GET STATUS D-API ===");
+          console.log("URL:", url);
+          console.log("HTTP Status:", response.status);
+          
+          const responseText = await response.text();
+          console.log("Response Body:", responseText);
+          
+          let responseData = {};
+          try { responseData = JSON.parse(responseText); } catch { responseData = {}; }
           const responseTime = Date.now() - startTime;
           
           if (!response.ok) {
