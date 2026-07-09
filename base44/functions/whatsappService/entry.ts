@@ -615,7 +615,10 @@ Deno.serve(async (req) => {
           // Telefone: session.authData.phone ou session.phone
           const phoneNumber = session.authData?.phone || session.phone || session.phoneNumber || session.phone_number;
           const profileName = session.profileName || session.profile_name || session.name;
-          const webhookUrl = session.webhookUrl || session.webhook_url || session.settings?.webhook;
+          const webhookUrl = (typeof session.webhookUrl === 'string' ? session.webhookUrl : null) ||
+            (typeof session.webhook_url === 'string' ? session.webhook_url : null) ||
+            session.settings?.webhook?.events?.['messages.received']?.webhookUrl ||
+            null;
           const qrCodeImage = session.qrCodeImage || session.qr_code_image || session.qrCodeBase64;
           const qrCode = session.qrCode || session.qr_code;
           const connectedAt = session.connectedAt || session.connected_at;
