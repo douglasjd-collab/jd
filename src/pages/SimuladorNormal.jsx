@@ -22,6 +22,7 @@ import RelogioContemplacao from '@/components/simulador/RelogioContemplacao';
 import { calcularRelogioContemplacao } from '@/components/utils/calcularRelogioContemplacao';
 import AnaliseContemplacao from '@/components/simulador/AnaliseContemplacao';
 import CadastroMenorLanceModal from '@/components/simulador/CadastroMenorLanceModal';
+import GruposDisponiveisPanel from '@/components/simulador/GruposDisponiveisPanel';
 
 export default function SimuladorNormal() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -30,6 +31,7 @@ export default function SimuladorNormal() {
   const [telefone, setTelefone] = useState('');
   const [tipoGrupo, setTipoGrupo] = useState('automovel');
   const [grupo, setGrupo] = useState('');
+  const [administradoraId, setAdministradoraId] = useState('');
   const [cartas, setCartas] = useState([{ credito: '', parcela: '', prazo: '', parcelaReduzida: '', planoDecrescente: false, parcelaMeio: '', ultimaParcela: '', nomePlano: '' }]);
   const [aplicarRegraCanopus, setAplicarRegraCanopus] = useState(false);
   const [parcelasCarencia, setParcelasCarencia] = useState(3);
@@ -160,6 +162,12 @@ export default function SimuladorNormal() {
   const { data: etapas = [] } = useQuery({
     queryKey: ['etapas-funil'],
     queryFn: () => base44.entities.EtapaFunil.filter({ status: 'ativa' }, 'ordem')
+  });
+
+  const { data: administradoras = [] } = useQuery({
+    queryKey: ['administradoras-ativas', empresaId],
+    enabled: !!empresaId,
+    queryFn: () => base44.entities.Administradora.filter({ empresa_id: empresaId, status: 'ativa' })
   });
 
   // Estados para o Relógio de Contemplação
@@ -873,7 +881,7 @@ export default function SimuladorNormal() {
                   <Input value={telefone} onChange={(e) => setTelefone(formatPhone(e.target.value))} placeholder="(00) 00000-0000" />
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <div>
                   <Label className="mb-2 block">Tipo do Consórcio *</Label>
                   <Select value={tipoGrupo} onValueChange={setTipoGrupo}>
@@ -889,6 +897,19 @@ export default function SimuladorNormal() {
                   </Select>
                 </div>
                 <div>
+                  <Label className="mb-2 block">Administradora</Label>
+                  <Select value={administradoraId} onValueChange={setAdministradoraId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {administradoras.map(a => (
+                        <SelectItem key={a.id} value={a.id}>{a.nome_fantasia || a.razao_social}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label>Número do Grupo</Label>
                   <Input 
                     value={grupo} 
@@ -899,6 +920,16 @@ export default function SimuladorNormal() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Grupos Disponíveis compatíveis com Administradora + Categoria + Crédito */}
+          <GruposDisponiveisPanel
+            empresaId={empresaId}
+            administradoraId={administradoraId}
+            categoriaBem={tipoGrupo}
+            credito={creditoTotal}
+            grupoSelecionado={grupo}
+            onSelectGrupo={setGrupo}
+          />
 
           {/* Histórico de Lances do Grupo */}
           {grupo && (

@@ -1,0 +1,80 @@
+{
+  "name": "AssembleiaGrupoConsorcio",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "grupo_consorcio_id": {
+      "type": "string",
+      "description": "ID do GrupoConsorcio"
+    },
+    "data_assembleia": {
+      "type": "string",
+      "format": "date",
+      "description": "Data da assembleia"
+    },
+    "total_contemplados": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de contemplados na assembleia"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es sobre a assembleia"
+    },
+    "lance_livre_menor_percentual": {
+      "type": "number",
+      "description": "Menor percentual contemplado no Lance Livre"
+    },
+    "lance_livre_qtd_contemplados": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade de contemplados no Lance Livre"
+    },
+    "lance_limitado_menor_percentual": {
+      "type": "number",
+      "description": "Menor percentual contemplado no Lance Limitado"
+    },
+    "lance_limitado_qtd_contemplados": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade de contemplados no Lance Limitado"
+    },
+    "lance_fixo_30_qtd_contemplados": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade contemplada no Lance Fixo 30%"
+    },
+    "lance_fixo_50_qtd_contemplados": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade contemplada no Lance Fixo 50%"
+    },
+    "sorteio_qtd_contemplados": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade contemplada por Sorteio"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "grupo_consorcio_id",
+    "data_assembleia"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

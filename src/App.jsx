@@ -53,6 +53,8 @@ import RobosIntegracoes from './pages/RobosIntegracoes';
 import MonitoramentoInstancias from './pages/MonitoramentoInstancias';
 import ConfiguracaoWhatsAppConexoes from './components/configuracoes/ConfiguracaoWhatsAppConexoes';
 import LogsWebhookDapi from './pages/LogsWebhookDapi';
+import GruposConsorcio from './pages/GruposConsorcio';
+import GrupoConsorcioDetalhes from './pages/GrupoConsorcioDetalhes';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -150,6 +152,8 @@ const AuthenticatedApp = () => {
       <Route path="/MonitoramentoInstancias" element={<LayoutWrapper currentPageName="MonitoramentoInstancias"><MonitoramentoInstancias /></LayoutWrapper>} />
       <Route path="/ConfiguracaoWhatsAppConexoes" element={<LayoutWrapper currentPageName="ConfiguracaoWhatsAppConexoes"><ConfiguracaoWhatsAppConexoes /></LayoutWrapper>} />
       <Route path="/LogsWebhookDapi" element={<LayoutWrapper currentPageName="LogsWebhookDapi"><LogsWebhookDapi /></LayoutWrapper>} />
+      <Route path="/GruposConsorcio" element={<LayoutWrapper currentPageName="GruposConsorcio"><GruposConsorcio /></LayoutWrapper>} />
+      <Route path="/GrupoConsorcioDetalhes" element={<LayoutWrapper currentPageName="GrupoConsorcioDetalhes"><GrupoConsorcioDetalhes /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

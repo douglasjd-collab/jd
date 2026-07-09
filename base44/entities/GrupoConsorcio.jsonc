@@ -1,0 +1,96 @@
+{
+  "name": "GrupoConsorcio",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "administradora_id": {
+      "type": "string",
+      "description": "ID da administradora"
+    },
+    "administradora_nome": {
+      "type": "string",
+      "description": "Nome da administradora (denormalizado)"
+    },
+    "categoria_bem": {
+      "type": "string",
+      "enum": [
+        "automovel",
+        "imovel",
+        "motocicleta",
+        "servico",
+        "bens_moveis"
+      ],
+      "description": "Categoria do bem do grupo"
+    },
+    "nome_grupo": {
+      "type": "string",
+      "description": "Nome do grupo"
+    },
+    "numero_grupo": {
+      "type": "string",
+      "description": "N\u00famero do grupo"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "inativo"
+      ],
+      "default": "ativo",
+      "description": "Status do grupo"
+    },
+    "credito_minimo": {
+      "type": "number",
+      "description": "Cr\u00e9dito m\u00ednimo do grupo"
+    },
+    "credito_maximo": {
+      "type": "number",
+      "description": "Cr\u00e9dito m\u00e1ximo do grupo"
+    },
+    "prazo_maximo": {
+      "type": "number",
+      "description": "Prazo m\u00e1ximo em meses"
+    },
+    "qtd_participantes": {
+      "type": "number",
+      "description": "Quantidade de participantes do grupo"
+    },
+    "prioridade_comercial": {
+      "type": "string",
+      "enum": [
+        "alta",
+        "media",
+        "baixa"
+      ],
+      "default": "media",
+      "description": "Prioridade comercial, usada apenas para ordenar os grupos no simulador"
+    },
+    "observacoes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es internas sobre o grupo"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "administradora_id",
+    "categoria_bem",
+    "numero_grupo"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

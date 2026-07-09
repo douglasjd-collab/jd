@@ -390,6 +390,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Tabela de Comissão Empresa', page: 'TabelasEmprestimo' },
         { name: 'Tabelas de Consórcio', page: 'TabelasConsorcio' },
         { name: 'Planos de Consórcio', page: 'PlanosConsorcio' },
+        { name: 'Grupos de Consórcio', page: 'GruposConsorcio' },
         { name: 'Tipos de Empréstimo', page: 'TiposEmprestimo' },
         { name: 'Comissão Empresa (Empréstimos)', page: 'TabelasComissaoEmprestimo' },
         { name: 'Comissão Vendedor (Níveis)', page: 'TabelasComissaoVendedor' },
