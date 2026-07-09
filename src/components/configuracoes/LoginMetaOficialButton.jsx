@@ -15,6 +15,7 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
   const [avisoBloqueio, setAvisoBloqueio] = useState(false);
   const timeoutRef = useRef(null);
   const avisoRef = useRef(null);
+  const emIframe = typeof window !== 'undefined' && window.self !== window.top;
 
   useEffect(() => {
     if (window.FB) {
@@ -105,6 +106,23 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
       }
     );
   };
+
+  if (emIframe) {
+    return (
+      <div className="space-y-2">
+        <Button
+          type="button"
+          className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
+          onClick={() => window.open(window.location.href, '_blank')}
+        >
+          <MessageSquare className="w-5 h-5" /> Abrir em nova aba para fazer Login com a Meta
+        </Button>
+        <p className="text-xs text-slate-500">
+          Você está numa visualização em preview (dentro de um iframe), e o navegador bloqueia pop-ups nesse caso. Clique acima para abrir esta página em uma aba de verdade e fazer o login por lá.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
