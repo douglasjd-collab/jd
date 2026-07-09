@@ -37,8 +37,7 @@ export default function LogsWebhookDapi() {
   const { data: logs = [], isLoading, refetch } = useQuery({
     queryKey: ['webhook-logs-dapi'],
     queryFn: async () => {
-      const all = await base44.entities.LogRecebimentoWebhook.filter({}, '-created_at', 100);
-      return all.filter(log => log.event_type?.includes('message') || log.event_type?.includes('session'));
+      return await base44.entities.WhatsappConnectionLog.filter({}, '-created_at', 100);
     },
     refetchInterval: 5000
   });
