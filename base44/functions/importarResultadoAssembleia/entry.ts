@@ -159,25 +159,30 @@ Deno.serve(async (req) => {
     
     let text = "";
     for (let i = 1; i <= pdfDoc.numPages; i++) {
-      const page = await pdfDoc.getPage(i);
-      const content = await page.getTextContent();
-      // Agrupar itens por linha usando transform[5] (y-coordinate)
-      // E ordenar por x (transform[4]) dentro de cada linha
-      const rawItems = content.items.filter(it => it.str && it.str.trim());
-      const linesMap = new Map();
-      for (const item of rawItems) {
-        const y = item.transform ? Math.round(item.transform[5]) : 0;
-        const x = item.transform ? item.transform[4] : 0;
-        if (!linesMap.has(y)) linesMap.set(y, []);
-        linesMap.get(y).push({ str: item.str, x });
-      }
-      // Ordenar linhas por y (decrescente = de cima para baixo no PDF)
-      const sortedYs = [...linesMap.keys()].sort((a, b) => b - a);
-      for (const y of sortedYs) {
-        const items = linesMap.get(y);
-        // Ordenar itens dentro da linha por x (esquerda para direita)
-        items.sort((a, b) => a.x - b.x);
-        text += items.map(it => it.str).join('') + "\n";
+      try {
+        const page = await pdfDoc.getPage(i);
+        const content = await page.getTextContent();
+        // Agrupar itens por linha usando transform[5] (y-coordinate)
+        // E ordenar por x (transform[4]) dentro de cada linha
+        const rawItems = content.items.filter(it => it.str && it.str.trim());
+        const linesMap = new Map();
+        for (const item of rawItems) {
+          const y = item.transform ? Math.round(item.transform[5]) : 0;
+          const x = item.transform ? item.transform[4] : 0;
+          if (!linesMap.has(y)) linesMap.set(y, []);
+          linesMap.get(y).push({ str: item.str, x });
+        }
+        // Ordenar linhas por y (decrescente = de cima para baixo no PDF)
+        const sortedYs = [...linesMap.keys()].sort((a, b) => b - a);
+        for (const y of sortedYs) {
+          const items = linesMap.get(y);
+          // Ordenar itens dentro da linha por x (esquerda para direita)
+          items.sort((a, b) => a.x - b.x);
+          text += items.map(it => it.str).join('') + "\n";
+        }
+      } catch (pageError) {
+        // Página corrompida ou com erro de parsing: pula e continua as demais
+        console.error(`[importarResultadoAssembleia] Erro ao processar página ${i}:`, pageError?.message ?? pageError);
       }
     }
 
