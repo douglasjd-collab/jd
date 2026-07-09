@@ -39,6 +39,11 @@ Deno.serve(async (req) => {
     });
     
     const payload = await req.json().catch(() => ({}));
+
+    console.log("========== WEBHOOK BRUTO ==========");
+    console.log(JSON.stringify(payload, null, 2));
+    console.log("==================================");
+
     const { event, sessionId, data, timestamp, traceId } = payload;
     
     console.log('📥 Webhook D-API recebido:', {
