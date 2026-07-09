@@ -322,6 +322,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Planos Canopus', page: 'PlanosCanopus' },
         { name: 'Simulador', page: 'SimuladorEscolha' },
         { name: 'Simulador Inteligente', page: 'SimuladorInteligente' },
+        { name: 'Grupos de Consórcio', page: 'GruposConsorcio' },
         { name: 'Resultado de Assembleia', page: 'HistoricoResultadoAssembleia' },
         { name: 'Oferta de Lance', page: 'OfertaLance' },
         { name: 'Cartas Contempladas', page: 'CartasContempladas' },
