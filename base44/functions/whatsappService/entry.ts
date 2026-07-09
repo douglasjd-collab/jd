@@ -587,7 +587,16 @@ Deno.serve(async (req) => {
           const session = responseData.session || responseData;
           
           // Mapear status conforme orientação do suporte
-          const rawStatus = (session.status || '').toLowerCase();
+          const rawStatus = String(
+            session.status ||
+            responseData.status ||
+            responseData.data?.status ||
+            responseData.session?.status ||
+            responseData.connectionStatus ||
+            ''
+          ).toLowerCase();
+          console.log('STATUS RAW D-API:', rawStatus);
+          console.log('RESPONSE STATUS COMPLETA:', JSON.stringify(responseData));
           let crmStatus = 'desconectado';
           
           if (rawStatus === 'connected') {
