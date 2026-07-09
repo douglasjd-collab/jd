@@ -153,9 +153,13 @@ export default function SimuladorNormal() {
         '-created_date',
         1
       );
-      if (colabs?.length) {
-        setEmpresaId(colabs[0].empresa_id);
+      const colab = colabs?.[0];
+      let empId = colab?.empresa_id || null;
+      if (!empId && ['master', 'super_admin'].includes(colab?.perfil)) {
+        const empresas = await base44.entities.Empresa.filter({ status: 'ativa' }, '-created_date', 1);
+        if (empresas?.length) empId = empresas[0].id;
       }
+      setEmpresaId(empId);
     }
   };
 
