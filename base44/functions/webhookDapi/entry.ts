@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     const logData = {
       empresa_id: empresaId || 'unknown',
       connection_id: connectionId,
-      event_type: mapEventType(eventType),
+      event_type: eventType,
       direction: 'inbound',
       payload_json: JSON.stringify({
         webhookId,
