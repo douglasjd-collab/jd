@@ -666,21 +666,43 @@ export default function SimuladorNormal() {
         e.produto === 'consorcio'
       ) || etapas[0];
 
-      const oportunidade = await base44.entities.Oportunidade.create({
+      // Verifica se já existe uma oportunidade aberta para este mesmo lead no funil consórcio.
+      // Se existir, apenas atualiza ela (a simulação nova entra só no histórico) em vez de criar outro card.
+      const oportunidadesExistentes = await base44.entities.Oportunidade.filter({
         empresa_id: colab.empresa_id,
-        titulo: clienteNome,
-        cliente_nome: clienteNome,
         telefone_lead: telefone,
-        valor_estimado: creditoTotal,
-        etapa_id: etapaSimulacao.id,
-        etapa_nome: etapaSimulacao.nome,
         produto: 'consorcio',
-        vendedor_id: currentUser.id,
-        vendedor_nome: colab.nome || currentUser.full_name,
-        origem: 'Simulador com Recursos Próprios',
-        status: 'aberta',
-        data_ultima_movimentacao: new Date().toISOString()
-      });
+        status: 'aberta'
+      }, '-data_ultima_movimentacao', 1);
+
+      let oportunidade;
+      if (oportunidadesExistentes?.length > 0) {
+        oportunidade = oportunidadesExistentes[0];
+        await base44.entities.Oportunidade.update(oportunidade.id, {
+          empresa_id: colab.empresa_id,
+          titulo: oportunidade.titulo,
+          vendedor_id: oportunidade.vendedor_id,
+          etapa_id: oportunidade.etapa_id,
+          valor_estimado: creditoTotal,
+          data_ultima_movimentacao: new Date().toISOString()
+        });
+      } else {
+        oportunidade = await base44.entities.Oportunidade.create({
+          empresa_id: colab.empresa_id,
+          titulo: clienteNome,
+          cliente_nome: clienteNome,
+          telefone_lead: telefone,
+          valor_estimado: creditoTotal,
+          etapa_id: etapaSimulacao.id,
+          etapa_nome: etapaSimulacao.nome,
+          produto: 'consorcio',
+          vendedor_id: currentUser.id,
+          vendedor_nome: colab.nome || currentUser.full_name,
+          origem: 'Simulador com Recursos Próprios',
+          status: 'aberta',
+          data_ultima_movimentacao: new Date().toISOString()
+        });
+      }
 
       await base44.entities.Simulacao.update(simulacao.id, {
         oportunidade_id: oportunidade.id
