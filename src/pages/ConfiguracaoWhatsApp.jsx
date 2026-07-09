@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare, XCircle, Wifi, QrCode, RefreshCw, WifiOff, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import LoginMetaOficialButton from '@/components/configuracoes/LoginMetaOficialButton';
 import {
   Select,
   SelectContent,
@@ -710,8 +711,10 @@ export default function ConfiguracaoWhatsApp() {
               <TabsContent value="oficial" className="space-y-4 mt-4">
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
                   <p className="text-sm text-green-900 font-semibold mb-2">🟢 API Oficial do WhatsApp (Meta)</p>
-                  <p className="text-sm text-green-800">Configure suas credenciais oficiais da API WhatsApp Business</p>
+                  <p className="text-sm text-green-800">Faça login com sua conta Meta Business — as credenciais abaixo são preenchidas automaticamente, sem precisar copiar nada manualmente.</p>
                 </div>
+
+                <LoginMetaOficialButton empresaId={empresa?.id} onSuccess={carregarDados} />
 
                 {[
                   { label: 'Access Token', key: 'token', value: whatsappAccessToken, tempValue: tempWhatsappAccessToken, setter: setTempWhatsappAccessToken, placeholder: 'seu_access_token_aqui', hint: 'Token de acesso do seu app Meta/WhatsApp' },
