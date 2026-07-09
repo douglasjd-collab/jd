@@ -7,11 +7,14 @@ import { toast } from 'sonner';
 const APP_ID = '1574136874002258';
 const CONFIG_ID = '1355211576800271';
 const TIMEOUT_MS = 45000;
+const AVISO_BLOQUEIO_MS = 8000;
 
 export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
   const [sdkReady, setSdkReady] = useState(false);
   const [conectando, setConectando] = useState(false);
+  const [avisoBloqueio, setAvisoBloqueio] = useState(false);
   const timeoutRef = useRef(null);
+  const avisoRef = useRef(null);
 
   useEffect(() => {
     if (window.FB) {
@@ -37,7 +40,9 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
 
   const finalizar = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (avisoRef.current) clearTimeout(avisoRef.current);
     setConectando(false);
+    setAvisoBloqueio(false);
   };
 
   const iniciarLogin = () => {
@@ -51,6 +56,12 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
     }
 
     setConectando(true);
+    setAvisoBloqueio(false);
+
+    // Se em poucos segundos não houve resposta, provavelmente o navegador bloqueou o pop-up
+    avisoRef.current = setTimeout(() => {
+      setAvisoBloqueio(true);
+    }, AVISO_BLOQUEIO_MS);
 
     // Failsafe: se o Facebook não responder em 45s, libera o botão e avisa o usuário
     timeoutRef.current = setTimeout(() => {
@@ -96,17 +107,29 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
   };
 
   return (
-    <Button
-      type="button"
-      className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
-      onClick={iniciarLogin}
-      disabled={conectando || !sdkReady}
-    >
-      {conectando
-        ? <><Loader2 className="w-5 h-5 animate-spin" /> Aguardando autorização...</>
-        : !sdkReady
-          ? <><Loader2 className="w-5 h-5 animate-spin" /> Carregando...</>
-          : <><MessageSquare className="w-5 h-5" /> Fazer Login com a Meta (preenche automaticamente)</>}
-    </Button>
+    <div className="space-y-2">
+      <Button
+        type="button"
+        className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
+        onClick={iniciarLogin}
+        disabled={conectando || !sdkReady}
+      >
+        {conectando
+          ? <><Loader2 className="w-5 h-5 animate-spin" /> Aguardando autorização...</>
+          : !sdkReady
+            ? <><Loader2 className="w-5 h-5 animate-spin" /> Carregando...</>
+            : <><MessageSquare className="w-5 h-5" /> Fazer Login com a Meta (preenche automaticamente)</>}
+      </Button>
+      {conectando && avisoBloqueio && (
+        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
+          <p className="text-xs text-amber-800">
+            A janela de login não abriu ainda. Verifique se o navegador ou alguma extensão bloqueou o pop-up e libere para este site.
+          </p>
+          <Button type="button" variant="outline" size="sm" onClick={finalizar}>
+            Cancelar e tentar novamente
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
