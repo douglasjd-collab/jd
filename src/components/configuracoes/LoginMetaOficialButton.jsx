@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Loader2, MessageSquare } from 'lucide-react';
@@ -6,32 +6,66 @@ import { toast } from 'sonner';
 
 const APP_ID = '1574136874002258';
 const CONFIG_ID = '1355211576800271';
+const TIMEOUT_MS = 45000;
 
 export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
+  const [sdkReady, setSdkReady] = useState(false);
   const [conectando, setConectando] = useState(false);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
-    if (window.FB) return;
+    if (window.FB) {
+      setSdkReady(true);
+      return;
+    }
     window.fbAsyncInit = function () {
       window.FB.init({ appId: APP_ID, autoLogAppEvents: true, xfbml: true, version: 'v21.0' });
+      setSdkReady(true);
     };
-    const script = document.createElement('script');
-    script.src = 'https://connect.facebook.net/pt_BR/sdk.js';
-    script.async = true;
-    script.defer = true;
-    document.body.appendChild(script);
+    if (!document.getElementById('facebook-jssdk')) {
+      const script = document.createElement('script');
+      script.id = 'facebook-jssdk';
+      script.src = 'https://connect.facebook.net/pt_BR/sdk.js';
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+    }
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, []);
 
+  const finalizar = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setConectando(false);
+  };
+
   const iniciarLogin = () => {
-    if (!window.FB) {
-      toast.error('SDK do Facebook ainda não carregou. Aguarde alguns segundos e tente novamente.');
+    if (!sdkReady || !window.FB) {
+      toast.error('O SDK do Facebook ainda está carregando. Aguarde alguns segundos e tente novamente.');
       return;
     }
     if (!empresaId) {
       toast.error('Empresa não identificada.');
       return;
     }
+
+    // Detecta bloqueio de pop-up ANTES de chamar o FB.login
+    const testPopup = window.open('', '_blank', 'width=1,height=1');
+    if (!testPopup || testPopup.closed || typeof testPopup.closed === 'undefined') {
+      toast.error('Seu navegador bloqueou a janela de login. Permita pop-ups para este site e tente novamente.');
+      return;
+    }
+    testPopup.close();
+
     setConectando(true);
+
+    // Failsafe: se o Facebook não responder em 45s, libera o botão e avisa o usuário
+    timeoutRef.current = setTimeout(() => {
+      toast.error('O login com o Facebook não respondeu. Verifique se a janela de login foi bloqueada pelo navegador, ou se o app da Meta está com o domínio autorizado corretamente, e tente novamente.');
+      finalizar();
+    }, TIMEOUT_MS);
+
     window.FB.login(
       async (response) => {
         if (response.authResponse && response.authResponse.code) {
@@ -55,7 +89,7 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
         } else {
           toast.info('Conexão cancelada.');
         }
-        setConectando(false);
+        finalizar();
       },
       {
         config_id: CONFIG_ID,
@@ -74,11 +108,13 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
       type="button"
       className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
       onClick={iniciarLogin}
-      disabled={conectando}
+      disabled={conectando || !sdkReady}
     >
       {conectando
         ? <><Loader2 className="w-5 h-5 animate-spin" /> Aguardando autorização...</>
-        : <><MessageSquare className="w-5 h-5" /> Fazer Login com a Meta (preenche automaticamente)</>}
+        : !sdkReady
+          ? <><Loader2 className="w-5 h-5 animate-spin" /> Carregando...</>
+          : <><MessageSquare className="w-5 h-5" /> Fazer Login com a Meta (preenche automaticamente)</>}
     </Button>
   );
 }
