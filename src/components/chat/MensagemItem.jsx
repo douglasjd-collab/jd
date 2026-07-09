@@ -329,7 +329,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         result.push(<s key={i}>{part.slice(1, -1)}</s>);
       } else {
         // Detectar links dentro do texto comum
-        const linkClass = isVendedor ? 'text-blue-200 hover:text-blue-100' : 'text-blue-600 hover:text-blue-500';
+        const linkClass = isVendedor ? 'text-green-100 hover:text-white' : 'text-blue-600 hover:text-blue-500';
         result.push(...renderTextWithLinks(part, linkClass));
       }
     });
@@ -377,7 +377,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       const hasVideo = tmpl.header_type === 'VIDEO' && tmpl.header_url && !/^\d+$/.test(String(tmpl.header_url).trim());
       const botoes = Array.isArray(tmpl.botoes) ? tmpl.botoes : [];
       return (
-        <div className={`flex flex-col rounded-xl overflow-hidden w-64 ${isVendedor ? 'bg-blue-400/10' : 'bg-white border border-slate-200'}`}>
+        <div className={`flex flex-col rounded-xl overflow-hidden w-64 ${isVendedor ? 'bg-black/10' : 'bg-white border border-slate-200'}`}>
           {/* Imagem do cabeçalho */}
           {hasImage && (
             <img
@@ -439,8 +439,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 telFormatado = `(${numLimpo.slice(0,2)}) ${numLimpo.slice(2,6)}-${numLimpo.slice(6)}`;
               }
               return (
-                <div key={idx} className={`flex flex-col w-64 rounded-xl overflow-hidden shadow-sm ${isVendedor ? 'bg-blue-400/20 border border-blue-300/40' : 'bg-white border border-slate-200'}`}>
-                  <div className={`flex items-center gap-3 p-3 ${isVendedor ? 'bg-blue-500/30' : 'bg-slate-50 border-b border-slate-100'}`}>
+                <div key={idx} className={`flex flex-col w-64 rounded-xl overflow-hidden shadow-sm ${isVendedor ? 'bg-black/10 border border-white/20' : 'bg-white border border-slate-200'}`}>
+                  <div className={`flex items-center gap-3 p-3 ${isVendedor ? 'bg-black/10' : 'bg-slate-50 border-b border-slate-100'}`}>
                     <div className="w-11 h-11 rounded-full bg-slate-300 flex items-center justify-center flex-shrink-0">
                       <svg viewBox="0 0 24 24" className="w-7 h-7 text-slate-500 fill-current"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
                     </div>
@@ -464,7 +464,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                           }
                         } catch { toast.error('Erro ao abrir conversa'); }
                       }}
-                      className={`w-full py-2.5 text-sm font-semibold border-t transition-colors ${isVendedor ? 'border-blue-300/30 text-white/90 hover:bg-white/10' : 'border-slate-100 text-green-600 hover:bg-green-50'}`}
+                      className={`w-full py-2.5 text-sm font-semibold border-t transition-colors ${isVendedor ? 'border-white/20 text-white/90 hover:bg-white/10' : 'border-slate-100 text-green-600 hover:bg-green-50'}`}
                     >
                       Conversar
                     </button>
@@ -833,7 +833,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           isSticker
             ? 'bg-transparent border-0 shadow-none px-0 py-0'
             : isVendedor
-            ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-md px-4 py-3'
+            ? 'bg-[#25D366] text-white rounded-br-md px-4 py-3'
             : 'bg-white text-slate-900 rounded-bl-md border border-slate-200 px-4 py-3'
         }`}
       >
