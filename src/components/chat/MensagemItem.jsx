@@ -329,7 +329,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         result.push(<s key={i}>{part.slice(1, -1)}</s>);
       } else {
         // Detectar links dentro do texto comum
-        const linkClass = isVendedor ? 'text-green-100 hover:text-white' : 'text-blue-600 hover:text-blue-500';
+        const linkClass = isVendedor ? 'text-blue-700 hover:text-blue-800' : 'text-blue-600 hover:text-blue-500';
         result.push(...renderTextWithLinks(part, linkClass));
       }
     });
@@ -377,7 +377,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       const hasVideo = tmpl.header_type === 'VIDEO' && tmpl.header_url && !/^\d+$/.test(String(tmpl.header_url).trim());
       const botoes = Array.isArray(tmpl.botoes) ? tmpl.botoes : [];
       return (
-        <div className={`flex flex-col rounded-xl overflow-hidden w-64 ${isVendedor ? 'bg-black/10' : 'bg-white border border-slate-200'}`}>
+        <div className={`flex flex-col rounded-xl overflow-hidden w-64 ${isVendedor ? 'bg-black/5' : 'bg-white border border-slate-200'}`}>
           {/* Imagem do cabeçalho */}
           {hasImage && (
             <img
@@ -439,8 +439,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 telFormatado = `(${numLimpo.slice(0,2)}) ${numLimpo.slice(2,6)}-${numLimpo.slice(6)}`;
               }
               return (
-                <div key={idx} className={`flex flex-col w-64 rounded-xl overflow-hidden shadow-sm ${isVendedor ? 'bg-black/10 border border-white/20' : 'bg-white border border-slate-200'}`}>
-                  <div className={`flex items-center gap-3 p-3 ${isVendedor ? 'bg-black/10' : 'bg-slate-50 border-b border-slate-100'}`}>
+                <div key={idx} className={`flex flex-col w-64 rounded-xl overflow-hidden shadow-sm ${isVendedor ? 'bg-black/5 border border-black/10' : 'bg-white border border-slate-200'}`}>
+                  <div className={`flex items-center gap-3 p-3 ${isVendedor ? 'bg-black/5' : 'bg-slate-50 border-b border-slate-100'}`}>
                     <div className="w-11 h-11 rounded-full bg-slate-300 flex items-center justify-center flex-shrink-0">
                       <svg viewBox="0 0 24 24" className="w-7 h-7 text-slate-500 fill-current"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
                     </div>
@@ -464,7 +464,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                           }
                         } catch { toast.error('Erro ao abrir conversa'); }
                       }}
-                      className={`w-full py-2.5 text-sm font-semibold border-t transition-colors ${isVendedor ? 'border-white/20 text-white/90 hover:bg-white/10' : 'border-slate-100 text-green-600 hover:bg-green-50'}`}
+                      className={`w-full py-2.5 text-sm font-semibold border-t transition-colors ${isVendedor ? 'border-black/10 text-green-700 hover:bg-black/5' : 'border-slate-100 text-green-600 hover:bg-green-50'}`}
                     >
                       Conversar
                     </button>
@@ -833,7 +833,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           isSticker
             ? 'bg-transparent border-0 shadow-none px-0 py-0'
             : isVendedor
-            ? 'bg-[#25D366] text-white rounded-br-md px-4 py-3'
+            ? 'bg-[#DCF8C6] text-slate-900 rounded-br-md px-4 py-3'
             : 'bg-white text-slate-900 rounded-bl-md border border-slate-200 px-4 py-3'
         }`}
       >
@@ -850,7 +850,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center flex-shrink-0 text-white text-[10px] font-bold">
               {(mensagem.remetente_nome || '?').charAt(0).toUpperCase()}
             </div>
-            <p className={`text-xs font-bold ${isVendedor ? 'text-white/80' : 'text-blue-600'}`}>
+            <p className={`text-xs font-bold ${isVendedor ? 'text-slate-600' : 'text-blue-600'}`}>
               {mensagem.remetente_nome}
             </p>
           </div>
@@ -862,14 +862,14 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
               {mensagem.atendente_nome || mensagem.usuario_nome || 'Atendente'}
             </p>
             {mensagem.provider === 'whatsapp_meta' && (
-              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20 text-white leading-none">
-                <span className="w-1 h-1 rounded-full bg-white inline-block opacity-90" />
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-black/10 text-slate-700 leading-none">
+                <span className="w-1 h-1 rounded-full bg-slate-700 inline-block opacity-90" />
                 Meta
               </span>
             )}
             {mensagem.provider === 'evolution' && (
-              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-white/20 text-white leading-none">
-                <span className="w-1 h-1 rounded-full bg-white inline-block opacity-90" />
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-black/10 text-slate-700 leading-none">
+                <span className="w-1 h-1 rounded-full bg-slate-700 inline-block opacity-90" />
                 Evolution
               </span>
             )}
@@ -880,12 +880,12 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         )}
         {/* Citação da mensagem respondida — estilo WhatsApp */}
         {mensagem.resposta_para_texto && (
-          <div className={`mb-2 rounded-lg overflow-hidden border-l-4 ${isVendedor ? 'border-white/60 bg-white/15' : 'border-blue-500 bg-slate-100'}`}>
+          <div className={`mb-2 rounded-lg overflow-hidden border-l-4 ${isVendedor ? 'border-green-600/60 bg-black/5' : 'border-blue-500 bg-slate-100'}`}>
             <div className={`px-2 pt-1.5 pb-1`}>
-              <p className={`text-[11px] font-semibold truncate ${isVendedor ? 'text-white/90' : 'text-blue-600'}`}>
+              <p className={`text-[11px] font-semibold truncate ${isVendedor ? 'text-green-800' : 'text-blue-600'}`}>
                 {mensagem.resposta_para_nome || 'Mensagem'}
               </p>
-              <p className={`text-xs truncate mt-0.5 ${isVendedor ? 'text-white/70' : 'text-slate-500'}`}>
+              <p className={`text-xs truncate mt-0.5 ${isVendedor ? 'text-slate-600' : 'text-slate-500'}`}>
                 {mensagem.resposta_para_texto}
               </p>
             </div>
@@ -898,7 +898,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           )}
           {/* Hora + status inline, flutuando para direita como no WhatsApp */}
           <div className="flex items-center gap-0.5 flex-shrink-0 self-end ml-auto" style={{ marginBottom: '-2px' }}>
-            <span className={`text-[11px] leading-none ${isVendedor ? 'text-white/70' : 'text-slate-400'}`} title={format(new Date(mensagem.data_envio || mensagem.created_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}>
+            <span className={`text-[11px] leading-none ${isVendedor ? 'text-slate-500' : 'text-slate-400'}`} title={format(new Date(mensagem.data_envio || mensagem.created_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}>
               {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm')}
             </span>
             {isVendedor && (
@@ -906,9 +906,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 {statusAtual === 'lida' ? (
                   <span className="text-[13px] font-bold leading-none" style={{ color: '#53bdeb', transition: 'color 0.3s' }}>✓✓</span>
                 ) : statusAtual === 'entregue' ? (
-                  <span className="text-[13px] font-bold leading-none" style={{ color: 'rgba(255,255,255,0.75)', transition: 'color 0.3s' }}>✓✓</span>
+                  <span className="text-[13px] font-bold leading-none" style={{ color: 'rgba(0,0,0,0.45)', transition: 'color 0.3s' }}>✓✓</span>
                 ) : statusAtual === 'enviada' ? (
-                  <span className="text-[13px] font-bold leading-none" style={{ color: 'rgba(255,255,255,0.75)', transition: 'color 0.3s' }}>✓</span>
+                  <span className="text-[13px] font-bold leading-none" style={{ color: 'rgba(0,0,0,0.45)', transition: 'color 0.3s' }}>✓</span>
                 ) : statusAtual === 'erro' ? (
                   <span className="text-[13px] font-bold leading-none text-red-300" title={mensagem.erro_envio || 'Falha no envio'}>✕</span>
                 ) : (
