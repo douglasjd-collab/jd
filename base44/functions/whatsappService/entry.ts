@@ -105,12 +105,15 @@ Deno.serve(async (req) => {
         const responseTime = Date.now() - startTime;
         
         if (!response.ok) {
-          const error = new Error(`HTTP ${response.status}: ${JSON.stringify(responseData)}`);
-          error.status = response.status;
-          error.data = responseData;
-          error.endpoint = endpoint;
-          error.traceId = responseData.traceId;
-          throw error;
+          return {
+            success: false,
+            error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
+            data: responseData,
+            responseTime,
+            endpoint: url,
+            httpStatus: response.status,
+            traceId: responseData.traceId
+          };
         }
         
         return {
