@@ -37,7 +37,14 @@ export default function LogsWebhookDapi() {
   const { data: logs = [], isLoading, refetch } = useQuery({
     queryKey: ['webhook-logs-dapi'],
     queryFn: async () => {
-      return await base44.entities.WhatsappConnectionLog.filter({}, '-created_at', 100);
+      const all = await base44.entities.WhatsappConnectionLog.filter({ direction: 'inbound' }, '-created_at', 100);
+      return all.filter(log =>
+        log.event_type?.includes('message') ||
+        log.event_type?.includes('messages') ||
+        log.event_type?.includes('connection') ||
+        log.event_type?.includes('session') ||
+        log.event_type === 'logged_out'
+      );
     },
     refetchInterval: 5000
   });
@@ -96,13 +103,15 @@ export default function LogsWebhookDapi() {
 
   const getEventBadge = (eventType) => {
     const config = {
-      'message.received': { color: 'bg-blue-500', label: 'Mensagem Recebida' },
-      'message.sent': { color: 'bg-green-500', label: 'Enviada' },
+      'messages.received': { color: 'bg-blue-500', label: 'Mensagem recebida' },
+      'messages.sent': { color: 'bg-green-500', label: 'Mensagem enviada' },
       'message.delivered': { color: 'bg-emerald-500', label: 'Entregue' },
       'message.read': { color: 'bg-purple-500', label: 'Lida' },
-      'session.status': { color: 'bg-orange-500', label: 'Status' },
-      'session.qr': { color: 'bg-yellow-500', label: 'QR Code' },
-      'session.disconnected': { color: 'bg-red-500', label: 'Desconectado' }
+      'message.update': { color: 'bg-orange-500', label: 'Atualizada' },
+      'message.deleted': { color: 'bg-red-500', label: 'Apagada' },
+      'connection.status': { color: 'bg-orange-500', label: 'Status' },
+      'connection.qrcode': { color: 'bg-yellow-500', label: 'QR Code' },
+      'logged_out': { color: 'bg-red-500', label: 'Desconectado' }
     };
 
     const c = config[eventType] || { color: 'bg-slate-500', label: eventType };

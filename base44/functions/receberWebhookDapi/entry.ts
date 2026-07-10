@@ -45,6 +45,15 @@ Deno.serve(async (req) => {
     console.log("==================================");
 
     const { event, sessionId, data, timestamp, traceId } = payload;
+
+    if (!event || !sessionId || !data) {
+      console.error('❌ Payload D-API inválido:', payload);
+      return Response.json({
+        success: false,
+        error: 'Payload inválido',
+        received: payload
+      }, { status: 200 });
+    }
     
     console.log('📥 Webhook D-API recebido:', {
       event,
@@ -137,7 +146,7 @@ Deno.serve(async (req) => {
         break;
         
       case 'messages.received':
-        console.log('📨 Mensagem recebida:', data);
+        console.log('📨 Evento messages.received:', JSON.stringify(data, null, 2));
         await processarMensagemRecebida(base44, connection, data);
         break;
         
@@ -162,10 +171,11 @@ Deno.serve(async (req) => {
     await base44.entities.WhatsappConnectionLog.create({
       empresa_id: connection.empresa_id,
       connection_id: connection.id,
-      event_type: 'connection.status',
+      event_type: event,
       direction: 'inbound',
       payload_json: JSON.stringify(payload),
-      response_json: JSON.stringify({ success: true, updates }),
+      response_json: JSON.stringify({ success: true, event, sessionId, updates }),
+      error_message: null,
       response_time_ms: 0,
       created_at: new Date().toISOString()
     });
@@ -198,79 +208,109 @@ Deno.serve(async (req) => {
 // Processa uma mensagem recebida de cliente via D-API e salva no CRM
 async function processarMensagemRecebida(base44, connection, data) {
   try {
-    // Ignorar mensagens enviadas por nós mesmos (fromMe)
-    if (data?.fromMe || data?.key?.fromMe) {
-      console.log('ℹ️ Ignorando mensagem própria (fromMe)');
+    console.log('📦 Processando mensagem D-API:', JSON.stringify(data, null, 2));
+
+    // Ignorar mensagens enviadas pelo próprio número
+    if (data?.fromMe === true || data?.key?.fromMe === true) {
+      console.log('ℹ️ Ignorando mensagem própria: fromMe=true');
       return;
     }
 
-    // Ignorar mensagens de grupo
-    const remoteJid = data?.from || data?.key?.remoteJid || data?.chatId || data?.jid || '';
-    if (String(remoteJid).includes('@g.us')) {
+    // Ignorar grupos por enquanto
+    if (data?.is_group === true || String(data?.from?.jid || '').includes('@g.us')) {
       console.log('ℹ️ Ignorando mensagem de grupo');
       return;
     }
 
+    // Na D-API, data.from é um objeto. O telefone está em data.from.jid.
+    const remoteJid = data?.from?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '';
+
     const telefone = String(remoteJid).replace(/@.*/g, '').replace(/\D/g, '');
+
     if (!telefone) {
-      console.warn('⚠️ Não foi possível extrair telefone da mensagem D-API:', JSON.stringify(data).substring(0, 300));
+      console.error('❌ Não foi possível extrair o telefone:', JSON.stringify(data, null, 2));
       return;
     }
 
-    const nomeContato = data?.pushName || data?.notifyName || data?.senderName || telefone;
+    const nomeContato =
+      data?.from_name ||
+      data?.from?.name ||
+      data?.pushName ||
+      data?.notifyName ||
+      data?.senderName ||
+      telefone;
+
     const empresaId = connection.empresa_id;
 
-    // Extrair conteúdo da mensagem (formatos possíveis da D-API/Baileys)
-    let tipo_conteudo = 'texto';
-    let texto = '';
-    let arquivo_url = null;
+    let tipo_conteudo = data?.type || 'text';
+    let texto = typeof data?.message === 'string' ? data.message : '';
 
-    const msgContent = data?.message || data;
+    let arquivo_url = data?.media_url || data?.media_data?.url || null;
 
-    if (msgContent?.conversation || msgContent?.text) {
-      tipo_conteudo = 'texto';
-      texto = msgContent.conversation || msgContent.text || '';
-    } else if (msgContent?.extendedTextMessage?.text) {
-      tipo_conteudo = 'texto';
-      texto = msgContent.extendedTextMessage.text;
-    } else if (msgContent?.imageMessage) {
-      tipo_conteudo = 'imagem';
-      texto = msgContent.imageMessage.caption || '';
-      arquivo_url = msgContent.imageMessage.url || null;
-    } else if (msgContent?.audioMessage) {
-      tipo_conteudo = 'audio';
-      texto = 'Áudio';
-      arquivo_url = msgContent.audioMessage.url || null;
-    } else if (msgContent?.videoMessage) {
-      tipo_conteudo = 'video';
-      texto = msgContent.videoMessage.caption || 'Vídeo';
-      arquivo_url = msgContent.videoMessage.url || null;
-    } else if (msgContent?.documentMessage) {
-      tipo_conteudo = 'documento';
-      texto = msgContent.documentMessage.fileName || 'Documento';
-      arquivo_url = msgContent.documentMessage.url || null;
-    } else {
-      texto = data?.body || data?.text || 'Mensagem';
+    const mapaTipos = {
+      text: 'texto',
+      image: 'imagem',
+      video: 'video',
+      audio: 'audio',
+      document: 'documento',
+      sticker: 'figurinha',
+      contact: 'contato',
+      location: 'localizacao',
+      reaction: 'reacao',
+      poll_update: 'enquete',
+      list_response: 'resposta_lista',
+      template_button_reply: 'resposta_botao',
+      list: 'lista',
+      carousel: 'carrossel',
+      nativeflow: 'fluxo'
+    };
+
+    tipo_conteudo = mapaTipos[tipo_conteudo] || tipo_conteudo;
+
+    if (!texto) {
+      texto =
+        data?.media_data?.caption ||
+        data?.body ||
+        (tipo_conteudo === 'audio' ? 'Áudio'
+          : tipo_conteudo === 'imagem' ? 'Imagem'
+          : tipo_conteudo === 'video' ? 'Vídeo'
+          : tipo_conteudo === 'documento' ? (data?.media_data?.filename || 'Documento')
+          : tipo_conteudo === 'figurinha' ? 'Figurinha'
+          : tipo_conteudo === 'localizacao' ? 'Localização'
+          : tipo_conteudo === 'contato' ? 'Contato'
+          : tipo_conteudo === 'reacao' ? (data?.data?.reaction_text || 'Reação')
+          : 'Mensagem');
     }
 
-    // Buscar ou criar conversa
+    console.log('✅ Dados extraídos:', { telefone, nomeContato, tipo_conteudo, texto, arquivo_url });
+
+    // Buscar conversa existente
     let conversas = await base44.entities.ConversaWhatsapp.filter({
       empresa_id: empresaId,
       cliente_telefone: telefone
     }, '-created_date', 1);
 
     let conversa;
-    if (conversas.length > 0) {
+
+    if (conversas && conversas.length > 0) {
       conversa = conversas[0];
+
+      const atualizarConversa = {
+        cliente_nome: nomeContato,
+        provider: 'dapi',
+        canal_origem: 'dapi',
+        instancia: connection.session_id,
+        last_inbound_provider: 'dapi',
+        cliente_respondeu: true
+      };
+
       if (conversa.status === 'campanha') {
-        await base44.entities.ConversaWhatsapp.update(conversa.id, {
-          status: 'ativa',
-          cliente_respondeu: true,
-          data_primeira_resposta: new Date().toISOString(),
-          tipo_conexao: 'usuario',
-          provider: 'dapi',
-        });
+        atualizarConversa.status = 'ativa';
+        atualizarConversa.data_primeira_resposta = conversa.data_primeira_resposta || new Date().toISOString();
+        atualizarConversa.tipo_conexao = 'usuario';
       }
+
+      await base44.entities.ConversaWhatsapp.update(conversa.id, atualizarConversa);
     } else {
       conversa = await base44.entities.ConversaWhatsapp.create({
         empresa_id: empresaId,
@@ -280,15 +320,29 @@ async function processarMensagemRecebida(base44, connection, data) {
         status: 'ativa',
         tipo_conexao: 'usuario',
         provider: 'dapi',
-        canal_origem: 'evolution',
+        canal_origem: 'dapi',
         instancia: connection.session_id,
         ultima_mensagem: '',
         data_ultima_mensagem: new Date().toISOString(),
         ultimo_remetente: 'cliente',
+        last_inbound_provider: 'dapi',
+        cliente_respondeu: true,
+        data_primeira_resposta: new Date().toISOString()
       });
     }
 
-    const wamid = data?.key?.id || data?.id || `dapi_in_${Date.now()}`;
+    const whatsappMessageId = data?.id || data?.key?.id || `dapi_in_${Date.now()}`;
+
+    // Evitar duplicação caso o webhook seja reenviado
+    const mensagensExistentes = await base44.entities.MensagemWhatsapp.filter({
+      empresa_id: empresaId,
+      whatsapp_message_id: whatsappMessageId
+    }, '-created_date', 1);
+
+    if (mensagensExistentes && mensagensExistentes.length > 0) {
+      console.log('ℹ️ Mensagem D-API já registrada:', whatsappMessageId);
+      return;
+    }
 
     await base44.entities.MensagemWhatsapp.create({
       conversa_id: conversa.id,
@@ -298,22 +352,27 @@ async function processarMensagemRecebida(base44, connection, data) {
       texto,
       arquivo_url,
       provider: 'dapi',
-      whatsapp_message_id: wamid,
-      data_envio: new Date().toISOString(),
-      status: 'entregue',
+      whatsapp_message_id: whatsappMessageId,
+      data_envio: data?.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
+      status: 'entregue'
     });
 
     await base44.entities.ConversaWhatsapp.update(conversa.id, {
-      ultima_mensagem: texto.substring(0, 200),
-      data_ultima_mensagem: new Date().toISOString(),
+      ultima_mensagem: String(texto).substring(0, 200),
+      data_ultima_mensagem: data?.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
       ultimo_remetente: 'cliente',
       cliente_nome: nomeContato,
+      provider: 'dapi',
+      canal_origem: 'dapi',
+      instancia: connection.session_id,
       last_inbound_provider: 'dapi',
+      cliente_respondeu: true
     });
 
-    console.log('✅ Mensagem D-API recebida e salva na conversa:', conversa.id);
-  } catch (e) {
-    console.error('❌ Erro ao processar mensagem recebida D-API:', e.message);
+    console.log('✅ Mensagem D-API salva com sucesso:', { conversaId: conversa.id, whatsappMessageId, telefone, texto });
+  } catch (error) {
+    console.error('❌ Erro ao processar mensagem D-API:', error?.message, error?.stack);
+    throw error;
   }
 }
 
