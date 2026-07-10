@@ -215,7 +215,7 @@ export default function BatePapo() {
     }
   };
   const [searchConversas, setSearchConversas] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('todas');
+  const [filtroStatus, setFiltroStatus] = useState('ativa');
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
   const [contatosWhatsapp, setContatosWhatsapp] = useState({});
   const [infoLeadAberto, setInfoLeadAberto] = useState(false);
