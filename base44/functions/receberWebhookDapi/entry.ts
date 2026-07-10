@@ -272,6 +272,8 @@ async function processarMensagemRecebida(base44, connection, data) {
       image: 'imagem',
       video: 'video',
       audio: 'audio',
+      ptt: 'audio',
+      voice: 'audio',
       document: 'documento',
       sticker: 'figurinha',
       contact: 'contato',
@@ -419,7 +421,7 @@ async function processarMensagemEnviadaPeloCelular(base44, connection, data, tel
     let tipo_conteudo = data?.type || 'text';
     let texto = typeof data?.message === 'string' ? data.message : '';
     let arquivo_url = data?.media_url || data?.media_data?.url || null;
-    const mapaTipos = { text: 'texto', image: 'imagem', video: 'video', audio: 'audio', document: 'documento', sticker: 'figurinha', contact: 'contato', location: 'localizacao' };
+    const mapaTipos = { text: 'texto', image: 'imagem', video: 'video', audio: 'audio', ptt: 'audio', voice: 'audio', document: 'documento', sticker: 'figurinha', contact: 'contato', location: 'localizacao' };
     tipo_conteudo = mapaTipos[tipo_conteudo] || tipo_conteudo;
     if (!texto) {
       texto = data?.media_data?.caption || data?.body || (tipo_conteudo === 'audio' ? 'Áudio' : tipo_conteudo === 'imagem' ? 'Imagem' : tipo_conteudo === 'video' ? 'Vídeo' : tipo_conteudo === 'documento' ? (data?.media_data?.filename || 'Documento') : 'Mensagem');
