@@ -484,7 +484,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
       case 'imagem':
         return (
-          <>
+          <div>
             <div className="max-w-xs">
               {loadingMedia ? (
                 <div className="flex items-center gap-2 bg-white/10 rounded-lg p-4 w-32 h-32 justify-center">
@@ -535,7 +535,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 />
               </div>
             )}
-          </>
+          </div>
         );
 
       case 'audio':
@@ -627,7 +627,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         const nomeDoc = mensagem.arquivo_nome || 'Documento PDF';
         const isPdf = nomeDoc.toLowerCase().endsWith('.pdf') || mensagem.tipo_conteudo === 'pdf';
         return (
-          <>
+          <div>
             <div
               className={`flex flex-col rounded-xl overflow-hidden w-56 cursor-pointer border ${isVendedor ? 'border-white/20 bg-white/10' : 'border-slate-200 bg-slate-50'}`}
               onClick={() => urlDoc && setPdfAberto(true)}
@@ -728,7 +728,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 </div>
               </DialogContent>
             </Dialog>
-          </>
+          </div>
         );
       }
 
