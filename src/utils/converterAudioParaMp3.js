@@ -1,4 +1,9 @@
-import lamejs from 'lamejs';
+import * as lamejsModule from 'lamejs';
+
+// Interop: dependendo do bundler, o construtor pode vir no default export
+// ou diretamente no namespace importado. Resolver os dois casos evita o erro
+// "Mp3Encoder is not a constructor" causado por import default incorreto.
+const Mp3Encoder = lamejsModule.Mp3Encoder || lamejsModule.default?.Mp3Encoder;
 
 // Converte um Blob de áudio gravado no navegador (geralmente webm/opus) para um MP3
 // real. Necessário porque apenas rotular o blob original como "audio/ogg" não funciona:
@@ -18,7 +23,10 @@ export async function converterAudioParaMp3(blob) {
     int16Samples[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
 
-  const encoder = new lamejs.Mp3Encoder(1, sampleRate, 96);
+  if (typeof Mp3Encoder !== 'function') {
+    throw new Error('lamejs.Mp3Encoder não disponível');
+  }
+  const encoder = new Mp3Encoder(1, sampleRate, 96);
   const chunks = [];
   const blockSize = 1152;
   for (let i = 0; i < int16Samples.length; i += blockSize) {
