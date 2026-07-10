@@ -381,6 +381,12 @@ async function processMessageReceived(base44, body, connection, empresaId) {
         atualizarConversa.canal_origem = 'dapi';
         atualizarConversa.instancia = connection.session_id;
       }
+      // Se a conversa estava finalizada e o cliente mandou mensagem, reabrir e colocar em "Esperando"
+      if (conversa.status === 'encerrada') {
+        atualizarConversa.status = 'ativa';
+        atualizarConversa.responsavel_id = null;
+        atualizarConversa.responsavel_expira_em = null;
+      }
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, atualizarConversa);
     } else {
       conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({

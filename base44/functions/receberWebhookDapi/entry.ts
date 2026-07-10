@@ -316,6 +316,11 @@ async function processarMensagemRecebida(base44, connection, data) {
         atualizarConversa.status = 'ativa';
         atualizarConversa.data_primeira_resposta = conversa.data_primeira_resposta || new Date().toISOString();
         atualizarConversa.tipo_conexao = 'usuario';
+      } else if (conversa.status === 'encerrada') {
+        // Conversa finalizada e cliente mandou mensagem: reabrir e colocar em "Esperando"
+        atualizarConversa.status = 'ativa';
+        atualizarConversa.responsavel_id = null;
+        atualizarConversa.responsavel_expira_em = null;
       }
 
       await base44.entities.ConversaWhatsapp.update(conversa.id, atualizarConversa);

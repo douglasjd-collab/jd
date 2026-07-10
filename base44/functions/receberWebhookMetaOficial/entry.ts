@@ -197,6 +197,17 @@ async function processarMensagensRecebidas(base44, value) {
     } else if (canalTravado) {
       console.log(`🔒 Canal travado manualmente (${conversa.provider || conversa.canal_origem}) — não sobrescrevendo tipo_conexao para conversa ${conversa.id}`);
     }
+    // Se a conversa estava finalizada e o cliente mandou mensagem, reabrir e colocar em "Esperando"
+    if (conversa.status === 'encerrada') {
+      await base44.entities.ConversaWhatsapp.update(conversa.id, {
+        status: 'ativa',
+        responsavel_id: null,
+        responsavel_expira_em: null,
+      });
+      conversa.status = 'ativa';
+      conversa.responsavel_id = null;
+      conversa.responsavel_expira_em = null;
+    }
   } else {
     conversa = await base44.entities.ConversaWhatsapp.create({
       empresa_id: empresa.id,
