@@ -402,7 +402,7 @@ Deno.serve(async (req) => {
         const messagePayload = {
           sessionId: this.sessionId,
           to: normalizedPhone,
-          image_url: imageUrl,
+          image: imageUrl,
           caption: caption
         };
         
@@ -429,7 +429,7 @@ Deno.serve(async (req) => {
         const messagePayload = {
           sessionId: this.sessionId,
           to: normalizedPhone,
-          document_url: documentUrl,
+          document: documentUrl,
           caption: caption
         };
         
@@ -443,7 +443,7 @@ Deno.serve(async (req) => {
         const messagePayload = {
           sessionId: this.sessionId,
           to: normalizedPhone,
-          video_url: videoUrl,
+          video: videoUrl,
           caption: caption
         };
         
