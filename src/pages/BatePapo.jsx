@@ -819,13 +819,6 @@ export default function BatePapo() {
         const nomeRemetente = conversa?.cliente_nome || conversa?.cliente_telefone || 'Cliente';
         const textoMsg = msgData.texto || '📎 Arquivo recebido';
 
-        console.log(`🔔 Notificando: ${nomeRemetente}`);
-        toast.message(`💬 ${nomeRemetente}`, {
-          description: textoMsg.length > 120 ? textoMsg.substring(0, 120) + '...' : textoMsg,
-          duration: 6000,
-          action: conversa ? { label: 'Abrir conversa', onClick: () => selecionarConversa(conversa) } : undefined,
-        });
-
         if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
           const notif = new Notification(`💬 ${nomeRemetente}`, {
             body: textoMsg, icon: '/favicon.ico', tag: msgData.id,
