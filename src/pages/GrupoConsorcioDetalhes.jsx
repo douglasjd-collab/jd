@@ -125,8 +125,8 @@ export default function GrupoConsorcioDetalhes() {
       toast.success('Grupo salvo com sucesso!');
       queryClient.invalidateQueries({ queryKey: ['grupos-consorcio'] });
       if (!grupoId) {
-        setGrupoId(id);
-        navigate(createPageUrl('GrupoConsorcioDetalhes') + `?id=${id}`, { replace: true });
+        toast.success('Tela pronta para um novo cadastro.');
+        setForm(initialForm);
       } else {
         queryClient.invalidateQueries({ queryKey: ['grupo-consorcio', id] });
       }
