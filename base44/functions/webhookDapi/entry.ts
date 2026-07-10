@@ -286,16 +286,28 @@ async function processMessageReceived(base44, body, connection, empresaId) {
   if (!connection) return { handled: false, reason: 'connection not found' };
 
   const data = body.data || body.message || body;
+  const isFromMe = data?.fromMe === true || data?.key?.fromMe === true;
 
-  // Ignorar mensagens enviadas pelo próprio número (eco) e mensagens de grupo
-  if (data?.fromMe === true || data?.key?.fromMe === true) {
-    return { handled: false, reason: 'mensagem própria (fromMe)' };
-  }
   if (data?.is_group === true || String(data?.from?.jid || '').includes('@g.us')) {
     return { handled: false, reason: 'mensagem de grupo' };
   }
 
   const externalMessageId = data.id || data?.key?.id || data.messageId || data.external_message_id;
+
+  // Mensagem enviada pelo próprio número (fromMe): se já foi registrada pelo envio via CRM, ignorar (eco).
+  // Se NÃO existir ainda, foi enviada direto pelo celular/WhatsApp — precisa ser salva no histórico.
+  if (isFromMe) {
+    if (externalMessageId) {
+      const jaRegistrada = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+        empresa_id: empresaId,
+        whatsapp_message_id: externalMessageId
+      }, '-created_date', 1);
+      if (jaRegistrada && jaRegistrada.length > 0) {
+        return { handled: false, reason: 'mensagem própria já registrada (enviada via CRM)' };
+      }
+    }
+    return await processMessageSentFromPhone(base44, data, connection, empresaId, externalMessageId);
+  }
 
   // O telefone vem em data.from.jid (objeto), não em data.from diretamente
   const remoteJid = data?.from?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '';
@@ -444,6 +456,62 @@ async function processMessageReceived(base44, body, connection, empresaId) {
     messageId: externalMessageId,
     fromPhone
   };
+}
+
+/**
+ * Processar mensagem enviada diretamente pelo celular (fora do CRM).
+ * Salva no histórico como remetente "vendedor" e marca a conversa como respondida.
+ */
+async function processMessageSentFromPhone(base44, data, connection, empresaId, externalMessageId) {
+  const remoteJid = data?.from?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '';
+  const telefone = String(remoteJid).replace(/@.*/g, '').replace(/\D/g, '');
+  if (!telefone) {
+    return { handled: false, reason: 'telefone não encontrado (fromMe)' };
+  }
+
+  const messageType = data.type || 'text';
+  let content = typeof data.message === 'string' ? data.message : (data.text || data.content || '');
+  const mediaUrl = data.media_url || data.media_data?.url || data.mediaUrl || data.fileUrl || null;
+  const messageTypes = {
+    text: 'texto', image: 'imagem', video: 'video', audio: 'audio', document: 'documento',
+    sticker: 'figurinha', contact: 'contato', location: 'localizacao'
+  };
+  const crmMessageType = messageTypes[messageType] || 'texto';
+  if (!content) {
+    content = data?.media_data?.caption || data?.caption || (crmMessageType === 'audio' ? 'Áudio' : crmMessageType === 'imagem' ? 'Imagem' : crmMessageType === 'video' ? 'Vídeo' : crmMessageType === 'documento' ? (data?.media_data?.filename || 'Documento') : 'Mensagem');
+  }
+  const timestamp = data.timestamp || data.createdAt || new Date().toISOString();
+
+  const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+    empresa_id: empresaId,
+    cliente_telefone: telefone
+  }, '-created_date', 1);
+
+  if (!conversas || conversas.length === 0) {
+    return { handled: false, reason: 'conversa não encontrada para mensagem enviada pelo celular' };
+  }
+  const conversa = conversas[0];
+
+  await base44.asServiceRole.entities.MensagemWhatsapp.create({
+    empresa_id: empresaId,
+    conversa_id: conversa.id,
+    remetente: 'vendedor',
+    tipo_conteudo: crmMessageType,
+    texto: content,
+    arquivo_url: mediaUrl,
+    provider: 'dapi',
+    whatsapp_message_id: externalMessageId || `dapi_out_phone_${Date.now()}`,
+    status: 'enviada',
+    data_envio: new Date(timestamp).toISOString()
+  });
+
+  await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
+    ultima_mensagem: String(content).substring(0, 200),
+    data_ultima_mensagem: new Date(timestamp).toISOString(),
+    ultimo_remetente: 'vendedor',
+  });
+
+  return { handled: true, conversaId: conversa.id, messageId: externalMessageId, fromPhone: telefone, viaCelular: true };
 }
 
 /**

@@ -210,12 +210,6 @@ async function processarMensagemRecebida(base44, connection, data) {
   try {
     console.log('📦 Processando mensagem D-API:', JSON.stringify(data, null, 2));
 
-    // Ignorar mensagens enviadas pelo próprio número
-    if (data?.fromMe === true || data?.key?.fromMe === true) {
-      console.log('ℹ️ Ignorando mensagem própria: fromMe=true');
-      return;
-    }
-
     // Ignorar grupos por enquanto
     if (data?.is_group === true || String(data?.from?.jid || '').includes('@g.us')) {
       console.log('ℹ️ Ignorando mensagem de grupo');
@@ -229,6 +223,25 @@ async function processarMensagemRecebida(base44, connection, data) {
 
     if (!telefone) {
       console.error('❌ Não foi possível extrair o telefone:', JSON.stringify(data, null, 2));
+      return;
+    }
+
+    // Mensagem enviada pelo próprio número (fromMe): se já foi registrada pelo envio via CRM, ignorar (eco).
+    // Se ainda não existir, foi enviada direto pelo celular/WhatsApp e precisa ser salva no histórico.
+    const isFromMe = data?.fromMe === true || data?.key?.fromMe === true;
+    if (isFromMe) {
+      const wamidFromMe = data?.id || data?.key?.id;
+      if (wamidFromMe) {
+        const jaRegistrada = await base44.entities.MensagemWhatsapp.filter({
+          empresa_id: connection.empresa_id,
+          whatsapp_message_id: wamidFromMe
+        }, '-created_date', 1);
+        if (jaRegistrada && jaRegistrada.length > 0) {
+          console.log('ℹ️ Mensagem própria já registrada (enviada via CRM):', wamidFromMe);
+          return;
+        }
+      }
+      await processarMensagemEnviadaPeloCelular(base44, connection, data, telefone, wamidFromMe);
       return;
     }
 
@@ -386,6 +399,57 @@ async function processarMensagemRecebida(base44, connection, data) {
   } catch (error) {
     console.error('❌ Erro ao processar mensagem D-API:', error?.message, error?.stack);
     throw error;
+  }
+}
+
+// Salva mensagem enviada diretamente pelo celular (fora do CRM) no histórico como "vendedor"
+async function processarMensagemEnviadaPeloCelular(base44, connection, data, telefone, wamid) {
+  try {
+    const empresaId = connection.empresa_id;
+
+    let tipo_conteudo = data?.type || 'text';
+    let texto = typeof data?.message === 'string' ? data.message : '';
+    let arquivo_url = data?.media_url || data?.media_data?.url || null;
+    const mapaTipos = { text: 'texto', image: 'imagem', video: 'video', audio: 'audio', document: 'documento', sticker: 'figurinha', contact: 'contato', location: 'localizacao' };
+    tipo_conteudo = mapaTipos[tipo_conteudo] || tipo_conteudo;
+    if (!texto) {
+      texto = data?.media_data?.caption || data?.body || (tipo_conteudo === 'audio' ? 'Áudio' : tipo_conteudo === 'imagem' ? 'Imagem' : tipo_conteudo === 'video' ? 'Vídeo' : tipo_conteudo === 'documento' ? (data?.media_data?.filename || 'Documento') : 'Mensagem');
+    }
+
+    const conversas = await base44.entities.ConversaWhatsapp.filter({
+      empresa_id: empresaId,
+      cliente_telefone: telefone
+    }, '-created_date', 1);
+
+    if (!conversas || conversas.length === 0) {
+      console.log('ℹ️ Conversa não encontrada para mensagem enviada pelo celular:', telefone);
+      return;
+    }
+    const conversa = conversas[0];
+    const timestamp = data?.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString();
+
+    await base44.entities.MensagemWhatsapp.create({
+      conversa_id: conversa.id,
+      empresa_id: empresaId,
+      remetente: 'vendedor',
+      tipo_conteudo,
+      texto,
+      arquivo_url,
+      provider: 'dapi',
+      whatsapp_message_id: wamid || `dapi_out_phone_${Date.now()}`,
+      data_envio: timestamp,
+      status: 'enviada'
+    });
+
+    await base44.entities.ConversaWhatsapp.update(conversa.id, {
+      ultima_mensagem: String(texto).substring(0, 200),
+      data_ultima_mensagem: timestamp,
+      ultimo_remetente: 'vendedor',
+    });
+
+    console.log('✅ Mensagem enviada pelo celular salva no histórico:', { conversaId: conversa.id, wamid, telefone });
+  } catch (error) {
+    console.error('❌ Erro ao processar mensagem enviada pelo celular:', error?.message);
   }
 }
 
