@@ -133,8 +133,8 @@ Deno.serve(async (req) => {
     });
     logData.error_message = errorMessage;
     
-    // Salvar log (não bloquear resposta)
-    base44.asServiceRole.entities.LogRecebimentoWebhook.create(logData).catch(e => {
+    // Salvar log (não bloquear resposta) — usa WhatsappConnectionLog, que é o schema correto para este payload
+    base44.asServiceRole.entities.WhatsappConnectionLog.create(logData).catch(e => {
       console.error(`❌ [Webhook D-API] ${webhookId} - Erro ao salvar log:`, e.message);
     });
     

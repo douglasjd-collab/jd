@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
     }
     
     const connection = connections[0];
-    
+
     // Mapear status do evento para status do CRM
     const mapStatus = (rawStatus) => {
       const statusLower = (rawStatus || '').toLowerCase();
@@ -164,10 +164,10 @@ Deno.serve(async (req) => {
         break;
         
       default:
-        console.log('ℹ️ Evento não tratado:', event);
+        console.log('ℹ️ Evento não tratado:', event, JSON.stringify(data, null, 2));
     }
     
-    // Salvar log do webhook
+    // Salvar log do webhook (payload bruto sempre salvo, útil para diagnóstico de eventos não mapeados)
     await base44.entities.WhatsappConnectionLog.create({
       empresa_id: connection.empresa_id,
       connection_id: connection.id,
