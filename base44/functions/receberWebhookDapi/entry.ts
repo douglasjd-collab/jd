@@ -267,27 +267,57 @@ async function processarMensagemRecebida(base44, connection, data) {
 
     let arquivo_url = data?.media_url || data?.media_data?.url || null;
 
-    const mapaTipos = {
-      text: 'texto',
-      image: 'imagem',
-      video: 'video',
-      audio: 'audio',
-      ptt: 'audio',
-      voice: 'audio',
-      document: 'documento',
-      sticker: 'figurinha',
-      contact: 'contato',
-      location: 'localizacao',
-      reaction: 'reacao',
-      poll_update: 'enquete',
-      list_response: 'resposta_lista',
-      template_button_reply: 'resposta_botao',
-      list: 'lista',
-      carousel: 'carrossel',
-      nativeflow: 'fluxo'
-    };
+    // Mensagens de lista interativa (botões com opções) — a D-API envia as opções
+    // separadas em data.data, então montamos um texto legível com todas elas.
+    if (tipo_conteudo === 'list' || tipo_conteudo === 'list_response' || tipo_conteudo === 'template_button_reply') {
+      const listData = data?.data || {};
+      const linhas = [];
+      if (listData.title) linhas.push(`*${listData.title}*`);
+      if (listData.description) linhas.push(listData.description);
 
-    tipo_conteudo = mapaTipos[tipo_conteudo] || tipo_conteudo;
+      const opcoes = [];
+      if (Array.isArray(listData.sections)) {
+        listData.sections.forEach((sec) => {
+          if (sec?.title) opcoes.push(`_${sec.title}_`);
+          (sec?.rows || []).forEach((row) => {
+            opcoes.push(`▸ ${row.title}${row.description ? ' - ' + row.description : ''}`);
+          });
+        });
+      } else if (Array.isArray(listData.options)) {
+        listData.options.forEach((opt) => opcoes.push(`▸ ${opt}`));
+      }
+      if (opcoes.length > 0) linhas.push(opcoes.join('\n'));
+
+      if (listData.selected_title) linhas.push(`Selecionou: ${listData.selected_title}`);
+      if (listData.selected_display_text) linhas.push(`Selecionou: ${listData.selected_display_text}`);
+      if (listData.footer) linhas.push(listData.footer);
+
+      texto = linhas.filter(Boolean).join('\n\n') || texto || 'Mensagem de lista/botões';
+      tipo_conteudo = 'texto';
+    } else {
+      const mapaTipos = {
+        text: 'texto',
+        image: 'imagem',
+        video: 'video',
+        audio: 'audio',
+        ptt: 'audio',
+        voice: 'audio',
+        document: 'documento',
+        sticker: 'documento',
+        contact: 'texto',
+        location: 'texto',
+        reaction: 'texto',
+        poll_update: 'texto',
+        carousel: 'texto',
+        nativeflow: 'texto'
+      };
+
+      tipo_conteudo = mapaTipos[tipo_conteudo] || tipo_conteudo;
+    }
+
+    // Segurança: nunca salvar um tipo fora do permitido pelo schema da entidade
+    const tiposValidos = ['texto', 'imagem', 'audio', 'video', 'pdf', 'documento'];
+    if (!tiposValidos.includes(tipo_conteudo)) tipo_conteudo = 'texto';
 
     if (!texto) {
       texto =
