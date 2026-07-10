@@ -416,7 +416,7 @@ Deno.serve(async (req) => {
         const messagePayload = {
           sessionId: this.sessionId,
           to: normalizedPhone,
-          audio_url: audioUrl
+          audio: audioUrl
         };
         
         return await this.request('/api/v1/messages/send/audio', 'POST', messagePayload);
