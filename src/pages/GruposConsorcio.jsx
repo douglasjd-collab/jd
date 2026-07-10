@@ -87,7 +87,7 @@ export default function GruposConsorcio() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Grupos de Consórcio"
+        title="Grupos Ativos"
         subtitle={`${grupos.length} grupos cadastrados`}
         actionLabel="Novo Grupo"
         onAction={() => navigate(createPageUrl('GrupoConsorcioDetalhes'))}
