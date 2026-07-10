@@ -76,6 +76,15 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
       return;
     }
 
+    // Testa imediatamente (mesmo clique) se o navegador permite abrir pop-up.
+    // Se bloquear aqui, avisamos na hora em vez de esperar o timeout todo.
+    const testPopup = window.open('', '_blank', 'width=1,height=1');
+    if (!testPopup || testPopup.closed || typeof testPopup.closed === 'undefined') {
+      toast.error('Seu navegador bloqueou o pop-up de login. Clique no ícone de bloqueio de pop-up na barra de endereço e permita pop-ups para este site, depois tente novamente.');
+      return;
+    }
+    testPopup.close();
+
     setConectando(true);
     setAvisoBloqueio(false);
     sessionInfoRef.current = null;
