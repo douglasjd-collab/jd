@@ -466,10 +466,15 @@ async function processarMensagemEnviadaPeloCelular(base44, connection, data, tel
       status: 'enviada'
     });
 
+    // Responder pelo WhatsApp normal (celular) também move o cliente para "Em atendimento"
+    const expiraAtendimento = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     await base44.entities.ConversaWhatsapp.update(conversa.id, {
       ultima_mensagem: String(texto).substring(0, 200),
       data_ultima_mensagem: timestamp,
       ultimo_remetente: 'vendedor',
+      responsavel_id: conversa.responsavel_id || 'whatsapp_celular',
+      responsavel_nome: conversa.responsavel_nome || connection.profile_name || 'Atendente (WhatsApp)',
+      responsavel_expira_em: expiraAtendimento,
     });
 
     console.log('✅ Mensagem enviada pelo celular salva no histórico:', { conversaId: conversa.id, wamid, telefone });
