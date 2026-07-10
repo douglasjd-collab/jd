@@ -130,6 +130,20 @@ export default function FunilVendas() {
     loadUser();
   }, []);
 
+  // Abrir automaticamente a oportunidade vinda do BatePapo (botão "Ver no Funil")
+  useEffect(() => {
+    if (!oportunidades.length) return;
+    const params = new URLSearchParams(window.location.search);
+    const oportunidadeId = params.get('oportunidade_id');
+    if (!oportunidadeId) return;
+    const oport = oportunidades.find(o => o.id === oportunidadeId);
+    if (oport) {
+      setFilterProduto(oport.produto || 'todos');
+      setOportunidadeModalId(oportunidadeId);
+    }
+    window.history.replaceState({}, '', window.location.pathname);
+  }, [oportunidades]);
+
   const loadUser = async () => {
     try {
       const user = await base44.auth.me();

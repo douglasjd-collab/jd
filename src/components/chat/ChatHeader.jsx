@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import AvatarContato from './AvatarContato';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 export default function ChatHeader({
   conversaSelecionada,
@@ -43,6 +44,7 @@ export default function ChatHeader({
   coachIAOpen,
   setCoachIAOpen,
 }) {
+  const navigate = useNavigate();
   const [canalOverride, setCanalOverride] = useState(null);
   const [fotoModalOpen, setFotoModalOpen] = useState(false);
   const [conexoesAtivas, setConexoesAtivas] = useState([]);
@@ -413,7 +415,13 @@ export default function ChatHeader({
                 <CalendarClock className="mr-2 h-3.5 w-3.5" />
                 Agendar mensagem
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFunilModalOpen?.(true)}>
+              <DropdownMenuItem onClick={() => {
+                if (oportunidadeAtual) {
+                  navigate(`/FunilVendas?oportunidade_id=${oportunidadeAtual.id}`);
+                } else {
+                  setFunilModalOpen?.(true);
+                }
+              }}>
                 <TrendingUp className="mr-2 h-3.5 w-3.5" />
                 {oportunidadeAtual ? 'Ver no Funil' : 'Adicionar ao Funil'}
               </DropdownMenuItem>
