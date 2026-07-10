@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
         console.log(`📡 D-API avatar: ${avatarUrl}`);
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 5000);
+        const timeout = setTimeout(() => controller.abort(), 8000);
         const resDapi = await fetch(avatarUrl, {
           method: 'GET',
           headers: { 'Authorization': apiKeyDecrypted },
@@ -57,10 +57,31 @@ Deno.serve(async (req) => {
         });
         clearTimeout(timeout);
 
-        console.log(`📡 D-API avatar status: ${resDapi.status}`);
+        const rawText = await resDapi.text();
+        console.log(`📡 D-API avatar status: ${resDapi.status} | body: ${rawText?.slice(0, 500)}`);
+
         if (resDapi.ok) {
-          const dataDapi = await resDapi.json().catch(() => ({}));
-          fotoUrl = dataDapi?.avatar || dataDapi?.avatarUrl || dataDapi?.avatar_url || dataDapi?.url || dataDapi?.picture || null;
+          let dataDapi = {};
+          try { dataDapi = JSON.parse(rawText); } catch (_) { dataDapi = {}; }
+
+          // A resposta pode vir com diferentes formatos/envelopes — checar todas as variações conhecidas
+          const candidatos = [
+            dataDapi?.avatar,
+            dataDapi?.avatarUrl,
+            dataDapi?.avatar_url,
+            dataDapi?.url,
+            dataDapi?.picture,
+            dataDapi?.data?.avatar,
+            dataDapi?.data?.avatarUrl,
+            dataDapi?.data?.avatar_url,
+            dataDapi?.data?.url,
+            dataDapi?.data?.picture,
+            dataDapi?.result?.avatar,
+            dataDapi?.result?.url,
+            typeof dataDapi === 'string' ? dataDapi : null,
+            /^https?:\/\//.test(rawText?.trim() || '') ? rawText.trim() : null,
+          ];
+          fotoUrl = candidatos.find(v => typeof v === 'string' && v.startsWith('http')) || null;
           console.log(`📸 Foto D-API encontrada: ${fotoUrl ? 'SIM' : 'NÃO'} | ${fotoUrl}`);
         }
       }
