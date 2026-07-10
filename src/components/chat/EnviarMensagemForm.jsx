@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import heic2any from 'heic2any';
-import { converterAudioParaMp3 } from '@/utils/converterAudioParaMp3';
+import { encodeFloat32ToMp3 } from '@/utils/converterAudioParaMp3';
 import { Button } from '@/components/ui/button';
 import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Plus } from 'lucide-react';
 import MensagensRapidasModal from './MensagensRapidasModal';
@@ -44,16 +44,18 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     }
   }, [scriptExterno]);
 
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
+  const streamRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const sourceRef = useRef(null);
+  const processorRef = useRef(null);
+  const silentGainRef = useRef(null);
+  const pcmChunksRef = useRef([]);
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-      }
+      pararCapturaAudio();
     };
   }, []);
 
@@ -66,25 +68,36 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     return () => document.removeEventListener('mousedown', handler);
   }, [menuPlusOpen]);
 
+  // Captura amostras PCM diretamente do microfone (evita decodeAudioData sobre
+  // blob webm do MediaRecorder, que falha em vários navegadores).
   const iniciarGravacao = async () => {
     setErro(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // Tentar ogg/opus (aceito pela Meta), fallback para webm
-      const mimeType = MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
-        ? 'audio/ogg;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : 'audio/webm';
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
+      streamRef.current = stream;
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const audioCtx = new AudioContextClass();
+      audioCtxRef.current = audioCtx;
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+      const silentGain = audioCtx.createGain();
+      silentGain.gain.value = 0; // evita eco: processor precisa chegar ao destino para disparar, mas sem volume
+
+      pcmChunksRef.current = [];
+      processor.onaudioprocess = (e) => {
+        pcmChunksRef.current.push(new Float32Array(e.inputBuffer.getChannelData(0)));
       };
 
-      mediaRecorder.start(100);
+      source.connect(processor);
+      processor.connect(silentGain);
+      silentGain.connect(audioCtx.destination);
+
+      sourceRef.current = source;
+      processorRef.current = processor;
+      silentGainRef.current = silentGain;
+
       setGravando(true);
       setTempoGravacao(0);
       timerRef.current = setInterval(() => setTempoGravacao(t => t + 1), 1000);
@@ -93,57 +106,60 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     }
   };
 
+  // Desliga o grafo de áudio e o microfone; retorna a sampleRate usada na captura
+  const pararCapturaAudio = () => {
+    if (processorRef.current) processorRef.current.disconnect();
+    if (sourceRef.current) sourceRef.current.disconnect();
+    if (silentGainRef.current) silentGainRef.current.disconnect();
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    const sampleRate = audioCtxRef.current?.sampleRate;
+    audioCtxRef.current?.close();
+    processorRef.current = null;
+    sourceRef.current = null;
+    silentGainRef.current = null;
+    audioCtxRef.current = null;
+    streamRef.current = null;
+    return sampleRate;
+  };
+
   const cancelarGravacao = () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop());
-      mediaRecorderRef.current.stop();
-    }
-    audioChunksRef.current = [];
+    pararCapturaAudio();
+    pcmChunksRef.current = [];
     setGravando(false);
     setTempoGravacao(0);
   };
 
   // Parar gravação e entrar no modo preview (sem enviar ainda)
   const pararGravacaoParaPreview = async () => {
-    if (!mediaRecorderRef.current) return;
-    clearInterval(timerRef.current);
-
-    await new Promise((resolve) => {
-      mediaRecorderRef.current.onstop = resolve;
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream?.getTracks().forEach(t => t.stop());
-    });
-
-    const recordedMime = mediaRecorderRef.current?.mimeType || 'audio/webm';
-    const blob = new Blob(audioChunksRef.current, { type: recordedMime });
+    if (timerRef.current) clearInterval(timerRef.current);
+    const sampleRate = pararCapturaAudio();
     setGravando(false);
     setTempoGravacao(0);
 
-    // Converter para MP3 real — apenas rotular o blob gravado (webm) como "ogg"
-    // não funciona, a D-API rejeita a entrega. Se a conversão falhar, envia o
-    // áudio original com o mimetype real (evita travar a gravação).
+    const totalLength = pcmChunksRef.current.reduce((acc, c) => acc + c.length, 0);
+    const samples = new Float32Array(totalLength);
+    let offset = 0;
+    for (const chunk of pcmChunksRef.current) {
+      samples.set(chunk, offset);
+      offset += chunk.length;
+    }
+    pcmChunksRef.current = [];
+
     try {
-      const { blob: mp3Blob, base64 } = await converterAudioParaMp3(blob);
+      const { blob: mp3Blob, base64 } = await encodeFloat32ToMp3(samples, sampleRate);
       const url = URL.createObjectURL(mp3Blob);
       setAudioPreview({ url, base64, mimeType: 'audio/mpeg', ext: 'mp3' });
     } catch (err) {
-      console.error('Erro ao converter áudio para mp3, enviando original:', err);
-      const url = URL.createObjectURL(blob);
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = reader.result.split(',')[1];
-        const ext = recordedMime.includes('ogg') ? 'ogg' : 'webm';
-        setAudioPreview({ url, base64, mimeType: recordedMime, ext });
-      };
-      reader.readAsDataURL(blob);
+      console.error('Erro ao converter áudio para mp3:', err);
+      setErro('Erro ao processar o áudio gravado: ' + (err.message || 'tente novamente.'));
     }
   };
 
   const cancelarPreviewAudio = () => {
     if (audioPreview?.url) URL.revokeObjectURL(audioPreview.url);
     setAudioPreview(null);
-    audioChunksRef.current = [];
+    pcmChunksRef.current = [];
   };
 
   const confirmarEnvioAudio = async () => {

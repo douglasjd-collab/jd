@@ -1,21 +1,16 @@
 import * as lamejsModule from 'lamejs';
 
 // Interop: dependendo do bundler, o construtor pode vir no default export
-// ou diretamente no namespace importado. Resolver os dois casos evita o erro
-// "Mp3Encoder is not a constructor" causado por import default incorreto.
+// ou diretamente no namespace importado.
 const Mp3Encoder = lamejsModule.Mp3Encoder || lamejsModule.default?.Mp3Encoder;
 
-// Converte um Blob de áudio gravado no navegador (geralmente webm/opus) para um MP3
-// real. Necessário porque apenas rotular o blob original como "audio/ogg" não funciona:
-// o conteúdo continua sendo webm e a D-API/WhatsApp rejeita a entrega silenciosamente.
-export async function converterAudioParaMp3(blob) {
-  const arrayBuffer = await blob.arrayBuffer();
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-  const audioCtx = new AudioContextClass();
-
-  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-  const sampleRate = audioBuffer.sampleRate;
-  const samples = audioBuffer.getChannelData(0);
+// Codifica amostras PCM (Float32, mono) capturadas diretamente do microfone em MP3.
+// Evita decodeAudioData sobre o blob gravado pelo MediaRecorder — que falha em vários
+// navegadores para webm/opus — trabalhando direto com as amostras já capturadas.
+export async function encodeFloat32ToMp3(samples, sampleRate) {
+  if (typeof Mp3Encoder !== 'function') {
+    throw new Error('lamejs.Mp3Encoder não disponível');
+  }
 
   const int16Samples = new Int16Array(samples.length);
   for (let i = 0; i < samples.length; i++) {
@@ -23,9 +18,6 @@ export async function converterAudioParaMp3(blob) {
     int16Samples[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
   }
 
-  if (typeof Mp3Encoder !== 'function') {
-    throw new Error('lamejs.Mp3Encoder não disponível');
-  }
   const encoder = new Mp3Encoder(1, sampleRate, 96);
   const chunks = [];
   const blockSize = 1152;
@@ -36,8 +28,6 @@ export async function converterAudioParaMp3(blob) {
   }
   const finalChunk = encoder.flush();
   if (finalChunk.length > 0) chunks.push(finalChunk);
-
-  await audioCtx.close();
 
   const mp3Blob = new Blob(chunks, { type: 'audio/mpeg' });
   const base64 = await new Promise((resolve, reject) => {
