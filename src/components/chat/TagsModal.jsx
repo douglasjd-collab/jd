@@ -24,7 +24,7 @@ const DEFAULT_TAGS = [
   { nome: 'Pós-venda', cor: '#0EA5E9' },
 ];
 
-export default function TagsModal({ open, onOpenChange, contato, empresaId }) {
+export default function TagsModal({ open, onOpenChange, contato, empresaId, onTagsChange }) {
   const [tags, setTags] = useState([]);
   const [contatoTags, setContatoTags] = useState([]);
   const [novaTagNome, setNovaTagNome] = useState('');
@@ -144,6 +144,7 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId }) {
         await base44.entities.ContatoWhatsapp.update(contatoCRM.id, {
           tags_ids: novasTags,
         });
+        onTagsChange?.(novasTags);
         toast.success('Tag removida');
       } else {
         const novasTags = [...tagsAtuais, tagId];
@@ -151,6 +152,7 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId }) {
         await base44.entities.ContatoWhatsapp.update(contatoCRM.id, {
           tags_ids: novasTags,
         });
+        onTagsChange?.(novasTags);
         toast.success('Tag adicionada');
       }
     } catch (e) {

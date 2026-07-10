@@ -1427,6 +1427,13 @@ export default function BatePapo() {
           onOpenChange={setTagsModalOpen}
           contato={contatoParaTags}
           empresaId={empresaId}
+          onTagsChange={(novasTags) => {
+            if (!contatoParaTags?.id) return;
+            setContatosWhatsapp(prev => ({
+              ...prev,
+              [contatoParaTags.id]: { ...(prev[contatoParaTags.id] || {}), tags_ids: novasTags },
+            }));
+          }}
         />
 
         {/* Modal Gerenciar Tags */}
