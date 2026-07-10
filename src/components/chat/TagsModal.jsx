@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 const DEFAULT_TAGS = [
   { nome: 'Cliente', cor: '#3B82F6' },
@@ -25,6 +26,7 @@ const DEFAULT_TAGS = [
 ];
 
 export default function TagsModal({ open, onOpenChange, contato, empresaId, onTagsChange }) {
+  const queryClient = useQueryClient();
   const [tags, setTags] = useState([]);
   const [contatoTags, setContatoTags] = useState([]);
   const [novaTagNome, setNovaTagNome] = useState('');
@@ -91,6 +93,7 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId, onTa
       setTags(prev => [...prev, novaTag]);
       setNovaTagNome('');
       setNovaTagCor('#3B82F6');
+      queryClient.invalidateQueries({ queryKey: ['tags-crm', empresaId] });
       toast.success('Tag criada com sucesso!');
     } catch (e) {
       toast.error('Erro ao criar tag');
