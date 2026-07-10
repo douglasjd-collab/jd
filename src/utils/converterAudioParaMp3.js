@@ -1,4 +1,4 @@
-import * as lamejsModule from 'lamejs';
+import * as lamejsModule from '@breezystack/lamejs';
 
 // Interop: dependendo do bundler, o construtor pode vir no default export
 // ou diretamente no namespace importado.
