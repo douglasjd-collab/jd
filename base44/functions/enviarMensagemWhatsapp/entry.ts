@@ -526,7 +526,8 @@ Deno.serve(async (req) => {
         const tipoOriginal = arquivo.tipo || 'application/octet-stream';
         let mediaType = 'document';
 
-        if (tipoOriginal.startsWith('image/')) mediaType = 'image';
+        if (tipoOriginal === 'image/webp') mediaType = 'sticker';
+        else if (tipoOriginal.startsWith('image/')) mediaType = 'image';
         else if (tipoOriginal.startsWith('video/')) mediaType = 'video';
         else if (tipoOriginal.startsWith('audio/')) mediaType = 'audio';
 
@@ -612,6 +613,7 @@ Deno.serve(async (req) => {
         if (mediaType === 'audio') {
           // Áudio não suporta caption na Meta
         }
+        // Sticker na Meta não suporta caption e precisa ser image/webp
 
         metaPayload = {
           messaging_product: 'whatsapp',
@@ -686,7 +688,10 @@ Deno.serve(async (req) => {
 
       if (arquivo && arquivo.base64) {
         const tipo = arquivo.tipo || '';
-        if (tipo.startsWith('image')) {
+        if (tipo === 'image/webp') {
+          endpoint = `${baseUrl}/message/sendSticker/${instanceName}`;
+          requestPayload = { number: numeroFormatado, sticker: arquivo.base64 };
+        } else if (tipo.startsWith('image')) {
           endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
           requestPayload = { number: numeroFormatado, mediatype: 'image', media: arquivo.base64, fileName: arquivo.nome, caption: mensagem_texto || '' };
         } else if (tipo.startsWith('audio')) {
@@ -823,7 +828,8 @@ Deno.serve(async (req) => {
 
     if (arquivo && arquivo.base64) {
       const tipo = arquivo.tipo || '';
-      if (tipo.startsWith('image')) tipo_conteudo = 'imagem';
+      if (tipo === 'image/webp') tipo_conteudo = 'figurinha';
+      else if (tipo.startsWith('image')) tipo_conteudo = 'imagem';
       else if (tipo.startsWith('audio')) tipo_conteudo = 'audio';
       else if (tipo.startsWith('video')) tipo_conteudo = 'video';
       else tipo_conteudo = 'pdf';
