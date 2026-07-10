@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import heic2any from 'heic2any';
+import { converterAudioParaMp3 } from '@/utils/converterAudioParaMp3';
 import { Button } from '@/components/ui/button';
 import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Plus } from 'lucide-react';
 import MensagensRapidasModal from './MensagensRapidasModal';
@@ -116,16 +117,27 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
 
     const recordedMime = mediaRecorderRef.current?.mimeType || 'audio/webm';
     const blob = new Blob(audioChunksRef.current, { type: recordedMime });
-    const url = URL.createObjectURL(blob);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result.split(',')[1];
-      setGravando(false);
-      setTempoGravacao(0);
-      // Sempre enviar como ogg para compatibilidade com D-API
-      setAudioPreview({ url, blob, base64, mimeType: 'audio/ogg', ext: 'ogg' });
-    };
-    reader.readAsDataURL(blob);
+    setGravando(false);
+    setTempoGravacao(0);
+
+    // Converter para MP3 real — apenas rotular o blob gravado (webm) como "ogg"
+    // não funciona, a D-API rejeita a entrega. Se a conversão falhar, envia o
+    // áudio original com o mimetype real (evita travar a gravação).
+    try {
+      const { blob: mp3Blob, base64 } = await converterAudioParaMp3(blob);
+      const url = URL.createObjectURL(mp3Blob);
+      setAudioPreview({ url, base64, mimeType: 'audio/mpeg', ext: 'mp3' });
+    } catch (err) {
+      console.error('Erro ao converter áudio para mp3, enviando original:', err);
+      const url = URL.createObjectURL(blob);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result.split(',')[1];
+        const ext = recordedMime.includes('ogg') ? 'ogg' : 'webm';
+        setAudioPreview({ url, base64, mimeType: recordedMime, ext });
+      };
+      reader.readAsDataURL(blob);
+    }
   };
 
   const cancelarPreviewAudio = () => {
