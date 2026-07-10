@@ -772,6 +772,14 @@ async function processarWebhook(req, rawBody, base44) {
           ...(conversa.phone_number_id_meta ? { phone_number_id_meta: conversa.phone_number_id_meta } : {}),
         } : {}),
       };
+      // Mensagem enviada pelo celular (fora do CRM) também move o cliente para "Em atendimento"
+      if (fromMe) {
+        updateDataMeta.responsavel_expira_em = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        if (!conversa.responsavel_id) {
+          updateDataMeta.responsavel_id = 'externo';
+          updateDataMeta.responsavel_nome = pushName || 'Atendente';
+        }
+      }
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, updateDataMeta);
       console.log(`🛡️ Conversa Meta/Instagram ${conversa.id} — canal preservado (status: ${conversa.status === 'encerrada' ? 'reaberta→ativa' : 'mantido'})`);
       
