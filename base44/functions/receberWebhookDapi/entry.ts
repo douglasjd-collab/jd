@@ -421,12 +421,28 @@ async function processarMensagemEnviadaPeloCelular(base44, connection, data, tel
       cliente_telefone: telefone
     }, '-created_date', 1);
 
-    if (!conversas || conversas.length === 0) {
-      console.log('ℹ️ Conversa não encontrada para mensagem enviada pelo celular:', telefone);
-      return;
-    }
-    const conversa = conversas[0];
     const timestamp = data?.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString();
+    let conversa;
+    if (conversas && conversas.length > 0) {
+      conversa = conversas[0];
+    } else {
+      const nomeContato = data?.to?.name || data?.name || telefone;
+      conversa = await base44.entities.ConversaWhatsapp.create({
+        empresa_id: empresaId,
+        cliente_telefone: telefone,
+        cliente_nome: nomeContato,
+        whatsapp_id: data?.from?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '',
+        provider: 'dapi',
+        canal_origem: 'dapi',
+        tipo_conexao: 'usuario',
+        instancia: connection.session_id,
+        status: 'ativa',
+        ultima_mensagem: '',
+        data_ultima_mensagem: timestamp,
+        ultimo_remetente: 'vendedor'
+      });
+      console.log('✅ Conversa criada a partir de mensagem enviada pelo celular:', conversa.id);
+    }
 
     await base44.entities.MensagemWhatsapp.create({
       conversa_id: conversa.id,

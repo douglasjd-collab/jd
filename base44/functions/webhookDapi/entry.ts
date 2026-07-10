@@ -487,10 +487,26 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
     cliente_telefone: telefone
   }, '-created_date', 1);
 
-  if (!conversas || conversas.length === 0) {
-    return { handled: false, reason: 'conversa não encontrada para mensagem enviada pelo celular' };
+  let conversa;
+  if (conversas && conversas.length > 0) {
+    conversa = conversas[0];
+  } else {
+    const nomeContato = data?.to?.name || data?.name || telefone;
+    conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+      empresa_id: empresaId,
+      cliente_telefone: telefone,
+      cliente_nome: nomeContato,
+      whatsapp_id: remoteJid,
+      provider: 'dapi',
+      canal_origem: 'dapi',
+      tipo_conexao: 'usuario',
+      instancia: connection.session_id,
+      status: 'ativa',
+      ultima_mensagem: '',
+      data_ultima_mensagem: new Date().toISOString(),
+      ultimo_remetente: 'vendedor'
+    });
   }
-  const conversa = conversas[0];
 
   await base44.asServiceRole.entities.MensagemWhatsapp.create({
     empresa_id: empresaId,
