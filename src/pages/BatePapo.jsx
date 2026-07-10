@@ -839,6 +839,27 @@ export default function BatePapo() {
 
   const criarConversaMutation = useMutation({
     mutationFn: async ({ telefone, nome }) => {
+      // Novas conversas devem usar a D-API por padrão (Evolution não está mais em uso)
+      let dadosCanal = { tipo_conexao: 'empresa' };
+      try {
+        const conexoesDapi = await base44.entities.WhatsappConnection.filter({
+          empresa_id: empresaId,
+          provider_type: 'dapi',
+          is_active: true
+        }, '-created_date', 1);
+        const conexaoDapi = conexoesDapi?.[0];
+        if (conexaoDapi) {
+          dadosCanal = {
+            tipo_conexao: 'dapi',
+            canal_origem: 'dapi',
+            provider: 'dapi',
+            instancia: conexaoDapi.session_id || 'D-API',
+            connection_id: conexaoDapi.id,
+            locked_provider: true,
+          };
+        }
+      } catch (_) {}
+
       return await base44.entities.ConversaWhatsapp.create({
         empresa_id: empresaId,
         cliente_id: '',
@@ -848,7 +869,7 @@ export default function BatePapo() {
         status: 'ativa',
         ultima_mensagem: '',
         data_ultima_mensagem: new Date().toISOString(),
-        tipo_conexao: 'empresa'
+        ...dadosCanal
       });
     },
     onSuccess: (conversa) => {
