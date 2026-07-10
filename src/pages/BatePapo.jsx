@@ -1613,34 +1613,16 @@ export default function BatePapo() {
 
               {/* Status badges com abas — 2 linhas de 4 */}
               <div className="space-y-1.5">
-                {/* Linha 1: Todos | Esperando | Em Atend. | Finalizados */}
+                {/* Linha 1: Em Atend. | Esperando | Responsável | Transferidos */}
                 <div className="grid grid-cols-4 gap-1.5">
-                  <button onClick={() => setFiltroStatus('todas')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'todas' ? 'bg-slate-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'todas' ? 'text-white' : 'text-slate-700'}`}>{contadores.todas}</span>
-                    <span className={`text-[10px] font-medium ${filtroStatus === 'todas' ? 'text-white' : 'text-slate-600'}`}>Todos</span>
-                  </button>
-
-                  <button onClick={() => setFiltroStatus('espera')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'espera' ? 'bg-red-500' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'espera' ? 'text-white' : 'text-red-500'}`}>{contadores.espera}</span>
-                    <span className={`text-[10px] font-medium ${filtroStatus === 'espera' ? 'text-white' : 'text-slate-600'}`}>Esperando</span>
-                  </button>
-
                   <button onClick={() => setFiltroStatus('ativa')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'ativa' ? 'bg-slate-600' : 'bg-slate-100'}`}>
                     <span className={`text-sm font-bold ${filtroStatus === 'ativa' ? 'text-white' : 'text-slate-700'}`}>{contadores.ativa}</span>
                     <span className={`text-[10px] font-medium ${filtroStatus === 'ativa' ? 'text-white' : 'text-slate-600'}`}>Em Atend.</span>
                   </button>
 
-                  <button onClick={() => setFiltroStatus('encerrada')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'encerrada' ? 'bg-slate-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-700'}`}>{contadores.encerrada}</span>
-                    <span className={`text-[10px] font-medium ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-600'}`}>Finalizados</span>
-                  </button>
-                </div>
-
-                {/* Linha 2: Grupos | Responsável | Transferidos | Campanhas */}
-                <div className="grid grid-cols-4 gap-1.5">
-                  <button onClick={() => setFiltroStatus('grupos')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'grupos' ? 'bg-emerald-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'grupos' ? 'text-white' : 'text-emerald-500'}`}>{contadores.grupos}</span>
-                    <span className={`text-[10px] font-medium ${filtroStatus === 'grupos' ? 'text-white' : 'text-slate-600'}`}>Grupos</span>
+                  <button onClick={() => setFiltroStatus('espera')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'espera' ? 'bg-red-500' : 'bg-slate-100'}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'espera' ? 'text-white' : 'text-red-500'}`}>{contadores.espera}</span>
+                    <span className={`text-[10px] font-medium ${filtroStatus === 'espera' ? 'text-white' : 'text-slate-600'}`}>Esperando</span>
                   </button>
 
                   <button onClick={() => setFiltroStatus('meu')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'meu' ? 'bg-emerald-600' : 'bg-slate-100'}`}>
@@ -1651,6 +1633,24 @@ export default function BatePapo() {
                   <button onClick={() => setFiltroStatus('transferida')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'transferida' ? 'bg-purple-600' : 'bg-slate-100'}`}>
                     <span className={`text-sm font-bold ${filtroStatus === 'transferida' ? 'text-white' : 'text-purple-500'}`}>{contadores.transferida}</span>
                     <span className={`text-[10px] font-medium ${filtroStatus === 'transferida' ? 'text-white' : 'text-slate-600'}`}>Transferidos</span>
+                  </button>
+                </div>
+
+                {/* Linha 2: Grupos | Finalizados | Todos | Campanhas */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  <button onClick={() => setFiltroStatus('grupos')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'grupos' ? 'bg-emerald-600' : 'bg-slate-100'}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'grupos' ? 'text-white' : 'text-emerald-500'}`}>{contadores.grupos}</span>
+                    <span className={`text-[10px] font-medium ${filtroStatus === 'grupos' ? 'text-white' : 'text-slate-600'}`}>Grupos</span>
+                  </button>
+
+                  <button onClick={() => setFiltroStatus('encerrada')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'encerrada' ? 'bg-slate-600' : 'bg-slate-100'}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-700'}`}>{contadores.encerrada}</span>
+                    <span className={`text-[10px] font-medium ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-600'}`}>Finalizados</span>
+                  </button>
+
+                  <button onClick={() => setFiltroStatus('todas')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'todas' ? 'bg-slate-600' : 'bg-slate-100'}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'todas' ? 'text-white' : 'text-slate-700'}`}>{contadores.todas}</span>
+                    <span className={`text-[10px] font-medium ${filtroStatus === 'todas' ? 'text-white' : 'text-slate-600'}`}>Todos</span>
                   </button>
 
                   <button onClick={() => setFiltroStatus('campanhas')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'campanhas' ? 'bg-cyan-600' : 'bg-slate-100'}`}>
