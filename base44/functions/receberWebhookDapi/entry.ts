@@ -216,20 +216,17 @@ async function processarMensagemRecebida(base44, connection, data) {
       return;
     }
 
-    // Na D-API, data.from é um objeto. O telefone está em data.from.jid.
-    const remoteJid = data?.from?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '';
-
-    const telefone = String(remoteJid).replace(/@.*/g, '').replace(/\D/g, '');
-
-    if (!telefone) {
-      console.error('❌ Não foi possível extrair o telefone:', JSON.stringify(data, null, 2));
-      return;
-    }
-
     // Mensagem enviada pelo próprio número (fromMe): se já foi registrada pelo envio via CRM, ignorar (eco).
     // Se ainda não existir, foi enviada direto pelo celular/WhatsApp e precisa ser salva no histórico.
+    // IMPORTANTE: para fromMe, "data.from" é o PRÓPRIO número (quem enviou) — o contato/chat está em "data.to".
     const isFromMe = data?.fromMe === true || data?.key?.fromMe === true;
     if (isFromMe) {
+      const remoteJidFromMe = data?.to?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '';
+      const telefoneFromMe = String(remoteJidFromMe).replace(/@.*/g, '').replace(/\D/g, '');
+      if (!telefoneFromMe) {
+        console.error('❌ Não foi possível extrair o telefone do destinatário (fromMe):', JSON.stringify(data, null, 2));
+        return;
+      }
       const wamidFromMe = data?.id || data?.key?.id;
       if (wamidFromMe) {
         const jaRegistrada = await base44.entities.MensagemWhatsapp.filter({
@@ -241,7 +238,17 @@ async function processarMensagemRecebida(base44, connection, data) {
           return;
         }
       }
-      await processarMensagemEnviadaPeloCelular(base44, connection, data, telefone, wamidFromMe);
+      await processarMensagemEnviadaPeloCelular(base44, connection, data, telefoneFromMe, wamidFromMe);
+      return;
+    }
+
+    // Na D-API, data.from é um objeto. O telefone está em data.from.jid.
+    const remoteJid = data?.from?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '';
+
+    const telefone = String(remoteJid).replace(/@.*/g, '').replace(/\D/g, '');
+
+    if (!telefone) {
+      console.error('❌ Não foi possível extrair o telefone:', JSON.stringify(data, null, 2));
       return;
     }
 
@@ -403,6 +410,8 @@ async function processarMensagemRecebida(base44, connection, data) {
 }
 
 // Salva mensagem enviada diretamente pelo celular (fora do CRM) no histórico como "vendedor"
+// IMPORTANTE: para mensagens fromMe, o telefone/JID do contato deve ser extraído de "data.to"
+// (ou key.remoteJid), pois "data.from" representa o próprio número que enviou.
 async function processarMensagemEnviadaPeloCelular(base44, connection, data, telefone, wamid) {
   try {
     const empresaId = connection.empresa_id;
@@ -431,7 +440,7 @@ async function processarMensagemEnviadaPeloCelular(base44, connection, data, tel
         empresa_id: empresaId,
         cliente_telefone: telefone,
         cliente_nome: nomeContato,
-        whatsapp_id: data?.from?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '',
+        whatsapp_id: data?.to?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '',
         provider: 'dapi',
         canal_origem: 'dapi',
         tipo_conexao: 'usuario',

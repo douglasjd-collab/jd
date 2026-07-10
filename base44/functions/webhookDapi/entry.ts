@@ -463,7 +463,9 @@ async function processMessageReceived(base44, body, connection, empresaId) {
  * Salva no histórico como remetente "vendedor" e marca a conversa como respondida.
  */
 async function processMessageSentFromPhone(base44, data, connection, empresaId, externalMessageId) {
-  const remoteJid = data?.from?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '';
+  // IMPORTANTE: em mensagens fromMe, "data.from" é o PRÓPRIO número (quem enviou), não o contato.
+  // O destinatário/chat deve vir de "data.to" (ou key.remoteJid, que é sempre o JID do chat).
+  const remoteJid = data?.to?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '';
   const telefone = String(remoteJid).replace(/@.*/g, '').replace(/\D/g, '');
   if (!telefone) {
     return { handled: false, reason: 'telefone não encontrado (fromMe)' };
