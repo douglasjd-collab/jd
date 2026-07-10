@@ -277,106 +277,166 @@ async function processConnectionQrCode(base44, body, connection) {
 
 /**
  * Processar messages.received
+ *
+ * Formato real do payload da D-API: { event, sessionId, timestamp, traceId, data }
+ * onde data.from é um OBJETO ({ jid, name }), não uma string — por isso o telefone
+ * deve ser extraído de data.from.jid (nunca tratar "from" como string).
  */
 async function processMessageReceived(base44, body, connection, empresaId) {
   if (!connection) return { handled: false, reason: 'connection not found' };
-  
-  const messageData = body.data || body.message || body;
-  const externalMessageId = messageData.id || messageData.messageId || messageData.external_message_id;
-  const from = messageData.from || messageData.sender || messageData.remoteJid;
-  const to = messageData.to || messageData.receiver;
-  const timestamp = messageData.timestamp || messageData.createdAt || new Date().toISOString();
-  
+
+  const data = body.data || body.message || body;
+
+  // Ignorar mensagens enviadas pelo próprio número (eco) e mensagens de grupo
+  if (data?.fromMe === true || data?.key?.fromMe === true) {
+    return { handled: false, reason: 'mensagem própria (fromMe)' };
+  }
+  if (data?.is_group === true || String(data?.from?.jid || '').includes('@g.us')) {
+    return { handled: false, reason: 'mensagem de grupo' };
+  }
+
+  const externalMessageId = data.id || data?.key?.id || data.messageId || data.external_message_id;
+
+  // O telefone vem em data.from.jid (objeto), não em data.from diretamente
+  const remoteJid = data?.from?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '';
+  const fromPhone = String(remoteJid).replace(/@.*/g, '').replace(/\D/g, '');
+  const fromName = data?.from?.name || data?.from_name || data?.pushName || data?.notifyName || fromPhone;
+  const timestamp = data.timestamp || data.createdAt || new Date().toISOString();
+
+  if (!fromPhone) {
+    console.error('❌ [Webhook D-API] Não foi possível extrair o telefone:', JSON.stringify(data, null, 2));
+    return { handled: false, reason: 'telefone não encontrado' };
+  }
+
   // Extrair conteúdo
-  const messageType = messageData.messageType || messageData.type || 'text';
-  const content = messageData.text || messageData.content || messageData.caption || '';
-  const mediaUrl = messageData.mediaUrl || messageData.media_url || messageData.fileUrl;
-  
-  // Normalizar telefone (remover @s.whatsapp.net, etc)
-  const fromPhone = from?.replace(/@[\w.]+/g, '') || '';
-  
-  console.log(`📨 [Webhook D-API] Mensagem recebida de ${fromPhone}: ${content.substring(0, 50)}`);
-  
+  const messageType = data.type || 'text';
+  let content = typeof data.message === 'string' ? data.message : (data.text || data.content || '');
+  const mediaUrl = data.media_url || data.media_data?.url || data.mediaUrl || data.fileUrl || null;
+
+  const messageTypes = {
+    text: 'texto',
+    image: 'imagem',
+    video: 'video',
+    audio: 'audio',
+    document: 'documento',
+    sticker: 'figurinha',
+    contact: 'contato',
+    location: 'localizacao',
+    reaction: 'reacao',
+    poll_update: 'enquete',
+    list_response: 'resposta_lista',
+    template_button_reply: 'resposta_botao',
+    list: 'lista',
+    carousel: 'carrossel',
+    nativeflow: 'fluxo'
+  };
+  const crmMessageType = messageTypes[messageType] || 'texto';
+
+  if (!content) {
+    content =
+      data?.media_data?.caption ||
+      data?.caption ||
+      (crmMessageType === 'audio' ? 'Áudio'
+        : crmMessageType === 'imagem' ? 'Imagem'
+        : crmMessageType === 'video' ? 'Vídeo'
+        : crmMessageType === 'documento' ? (data?.media_data?.filename || 'Documento')
+        : crmMessageType === 'figurinha' ? 'Figurinha'
+        : crmMessageType === 'localizacao' ? 'Localização'
+        : crmMessageType === 'contato' ? 'Contato'
+        : 'Mensagem');
+  }
+
+  console.log(`📨 [Webhook D-API] Mensagem recebida de ${fromPhone}: ${String(content).substring(0, 50)}`);
+
+  // Evitar duplicação caso o webhook seja reenviado
+  if (externalMessageId) {
+    const mensagensExistentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+      empresa_id: empresaId,
+      whatsapp_message_id: externalMessageId
+    }, '-created_date', 1);
+    if (mensagensExistentes && mensagensExistentes.length > 0) {
+      return { handled: false, reason: 'mensagem já registrada', messageId: externalMessageId };
+    }
+  }
+
   // Localizar ou criar conversa
   let conversa = null;
   try {
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
       empresa_id: empresaId,
       cliente_telefone: fromPhone
-    });
-    
+    }, '-created_date', 1);
+
     if (conversas.length > 0) {
       conversa = conversas[0];
+      // Canal de ENVIO travado manualmente pelo usuário — não sobrescrever.
+      const canalTravado = conversa.locked_provider === true;
+      const atualizarConversa = {
+        cliente_nome: fromName,
+        last_inbound_provider: 'dapi',
+        cliente_respondeu: true
+      };
+      if (!canalTravado) {
+        atualizarConversa.provider = 'dapi';
+        atualizarConversa.canal_origem = 'dapi';
+        atualizarConversa.instancia = connection.session_id;
+      }
+      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, atualizarConversa);
     } else {
-      // Criar nova conversa
-      const newConversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+      conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
         empresa_id: empresaId,
         cliente_telefone: fromPhone,
-        cliente_nome: fromPhone,
-        provider: 'whatsapp_dapi',
+        cliente_nome: fromName,
+        whatsapp_id: remoteJid,
+        provider: 'dapi',
         canal_origem: 'dapi',
-        tipo_conexao: 'empresa',
+        tipo_conexao: 'usuario',
+        instancia: connection.session_id,
         status: 'ativa',
-        ultima_mensagem: content.substring(0, 200),
+        ultima_mensagem: String(content).substring(0, 200),
         data_ultima_mensagem: new Date(timestamp).toISOString(),
-        ultimo_remetente: 'cliente'
+        ultimo_remetente: 'cliente',
+        last_inbound_provider: 'dapi',
+        cliente_respondeu: true,
+        data_primeira_resposta: new Date().toISOString()
       });
-      conversa = newConversa;
       console.log(`✅ [Webhook D-API] Conversa criada: ${conversa.id}`);
     }
   } catch (error) {
     console.error(`❌ [Webhook D-API] Erro ao buscar/criar conversa:`, error.message);
     return { handled: false, error: error.message };
   }
-  
-  // Criar mensagem
-  const messageTypes = {
-    'text': 'text',
-    'image': 'image',
-    'audio': 'audio',
-    'voice': 'audio',
-    'video': 'video',
-    'document': 'document',
-    'sticker': 'sticker',
-    'contact': 'contact',
-    'location': 'location'
-  };
-  
-  const crmMessageType = messageTypes[messageType?.toLowerCase()] || 'text';
-  
+
   const mensagemData = {
     empresa_id: empresaId,
     conversa_id: conversa.id,
     remetente: 'cliente',
-    remetente_nome: fromPhone,
-    tipo_conteudo: crmMessageType === 'text' ? 'texto' : 
-                   crmMessageType === 'image' ? 'imagem' :
-                   crmMessageType === 'audio' ? 'audio' :
-                   crmMessageType === 'video' ? 'video' :
-                   crmMessageType === 'document' ? 'documento' : 'texto',
-    texto: crmMessageType === 'text' ? content : null,
+    remetente_nome: fromName,
+    tipo_conteudo: crmMessageType,
+    texto: content,
     arquivo_url: mediaUrl,
-    provider: 'whatsapp_dapi',
-    whatsapp_message_id: externalMessageId,
-    status: 'lida',
+    provider: 'dapi',
+    whatsapp_message_id: externalMessageId || `dapi_in_${Date.now()}`,
+    status: 'entregue',
     data_envio: new Date(timestamp).toISOString()
   };
-  
+
   await base44.asServiceRole.entities.MensagemWhatsapp.create(mensagemData);
-  
+
   // Atualizar conversa
   await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
-    ultima_mensagem: content.substring(0, 200),
+    ultima_mensagem: String(content).substring(0, 200),
     data_ultima_mensagem: new Date(timestamp).toISOString(),
     ultimo_remetente: 'cliente',
-    last_inbound_provider: 'whatsapp_dapi'
+    cliente_nome: fromName,
+    last_inbound_provider: 'dapi'
   });
-  
-  return { 
-    handled: true, 
-    conversaId: conversa.id, 
+
+  return {
+    handled: true,
+    conversaId: conversa.id,
     messageId: externalMessageId,
-    fromPhone 
+    fromPhone
   };
 }
 
