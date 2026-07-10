@@ -320,22 +320,67 @@ Deno.serve(async (req) => {
       numeroDapi = numeroDapi.replace(/@.*$/, '');
       
       console.log('📱 Número D-API:', numeroDapi);
-      
-      // Validar texto
-      if (!mensagem_texto || !mensagem_texto.trim()) {
+
+      // Determinar tipo de conteúdo e ação D-API (texto ou mídia)
+      let tipoConteudoDapi = 'texto';
+      let arquivoUrlDapi = null;
+      let dapiAction = 'sendText';
+      let dapiActionParams = {};
+
+      if (arquivo && arquivo.base64) {
+        // D-API exige URL pública — fazer upload do arquivo antes de enviar
+        try {
+          const base64Limpo = String(arquivo.base64).includes(',') ? String(arquivo.base64).split(',').pop() : String(arquivo.base64);
+          const binaryStrDapi = atob(base64Limpo);
+          const bytesDapi = new Uint8Array(binaryStrDapi.length);
+          for (let i = 0; i < binaryStrDapi.length; i++) bytesDapi[i] = binaryStrDapi.charCodeAt(i);
+          const mimeUploadDapi = arquivo.tipo || 'application/octet-stream';
+          const nomeUploadDapi = arquivo.nome || `arquivo_${Date.now()}`;
+          const fileUploadDapi = new File([bytesDapi], nomeUploadDapi, { type: mimeUploadDapi });
+          const uploadResDapi = await base44.integrations.Core.UploadFile({ file: fileUploadDapi });
+          arquivoUrlDapi = uploadResDapi?.file_url || null;
+        } catch (uploadErr) {
+          console.error('⚠️ Erro ao fazer upload do arquivo para D-API:', uploadErr.message);
+          return Response.json({ error: 'Erro ao preparar arquivo para envio: ' + uploadErr.message, success: false }, { status: 500 });
+        }
+
+        if (!arquivoUrlDapi) {
+          return Response.json({ error: 'Falha ao gerar URL do arquivo para envio via D-API', success: false }, { status: 500 });
+        }
+
+        const tipoArq = arquivo.tipo || '';
+        if (tipoArq === 'image/webp' || tipoArq.startsWith('image')) {
+          tipoConteudoDapi = tipoArq === 'image/webp' ? 'figurinha' : 'imagem';
+          dapiAction = 'sendImage';
+          dapiActionParams = { imageUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '' };
+        } else if (tipoArq.startsWith('audio')) {
+          tipoConteudoDapi = 'audio';
+          dapiAction = 'sendAudio';
+          dapiActionParams = { audioUrl: arquivoUrlDapi };
+        } else if (tipoArq.startsWith('video')) {
+          tipoConteudoDapi = 'video';
+          dapiAction = 'sendVideo';
+          dapiActionParams = { videoUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '' };
+        } else {
+          tipoConteudoDapi = 'pdf';
+          dapiAction = 'sendDocument';
+          dapiActionParams = { documentUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '' };
+        }
+      } else if (!mensagem_texto || !mensagem_texto.trim()) {
         return Response.json({ error: 'Mensagem de texto é obrigatória para D-API' }, { status: 400 });
       }
-      
-      const textoEnviar = mensagem_texto.trim();
+
+      const textoEnviar = mensagem_texto?.trim() || '';
       
       // Chamar whatsappService para envio D-API
       try {
         const startTime = Date.now();
         const respService = await base44.functions.invoke('whatsappService', {
           connectionId: conexaoDapi.id,
-          action: 'sendText',
+          action: dapiAction,
           phoneNumber: numeroDapi,
-          text: textoEnviar
+          text: textoEnviar,
+          ...dapiActionParams
         });
         
         const serviceResult = respService?.data;
@@ -367,10 +412,11 @@ Deno.serve(async (req) => {
               event_type: 'message.sent',
               direction: 'outbound',
               payload_json: JSON.stringify({
-                action: 'sendText',
+                action: dapiAction,
                 sessionId: conexaoDapi.session_id,
                 phoneNumber: numeroDapi,
-                text: textoEnviar
+                text: textoEnviar,
+                ...dapiActionParams
               }),
               response_json: JSON.stringify(serviceResult),
               error_message: `${erroDetalhes} (HTTP ${httpStatus}, traceId: ${traceId})`,
@@ -417,10 +463,11 @@ Deno.serve(async (req) => {
             event_type: 'message.sent',
             direction: 'outbound',
             payload_json: JSON.stringify({
-              action: 'sendText',
+              action: dapiAction,
               sessionId: conexaoDapi.session_id,
               phoneNumber: numeroDapi,
-              text: textoEnviar
+              text: textoEnviar,
+              ...dapiActionParams
             }),
             response_json: JSON.stringify(serviceResult),
             error_message: null,
@@ -445,8 +492,10 @@ Deno.serve(async (req) => {
           usuario_id: user.id,
           usuario_nome: nomeAtendente,
           atendente_nome: nomeAtendente,
-          tipo_conteudo: 'texto',
-          texto: textoEnviar,
+          tipo_conteudo: tipoConteudoDapi,
+          texto: textoEnviar || (arquivo ? `📎 ${arquivo.nome}` : ''),
+          arquivo_url: arquivoUrlDapi,
+          arquivo_nome: arquivo?.nome || null,
           provider: 'dapi',
           download_status: 'nao_aplicavel',
           resposta_para_texto: resposta_para_texto || null,
@@ -458,7 +507,7 @@ Deno.serve(async (req) => {
         
         // Atualizar conversa
         await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
-          ultima_mensagem: textoEnviar.substring(0, 200),
+          ultima_mensagem: (textoEnviar || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
           data_ultima_mensagem: new Date().toISOString(),
           ultimo_remetente: 'vendedor',
         });
