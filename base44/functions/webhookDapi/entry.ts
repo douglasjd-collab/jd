@@ -475,7 +475,7 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
   let content = typeof data.message === 'string' ? data.message : (data.text || data.content || '');
   const mediaUrl = data.media_url || data.media_data?.url || data.mediaUrl || data.fileUrl || null;
   const messageTypes = {
-    text: 'texto', image: 'imagem', video: 'video', audio: 'audio', document: 'documento',
+    text: 'texto', image: 'imagem', video: 'video', audio: 'audio', ptt: 'audio', voice: 'audio', document: 'documento',
     sticker: 'figurinha', contact: 'contato', location: 'localizacao'
   };
   const crmMessageType = messageTypes[messageType] || 'texto';
@@ -523,10 +523,14 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
     data_envio: new Date(timestamp).toISOString()
   });
 
+  // Responder pelo WhatsApp normal (celular) também move o cliente para "Em atendimento"
   await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
     ultima_mensagem: String(content).substring(0, 200),
     data_ultima_mensagem: new Date(timestamp).toISOString(),
     ultimo_remetente: 'vendedor',
+    responsavel_id: conversa.responsavel_id || 'whatsapp_celular',
+    responsavel_nome: conversa.responsavel_nome || connection.profile_name || 'Atendente (WhatsApp)',
+    responsavel_expira_em: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
   });
 
   return { handled: true, conversaId: conversa.id, messageId: externalMessageId, fromPhone: telefone, viaCelular: true };
