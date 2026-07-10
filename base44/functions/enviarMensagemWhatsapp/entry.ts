@@ -101,15 +101,27 @@ Deno.serve(async (req) => {
     const canalOrigem = conversaDoBanco?.canal_origem || null;
 
     // ── D-API: Buscar conexão WhatsAppConnection ─────────────────────────────
+    // Priorizar a conexão específica selecionada na conversa (connection_id) — nunca pegar
+    // qualquer conexão D-API ativa por padrão quando o usuário travou um canal manualmente.
     let conexaoDapi = null;
     if (empresaId) {
       try {
-        const conexoes = await base44.asServiceRole.entities.WhatsappConnection.filter({
-          empresa_id: empresaId,
-          provider_type: 'dapi',
-          is_active: true
-        }, '-created_date', 1);
-        conexaoDapi = conexoes[0] || null;
+        if (conversaDoBanco?.connection_id) {
+          try {
+            const conexaoEspecifica = await base44.asServiceRole.entities.WhatsappConnection.get(conversaDoBanco.connection_id);
+            if (conexaoEspecifica?.provider_type === 'dapi' && conexaoEspecifica.is_active) {
+              conexaoDapi = conexaoEspecifica;
+            }
+          } catch (_) {}
+        }
+        if (!conexaoDapi) {
+          const conexoes = await base44.asServiceRole.entities.WhatsappConnection.filter({
+            empresa_id: empresaId,
+            provider_type: 'dapi',
+            is_active: true
+          }, '-created_date', 1);
+          conexaoDapi = conexoes[0] || null;
+        }
         if (conexaoDapi) {
           console.log('✅ D-API conexão encontrada:', conexaoDapi.id, conexaoDapi.session_id);
         }

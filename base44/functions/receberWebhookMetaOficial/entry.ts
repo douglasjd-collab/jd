@@ -174,23 +174,28 @@ async function processarMensagensRecebidas(base44, value) {
   let conversa;
   if (conversas.length > 0) {
     conversa = conversas[0];
+    // Canal travado manualmente pelo usuário (seletor do chat) — nunca sobrescrever o canal de envio.
+    const canalTravado = conversa.locked_provider === true;
     // Se a conversa estava como campanha e o cliente respondeu, promover para ativa
     if (conversa.status === 'campanha') {
-      await base44.entities.ConversaWhatsapp.update(conversa.id, {
+      const updateCampanha = {
         status: 'ativa',
         cliente_respondeu: true,
         data_primeira_resposta: new Date().toISOString(),
-        tipo_conexao: 'meta_oficial',
-        instancia: 'META_OFICIAL',
-      });
-      conversa.status = 'ativa';
-      conversa.cliente_respondeu = true;
-      conversa.data_primeira_resposta = new Date().toISOString();
+      };
+      if (!canalTravado) {
+        updateCampanha.tipo_conexao = 'meta_oficial';
+        updateCampanha.instancia = 'META_OFICIAL';
+      }
+      await base44.entities.ConversaWhatsapp.update(conversa.id, updateCampanha);
+      Object.assign(conversa, updateCampanha);
       console.log(`🔄 Conversa promovida de campanha → ativa: ${conversa.id}`);
-    } else if (conversa.tipo_conexao !== 'meta_oficial' || conversa.instancia !== 'META_OFICIAL') {
+    } else if (!canalTravado && (conversa.tipo_conexao !== 'meta_oficial' || conversa.instancia !== 'META_OFICIAL')) {
       await base44.entities.ConversaWhatsapp.update(conversa.id, { tipo_conexao: 'meta_oficial', instancia: 'META_OFICIAL' });
       conversa.tipo_conexao = 'meta_oficial';
       conversa.instancia = 'META_OFICIAL';
+    } else if (canalTravado) {
+      console.log(`🔒 Canal travado manualmente (${conversa.provider || conversa.canal_origem}) — não sobrescrevendo tipo_conexao para conversa ${conversa.id}`);
     }
   } else {
     conversa = await base44.entities.ConversaWhatsapp.create({
@@ -259,17 +264,22 @@ async function processarMensagensRecebidas(base44, value) {
 
   // Atualizar última mensagem da conversa
   const canalAtualMeta = conversa.canal_atendimento || conversa.canal_preferencial || null;
+  const canalTravadoMeta = conversa.locked_provider === true;
 
   const updateConversaMeta = {
     ultima_mensagem: texto,
     data_ultima_mensagem: new Date().toISOString(),
     ultimo_remetente: 'cliente',
     cliente_nome: nomeContato,
-    tipo_conexao: 'meta_oficial',
     ultima_origem_recebida: 'meta_oficial',
-    instancia: 'META_OFICIAL',
     phone_number_id_meta: phoneNumberId,
   };
+
+  // Canal de ENVIO travado manualmente pelo usuário — não sobrescrever tipo_conexao/instancia.
+  if (!canalTravadoMeta) {
+    updateConversaMeta.tipo_conexao = 'meta_oficial';
+    updateConversaMeta.instancia = 'META_OFICIAL';
+  }
 
   if (!canalAtualMeta) {
     updateConversaMeta.canal_atendimento = 'meta_oficial';

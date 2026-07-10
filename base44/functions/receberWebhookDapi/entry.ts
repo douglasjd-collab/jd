@@ -295,14 +295,22 @@ async function processarMensagemRecebida(base44, connection, data) {
     if (conversas && conversas.length > 0) {
       conversa = conversas[0];
 
+      // Canal de ENVIO travado manualmente pelo usuário (seletor do chat) — não sobrescrever.
+      const canalTravadoDapi = conversa.locked_provider === true;
+
       const atualizarConversa = {
         cliente_nome: nomeContato,
-        provider: 'dapi',
-        canal_origem: 'dapi',
-        instancia: connection.session_id,
         last_inbound_provider: 'dapi',
         cliente_respondeu: true
       };
+
+      if (!canalTravadoDapi) {
+        atualizarConversa.provider = 'dapi';
+        atualizarConversa.canal_origem = 'dapi';
+        atualizarConversa.instancia = connection.session_id;
+      } else {
+        console.log(`🔒 Canal travado manualmente (${conversa.provider || conversa.canal_origem}) — não sobrescrevendo canal de envio para conversa ${conversa.id}`);
+      }
 
       if (conversa.status === 'campanha') {
         atualizarConversa.status = 'ativa';
