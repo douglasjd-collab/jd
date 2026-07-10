@@ -364,7 +364,7 @@ Deno.serve(async (req) => {
         } else {
           tipoConteudoDapi = 'pdf';
           dapiAction = 'sendDocument';
-          dapiActionParams = { documentUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '' };
+          dapiActionParams = { documentUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '', fileName: arquivo.nome || nomeUploadDapi };
         }
       } else if (!mensagem_texto || !mensagem_texto.trim()) {
         return Response.json({ error: 'Mensagem de texto é obrigatória para D-API' }, { status: 400 });

@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     }
     
     const payload = await req.json().catch(() => ({}));
-    const { connectionId, action, webhookUrl, phoneNumber, text, imageUrl, audioUrl, documentUrl, videoUrl, caption } = payload;
+    const { connectionId, action, webhookUrl, phoneNumber, text, imageUrl, audioUrl, documentUrl, videoUrl, caption, fileName } = payload;
     
     // Buscar conexão
     const connections = await base44.entities.WhatsappConnection.filter({ id: connectionId });
@@ -424,14 +424,15 @@ Deno.serve(async (req) => {
       },
       
       // Enviar documento - POST /api/v1/messages/send/document
-      async sendDocument(phoneNumber, documentUrl, caption = '') {
+      async sendDocument(phoneNumber, documentUrl, caption = '', fileName = '') {
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
         
         const messagePayload = {
           sessionId: this.sessionId,
           to: normalizedPhone,
           document: documentUrl,
-          caption: caption
+          caption: caption,
+          fileName: fileName || undefined
         };
         
         return await this.request('/api/v1/messages/send/document', 'POST', messagePayload);
@@ -706,7 +707,7 @@ Deno.serve(async (req) => {
         if (!phoneNumber || !documentUrl) {
           return Response.json({ error: 'phoneNumber and documentUrl required' }, { status: 400 });
         }
-        result = await adapter.sendDocument(phoneNumber, documentUrl, caption);
+        result = await adapter.sendDocument(phoneNumber, documentUrl, caption, fileName);
         break;
         
       case 'sendVideo':
