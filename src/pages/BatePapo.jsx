@@ -331,6 +331,29 @@ export default function BatePapo() {
     finally { setLoadingGruposBloqueados(false); }
   };
 
+  const [encerrandoTransferidos, setEncerrandoTransferidos] = useState(false);
+  const encerrarTodosTransferidos = async () => {
+    if (!confirm(`Encerrar todas as ${contadores.transferida} conversas transferidas?`)) return;
+    setEncerrandoTransferidos(true);
+    try {
+      let hasMore = true;
+      while (hasMore) {
+        const resp = await base44.entities.ConversaWhatsapp.updateMany(
+          { empresa_id: empresaId, status: 'encerrada', responsavel_id: { $exists: true, $ne: null } },
+          { $unset: { responsavel_id: "", responsavel_nome: "", responsavel_expira_em: "" } }
+        );
+        hasMore = !!resp?.has_more;
+      }
+      toast.success('✅ Conversas transferidas encerradas');
+      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+      refetchConversas();
+    } catch (e) {
+      toast.error('Erro ao encerrar: ' + e.message);
+    } finally {
+      setEncerrandoTransferidos(false);
+    }
+  };
+
   const handleTransferir = async (conversa, colaborador) => {
     try {
       await base44.entities.ConversaWhatsapp.update(conversa.id, {
@@ -1659,6 +1682,19 @@ export default function BatePapo() {
                   </button>
                 </div>
               </div>
+
+              {filtroStatus === 'transferida' && contadores.transferida > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full text-xs gap-1.5 text-purple-700 border-purple-300 hover:bg-purple-50"
+                  onClick={encerrarTodosTransferidos}
+                  disabled={encerrandoTransferidos}
+                >
+                  {encerrandoTransferidos ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  Encerrar todos os {contadores.transferida} transferidos
+                </Button>
+              )}
 
               <div className="jd-conversation-list mt-1" style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', overflowX: 'hidden', width: '100%' }}>
                 <div className="jd-chat-list pb-4" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
