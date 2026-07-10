@@ -157,9 +157,12 @@ Deno.serve(async (req) => {
       canalOrigem === 'meta' ? 'meta_oficial' :
       canalOrigem === 'instagram' ? 'instagram' :
       canalOrigem === 'evolution' ? 'evolution' :
+      canalOrigem === 'dapi' ? 'dapi' :
       providerSalvo === 'whatsapp_meta' ? 'meta_oficial' :
       providerSalvo === 'instagram' ? 'instagram' :
       providerSalvo === 'evolution' ? 'evolution' :
+      providerSalvo === 'dapi' ? 'dapi' :
+      tipoConexaoConversa === 'dapi' ? 'dapi' :
       conversaDoBanco?.canal_atendimento ||
       conversaDoBanco?.canal_preferencial ||
       tipoConexaoConversa ||
