@@ -151,6 +151,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     const tiposMidia = ['audio', 'imagem', 'video'];
     if (!tiposMidia.includes(mensagem.tipo_conteudo)) return;
     if (mensagem.id?.startsWith('temp_')) return;
+    if (isPacoteFigurinha(mensagem.arquivo_url)) return; // pacote de figurinhas (.was) nunca é exibível
 
     // Se já tem URL permanente válida no banco, usar direto
     if (isUrlValida(mensagem.arquivo_url, mensagem.download_status) && mensagem.arquivo_url !== urlFalhouRef.current) {
@@ -511,6 +512,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                   >
                     <Download className="w-3.5 h-3.5" />
                   </button>
+                </div>
+              ) : isPacoteFigurinha(mensagem.arquivo_url) ? (
+                <div className="flex flex-col items-center justify-center gap-1 bg-white/10 rounded-lg p-4 w-32 h-32 text-center">
+                  <span className="text-base">🎨</span>
+                  <span className="text-[10px] opacity-70">Figurinha indisponível</span>
                 </div>
               ) : (
                 <button onClick={handleCarregarMidia} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-lg p-4 text-sm opacity-75 transition-colors cursor-pointer">
