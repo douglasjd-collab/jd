@@ -764,11 +764,15 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const isImagemLimpa = mensagem.tipo_conteudo === 'imagem' && textoVazio && !isContatoMsg;
 
   if (isImagemLimpa) {
+    const stickerSize = 130;
     return (
       <div className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-        <div style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.18)', maxWidth: 280, minWidth: 80 }}>
+        <div style={isSticker
+          ? { position: 'relative', maxWidth: stickerSize, minWidth: stickerSize }
+          : { position: 'relative', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.18)', maxWidth: 280, minWidth: 80 }
+        }>
           {loadingMedia ? (
-            <div style={{ width: 200, height: 200, background: 'linear-gradient(90deg, #d1d5db 25%, #e5e7eb 50%, #d1d5db 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: isSticker ? stickerSize : 200, height: isSticker ? stickerSize : 200, background: 'linear-gradient(90deg, #d1d5db 25%, #e5e7eb 50%, #d1d5db 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Loader2 style={{ width: 24, height: 24, color: '#9ca3af' }} className="animate-spin" />
             </div>
           ) : mediaUrl ? (
@@ -776,7 +780,10 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
               <img
                 src={mediaUrl}
                 alt="Imagem"
-                style={{ display: 'block', maxWidth: '100%', height: 'auto', cursor: 'pointer' }}
+                style={isSticker
+                  ? { display: 'block', width: stickerSize, height: stickerSize, objectFit: 'contain', cursor: 'pointer' }
+                  : { display: 'block', maxWidth: '100%', height: 'auto', cursor: 'pointer' }
+                }
                 onError={(e) => { e.target.onerror = null; urlFalhouRef.current = mediaUrl; setMediaUrl(null); }}
                 onClick={() => setImagemAberta(true)}
               />
