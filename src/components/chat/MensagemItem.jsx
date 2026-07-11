@@ -764,7 +764,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const isImagemLimpa = mensagem.tipo_conteudo === 'imagem' && textoVazio && !isContatoMsg;
 
   if (isImagemLimpa) {
-    const stickerSize = 65;
+    const stickerSize = 33;
     return (
       <div className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300`}>
         <div style={isSticker
