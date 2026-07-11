@@ -29,13 +29,36 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, mensagem: 'Nenhuma conversa encontrada', atualizados: 0 });
     }
 
-    // 2. Chamar a API Evolution para cada contato para buscar foto
+    // 2. Descobrir qual provider buscar foto: D-API (preferencial) ou Evolution (fallback)
     const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
     const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
     const instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
 
-    if (!evolutionUrl || !evolutionKey || !instanceName) {
-      return Response.json({ error: 'Evolution não configurado' }, { status: 400 });
+    const conexoesDapi = await base44.asServiceRole.entities.WhatsappConnection.filter({
+      empresa_id: empresaId,
+      provider_type: 'dapi',
+      is_active: true
+    }, '-created_date', 1);
+    const conexaoDapi = conexoesDapi?.[0];
+
+    let dapiBaseUrl = null;
+    let dapiApiKey = null;
+    let dapiSessionId = null;
+    if (conexaoDapi) {
+      dapiBaseUrl = (conexaoDapi.base_url || 'https://api.d-api.cloud').replace(/\/$/, '');
+      dapiSessionId = conexaoDapi.session_id || 'CRM JD';
+      try {
+        const decoded = atob(conexaoDapi.api_key_encrypted);
+        dapiApiKey = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decoded.trim())
+          ? decoded.trim()
+          : conexaoDapi.api_key_encrypted.trim();
+      } catch (_) {
+        dapiApiKey = conexaoDapi.api_key_encrypted.trim();
+      }
+    }
+
+    if (!conexaoDapi && (!evolutionUrl || !evolutionKey || !instanceName)) {
+      return Response.json({ error: 'Nenhum provider (D-API ou Evolution) configurado' }, { status: 400 });
     }
 
     let atualizados = 0;
@@ -48,38 +71,65 @@ Deno.serve(async (req) => {
       
       const promises = batch.map(async (conversa) => {
         try {
-          // Formatar telefone para formato Evolution (sem símbolos)
+          // Formatar telefone (sem símbolos)
           const tel = conversa.cliente_telefone?.replace(/\D/g, '');
           if (!tel || tel.length < 10) return null;
 
-          // Tentar múltiplos endpoints da Evolution API
           let fotoUrl = null;
-          const endpoints = [
-            `${evolutionUrl}/chats/getProfile/${instanceName}/${tel}`,
-            `${evolutionUrl}/chats/${instanceName}/profile/${tel}`,
-            `${evolutionUrl}/profile/${tel}/${instanceName}`,
-          ];
 
-          for (const endpoint of endpoints) {
-            if (fotoUrl) break;
+          // Tentar D-API primeiro
+          if (dapiApiKey && dapiBaseUrl) {
             try {
-              const resEvolution = await fetch(endpoint, {
-                headers: {
-                  apikey: evolutionKey,
-                  'Content-Type': 'application/json'
-                }
+              const avatarUrl = `${dapiBaseUrl}/api/v1/contacts/${tel}/avatar?sessionId=${encodeURIComponent(dapiSessionId)}`;
+              const resDapi = await fetch(avatarUrl, {
+                method: 'GET',
+                headers: { 'Authorization': dapiApiKey }
               });
-
-              if (resEvolution.ok) {
-                const data = await resEvolution.json();
-                fotoUrl = data?.profilePictureUrl || data?.picture || data?.photo || data?.profilePicture || null;
-                if (fotoUrl) {
-                  console.log(`✅ Foto encontrada via ${endpoint} para ${tel}`);
-                  break;
-                }
+              if (resDapi.ok) {
+                const rawText = await resDapi.text();
+                let dataDapi = {};
+                try { dataDapi = JSON.parse(rawText); } catch (_) { dataDapi = {}; }
+                const candidatos = [
+                  dataDapi?.avatar, dataDapi?.avatarUrl, dataDapi?.avatar_url, dataDapi?.url, dataDapi?.picture,
+                  dataDapi?.data?.avatar, dataDapi?.data?.avatarUrl, dataDapi?.data?.avatar_url, dataDapi?.data?.url, dataDapi?.data?.picture,
+                ];
+                fotoUrl = candidatos.find(v => typeof v === 'string' && v.startsWith('http')) || null;
+                if (fotoUrl) console.log(`✅ Foto encontrada via D-API para ${tel}`);
               }
             } catch (e) {
-              // Tentar próximo endpoint silenciosamente
+              // Tentar Evolution a seguir
+            }
+          }
+
+          // Fallback: Evolution API
+          if (!fotoUrl && evolutionUrl && evolutionKey && instanceName) {
+            const endpoints = [
+              `${evolutionUrl}/chats/getProfile/${instanceName}/${tel}`,
+              `${evolutionUrl}/chats/${instanceName}/profile/${tel}`,
+              `${evolutionUrl}/profile/${tel}/${instanceName}`,
+            ];
+
+            for (const endpoint of endpoints) {
+              if (fotoUrl) break;
+              try {
+                const resEvolution = await fetch(endpoint, {
+                  headers: {
+                    apikey: evolutionKey,
+                    'Content-Type': 'application/json'
+                  }
+                });
+
+                if (resEvolution.ok) {
+                  const data = await resEvolution.json();
+                  fotoUrl = data?.profilePictureUrl || data?.picture || data?.photo || data?.profilePicture || null;
+                  if (fotoUrl) {
+                    console.log(`✅ Foto encontrada via ${endpoint} para ${tel}`);
+                    break;
+                  }
+                }
+              } catch (e) {
+                // Tentar próximo endpoint silenciosamente
+              }
             }
           }
 
