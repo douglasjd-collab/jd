@@ -294,6 +294,27 @@ async function processarMensagemRecebida(base44, connection, data) {
 
       texto = linhas.filter(Boolean).join('\n\n') || texto || 'Mensagem de lista/botões';
       tipo_conteudo = 'texto';
+    } else if (tipo_conteudo === 'contact') {
+      // Compartilhamento de contato — monta o mesmo formato JSON que o front-end
+      // já sabe renderizar como cartão de contato (MensagemItem.extrairContatosVCard)
+      const cd = data?.data || {};
+      texto = JSON.stringify({
+        contactMessage: {
+          displayName: cd.display_name || cd.contact_name || 'Contato',
+          vcard: cd.vcard || ''
+        }
+      });
+      tipo_conteudo = 'texto';
+    } else if (tipo_conteudo === 'location') {
+      // Localização — exibe como texto com link do Google Maps (clicável)
+      const ld = data?.data || {};
+      const partes = [`📍 Localização${ld.name ? ': ' + ld.name : ''}`];
+      if (ld.address) partes.push(ld.address);
+      if (ld.degrees_latitude != null && ld.degrees_longitude != null) {
+        partes.push(`https://www.google.com/maps?q=${ld.degrees_latitude},${ld.degrees_longitude}`);
+      }
+      texto = partes.join('\n');
+      tipo_conteudo = 'texto';
     } else {
       const mapaTipos = {
         text: 'texto',
@@ -303,9 +324,7 @@ async function processarMensagemRecebida(base44, connection, data) {
         ptt: 'audio',
         voice: 'audio',
         document: 'documento',
-        sticker: 'documento',
-        contact: 'texto',
-        location: 'texto',
+        sticker: 'imagem',
         reaction: 'texto',
         poll_update: 'texto',
         carousel: 'texto',
