@@ -40,8 +40,10 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
     return url.includes('base44') || url.includes('supabase') || url.includes('amazonaws') || url.startsWith('https://');
   };
+  // Pacote de figurinhas (.was) enviado direto pelo celular = arquivo ZIP, nunca exibível como imagem
+  const isPacoteFigurinha = (url) => typeof url === 'string' && url.toLowerCase().endsWith('.was');
   const urlFalhouRef = useRef(null); // rastrear URL que deu erro para não re-setar
-  const [mediaUrl, setMediaUrl] = useState(() => isUrlValida(mensagem.arquivo_url, mensagem.download_status) ? sanitizeUrl(mensagem.arquivo_url) : null);
+  const [mediaUrl, setMediaUrl] = useState(() => isUrlValida(mensagem.arquivo_url, mensagem.download_status) && !isPacoteFigurinha(mensagem.arquivo_url) ? sanitizeUrl(mensagem.arquivo_url) : null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [transcricao, setTranscricao] = useState(
     mensagem.tipo_conteudo === 'audio' && mensagem.texto && mensagem.texto !== 'Áudio'
@@ -809,6 +811,11 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                   </button>
                 </>
               )}
+            </div>
+          ) : isPacoteFigurinha(mensagem.arquivo_url) ? (
+            <div style={{ width: isSticker ? stickerSize : 160, height: isSticker ? stickerSize : 160, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, background: '#e5e7eb', padding: 4, textAlign: 'center' }}>
+              <span style={{ fontSize: 16 }}>🎨</span>
+              {!isSticker && <span style={{ fontSize: 10, color: '#6b7280' }}>Figurinha indisponível</span>}
             </div>
           ) : (
             <button onClick={handleCarregarMidia} style={{ width: 160, height: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, background: '#e5e7eb', cursor: 'pointer', border: 'none' }}>

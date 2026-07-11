@@ -84,8 +84,40 @@ Deno.serve(async (req) => {
       isMediaIdNumerico ||
       isUrlPrivadaMeta;
 
-    // ── META OFICIAL ──────────────────────────────────────────────────────────
-    if (isMetaOficial) {
+    // ── D-API (arquivos já públicos no storage da D-API, ex: Backblaze) ───────
+    const isDapi = mensagem.provider === 'dapi' || conversa?.provider === 'dapi' || (urlAtual && urlAtual.includes('backblazeb2.com'));
+
+    // Pacote de figurinhas (.was) enviado direto pelo celular = arquivo ZIP, não uma imagem única — não é exibível
+    if (urlAtual && urlAtual.toLowerCase().endsWith('.was')) {
+      return Response.json({ ok: false, error: 'unsupported_sticker_pack', message: 'Pacote de figurinhas não suportado para visualização' }, { status: 400 });
+    }
+
+    if (isDapi && urlAtual) {
+      try {
+        const fileRes = await fetch(urlAtual, { headers: { 'User-Agent': 'Base44-WhatsApp-CRM' } });
+        if (fileRes.ok) {
+          const ct = fileRes.headers.get('content-type') || '';
+          if (ct && ct !== 'application/octet-stream') mimeType = ct.split(';')[0].trim();
+          const arrayBuffer = await fileRes.arrayBuffer();
+          const uint8Array = new Uint8Array(arrayBuffer);
+          let binary = '';
+          const chunkSize = 8192;
+          for (let i = 0; i < uint8Array.length; i += chunkSize) {
+            binary += String.fromCharCode(...uint8Array.slice(i, i + chunkSize));
+          }
+          base64Data = btoa(binary);
+          console.log(`✅ Mídia D-API baixada direto | tipo: ${mimeType}`);
+        } else {
+          console.warn(`⚠️ Download D-API falhou com status ${fileRes.status}`);
+        }
+      } catch (e) {
+        console.warn('⚠️ Download direto D-API falhou:', e.message);
+      }
+
+      if (!base64Data) {
+        return Response.json({ ok: false, error: 'Não foi possível baixar a mídia da D-API' }, { status: 400 });
+      }
+    } else if (isMetaOficial) {
       const metaToken = empresa?.whatsapp_access_token;
       if (!metaToken) {
         return Response.json({ error: 'Token Meta não configurado' }, { status: 400 });
