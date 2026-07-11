@@ -325,24 +325,71 @@ async function processMessageReceived(base44, body, connection, empresaId) {
   let content = typeof data.message === 'string' ? data.message : (data.text || data.content || '');
   const mediaUrl = data.media_url || data.media_data?.url || data.mediaUrl || data.fileUrl || null;
 
-  const messageTypes = {
-    text: 'texto',
-    image: 'imagem',
-    video: 'video',
-    audio: 'audio',
-    document: 'documento',
-    sticker: 'figurinha',
-    contact: 'contato',
-    location: 'localizacao',
-    reaction: 'reacao',
-    poll_update: 'enquete',
-    list_response: 'resposta_lista',
-    template_button_reply: 'resposta_botao',
-    list: 'lista',
-    carousel: 'carrossel',
-    nativeflow: 'fluxo'
-  };
-  const crmMessageType = messageTypes[messageType] || 'texto';
+  let crmMessageType;
+
+  // Lista interativa (botões/opções) e respostas de lista/botão — monta um texto legível
+  if (messageType === 'list' || messageType === 'list_response' || messageType === 'template_button_reply') {
+    const listData = data?.data || {};
+    const linhas = [];
+    if (listData.title) linhas.push(`*${listData.title}*`);
+    if (listData.description) linhas.push(listData.description);
+    const opcoes = [];
+    if (Array.isArray(listData.sections)) {
+      listData.sections.forEach((sec) => {
+        if (sec?.title) opcoes.push(`_${sec.title}_`);
+        (sec?.rows || []).forEach((row) => {
+          opcoes.push(`▸ ${row.title}${row.description ? ' - ' + row.description : ''}`);
+        });
+      });
+    } else if (Array.isArray(listData.options)) {
+      listData.options.forEach((opt) => opcoes.push(`▸ ${opt}`));
+    }
+    if (opcoes.length > 0) linhas.push(opcoes.join('\n'));
+    if (listData.selected_title) linhas.push(`Selecionou: ${listData.selected_title}`);
+    if (listData.selected_display_text) linhas.push(`Selecionou: ${listData.selected_display_text}`);
+    if (listData.footer) linhas.push(listData.footer);
+    content = linhas.filter(Boolean).join('\n\n') || content || 'Mensagem de lista/botões';
+    crmMessageType = 'texto';
+  } else if (messageType === 'contact') {
+    // Compartilhamento de contato — monta o mesmo formato JSON que o front-end
+    // já sabe renderizar como cartão de contato
+    const cd = data?.data || {};
+    content = JSON.stringify({
+      contactMessage: {
+        displayName: cd.display_name || cd.contact_name || 'Contato',
+        vcard: cd.vcard || ''
+      }
+    });
+    crmMessageType = 'texto';
+  } else if (messageType === 'location') {
+    // Localização — exibe como texto com link do Google Maps (clicável)
+    const ld = data?.data || {};
+    const partes = [`📍 Localização${ld.name ? ': ' + ld.name : ''}`];
+    if (ld.address) partes.push(ld.address);
+    if (ld.degrees_latitude != null && ld.degrees_longitude != null) {
+      partes.push(`https://www.google.com/maps?q=${ld.degrees_latitude},${ld.degrees_longitude}`);
+    }
+    content = partes.join('\n');
+    crmMessageType = 'texto';
+  } else {
+    const messageTypes = {
+      text: 'texto',
+      image: 'imagem',
+      video: 'video',
+      audio: 'audio',
+      document: 'documento',
+      sticker: 'imagem',
+      reaction: 'texto',
+      poll_update: 'texto',
+      carousel: 'texto',
+      nativeflow: 'texto'
+    };
+    crmMessageType = messageTypes[messageType] || 'texto';
+  }
+
+  // Segurança: nunca salvar um tipo fora do permitido pelo schema da entidade
+  const tiposValidos = ['texto', 'imagem', 'audio', 'video', 'pdf', 'documento'];
+  if (!tiposValidos.includes(crmMessageType)) crmMessageType = 'texto';
 
   if (!content) {
     content =
@@ -352,9 +399,6 @@ async function processMessageReceived(base44, body, connection, empresaId) {
         : crmMessageType === 'imagem' ? 'Imagem'
         : crmMessageType === 'video' ? 'Vídeo'
         : crmMessageType === 'documento' ? (data?.media_data?.filename || 'Documento')
-        : crmMessageType === 'figurinha' ? 'Figurinha'
-        : crmMessageType === 'localizacao' ? 'Localização'
-        : crmMessageType === 'contato' ? 'Contato'
         : 'Mensagem');
   }
 
