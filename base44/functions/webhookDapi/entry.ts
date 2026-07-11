@@ -518,11 +518,35 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
   const messageType = data.type || 'text';
   let content = typeof data.message === 'string' ? data.message : (data.text || data.content || '');
   const mediaUrl = data.media_url || data.media_data?.url || data.mediaUrl || data.fileUrl || null;
-  const messageTypes = {
-    text: 'texto', image: 'imagem', video: 'video', audio: 'audio', ptt: 'audio', voice: 'audio', document: 'documento',
-    sticker: 'figurinha', contact: 'contato', location: 'localizacao'
-  };
-  const crmMessageType = messageTypes[messageType] || 'texto';
+  let crmMessageType;
+
+  if (messageType === 'contact') {
+    const cd = data?.data || {};
+    content = JSON.stringify({
+      contactMessage: { displayName: cd.display_name || cd.contact_name || 'Contato', vcard: cd.vcard || '' }
+    });
+    crmMessageType = 'texto';
+  } else if (messageType === 'location') {
+    const ld = data?.data || {};
+    const partes = [`📍 Localização${ld.name ? ': ' + ld.name : ''}`];
+    if (ld.address) partes.push(ld.address);
+    if (ld.degrees_latitude != null && ld.degrees_longitude != null) {
+      partes.push(`https://www.google.com/maps?q=${ld.degrees_latitude},${ld.degrees_longitude}`);
+    }
+    content = partes.join('\n');
+    crmMessageType = 'texto';
+  } else {
+    const messageTypes = {
+      text: 'texto', image: 'imagem', video: 'video', audio: 'audio', ptt: 'audio', voice: 'audio', document: 'documento',
+      sticker: 'imagem'
+    };
+    crmMessageType = messageTypes[messageType] || 'texto';
+  }
+
+  // Segurança: nunca salvar um tipo fora do permitido pelo schema da entidade
+  const tiposValidos = ['texto', 'imagem', 'audio', 'video', 'pdf', 'documento'];
+  if (!tiposValidos.includes(crmMessageType)) crmMessageType = 'texto';
+
   if (!content) {
     content = data?.media_data?.caption || data?.caption || (crmMessageType === 'audio' ? 'Áudio' : crmMessageType === 'imagem' ? 'Imagem' : crmMessageType === 'video' ? 'Vídeo' : crmMessageType === 'documento' ? (data?.media_data?.filename || 'Documento') : 'Mensagem');
   }
