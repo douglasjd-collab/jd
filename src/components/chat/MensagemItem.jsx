@@ -787,30 +787,47 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 onError={(e) => { e.target.onerror = null; urlFalhouRef.current = mediaUrl; setMediaUrl(null); }}
                 onClick={() => setImagemAberta(true)}
               />
-              {/* Hora + status overlay */}
-              <div style={{ position: 'absolute', bottom: 6, right: 6, display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.45)', borderRadius: 10, padding: '2px 6px' }}>
-                <span style={{ color: 'rgba(255,255,255,0.95)', fontSize: 11 }}>
-                  {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm')}
-                </span>
-                {isVendedor && (
-                  statusAtual === 'lida' ? <span style={{ color: '#53bdeb', fontSize: 11, fontWeight: 700 }}>✓✓</span>
-                  : statusAtual === 'entregue' ? <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 700 }}>✓✓</span>
-                  : statusAtual === 'enviada' ? <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 700 }}>✓</span>
-                  : null
-                )}
-              </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleDownload(mediaUrl, `imagem_${mensagem.id}.jpg`); }}
-                className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
-              >
-                <Download className="w-3.5 h-3.5" />
-              </button>
+              {!isSticker && (
+                <>
+                  {/* Hora + status overlay */}
+                  <div style={{ position: 'absolute', bottom: 6, right: 6, display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,0.45)', borderRadius: 10, padding: '2px 6px' }}>
+                    <span style={{ color: 'rgba(255,255,255,0.95)', fontSize: 11 }}>
+                      {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm')}
+                    </span>
+                    {isVendedor && (
+                      statusAtual === 'lida' ? <span style={{ color: '#53bdeb', fontSize: 11, fontWeight: 700 }}>✓✓</span>
+                      : statusAtual === 'entregue' ? <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 700 }}>✓✓</span>
+                      : statusAtual === 'enviada' ? <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: 700 }}>✓</span>
+                      : null
+                    )}
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDownload(mediaUrl, `imagem_${mensagem.id}.jpg`); }}
+                    className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <button onClick={handleCarregarMidia} style={{ width: 160, height: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, background: '#e5e7eb', cursor: 'pointer', border: 'none' }}>
               <Download style={{ width: 20, height: 20, color: '#6b7280' }} />
               <span style={{ fontSize: 11, color: '#6b7280' }}>Carregar imagem</span>
             </button>
+          )}
+          {isSticker && mediaUrl && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3, marginTop: 2 }}>
+              <span style={{ color: '#8696a0', fontSize: 11 }}>
+                {format(new Date(mensagem.data_envio || mensagem.created_date), 'HH:mm')}
+              </span>
+              {isVendedor && (
+                statusAtual === 'lida' ? <span style={{ color: '#53bdeb', fontSize: 11, fontWeight: 700 }}>✓✓</span>
+                : statusAtual === 'entregue' ? <span style={{ color: '#8696a0', fontSize: 11, fontWeight: 700 }}>✓✓</span>
+                : statusAtual === 'enviada' ? <span style={{ color: '#8696a0', fontSize: 11, fontWeight: 700 }}>✓</span>
+                : null
+              )}
+            </div>
           )}
         </div>
         {imagemAberta && mediaUrl && (
