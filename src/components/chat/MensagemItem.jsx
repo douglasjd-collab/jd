@@ -12,6 +12,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null }) {
+  // Corrige URLs com espaços não codificados (ex: pastas "CRM JD"), que quebram <img>/<audio>/<video>
+  const sanitizeUrl = (url) => (typeof url === 'string' ? url.replace(/ /g, '%20') : url);
+
   // Não auto-carregar arquivos .enc (criptografados do WhatsApp — causam download indesejado no browser)
   const isUrlValida = (url, downloadStatus = null) => {
     if (!url) return false;
@@ -38,7 +41,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     return url.includes('base44') || url.includes('supabase') || url.includes('amazonaws') || url.startsWith('https://');
   };
   const urlFalhouRef = useRef(null); // rastrear URL que deu erro para não re-setar
-  const [mediaUrl, setMediaUrl] = useState(() => isUrlValida(mensagem.arquivo_url, mensagem.download_status) ? mensagem.arquivo_url : null);
+  const [mediaUrl, setMediaUrl] = useState(() => isUrlValida(mensagem.arquivo_url, mensagem.download_status) ? sanitizeUrl(mensagem.arquivo_url) : null);
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [transcricao, setTranscricao] = useState(
     mensagem.tipo_conteudo === 'audio' && mensagem.texto && mensagem.texto !== 'Áudio'
@@ -149,7 +152,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
     // Se já tem URL permanente válida no banco, usar direto
     if (isUrlValida(mensagem.arquivo_url, mensagem.download_status) && mensagem.arquivo_url !== urlFalhouRef.current) {
-      setMediaUrl(mensagem.arquivo_url);
+      setMediaUrl(sanitizeUrl(mensagem.arquivo_url));
       return;
     }
 
@@ -167,7 +170,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             conversa_id: conversaId || mensagem.conversa_id
           }).then(res => {
             const url = res?.data?.arquivo_url;
-            if (url && isUrlValida(url)) setMediaUrl(url);
+            if (url && isUrlValida(url)) setMediaUrl(sanitizeUrl(url));
           }).catch(() => {});
         }
       }, 6000);
@@ -185,7 +188,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       conversa_id: conversaId || mensagem.conversa_id
     }).then(res => {
       const url = res?.data?.arquivo_url;
-      if (url && isUrlValida(url)) setMediaUrl(url);
+      if (url && isUrlValida(url)) setMediaUrl(sanitizeUrl(url));
     }).catch(err => {
       console.warn('baixarMidia falhou:', err?.message);
     }).finally(() => setLoadingMedia(false));
@@ -195,7 +198,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   // Mas não re-setar URL que já falhou (causaria loop)
   useEffect(() => {
     if (isUrlValida(mensagem.arquivo_url, mensagem.download_status) && !mediaUrl && mensagem.arquivo_url !== urlFalhouRef.current) {
-      setMediaUrl(mensagem.arquivo_url);
+      setMediaUrl(sanitizeUrl(mensagem.arquivo_url));
     }
   }, [mensagem.arquivo_url, mensagem.download_status]);
 
@@ -241,7 +244,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     if (url.includes('base44.app/api/apps') && url.startsWith('https://') && !url.includes('.enc')) {
       const nomeArquivo = url.split('?')[0].split('/').pop();
       if (/\.[a-zA-Z0-9]{2,5}$/.test(nomeArquivo)) {
-        setMediaUrl(url);
+        setMediaUrl(sanitizeUrl(url));
         return;
       }
     }
@@ -259,7 +262,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         const data = res?.data;
         const url = data?.arquivo_url;
         if (url && url !== 'indisponivel' && isUrlValida(url)) {
-          setMediaUrl(url);
+          setMediaUrl(sanitizeUrl(url));
         } else {
           toast.error('Não foi possível carregar a mídia. Tente novamente.');
         }
@@ -272,7 +275,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const handleDownload = async (url, nomeArquivo) => {
     if (!url) return;
     
-    let urlFinal = url;
+    let urlFinal = sanitizeUrl(url);
     
     // Se a URL não é permanente (não é do nosso storage), buscar via backend
     const isPermanente = url.includes('base44') || url.includes('supabase') || url.includes('amazonaws');
@@ -285,7 +288,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           conversa_id: conversaId || mensagem.conversa_id
         });
         if (res?.data?.arquivo_url) {
-          urlFinal = res.data.arquivo_url;
+          urlFinal = sanitizeUrl(res.data.arquivo_url);
           setMediaUrl(urlFinal);
         }
       } catch (e) {
