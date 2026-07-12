@@ -25,17 +25,16 @@ export default function ChatMessageFooter({
   setCoachIAOpen,
 }) {
   const queryClient = useQueryClient();
-  const [canalReabrir, setCanalReabrir] = useState(conversaSelecionada?.tipo_conexao || 'meta_oficial');
+  const [canalReabrir, setCanalReabrir] = useState(conversaSelecionada?.tipo_conexao === 'dapi' ? 'dapi' : 'meta_oficial');
 
   // Sincronizar canal ao trocar de conversa
   React.useEffect(() => {
-    setCanalReabrir(conversaSelecionada?.tipo_conexao || 'meta_oficial');
+    setCanalReabrir(conversaSelecionada?.tipo_conexao === 'dapi' ? 'dapi' : 'meta_oficial');
   }, [conversaSelecionada?.id]);
 
   const canaisDisponiveis = [
     { value: 'meta_oficial', label: '📱 Meta Oficial (API)' },
-    { value: 'empresa', label: '🏢 Evolution Empresa' },
-    { value: 'usuario', label: '👤 Evolution Colaborador' },
+    { value: 'dapi', label: '🟦 D-API' },
   ];
 
   if (conversaSelecionada?.status === 'encerrada') {
@@ -70,9 +69,12 @@ export default function ChatMessageFooter({
             size="sm"
             className="bg-emerald-600 hover:bg-emerald-700 gap-1.5 text-white shrink-0"
             onClick={async () => {
+              const dadosCanal = canalReabrir === 'dapi'
+                ? { tipo_conexao: 'dapi', canal_origem: 'dapi', provider: 'dapi' }
+                : { tipo_conexao: 'meta_oficial', canal_origem: 'meta', provider: 'whatsapp_meta' };
               await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
                 status: 'ativa',
-                tipo_conexao: canalReabrir,
+                ...dadosCanal,
                 responsavel_id: null,
                 responsavel_expira_em: null,
               });
@@ -80,7 +82,7 @@ export default function ChatMessageFooter({
               selecionarConversa({
                 ...conversaSelecionada,
                 status: 'ativa',
-                tipo_conexao: canalReabrir,
+                ...dadosCanal,
                 responsavel_id: null,
                 responsavel_expira_em: null,
               });
