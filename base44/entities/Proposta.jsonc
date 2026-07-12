@@ -392,6 +392,10 @@
     "payload_ultima_resposta_finantobank": {
       "type": "string",
       "description": "[FINANTOBANK] JSON completo da \u00faltima resposta da API do FinantoBank"
+    },
+    "anexos_json": {
+      "type": "string",
+      "description": "JSON array de anexos da proposta [{nome, url, tipo, data_upload}]"
     }
   },
   "required": [

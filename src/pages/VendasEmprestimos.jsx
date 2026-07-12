@@ -28,11 +28,11 @@ import {
 } from '@/components/ui/select';
 import {
   Search, MoreHorizontal, Pencil, Trash2, Plus, Upload,
-        User, Calendar, Building2, FileText, MessageCircle,
-        TrendingUp, Clock, CheckCircle2, Settings, Loader2,
-        AlignJustify, Kanban, ArrowRightLeft, DollarSign, Copy, RefreshCw,
-        History, UserCheck
-} from 'lucide-react';
+  User, Calendar, Building2, FileText, MessageCircle,
+  TrendingUp, Clock, CheckCircle2, Settings, Loader2,
+  AlignJustify, Kanban, ArrowRightLeft, DollarSign, Copy, RefreshCw,
+  History, UserCheck, FileSignature
+  } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -48,6 +48,7 @@ import ResponsavelModal from '@/components/emprestimos/ResponsavelModal';
 import StatusQuickModal from '@/components/emprestimos/StatusQuickModal';
 import PortabilidadeHojeModal from '@/components/emprestimos/PortabilidadeHojeModal';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
+import { gerarTermoAutorizacaoPDF } from '@/components/emprestimos/gerarTermoAutorizacao';
 
 const TIPO_LABELS = {
   NOVO: 'Novo',
@@ -100,6 +101,7 @@ export default function VendasEmprestimos() {
   const [chatContato, setChatContato] = useState(null);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'kanban'
   const [sincronizandoApi, setSincronizandoApi] = useState(false);
+  const [gerandoTermoId, setGerandoTermoId] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
@@ -298,6 +300,42 @@ export default function VendasEmprestimos() {
     navigator.clipboard.writeText(texto).then(() => {
       toast.success('Informações copiadas!');
     });
+  };
+
+  const handleGerarTermoAutorizacao = async (p) => {
+    if (gerandoTermoId) return;
+    setGerandoTermoId(p.id);
+    try {
+      const cliente = getCliente(p.cliente_id);
+      const empresas = await base44.entities.Empresa.filter({ id: p.empresa_id || currentUser?.empresa_id });
+      const empresa = empresas?.[0] || null;
+
+      const doc = gerarTermoAutorizacaoPDF(p, cliente, empresa);
+      const blob = doc.output('blob');
+      const nomeArquivo = `Termo_Autorizacao_${(p.cliente_nome || 'cliente').replace(/\s+/g, '_')}.pdf`;
+      const file = new File([blob], nomeArquivo, { type: 'application/pdf' });
+
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+
+      let anexos = [];
+      try { anexos = p.anexos_json ? JSON.parse(p.anexos_json) : []; } catch { anexos = []; }
+      anexos.push({
+        nome: 'Termo de Autorização.pdf',
+        url: file_url,
+        tipo: 'termo_autorizacao',
+        data_upload: new Date().toISOString(),
+      });
+
+      await base44.entities.Proposta.update(p.id, { anexos_json: JSON.stringify(anexos) });
+      queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
+
+      window.open(file_url, '_blank');
+      toast.success('Termo de Autorização gerado e salvo na proposta!');
+    } catch (e) {
+      toast.error('Erro ao gerar termo: ' + e.message);
+    } finally {
+      setGerandoTermoId(null);
+    }
   };
 
   const isAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
@@ -874,6 +912,14 @@ export default function VendasEmprestimos() {
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => { setPropostaToEdit(p); setEditModalOpen(true); }}>
                           <Pencil className="w-4 h-4 mr-2" /> Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleGerarTermoAutorizacao(p)} disabled={gerandoTermoId === p.id}>
+                          {gerandoTermoId === p.id ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <FileSignature className="w-4 h-4 mr-2" />
+                          )}
+                          Gerar Termo de Autorização
                         </DropdownMenuItem>
                         {podeExcluir && (
                           <DropdownMenuItem onClick={() => { setPropostaToDelete(p); setDeleteDialogOpen(true); }} className="text-red-600 focus:text-red-600">
