@@ -1234,8 +1234,42 @@ export default function NovaVendaConsignado() {
                     <InfoItem label="Nome" value={clienteSelecionado?.nome_completo || clienteSelecionado?.pj_razao_social} />
                     <InfoItem label="CPF" value={clienteSelecionado?.cpf || clienteSelecionado?.pj_cnpj} />
                     <InfoItem label="Nº Benefício / Matrícula" value={formData.numero_beneficio} />
+                    <InfoItem label="RG" value={clienteSelecionado?.rg} />
+                    <InfoItem label="Data de Nascimento" value={clienteSelecionado?.data_nascimento} />
+                    <InfoItem label="Estado Civil" value={clienteSelecionado?.estado_civil} />
+                    <InfoItem label="Profissão" value={clienteSelecionado?.profissao} />
+                    <InfoItem label="Celular" value={clienteSelecionado?.celular} />
+                    <InfoItem label="Telefone Fixo" value={clienteSelecionado?.telefone_fixo} />
+                    <InfoItem label="E-mail" value={clienteSelecionado?.email} />
+                    <InfoItem
+                      label="Endereço"
+                      value={clienteSelecionado ? `${clienteSelecionado.res_endereco || ''}${clienteSelecionado.res_numero ? ', nº ' + clienteSelecionado.res_numero : ''}${clienteSelecionado.res_complemento ? ', ' + clienteSelecionado.res_complemento : ''}`.trim().replace(/^,\s*/, '') || null : null} />
+                    <InfoItem label="Bairro" value={clienteSelecionado?.res_bairro} />
+                    <InfoItem label="Cidade/UF" value={clienteSelecionado?.res_cidade ? `${clienteSelecionado.res_cidade}${clienteSelecionado.res_uf ? ' - ' + clienteSelecionado.res_uf : ''}` : null} />
+                    <InfoItem label="CEP" value={clienteSelecionado?.res_cep} />
+                    <InfoItem label="Nome da Mãe" value={clienteSelecionado?.nome_mae} />
+                    <InfoItem label="Nome do Pai" value={clienteSelecionado?.nome_pai} />
                   </div>
                 </div>
+
+                {/* Bloco: Testemunhas */}
+                {(formData.testemunha1_nome || formData.testemunha2_nome) && (
+                  <div className="bg-pink-50 border border-pink-200 rounded-xl p-4 space-y-3">
+                    <h3 className="font-bold text-pink-900 text-sm uppercase tracking-wide flex items-center gap-2">
+                      ✍️ Testemunhas
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {[1, 2].map((n) => formData[`testemunha${n}_nome`] && (
+                        <div key={n} className="grid grid-cols-2 gap-3 text-sm">
+                          <InfoItem label={`Testemunha ${n} - Nome`} value={formData[`testemunha${n}_nome`]} />
+                          <InfoItem label="CPF" value={formData[`testemunha${n}_cpf`]} />
+                          <InfoItem label="Telefone" value={formData[`testemunha${n}_telefone`]} />
+                          <InfoItem label="Endereço" value={formData[`testemunha${n}_endereco`]} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Bloco: Detalhes da Proposta */}
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
