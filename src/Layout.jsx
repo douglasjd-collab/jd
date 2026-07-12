@@ -645,7 +645,7 @@ export default function Layout({ children, currentPageName }) {
                     </DropdownMenuItem>
                   )}
 
-                  {user?.empresa_id && (
+                  {isAdmin && user?.empresa_id && (
                     <DropdownMenuItem 
                      onSelect={(e) => {
                        e.preventDefault();
