@@ -285,6 +285,42 @@ export function gerarTermoAutorizacaoPDF(proposta, cliente, empresa) {
   doc.text(`CNPJ: ${empresa?.cpf_cnpj || '-'}`, marginX, y);
   y += 5;
   doc.text(`Representante: ${empresa?.socio_nome || '-'}`, marginX, y);
+  y += 12;
+
+  // Testemunhas (opcional — reforça a validade do Termo)
+  const testemunhas = [
+    { nome: proposta.testemunha1_nome, cpf: proposta.testemunha1_cpf, telefone: proposta.testemunha1_telefone, endereco: proposta.testemunha1_endereco },
+    { nome: proposta.testemunha2_nome, cpf: proposta.testemunha2_cpf, telefone: proposta.testemunha2_telefone, endereco: proposta.testemunha2_endereco },
+  ].filter((t) => t.nome);
+
+  if (testemunhas.length > 0) {
+    checkBreak(14);
+    doc.setFontSize(10.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TESTEMUNHAS', marginX, y);
+    y += 8;
+
+    testemunhas.forEach((t, idx) => {
+      checkBreak(30);
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${idx + 1}ª Testemunha`, marginX, y);
+      y += 12;
+      doc.setFont('helvetica', 'normal');
+      doc.line(marginX, y, marginX + 80, y);
+      y += 5;
+      doc.text(t.nome || '-', marginX, y);
+      y += 5;
+      doc.text(`CPF: ${t.cpf || '-'}`, marginX, y);
+      y += 5;
+      if (t.telefone) { doc.text(`Telefone: ${t.telefone}`, marginX, y); y += 5; }
+      if (t.endereco) {
+        const linhasEndereco = doc.splitTextToSize(`Endereço: ${t.endereco}`, maxWidth);
+        linhasEndereco.forEach((l) => { checkBreak(6); doc.text(l, marginX, y); y += 5; });
+      }
+      y += 8;
+    });
+  }
 
   return doc;
 }

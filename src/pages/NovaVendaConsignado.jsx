@@ -76,7 +76,15 @@ export default function NovaVendaConsignado() {
     empresa_parceira: '',
     empresa_parceira_id: '',
     empresa_parceira_nome: '',
-    observacoes: ''
+    observacoes: '',
+    testemunha1_nome: '',
+    testemunha1_cpf: '',
+    testemunha1_telefone: '',
+    testemunha1_endereco: '',
+    testemunha2_nome: '',
+    testemunha2_cpf: '',
+    testemunha2_telefone: '',
+    testemunha2_endereco: ''
   });
 
   useEffect(() => {
@@ -207,6 +215,14 @@ export default function NovaVendaConsignado() {
         emprestimo_banco_anterior: dados.banco_anterior,
         empresa_parceira_id: dados.empresa_parceira_id || '',
         empresa_parceira_nome: dados.empresa_parceira_nome || dados.empresa_parceira || '',
+        testemunha1_nome: dados.testemunha1_nome || '',
+        testemunha1_cpf: dados.testemunha1_cpf || '',
+        testemunha1_telefone: dados.testemunha1_telefone || '',
+        testemunha1_endereco: dados.testemunha1_endereco || '',
+        testemunha2_nome: dados.testemunha2_nome || '',
+        testemunha2_cpf: dados.testemunha2_cpf || '',
+        testemunha2_telefone: dados.testemunha2_telefone || '',
+        testemunha2_endereco: dados.testemunha2_endereco || '',
       });
 
       return proposta;
@@ -1004,6 +1020,46 @@ export default function NovaVendaConsignado() {
             </div>
 
             {renderCamposPorTipo()}
+
+            {/* Testemunhas */}
+            <div className="border-t pt-4 mt-2">
+              <h3 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">✍️ Testemunhas <span className="text-xs font-normal text-slate-400">(opcional, reforça o Termo de Autorização)</span></h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2].map((n) => (
+                  <div key={n} className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+                    <p className="text-sm font-medium text-slate-600">Testemunha {n}</p>
+                    <div>
+                      <Label>Nome</Label>
+                      <Input
+                        value={formData[`testemunha${n}_nome`]}
+                        onChange={(e) => setFormData({ ...formData, [`testemunha${n}_nome`]: e.target.value })}
+                        placeholder="Nome completo" />
+                    </div>
+                    <div>
+                      <Label>CPF</Label>
+                      <Input
+                        value={formData[`testemunha${n}_cpf`]}
+                        onChange={(e) => setFormData({ ...formData, [`testemunha${n}_cpf`]: e.target.value })}
+                        placeholder="000.000.000-00" />
+                    </div>
+                    <div>
+                      <Label>Telefone</Label>
+                      <Input
+                        value={formData[`testemunha${n}_telefone`]}
+                        onChange={(e) => setFormData({ ...formData, [`testemunha${n}_telefone`]: e.target.value })}
+                        placeholder="(00) 00000-0000" />
+                    </div>
+                    <div>
+                      <Label>Endereço</Label>
+                      <Input
+                        value={formData[`testemunha${n}_endereco`]}
+                        onChange={(e) => setFormData({ ...formData, [`testemunha${n}_endereco`]: e.target.value })}
+                        placeholder="Endereço completo" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
           </CardContent>
         </Card>

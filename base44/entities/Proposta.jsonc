@@ -396,6 +396,38 @@
     "anexos_json": {
       "type": "string",
       "description": "JSON array de anexos da proposta [{nome, url, tipo, data_upload}]"
+    },
+    "testemunha1_nome": {
+      "type": "string",
+      "description": "[TESTEMUNHA 1] Nome completo"
+    },
+    "testemunha1_cpf": {
+      "type": "string",
+      "description": "[TESTEMUNHA 1] CPF"
+    },
+    "testemunha1_telefone": {
+      "type": "string",
+      "description": "[TESTEMUNHA 1] Telefone"
+    },
+    "testemunha1_endereco": {
+      "type": "string",
+      "description": "[TESTEMUNHA 1] Endere\u00e7o"
+    },
+    "testemunha2_nome": {
+      "type": "string",
+      "description": "[TESTEMUNHA 2] Nome completo"
+    },
+    "testemunha2_cpf": {
+      "type": "string",
+      "description": "[TESTEMUNHA 2] CPF"
+    },
+    "testemunha2_telefone": {
+      "type": "string",
+      "description": "[TESTEMUNHA 2] Telefone"
+    },
+    "testemunha2_endereco": {
+      "type": "string",
+      "description": "[TESTEMUNHA 2] Endere\u00e7o"
     }
   },
   "required": [
