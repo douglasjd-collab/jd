@@ -1,0 +1,242 @@
+{
+  "name": "SolicitacaoAssinatura",
+  "type": "object",
+  "properties": {
+    "proposta_id": {
+      "type": "string",
+      "description": "ID da proposta vinculada"
+    },
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "termo_autorizacao_id": {
+      "type": "string",
+      "description": "ID do TermoAutorizacao vinculado"
+    },
+    "termo_pdf_url": {
+      "type": "string",
+      "description": "URL do PDF do termo no momento do envio"
+    },
+    "cliente_nome_snapshot": {
+      "type": "string"
+    },
+    "banco_snapshot": {
+      "type": "string"
+    },
+    "tipo_operacao_snapshot": {
+      "type": "string"
+    },
+    "contrato_snapshot": {
+      "type": "string"
+    },
+    "valor_bruto_snapshot": {
+      "type": "number"
+    },
+    "valor_liquido_snapshot": {
+      "type": "number"
+    },
+    "valor_parcela_snapshot": {
+      "type": "number"
+    },
+    "prazo_snapshot": {
+      "type": "number"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "aguardando_cliente",
+        "aguardando_testemunha1",
+        "aguardando_testemunha2",
+        "aguardando_representante",
+        "assinado",
+        "recusado",
+        "cancelado"
+      ],
+      "default": "aguardando_cliente"
+    },
+    "sequencial": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se cada assinatura s\u00f3 \u00e9 liberada ap\u00f3s a anterior"
+    },
+    "ordem_json": {
+      "type": "string",
+      "description": "JSON array com a ordem dos pap\u00e9is inclu\u00eddos (ex: [\"cliente\",\"testemunha1\",\"representante\"])"
+    },
+    "cliente_nome": {
+      "type": "string"
+    },
+    "cliente_cpf": {
+      "type": "string"
+    },
+    "cliente_telefone": {
+      "type": "string"
+    },
+    "cliente_email": {
+      "type": "string"
+    },
+    "cliente_token": {
+      "type": "string"
+    },
+    "cliente_status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "visualizado",
+        "assinado",
+        "recusado"
+      ],
+      "default": "pendente"
+    },
+    "cliente_data_assinatura": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cliente_assinatura_url": {
+      "type": "string"
+    },
+    "testemunha1_nome": {
+      "type": "string"
+    },
+    "testemunha1_cpf": {
+      "type": "string"
+    },
+    "testemunha1_telefone": {
+      "type": "string"
+    },
+    "testemunha1_email": {
+      "type": "string"
+    },
+    "testemunha1_relacao": {
+      "type": "string"
+    },
+    "testemunha1_token": {
+      "type": "string"
+    },
+    "testemunha1_status": {
+      "type": "string",
+      "enum": [
+        "nao_aplicavel",
+        "pendente",
+        "visualizado",
+        "assinado",
+        "recusado"
+      ],
+      "default": "nao_aplicavel"
+    },
+    "testemunha1_data_assinatura": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "testemunha1_assinatura_url": {
+      "type": "string"
+    },
+    "testemunha2_nome": {
+      "type": "string"
+    },
+    "testemunha2_cpf": {
+      "type": "string"
+    },
+    "testemunha2_telefone": {
+      "type": "string"
+    },
+    "testemunha2_email": {
+      "type": "string"
+    },
+    "testemunha2_relacao": {
+      "type": "string"
+    },
+    "testemunha2_token": {
+      "type": "string"
+    },
+    "testemunha2_status": {
+      "type": "string",
+      "enum": [
+        "nao_aplicavel",
+        "pendente",
+        "visualizado",
+        "assinado",
+        "recusado"
+      ],
+      "default": "nao_aplicavel"
+    },
+    "testemunha2_data_assinatura": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "testemunha2_assinatura_url": {
+      "type": "string"
+    },
+    "representante_nome": {
+      "type": "string"
+    },
+    "representante_cpf": {
+      "type": "string"
+    },
+    "representante_cargo": {
+      "type": "string"
+    },
+    "representante_telefone": {
+      "type": "string"
+    },
+    "representante_email": {
+      "type": "string"
+    },
+    "representante_token": {
+      "type": "string"
+    },
+    "representante_status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "visualizado",
+        "assinado",
+        "recusado"
+      ],
+      "default": "pendente"
+    },
+    "representante_data_assinatura": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "representante_assinatura_url": {
+      "type": "string"
+    },
+    "motivo_recusa": {
+      "type": "string"
+    },
+    "recusado_por_papel": {
+      "type": "string"
+    },
+    "criado_por_id": {
+      "type": "string"
+    },
+    "criado_por_nome": {
+      "type": "string"
+    },
+    "data_criacao": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "proposta_id",
+    "empresa_id",
+    "status"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente','vendedor','colaborador','funcionario','colaborador_vendedor'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente','vendedor','colaborador','funcionario','colaborador_vendedor'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

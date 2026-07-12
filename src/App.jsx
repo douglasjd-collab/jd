@@ -55,6 +55,7 @@ import ConfiguracaoWhatsAppConexoes from './components/configuracoes/Configuraca
 import LogsWebhookDapi from './pages/LogsWebhookDapi';
 import GruposConsorcio from './pages/GruposConsorcio';
 import GrupoConsorcioDetalhes from './pages/GrupoConsorcioDetalhes';
+import AssinarDocumento from './pages/AssinarDocumento';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -161,17 +162,26 @@ const AuthenticatedApp = () => {
 
 
 function App() {
+  // A rota de assinatura pública é acessada por clientes/testemunhas sem login no CRM,
+  // por isso fica fora do AuthProvider/gate de autenticação do restante do app.
+  const isRotaAssinaturaPublica = window.location.pathname.startsWith('/assinar/');
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <NavigationTracker />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClientInstance}>
+      <Router>
+        {isRotaAssinaturaPublica ? (
+          <Routes>
+            <Route path="/assinar/:token" element={<AssinarDocumento />} />
+          </Routes>
+        ) : (
+          <AuthProvider>
+            <NavigationTracker />
+            <AuthenticatedApp />
+          </AuthProvider>
+        )}
+      </Router>
+      <Toaster />
+    </QueryClientProvider>
   )
 }
 

@@ -6,6 +6,7 @@ import { AlertTriangle, Download, Printer, FileCheck2, Send, Loader2 } from 'luc
 import { toast } from 'sonner';
 import { validarDadosTermo } from './validarDadosTermo';
 import { gerarTermoAutorizacaoPDF, getTipoOperacaoLabel } from './gerarTermoAutorizacao';
+import ConfigurarAssinaturasModal from './ConfigurarAssinaturasModal';
 
 const buildSnapshot = (proposta, cliente, empresa) => JSON.stringify({
   cliente_nome: cliente?.nome_completo || proposta.cliente_nome,
@@ -44,6 +45,8 @@ export default function TermoAutorizacaoModal({
   const [ultimoTermo, setUltimoTermo] = useState(null);
   const [dadosAlterados, setDadosAlterados] = useState(false);
   const [loadingAcao, setLoadingAcao] = useState(null);
+  const [configAssinaturaOpen, setConfigAssinaturaOpen] = useState(false);
+  const [termoParaAssinatura, setTermoParaAssinatura] = useState(null);
 
   useEffect(() => {
     if (!open || !proposta) return;
@@ -97,7 +100,7 @@ export default function TermoAutorizacaoModal({
       });
     }
 
-    await base44.entities.TermoAutorizacao.create({
+    const termoCriado = await base44.entities.TermoAutorizacao.create({
       proposta_id: proposta.id,
       empresa_id: proposta.empresa_id || currentUser?.empresa_id,
       versao: novaVersao,
@@ -126,7 +129,7 @@ export default function TermoAutorizacaoModal({
     });
     await base44.entities.Proposta.update(proposta.id, { anexos_json: JSON.stringify(anexos) });
 
-    return { file_url };
+    return { file_url, termo: termoCriado };
   };
 
   const handleGerarEAnexar = async () => {
@@ -147,9 +150,10 @@ export default function TermoAutorizacaoModal({
   const handleEnviarAssinatura = async () => {
     setLoadingAcao('assinatura');
     try {
-      await salvarTermo('aguardando_assinatura');
-      toast.success('Termo gerado e marcado como Aguardando Assinatura!');
+      const { termo } = await salvarTermo('aguardando_assinatura');
       onGerado?.();
+      setTermoParaAssinatura(termo);
+      setConfigAssinaturaOpen(true);
       onOpenChange(false);
     } catch (e) {
       toast.error('Erro ao enviar para assinatura: ' + e.message);
@@ -172,6 +176,7 @@ export default function TermoAutorizacaoModal({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
         {invalido ? (
@@ -235,5 +240,15 @@ export default function TermoAutorizacaoModal({
         )}
       </DialogContent>
     </Dialog>
+    <ConfigurarAssinaturasModal
+      open={configAssinaturaOpen}
+      onOpenChange={setConfigAssinaturaOpen}
+      proposta={proposta}
+      cliente={cliente}
+      empresa={empresa}
+      termoAtual={termoParaAssinatura}
+      currentUser={currentUser}
+    />
+    </>
   );
 }

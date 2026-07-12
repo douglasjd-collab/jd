@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { FileSignature, Download, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import TermoAutorizacaoModal from './TermoAutorizacaoModal';
+import AcompanhamentoAssinaturaCard from './AcompanhamentoAssinaturaCard';
 
 const STATUS_LABELS = {
   gerado: 'Gerado',
@@ -53,6 +54,8 @@ export default function TermoAutorizacaoTab({ proposta, cliente, empresa, curren
           <FileSignature className="w-4 h-4" /> {atual ? 'Gerar Nova Versão' : 'Gerar Termo'}
         </Button>
       </div>
+
+      <AcompanhamentoAssinaturaCard propostaId={proposta?.id} />
 
       {!atual ? (
         <div className="bg-slate-50 rounded-lg p-6 text-center text-sm text-slate-500">
