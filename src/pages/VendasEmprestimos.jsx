@@ -49,6 +49,7 @@ import StatusQuickModal from '@/components/emprestimos/StatusQuickModal';
 import PortabilidadeHojeModal from '@/components/emprestimos/PortabilidadeHojeModal';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
 import TermoAutorizacaoModal from '@/components/emprestimos/TermoAutorizacaoModal';
+import AcompanhamentoAssinaturasModal from '@/components/emprestimos/AcompanhamentoAssinaturasModal';
 
 const TIPO_LABELS = {
   NOVO: 'Novo',
@@ -104,6 +105,8 @@ export default function VendasEmprestimos() {
   const [termoModalOpen, setTermoModalOpen] = useState(false);
   const [propostaTermo, setPropostaTermo] = useState(null);
   const [empresaTermo, setEmpresaTermo] = useState(null);
+  const [assinaturasModalOpen, setAssinaturasModalOpen] = useState(false);
+  const [propostaAssinaturas, setPropostaAssinaturas] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
@@ -894,6 +897,10 @@ export default function VendasEmprestimos() {
                           <FileSignature className="w-4 h-4 mr-2" />
                           Gerar Termo de Autorização
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => { setPropostaAssinaturas(p); setAssinaturasModalOpen(true); }}>
+                          <UserCheck className="w-4 h-4 mr-2" />
+                          Acompanhar Assinaturas
+                        </DropdownMenuItem>
                         {podeExcluir && (
                           <DropdownMenuItem onClick={() => { setPropostaToDelete(p); setDeleteDialogOpen(true); }} className="text-red-600 focus:text-red-600">
                             <Trash2 className="w-4 h-4 mr-2" /> Excluir
@@ -1081,6 +1088,12 @@ export default function VendasEmprestimos() {
         onEditProposta={(p) => { setPropostaToEdit(p); setEditModalOpen(true); }}
         onEditEmpresa={() => navigate(createPageUrl('Empresas'))}
         onGerado={() => queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] })}
+      />
+
+      <AcompanhamentoAssinaturasModal
+        open={assinaturasModalOpen}
+        onOpenChange={setAssinaturasModalOpen}
+        proposta={propostaAssinaturas}
       />
 
       <PropostaEditModal
