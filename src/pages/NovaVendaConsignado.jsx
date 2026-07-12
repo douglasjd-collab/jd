@@ -676,13 +676,14 @@ export default function NovaVendaConsignado() {
 
   }
 
-  const stepLabels = ['Informações do Cliente', 'Detalhes da Proposta', 'Estrutura de Comissões', 'Revisão Final'];
-  const stepColors = ['teal', 'blue', 'green', 'orange'];
+  const stepLabels = ['Informações do Cliente', 'Detalhes da Proposta', 'Testemunhas', 'Estrutura de Comissões', 'Revisão Final'];
+  const stepColors = ['teal', 'blue', 'purple', 'green', 'orange'];
 
   const getStepColor = (step) => {
     const colors = {
       teal: 'bg-teal-100 text-teal-900 border-teal-200',
       blue: 'bg-blue-100 text-blue-900 border-blue-200',
+      purple: 'bg-purple-100 text-purple-900 border-purple-200',
       green: 'bg-green-100 text-green-900 border-green-200',
       orange: 'bg-orange-100 text-orange-900 border-orange-200'
     };
@@ -717,6 +718,7 @@ export default function NovaVendaConsignado() {
             const bgMap = {
               teal: isActive ? 'bg-teal-100 border-teal-300' : isCompleted ? 'bg-teal-50 border-teal-200' : 'bg-slate-50 border-slate-200',
               blue: isActive ? 'bg-blue-100 border-blue-300' : isCompleted ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200',
+              purple: isActive ? 'bg-purple-100 border-purple-300' : isCompleted ? 'bg-purple-50 border-purple-200' : 'bg-slate-50 border-slate-200',
               green: isActive ? 'bg-green-100 border-green-300' : isCompleted ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200',
               orange: isActive ? 'bg-orange-100 border-orange-300' : isCompleted ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-200'
             };
@@ -724,6 +726,7 @@ export default function NovaVendaConsignado() {
             const badgeMap = {
               teal: 'bg-[#10353C] text-white',
               blue: 'bg-blue-500 text-white',
+              purple: 'bg-purple-500 text-white',
               green: 'bg-green-500 text-white',
               orange: 'bg-orange-500 text-white'
             };
@@ -1021,57 +1024,69 @@ export default function NovaVendaConsignado() {
 
             {renderCamposPorTipo()}
 
-            {/* Testemunhas */}
-            <div className="border-t pt-4 mt-2">
-              <h3 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">✍️ Testemunhas <span className="text-xs font-normal text-slate-400">(opcional, reforça o Termo de Autorização)</span></h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[1, 2].map((n) => (
-                  <div key={n} className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
-                    <p className="text-sm font-medium text-slate-600">Testemunha {n}</p>
-                    <div>
-                      <Label>Nome</Label>
-                      <Input
-                        value={formData[`testemunha${n}_nome`]}
-                        onChange={(e) => setFormData({ ...formData, [`testemunha${n}_nome`]: e.target.value })}
-                        placeholder="Nome completo" />
-                    </div>
-                    <div>
-                      <Label>CPF</Label>
-                      <Input
-                        value={formData[`testemunha${n}_cpf`]}
-                        onChange={(e) => setFormData({ ...formData, [`testemunha${n}_cpf`]: e.target.value })}
-                        placeholder="000.000.000-00" />
-                    </div>
-                    <div>
-                      <Label>Telefone</Label>
-                      <Input
-                        value={formData[`testemunha${n}_telefone`]}
-                        onChange={(e) => setFormData({ ...formData, [`testemunha${n}_telefone`]: e.target.value })}
-                        placeholder="(00) 00000-0000" />
-                    </div>
-                    <div>
-                      <Label>Endereço</Label>
-                      <Input
-                        value={formData[`testemunha${n}_endereco`]}
-                        onChange={(e) => setFormData({ ...formData, [`testemunha${n}_endereco`]: e.target.value })}
-                        placeholder="Endereço completo" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
           </CardContent>
         </Card>
         }
 
-        {/* Step 3: Estrutura de Comissões */}
-        {currentStep === 3 && (user?.perfil === 'admin' || user?.perfil === 'gerente' || user?.perfil === 'super_admin' || user?.perfil === 'master') &&
+        {/* Step 3: Testemunhas */}
+        {currentStep === 3 &&
+        <Card className="border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50/50 to-white">
+          <CardHeader className="bg-purple-50/50 border-b">
+            <CardTitle className="flex items-center gap-2 text-purple-900">
+              <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-sm font-bold">3</span>
+              </div>
+              Testemunhas
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-3">
+            <p className="text-sm text-slate-500">Opcional — reforça o Termo de Autorização.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[1, 2].map((n) => (
+                <div key={n} className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-medium text-slate-600">Testemunha {n}</p>
+                  <div>
+                    <Label>Nome</Label>
+                    <Input
+                      value={formData[`testemunha${n}_nome`]}
+                      onChange={(e) => setFormData({ ...formData, [`testemunha${n}_nome`]: e.target.value })}
+                      placeholder="Nome completo" />
+                  </div>
+                  <div>
+                    <Label>CPF</Label>
+                    <Input
+                      value={formData[`testemunha${n}_cpf`]}
+                      onChange={(e) => setFormData({ ...formData, [`testemunha${n}_cpf`]: e.target.value })}
+                      placeholder="000.000.000-00" />
+                  </div>
+                  <div>
+                    <Label>Telefone</Label>
+                    <Input
+                      value={formData[`testemunha${n}_telefone`]}
+                      onChange={(e) => setFormData({ ...formData, [`testemunha${n}_telefone`]: e.target.value })}
+                      placeholder="(00) 00000-0000" />
+                  </div>
+                  <div>
+                    <Label>Endereço</Label>
+                    <Input
+                      value={formData[`testemunha${n}_endereco`]}
+                      onChange={(e) => setFormData({ ...formData, [`testemunha${n}_endereco`]: e.target.value })}
+                      placeholder="Endereço completo" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        }
+
+        {/* Step 4: Estrutura de Comissões */}
+        {currentStep === 4 && (user?.perfil === 'admin' || user?.perfil === 'gerente' || user?.perfil === 'super_admin' || user?.perfil === 'master') &&
         <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50/50 to-white">
             <CardHeader className="bg-green-50/50 border-b">
               <CardTitle className="flex items-center gap-2 text-green-900">
                 <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">3</span>
+                  <span className="text-white text-sm font-bold">4</span>
                 </div>
                 Estrutura de Comissões
               </CardTitle>
@@ -1151,12 +1166,12 @@ export default function NovaVendaConsignado() {
           </Card>
         }
 
-        {user?.perfil === 'vendedor' && formData.comissao_vendedor_prevista && currentStep === 3 &&
+        {user?.perfil === 'vendedor' && formData.comissao_vendedor_prevista && currentStep === 4 &&
         <Card className="border-l-4 border-l-amber-500 bg-gradient-to-br from-amber-50/50 to-white">
             <CardHeader className="bg-amber-50/50 border-b">
               <CardTitle className="flex items-center gap-2 text-amber-900">
                 <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">3</span>
+                  <span className="text-white text-sm font-bold">4</span>
                 </div>
                 Sua Comissão
               </CardTitle>
@@ -1187,8 +1202,8 @@ export default function NovaVendaConsignado() {
           </Card>
         }
 
-        {/* Step 4: Revisão Final */}
-        {currentStep === 4 && (() => {
+        {/* Step 5: Revisão Final */}
+        {currentStep === 5 && (() => {
           const convenioSelecionado = convenios.find(c => c.id === formData.convenio_id);
           const vendedorSelecionado = vendedores.find(v => v.id === formData.vendedor_parceiro_id);
           const InfoItem = ({ label, value }) => value ? (
@@ -1203,7 +1218,7 @@ export default function NovaVendaConsignado() {
               <CardHeader className="bg-orange-50/50 border-b">
                 <CardTitle className="flex items-center gap-2 text-orange-900">
                   <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">4</span>
+                    <span className="text-white text-sm font-bold">5</span>
                   </div>
                   Revisão Final
                 </CardTitle>
@@ -1343,7 +1358,7 @@ export default function NovaVendaConsignado() {
           </Button>
           
           <div className="flex gap-2">
-            {currentStep < 4 &&
+            {currentStep < 5 &&
             <Button
               type="button"
               onClick={() => setCurrentStep(currentStep + 1)}
@@ -1353,7 +1368,7 @@ export default function NovaVendaConsignado() {
                 Próximo
               </Button>
             }
-            {currentStep === 4 &&
+            {currentStep === 5 &&
             <Button
               type="submit"
               disabled={criarVendaMutation.isPending}
