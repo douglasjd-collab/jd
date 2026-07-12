@@ -653,7 +653,7 @@ export default function Layout({ children, currentPageName }) {
                      }}
                     >
                      <Edit3 className="w-4 h-4 mr-2" />
-                     Alterar Nome da Empresa
+                     Dados da Empresa
                     </DropdownMenuItem>
                   )}
 

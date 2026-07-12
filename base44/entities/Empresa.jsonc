@@ -12,7 +12,11 @@
     },
     "nome": {
       "type": "string",
-      "description": "Nome da empresa"
+      "description": "Raz\u00e3o social da empresa"
+    },
+    "nome_fantasia": {
+      "type": "string",
+      "description": "Nome fantasia da empresa"
     },
     "tipo_empresa": {
       "type": "string",
@@ -54,6 +58,27 @@
     "endereco_estado": {
       "type": "string",
       "description": "Estado (UF)"
+    },
+    "socio_nome": {
+      "type": "string",
+      "description": "Nome do s\u00f3cio"
+    },
+    "socio_cpf": {
+      "type": "string",
+      "description": "CPF do s\u00f3cio"
+    },
+    "socio_data_nascimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de nascimento do s\u00f3cio"
+    },
+    "socio_nome_pai": {
+      "type": "string",
+      "description": "Nome do pai do s\u00f3cio (filia\u00e7\u00e3o)"
+    },
+    "socio_nome_mae": {
+      "type": "string",
+      "description": "Nome da m\u00e3e do s\u00f3cio (filia\u00e7\u00e3o)"
     },
     "logo_url": {
       "type": "string",
