@@ -33,6 +33,10 @@
       "type": "string",
       "description": "URL do PDF gerado"
     },
+    "pdf_assinado_url": {
+      "type": "string",
+      "description": "URL do PDF final contendo as assinaturas coletadas de todos os signat\u00e1rios"
+    },
     "hash_arquivo": {
       "type": "string",
       "description": "Hash SHA-256 do arquivo PDF, para garantir integridade"
@@ -114,7 +118,7 @@
       "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente','vendedor','colaborador','funcionario','colaborador_vendedor'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
     },
     "delete": {
-      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+      "rule": "if (record.status === 'assinado') return false; if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
     }
   }
 }

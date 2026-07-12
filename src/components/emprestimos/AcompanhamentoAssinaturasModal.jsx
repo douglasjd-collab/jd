@@ -1,11 +1,12 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Copy, FileSignature, CheckCircle2, Clock } from 'lucide-react';
+import { Copy, FileSignature, CheckCircle2, Clock, Download, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { gerarTermoComAssinaturasPDF } from './gerarTermoComAssinaturas';
 
 const STATUS_LABELS = {
   nao_aplicavel: 'Não liberado',
@@ -32,6 +33,8 @@ const ROLE_LABELS = {
 
 export default function AcompanhamentoAssinaturasModal({ open, onOpenChange, proposta }) {
   const propostaId = proposta?.id;
+  const queryClient = useQueryClient();
+  const [baixando, setBaixando] = useState(false);
 
   const { data: solicitacoes = [], isLoading } = useQuery({
     queryKey: ['solicitacoes-assinatura', propostaId],
@@ -43,10 +46,56 @@ export default function AcompanhamentoAssinaturasModal({ open, onOpenChange, pro
   let ordem = [];
   try { ordem = JSON.parse(sol?.ordem_json || '[]'); } catch { ordem = []; }
 
+  const totalmenteAssinado = sol?.status === 'assinado';
+
+  const { data: termo } = useQuery({
+    queryKey: ['termo-autorizacao-assinatura', sol?.termo_autorizacao_id],
+    enabled: !!sol?.termo_autorizacao_id && totalmenteAssinado,
+    queryFn: () => base44.entities.TermoAutorizacao.get(sol.termo_autorizacao_id),
+  });
+
+  const { data: cliente } = useQuery({
+    queryKey: ['cliente-assinatura', proposta?.cliente_id],
+    enabled: open && !!proposta?.cliente_id && totalmenteAssinado,
+    queryFn: () => base44.entities.Cliente.get(proposta.cliente_id),
+  });
+
+  const { data: empresa } = useQuery({
+    queryKey: ['empresa-assinatura', proposta?.empresa_id],
+    enabled: open && !!proposta?.empresa_id && totalmenteAssinado,
+    queryFn: async () => (await base44.entities.Empresa.filter({ id: proposta.empresa_id }))?.[0] || null,
+  });
+
   const copiarLink = (token) => {
     const link = `${window.location.origin}/assinar/${token}`;
     navigator.clipboard.writeText(link);
     toast.success('Link de assinatura copiado!');
+  };
+
+  const nomeArquivo = () =>
+    `Termo_Assinado_${(proposta?.cliente_nome || 'cliente').replace(/\s+/g, '_')}_${(proposta?.contrato || '').replace(/\s+/g, '_')}.pdf`;
+
+  const handleBaixarAssinado = async () => {
+    if (termo?.pdf_assinado_url) {
+      window.open(termo.pdf_assinado_url, '_blank');
+      return;
+    }
+    setBaixando(true);
+    try {
+      const docPdf = await gerarTermoComAssinaturasPDF({ proposta, cliente, empresa, solicitacao: sol });
+      if (termo) {
+        const blob = docPdf.output('blob');
+        const file = new File([blob], nomeArquivo(), { type: 'application/pdf' });
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        await base44.entities.TermoAutorizacao.update(termo.id, { pdf_assinado_url: file_url });
+        queryClient.invalidateQueries({ queryKey: ['termo-autorizacao-assinatura', sol.termo_autorizacao_id] });
+      }
+      docPdf.save(nomeArquivo());
+    } catch (e) {
+      toast.error('Erro ao gerar o termo assinado: ' + e.message);
+    } finally {
+      setBaixando(false);
+    }
   };
 
   const assinaram = ordem.filter((role) => sol?.[`${role}_status`] === 'assinado');
@@ -66,6 +115,17 @@ export default function AcompanhamentoAssinaturasModal({ open, onOpenChange, pro
             <p className="font-semibold text-slate-700">{proposta.cliente_nome}</p>
             <p className="text-slate-500">Contrato: {proposta.contrato || '-'}</p>
           </div>
+        )}
+
+        {totalmenteAssinado && (
+          <Button
+            className="gap-1.5 bg-[#23BE84] hover:bg-[#1da570] w-full"
+            onClick={handleBaixarAssinado}
+            disabled={baixando}
+          >
+            {baixando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Baixar Termo Assinado
+          </Button>
         )}
 
         {isLoading ? (
