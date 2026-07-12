@@ -50,7 +50,7 @@ export default function TermoAutorizacaoModal({
     setValidacao(validarDadosTermo({ cliente, proposta, empresa }));
     carregarUltimoTermo();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, proposta?.id]);
+  }, [open, proposta?.id, cliente, empresa]);
 
   const carregarUltimoTermo = async () => {
     try {

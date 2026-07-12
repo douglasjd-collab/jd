@@ -305,15 +305,14 @@ export default function VendasEmprestimos() {
   };
 
   const handleAbrirTermoModal = async (p) => {
-    setPropostaTermo(p);
-    setEmpresaTermo(null);
-    setTermoModalOpen(true);
     try {
       const empresas = await base44.entities.Empresa.filter({ id: p.empresa_id || currentUser?.empresa_id });
       setEmpresaTermo(empresas?.[0] || null);
     } catch {
       setEmpresaTermo(null);
     }
+    setPropostaTermo(p);
+    setTermoModalOpen(true);
   };
 
   const isAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
