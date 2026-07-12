@@ -8,6 +8,8 @@ import { Loader2, User, Building2, Calendar, DollarSign, FileText, Percent, Arro
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { format } from 'date-fns';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import TermoAutorizacaoTab from '@/components/emprestimos/TermoAutorizacaoTab';
 
 const fmt = (v) => v != null ? (v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-';
 const fmtDate = (d) => d ? format(new Date(d + 'T12:00:00'), 'dd/MM/yyyy') : '-';
@@ -50,6 +52,12 @@ export default function PropostaEmprestimoDetalhes() {
     queryKey: ['cliente-proposta', proposta?.cliente_id],
     enabled: !!proposta?.cliente_id,
     queryFn: () => base44.entities.Cliente.filter({ id: proposta.cliente_id }).then(r => r[0] || null),
+  });
+
+  const { data: empresa } = useQuery({
+    queryKey: ['empresa-proposta', proposta?.empresa_id],
+    enabled: !!proposta?.empresa_id,
+    queryFn: () => base44.entities.Empresa.filter({ id: proposta.empresa_id }).then(r => r[0] || null),
   });
 
   const { data: statusList = [] } = useQuery({
@@ -149,6 +157,12 @@ export default function PropostaEmprestimoDetalhes() {
         </div>
       </div>
 
+      <Tabs defaultValue="detalhes">
+        <TabsList>
+          <TabsTrigger value="detalhes">Detalhes</TabsTrigger>
+          <TabsTrigger value="termo">Termo de Autorização</TabsTrigger>
+        </TabsList>
+        <TabsContent value="detalhes" className="space-y-6 mt-4">
       {/* Cliente */}
       <Card className="border-l-4 border-l-purple-500">
         <CardHeader className="bg-purple-50/50 pb-3">
@@ -316,6 +330,11 @@ export default function PropostaEmprestimoDetalhes() {
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+        <TabsContent value="termo" className="mt-4">
+          <TermoAutorizacaoTab proposta={proposta} cliente={cliente} empresa={empresa} currentUser={user} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

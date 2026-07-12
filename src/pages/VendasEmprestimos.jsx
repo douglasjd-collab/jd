@@ -48,7 +48,7 @@ import ResponsavelModal from '@/components/emprestimos/ResponsavelModal';
 import StatusQuickModal from '@/components/emprestimos/StatusQuickModal';
 import PortabilidadeHojeModal from '@/components/emprestimos/PortabilidadeHojeModal';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
-import { gerarTermoAutorizacaoPDF } from '@/components/emprestimos/gerarTermoAutorizacao';
+import TermoAutorizacaoModal from '@/components/emprestimos/TermoAutorizacaoModal';
 
 const TIPO_LABELS = {
   NOVO: 'Novo',
@@ -101,7 +101,9 @@ export default function VendasEmprestimos() {
   const [chatContato, setChatContato] = useState(null);
   const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'kanban'
   const [sincronizandoApi, setSincronizandoApi] = useState(false);
-  const [gerandoTermoId, setGerandoTermoId] = useState(null);
+  const [termoModalOpen, setTermoModalOpen] = useState(false);
+  const [propostaTermo, setPropostaTermo] = useState(null);
+  const [empresaTermo, setEmpresaTermo] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
@@ -302,39 +304,15 @@ export default function VendasEmprestimos() {
     });
   };
 
-  const handleGerarTermoAutorizacao = async (p) => {
-    if (gerandoTermoId) return;
-    setGerandoTermoId(p.id);
+  const handleAbrirTermoModal = async (p) => {
+    setPropostaTermo(p);
+    setEmpresaTermo(null);
+    setTermoModalOpen(true);
     try {
-      const cliente = getCliente(p.cliente_id);
       const empresas = await base44.entities.Empresa.filter({ id: p.empresa_id || currentUser?.empresa_id });
-      const empresa = empresas?.[0] || null;
-
-      const doc = gerarTermoAutorizacaoPDF(p, cliente, empresa);
-      const blob = doc.output('blob');
-      const nomeArquivo = `Termo_Autorizacao_${(p.cliente_nome || 'cliente').replace(/\s+/g, '_')}.pdf`;
-      const file = new File([blob], nomeArquivo, { type: 'application/pdf' });
-
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-
-      let anexos = [];
-      try { anexos = p.anexos_json ? JSON.parse(p.anexos_json) : []; } catch { anexos = []; }
-      anexos.push({
-        nome: 'Termo de Autorização.pdf',
-        url: file_url,
-        tipo: 'termo_autorizacao',
-        data_upload: new Date().toISOString(),
-      });
-
-      await base44.entities.Proposta.update(p.id, { anexos_json: JSON.stringify(anexos) });
-      queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] });
-
-      window.open(file_url, '_blank');
-      toast.success('Termo de Autorização gerado e salvo na proposta!');
-    } catch (e) {
-      toast.error('Erro ao gerar termo: ' + e.message);
-    } finally {
-      setGerandoTermoId(null);
+      setEmpresaTermo(empresas?.[0] || null);
+    } catch {
+      setEmpresaTermo(null);
     }
   };
 
@@ -913,12 +891,8 @@ export default function VendasEmprestimos() {
                         <DropdownMenuItem onClick={() => { setPropostaToEdit(p); setEditModalOpen(true); }}>
                           <Pencil className="w-4 h-4 mr-2" /> Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleGerarTermoAutorizacao(p)} disabled={gerandoTermoId === p.id}>
-                          {gerandoTermoId === p.id ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <FileSignature className="w-4 h-4 mr-2" />
-                          )}
+                        <DropdownMenuItem onClick={() => handleAbrirTermoModal(p)}>
+                          <FileSignature className="w-4 h-4 mr-2" />
                           Gerar Termo de Autorização
                         </DropdownMenuItem>
                         {podeExcluir && (
@@ -1095,6 +1069,19 @@ export default function VendasEmprestimos() {
         contato={chatContato}
         empresaId={currentUser?.empresa_id}
         user={currentUser}
+      />
+
+      <TermoAutorizacaoModal
+        open={termoModalOpen}
+        onOpenChange={setTermoModalOpen}
+        proposta={propostaTermo}
+        cliente={propostaTermo ? getCliente(propostaTermo.cliente_id) : null}
+        empresa={empresaTermo}
+        currentUser={currentUser}
+        onEditCliente={(clienteId) => navigate(createPageUrl(`ClienteDetalhes?id=${clienteId}`))}
+        onEditProposta={(p) => { setPropostaToEdit(p); setEditModalOpen(true); }}
+        onEditEmpresa={() => navigate(createPageUrl('Empresas'))}
+        onGerado={() => queryClient.invalidateQueries({ queryKey: ['vendas-emprestimos'] })}
       />
 
       <PropostaEditModal
