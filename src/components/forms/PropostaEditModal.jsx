@@ -66,17 +66,6 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
     }
   }, [proposta]);
 
-  // Se a proposta não tem banco_id salvo mas tem o nome do banco, localiza o id correspondente
-  // apenas para exibição correta no select (não marca como alterado, preservando o valor original ao salvar)
-  useEffect(() => {
-    if (proposta && bancos.length > 0 && !proposta.banco_id && proposta.administradora_nome && !formData.banco_id) {
-      const match = bancos.find(b => b.nome === proposta.administradora_nome);
-      if (match) {
-        setFormData(prev => ({ ...prev, banco_id: match.id }));
-      }
-    }
-  }, [proposta, bancos]);
-
   const set = (field) => (val) => setFormData(prev => ({ ...prev, [field]: val }));
   const setE = (field) => (e) => setFormData(prev => ({ ...prev, [field]: e.target.value }));
 
@@ -118,6 +107,17 @@ export default function PropostaEditModal({ proposta, open, onOpenChange, curren
       ? base44.entities.EmpresaParceira.filter({ empresa_id: currentUser.empresa_id }, 'nome', 200)
       : base44.entities.EmpresaParceira.list('nome', 200),
   });
+
+  // Se a proposta não tem banco_id salvo mas tem o nome do banco, localiza o id correspondente
+  // apenas para exibição correta no select (não marca como alterado, preservando o valor original ao salvar)
+  useEffect(() => {
+    if (proposta && bancos.length > 0 && !proposta.banco_id && proposta.administradora_nome && !formData.banco_id) {
+      const match = bancos.find(b => b.nome === proposta.administradora_nome);
+      if (match) {
+        setFormData(prev => ({ ...prev, banco_id: match.id }));
+      }
+    }
+  }, [proposta, bancos]);
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.Proposta.update(proposta.id, data),
