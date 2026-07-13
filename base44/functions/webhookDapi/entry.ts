@@ -283,17 +283,33 @@ async function processConnectionQrCode(base44, body, connection) {
  * deve ser extraído de data.from.jid (nunca tratar "from" como string).
  */
 // Extrai texto/nome da mensagem citada (reply) quando o remetente respondeu citando outra mensagem.
-// A D-API expõe o ContextInfo do Whatsmeow (mesmo formato usado no envio) — aceita camelCase e snake_case.
-function extrairRespostaCitada(data) {
+// Formato real da D-API: data.contextInfo = { participant, quoted_message: { body, type }, quoted_message_id, stanza_id }
+// Como o participant vem como JID @lid (não dá pra extrair nome), buscamos a mensagem original salva
+// no banco pelo whatsapp_message_id para pegar o texto e o nome corretos do remetente.
+async function extrairRespostaCitada(base44, empresaId, data) {
   const ctx = data?.contextInfo || data?.context_info || null;
   if (!ctx) return { texto: null, nome: null };
-  const quotedMsg = ctx.quotedMessage || ctx.quoted_message || null;
-  const texto = quotedMsg
-    ? (quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || quotedMsg.text || null)
-    : null;
-  const participantJid = ctx.participant || ctx.participant_jid || '';
-  const nome = ctx.participantName || ctx.participant_name || (participantJid ? String(participantJid).replace(/@.*/g, '') : null);
-  return { texto: texto ? String(texto).substring(0, 200) : null, nome };
+
+  const quotedMsg = ctx.quoted_message || ctx.quotedMessage || null;
+  const quotedId = ctx.quoted_message_id || ctx.stanza_id || ctx.quotedMessageId || null;
+
+  if (quotedId) {
+    try {
+      const originais = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+        empresa_id: empresaId,
+        whatsapp_message_id: String(quotedId)
+      }, '-created_date', 1);
+      if (originais && originais.length > 0) {
+        const original = originais[0];
+        const nomeOriginal = original.remetente === 'vendedor' ? (original.usuario_nome || 'Você') : (original.remetente_nome || 'Cliente');
+        const textoOriginal = original.texto || (quotedMsg?.body || null);
+        return { texto: textoOriginal ? String(textoOriginal).substring(0, 200) : null, nome: nomeOriginal };
+      }
+    } catch (_) {}
+  }
+
+  const texto = quotedMsg?.body || quotedMsg?.conversation || quotedMsg?.extendedTextMessage?.text || quotedMsg?.text || null;
+  return { texto: texto ? String(texto).substring(0, 200) : null, nome: null };
 }
 
 async function processMessageReceived(base44, body, connection, empresaId) {
@@ -483,20 +499,7 @@ async function processMessageReceived(base44, body, connection, empresaId) {
     return { handled: false, error: error.message };
   }
 
-  const { texto: respostaParaTexto, nome: respostaParaNome } = extrairRespostaCitada(data);
-
-  // DEBUG TEMPORÁRIO: grava o contextInfo bruto para descobrirmos o formato exato usado pela D-API
-  // (será removido assim que a extração da citação for confirmada). Não afeta o fluxo normal.
-  const ctxDebug = data?.contextInfo || data?.context_info;
-  if (ctxDebug) {
-    base44.asServiceRole.entities.LogRecebimentoWebhook.create({
-      empresa_id: empresaId,
-      tipo_evento: 'mensagem_recebida',
-      telefone: fromPhone,
-      conteudo: 'DEBUG_CONTEXT_INFO: ' + JSON.stringify(ctxDebug).substring(0, 1900),
-      status: 'sucesso'
-    }).catch(() => {});
-  }
+  const { texto: respostaParaTexto, nome: respostaParaNome } = await extrairRespostaCitada(base44, empresaId, data);
 
   const mensagemData = {
     empresa_id: empresaId,
