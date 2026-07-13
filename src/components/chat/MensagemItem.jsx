@@ -647,7 +647,10 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       case 'documento': {
         const urlDoc = mediaUrl;
         const nomeDoc = mensagem.arquivo_nome || 'Documento PDF';
-        const isPdf = nomeDoc.toLowerCase().endsWith('.pdf') || mensagem.tipo_conteudo === 'pdf';
+        const isPdf = mensagem.tipo_conteudo === 'pdf'
+          || nomeDoc.toLowerCase().endsWith('.pdf')
+          || mensagem.mime_type === 'application/pdf'
+          || (urlDoc || '').toLowerCase().includes('.pdf');
         return (
           <div>
             <div
