@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     }
     
     const payload = await req.json().catch(() => ({}));
-    const { connectionId, action, webhookUrl, phoneNumber, text, imageUrl, audioUrl, documentUrl, videoUrl, caption, fileName } = payload;
+    const { connectionId, action, webhookUrl, phoneNumber, text, imageUrl, audioUrl, documentUrl, videoUrl, caption, fileName, messageIds } = payload;
     
     // Buscar conexão
     const connections = await base44.entities.WhatsappConnection.filter({ id: connectionId });
@@ -452,6 +452,19 @@ Deno.serve(async (req) => {
         return await this.request('/api/v1/messages/send/video', 'POST', messagePayload);
       },
       
+      // Marcar mensagens como lidas - POST /api/v1/chats/read
+      async markAsRead(phoneNumber, messageIds) {
+        const normalizedPhone = phoneNumber.replace(/\D/g, '');
+
+        const messagePayload = {
+          sessionId: this.sessionId,
+          to: normalizedPhone,
+          messageIds: messageIds
+        };
+
+        return await this.request('/api/v1/chats/read', 'POST', messagePayload);
+      },
+
       // Atualizar webhook da sessão - PATCH /api/v1/sessions/{sessionId}
       // Conforme documentação oficial D-API
       async updateWebhook(webhookUrl) {
@@ -717,6 +730,13 @@ Deno.serve(async (req) => {
         result = await adapter.sendVideo(phoneNumber, videoUrl, caption);
         break;
         
+      case 'markAsRead':
+        if (!phoneNumber || !messageIds || !messageIds.length) {
+          return Response.json({ error: 'phoneNumber and messageIds required' }, { status: 400 });
+        }
+        result = await adapter.markAsRead(phoneNumber, messageIds);
+        break;
+
       case 'updateWebhook':
         if (!webhookUrl) {
           return Response.json({ error: 'webhookUrl required' }, { status: 400 });

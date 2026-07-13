@@ -28,13 +28,51 @@ Deno.serve(async (req) => {
       console.log(`✅ Mensagem ${mensagem_id} marcada como lida`);
     }
 
-    // Opcionalmente enviar confirmação de leitura para Evolution API
+    // Opcionalmente enviar confirmação de leitura para Evolution API ou D-API
     if (mensagem.whatsapp_message_id) {
       try {
         const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({ id: conversa_id || mensagem.conversa_id });
         const conversa = conversas?.[0];
         if (!conversa) return Response.json({ ok: true });
 
+        const phoneNumber = conversa.cliente_telefone?.replace(/\D/g, '') || '';
+        if (!phoneNumber) return Response.json({ ok: true });
+
+        // Conversa via D-API: buscar conexão e confirmar leitura via POST /api/v1/chats/read
+        if (mensagem.provider === 'dapi' || conversa.tipo_conexao === 'dapi') {
+          let conexaoDapi = null;
+          if (conversa.connection_id) {
+            try {
+              const conexaoEspecifica = await base44.asServiceRole.entities.WhatsappConnection.get(conversa.connection_id);
+              if (conexaoEspecifica?.provider_type === 'dapi' && conexaoEspecifica.is_active) conexaoDapi = conexaoEspecifica;
+            } catch (_) {}
+          }
+          if (!conexaoDapi) {
+            const conexoes = await base44.asServiceRole.entities.WhatsappConnection.filter({
+              empresa_id: mensagem.empresa_id,
+              provider_type: 'dapi',
+              is_active: true
+            }, '-created_date', 1);
+            conexaoDapi = conexoes[0] || null;
+          }
+
+          if (conexaoDapi) {
+            const readResp = await base44.functions.invoke('whatsappService', {
+              connectionId: conexaoDapi.id,
+              action: 'markAsRead',
+              phoneNumber,
+              messageIds: [mensagem.whatsapp_message_id]
+            });
+            if (readResp?.data?.success) {
+              console.log(`✅ Confirmação de leitura enviada para D-API`);
+            } else {
+              console.warn(`⚠️ Erro ao enviar confirmação de leitura via D-API:`, readResp?.data?.error);
+            }
+          }
+          return Response.json({ ok: true, status: 'lida' });
+        }
+
+        // Conversa via Evolution API
         const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: mensagem.empresa_id });
         const empresa = empresas?.[0];
         if (!empresa?.evolution_url || !empresa?.evolution_api_key) {
@@ -44,9 +82,6 @@ Deno.serve(async (req) => {
         const evolutionUrl = empresa.evolution_url.replace(/\/$/, '');
         const evolutionKey = empresa.evolution_api_key;
         const instanceName = empresa.evolution_instance_name;
-
-        const phoneNumber = conversa.cliente_telefone?.replace(/\D/g, '') || '';
-        if (!phoneNumber) return Response.json({ ok: true });
 
         // Enviar confirmação de leitura via Evolution
         const readRes = await fetch(`${evolutionUrl}/message/sendRead/${instanceName}`, {
@@ -65,7 +100,7 @@ Deno.serve(async (req) => {
           console.warn(`⚠️ Erro ao enviar confirmação de leitura: ${readRes.status}`, readText.substring(0, 200));
         }
       } catch (e) {
-        console.warn(`⚠️ Erro ao confirmar leitura na Evolution:`, e.message);
+        console.warn(`⚠️ Erro ao confirmar leitura:`, e.message);
       }
     }
 
