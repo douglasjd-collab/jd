@@ -31,68 +31,60 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const evolutionUrl = empresa.evolution_url || Deno.env.get('EVOLUTION_API_URL');
-        const evolutionKey = empresa.evolution_api_key || Deno.env.get('EVOLUTION_API_KEY');
-        const instancia = msg.instancia_whatsapp || empresa.evolution_instance_name || Deno.env.get('EVOLUTION_INSTANCE_NAME');
+        // Por padrão, envio agendado deve usar D-API — buscar conexão D-API ativa da empresa
+        const conexoesDapi = await base44.asServiceRole.entities.WhatsappConnection.filter({
+          empresa_id: msg.empresa_id,
+          provider_type: 'dapi',
+          is_active: true,
+        }, '-created_date', 1);
+        const conexaoDapi = conexoesDapi[0];
 
-        if (!evolutionUrl || !evolutionKey || !instancia) {
+        if (!conexaoDapi) {
           await base44.asServiceRole.entities.MensagemAgendada.update(msg.id, {
             status: 'falha',
-            erro_detalhe: 'Configuração WhatsApp não encontrada',
+            erro_detalhe: 'Nenhuma conexão D-API ativa encontrada para a empresa',
           });
           falhas++;
           continue;
         }
 
-        // Formatar número — Evolution API espera apenas dígitos (sem @s.whatsapp.net)
+        // Formatar número — D-API espera apenas dígitos com DDI
         let telefone = (msg.telefone || '').replace(/\D/g, '');
-        if (!telefone.startsWith('55')) telefone = '55' + telefone;
-        const baseUrl = evolutionUrl.replace(/\/$/, '');
+        if (!telefone.startsWith('55') && telefone.length >= 10 && telefone.length <= 11) telefone = '55' + telefone;
 
         const tipoEnvio = msg.tipo_envio || 'texto';
-        let resp;
         let tipoConteudo = 'texto';
+        let dapiAction = 'sendText';
+        let dapiActionParams = {};
 
         if (tipoEnvio === 'texto_imagem' && msg.arquivo_url) {
-          resp = await fetch(`${baseUrl}/message/sendMedia/${instancia}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
-            body: JSON.stringify({
-              number: telefone,
-              mediatype: 'image',
-              media: msg.arquivo_url,
-              caption: msg.mensagem,
-            }),
-          });
+          dapiAction = 'sendImage';
+          dapiActionParams = { imageUrl: msg.arquivo_url, caption: msg.mensagem };
           tipoConteudo = 'imagem';
         } else if (tipoEnvio === 'texto_video' && msg.arquivo_url) {
-          resp = await fetch(`${baseUrl}/message/sendMedia/${instancia}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
-            body: JSON.stringify({
-              number: telefone,
-              mediatype: 'video',
-              media: msg.arquivo_url,
-              caption: msg.mensagem,
-            }),
-          });
+          dapiAction = 'sendVideo';
+          dapiActionParams = { videoUrl: msg.arquivo_url, caption: msg.mensagem };
           tipoConteudo = 'video';
         } else {
-          resp = await fetch(`${baseUrl}/message/sendText/${instancia}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
-            body: JSON.stringify({ number: telefone, text: msg.mensagem }),
-          });
+          dapiAction = 'sendText';
           tipoConteudo = 'texto';
         }
 
-        if (!resp.ok) {
-          const errText = await resp.text();
-          throw new Error(`Evolution API error: ${resp.status} - ${errText}`);
+        const respService = await base44.asServiceRole.functions.invoke('whatsappService', {
+          connectionId: conexaoDapi.id,
+          action: dapiAction,
+          phoneNumber: telefone,
+          text: msg.mensagem,
+          ...dapiActionParams,
+        });
+
+        const serviceResult = respService?.data;
+        if (!serviceResult?.success) {
+          const erroDetalhes = serviceResult?.data?.error || serviceResult?.error || 'Erro desconhecido';
+          throw new Error(`D-API error: ${erroDetalhes}`);
         }
 
-        const respData = await resp.json();
-        const whatsappMsgId = respData?.key?.id || respData?.messageId || '';
+        const whatsappMsgId = serviceResult?.data?.data?.messageId || serviceResult?.data?.messageId || '';
 
         // Registrar mensagem no histórico
         await base44.asServiceRole.entities.MensagemWhatsapp.create({
@@ -105,6 +97,7 @@ Deno.serve(async (req) => {
           texto: msg.mensagem,
           arquivo_url: msg.arquivo_url || '',
           arquivo_nome: msg.arquivo_nome || '',
+          provider: 'dapi',
           whatsapp_message_id: whatsappMsgId,
           data_envio: new Date().toISOString(),
           status: 'enviada',
