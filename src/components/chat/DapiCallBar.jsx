@@ -3,7 +3,7 @@ import { PhoneOff, PhoneCall, Phone, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-export default function DapiCallBar({ status, erro, clienteNome, mutado, onEncerrar, onMutar }) {
+export default function DapiCallBar({ status, erro, clienteNome, mutado, via, onEncerrar, onMutar }) {
   const [segundos, setSegundos] = useState(0);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function DapiCallBar({ status, erro, clienteNome, mutado, onEncer
           {emLigacao ? <Phone className="h-4 w-4" /> : <PhoneCall className="h-4 w-4 animate-pulse" />}
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold truncate">{clienteNome || 'Chamada via WhatsApp'}</p>
+          <p className="text-sm font-semibold truncate">{clienteNome || (via === 'operadora' ? 'Chamada via Operadora' : 'Chamada via WhatsApp')}</p>
           <p className={cn('text-xs font-mono', emLigacao ? 'text-white/90' : 'text-white/80 animate-pulse')}>
             {statusLabel}
           </p>

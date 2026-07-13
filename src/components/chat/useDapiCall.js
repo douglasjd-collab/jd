@@ -62,6 +62,7 @@ export default function useDapiCall() {
   const [status, setStatus] = useState('idle'); // idle|calling|ringing|connected|ended|error
   const [erro, setErro] = useState(null);
   const [mutado, setMutado] = useState(false);
+  const [via, setVia] = useState(null); // 'whatsapp' | 'operadora'
 
   const wsRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -84,6 +85,7 @@ export default function useDapiCall() {
   const encerrar = useCallback(() => {
     limpar();
     setStatus('idle');
+    setVia(null);
   }, [limpar]);
 
   const alternarMudo = useCallback(() => {
@@ -93,11 +95,14 @@ export default function useDapiCall() {
     setMutado(!track.enabled);
   }, []);
 
-  const iniciar = useCallback(async (connectionId, telefone) => {
+  const iniciar = useCallback(async (viaEscolhida, connectionId, telefone) => {
     setErro(null);
     setStatus('calling');
+    setVia(viaEscolhida);
     try {
       const resp = await base44.functions.invoke('iniciarChamadaDapi', {
+        via: viaEscolhida,
+        connectionId,
         phone: (telefone || '').replace(/\D/g, ''),
       });
       if (!resp?.data?.success) throw new Error(resp?.data?.error || 'Falha ao iniciar chamada');
@@ -179,5 +184,5 @@ export default function useDapiCall() {
     }
   }, [limpar]);
 
-  return { status, erro, mutado, iniciar, encerrar, alternarMudo };
+  return { status, erro, mutado, via, iniciar, encerrar, alternarMudo };
 }

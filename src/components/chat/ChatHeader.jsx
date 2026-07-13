@@ -331,23 +331,45 @@ export default function ChatHeader({
 
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           {onLigar && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={chamadaAtiva ? "destructive" : "outline"}
-                  size="sm"
-                  className={`gap-1 sm:gap-1.5 rounded-md text-xs font-semibold px-2 sm:px-3 ${chamadaAtiva ? 'bg-red-500 hover:bg-red-600 border-red-500 text-white animate-pulse' : 'border-green-300 text-green-700 hover:text-green-800 hover:border-green-400 hover:bg-green-50'}`}
-                  onClick={onLigar}
-                  disabled={!chamadaAtiva && sipStatus && sipStatus !== 'registrado'}
-                >
-                  {chamadaAtiva ? <PhoneOff className="h-3.5 w-3.5" /> : <PhoneCall className="h-3.5 w-3.5" />}
-                  <span className="hidden sm:inline">{chamadaAtiva ? 'Em ligação' : 'Ligar'}</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {chamadaAtiva ? `Chamada ativa com ${chamadaAtiva.destino} — clique para encerrar` : sipStatus === 'registrado' ? 'Ligar para este contato' : `Ramal SIP: ${sipStatus || 'não configurado'}`}
-              </TooltipContent>
-            </Tooltip>
+            chamadaAtiva ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="gap-1 sm:gap-1.5 rounded-md text-xs font-semibold px-2 sm:px-3 bg-red-500 hover:bg-red-600 border-red-500 text-white animate-pulse"
+                    onClick={() => onLigar()}
+                  >
+                    <PhoneOff className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Em ligação</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {`Chamada ativa com ${chamadaAtiva.destino} — clique para encerrar`}
+                </TooltipContent>
+              </Tooltip>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 sm:gap-1.5 rounded-md text-xs font-semibold px-2 sm:px-3 border-green-300 text-green-700 hover:text-green-800 hover:border-green-400 hover:bg-green-50"
+                  >
+                    <PhoneCall className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Ligar</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" side="bottom" className="z-[200]">
+                  <DropdownMenuItem onClick={() => onLigar('whatsapp')}>
+                    Ligar via WhatsApp
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onLigar('operadora')}>
+                    Ligar via Operadora
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
           )}
           <Button
             variant="outline"

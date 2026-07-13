@@ -326,15 +326,10 @@ export default function BatePapo() {
     if (!ok && erroSip) toast.error(erroSip);
   };
 
-  // Conversa atende via D-API? Nesse caso "Ligar" faz uma chamada de voz pelo WhatsApp (D-API)
-  const ehDapiSelecionada = !!(conversaSelecionada && (
-    conversaSelecionada.provider === 'dapi' ||
-    conversaSelecionada.tipo_conexao === 'dapi' ||
-    conversaSelecionada.canal_origem === 'dapi'
-  ));
+  // Botão "Ligar" do chat: sempre pergunta se é via WhatsApp ou via Operadora (ambas usam D-API)
   const dapiChamadaAtivaVisivel = ['calling', 'ringing', 'connected'].includes(dapiCall.status);
 
-  const ligarViaDapi = async () => {
+  const ligarViaWhatsapp = async () => {
     if (!conversaSelecionada?.cliente_telefone) return;
     let connectionId = conversaSelecionada.connection_id;
     if (!connectionId) {
@@ -346,7 +341,12 @@ export default function BatePapo() {
       } catch (_) {}
     }
     if (!connectionId) { toast.error('Nenhuma conexão D-API ativa encontrada'); return; }
-    await dapiCall.iniciar(connectionId, conversaSelecionada.cliente_telefone);
+    await dapiCall.iniciar('whatsapp', connectionId, conversaSelecionada.cliente_telefone);
+  };
+
+  const ligarViaOperadora = async () => {
+    if (!conversaSelecionada?.cliente_telefone) return;
+    await dapiCall.iniciar('operadora', null, conversaSelecionada.cliente_telefone);
   };
 
   const abrirGruposBloqueados = async () => {
@@ -1972,24 +1972,27 @@ export default function BatePapo() {
                 setFunilModalOpen={setFunilModalOpen}
                 oportunidadeAtual={oportunidadeAtual}
                 tagsDB={tagsDB}
-                onLigar={() => {
-                  if (ehDapiSelecionada) {
-                    dapiChamadaAtivaVisivel ? dapiCall.encerrar() : ligarViaDapi();
-                  } else {
-                    chamadaAtiva ? encerrarChamada() : ligarParaContato(conversaSelecionada?.cliente_telefone);
+                onLigar={(via) => {
+                  if (dapiChamadaAtivaVisivel) {
+                    dapiCall.encerrar();
+                  } else if (via === 'operadora') {
+                    ligarViaOperadora();
+                  } else if (via === 'whatsapp') {
+                    ligarViaWhatsapp();
                   }
                 }}
-                sipStatus={ehDapiSelecionada ? 'registrado' : sipStatus}
-                chamadaAtiva={ehDapiSelecionada ? (dapiChamadaAtivaVisivel ? { destino: conversaSelecionada?.cliente_telefone } : null) : chamadaAtiva}
+                sipStatus="registrado"
+                chamadaAtiva={dapiChamadaAtivaVisivel ? { destino: conversaSelecionada?.cliente_telefone } : null}
                 erroSip={erroSip}
                 coachIAOpen={coachIAOpen}
                 setCoachIAOpen={setCoachIAOpen}
                 />
-                {ehDapiSelecionada ? (
+                {dapiChamadaAtivaVisivel ? (
                   <DapiCallBar
                     status={dapiCall.status}
                     erro={dapiCall.erro}
                     mutado={dapiCall.mutado}
+                    via={dapiCall.via}
                     clienteNome={contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada?.cliente_nome}
                     onEncerrar={dapiCall.encerrar}
                     onMutar={dapiCall.alternarMudo}
