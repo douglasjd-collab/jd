@@ -57,6 +57,13 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
         ALT_SCRIPTS.push(resp.data.analise.script_ideal);
         if (resp.data.analise.script_alternativo) ALT_SCRIPTS.push(resp.data.analise.script_alternativo);
         resp.data.analise.roteiro_mensagens?.forEach(m => ALT_SCRIPTS.push(m.texto));
+
+        const acaoFunil = resp.data.acao_funil;
+        if (acaoFunil?.criada) {
+          toast.success(`🎯 Lead adicionado ao funil em "${acaoFunil.etapa_nome}"`);
+        } else if (acaoFunil?.movida) {
+          toast.success(`📊 Card movido para "${acaoFunil.etapa_nome}"`);
+        }
       } else {
         setError(resp?.data?.error || 'Erro na análise');
       }

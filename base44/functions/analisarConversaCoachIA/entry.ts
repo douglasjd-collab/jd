@@ -16,7 +16,14 @@ const COACH_SCHEMA = {
     script_alternativo: { type: 'string' },
     cadencia: { type: 'array', items: { type: 'object', properties: { status: { type: 'string', enum: ['done','active','pending'] }, titulo: { type: 'string' }, descricao: { type: 'string' }, timing: { type: 'string' } } } },
     acoes_nao_fechou: { type: 'array', items: { type: 'object', properties: { tipo: { type: 'string', enum: ['tag','funil','follow','ligacao','script'] }, label: { type: 'string' }, descricao: { type: 'string' }, tag_class: { type: 'string' } } } },
-    base_conhecimento: { type: 'array', items: { type: 'object', properties: { titulo: { type: 'string' }, conteudo: { type: 'string' }, tags: { type: 'array', items: { type: 'string' } } } } }
+    base_conhecimento: { type: 'array', items: { type: 'object', properties: { titulo: { type: 'string' }, conteudo: { type: 'string' }, tags: { type: 'array', items: { type: 'string' } } } } },
+    // Ações reais no funil de vendas
+    deve_criar_oportunidade: { type: 'boolean' },
+    produto: { type: 'string' },
+    titulo_oportunidade: { type: 'string' },
+    nova_etapa_nome: { type: 'string' },
+    data_proximo_contato: { type: 'string' },
+    motivo_proximo_contato: { type: 'string' }
   }
 };
 
@@ -36,17 +43,31 @@ Deno.serve(async (req) => {
     let conversa = null;
     try { conversa = await base44.asServiceRole.entities.ConversaWhatsapp.get(conversa_id); } catch (_) {}
 
+    const empresaId = empresa_id || conversa?.empresa_id;
     const clienteNome = conversa?.cliente_nome || 'Cliente';
     const clienteTelefone = conversa?.cliente_telefone || '';
+    const hoje = new Date().toISOString().split('T')[0];
 
     let oportunidade = null;
     try {
       const ops = await base44.asServiceRole.entities.Oportunidade.filter({
-        empresa_id: empresa_id || conversa?.empresa_id,
-        cliente_telefone: clienteTelefone
+        empresa_id: empresaId,
+        cliente_telefone: clienteTelefone,
+        status: 'aberta'
       }, '-updated_date', 1);
       if (ops?.length > 0) oportunidade = ops[0];
     } catch (_) {}
+
+    // Etapas do funil disponíveis para o Coach IA movimentar/criar leads
+    let etapas = [];
+    if (empresaId) {
+      try { etapas = await base44.asServiceRole.entities.EtapaFunil.filter({ empresa_id: empresaId, status: 'ativa' }); } catch (_) {}
+    }
+    const etapasAbertas = etapas.filter(e => e.tipo === 'aberta').sort((a, b) => a.ordem - b.ordem);
+    const nomesEtapasDisponiveis = (oportunidade
+      ? etapasAbertas.filter(e => e.produto === oportunidade.produto)
+      : etapasAbertas
+    ).map(e => e.nome);
 
     const historico = mensagens.slice(-30).map(m => {
       const quem = m.remetente === 'cliente' ? `🧑 ${clienteNome}` : '💼 Vendedor';
@@ -62,12 +83,17 @@ CONTEXTO CRM:
 - Valor estimado: R$ ${oportunidade.valor_estimado || 0}
 - Status: ${oportunidade.status || 'aberta'}` : '';
 
-    const prompt = `Você é um Coach de Vendas IA especializado em analisar conversas de WhatsApp em tempo real e orientar vendedores.
+    const prompt = `Você é um Coach de Vendas IA especializado em analisar conversas de WhatsApp em tempo real, orientar vendedores E gerenciar o funil de vendas (CRM) automaticamente.
 
 ${contextoOportunidade}
 
 HISTÓRICO DA CONVERSA:
 ${historico}
+
+CONTEXTO DO FUNIL:
+- Já existe oportunidade aberta no funil para este cliente? ${oportunidade ? 'Sim' : 'Não'}
+- Etapas disponíveis para mover/criar: ${nomesEtapasDisponiveis.join(', ') || 'nenhuma configurada'}
+- Data de hoje: ${hoje}
 
 Gere um coaching COMPLETO com TODOS os campos abaixo. Responda em JSON:
 
@@ -82,19 +108,108 @@ Gere um coaching COMPLETO com TODOS os campos abaixo. Responda em JSON:
 9. estagio: "Prospecção" | "Qualificação" | "Apresentação" | "Proposta" | "Negociação" | "Fechamento"
 10. roteiro_mensagens: array de {titulo, texto} com 3-5 mensagens sequenciais
 11. script_alternativo: abordagem alternativa
-
 12. cadencia: array de 5-6 passos com {status:"done"|"active"|"pending", titulo, descricao, timing:"Agora"|"D+1"|"D+2"|"Quinta"|"D+3"|"D+7"}. O passo atual da conversa status="active", os anteriores="done", os seguintes="pending".
-
 13. acoes_nao_fechou: array de 4-7 ações automáticas caso o lead não feche com {tipo:"tag"|"funil"|"follow"|"ligacao"|"script", label, descricao, tag_class:"t-r"|"t-a"|"t-p"|"t-b"|"t-g"}.
+14. base_conhecimento: array de 4-6 {titulo, conteudo, tags:[]} com informações úteis do conhecimento da empresa relacionadas ao contexto — objeções comuns, scripts, cases, processos, preços.
 
-14. base_conhecimento: array de 4-6 {titulo, conteudo, tags:[]} com informações úteis do conhecimento da empresa relacionadas ao contexto — objeções comuns, scripts, cases, processos, preços.`;
+AÇÕES REAIS NO FUNIL (aja como responsável pelo CRM):
+15. deve_criar_oportunidade: true SOMENTE se ainda não existe oportunidade aberta E a conversa demonstra interesse real em consórcio ou empréstimo
+16. produto: "consorcio" ou "emprestimo" (string vazia "" se não identificado)
+17. titulo_oportunidade: título curto sugerido caso deva criar (ou "" se não aplicável)
+18. nova_etapa_nome: nome EXATO de uma das etapas disponíveis acima para mover a oportunidade agora, ou "" para manter a etapa atual
+19. data_proximo_contato: data YYYY-MM-DD sugerida para o vendedor ligar/retomar contato com este cliente caso ele esteja parado, ou "" se não necessário
+20. motivo_proximo_contato: motivo/assunto sugerido para a próxima ligação, ou "" se não aplicável`;
 
-    const resultado = await base44.integrations.Core.InvokeLLM({
+    const analise = await base44.integrations.Core.InvokeLLM({
       prompt,
       response_json_schema: COACH_SCHEMA
     });
 
-    return Response.json({ success: true, analise: resultado });
+    // ── Ações reais no funil de vendas ──────────────────────────────────
+    let acaoFunil = { criada: false, movida: false, oportunidade_id: oportunidade?.id || null, etapa_nome: oportunidade?.etapa_nome || null };
+
+    if (empresaId && clienteTelefone) {
+      // Criar oportunidade se o Coach IA identificou um lead novo
+      if (!oportunidade && analise.deve_criar_oportunidade && analise.produto) {
+        const etapaInicial = etapas
+          .filter(e => e.produto === analise.produto && e.tipo === 'aberta')
+          .sort((a, b) => a.ordem - b.ordem)[0];
+
+        if (etapaInicial) {
+          oportunidade = await base44.asServiceRole.entities.Oportunidade.create({
+            empresa_id: empresaId,
+            titulo: analise.titulo_oportunidade || `${analise.produto === 'consorcio' ? 'Consórcio' : 'Empréstimo'} - ${clienteNome}`,
+            cliente_nome: clienteNome,
+            cliente_telefone: clienteTelefone,
+            telefone_lead: clienteTelefone,
+            produto: analise.produto,
+            etapa_id: etapaInicial.id,
+            etapa_nome: etapaInicial.nome,
+            vendedor_id: conversa?.responsavel_id || conversa?.usuario_responsavel_id || '',
+            vendedor_nome: conversa?.responsavel_nome || conversa?.usuario_responsavel_nome || '',
+            origem: 'WhatsApp (Coach IA)',
+            data_cadastro_lead: hoje,
+            data_ultima_movimentacao: new Date().toISOString(),
+            status: 'aberta'
+          });
+
+          await base44.asServiceRole.entities.MovimentacaoFunil.create({
+            oportunidade_id: oportunidade.id,
+            etapa_destino_id: etapaInicial.id,
+            etapa_destino_nome: etapaInicial.nome,
+            usuario_id: 'ia',
+            usuario_nome: 'Coach IA',
+            observacao: 'Lead adicionado automaticamente pelo Coach IA a partir da conversa'
+          });
+
+          acaoFunil.criada = true;
+          acaoFunil.oportunidade_id = oportunidade.id;
+          acaoFunil.etapa_nome = etapaInicial.nome;
+        }
+      }
+
+      // Movimentar card e/ou agendar próximo contato
+      if (oportunidade) {
+        const updates = {};
+        if (analise.data_proximo_contato) updates.data_proximo_contato = analise.data_proximo_contato;
+        if (analise.motivo_proximo_contato) updates.motivo_proximo_contato = analise.motivo_proximo_contato;
+
+        if (analise.nova_etapa_nome && analise.nova_etapa_nome !== oportunidade.etapa_nome) {
+          const etapaDestino = etapas.find(e => e.nome === analise.nova_etapa_nome);
+          if (etapaDestino) {
+            await base44.asServiceRole.entities.Oportunidade.update(oportunidade.id, {
+              ...updates,
+              etapa_id: etapaDestino.id,
+              etapa_nome: etapaDestino.nome,
+              data_ultima_movimentacao: new Date().toISOString(),
+              status: etapaDestino.tipo === 'ganho' ? 'ganha' : etapaDestino.tipo === 'perdida' ? 'perdida' : 'aberta'
+            });
+
+            await base44.asServiceRole.entities.MovimentacaoFunil.create({
+              oportunidade_id: oportunidade.id,
+              etapa_origem_id: oportunidade.etapa_id,
+              etapa_origem_nome: oportunidade.etapa_nome,
+              etapa_destino_id: etapaDestino.id,
+              etapa_destino_nome: etapaDestino.nome,
+              usuario_id: 'ia',
+              usuario_nome: 'Coach IA'
+            });
+
+            acaoFunil.movida = true;
+            acaoFunil.etapa_nome = etapaDestino.nome;
+          }
+        } else if (Object.keys(updates).length > 0) {
+          await base44.asServiceRole.entities.Oportunidade.update(oportunidade.id, {
+            ...updates,
+            data_ultima_movimentacao: new Date().toISOString()
+          });
+        }
+
+        acaoFunil.oportunidade_id = oportunidade.id;
+      }
+    }
+
+    return Response.json({ success: true, analise, acao_funil: acaoFunil });
 
   } catch (error) {
     console.error('Erro Coach IA:', error.message);
