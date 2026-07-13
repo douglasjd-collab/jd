@@ -162,6 +162,16 @@ Responda em JSON com:
           usuario_nome: 'Assistente IA',
           observacao: 'Lead adicionado automaticamente pela IA a partir de um áudio do cliente'
         });
+
+        await base44.asServiceRole.entities.NotificacaoIA.create({
+          empresa_id: empresaId,
+          tipo: 'lead_criado',
+          oportunidade_id: oportunidade.id,
+          oportunidade_titulo: oportunidade.titulo,
+          cliente_nome: clienteNome,
+          etapa_nome: etapaInicial.nome,
+          mensagem: `A IA adicionou ${clienteNome} ao funil de vendas a partir de um áudio.`
+        });
       }
     }
 
@@ -193,6 +203,17 @@ Responda em JSON com:
           etapa_destino_nome: etapaDestino.nome,
           usuario_id: 'ia',
           usuario_nome: 'Assistente IA'
+        });
+
+        await base44.asServiceRole.entities.NotificacaoIA.create({
+          empresa_id: empresaId,
+          tipo: 'lead_movimentado',
+          oportunidade_id: oportunidade.id,
+          oportunidade_titulo: oportunidade.titulo,
+          cliente_nome: clienteNome,
+          etapa_nome: etapaDestino.nome,
+          etapa_origem_nome: oportunidade.etapa_nome || '',
+          mensagem: `A IA moveu ${clienteNome} de "${oportunidade.etapa_nome || '-'}" para "${etapaDestino.nome}" a partir de um áudio.`
         });
       }
     } else if (Object.keys(updates).length > 0) {

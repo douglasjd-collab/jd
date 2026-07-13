@@ -165,6 +165,16 @@ AÇÕES REAIS NO FUNIL (aja como responsável pelo CRM):
           acaoFunil.criada = true;
           acaoFunil.oportunidade_id = oportunidade.id;
           acaoFunil.etapa_nome = etapaInicial.nome;
+
+          await base44.asServiceRole.entities.NotificacaoIA.create({
+            empresa_id: empresaId,
+            tipo: 'lead_criado',
+            oportunidade_id: oportunidade.id,
+            oportunidade_titulo: oportunidade.titulo,
+            cliente_nome: clienteNome,
+            etapa_nome: etapaInicial.nome,
+            mensagem: `A Coach IA adicionou ${clienteNome} ao funil de vendas.`
+          });
         }
       }
 
@@ -197,6 +207,17 @@ AÇÕES REAIS NO FUNIL (aja como responsável pelo CRM):
 
             acaoFunil.movida = true;
             acaoFunil.etapa_nome = etapaDestino.nome;
+
+            await base44.asServiceRole.entities.NotificacaoIA.create({
+              empresa_id: empresaId,
+              tipo: 'lead_movimentado',
+              oportunidade_id: oportunidade.id,
+              oportunidade_titulo: oportunidade.titulo,
+              cliente_nome: clienteNome,
+              etapa_nome: etapaDestino.nome,
+              etapa_origem_nome: oportunidade.etapa_nome || '',
+              mensagem: `A Coach IA moveu ${clienteNome} de "${oportunidade.etapa_nome || '-'}" para "${etapaDestino.nome}".`
+            });
           }
         } else if (Object.keys(updates).length > 0) {
           await base44.asServiceRole.entities.Oportunidade.update(oportunidade.id, {
