@@ -1983,7 +1983,7 @@ export default function BatePapo() {
         />
 
                 {/* Área principal: mensagens + painel lead lado a lado */}
-                <div className="flex flex-1 overflow-hidden">
+                <div className="relative flex flex-1 overflow-hidden">
                   {/* Mensagens */}
                   <div className="flex flex-1 flex-col overflow-hidden">
                     <ScrollArea ref={scrollAreaRef} className="flex-1 px-2 sm:px-6 pt-4" style={{

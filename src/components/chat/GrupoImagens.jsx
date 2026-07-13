@@ -231,8 +231,7 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
       {/* Lightbox */}
       {imagemAberta && (
         <div
-          className="lg:!left-72"
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}
+          style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}
           onClick={() => setImagemAberta(null)}
         >
           <button
