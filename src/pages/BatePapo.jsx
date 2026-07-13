@@ -1259,6 +1259,11 @@ export default function BatePapo() {
         <DashboardProdutividade
           empresaId={empresaId}
           onClose={() => setProdutividadeOpen(false)}
+          onAbrirConversa={(conversaId) => {
+            setProdutividadeOpen(false);
+            const conv = conversas.find(c => c.id === conversaId);
+            if (conv) selecionarConversa(conv);
+          }}
         />
       )}
       <div id="batepapo-root" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 30, display: 'flex', flexDirection: 'column', padding: '8px', boxSizing: 'border-box', backgroundColor: '#F0EBE0' }}>
