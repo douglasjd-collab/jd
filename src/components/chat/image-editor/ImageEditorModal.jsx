@@ -55,6 +55,16 @@ export default function ImageEditorModal({
   const [pronto, setPronto] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  // Ao fechar, limpa o estado para que a próxima abertura sempre comece do zero
+  useEffect(() => {
+    if (open) return;
+    setPaginas([]);
+    setIndiceAtual(0);
+    setPronto(false);
+    setErro(null);
+    historyRef.current = {};
+  }, [open]);
+
   // Inicializa páginas ao abrir
   useEffect(() => {
     if (!open) return;
