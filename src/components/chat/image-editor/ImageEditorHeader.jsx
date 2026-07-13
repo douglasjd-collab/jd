@@ -9,15 +9,15 @@ export default function ImageEditorHeader({
 }) {
   return (
     <div className="bg-slate-900 text-white px-4 py-2.5 flex items-center gap-2 flex-wrap border-b border-slate-800">
-      <Button size="icon" variant="ghost" className="text-slate-300 hover:bg-slate-800" onClick={onClose} title="Fechar">
-        <X className="w-4 h-4" />
+      <Button size="sm" variant="ghost" className="text-slate-300 hover:bg-slate-800 gap-1.5 text-xs" onClick={onClose} title="Fechar e voltar para o bate-papo">
+        <X className="w-4 h-4" /> Fechar
       </Button>
       <span className="text-sm font-semibold truncate max-w-[160px]">{nomeCliente || 'Editor de Imagem'}</span>
 
       <div className="w-px h-5 bg-slate-700 mx-1" />
 
-      <Button size="icon" variant="ghost" className="text-slate-300 hover:bg-slate-800" onClick={onUndo} disabled={!canUndo} title="Desfazer (Ctrl+Z)">
-        <Undo2 className="w-4 h-4" />
+      <Button size="sm" variant="ghost" className="text-slate-300 hover:bg-slate-800 gap-1.5 text-xs" onClick={onUndo} disabled={!canUndo} title="Desfazer (Ctrl+Z)">
+        <Undo2 className="w-4 h-4" /> Desfazer
       </Button>
       <Button size="icon" variant="ghost" className="text-slate-300 hover:bg-slate-800" onClick={onRedo} disabled={!canRedo} title="Refazer (Ctrl+Y)">
         <Redo2 className="w-4 h-4" />

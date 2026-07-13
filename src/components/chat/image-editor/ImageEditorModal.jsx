@@ -488,7 +488,7 @@ export default function ImageEditorModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 bg-black z-[10000] flex flex-col">
+    <div className="fixed inset-0 lg:left-72 bg-black z-[10000] flex flex-col">
       <ImageEditorHeader
         nomeCliente={nomeCliente}
         onClose={fecharComConfirmacao}
