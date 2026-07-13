@@ -73,6 +73,7 @@ import DashboardProdutividade from '@/components/chat/DashboardProdutividade';
 import CoachIAPanel from '@/components/chat/CoachIAPanel';
 import MobileBottomNav from '@/components/chat/MobileBottomNav';
 import MobileConversationActions from '@/components/chat/MobileConversationActions';
+import ImageEditorModal from '@/components/chat/image-editor/ImageEditorModal';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -302,6 +303,7 @@ export default function BatePapo() {
   const [coachIAOpen, setCoachIAOpen] = useState(false);
   const [scriptCoach, setScriptCoach] = useState(null);
   const [mobileActionSheet, setMobileActionSheet] = useState({ open: false, conversa: null });
+  const [editorReenvioUrl, setEditorReenvioUrl] = useState(null);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1541,6 +1543,20 @@ export default function BatePapo() {
           </DialogContent>
         </Dialog>
 
+        {/* Editor de imagem — fluxo "Editar e reenviar" de imagem recebida */}
+        <ImageEditorModal
+          open={!!editorReenvioUrl}
+          onClose={() => setEditorReenvioUrl(null)}
+          imagensIniciais={editorReenvioUrl ? [{ url: editorReenvioUrl }] : []}
+          nomeCliente={contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada?.cliente_nome}
+          empresaId={empresaId}
+          conversaId={conversaSelecionada?.id}
+          user={user}
+          onEnviar={async ({ texto, arquivo }) => {
+            await enviarMensagemMutation.mutateAsync({ texto, arquivo, mensagemParaResponder: null });
+          }}
+        />
+
         {/* Modal Salvar/Editar Contato CRM */}
         <Dialog open={!!salvarCrmModal} onOpenChange={(v) => !v && setSalvarCrmModal(null)}>
           <DialogContent className="max-w-sm">
@@ -1997,6 +2013,7 @@ export default function BatePapo() {
                           onResponder={setMensagemParaResponder}
                           user={user}
                           mensagensEndRef={mensagensEndRef}
+                          onEditarReenviar={setEditorReenvioUrl}
                         />
                       )}
                     </ScrollArea>

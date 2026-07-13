@@ -2,9 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import heic2any from 'heic2any';
 import { encodeFloat32ToMp3 } from '@/utils/converterAudioParaMp3';
 import { Button } from '@/components/ui/button';
-import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Plus } from 'lucide-react';
+import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Plus, MonitorUp } from 'lucide-react';
 import MensagensRapidasModal from './MensagensRapidasModal';
 import TemplateMetaModal from './TemplateMetaModal';
+import ImageEditorModal from './image-editor/ImageEditorModal';
+
+const TIPOS_IMAGEM = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
 const MAX_HEIGHT = 256;
 const LINE_HEIGHT = 24;
@@ -26,8 +29,38 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const [mensagensRapidasOpen, setMensagensRapidasOpen] = useState(false);
   const [templateMetaOpen, setTemplateMetaOpen] = useState(false);
   const [menuPlusOpen, setMenuPlusOpen] = useState(false);
+  const [imagensParaEditor, setImagensParaEditor] = useState([]);
+  const [editorAberto, setEditorAberto] = useState(false);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+
+  const abrirEditorComArquivos = (files) => {
+    setImagensParaEditor(files.map((file) => ({ file })));
+    setEditorAberto(true);
+  };
+
+  const capturarTela = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const video = document.createElement('video');
+      video.srcObject = stream;
+      await video.play();
+      await new Promise((r) => setTimeout(r, 200));
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      stream.getTracks().forEach((t) => t.stop());
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const file = new File([blob], `captura_tela_${Date.now()}.png`, { type: 'image/png' });
+          abrirEditorComArquivos([file]);
+        }
+      }, 'image/png');
+    } catch (err) {
+      setErro('Não foi possível capturar a tela. Permissão negada ou cancelada.');
+    }
+  };
 
   useEffect(() => {
     setTimeout(() => textareaRef.current?.focus(), 100);
@@ -311,11 +344,22 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     if (aceitos.length < files.length) {
       setErro('Alguns arquivos não são suportados e foram ignorados.');
     }
-    if (aceitos.length > 0) {
-      setArquivos(prev => [...prev, ...aceitos]);
+    // Imagens (png/jpg/jpeg/webp) abrem o Editor Inteligente de Imagens antes do envio
+    const imagens = aceitos.filter(f => TIPOS_IMAGEM.includes(f.type));
+    const outros = aceitos.filter(f => !TIPOS_IMAGEM.includes(f.type));
+    if (imagens.length > 0) abrirEditorComArquivos(imagens);
+    if (outros.length > 0) {
+      setArquivos(prev => [...prev, ...outros]);
     }
     // Reset input para permitir selecionar os mesmos arquivos novamente
     e.target.value = '';
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer?.files || []);
+    const imagens = files.filter(f => TIPOS_IMAGEM.includes(f.type));
+    if (imagens.length > 0) abrirEditorComArquivos(imagens);
   };
 
   const removerArquivo = (idx) => {
@@ -349,7 +393,17 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       conversaId={conversaId}
       onEnviado={onTemplateEnviado}
     />
-    <form onSubmit={handleEnviar} className="bg-white border-t p-3 relative">
+    <ImageEditorModal
+      open={editorAberto}
+      onClose={() => { setEditorAberto(false); setImagensParaEditor([]); }}
+      imagensIniciais={imagensParaEditor}
+      nomeCliente={telefoneDestino}
+      empresaId={empresaId}
+      conversaId={conversaId}
+      user={{ full_name: nomeUsuario }}
+      onEnviar={onEnviar}
+    />
+    <form onSubmit={handleEnviar} className="bg-white border-t p-3 relative" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
       {erro && (
         <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -475,6 +529,14 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
                 </button>
                 <button
                   type="button"
+                  onClick={() => { capturarTela(); setMenuPlusOpen(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
+                >
+                  <MonitorUp className="w-4 h-4 text-slate-500" />
+                  <span>Capturar tela</span>
+                </button>
+                <button
+                  type="button"
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
                 >
                   <Smile className="w-4 h-4 text-slate-500" />
@@ -549,7 +611,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
                     if (file) {
                       const ext = item.type.split('/')[1] || 'png';
                       const nomeFile = new File([file], `imagem_colada.${ext}`, { type: item.type });
-                      setArquivos(prev => [...prev, nomeFile]);
+                      abrirEditorComArquivos([nomeFile]);
                     }
                     break;
                   }

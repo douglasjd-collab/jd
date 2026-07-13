@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Copy, Pin } from 'lucide-react';
+import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Copy, Pin, Pencil } from 'lucide-react';
 import VideoMensagem from './VideoMensagem';
 import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
 import { format } from 'date-fns';
@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null }) {
+export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null, onEditarReenviar = null }) {
   // Corrige URLs com espaços não codificados (ex: pastas "CRM JD"), que quebram <img>/<audio>/<video>
   const sanitizeUrl = (url) => (typeof url === 'string' ? url.replace(/ /g, '%20') : url);
 
@@ -857,6 +857,9 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           </DropdownMenuTrigger>
           <DropdownMenuContent align={isVendedor ? "end" : "start"}>
             <DropdownMenuItem onClick={() => onResponder?.(mensagem)}><Reply className="w-4 h-4 mr-2" />Responder</DropdownMenuItem>
+            {mediaUrl && (
+              <DropdownMenuItem onClick={() => onEditarReenviar?.(mediaUrl)}><Pencil className="w-4 h-4 mr-2" />Editar e reenviar</DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={handleDeletar} disabled={deletando} className="text-red-600 focus:text-red-600">
               {deletando ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Deletando...</> : <><Trash2 className="w-4 h-4 mr-2" />Deletar mensagem</>}
             </DropdownMenuItem>
@@ -983,6 +986,12 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
              <Share2 className="w-4 h-4 mr-2" />
              Encaminhar
            </DropdownMenuItem>
+           {mensagem.tipo_conteudo === 'imagem' && mediaUrl && (
+             <DropdownMenuItem onClick={() => onEditarReenviar?.(mediaUrl)}>
+               <FileText className="w-4 h-4 mr-2" />
+               Editar e reenviar
+             </DropdownMenuItem>
+           )}
            <DropdownMenuItem onClick={() => {
              const texto = mensagem.texto || `[${mensagem.tipo_conteudo}]`;
              navigator.clipboard.writeText(texto);

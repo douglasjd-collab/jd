@@ -1,0 +1,114 @@
+{
+  "name": "ImagemEditada",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "conversa_id": {
+      "type": "string",
+      "description": "ID da conversa vinculada"
+    },
+    "mensagem_origem_id": {
+      "type": "string",
+      "description": "ID da mensagem recebida que originou esta edi\u00e7\u00e3o (fluxo Editar e reenviar)"
+    },
+    "imagem_original_url": {
+      "type": "string",
+      "description": "URL da imagem original, antes de qualquer edi\u00e7\u00e3o"
+    },
+    "imagem_editada_url": {
+      "type": "string",
+      "description": "URL da imagem final editada"
+    },
+    "miniatura_url": {
+      "type": "string",
+      "description": "URL da miniatura da imagem editada"
+    },
+    "projeto_edicao_json": {
+      "type": "string",
+      "description": "JSON com as camadas/objetos do editor (fabric.js) para permitir reedi\u00e7\u00e3o"
+    },
+    "formato": {
+      "type": "string",
+      "default": "png",
+      "description": "Formato do arquivo exportado"
+    },
+    "largura": {
+      "type": "number",
+      "description": "Largura em pixels"
+    },
+    "altura": {
+      "type": "number",
+      "description": "Altura em pixels"
+    },
+    "tamanho_arquivo": {
+      "type": "number",
+      "description": "Tamanho do arquivo em bytes"
+    },
+    "qualidade": {
+      "type": "string",
+      "enum": [
+        "automatica",
+        "alta",
+        "reduzida"
+      ],
+      "default": "alta",
+      "description": "Qualidade escolhida na exporta\u00e7\u00e3o"
+    },
+    "legenda": {
+      "type": "string",
+      "description": "Legenda enviada junto com a imagem"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "rascunho",
+        "enviada",
+        "erro"
+      ],
+      "default": "rascunho",
+      "description": "Status da edi\u00e7\u00e3o"
+    },
+    "canal_envio": {
+      "type": "string",
+      "description": "Canal usado para o envio (dapi, meta_oficial, evolution, etc)"
+    },
+    "status_envio": {
+      "type": "string",
+      "description": "Status retornado pelo envio (enviada, entregue, lida, erro)"
+    },
+    "criado_por_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio respons\u00e1vel pela edi\u00e7\u00e3o"
+    },
+    "criado_por_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio respons\u00e1vel"
+    },
+    "enviado_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora do envio"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "imagem_editada_url"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}
