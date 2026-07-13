@@ -162,7 +162,12 @@ Deno.serve(async (req) => {
       case 'message.read':
         await atualizarStatusMensagem(base44, connection, data, 'lida');
         break;
-        
+
+      case 'call.offer':
+        console.log('📞 Evento call.offer:', JSON.stringify(data, null, 2));
+        await processarChamadaRecebida(base44, connection, data);
+        break;
+
       default:
         console.log('ℹ️ Evento não tratado:', event, JSON.stringify(data, null, 2));
     }
@@ -590,6 +595,102 @@ async function processarMensagemEnviadaPeloCelular(base44, connection, data, tel
     console.log('✅ Mensagem enviada pelo celular salva no histórico:', { conversaId: conversa.id, wamid, telefone });
   } catch (error) {
     console.error('❌ Erro ao processar mensagem enviada pelo celular:', error?.message);
+  }
+}
+
+// Processa o evento call.offer (chamada de voz WhatsApp recebida no número da sessão).
+// Registra a chamada no histórico da conversa (como mensagem) e cria um registro em
+// ChamadaVozWhatsapp para o popup de chamada recebida no CRM.
+async function processarChamadaRecebida(base44, connection, data) {
+  try {
+    if (data?.isGroup === true) {
+      console.log('ℹ️ Ignorando chamada de grupo');
+      return;
+    }
+
+    const fromJid = data?.from || '';
+    const telefone = String(fromJid).replace(/@.*/g, '').replace(/\D/g, '');
+    const callId = data?.callId;
+
+    if (!telefone || !callId) {
+      console.error('❌ call.offer sem telefone ou callId:', JSON.stringify(data, null, 2));
+      return;
+    }
+
+    const empresaId = connection.empresa_id;
+    const whatsappMessageId = `call_${callId}`;
+
+    // Evitar duplicar caso o webhook seja reenviado
+    const jaRegistrada = await base44.entities.MensagemWhatsapp.filter({
+      empresa_id: empresaId,
+      whatsapp_message_id: whatsappMessageId
+    }, '-created_date', 1);
+    if (jaRegistrada && jaRegistrada.length > 0) {
+      console.log('ℹ️ Chamada já registrada:', callId);
+      return;
+    }
+
+    // Localizar ou criar conversa
+    let conversas = await base44.entities.ConversaWhatsapp.filter({
+      empresa_id: empresaId,
+      cliente_telefone: telefone
+    }, '-created_date', 1);
+
+    const timestamp = data?.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString();
+    let conversa;
+    if (conversas && conversas.length > 0) {
+      conversa = conversas[0];
+    } else {
+      conversa = await base44.entities.ConversaWhatsapp.create({
+        empresa_id: empresaId,
+        cliente_telefone: telefone,
+        cliente_nome: telefone,
+        whatsapp_id: fromJid,
+        status: 'ativa',
+        tipo_conexao: 'usuario',
+        provider: 'dapi',
+        canal_origem: 'dapi',
+        instancia: connection.session_id,
+        ultima_mensagem: '',
+        data_ultima_mensagem: timestamp,
+        ultimo_remetente: 'cliente'
+      });
+    }
+
+    const textoChamada = '📞 Chamada de voz recebida';
+
+    await base44.entities.MensagemWhatsapp.create({
+      conversa_id: conversa.id,
+      empresa_id: empresaId,
+      remetente: 'cliente',
+      tipo_conteudo: 'texto',
+      texto: textoChamada,
+      provider: 'dapi',
+      whatsapp_message_id: whatsappMessageId,
+      data_envio: timestamp,
+      status: 'entregue'
+    });
+
+    await base44.entities.ConversaWhatsapp.update(conversa.id, {
+      ultima_mensagem: textoChamada,
+      data_ultima_mensagem: timestamp,
+      ultimo_remetente: 'cliente',
+      cliente_respondeu: true
+    });
+
+    await base44.entities.ChamadaVozWhatsapp.create({
+      empresa_id: empresaId,
+      conversa_id: conversa.id,
+      connection_id: connection.id,
+      call_id: callId,
+      cliente_telefone: telefone,
+      cliente_nome: conversa.cliente_nome || telefone,
+      status: 'recebida'
+    });
+
+    console.log('✅ Chamada de voz registrada:', { conversaId: conversa.id, callId, telefone });
+  } catch (error) {
+    console.error('❌ Erro ao processar chamada recebida:', error?.message);
   }
 }
 

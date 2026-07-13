@@ -677,6 +677,7 @@ export default function BatePapo() {
       // Verificar se há conversa_id na URL (vindo do botão "Conversar" de contato compartilhado)
       const urlParams = new URLSearchParams(window.location.search);
       const conversaIdUrl = urlParams.get('conversa_id');
+      const mensagemInicialUrl = urlParams.get('mensagem_inicial');
       const conversaPorUrl = conversaIdUrl ? conversas.find(c => c.id === conversaIdUrl) : null;
       
       const ultimaId = localStorage.getItem('ultimaConversaId');
@@ -686,6 +687,12 @@ export default function BatePapo() {
       const conversaParaAbrir = conversaPorUrl || ultimaConversa || conversas[0];
       // No desktop, não ativar mobileViewChat (coluna esquerda deve permanecer visível)
       selecionarConversa(conversaParaAbrir, true, isMobileDevice ? true : false);
+
+      // Pré-preencher o campo de mensagem (ex: vindo do popup de chamada recebida)
+      if (mensagemInicialUrl && conversaPorUrl) {
+        setScriptCoach(mensagemInicialUrl);
+        setTimeout(() => setScriptCoach(null), 500);
+      }
       
       // Se veio por URL mas conversa ainda não está na lista, aguardar refetch
       if (conversaIdUrl && !conversaPorUrl) {

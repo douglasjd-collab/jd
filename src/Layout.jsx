@@ -53,6 +53,7 @@ import { Toaster, toast } from 'sonner';
 import VendaForm from '@/components/forms/VendaForm';
 import AlertasTarefasPopup from '@/components/tarefas/AlertasTarefasPopup';
 import AlertasTarefasAtrasadas from '@/components/tarefas/AlertasTarefasAtrasadas';
+import PopupChamadaRecebida from '@/components/chat/PopupChamadaRecebida';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
@@ -834,6 +835,9 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Alertas de Tarefas Atrasadas */}
       {user && user.perfil !== 'parceiro' && <AlertasTarefasAtrasadas user={user} />}
+
+      {/* Popup de chamada de voz WhatsApp recebida */}
+      {user && user.perfil !== 'parceiro' && <PopupChamadaRecebida user={user} />}
 
       {/* Nova Venda Consórcio Modal */}
       <VendaForm
