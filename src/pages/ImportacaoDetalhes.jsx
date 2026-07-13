@@ -256,6 +256,7 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
               <TableHead>Valor Base Comissão</TableHead>
               <TableHead>% Comissão</TableHead>
               <TableHead>Valor Lançamento</TableHead>
+              <TableHead>Vendedor</TableHead>
               <TableHead>Status</TableHead>
               {showMotivo && <TableHead>Motivo</TableHead>}
             </TableRow>
@@ -269,6 +270,7 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
                 <TableCell>{item.valor_base_comissao ? formatCurrency(item.valor_base_comissao) : '-'}</TableCell>
                 <TableCell>{item.percentual_comissao ? `${item.percentual_comissao}%` : '-'}</TableCell>
                 <TableCell className="font-medium">{formatCurrency(item.valor_recebido)}</TableCell>
+                <TableCell>{item.vendedor_nome || 'Sem vendedor'}</TableCell>
                 <TableCell><StatusBadge status={item.status} /></TableCell>
                 {showMotivo && (
                   <TableCell className="max-w-xs">

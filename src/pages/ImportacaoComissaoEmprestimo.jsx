@@ -533,6 +533,7 @@ export default function ImportacaoComissaoEmprestimo() {
           banco: item.banco || null,
           data_recebimento: item.data_recebimento || null,
           venda_id: rec?.venda_id || undefined,
+          vendedor_nome: rec?.vendedor_nome || undefined,
           status: rec ? 'processado' : 'divergencia',
           motivo_divergencia: rec ? null : (itemMotivos[idx] || 'Não processado'),
         };
