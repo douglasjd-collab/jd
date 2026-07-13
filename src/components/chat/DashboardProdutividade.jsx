@@ -95,7 +95,12 @@ export default function DashboardProdutividade({ empresaId, onClose, onAbrirConv
 
   const handleFinalizar = async (conversaId) => {
     try {
-      await base44.entities.ConversaWhatsapp.update(conversaId, { status: 'encerrada' });
+      await base44.entities.ConversaWhatsapp.update(conversaId, {
+        status: 'encerrada',
+        responsavel_id: null,
+        responsavel_nome: null,
+        responsavel_expira_em: null,
+      });
       toast.success('Conversa encerrada');
       removerItemDoPainel(conversaId);
       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
