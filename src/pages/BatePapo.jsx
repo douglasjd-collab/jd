@@ -960,10 +960,11 @@ export default function BatePapo() {
       }
       return resp.data;
     },
-    onMutate: async ({ texto, arquivo, mensagemParaResponder }) => {
-      // Mensagem otimista — aparece imediatamente
+    onMutate: ({ texto, arquivo, mensagemParaResponder }) => {
+      // Mensagem otimista — aparece imediatamente (não aguardar cancelQueries, que pode
+      // demorar se houver um fetch de polling em andamento, travando a exibição da bolha)
       const queryKey = ['mensagens-whatsapp', conversaSelecionadaId];
-      await queryClient.cancelQueries({ queryKey });
+      queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData(queryKey);
       
       let tipoConteudo = 'texto';
