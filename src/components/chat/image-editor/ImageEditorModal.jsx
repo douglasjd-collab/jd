@@ -17,8 +17,10 @@ const uid = () => `pg_${Date.now()}_${uidCounter++}`;
 const WORKING_MAX_DIM = 1100;
 
 async function resolverUrlSegura(url) {
+  if (!url) throw new Error('Imagem sem URL válida.');
   if (url.startsWith('blob:') || url.startsWith('data:')) return url;
   const res = await fetch(url);
+  if (!res.ok) throw new Error('Falha ao baixar a imagem (' + res.status + ').');
   const blob = await res.blob();
   return URL.createObjectURL(blob);
 }
@@ -130,34 +132,46 @@ export default function ImageEditorModal({
 
     const carregar = async () => {
       canvas.clear();
-      if (pagina.json) {
-        canvas.setDimensions({ width: pagina.workWidth, height: pagina.workHeight });
-        await new Promise((resolve) => canvas.loadFromJSON(pagina.json, resolve));
-        canvas.renderAll();
-      } else {
-        const urlSegura = await resolverUrlSegura(pagina.urlOriginal);
-        await new Promise((resolve) => {
-          fabric.Image.fromURL(urlSegura, (img) => {
-            const scale = Math.min(1, WORKING_MAX_DIM / Math.max(img.width, img.height));
-            const workWidth = Math.round(img.width * scale);
-            const workHeight = Math.round(img.height * scale);
-            img.scaleX = scale; img.scaleY = scale;
-            canvas.setDimensions({ width: workWidth, height: workHeight });
-            canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
-            setPaginas((prev) => prev.map((p) => (p.id === pagina.id
-              ? { ...p, workWidth, workHeight, multiplier: scale > 0 ? 1 / scale : 1 }
-              : p)));
-            resolve();
-          }, { crossOrigin: 'anonymous' });
-        });
+      setErro(null);
+      try {
+        if (pagina.json) {
+          canvas.setDimensions({ width: pagina.workWidth, height: pagina.workHeight });
+          await new Promise((resolve) => canvas.loadFromJSON(pagina.json, resolve));
+          canvas.renderAll();
+        } else {
+          const urlSegura = await resolverUrlSegura(pagina.urlOriginal);
+          await new Promise((resolve, reject) => {
+            const imgEl = new window.Image();
+            imgEl.crossOrigin = 'anonymous';
+            imgEl.onload = () => {
+              const img = new fabric.Image(imgEl);
+              const scale = Math.min(1, WORKING_MAX_DIM / Math.max(img.width, img.height));
+              const workWidth = Math.round(img.width * scale);
+              const workHeight = Math.round(img.height * scale);
+              img.scaleX = scale; img.scaleY = scale;
+              canvas.setDimensions({ width: workWidth, height: workHeight });
+              canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+              setPaginas((prev) => prev.map((p) => (p.id === pagina.id
+                ? { ...p, workWidth, workHeight, multiplier: scale > 0 ? 1 / scale : 1 }
+                : p)));
+              resolve();
+            };
+            imgEl.onerror = () => reject(new Error('Não foi possível carregar esta imagem.'));
+            imgEl.src = urlSegura;
+          });
+        }
+        canvas.setZoom(1);
+        if (!historyRef.current[pagina.id]) {
+          historyRef.current[pagina.id] = { stack: [JSON.stringify(canvas.toJSON(['backgroundImage']))], pointer: 0 };
+        }
+        atualizarUndoRedo();
+        setPronto(true);
+      } catch (e) {
+        setErro(e.message || 'Erro ao carregar a imagem no editor.');
+        toast.error('Erro ao carregar a imagem no editor.');
+      } finally {
+        skipHistoryRef.current = false;
       }
-      canvas.setZoom(1);
-      if (!historyRef.current[pagina.id]) {
-        historyRef.current[pagina.id] = { stack: [JSON.stringify(canvas.toJSON(['backgroundImage']))], pointer: 0 };
-      }
-      atualizarUndoRedo();
-      skipHistoryRef.current = false;
-      setPronto(true);
     };
     carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
