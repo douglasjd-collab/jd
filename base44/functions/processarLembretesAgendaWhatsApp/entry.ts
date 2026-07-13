@@ -18,12 +18,20 @@ function resolverTemplate(template, vars) {
 }
 
 async function enviarWhatsApp(base44, empresaId, telefone, mensagem) {
-  const resp = await base44.functions.invoke('enviarMensagemWhatsapp', {
-    empresa_id: empresaId,
-    telefone: telefone.replace(/\D/g, ''),
-    mensagem,
+  // Lembretes automáticos usam sempre a D-API (nunca a Meta Oficial)
+  const conexoes = await base44.asServiceRole.entities.WhatsappConnection.filter(
+    { empresa_id: empresaId, provider_type: 'dapi', is_active: true },
+    '-created_date',
+    1
+  );
+  const conexao = conexoes[0];
+  if (!conexao) throw new Error('Nenhuma conexão D-API ativa para esta empresa');
+  return await base44.functions.invoke('whatsappService', {
+    connectionId: conexao.id,
+    action: 'sendText',
+    phoneNumber: telefone.replace(/\D/g, ''),
+    text: mensagem
   });
-  return resp;
 }
 
 Deno.serve(async (req) => {

@@ -7,27 +7,21 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { empresa_id, contatos, mensagem_texto, nome_campanha, delay_segundos = 7, api_preferida = 'meta' } = body;
+    const { empresa_id, contatos, mensagem_texto, nome_campanha, delay_segundos = 7 } = body;
 
     if (!empresa_id) return Response.json({ error: 'empresa_id obrigatório' }, { status: 400 });
     if (!mensagem_texto?.trim()) return Response.json({ error: 'mensagem_texto obrigatório' }, { status: 400 });
     if (!contatos || contatos.length === 0) return Response.json({ error: 'contatos obrigatório' }, { status: 400 });
 
-    // Buscar empresa para pegar credenciais
-    const empresa = await base44.asServiceRole.entities.Empresa.get(empresa_id);
-    if (!empresa) return Response.json({ error: 'Empresa não encontrada' }, { status: 404 });
-
-    const evolutionApiKey = empresa.evolution_api_key || Deno.env.get('EVOLUTION_API_KEY');
-    const evolutionApiUrl = empresa.evolution_url || Deno.env.get('EVOLUTION_API_URL');
-    const instanceName = empresa.evolution_instance_name || Deno.env.get('EVOLUTION_INSTANCE_NAME');
-    const accessToken = empresa.whatsapp_access_token;
-    const phoneNumberId = empresa.whatsapp_phone_number_id;
-
-    const temEvolution = !!(evolutionApiKey && evolutionApiUrl && instanceName);
-    const temMeta = !!(accessToken && phoneNumberId);
-
-    if (!temEvolution && !temMeta) {
-      return Response.json({ error: 'Nenhuma API configurada. Configure a Evolution API ou a API Oficial Meta nas configurações.' }, { status: 400 });
+    // Buscar conexão D-API ativa da empresa — toda campanha/envio automático usa D-API
+    const conexoesDapi = await base44.asServiceRole.entities.WhatsappConnection.filter(
+      { empresa_id, provider_type: 'dapi', is_active: true },
+      '-created_date',
+      1
+    );
+    const conexaoDapi = conexoesDapi[0];
+    if (!conexaoDapi) {
+      return Response.json({ error: 'Nenhuma conexão D-API ativa encontrada. Configure a D-API em Conexões WhatsApp.' }, { status: 400 });
     }
 
     let enviados = 0;
@@ -42,73 +36,23 @@ Deno.serve(async (req) => {
       }
 
       try {
-        // Tentar enviar via Evolution primeiro, depois Meta como fallback
-        let enviou = false;
-
-        if (api_preferida === 'meta' && temMeta) {
-          // Enviar via API Oficial Meta primeiro
-          const metaUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`;
-          const resp = await fetch(metaUrl, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              messaging_product: 'whatsapp',
-              to: numeroLimpo,
-              type: 'text',
-              text: { body: mensagem_texto.trim() },
-            }),
-          });
-          if (resp.ok) enviou = true;
-        } else if (api_preferida === 'evolution' && temEvolution) {
-          // Enviar via Evolution API
-          const baseUrl = evolutionApiUrl.replace(/\/$/, '');
-          const endpoint = `${baseUrl}/message/sendText/${instanceName}`;
-          const resp = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': evolutionApiKey },
-            body: JSON.stringify({ number: numeroLimpo, text: mensagem_texto.trim() }),
-          });
-          if (resp.ok) enviou = true;
-        }
-
-        // Fallback: se a API preferida falhou ou não está configurada, tenta a outra
-        if (!enviou && temMeta && api_preferida !== 'meta') {
-          const metaUrl = `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`;
-          const resp = await fetch(metaUrl, {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              messaging_product: 'whatsapp',
-              to: numeroLimpo,
-              type: 'text',
-              text: { body: mensagem_texto.trim() },
-            }),
-          });
-          if (resp.ok) enviou = true;
-        }
-
-        if (!enviou && temEvolution && api_preferida !== 'evolution') {
-          const baseUrl = evolutionApiUrl.replace(/\/$/, '');
-          const endpoint = `${baseUrl}/message/sendText/${instanceName}`;
-          const resp = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': evolutionApiKey },
-            body: JSON.stringify({ number: numeroLimpo, text: mensagem_texto.trim() }),
-          });
-          if (resp.ok) enviou = true;
-        }
+        const respService = await base44.functions.invoke('whatsappService', {
+          connectionId: conexaoDapi.id,
+          action: 'sendText',
+          phoneNumber: numeroLimpo,
+          text: mensagem_texto.trim()
+        });
+        const enviou = !!respService?.data?.success;
 
         if (enviou) {
-          // Registrar log do disparo
           await base44.asServiceRole.entities.CampanhaLog.create({
             empresa_id,
-            tipo_campanha: 'meta_oficial',
+            tipo_campanha: 'dapi',
             cliente_telefone: numeroLimpo,
             cliente_nome: nome_campanha || 'Campanha Texto',
             status: 'enviada',
           });
 
-          // Criar ou marcar conversa como campanha
           const convs = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
             { empresa_id, cliente_telefone: numeroLimpo }, '-data_ultima_mensagem', 1
           );
@@ -119,22 +63,22 @@ Deno.serve(async (req) => {
               ultima_mensagem: mensagem_texto.trim().substring(0, 200),
               data_ultima_mensagem: new Date().toISOString(),
               ultimo_remetente: 'vendedor',
-              tipo_conexao: 'meta_oficial',
-              canal_origem: 'meta',
-              provider: 'whatsapp_meta',
+              tipo_conexao: 'dapi',
+              canal_origem: 'dapi',
+              provider: 'dapi',
+              connection_id: conexaoDapi.id,
             }).catch(() => {});
           } else {
-            const phoneNumberId = empresa.whatsapp_phone_number_id;
             await base44.asServiceRole.entities.ConversaWhatsapp.create({
               empresa_id,
               cliente_telefone: numeroLimpo,
               cliente_nome: numeroLimpo,
               status: 'campanha',
               origem: 'campanha',
-              tipo_conexao: 'meta_oficial',
-              canal_origem: 'meta',
-              provider: 'whatsapp_meta',
-              phone_number_id_meta: phoneNumberId || null,
+              tipo_conexao: 'dapi',
+              canal_origem: 'dapi',
+              provider: 'dapi',
+              connection_id: conexaoDapi.id,
               data_ultima_mensagem: new Date().toISOString(),
               ultima_mensagem: mensagem_texto.trim().substring(0, 200),
               ultimo_remetente: 'vendedor',
@@ -149,7 +93,6 @@ Deno.serve(async (req) => {
         erros++;
       }
 
-      // Delay entre mensagens
       if (delayMs > 0 && contatos.indexOf(telefone) < contatos.length - 1) {
         await new Promise(r => setTimeout(r, delayMs));
       }

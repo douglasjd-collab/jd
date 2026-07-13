@@ -1,5 +1,22 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
+// Envios automáticos de campanha usam sempre a D-API (nunca a Meta Oficial)
+async function enviarViaDapi(base44, empresaId, telefone, mensagem) {
+  const conexoes = await base44.asServiceRole.entities.WhatsappConnection.filter(
+    { empresa_id: empresaId, provider_type: 'dapi', is_active: true },
+    '-created_date',
+    1
+  );
+  const conexao = conexoes[0];
+  if (!conexao) return { data: { success: false, error: 'Nenhuma conexão D-API ativa' } };
+  return await base44.functions.invoke('whatsappService', {
+    connectionId: conexao.id,
+    action: 'sendText',
+    phoneNumber: (telefone || '').replace(/\D/g, ''),
+    text: mensagem
+  });
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -53,13 +70,7 @@ Deno.serve(async (req) => {
           + `Que tal renovar e aproveitar mais crédito para realizar seus planos? 💼\n\n`
           + `Entre em contato conosco e veja o que temos para você! 😊`;
 
-        const respMensagem = await base44.functions.invoke('enviarMensagemWhatsapp', {
-          conversa_id: '',
-          mensagem_texto: mensagem,
-          numero_cliente: renovacao.cliente_telefone,
-          empresa_id: empresaId,
-          arquivo: null
-        });
+        const respMensagem = await enviarViaDapi(base44, empresaId, renovacao.cliente_telefone, mensagem);
 
         if (respMensagem?.data?.success) {
           await base44.asServiceRole.entities.CampanhaRenovacao.update(renovacao.id, {
@@ -139,13 +150,7 @@ Deno.serve(async (req) => {
         const tipoVenda = venda.tipo === 'automovel' ? 'consórcio' : venda.tipo || 'produto';
         const mensagem = `Olá ${cliente.nome_completo || cliente.pj_razao_social || 'Cliente'}! 👋\n\nFaz um ano que você realizou seu ${tipoVenda} conosco! 🎉\n\nQueremos oferecer uma nova proposta especial para você!\n\nEntre em contato conosco para conhecer as melhores condições. 💼`;
 
-        const respMensagem = await base44.functions.invoke('enviarMensagemWhatsapp', {
-          conversa_id: '',
-          mensagem_texto: mensagem,
-          numero_cliente: telefone,
-          empresa_id: empresaId,
-          arquivo: null
-        });
+        const respMensagem = await enviarViaDapi(base44, empresaId, telefone, mensagem);
 
         if (respMensagem?.data?.success) {
           await base44.asServiceRole.entities.CampanhaLog.create({

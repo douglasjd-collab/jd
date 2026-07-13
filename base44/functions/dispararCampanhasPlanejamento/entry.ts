@@ -118,14 +118,22 @@ Deno.serve(async (req) => {
         .replace(/{valor}/g, valorFormatado);
 
       try {
-        // Buscar configuração do WhatsApp da empresa
+        // Buscar conexão D-API ativa da empresa — envios automáticos usam D-API
         const empresaId = op.empresa_id;
 
-        // Enviar mensagem
-        await base44.asServiceRole.functions.invoke('enviarMensagemWhatsapp', {
-          empresa_id: empresaId,
-          telefone,
-          mensagem,
+        const conexoesDapi = await base44.asServiceRole.entities.WhatsappConnection.filter(
+          { empresa_id: empresaId, provider_type: 'dapi', is_active: true },
+          '-created_date',
+          1
+        );
+        const conexaoDapi = conexoesDapi[0];
+        if (!conexaoDapi) throw new Error('Nenhuma conexão D-API ativa para esta empresa');
+
+        await base44.asServiceRole.functions.invoke('whatsappService', {
+          connectionId: conexaoDapi.id,
+          action: 'sendText',
+          phoneNumber: telefone,
+          text: mensagem
         });
 
         // Registrar log
