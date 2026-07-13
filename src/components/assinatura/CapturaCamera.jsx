@@ -1,14 +1,26 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, RotateCcw, Check, SwitchCamera, Loader2 } from 'lucide-react';
+import { Camera, RotateCcw, Check, SwitchCamera, Loader2, Image as ImageIcon } from 'lucide-react';
 
-// Captura de foto exclusivamente pela câmera do dispositivo (sem upload de galeria).
-export default function CapturaCamera({ titulo, instrucao, facingModeInicial = 'user', onConfirmar, confirmando }) {
+// Captura de foto pela câmera do dispositivo. Quando permitirGaleria=true (usado apenas
+// para frente/verso do RG), também permite escolher uma imagem já existente da galeria.
+export default function CapturaCamera({ titulo, instrucao, facingModeInicial = 'user', onConfirmar, confirmando, permitirGaleria = false }) {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
+  const galeriaInputRef = useRef(null);
   const [facingMode, setFacingMode] = useState(facingModeInicial);
   const [foto, setFoto] = useState(null);
   const [erro, setErro] = useState(null);
+
+  const escolherDaGaleria = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    pararStream();
+    const reader = new FileReader();
+    reader.onload = () => setFoto(reader.result);
+    reader.readAsDataURL(file);
+  };
 
   const pararStream = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -66,6 +78,14 @@ export default function CapturaCamera({ titulo, instrucao, facingModeInicial = '
               <Camera className="w-4 h-4" /> Capturar
             </Button>
           </div>
+          {permitirGaleria && (
+            <>
+              <Button type="button" variant="outline" className="gap-1.5 w-full" onClick={() => galeriaInputRef.current?.click()}>
+                <ImageIcon className="w-4 h-4" /> Escolher da galeria
+              </Button>
+              <input ref={galeriaInputRef} type="file" accept="image/*" className="hidden" onChange={escolherDaGaleria} />
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-2">

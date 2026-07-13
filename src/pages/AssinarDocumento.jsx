@@ -109,7 +109,8 @@ export default function AssinarDocumento() {
     setEnviando(true);
     try {
       const dataUrl = canvasRef.current.getDataURL();
-      const res = await base44.functions.invoke('assinaturaPublica', { action: 'assinar', token, assinatura_data_url: dataUrl, device: getDeviceInfo() });
+      const metodoAssinatura = canvasRef.current.getMetodo() === 'nome' ? 'nome_completo' : 'desenhada';
+      const res = await base44.functions.invoke('assinaturaPublica', { action: 'assinar', token, assinatura_data_url: dataUrl, metodo_assinatura: metodoAssinatura, device: getDeviceInfo() });
       if (res.data.error) {
         setErro(res.data.error);
       } else {
@@ -217,9 +218,10 @@ export default function AssinarDocumento() {
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             <CapturaCamera
               titulo="Frente do RG"
-              instrucao="Fotografe a frente do seu documento."
+              instrucao="Fotografe a frente do seu documento ou escolha uma imagem da galeria."
               facingModeInicial="environment"
               confirmando={enviandoEvidencia}
+              permitirGaleria
               onConfirmar={(dataUrl) => enviarEvidencia('rg_frente', dataUrl, 'rg_verso')}
             />
           </div>
@@ -229,9 +231,10 @@ export default function AssinarDocumento() {
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             <CapturaCamera
               titulo="Verso do RG"
-              instrucao="Fotografe o verso do seu documento."
+              instrucao="Fotografe o verso do seu documento ou escolha uma imagem da galeria."
               facingModeInicial="environment"
               confirmando={enviandoEvidencia}
+              permitirGaleria
               onConfirmar={(dataUrl) => enviarEvidencia('rg_verso', dataUrl, 'resumo')}
             />
           </div>
@@ -304,7 +307,7 @@ export default function AssinarDocumento() {
         {step === 'assinatura' && (
           <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
             <h2 className="font-semibold text-slate-700">Assine dentro do espaço abaixo</h2>
-            <AssinaturaCanvas ref={canvasRef} />
+            <AssinaturaCanvas ref={canvasRef} nomeSignatario={info?.signer?.nome} />
             <Button className="w-full bg-[#23BE84] hover:bg-[#1da570] gap-1.5" disabled={enviando} onClick={handleAssinar}>
               {enviando && <Loader2 className="w-4 h-4 animate-spin" />}
               Assinar e concluir

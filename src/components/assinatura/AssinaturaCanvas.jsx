@@ -1,16 +1,37 @@
 import React, { useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { Button } from '@/components/ui/button';
-import { Eraser } from 'lucide-react';
+import { Eraser, PenLine } from 'lucide-react';
 
-const AssinaturaCanvas = forwardRef(function AssinaturaCanvas(_, ref) {
+const AssinaturaCanvas = forwardRef(function AssinaturaCanvas({ nomeSignatario } = {}, ref) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const [hasContent, setHasContent] = useState(false);
+  const [metodo, setMetodo] = useState(null); // 'desenho' | 'nome'
 
   useImperativeHandle(ref, () => ({
     getDataURL: () => (hasContent ? canvasRef.current.toDataURL('image/png') : null),
     isEmpty: () => !hasContent,
+    getMetodo: () => metodo,
   }));
+
+  const preencherComNome = () => {
+    if (!nomeSignatario) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#111827';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    let fontSize = 42;
+    ctx.font = `italic ${fontSize}px "Segoe Script", "Brush Script MT", cursive`;
+    while (ctx.measureText(nomeSignatario).width > canvas.width - 30 && fontSize > 16) {
+      fontSize -= 2;
+      ctx.font = `italic ${fontSize}px "Segoe Script", "Brush Script MT", cursive`;
+    }
+    ctx.fillText(nomeSignatario, canvas.width / 2, canvas.height / 2);
+    setHasContent(true);
+    setMetodo('nome');
+  };
 
   const getPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
@@ -21,6 +42,7 @@ const AssinaturaCanvas = forwardRef(function AssinaturaCanvas(_, ref) {
   const start = (e) => {
     e.preventDefault();
     drawing.current = true;
+    setMetodo('desenho');
     const ctx = canvasRef.current.getContext('2d');
     const { x, y } = getPos(e);
     ctx.beginPath();
@@ -48,6 +70,7 @@ const AssinaturaCanvas = forwardRef(function AssinaturaCanvas(_, ref) {
     const ctx = canvasRef.current.getContext('2d');
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     setHasContent(false);
+    setMetodo(null);
   };
 
   return (
@@ -65,9 +88,16 @@ const AssinaturaCanvas = forwardRef(function AssinaturaCanvas(_, ref) {
         onTouchMove={move}
         onTouchEnd={end}
       />
-      <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={limpar}>
-        <Eraser className="w-3.5 h-3.5" /> Limpar assinatura
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={limpar}>
+          <Eraser className="w-3.5 h-3.5" /> Limpar assinatura
+        </Button>
+        {nomeSignatario && (
+          <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={preencherComNome}>
+            <PenLine className="w-3.5 h-3.5" /> Preencher assinatura com meu nome
+          </Button>
+        )}
+      </div>
     </div>
   );
 });

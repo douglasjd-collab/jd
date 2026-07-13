@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const body = await req.json();
-    const { action, token, assinatura_data_url, motivo, tipo, data_url, device } = body;
+    const { action, token, assinatura_data_url, motivo, tipo, data_url, device, metodo_assinatura } = body;
 
     if (!token) return Response.json({ error: 'Token inválido' }, { status: 400 });
 
@@ -216,7 +216,10 @@ Deno.serve(async (req) => {
         status: novoStatusGeral,
       });
 
-      await registrarLog(base44, sol, { evento: 'assinatura_realizada', papel: role, ip, device, resultado: 'sucesso' });
+      const descricaoMetodo = metodo_assinatura === 'nome_completo'
+        ? 'Assinatura preenchida automaticamente com o nome completo'
+        : 'Assinatura desenhada manualmente';
+      await registrarLog(base44, sol, { evento: 'assinatura_realizada', papel: role, ip, device, resultado: 'sucesso', detalhes: descricaoMetodo });
 
       if (novoStatusGeral === 'assinado' && sol.termo_autorizacao_id) {
         await base44.asServiceRole.entities.TermoAutorizacao.update(sol.termo_autorizacao_id, {
