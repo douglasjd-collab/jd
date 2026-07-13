@@ -485,6 +485,19 @@ async function processMessageReceived(base44, body, connection, empresaId) {
 
   const { texto: respostaParaTexto, nome: respostaParaNome } = extrairRespostaCitada(data);
 
+  // DEBUG TEMPORÁRIO: grava o contextInfo bruto para descobrirmos o formato exato usado pela D-API
+  // (será removido assim que a extração da citação for confirmada). Não afeta o fluxo normal.
+  const ctxDebug = data?.contextInfo || data?.context_info;
+  if (ctxDebug) {
+    base44.asServiceRole.entities.LogRecebimentoWebhook.create({
+      empresa_id: empresaId,
+      tipo_evento: 'mensagem_recebida',
+      telefone: fromPhone,
+      conteudo: 'DEBUG_CONTEXT_INFO: ' + JSON.stringify(ctxDebug).substring(0, 1900),
+      status: 'sucesso'
+    }).catch(() => {});
+  }
+
   const mensagemData = {
     empresa_id: empresaId,
     conversa_id: conversa.id,
