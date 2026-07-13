@@ -142,7 +142,6 @@ export default function ImageEditorModal({
           const urlSegura = await resolverUrlSegura(pagina.urlOriginal);
           await new Promise((resolve, reject) => {
             const imgEl = new window.Image();
-            imgEl.crossOrigin = 'anonymous';
             imgEl.onload = () => {
               const img = new fabric.Image(imgEl);
               const scale = Math.min(1, WORKING_MAX_DIM / Math.max(img.width, img.height));
@@ -158,6 +157,7 @@ export default function ImageEditorModal({
             };
             imgEl.onerror = () => reject(new Error('Não foi possível carregar esta imagem.'));
             imgEl.src = urlSegura;
+            setTimeout(() => reject(new Error('Tempo esgotado ao carregar a imagem.')), 15000);
           });
         }
         canvas.setZoom(1);
