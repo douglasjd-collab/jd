@@ -97,6 +97,15 @@
       "format": "date",
       "description": "Data de Pr\u00e9-Fechamento \u2014 quando o lead deve ser tentado fechar"
     },
+    "data_proximo_contato": {
+      "type": "string",
+      "format": "date",
+      "description": "Data sugerida para o vendedor retomar o contato com este lead"
+    },
+    "motivo_proximo_contato": {
+      "type": "string",
+      "description": "Motivo/sugest\u00e3o de assunto para a pr\u00f3xima conversa com o lead (gerado pela IA a partir dos \u00e1udios/mensagens)"
+    },
     "data_ultima_movimentacao": {
       "type": "string",
       "format": "date-time",

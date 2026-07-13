@@ -1,0 +1,86 @@
+{
+  "name": "AlertaFunilContato",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "oportunidade_id": {
+      "type": "string",
+      "description": "ID da oportunidade vinculada"
+    },
+    "oportunidade_titulo": {
+      "type": "string",
+      "description": "T\u00edtulo da oportunidade"
+    },
+    "cliente_nome": {
+      "type": "string",
+      "description": "Nome do cliente"
+    },
+    "cliente_telefone": {
+      "type": "string",
+      "description": "Telefone do cliente"
+    },
+    "conversa_id": {
+      "type": "string",
+      "description": "ID da ConversaWhatsapp, para abrir direto a conversa sugerida"
+    },
+    "motivo": {
+      "type": "string",
+      "description": "Motivo/sugest\u00e3o de assunto para o pr\u00f3ximo contato com o cliente"
+    },
+    "responsavel_id": {
+      "type": "string",
+      "description": "ID do vendedor respons\u00e1vel"
+    },
+    "responsavel_nome": {
+      "type": "string",
+      "description": "Nome do vendedor respons\u00e1vel"
+    },
+    "data_alerta": {
+      "type": "string",
+      "format": "date",
+      "description": "Data do alerta (para evitar duplicatas no mesmo dia)"
+    },
+    "dias_atraso": {
+      "type": "number",
+      "default": 0
+    },
+    "lido": {
+      "type": "boolean",
+      "default": false
+    },
+    "lido_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ativo",
+        "encerrado"
+      ],
+      "default": "ativo"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "oportunidade_id",
+    "data_alerta"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return true;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; return ['admin', 'gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

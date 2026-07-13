@@ -33,6 +33,7 @@ import { getProdutoConfig } from '@/components/funil/produtoConfig';
 import CampanhasPlanejamentoBadge from '@/components/funil/CampanhasPlanejamentoBadge';
 import CampanhasStatusModal from '@/components/funil/CampanhasStatusModal';
 import AlertasPreFechamentoBell from '@/components/funil/AlertasPreFechamentoBell';
+import AlertasFunilContatoBell from '@/components/funil/AlertasFunilContatoBell';
 import ConfiguracaoAlertasPreFechamento from '@/components/funil/ConfiguracaoAlertasPreFechamento';
 import FunilIndicadoresExecutivos from '@/components/funil/FunilIndicadoresExecutivos';
 import FunilOrigemLeads from '@/components/funil/FunilOrigemLeads';
@@ -1096,6 +1097,9 @@ export default function FunilVendas() {
           <AlertasPreFechamentoBell
             empresaId={currentUser?.empresa_id}
             userId={currentUser?.id}
+          />
+          <AlertasFunilContatoBell
+            empresaId={currentUser?.empresa_id}
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
