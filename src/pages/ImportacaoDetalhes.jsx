@@ -64,6 +64,16 @@ export default function ImportacaoDetalhes() {
     enabled: !!importacao?.empresa_id && !!importacao?.administradora_id && importacao?.produto === 'consorcio',
   });
 
+  // Buscar Propostas de empréstimo para pegar vendedor/parceiro/colaborador vinculado ao contrato
+  const { data: propostasEmprestimo = [] } = useQuery({
+    queryKey: ['importacao-propostas-emprestimo', importacao?.empresa_id],
+    queryFn: () => base44.entities.Proposta.filter({
+      empresa_id: importacao.empresa_id,
+      produto: 'emprestimo',
+    }, null, 3000),
+    enabled: !!importacao?.empresa_id && importacao?.produto === 'emprestimos',
+  });
+
   // Mapa grupo+cota e contrato → nome do vendedor ou parceiro
   const vendedorMap = useMemo(() => {
     const map = {};
@@ -99,6 +109,17 @@ export default function ImportacaoDetalhes() {
     });
     return map;
   }, [vendas, propostas]);
+
+  // Mapa contrato → vendedor/parceiro/colaborador vinculado à Proposta de empréstimo
+  const vendedorMapEmprestimo = useMemo(() => {
+    const map = {};
+    propostasEmprestimo.forEach(p => {
+      const contratoKey = p.contrato || p.emprestimo_numero_ade;
+      if (!contratoKey) return;
+      map[contratoKey] = p.vendedor_nome || p.empresa_parceira_nome || p.responsavel_nome || null;
+    });
+    return map;
+  }, [propostasEmprestimo]);
 
   const formatCurrency = (value) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -219,13 +240,13 @@ export default function ImportacaoDetalhes() {
           </CardHeader>
           <CardContent>
             <TabsContent value="todos">
-               <ItemsTable itens={itens} formatCurrency={formatCurrency} produto={produto} vendedorMap={vendedorMap} />
+               <ItemsTable itens={itens} formatCurrency={formatCurrency} produto={produto} vendedorMap={vendedorMap} vendedorMapEmprestimo={vendedorMapEmprestimo} />
              </TabsContent>
              <TabsContent value="processados">
-               <ItemsTable itens={itensProcessados} formatCurrency={formatCurrency} produto={produto} vendedorMap={vendedorMap} />
+               <ItemsTable itens={itensProcessados} formatCurrency={formatCurrency} produto={produto} vendedorMap={vendedorMap} vendedorMapEmprestimo={vendedorMapEmprestimo} />
              </TabsContent>
              <TabsContent value="divergencias">
-               <ItemsTable itens={itensDivergencia} formatCurrency={formatCurrency} produto={produto} showMotivo vendedorMap={vendedorMap} />
+               <ItemsTable itens={itensDivergencia} formatCurrency={formatCurrency} produto={produto} showMotivo vendedorMap={vendedorMap} vendedorMapEmprestimo={vendedorMapEmprestimo} />
              </TabsContent>
           </CardContent>
         </Tabs>
@@ -234,7 +255,7 @@ export default function ImportacaoDetalhes() {
   );
 }
 
-function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo = false, vendedorMap = {} }) {
+function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo = false, vendedorMap = {}, vendedorMapEmprestimo = {} }) {
   if (itens.length === 0) {
     return (
       <div className="text-center py-8 text-slate-500">
@@ -270,7 +291,7 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
                 <TableCell>{item.valor_base_comissao ? formatCurrency(item.valor_base_comissao) : '-'}</TableCell>
                 <TableCell>{item.percentual_comissao ? `${item.percentual_comissao}%` : '-'}</TableCell>
                 <TableCell className="font-medium">{formatCurrency(item.valor_recebido)}</TableCell>
-                <TableCell>{item.vendedor_nome || 'Sem vendedor'}</TableCell>
+                <TableCell>{(item.contrato && vendedorMapEmprestimo[item.contrato]) || item.vendedor_nome || 'Sem vendedor'}</TableCell>
                 <TableCell><StatusBadge status={item.status} /></TableCell>
                 {showMotivo && (
                   <TableCell className="max-w-xs">
