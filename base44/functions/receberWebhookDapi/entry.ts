@@ -211,7 +211,7 @@ Deno.serve(async (req) => {
 // no banco pelo whatsapp_message_id para pegar o texto e o nome corretos do remetente.
 async function extrairRespostaCitada(base44, empresaId, data) {
   const ctx = data?.contextInfo || data?.context_info || null;
-  if (!ctx) return { texto: null, nome: null };
+  if (!ctx) return { texto: null, nome: null, whatsappId: null };
 
   const quotedMsg = ctx.quoted_message || ctx.quotedMessage || null;
   const quotedId = ctx.quoted_message_id || ctx.stanza_id || ctx.quotedMessageId || null;
@@ -227,14 +227,14 @@ async function extrairRespostaCitada(base44, empresaId, data) {
         const original = originais[0];
         const nomeOriginal = original.remetente === 'vendedor' ? (original.usuario_nome || 'Você') : (original.remetente_nome || 'Cliente');
         const textoOriginal = original.texto || (quotedMsg?.body || null);
-        return { texto: textoOriginal ? String(textoOriginal).substring(0, 200) : null, nome: nomeOriginal };
+        return { texto: textoOriginal ? String(textoOriginal).substring(0, 200) : null, nome: nomeOriginal, whatsappId: String(quotedId) };
       }
     } catch (_) {}
   }
 
   // Fallback: usar direto o texto vindo no contextInfo
   const texto = quotedMsg?.body || quotedMsg?.conversation || quotedMsg?.extendedTextMessage?.text || quotedMsg?.text || null;
-  return { texto: texto ? String(texto).substring(0, 200) : null, nome: null };
+  return { texto: texto ? String(texto).substring(0, 200) : null, nome: null, whatsappId: quotedId ? String(quotedId) : null };
 }
 
 // Processa uma mensagem recebida de cliente via D-API e salva no CRM
@@ -460,7 +460,7 @@ async function processarMensagemRecebida(base44, connection, data) {
       return;
     }
 
-    const { texto: respostaParaTexto, nome: respostaParaNome } = await extrairRespostaCitada(base44, empresaId, data);
+    const { texto: respostaParaTexto, nome: respostaParaNome, whatsappId: respostaParaWhatsappId } = await extrairRespostaCitada(base44, empresaId, data);
 
     await base44.entities.MensagemWhatsapp.create({
       conversa_id: conversa.id,
@@ -472,6 +472,7 @@ async function processarMensagemRecebida(base44, connection, data) {
       provider: 'dapi',
       resposta_para_texto: respostaParaTexto,
       resposta_para_nome: respostaParaNome,
+      resposta_para_whatsapp_id: respostaParaWhatsappId,
       whatsapp_message_id: whatsappMessageId,
       data_envio: data?.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
       status: 'entregue'

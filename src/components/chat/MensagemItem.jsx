@@ -134,6 +134,17 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const queryClient = useQueryClient();
   const isVendedor = mensagem.remetente === 'vendedor';
 
+  // Ao clicar na citação, rolar até a mensagem original referenciada (se estiver carregada na tela)
+  const irParaMensagemCitada = () => {
+    const alvoId = mensagem.resposta_para_whatsapp_id;
+    if (!alvoId) return;
+    const el = document.querySelector(`[data-msg-whatsapp-id="${window.CSS && CSS.escape ? CSS.escape(alvoId) : alvoId}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('ring-2', 'ring-blue-400');
+    setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400'), 1500);
+  };
+
 
 
   // Confirmar leitura ao montar a mensagem (se for mensagem de cliente)
@@ -774,7 +785,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   if (isImagemLimpa) {
     const stickerSize = 33;
     return (
-      <div className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+      <div data-msg-whatsapp-id={mensagem.whatsapp_message_id || undefined} className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-lg transition-shadow`}>
         <div style={isSticker
           ? { position: 'relative', maxWidth: stickerSize, minWidth: stickerSize }
           : { position: 'relative', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.18)', maxWidth: 280, minWidth: 80 }
@@ -870,7 +881,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   }
 
   return (
-    <div className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300`}>
+    <div data-msg-whatsapp-id={mensagem.whatsapp_message_id || undefined} className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-lg transition-shadow`}>
       <div
         className={`max-w-md rounded-2xl shadow-sm ${
           isSticker
@@ -921,9 +932,12 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
         {!isGrupo && !isVendedor && mensagem.usuario_nome && (
           <p className="text-xs font-semibold mb-1 opacity-60">{mensagem.usuario_nome}</p>
         )}
-        {/* Citação da mensagem respondida — estilo WhatsApp */}
+        {/* Citação da mensagem respondida — estilo WhatsApp, clicável para ir até a mensagem original */}
         {mensagem.resposta_para_texto && (
-          <div className={`mb-2 rounded-lg overflow-hidden border-l-4 ${isVendedor ? 'border-green-600/60 bg-black/5' : 'border-blue-500 bg-slate-100'}`}>
+          <div
+            onClick={mensagem.resposta_para_whatsapp_id ? irParaMensagemCitada : undefined}
+            className={`mb-2 rounded-lg overflow-hidden border-l-4 ${mensagem.resposta_para_whatsapp_id ? 'cursor-pointer hover:brightness-95' : ''} ${isVendedor ? 'border-green-600/60 bg-black/5' : 'border-blue-500 bg-slate-100'}`}
+          >
             <div className={`px-2 pt-1.5 pb-1`}>
               <p className={`text-[11px] font-semibold truncate ${isVendedor ? 'text-green-800' : 'text-blue-600'}`}>
                 {mensagem.resposta_para_nome || 'Mensagem'}

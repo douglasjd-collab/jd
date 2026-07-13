@@ -133,6 +133,10 @@
       "type": "string",
       "description": "Nome do remetente da mensagem citada"
     },
+    "resposta_para_whatsapp_id": {
+      "type": "string",
+      "description": "whatsapp_message_id da mensagem original citada \u2014 usado para localizar/rolar at\u00e9 ela no chat"
+    },
     "erro_envio": {
       "type": "string",
       "description": "Motivo do erro reportado pela Meta/Evolution quando o envio falha (status=erro)"

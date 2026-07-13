@@ -500,6 +500,7 @@ Deno.serve(async (req) => {
           download_status: 'nao_aplicavel',
           resposta_para_texto: resposta_para_texto || null,
           resposta_para_nome: resposta_para_nome || null,
+          resposta_para_whatsapp_id: resposta_para_message_id || null,
           whatsapp_message_id: messageIdDapi,
           data_envio: new Date().toISOString(),
           status: 'enviada'
@@ -923,6 +924,7 @@ Deno.serve(async (req) => {
         download_status: 'nao_aplicavel',
         resposta_para_texto: resposta_para_texto || null,
         resposta_para_nome: resposta_para_nome || null,
+        resposta_para_whatsapp_id: resposta_para_message_id || null,
         whatsapp_message_id: (usaMetaOficial ? null : messageIdEvolution) || result?.key?.id || result?.messageId || result?.id || `temp_${Date.now()}`,
         data_envio: new Date().toISOString(),
         status: 'enviada'
