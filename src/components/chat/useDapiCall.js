@@ -98,7 +98,6 @@ export default function useDapiCall() {
     setStatus('calling');
     try {
       const resp = await base44.functions.invoke('iniciarChamadaDapi', {
-        connectionId,
         phone: (telefone || '').replace(/\D/g, ''),
       });
       if (!resp?.data?.success) throw new Error(resp?.data?.error || 'Falha ao iniciar chamada');
