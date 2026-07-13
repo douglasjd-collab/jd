@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { X, RefreshCw, TrendingUp, BarChart3 } from 'lucide-react';
 import { format, isAfter } from 'date-fns';
@@ -15,6 +16,7 @@ function getInitials(nome) {
 }
 
 export default function DashboardProdutividade({ empresaId, onClose, onAbrirConversa }) {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [colaboradores, setColaboradores] = useState([]);
   const [conversas, setConversas] = useState([]);
@@ -72,10 +74,16 @@ export default function DashboardProdutividade({ empresaId, onClose, onAbrirConv
     setIndicadorAberto({ titulo, itens });
   };
 
+  const removerItemDoPainel = (conversaId) => {
+    setIndicadorAberto(prev => prev ? { ...prev, itens: prev.itens.filter(i => i.id !== conversaId) } : prev);
+  };
+
   const handleAssumir = async (conversaId) => {
     try {
       await base44.entities.ConversaWhatsapp.update(conversaId, { responsavel_id: 'painel', status: 'ativa' });
       toast.success('Conversa assumida');
+      removerItemDoPainel(conversaId);
+      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
       loadData();
     } catch (e) { toast.error('Erro ao assumir: ' + e.message); }
   };
@@ -83,9 +91,11 @@ export default function DashboardProdutividade({ empresaId, onClose, onAbrirConv
   const handleFinalizar = async (conversaId) => {
     try {
       await base44.entities.ConversaWhatsapp.update(conversaId, { status: 'encerrada' });
-      toast.success('Conversa finalizada');
+      toast.success('Conversa encerrada');
+      removerItemDoPainel(conversaId);
+      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
       loadData();
-    } catch (e) { toast.error('Erro ao finalizar: ' + e.message); }
+    } catch (e) { toast.error('Erro ao encerrar: ' + e.message); }
   };
 
   const handleAbrirConversa = (conversaId) => {
