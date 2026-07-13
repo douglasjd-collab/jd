@@ -68,7 +68,9 @@ import AgendarMensagemModal from '@/components/chat/AgendarMensagemModal';
 import MensagensAgendadasModal from '@/components/chat/MensagensAgendadasModal';
 import AgendarReuniaoModal from '@/components/chat/AgendarReuniaoModal';
 import useSoftphone from '@/components/callcenter/useSoftphone';
+import useDapiCall from '@/components/chat/useDapiCall';
 import ChamadaAtivaBar from '@/components/chat/ChamadaAtivaBar.jsx';
+import DapiCallBar from '@/components/chat/DapiCallBar.jsx';
 import DashboardProdutividade from '@/components/chat/DashboardProdutividade';
 import CoachIAPanel from '@/components/chat/CoachIAPanel';
 import MobileBottomNav from '@/components/chat/MobileBottomNav';
@@ -313,6 +315,7 @@ export default function BatePapo() {
   }, [user?.id]);
 
   const { sipStatus, erroMsg: erroSip, chamadaAtiva, realizarChamada, encerrarChamada } = useSoftphone(nvoipConfig);
+  const dapiCall = useDapiCall();
 
   const ligarParaContato = async (telefone) => {
     if (!nvoipConfig) { toast.error('Configure seu ramal em Call Center > Meu Ramal'); return; }
@@ -321,6 +324,29 @@ export default function BatePapo() {
     if (!numLimpo) { toast.error('Número inválido'); return; }
     const ok = await realizarChamada(numLimpo);
     if (!ok && erroSip) toast.error(erroSip);
+  };
+
+  // Conversa atende via D-API? Nesse caso "Ligar" faz uma chamada de voz pelo WhatsApp (D-API)
+  const ehDapiSelecionada = !!(conversaSelecionada && (
+    conversaSelecionada.provider === 'dapi' ||
+    conversaSelecionada.tipo_conexao === 'dapi' ||
+    conversaSelecionada.canal_origem === 'dapi'
+  ));
+  const dapiChamadaAtivaVisivel = ['calling', 'ringing', 'connected'].includes(dapiCall.status);
+
+  const ligarViaDapi = async () => {
+    if (!conversaSelecionada?.cliente_telefone) return;
+    let connectionId = conversaSelecionada.connection_id;
+    if (!connectionId) {
+      try {
+        const conexoes = await base44.entities.WhatsappConnection.filter(
+          { empresa_id: empresaId, provider_type: 'dapi', is_active: true }, '-created_date', 1
+        );
+        connectionId = conexoes?.[0]?.id;
+      } catch (_) {}
+    }
+    if (!connectionId) { toast.error('Nenhuma conexão D-API ativa encontrada'); return; }
+    await dapiCall.iniciar(connectionId, conversaSelecionada.cliente_telefone);
   };
 
   const abrirGruposBloqueados = async () => {
@@ -1946,14 +1972,31 @@ export default function BatePapo() {
                 setFunilModalOpen={setFunilModalOpen}
                 oportunidadeAtual={oportunidadeAtual}
                 tagsDB={tagsDB}
-                onLigar={() => chamadaAtiva ? encerrarChamada() : ligarParaContato(conversaSelecionada?.cliente_telefone)}
-                sipStatus={sipStatus}
-                chamadaAtiva={chamadaAtiva}
+                onLigar={() => {
+                  if (ehDapiSelecionada) {
+                    dapiChamadaAtivaVisivel ? dapiCall.encerrar() : ligarViaDapi();
+                  } else {
+                    chamadaAtiva ? encerrarChamada() : ligarParaContato(conversaSelecionada?.cliente_telefone);
+                  }
+                }}
+                sipStatus={ehDapiSelecionada ? 'registrado' : sipStatus}
+                chamadaAtiva={ehDapiSelecionada ? (dapiChamadaAtivaVisivel ? { destino: conversaSelecionada?.cliente_telefone } : null) : chamadaAtiva}
                 erroSip={erroSip}
                 coachIAOpen={coachIAOpen}
                 setCoachIAOpen={setCoachIAOpen}
                 />
-                <ChamadaAtivaBar chamadaAtiva={chamadaAtiva} onEncerrar={encerrarChamada} />
+                {ehDapiSelecionada ? (
+                  <DapiCallBar
+                    status={dapiCall.status}
+                    erro={dapiCall.erro}
+                    mutado={dapiCall.mutado}
+                    clienteNome={contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada?.cliente_nome}
+                    onEncerrar={dapiCall.encerrar}
+                    onMutar={dapiCall.alternarMudo}
+                  />
+                ) : (
+                  <ChamadaAtivaBar chamadaAtiva={chamadaAtiva} onEncerrar={encerrarChamada} />
+                )}
 
         {/* Mobile Bottom Navigation - apenas na lista de conversas (não quando conversa estiver aberta) */}
         {!conversaSelecionada && (
