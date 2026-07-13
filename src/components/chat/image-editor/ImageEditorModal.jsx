@@ -229,14 +229,14 @@ export default function ImageEditorModal({
       if (tool === 'rect' || tool === 'ocultar' || tool === 'crop') {
         shape = new fabric.Rect({
           left: p.x, top: p.y, width: 1, height: 1,
-          fill: tool === 'rect' ? cor + Math.round(opacidade * 255).toString(16).padStart(2, '0') : 'rgba(59,130,246,0.15)',
+          fill: tool === 'rect' ? 'transparent' : 'rgba(59,130,246,0.15)',
           stroke: tool === 'rect' ? cor : '#3b82f6', strokeWidth: tool === 'rect' ? espessura : 1,
           strokeDashArray: tool !== 'rect' ? [6, 4] : null,
         });
       } else if (tool === 'circle') {
         shape = new fabric.Ellipse({
           left: p.x, top: p.y, rx: 1, ry: 1,
-          fill: cor + Math.round(opacidade * 255).toString(16).padStart(2, '0'),
+          fill: 'transparent',
           stroke: cor, strokeWidth: espessura,
         });
       } else if (tool === 'line') {
