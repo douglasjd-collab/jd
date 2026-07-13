@@ -1258,6 +1258,7 @@ export default function BatePapo() {
       {produtividadeOpen && (
         <DashboardProdutividade
           empresaId={empresaId}
+          currentUser={user}
           onClose={() => setProdutividadeOpen(false)}
           onAbrirConversa={(conversaId) => {
             setProdutividadeOpen(false);

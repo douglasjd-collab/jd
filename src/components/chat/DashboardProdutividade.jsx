@@ -15,7 +15,7 @@ function getInitials(nome) {
   return nome.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
 }
 
-export default function DashboardProdutividade({ empresaId, onClose, onAbrirConversa }) {
+export default function DashboardProdutividade({ empresaId, onClose, onAbrirConversa, currentUser }) {
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [colaboradores, setColaboradores] = useState([]);
@@ -80,7 +80,12 @@ export default function DashboardProdutividade({ empresaId, onClose, onAbrirConv
 
   const handleAssumir = async (conversaId) => {
     try {
-      await base44.entities.ConversaWhatsapp.update(conversaId, { responsavel_id: 'painel', status: 'ativa' });
+      await base44.entities.ConversaWhatsapp.update(conversaId, {
+        responsavel_id: currentUser?.colaborador_id || currentUser?.id || 'atendente',
+        responsavel_nome: currentUser?.nome_perfil || currentUser?.full_name || currentUser?.email || 'Atendente',
+        responsavel_expira_em: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        status: 'ativa',
+      });
       toast.success('Conversa assumida');
       removerItemDoPainel(conversaId);
       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
