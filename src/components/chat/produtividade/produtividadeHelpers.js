@@ -75,7 +75,9 @@ export function calcularMetricas({ conversas, mensagens, inicio, fim, canalFiltr
         ultimoVendedorMsg = null;
       }
     }
-    if (ultimoVendedorMsg) semRespostaSet.add(convId);
+    // Não contar como "sem resposta" se a conversa já foi finalizada — regra de não misturar
+    // cliente sem resposta com conversa finalizada.
+    if (ultimoVendedorMsg && conversasMap[convId]?.status !== 'encerrada') semRespostaSet.add(convId);
   });
 
   const iniciadas = new Set([...iniciadasVendedor, ...iniciadasCliente]);
