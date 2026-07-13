@@ -257,10 +257,13 @@ export default function ImageEditorModal({
       const sp = startPointRef.current;
       if (tool === 'rect' || tool === 'ocultar' || tool === 'crop') {
         shape.set({ left: Math.min(sp.x, p.x), top: Math.min(sp.y, p.y), width: Math.abs(p.x - sp.x), height: Math.abs(p.y - sp.y) });
+        shape.setCoords();
       } else if (tool === 'circle') {
         shape.set({ left: Math.min(sp.x, p.x), top: Math.min(sp.y, p.y), rx: Math.abs(p.x - sp.x) / 2, ry: Math.abs(p.y - sp.y) / 2 });
+        shape.setCoords();
       } else if (tool === 'line') {
         shape.set({ x2: p.x, y2: p.y });
+        shape.setCoords();
       } else if (tool === 'arrow') {
         canvas.remove(shape);
         const novo = criarSeta(sp.x, sp.y, p.x, p.y, cor, espessura);
@@ -311,7 +314,9 @@ export default function ImageEditorModal({
 
       shape.selectable = true;
       shape.evented = true;
+      shape.setCoords();
       canvas.setActiveObject(shape);
+      canvas.renderAll();
       setTool('select');
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
