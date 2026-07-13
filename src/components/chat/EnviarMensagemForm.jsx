@@ -14,7 +14,7 @@ const LINE_HEIGHT = 24;
 
 const quickReplies = ["/boasvindas", "/consorcio", "/financiamento", "/documentos"];
 
-export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUsuario = '', empresaId = null, telefoneDestino = null, conversaId = null, onTemplateEnviado = null, scriptExterno = null, coachIAOpen = false, setCoachIAOpen = null }) {
+export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUsuario = '', empresaId = null, telefoneDestino = null, nomeCliente = null, conversaId = null, onTemplateEnviado = null, scriptExterno = null, coachIAOpen = false, setCoachIAOpen = null }) {
   const [texto, setTexto] = useState('');
   const [assinaturaAtiva, setAssinaturaAtiva] = useState(() => {
     return localStorage.getItem('chat_assinatura') === 'true';
@@ -397,7 +397,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       open={editorAberto}
       onClose={() => { setEditorAberto(false); setImagensParaEditor([]); }}
       imagensIniciais={imagensParaEditor}
-      nomeCliente={telefoneDestino}
+      nomeCliente={nomeCliente || telefoneDestino}
       empresaId={empresaId}
       conversaId={conversaId}
       user={{ full_name: nomeUsuario }}

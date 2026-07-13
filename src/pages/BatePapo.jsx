@@ -2089,6 +2089,7 @@ export default function BatePapo() {
                       scriptExterno={scriptCoach}
                       coachIAOpen={coachIAOpen}
                       setCoachIAOpen={setCoachIAOpen}
+                      nomeCliente={contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada?.cliente_nome}
                     />
 
                     {/* Botão Flutuante Coach IA */}

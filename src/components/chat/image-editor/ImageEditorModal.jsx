@@ -549,7 +549,7 @@ export default function ImageEditorModal({
         </div>
       )}
 
-      <div className="flex-1 overflow-auto flex items-center justify-center bg-[#0d0d0d]">
+      <div className="flex-1 overflow-auto flex items-start justify-center bg-[#0d0d0d] py-4">
         <canvas ref={canvasElRef} />
       </div>
 

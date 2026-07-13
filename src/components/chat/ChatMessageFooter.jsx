@@ -23,6 +23,7 @@ export default function ChatMessageFooter({
   scriptExterno,
   coachIAOpen,
   setCoachIAOpen,
+  nomeCliente,
 }) {
   const queryClient = useQueryClient();
   const [canalReabrir, setCanalReabrir] = useState(conversaSelecionada?.tipo_conexao === 'dapi' ? 'dapi' : 'meta_oficial');
@@ -125,6 +126,7 @@ export default function ChatMessageFooter({
         nomeUsuario={user?.full_name || ''}
         empresaId={empresaId}
         telefoneDestino={conversaSelecionada?.cliente_telefone}
+        nomeCliente={nomeCliente}
         conversaId={conversaSelecionada?.id}
         scriptExterno={scriptExterno}
         coachIAOpen={coachIAOpen}
