@@ -282,6 +282,20 @@ async function processConnectionQrCode(base44, body, connection) {
  * onde data.from é um OBJETO ({ jid, name }), não uma string — por isso o telefone
  * deve ser extraído de data.from.jid (nunca tratar "from" como string).
  */
+// Extrai texto/nome da mensagem citada (reply) quando o remetente respondeu citando outra mensagem.
+// A D-API expõe o ContextInfo do Whatsmeow (mesmo formato usado no envio) — aceita camelCase e snake_case.
+function extrairRespostaCitada(data) {
+  const ctx = data?.contextInfo || data?.context_info || null;
+  if (!ctx) return { texto: null, nome: null };
+  const quotedMsg = ctx.quotedMessage || ctx.quoted_message || null;
+  const texto = quotedMsg
+    ? (quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || quotedMsg.text || null)
+    : null;
+  const participantJid = ctx.participant || ctx.participant_jid || '';
+  const nome = ctx.participantName || ctx.participant_name || (participantJid ? String(participantJid).replace(/@.*/g, '') : null);
+  return { texto: texto ? String(texto).substring(0, 200) : null, nome };
+}
+
 async function processMessageReceived(base44, body, connection, empresaId) {
   if (!connection) return { handled: false, reason: 'connection not found' };
 
@@ -469,6 +483,8 @@ async function processMessageReceived(base44, body, connection, empresaId) {
     return { handled: false, error: error.message };
   }
 
+  const { texto: respostaParaTexto, nome: respostaParaNome } = extrairRespostaCitada(data);
+
   const mensagemData = {
     empresa_id: empresaId,
     conversa_id: conversa.id,
@@ -478,6 +494,8 @@ async function processMessageReceived(base44, body, connection, empresaId) {
     texto: content,
     arquivo_url: mediaUrl,
     provider: 'dapi',
+    resposta_para_texto: respostaParaTexto,
+    resposta_para_nome: respostaParaNome,
     whatsapp_message_id: externalMessageId || `dapi_in_${Date.now()}`,
     status: 'entregue',
     data_envio: new Date(timestamp).toISOString()

@@ -205,6 +205,20 @@ Deno.serve(async (req) => {
   }
 });
 
+// Extrai texto/nome da mensagem citada (reply) quando o remetente respondeu citando outra mensagem.
+// A D-API expõe o ContextInfo do Whatsmeow (mesmo formato usado no envio) — aceita camelCase e snake_case.
+function extrairRespostaCitada(data) {
+  const ctx = data?.contextInfo || data?.context_info || null;
+  if (!ctx) return { texto: null, nome: null };
+  const quotedMsg = ctx.quotedMessage || ctx.quoted_message || null;
+  const texto = quotedMsg
+    ? (quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || quotedMsg.text || null)
+    : null;
+  const participantJid = ctx.participant || ctx.participant_jid || '';
+  const nome = ctx.participantName || ctx.participant_name || (participantJid ? String(participantJid).replace(/@.*/g, '') : null);
+  return { texto: texto ? String(texto).substring(0, 200) : null, nome };
+}
+
 // Processa uma mensagem recebida de cliente via D-API e salva no CRM
 async function processarMensagemRecebida(base44, connection, data) {
   try {
@@ -428,6 +442,8 @@ async function processarMensagemRecebida(base44, connection, data) {
       return;
     }
 
+    const { texto: respostaParaTexto, nome: respostaParaNome } = extrairRespostaCitada(data);
+
     await base44.entities.MensagemWhatsapp.create({
       conversa_id: conversa.id,
       empresa_id: empresaId,
@@ -436,6 +452,8 @@ async function processarMensagemRecebida(base44, connection, data) {
       texto,
       arquivo_url,
       provider: 'dapi',
+      resposta_para_texto: respostaParaTexto,
+      resposta_para_nome: respostaParaNome,
       whatsapp_message_id: whatsappMessageId,
       data_envio: data?.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
       status: 'entregue'
