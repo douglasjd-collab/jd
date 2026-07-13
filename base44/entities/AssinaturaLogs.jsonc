@@ -1,0 +1,77 @@
+{
+  "name": "AssinaturaLogs",
+  "type": "object",
+  "properties": {
+    "solicitacao_id": {
+      "type": "string",
+      "description": "ID da SolicitacaoAssinatura relacionada"
+    },
+    "termo_autorizacao_id": {
+      "type": "string",
+      "description": "ID do TermoAutorizacao relacionado"
+    },
+    "proposta_id": {
+      "type": "string",
+      "description": "ID da proposta relacionada"
+    },
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "evento": {
+      "type": "string",
+      "description": "Evento registrado: documento_criado, pdf_gerado, hash_criado, selfie_enviada, rg_frente_enviado, rg_verso_enviado, termo_visualizado, assinatura_realizada, assinatura_recusada, documento_finalizado, documento_invalidado, nova_versao_criada, etc."
+    },
+    "papel": {
+      "type": "string",
+      "description": "Papel do signat\u00e1rio relacionado ao evento (cliente, testemunha1, testemunha2, representante) quando aplic\u00e1vel"
+    },
+    "usuario_nome": {
+      "type": "string",
+      "description": "Nome do signat\u00e1rio ou usu\u00e1rio respons\u00e1vel pelo evento"
+    },
+    "ip": {
+      "type": "string",
+      "description": "IP registrado no momento do evento"
+    },
+    "navegador": {
+      "type": "string",
+      "description": "User-agent do navegador no momento do evento"
+    },
+    "dispositivo": {
+      "type": "string",
+      "description": "Sistema operacional / dispositivo no momento do evento"
+    },
+    "resultado": {
+      "type": "string",
+      "description": "Resultado do evento: sucesso, erro, recusado, invalidado, etc."
+    },
+    "detalhes": {
+      "type": "string",
+      "description": "Detalhes adicionais do evento"
+    },
+    "data_hora": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora exatas do evento"
+    }
+  },
+  "required": [
+    "evento",
+    "data_hora"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return false;"
+    },
+    "delete": {
+      "rule": "return false;"
+    }
+  }
+}

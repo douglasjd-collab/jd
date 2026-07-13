@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Loader2, ShieldCheck, FileText, CheckCircle2, XCircle } from 'lucide-react';
 import AssinaturaCanvas from '@/components/assinatura/AssinaturaCanvas';
+import CapturaCamera from '@/components/assinatura/CapturaCamera';
 
 const ROLE_LABELS = { cliente: 'Cliente', testemunha1: 'Testemunha 1', testemunha2: 'Testemunha 2', representante: 'Representante da empresa' };
 
@@ -25,12 +26,21 @@ const TESTEMUNHA_ACEITES = [
   'Estou assinando esta declaração de forma livre.',
 ];
 
+const getDeviceInfo = () => ({
+  navegador: navigator.userAgent,
+  sistema_operacional: navigator.platform || '',
+  idioma: navigator.language,
+  resolucao_tela: `${window.screen.width}x${window.screen.height}`,
+});
+
 export default function AssinarDocumento() {
   const { token } = useParams();
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
   const [info, setInfo] = useState(null);
-  const [step, setStep] = useState('doc'); // doc -> aceites -> frase -> assinatura -> concluido
+  // identidade -> selfie -> rg_frente -> rg_verso -> resumo -> doc -> aceites -> frase -> assinatura -> concluido
+  const [step, setStep] = useState('identidade');
+  const [enviandoEvidencia, setEnviandoEvidencia] = useState(false);
   const [aceites, setAceites] = useState([]);
   const [frase, setFrase] = useState('');
   const [enviando, setEnviando] = useState(false);
@@ -43,12 +53,24 @@ export default function AssinarDocumento() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  useEffect(() => {
+    if (step === 'doc' && token) {
+      base44.functions.invoke('assinaturaPublica', { action: 'registrar_evento', token, evento: 'termo_visualizado', device: getDeviceInfo() });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
   const carregar = async () => {
     setLoading(true);
     try {
       const res = await base44.functions.invoke('assinaturaPublica', { action: 'status', token });
       setInfo(res.data);
-      if (res.data.error) setErro(res.data.error);
+      if (res.data.error) {
+        setErro(res.data.error);
+      } else {
+        const ev = res.data.evidencias || {};
+        setStep(ev.selfie && ev.rg_frente && ev.rg_verso ? 'doc' : 'identidade');
+      }
     } catch (e) {
       setErro('Não foi possível carregar este link.');
     } finally {
@@ -64,12 +86,30 @@ export default function AssinarDocumento() {
   const todosAceitos = listaAceites.every((a) => aceites.includes(a));
   const exigeFrase = info?.role === 'cliente';
 
+  const enviarEvidencia = async (tipoEvidencia, dataUrl, proximoStep) => {
+    setEnviandoEvidencia(true);
+    try {
+      const res = await base44.functions.invoke('assinaturaPublica', {
+        action: 'enviar_evidencia', token, tipo: tipoEvidencia, data_url: dataUrl, device: getDeviceInfo(),
+      });
+      if (res.data.error) {
+        setErro(res.data.error);
+        return;
+      }
+      setStep(proximoStep);
+    } catch (e) {
+      setErro('Erro ao enviar a captura. Tente novamente.');
+    } finally {
+      setEnviandoEvidencia(false);
+    }
+  };
+
   const handleAssinar = async () => {
     if (!canvasRef.current || canvasRef.current.isEmpty()) return;
     setEnviando(true);
     try {
       const dataUrl = canvasRef.current.getDataURL();
-      const res = await base44.functions.invoke('assinaturaPublica', { action: 'assinar', token, assinatura_data_url: dataUrl });
+      const res = await base44.functions.invoke('assinaturaPublica', { action: 'assinar', token, assinatura_data_url: dataUrl, device: getDeviceInfo() });
       if (res.data.error) {
         setErro(res.data.error);
       } else {
@@ -85,7 +125,7 @@ export default function AssinarDocumento() {
   const handleRecusar = async (motivo) => {
     setEnviando(true);
     try {
-      await base44.functions.invoke('assinaturaPublica', { action: 'recusar', token, motivo });
+      await base44.functions.invoke('assinaturaPublica', { action: 'recusar', token, motivo, device: getDeviceInfo() });
       setErro('Você optou por não assinar este documento. O responsável pela proposta foi notificado.');
     } finally {
       setEnviando(false);
@@ -147,6 +187,69 @@ export default function AssinarDocumento() {
           <p><span className="font-semibold text-slate-500">Operação:</span> {info.tipo_operacao}</p>
           <p><span className="font-semibold text-slate-500">Contrato:</span> {info.contrato}</p>
         </div>
+
+        {step === 'identidade' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 text-center">
+            <ShieldCheck className="w-10 h-10 text-[#23BE84] mx-auto" />
+            <h2 className="font-semibold text-slate-800">Confirmação de Identidade</h2>
+            <p className="text-sm text-slate-600">
+              Para proteger sua identidade e evitar assinaturas realizadas por terceiros, será necessário confirmar sua identidade antes da assinatura.
+            </p>
+            <Button className="w-full bg-[#23BE84] hover:bg-[#1da570]" onClick={() => setStep('selfie')}>
+              Iniciar confirmação de identidade
+            </Button>
+          </div>
+        )}
+
+        {step === 'selfie' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <CapturaCamera
+              titulo="Etapa 1 — Selfie"
+              instrucao="Capture uma selfie em tempo real. Posicione seu rosto dentro da câmera."
+              facingModeInicial="user"
+              confirmando={enviandoEvidencia}
+              onConfirmar={(dataUrl) => enviarEvidencia('selfie', dataUrl, 'rg_frente')}
+            />
+          </div>
+        )}
+
+        {step === 'rg_frente' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <CapturaCamera
+              titulo="Frente do RG"
+              instrucao="Fotografe a frente do seu documento."
+              facingModeInicial="environment"
+              confirmando={enviandoEvidencia}
+              onConfirmar={(dataUrl) => enviarEvidencia('rg_frente', dataUrl, 'rg_verso')}
+            />
+          </div>
+        )}
+
+        {step === 'rg_verso' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <CapturaCamera
+              titulo="Verso do RG"
+              instrucao="Fotografe o verso do seu documento."
+              facingModeInicial="environment"
+              confirmando={enviandoEvidencia}
+              onConfirmar={(dataUrl) => enviarEvidencia('rg_verso', dataUrl, 'resumo')}
+            />
+          </div>
+        )}
+
+        {step === 'resumo' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+            <h2 className="font-semibold text-slate-700">Identidade confirmada</h2>
+            <div className="space-y-1.5 text-sm text-green-700">
+              <p className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Selfie</p>
+              <p className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Frente do RG</p>
+              <p className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Verso do RG</p>
+            </div>
+            <Button className="w-full bg-[#23BE84] hover:bg-[#1da570]" onClick={() => setStep('doc')}>
+              Continuar para leitura do documento
+            </Button>
+          </div>
+        )}
 
         {step === 'doc' && (
           <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">

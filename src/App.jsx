@@ -56,6 +56,7 @@ import LogsWebhookDapi from './pages/LogsWebhookDapi';
 import GruposConsorcio from './pages/GruposConsorcio';
 import GrupoConsorcioDetalhes from './pages/GrupoConsorcioDetalhes';
 import AssinarDocumento from './pages/AssinarDocumento';
+import ValidarDocumento from './pages/ValidarDocumento';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -165,6 +166,7 @@ function App() {
   // A rota de assinatura pública é acessada por clientes/testemunhas sem login no CRM,
   // por isso fica fora do AuthProvider/gate de autenticação do restante do app.
   const isRotaAssinaturaPublica = window.location.pathname.startsWith('/assinar/');
+  const isRotaValidacaoPublica = window.location.pathname.startsWith('/validar/');
 
   return (
     <QueryClientProvider client={queryClientInstance}>
@@ -172,6 +174,10 @@ function App() {
         {isRotaAssinaturaPublica ? (
           <Routes>
             <Route path="/assinar/:token" element={<AssinarDocumento />} />
+          </Routes>
+        ) : isRotaValidacaoPublica ? (
+          <Routes>
+            <Route path="/validar/:termoId" element={<ValidarDocumento />} />
           </Routes>
         ) : (
           <AuthProvider>

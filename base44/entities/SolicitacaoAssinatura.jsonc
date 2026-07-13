@@ -96,6 +96,10 @@
     "cliente_assinatura_url": {
       "type": "string"
     },
+    "cliente_evidencias_json": {
+      "type": "string",
+      "description": "JSON com evid\u00eancias digitais do cliente: selfie_url, selfie_hash, rg_frente_url, rg_frente_hash, rg_verso_url, rg_verso_hash, ip, navegador, sistema_operacional, idioma, resolucao_tela e timestamps de captura"
+    },
     "testemunha1_nome": {
       "type": "string"
     },
@@ -131,6 +135,10 @@
     },
     "testemunha1_assinatura_url": {
       "type": "string"
+    },
+    "testemunha1_evidencias_json": {
+      "type": "string",
+      "description": "JSON com evid\u00eancias digitais da testemunha 1 (mesma estrutura das evid\u00eancias do cliente)"
     },
     "testemunha2_nome": {
       "type": "string"
@@ -168,6 +176,10 @@
     "testemunha2_assinatura_url": {
       "type": "string"
     },
+    "testemunha2_evidencias_json": {
+      "type": "string",
+      "description": "JSON com evid\u00eancias digitais da testemunha 2 (mesma estrutura das evid\u00eancias do cliente)"
+    },
     "representante_nome": {
       "type": "string"
     },
@@ -202,6 +214,10 @@
     },
     "representante_assinatura_url": {
       "type": "string"
+    },
+    "representante_evidencias_json": {
+      "type": "string",
+      "description": "JSON com evid\u00eancias digitais do representante (mesma estrutura das evid\u00eancias do cliente)"
     },
     "motivo_recusa": {
       "type": "string"

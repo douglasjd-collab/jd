@@ -16,6 +16,7 @@ const STATUS_LABELS = {
   recusado: 'Recusado',
   cancelado: 'Cancelado',
   substituido: 'Substituído por nova versão',
+  invalidado: 'Assinatura invalidada',
 };
 
 const STATUS_COLORS = {
@@ -26,6 +27,7 @@ const STATUS_COLORS = {
   recusado: 'bg-red-100 text-red-700',
   cancelado: 'bg-slate-200 text-slate-600',
   substituido: 'bg-slate-100 text-slate-500',
+  invalidado: 'bg-red-100 text-red-800',
 };
 
 const fmtDateTime = (d) => (d ? format(new Date(d), 'dd/MM/yyyy HH:mm') : '-');
@@ -70,6 +72,11 @@ export default function TermoAutorizacaoTab({ proposta, cliente, empresa, curren
               </Badge>
               <span className="text-xs text-slate-400">Versão {atual.versao}</span>
             </div>
+            {atual.status === 'invalidado' && (
+              <div className="bg-red-50 border border-red-100 rounded-lg p-2 text-xs text-red-700">
+                {atual.invalidado_motivo || 'Documento alterado após a assinatura. Gere uma nova versão e solicite as assinaturas novamente.'}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3 text-sm mt-2">
               <div><span className="text-slate-400 text-xs">Cliente</span><p className="font-medium">{atual.cliente_nome || '-'}</p></div>
               <div><span className="text-slate-400 text-xs">CPF</span><p className="font-medium">{atual.cliente_cpf || '-'}</p></div>

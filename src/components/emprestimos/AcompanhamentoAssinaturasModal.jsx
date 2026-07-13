@@ -82,12 +82,16 @@ export default function AcompanhamentoAssinaturasModal({ open, onOpenChange, pro
     }
     setBaixando(true);
     try {
-      const docPdf = await gerarTermoComAssinaturasPDF({ proposta, cliente, empresa, solicitacao: sol });
+      const { doc: docPdf, hashFinal } = await gerarTermoComAssinaturasPDF({ proposta, cliente, empresa, solicitacao: sol, termo });
       if (termo) {
         const blob = docPdf.output('blob');
         const file = new File([blob], nomeArquivo(), { type: 'application/pdf' });
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        await base44.entities.TermoAutorizacao.update(termo.id, { pdf_assinado_url: file_url });
+        await base44.entities.TermoAutorizacao.update(termo.id, {
+          pdf_assinado_url: file_url,
+          hash_final: hashFinal,
+          qr_code_url: `${window.location.origin}/validar/${termo.id}`,
+        });
         queryClient.invalidateQueries({ queryKey: ['termo-autorizacao-assinatura', sol.termo_autorizacao_id] });
       }
       docPdf.save(nomeArquivo());
