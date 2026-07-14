@@ -23,7 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TrendingUp, CheckCircle2, Loader2, Search, Pencil, History, ChevronDown } from 'lucide-react';
+import { TrendingUp, CheckCircle2, Loader2, Search, Pencil, History, ChevronDown, MessageCircle } from 'lucide-react';
+import ChatPopupModal from '@/components/chat/ChatPopupModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +47,47 @@ export default function OfertaLance() {
   const [editPercentual, setEditPercentual] = useState('');
   const [editTipoLance, setEditTipoLance] = useState('livre');
   const [editObservacao, setEditObservacao] = useState('');
+  const [chatPopup, setChatPopup] = useState(null); // { telefone, nome } contato para o popup
+  const [buscandoTelefone, setBuscandoTelefone] = useState(null); // id da venda em busca
   const queryClient = useQueryClient();
+
+  // Buscar telefone do cliente (via Cliente entity) e abrir o popup de chat
+  const abrirChatCliente = async (venda) => {
+    setBuscandoTelefone(venda.id);
+    try {
+      let telefone = null;
+      // 1. Se a venda já tem cliente_telefone, usar direto
+      if (venda.cliente_telefone) {
+        telefone = venda.cliente_telefone;
+      } else if (venda.cliente_id) {
+        // 2. Buscar na entidade Cliente pelo cliente_id
+        const clientes = await base44.entities.Cliente.filter({ id: venda.cliente_id }, null, 1);
+        if (clientes?.length > 0 && (clientes[0].celular || clientes[0].telefone_fixo)) {
+          telefone = clientes[0].celular || clientes[0].telefone_fixo;
+        }
+      }
+
+      if (!telefone) {
+        toast.error('Telefone do cliente não encontrado. Cadastre o telefone no cadastro do cliente.');
+        return;
+      }
+
+      // Normalizar telefone — garantir que comece com 55
+      let telLimpo = String(telefone).replace(/\D/g, '');
+      if (telLimpo && !telLimpo.startsWith('55') && telLimpo.length >= 10) {
+        telLimpo = '55' + telLimpo;
+      }
+
+      setChatPopup({
+        telefone: telLimpo,
+        nome: venda.cliente_nome || 'Cliente',
+      });
+    } catch (e) {
+      toast.error('Erro ao buscar telefone do cliente: ' + (e.message || ''));
+    } finally {
+      setBuscandoTelefone(null);
+    }
+  };
 
   // Competência atual (YYYY-MM) - fevereiro 2026
   const hoje = new Date();
@@ -347,16 +388,34 @@ export default function OfertaLance() {
     },
     {
       header: '',
-      className: 'w-32',
+      className: 'w-44',
       cell: (row) => (
-        <Button
-          size="sm"
-          onClick={() => handleOfertar(row)}
-          className="bg-[#23BE84] hover:bg-[#1da570]"
-        >
-          <TrendingUp className="w-4 h-4 mr-2" />
-          Ofertar Lance
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => handleOfertar(row)}
+            className="bg-[#23BE84] hover:bg-[#1da570]"
+          >
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Ofertar Lance
+          </Button>
+          <Button
+            size="icon"
+            variant="outline"
+            disabled={buscandoTelefone === row.id}
+            onClick={() => abrirChatCliente(row)}
+            className="h-8 w-8 shrink-0 border-emerald-200 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-300"
+            title="Conversar no WhatsApp"
+          >
+            {buscandoTelefone === row.id ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.247-.694.247-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.485 3.51A13.935 13.935 0 0012.06 0C5.503 0 .12 5.382.12 11.94c0 2.104.55 4.16 1.595 5.972L.03 24l4.204-1.102a13.9 13.9 0 005.86 1.261h.004c6.557 0 11.94-5.382 11.94-11.94a11.88 11.88 0 00-3.515-8.46"/>
+              </svg>
+            )}
+          </Button>
+        </div>
       )
     }
   ];
@@ -690,6 +749,16 @@ export default function OfertaLance() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Popup de conversa WhatsApp — mesmo usado no Bate-Papo */}
+      <ChatPopupModal
+        open={!!chatPopup}
+        onOpenChange={(v) => { if (!v) setChatPopup(null); }}
+        contato={chatPopup}
+        empresaId={currentUser?.empresa_id}
+        user={currentUser}
+        criarSeNaoExistir={true}
+      />
     </div>
   );
 }

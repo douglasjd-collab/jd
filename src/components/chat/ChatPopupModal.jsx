@@ -9,7 +9,7 @@ import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import AvatarContato from '@/components/chat/AvatarContato';
 import { toast } from 'sonner';
 
-export default function ChatPopupModal({ open, onOpenChange, contato, empresaId, user }) {
+export default function ChatPopupModal({ open, onOpenChange, contato, empresaId, user, criarSeNaoExistir = true }) {
   const queryClient = useQueryClient();
   const scrollAreaRef = useRef(null);
 
@@ -31,6 +31,43 @@ export default function ChatPopupModal({ open, onOpenChange, contato, empresaId,
         );
         if (convs.length > 0) return convs[0];
       }
+
+      // Não encontrou: criar nova conversa se solicitado
+      if (criarSeNaoExistir) {
+        let dadosCanal = { tipo_conexao: 'empresa' };
+        try {
+          const conexoesDapi = await base44.entities.WhatsappConnection.filter({
+            empresa_id: empresaId,
+            provider_type: 'dapi',
+            is_active: true
+          }, '-created_date', 1);
+          const conexaoDapi = conexoesDapi?.[0];
+          if (conexaoDapi) {
+            dadosCanal = {
+              tipo_conexao: 'dapi',
+              canal_origem: 'dapi',
+              provider: 'dapi',
+              instancia: conexaoDapi.session_id || 'D-API',
+              connection_id: conexaoDapi.id,
+              locked_provider: true,
+            };
+          }
+        } catch (_) {}
+
+        const nova = await base44.entities.ConversaWhatsapp.create({
+          empresa_id: empresaId,
+          cliente_id: '',
+          cliente_nome: contato.nome || tel,
+          cliente_telefone: tel,
+          whatsapp_id: `conv_${Date.now()}`,
+          status: 'ativa',
+          ultima_mensagem: '',
+          data_ultima_mensagem: new Date().toISOString(),
+          ...dadosCanal
+        });
+        return nova;
+      }
+
       return null;
     },
   });
