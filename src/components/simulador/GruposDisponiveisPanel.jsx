@@ -3,18 +3,21 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Loader2, ChevronDown, ChevronUp, Trophy, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, ChevronDown, ChevronUp, History, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   CATEGORIA_LABELS,
   CATEGORIA_ICONS,
   PRIORIDADE_ORDER,
   calcularMediaPercentual,
+  obterUltimasAssembleias,
   formatPercent,
   formatCurrency
 } from '@/components/utils/gruposConsorcioHelpers';
+import HistoricoAssembleiaGrupoPanel from './HistoricoAssembleiaGrupoPanel';
 
-export default function GruposDisponiveisPanel({ empresaId, administradoraId, categoriaBem, credito, grupoSelecionado, onSelectGrupo }) {
+export default function GruposDisponiveisPanel({ empresaId, administradoraId, categoriaBem, credito, grupoSelecionado, onSelectGrupo, lanceClientePercentual }) {
   const [expandido, setExpandido] = useState(null);
   const [buscaNumero, setBuscaNumero] = useState('');
   const [prazoMaxFiltro, setPrazoMaxFiltro] = useState('');
@@ -55,7 +58,8 @@ export default function GruposDisponiveisPanel({ empresaId, administradoraId, ca
     const comMedia = lista.map(g => {
       const assembleiasGrupo = todasAssembleias.filter(a => a.grupo_consorcio_id === g.id);
       const mediaLivre3m = calcularMediaPercentual(assembleiasGrupo, 3, 'lance_livre_menor_percentual');
-      return { ...g, _assembleias: assembleiasGrupo, _mediaLivre3m: mediaLivre3m };
+      const ultimaAssembleia = obterUltimasAssembleias(assembleiasGrupo, 1)[0] || null;
+      return { ...g, _assembleias: assembleiasGrupo, _mediaLivre3m: mediaLivre3m, _ultimaAssembleia: ultimaAssembleia };
     });
 
     comMedia.sort((a, b) => {
@@ -95,14 +99,14 @@ export default function GruposDisponiveisPanel({ empresaId, administradoraId, ca
             {gruposCompativeis.map(g => {
               const selecionado = grupoSelecionado === g.numero_grupo;
               const expandidoAtual = expandido === g.id;
+              const ultimaAssembleia = g._ultimaAssembleia;
               return (
                 <div
                   key={g.id}
                   className={cn(
-                    'rounded-xl border-2 p-4 transition-all cursor-pointer',
+                    'rounded-xl border-2 p-4 transition-all',
                     selecionado ? 'border-[#23BE84] bg-emerald-50' : 'border-slate-200 bg-white hover:border-slate-300'
                   )}
-                  onClick={() => onSelectGrupo?.(g.numero_grupo)}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-semibold text-slate-700">
@@ -126,52 +130,57 @@ export default function GruposDisponiveisPanel({ empresaId, administradoraId, ca
                       <p className="font-medium text-slate-700">{g.qtd_participantes ?? '-'}</p>
                     </div>
                     <div>
-                      <p className="text-slate-400">Média Lance Livre</p>
-                      <p className="font-medium text-blue-700">{formatPercent(g._mediaLivre3m)}</p>
+                      <p className="text-slate-400">Último lance livre</p>
+                      <p className="font-medium text-blue-700">{formatPercent(ultimaAssembleia?.lance_livre_menor_percentual)}</p>
                     </div>
                   </div>
 
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setExpandido(expandidoAtual ? null : g.id); }}
-                    className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1"
-                  >
-                    {expandidoAtual ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    Ver Histórico
-                  </button>
+                  <div className="grid grid-cols-2 gap-2 text-xs mb-3 pt-2 border-t">
+                    <div>
+                      <p className="text-slate-400">Data última assembleia</p>
+                      <p className="font-medium text-slate-700">
+                        {ultimaAssembleia?.data_assembleia ? new Date(ultimaAssembleia.data_assembleia + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Menor lance limitado</p>
+                      <p className="font-medium text-orange-700">{formatPercent(ultimaAssembleia?.lance_limitado_menor_percentual)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Menor lance livre</p>
+                      <p className="font-medium text-blue-700">{formatPercent(ultimaAssembleia?.lance_livre_menor_percentual)}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400">Contemplados (última)</p>
+                      <p className="font-medium text-amber-700">{ultimaAssembleia?.total_contemplados ?? 0}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1"
+                      onClick={() => setExpandido(expandidoAtual ? null : g.id)}
+                    >
+                      <History className="w-3 h-3" />
+                      Ver histórico dos últimos 3 meses
+                      {expandidoAtual ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className={cn('h-8 text-xs gap-1', selecionado ? 'bg-[#23BE84] hover:bg-[#1ea873]' : '')}
+                      onClick={() => onSelectGrupo?.(g.numero_grupo)}
+                    >
+                      <CheckCircle2 className="w-3 h-3" />
+                      {selecionado ? 'Selecionado' : 'Selecionar grupo'}
+                    </Button>
+                  </div>
 
                   {expandidoAtual && (
-                    <div className="mt-3 pt-3 border-t space-y-2">
-                      {g._assembleias.length === 0 ? (
-                        <p className="text-xs text-slate-400">Nenhuma assembleia registrada.</p>
-                      ) : (
-                        g._assembleias
-                          .slice()
-                          .sort((a, b) => new Date(b.data_assembleia) - new Date(a.data_assembleia))
-                          .map(a => (
-                            <div key={a.id} className="p-2 bg-slate-50 rounded-lg text-xs">
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="flex items-center gap-1 font-semibold text-slate-700">
-                                  <Calendar className="w-3 h-3" /> {new Date(a.data_assembleia + 'T00:00:00').toLocaleDateString('pt-BR')}
-                                </span>
-                                <span className="flex items-center gap-1 font-bold text-amber-700">
-                                  <Trophy className="w-3 h-3" /> {a.total_contemplados || 0}
-                                </span>
-                              </div>
-                              <div className="grid grid-cols-2 gap-1">
-                                {a.lance_livre_menor_percentual != null && (
-                                  <p className="text-blue-700">Lance Livre: {formatPercent(a.lance_livre_menor_percentual)} ({a.lance_livre_qtd_contemplados || 0})</p>
-                                )}
-                                {a.lance_limitado_menor_percentual != null && (
-                                  <p className="text-orange-700">Lance Limitado: {formatPercent(a.lance_limitado_menor_percentual)} ({a.lance_limitado_qtd_contemplados || 0})</p>
-                                )}
-                                {a.lance_fixo_50_qtd_contemplados > 0 && <p className="text-purple-700">Fixo 50%: {a.lance_fixo_50_qtd_contemplados}</p>}
-                                {a.lance_fixo_30_qtd_contemplados > 0 && <p className="text-purple-700">Fixo 30%: {a.lance_fixo_30_qtd_contemplados}</p>}
-                                {a.sorteio_qtd_contemplados > 0 && <p className="text-slate-600">Sorteio: {a.sorteio_qtd_contemplados}</p>}
-                              </div>
-                            </div>
-                          ))
-                      )}
-                    </div>
+                    <HistoricoAssembleiaGrupoPanel assembleias={g._assembleias} lanceClientePercentual={lanceClientePercentual} />
                   )}
                 </div>
               );
