@@ -387,8 +387,8 @@ export default function ImprimirSimulacao() {
           {/* Bloco 5: Análise de Contemplação */}
           {renderAnalise()}
 
-          {/* Bloco 6+7: Valor que o Cliente Recebe + Resultado Final (lado a lado) */}
-          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-3">
+          {/* Bloco 6+7: Valor que o Cliente Recebe + Resultado Final (lado a lado, 2:3) */}
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-[2fr_3fr] print:grid-cols-[2fr_3fr] gap-3">
             {/* Valor que o Cliente Recebe — modelo moderno */}
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex">
               <div className="bg-[#083D3E] w-1/4 flex items-center justify-center p-3">
