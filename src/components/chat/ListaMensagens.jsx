@@ -4,6 +4,8 @@ import { isSameDay, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import MensagemItem from './MensagemItem';
 import GrupoImagens from './GrupoImagens';
+import { X, Forward } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const INTERVALO_MAX_MS = 5 * 60 * 1000; // 5 minutos (igual ao WhatsApp)
 
@@ -47,8 +49,8 @@ function agruparMensagens(mensagens) {
   return grupos;
 }
 
-export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar, onSelecionarOpcaoLista }) {
-  const grupos = agruparMensagens(mensagens);
+export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar, onSelecionarOpcaoLista, modoSelecao = false, idsSelecionados = new Set(), onToggleSelecao = null, onEncaminhar = null, onCancelarSelecao = null, onConfirmarSelecao = null }) {
+  const grupos = modoSelecao ? mensagens.map(msg => ({ type: 'mensagem', msg })) : agruparMensagens(mensagens);
 
   return (
     <div className="space-y-3 pb-4">
@@ -102,11 +104,40 @@ export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo
               user={user}
               onEditarReenviar={onEditarReenviar}
               onSelecionarOpcaoLista={onSelecionarOpcaoLista}
+              modoSelecao={modoSelecao}
+              selecionada={idsSelecionados.has(item.msg.id)}
+              onToggleSelecao={onToggleSelecao}
+              onEncaminhar={onEncaminhar}
             />
           </div>
         );
       })}
       <div ref={mensagensEndRef} />
+      {modoSelecao && (
+        <div className="sticky bottom-0 left-0 right-0 z-10 -mb-4 mt-3 flex items-center justify-between gap-3 px-4 py-3 bg-white border-t border-slate-200 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onCancelarSelecao}
+              className="p-1.5 rounded-full hover:bg-slate-100 transition-colors"
+              aria-label="Cancelar seleção"
+            >
+              <X className="w-5 h-5 text-slate-600" />
+            </button>
+            <span className="text-sm font-medium text-slate-700">
+              {idsSelecionados.size} selecionada{idsSelecionados.size === 1 ? '' : 's'}
+            </span>
+          </div>
+          <Button
+            size="sm"
+            disabled={idsSelecionados.size === 0}
+            onClick={onConfirmarSelecao}
+            className="gap-2"
+          >
+            <Forward className="w-4 h-4" />
+            Encaminhar ({idsSelecionados.size})
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

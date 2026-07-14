@@ -54,6 +54,7 @@ import MensagemItem from '@/components/chat/MensagemItem';
 import GrupoImagens from '@/components/chat/GrupoImagens';
 import ListaMensagens from '@/components/chat/ListaMensagens';
 import NovaConversaModal from '@/components/chat/NovaConversaModal';
+import EncaminharMensagensModal from '@/components/chat/EncaminharMensagensModal';
 import AvatarContato from '@/components/chat/AvatarContato';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
 import { useTarefaFormData } from '@/hooks/useTarefaFormData';
@@ -306,6 +307,10 @@ export default function BatePapo() {
   const [scriptCoach, setScriptCoach] = useState(null);
   const [mobileActionSheet, setMobileActionSheet] = useState({ open: false, conversa: null });
   const [editorReenvioUrl, setEditorReenvioUrl] = useState(null);
+  // ── Modo Encaminhar (seleção multipla de mensagens) ──
+  const [modoEncaminhar, setModoEncaminhar] = useState(false);
+  const [idsEncaminhar, setIdsEncaminhar] = useState(() => new Set());
+  const [encaminharModalOpen, setEncaminharModalOpen] = useState(false);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -1066,6 +1071,9 @@ export default function BatePapo() {
   React.useEffect(() => {
     if (!conversaSelecionada?.id || !empresaId) return;
 
+    // Sair do modo encaminhar ao trocar de conversa
+    cancelarEncaminhar();
+
     // Invalidar query para forçar novo fetch
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
     
@@ -1159,6 +1167,118 @@ export default function BatePapo() {
       });
       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
     } catch (_) {}
+  };
+
+  // ── Encaminhar mensagens: helpers e handlers ────────────────────────────
+  // Converte URL de mídia -> {base64, tipo, nome, tamanho} para reenvio via enviarMensagemWhatsapp
+  const arquivoUrlParaBase64 = async (url) => {
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) return null;
+      const blob = await resp.blob();
+      if (!blob || blob.size === 0) return null;
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      const nome = (url.split('?')[0].split('/').pop()) || `midia_${Date.now()}`;
+      return { base64: dataUrl, tipo: blob.type || 'application/octet-stream', nome, tamanho: blob.size };
+    } catch (e) {
+      console.warn('Encaminhar: falha ao baixar mídia:', e?.message);
+      return null;
+    }
+  };
+
+  // Texto "legível" da mensagem — descarta legendas padrão geradas pelo webhook
+  const textoLegivelEncaminhar = (msg) => {
+    if (!msg.texto) return '';
+    const t = String(msg.texto).trim();
+    if (!t) return '';
+    const padroes = ['Imagem', 'Áudio', 'Vídeo', 'Video', 'Audio', 'imagem', 'audio', 'video'];
+    if (padroes.includes(t)) return '';
+    if (/^📎\s+\S+$/.test(t)) return '';
+    return t;
+  };
+
+  const iniciarEncaminhar = (mensagem) => {
+    if (!mensagem?.id) return;
+    setIdsEncaminhar(new Set([mensagem.id]));
+    setModoEncaminhar(true);
+  };
+
+  const toggleSelecaoEncaminhar = (id) => {
+    setIdsEncaminhar(prev => {
+      const nova = new Set(prev);
+      if (nova.has(id)) nova.delete(id);
+      else nova.add(id);
+      return nova;
+    });
+  };
+
+  const cancelarEncaminhar = () => {
+    setModoEncaminhar(false);
+    setIdsEncaminhar(new Set());
+  };
+
+  const abrirModalEncaminhar = () => {
+    if (idsEncaminhar.size === 0) return;
+    setEncaminharModalOpen(true);
+  };
+
+  // Envia cada mensagem selecionada para cada destino (em ordem)
+  const confirmarEncaminhamento = async (destinos) => {
+    const msgsSelecionadas = mensagens.filter(m => idsEncaminhar.has(m.id));
+    if (msgsSelecionadas.length === 0 || destinos.length === 0) return;
+
+    const total = msgsSelecionadas.length * destinos.length;
+    let sucessos = 0, falhas = 0;
+    let primeiraConversaDestinoId = null;
+
+    // Pré-baixar mídias (paralelo) para acelerar
+    const midiasCache = {};
+    await Promise.all(msgsSelecionadas.map(async (m) => {
+      if (!m.arquivo_url) return;
+      const tipos = ['imagem', 'audio', 'video', 'pdf', 'documento'];
+      if (!tipos.includes(m.tipo_conteudo)) return;
+      midiasCache[m.id] = await arquivoUrlParaBase64(m.arquivo_url);
+    }));
+
+    for (const destino of destinos) {
+      if (!primeiraConversaDestinoId) primeiraConversaDestinoId = destino.id;
+      for (const msg of msgsSelecionadas) {
+        try {
+          const arquivo = midiasCache[msg.id] || null;
+          const texto = textoLegivelEncaminhar(msg);
+          // Pular mensagens sem conteúdo reutilizável (ex: internas do WhatsApp)
+          if (!texto && !arquivo) { falhas++; continue; }
+          const numero_cliente = destino.whatsapp_id && destino.whatsapp_id.includes('@g.us')
+            ? destino.whatsapp_id
+            : destino.cliente_telefone;
+          const resp = await base44.functions.invoke('enviarMensagemWhatsapp', {
+            conversa_id: destino.id,
+            numero_cliente,
+            empresa_id: empresaId,
+            mensagem_texto: texto || (arquivo ? '' : (msg.texto || '')),
+            arquivo,
+          });
+          if (resp?.data?.success) sucessos++; else falhas++;
+        } catch (e) {
+          console.warn('Encaminhar falhou para msg', msg.id, '→', destino.id, e?.message);
+          falhas++;
+        }
+      }
+      // Atualizar cache de mensagens do destino
+      queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', destino.id] });
+    }
+
+    cancelarEncaminhar();
+    if (falhas > 0) {
+      toast.message(`Encaminhamento: ${sucessos}/${total} enviadas (${falhas} falha(s))`);
+    } else {
+      toast.success(`✅ ${sucessos} mensagem(ns) encaminhada(s)`);
+    }
   };
 
   // Conversas válidas — exclui grupos, broadcast e LID (apenas contatos individuais)
@@ -1481,6 +1601,17 @@ export default function BatePapo() {
         />
 
         <MensagensAgendadasModal open={agendadasOpen} onOpenChange={setAgendadasOpen} empresaId={empresaId} />
+
+        {/* Modal Encaminhar Mensagens — seleção de destino(s) */}
+        <EncaminharMensagensModal
+          open={encaminharModalOpen}
+          onOpenChange={setEncaminharModalOpen}
+          conversas={conversas}
+          contatosWhatsapp={contatosWhatsapp}
+          isGrupo={isGrupo}
+          qtdMensagens={idsEncaminhar.size}
+          onConfirm={confirmarEncaminhamento}
+        />
 
         {/* Modal Agendar Mensagem */}
         <AgendarMensagemModal
@@ -2072,11 +2203,18 @@ export default function BatePapo() {
                           onSelecionarOpcaoLista={(opcaoTexto) => {
                             enviarMensagemMutation.mutate({ texto: opcaoTexto, arquivo: null, mensagemParaResponder: null });
                           }}
+                          modoSelecao={modoEncaminhar}
+                          idsSelecionados={idsEncaminhar}
+                          onToggleSelecao={toggleSelecaoEncaminhar}
+                          onEncaminhar={iniciarEncaminhar}
+                          onCancelarSelecao={cancelarEncaminhar}
+                          onConfirmarSelecao={abrirModalEncaminhar}
                         />
                       )}
                     </ScrollArea>
 
-                    {/* Input de mensagem */}
+                    {/* Input de mensagem (oculto durante modo de seleção/encaminhar) */}
+                    {!modoEncaminhar && (
                     <ChatMessageFooter
                       conversaSelecionada={conversaSelecionada}
                       mensagemParaResponder={mensagemParaResponder}
@@ -2090,6 +2228,7 @@ export default function BatePapo() {
                       setCoachIAOpen={setCoachIAOpen}
                       nomeCliente={contatosWhatsapp[conversaSelecionada?.id]?.nome || conversaSelecionada?.cliente_nome}
                     />
+                    )}
 
                     {/* Botão Flutuante Coach IA */}
                     {!coachIAOpen && conversaSelecionada && (

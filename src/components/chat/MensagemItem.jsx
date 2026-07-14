@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Copy, Pin, Pencil } from 'lucide-react';
+import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Copy, Pin, Pencil, Check } from 'lucide-react';
 import VideoMensagem from './VideoMensagem';
 import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
 import { format } from 'date-fns';
@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null }) {
+export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null, modoSelecao = false, selecionada = false, onToggleSelecao = null, onEncaminhar = null }) {
   // Corrige URLs com espaços não codificados (ex: pastas "CRM JD"), que quebram <img>/<audio>/<video>
   const sanitizeUrl = (url) => (typeof url === 'string' ? url.replace(/ /g, '%20') : url);
 
@@ -833,10 +833,21 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     const stickerSize = 33;
     return (
       <div data-msg-whatsapp-id={mensagem.whatsapp_message_id || undefined} className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-lg transition-shadow`}>
-        <div style={isSticker
-          ? { position: 'relative', maxWidth: stickerSize, minWidth: stickerSize }
-          : { position: 'relative', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.18)', maxWidth: 280, minWidth: 80 }
-        }>
+        {modoSelecao && (
+          <button type="button" onClick={() => onToggleSelecao?.(mensagem.id)} className="self-center flex-shrink-0 p-1" aria-label="Selecionar mensagem">
+            {selecionada
+              ? <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-600 text-white"><Check className="w-3.5 h-3.5" /></span>
+              : <span className="inline-flex items-center justify-center w-5 h-5 rounded-md border-2 border-slate-300 bg-white/80" />}
+          </button>
+        )}
+        <div
+          onClick={modoSelecao ? () => onToggleSelecao?.(mensagem.id) : undefined}
+          style={isSticker
+            ? { position: 'relative', maxWidth: stickerSize, minWidth: stickerSize }
+            : { position: 'relative', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.18)', maxWidth: 280, minWidth: 80 }
+          }
+          className={modoSelecao && selecionada ? 'ring-2 ring-emerald-500 rounded-xl' : ''}
+        >
           {loadingMedia ? (
             <div style={{ width: isSticker ? stickerSize : 200, height: isSticker ? stickerSize : 200, background: 'linear-gradient(90deg, #d1d5db 25%, #e5e7eb 50%, #d1d5db 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Loader2 style={{ width: 24, height: 24, color: '#9ca3af' }} className="animate-spin" />
@@ -915,6 +926,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           </DropdownMenuTrigger>
           <DropdownMenuContent align={isVendedor ? "end" : "start"}>
             <DropdownMenuItem onClick={() => onResponder?.(mensagem)}><Reply className="w-4 h-4 mr-2" />Responder</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEncaminhar?.(mensagem)}><Share2 className="w-4 h-4 mr-2" />Encaminhar</DropdownMenuItem>
             {mediaUrl && (
               <DropdownMenuItem onClick={() => onEditarReenviar?.(mediaUrl)}><Pencil className="w-4 h-4 mr-2" />Editar e reenviar</DropdownMenuItem>
             )}
@@ -929,14 +941,27 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
   return (
     <div data-msg-whatsapp-id={mensagem.whatsapp_message_id || undefined} className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-lg transition-shadow`}>
+      {modoSelecao && (
+        <button
+          type="button"
+          onClick={() => onToggleSelecao?.(mensagem.id)}
+          className="self-center flex-shrink-0 p-1"
+          aria-label="Selecionar mensagem"
+        >
+          {selecionada
+            ? <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-600 text-white"><Check className="w-3.5 h-3.5" /></span>
+            : <span className="inline-flex items-center justify-center w-5 h-5 rounded-md border-2 border-slate-300 bg-white/80" />}
+        </button>
+      )}
       <div
+        onClick={modoSelecao ? () => onToggleSelecao?.(mensagem.id) : undefined}
         className={`max-w-md rounded-2xl shadow-sm ${
           isSticker
             ? 'bg-transparent border-0 shadow-none px-0 py-0'
             : isVendedor
             ? 'bg-[#DCF8C6] text-slate-900 rounded-br-md px-4 py-3'
             : 'bg-white text-slate-900 rounded-bl-md border border-slate-200 px-4 py-3'
-        }`}
+        }${modoSelecao ? ' cursor-pointer' : ''}${modoSelecao && selecionada ? ' ring-2 ring-emerald-500' : ''}`}
       >
         {/* Nome do remetente em grupos com avatar */}
         {isGrupo && mensagem.remetente_nome && (
@@ -1043,7 +1068,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
              <Reply className="w-4 h-4 mr-2" />
              Responder
            </DropdownMenuItem>
-           <DropdownMenuItem onClick={() => toast.info('Encaminhar em breve')}>
+           <DropdownMenuItem onClick={() => onEncaminhar?.(mensagem)}>
              <Share2 className="w-4 h-4 mr-2" />
              Encaminhar
            </DropdownMenuItem>
