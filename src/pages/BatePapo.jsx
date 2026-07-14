@@ -1170,28 +1170,7 @@ export default function BatePapo() {
   };
 
   // ── Encaminhar mensagens: helpers e handlers ────────────────────────────
-  // Converte URL de mídia -> {base64, tipo, nome, tamanho} para reenvio via enviarMensagemWhatsapp
-  const arquivoUrlParaBase64 = async (url) => {
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) return null;
-      const blob = await resp.blob();
-      if (!blob || blob.size === 0) return null;
-      const dataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-      const nome = (url.split('?')[0].split('/').pop()) || `midia_${Date.now()}`;
-      return { base64: dataUrl, tipo: blob.type || 'application/octet-stream', nome, tamanho: blob.size };
-    } catch (e) {
-      console.warn('Encaminhar: falha ao baixar mídia:', e?.message);
-      return null;
-    }
-  };
-
-  // Texto "legível" da mensagem — descarta legendas padrão geradas pelo webhook
+  // Texto "legível" da mensagem — descarta legendas/padrões gerados pelo webhook
   const textoLegivelEncaminhar = (msg) => {
     if (!msg.texto) return '';
     const t = String(msg.texto).trim();
@@ -1200,6 +1179,19 @@ export default function BatePapo() {
     if (padroes.includes(t)) return '';
     if (/^📎\s+\S+$/.test(t)) return '';
     return t;
+  };
+
+  // Extrai um objeto "arquivo" (com URL + metadados) para enviar ao backend quando
+  // a mensagem selecionada é uma mídia já no storage. O backend (Deno) baixa a URL e
+  // converte para base64 internamente — evita CORS no browser.
+  const arquivoDaMensagem = (msg) => {
+    const tiposMidia = ['imagem', 'audio', 'video', 'pdf', 'documento'];
+    if (!tiposMidia.includes(msg.tipo_conteudo) || !msg.arquivo_url) return null;
+    return {
+      url: msg.arquivo_url,
+      tipo: msg.mime_type || '',
+      nome: msg.arquivo_nome || (msg.arquivo_url.split('?')[0].split('/').pop()) || `midia_${Date.now()}`,
+    };
   };
 
   const iniciarEncaminhar = (mensagem) => {
@@ -1234,24 +1226,13 @@ export default function BatePapo() {
 
     const total = msgsSelecionadas.length * destinos.length;
     let sucessos = 0, falhas = 0;
-    let primeiraConversaDestinoId = null;
-
-    // Pré-baixar mídias (paralelo) para acelerar
-    const midiasCache = {};
-    await Promise.all(msgsSelecionadas.map(async (m) => {
-      if (!m.arquivo_url) return;
-      const tipos = ['imagem', 'audio', 'video', 'pdf', 'documento'];
-      if (!tipos.includes(m.tipo_conteudo)) return;
-      midiasCache[m.id] = await arquivoUrlParaBase64(m.arquivo_url);
-    }));
 
     for (const destino of destinos) {
-      if (!primeiraConversaDestinoId) primeiraConversaDestinoId = destino.id;
       for (const msg of msgsSelecionadas) {
         try {
-          const arquivo = midiasCache[msg.id] || null;
+          const arquivo = arquivoDaMensagem(msg);
           const texto = textoLegivelEncaminhar(msg);
-          // Pular mensagens sem conteúdo reutilizável (ex: internas do WhatsApp)
+          // Pular mensagens sem conteúdo reutilizável (sem texto legível e sem mídia)
           if (!texto && !arquivo) { falhas++; continue; }
           const numero_cliente = destino.whatsapp_id && destino.whatsapp_id.includes('@g.us')
             ? destino.whatsapp_id

@@ -52,6 +52,39 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'numero_cliente é obrigatório' }, { status: 400 });
     }
 
+    // ── Encaminhar mídia: aceitar arquivo.url como alternativa ao base64 ──
+    // Permite que o frontend encaminhe mídias já no storage sem baixá-las no browser
+    // (evita problemas de CORS ebytes desnecessários no client).
+    if (arquivo && arquivo.url && !arquivo.base64) {
+      try {
+        console.log('🔗 Baixando mídia do URL para reenvio:', arquivo.url);
+        const mediaResp = await fetch(arquivo.url);
+        if (!mediaResp.ok) {
+          return Response.json({
+            error: 'Falha ao baixar mídia do URL: HTTP ' + mediaResp.status,
+            success: false
+          }, { status: 400 });
+        }
+        const mediaBuf = await mediaResp.arrayBuffer();
+        const bytes = new Uint8Array(mediaBuf);
+        let bin = '';
+        const chunk = 0x8000;
+        for (let i = 0; i < bytes.length; i += chunk) {
+          bin += String.fromCharCode(...bytes.subarray(i, i + chunk));
+        }
+        arquivo.base64 = btoa(bin);
+        if (!arquivo.tipo) arquivo.tipo = mediaResp.headers.get('content-type') || 'application/octet-stream';
+        if (!arquivo.nome) arquivo.nome = (arquivo.url.split('?')[0].split('/').pop()) || `midia_${Date.now()}`;
+        arquivo.tamanho = bytes.length;
+        console.log('✅ Mídia baixada server-side:', { tipo: arquivo.tipo, tamanho: bytes.length, nome: arquivo.nome });
+      } catch (e) {
+        return Response.json({
+          error: 'Erro ao baixar mídia para encaminhamento: ' + e.message,
+          success: false
+        }, { status: 500 });
+      }
+    }
+
     // Buscar empresa e credenciais
     let evolutionApiKey, evolutionApiUrl, instanceName;
     let empresaId = payload.empresa_id || user.empresa_id;
