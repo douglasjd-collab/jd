@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Printer, ArrowLeft, Calendar, User, ShieldCheck } from 'lucide-react';
+import { Printer, ArrowLeft, Calendar, User, ShieldCheck, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { calcularChanceContemplacao } from '@/components/simulador/AnaliseContemplacao';
 
@@ -387,36 +387,38 @@ export default function ImprimirSimulacao() {
           {/* Bloco 5: Análise de Contemplação */}
           {renderAnalise()}
 
-          {/* Bloco 6: Valor que o Cliente Recebe */}
-          <div className="mb-3 bg-[#083942] text-white rounded-xl p-4">
-            <p className="text-xs uppercase tracking-wide opacity-75 mb-1">Valor que o Cliente Recebe</p>
-            <p className="text-3xl font-bold">{formatCurrency(simulacao.credito_total - (simulacao.lance_embutido_valor || 0))}</p>
-            <p className="text-xs opacity-70 mt-1">Crédito {formatCurrency(simulacao.credito_total)}{simulacao.lance_embutido_valor > 0 ? ` menos Lance Embutido ${formatCurrency(simulacao.lance_embutido_valor)}` : ''}</p>
-          </div>
-
-          {/* Bloco 7: Resultado Final */}
-          <div className="mb-4 bg-purple-50 border-2 border-purple-300 rounded-xl p-4">
-            <h2 className="text-sm font-bold text-purple-800 uppercase tracking-wide mb-3 text-center">Resultado Final</h2>
-            <div className="divide-y divide-purple-100 text-sm">
-              <div className="flex justify-between py-1.5"><span className="text-slate-600">Total do Plano:</span><span className="font-semibold">{formatCurrency(simulacao.prazo_original * simulacao.parcela_total)}</span></div>
-              {simulacao.lance_proprio_ativo && simulacao.lance_proprio_valor > 0 && (
-                <div className="flex justify-between py-1.5 text-purple-700"><span>(-) Lance Próprio:</span><span className="font-semibold">- {formatCurrency(simulacao.lance_proprio_valor)}</span></div>
-              )}
-              <div className="flex justify-between py-1.5 text-orange-700"><span>(-) 1ª Parcela (no ato):</span><span className="font-semibold">- {formatCurrency(primeiraParcelaNoAto)}</span></div>
-              <div className="flex justify-between py-1.5"><span className="font-semibold">Saldo Restante:</span><span className="font-bold">{formatCurrency(simulacao.saldo_apos_contemplacao)}</span></div>
-              {simulacao.novo_prazo && simulacao.prazo_original && simulacao.novo_prazo < simulacao.prazo_original && (
-                <>
-                  <div className="flex justify-between py-1.5 text-slate-500 text-xs"><span>Carência:</span><span>{simulacao.prazo_original - simulacao.novo_prazo - 1} meses</span></div>
-                  <div className="flex justify-between py-1.5 text-slate-500 text-xs"><span>Parcelas Restantes:</span><span>{simulacao.novo_prazo} meses</span></div>
-                </>
-              )}
-              <div className="flex justify-between py-2 border-t-2 border-purple-300 mt-1">
-                <span className="font-bold text-purple-800 text-base">Novo Prazo:</span>
-                <span className="font-bold text-purple-900 text-xl">{simulacao.novo_prazo} meses</span>
+          {/* Bloco 6+7: Valor que o Cliente Recebe + Resultado Final (lado a lado) */}
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Valor que o Cliente Recebe */}
+            <div className="bg-[#083942] text-white rounded-xl p-4 flex flex-col justify-center">
+              <p className="text-xs uppercase tracking-wide opacity-75 mb-2">Valor que o Cliente Recebe</p>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0">
+                  <DollarSign className="w-6 h-6 text-black" />
+                </div>
+                <p className="text-3xl font-bold">{formatCurrency(simulacao.credito_total - (simulacao.lance_embutido_valor || 0))}</p>
               </div>
-              <div className="flex justify-between py-1.5">
-                <span className="font-bold text-purple-800 text-base">Nova Parcela:</span>
-                <span className="font-bold text-purple-900 text-xl">{formatCurrency(simulacao.nova_parcela)}</span>
+              <p className="text-xs opacity-70 mt-2">Crédito {formatCurrency(simulacao.credito_total)}{simulacao.lance_embutido_valor > 0 ? ` menos Lance Embutido ${formatCurrency(simulacao.lance_embutido_valor)}` : ''}</p>
+            </div>
+
+            {/* Resultado Final */}
+            <div className="bg-[#fdfaff] border border-purple-200 rounded-xl p-4">
+              <h2 className="text-sm font-bold text-purple-800 uppercase tracking-wide mb-3 text-center">Resultado Final</h2>
+              <div className="divide-y divide-slate-200 text-sm">
+                <div className="flex justify-between py-1.5"><span className="text-slate-700">Total do Plano</span><span className="font-semibold text-slate-900">{formatCurrency(simulacao.prazo_original * simulacao.parcela_total)}</span></div>
+                {simulacao.lance_proprio_ativo && simulacao.lance_proprio_valor > 0 && (
+                  <div className="flex justify-between py-1.5"><span className="text-purple-800">(-) Lance Próprio</span><span className="font-semibold text-purple-700">- {formatCurrency(simulacao.lance_proprio_valor)}</span></div>
+                )}
+                <div className="flex justify-between py-1.5"><span className="text-orange-700">(-) 1ª Parcela (no ato)</span><span className="font-semibold text-orange-700">- {formatCurrency(primeiraParcelaNoAto)}</span></div>
+                <div className="flex justify-between py-1.5"><span className="font-semibold text-slate-900">Saldo Restante</span><span className="font-bold text-slate-900">{formatCurrency(simulacao.saldo_apos_contemplacao)}</span></div>
+                {simulacao.novo_prazo && simulacao.prazo_original && simulacao.novo_prazo < simulacao.prazo_original && (
+                  <>
+                    <div className="flex justify-between py-1.5"><span className="text-slate-400">Carência</span><span className="text-slate-400">{simulacao.prazo_original - simulacao.novo_prazo - 1} meses</span></div>
+                    <div className="flex justify-between py-1.5"><span className="text-slate-400">Parcelas Restantes</span><span className="text-slate-400">{simulacao.novo_prazo} meses</span></div>
+                  </>
+                )}
+                <div className="flex justify-between py-2"><span className="font-bold text-purple-800 text-base">Novo Prazo</span><span className="font-bold text-purple-900 text-lg">{simulacao.novo_prazo} meses</span></div>
+                <div className="flex justify-between py-1.5"><span className="font-bold text-purple-800 text-base">Nova Parcela</span><span className="font-bold text-purple-900 text-lg">{formatCurrency(simulacao.nova_parcela)}</span></div>
               </div>
             </div>
           </div>
