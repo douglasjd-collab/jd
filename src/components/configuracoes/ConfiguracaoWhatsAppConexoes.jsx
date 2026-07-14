@@ -411,9 +411,27 @@ export default function ConfiguracaoWhatsApp() {
     }
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Tem certeza que deseja remover esta conexão?')) {
-      deleteMutation.mutate(id);
+  const handleDelete = async (connection) => {
+    if (!window.confirm('Tem certeza que deseja remover esta conexão?')) return;
+    try {
+      await base44.entities.WhatsappConnection.delete(connection.id);
+      // Se for Meta Oficial, limpar credenciais da empresa para liberar nova conexão
+      if (connection.provider_type === 'meta_oficial' && user?.empresa_id) {
+        await base44.entities.Empresa.update(user.empresa_id, {
+          whatsapp_access_token: '',
+          whatsapp_phone_number_id: '',
+          whatsapp_business_account_id: '',
+          whatsapp_token_tipo: 'temporario',
+          meta_phone_status: '',
+          meta_display_phone_number: '',
+          meta_verified_name: '',
+          meta_quality_rating: '',
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['whatsapp-connections'] });
+      toast.success('Conexão removida com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao remover conexão: ' + (error.message || 'Erro desconhecido'));
     }
   };
 
@@ -503,9 +521,37 @@ export default function ConfiguracaoWhatsApp() {
     setPollingInterval(interval);
   };
 
-  const handleDisconnect = (connectionId) => {
+  const handleDisconnect = async (connection) => {
+    // Meta Oficial não tem sessão D-API para desconectar — limpamos as credenciais localmente
+    if (connection.provider_type === 'meta_oficial') {
+      if (!window.confirm('Deseja desconectar esta conexão Meta Oficial? As credenciais da empresa serão limpas e você poderá conectar novamente.')) return;
+      try {
+        await base44.entities.WhatsappConnection.update(connection.id, {
+          status: 'desconectado',
+          is_active: false,
+          last_health_check_at: new Date().toISOString(),
+        });
+        if (user?.empresa_id) {
+          await base44.entities.Empresa.update(user.empresa_id, {
+            whatsapp_access_token: '',
+            whatsapp_phone_number_id: '',
+            whatsapp_business_account_id: '',
+            whatsapp_token_tipo: 'temporario',
+            meta_phone_status: '',
+            meta_display_phone_number: '',
+            meta_verified_name: '',
+            meta_quality_rating: '',
+          });
+        }
+        toast.success('Conexão Meta Oficial desconectada. Você já pode conectar novamente.');
+        queryClient.invalidateQueries({ queryKey: ['whatsapp-connections'] });
+      } catch (error) {
+        toast.error('Erro ao desconectar Meta: ' + (error.message || 'Erro desconhecido'));
+      }
+      return;
+    }
     if (window.confirm('Deseja desconectar esta instância?')) {
-      disconnectMutation.mutate(connectionId);
+      disconnectMutation.mutate(connection.id);
     }
   };
 
@@ -857,7 +903,7 @@ export default function ConfiguracaoWhatsApp() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDisconnect(connection.id)}
+                          onClick={() => handleDisconnect(connection)}
                           title="Desconectar"
                         >
                           <LogOut className="w-4 h-4" />
@@ -872,7 +918,7 @@ export default function ConfiguracaoWhatsApp() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(connection.id)}
+                          onClick={() => handleDelete(connection)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
