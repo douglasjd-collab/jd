@@ -12,6 +12,7 @@ import {
   PRIORIDADE_ORDER,
   calcularMediaPercentual,
   obterUltimasAssembleias,
+  construirAssembleiasPorGrupo,
   formatPercent,
   formatCurrency
 } from '@/components/utils/gruposConsorcioHelpers';
@@ -35,11 +36,24 @@ export default function GruposDisponiveisPanel({ empresaId, administradoraId, ca
     })
   });
 
-  const { data: todasAssembleias = [] } = useQuery({
-    queryKey: ['assembleias-empresa', empresaId],
+  // Dados reais de assembleia vêm das importações (Menu > Consórcio > Resultado de Assembleia),
+  // gravadas em HistoricoLanceDetalhe (lances por grupo) + HistoricoLanceGrupo (data da assembleia).
+  const { data: todosDetalhesLance = [] } = useQuery({
+    queryKey: ['historico-lance-detalhes', empresaId],
     enabled: habilitado,
-    queryFn: () => base44.entities.AssembleiaGrupoConsorcio.filter({ empresa_id: empresaId })
+    queryFn: () => base44.entities.HistoricoLanceDetalhe.filter({ empresa_id: empresaId })
   });
+
+  const { data: todosHistoricosGrupo = [] } = useQuery({
+    queryKey: ['historico-lance-grupo', empresaId],
+    enabled: habilitado,
+    queryFn: () => base44.entities.HistoricoLanceGrupo.filter({ empresa_id: empresaId })
+  });
+
+  const assembleiasPorGrupo = useMemo(
+    () => construirAssembleiasPorGrupo(todosDetalhesLance, todosHistoricosGrupo),
+    [todosDetalhesLance, todosHistoricosGrupo]
+  );
 
   const gruposCompativeis = useMemo(() => {
     let lista = grupos.filter(g => {
@@ -56,7 +70,8 @@ export default function GruposDisponiveisPanel({ empresaId, administradoraId, ca
     }
 
     const comMedia = lista.map(g => {
-      const assembleiasGrupo = todasAssembleias.filter(a => a.grupo_consorcio_id === g.id);
+      const grupoNormalizado = String(g.numero_grupo || '').replace(/^0+/, '') || '0';
+      const assembleiasGrupo = assembleiasPorGrupo[grupoNormalizado] || [];
       const mediaLivre3m = calcularMediaPercentual(assembleiasGrupo, 3, 'lance_livre_menor_percentual');
       const ultimaAssembleia = obterUltimasAssembleias(assembleiasGrupo, 1)[0] || null;
       return { ...g, _assembleias: assembleiasGrupo, _mediaLivre3m: mediaLivre3m, _ultimaAssembleia: ultimaAssembleia };
@@ -75,7 +90,7 @@ export default function GruposDisponiveisPanel({ empresaId, administradoraId, ca
     });
 
     return comMedia;
-  }, [grupos, todasAssembleias, credito, buscaNumero, prazoMaxFiltro]);
+  }, [grupos, assembleiasPorGrupo, credito, buscaNumero, prazoMaxFiltro]);
 
   if (!habilitado) return null;
 

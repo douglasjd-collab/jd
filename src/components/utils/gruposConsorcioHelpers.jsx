@@ -43,6 +43,68 @@ export function formatCurrency(valor) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
 }
 
+// Constrói, a partir do histórico de lances importado (HistoricoLanceDetalhe + HistoricoLanceGrupo),
+// uma lista de "assembleias" por grupo (uma entrada por data de assembleia), no mesmo formato
+// usado pelos painéis do simulador (data_assembleia, lance_livre_menor_percentual, etc.).
+export function construirAssembleiasPorGrupo(detalhes, historicosGrupo) {
+  const dataPorHistoricoId = {};
+  (historicosGrupo || []).forEach(h => { dataPorHistoricoId[h.id] = h.assembleia_data; });
+
+  const porGrupo = {};
+
+  (detalhes || []).forEach(d => {
+    const dataAssembleia = dataPorHistoricoId[d.historico_id];
+    if (!dataAssembleia) return;
+    const grupoNormalizado = String(d.grupo || '').replace(/^0+/, '') || '0';
+
+    if (!porGrupo[grupoNormalizado]) porGrupo[grupoNormalizado] = {};
+    if (!porGrupo[grupoNormalizado][dataAssembleia]) {
+      porGrupo[grupoNormalizado][dataAssembleia] = {
+        id: `${grupoNormalizado}_${dataAssembleia}`,
+        data_assembleia: dataAssembleia,
+        total_contemplados: 0,
+        lance_livre_menor_percentual: null,
+        lance_livre_qtd_contemplados: 0,
+        lance_limitado_menor_percentual: null,
+        lance_limitado_qtd_contemplados: 0,
+        lance_fixo_30_qtd_contemplados: 0,
+        lance_fixo_50_qtd_contemplados: 0,
+        sorteio_qtd_contemplados: 0
+      };
+    }
+
+    const bucket = porGrupo[grupoNormalizado][dataAssembleia];
+    bucket.total_contemplados += 1;
+    const percent = d.lance_percent;
+
+    if (d.modalidade === 'lance_livre') {
+      bucket.lance_livre_qtd_contemplados += 1;
+      if (percent !== null && percent !== undefined) {
+        bucket.lance_livre_menor_percentual = bucket.lance_livre_menor_percentual === null
+          ? percent : Math.min(bucket.lance_livre_menor_percentual, percent);
+      }
+    } else if (d.modalidade === 'lance_limitado') {
+      bucket.lance_limitado_qtd_contemplados += 1;
+      if (percent !== null && percent !== undefined) {
+        bucket.lance_limitado_menor_percentual = bucket.lance_limitado_menor_percentual === null
+          ? percent : Math.min(bucket.lance_limitado_menor_percentual, percent);
+      }
+    } else if (d.modalidade === 'lance_fixo_30') {
+      bucket.lance_fixo_30_qtd_contemplados += 1;
+    } else if (d.modalidade === 'lance_fixo_50') {
+      bucket.lance_fixo_50_qtd_contemplados += 1;
+    } else if (d.modalidade === 'sorteio') {
+      bucket.sorteio_qtd_contemplados += 1;
+    }
+  });
+
+  const resultado = {};
+  Object.entries(porGrupo).forEach(([grupo, porData]) => {
+    resultado[grupo] = Object.values(porData).sort((a, b) => new Date(b.data_assembleia) - new Date(a.data_assembleia));
+  });
+  return resultado;
+}
+
 // Retorna as N assembleias mais recentes (ordenadas da mais nova para a mais antiga)
 export function obterUltimasAssembleias(assembleias, n = 3) {
   return (assembleias || [])
