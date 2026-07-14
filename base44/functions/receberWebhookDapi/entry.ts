@@ -612,6 +612,24 @@ async function processarMensagemEnviadaPeloCelular(base44, connection, data, tel
       responsavel_expira_em: expiraAtendimento,
     });
 
+    // Marcar todas as mensagens do cliente anteriores como lidas.
+    // Se o atendente respondeu pelo celular, ele obrigatoriamente leu as mensagens do cliente.
+    try {
+      const naoLidas = await base44.entities.MensagemWhatsapp.filter({
+        conversa_id: conversa.id,
+        remetente: 'cliente'
+      }, '-created_date', 200);
+      if (naoLidas && naoLidas.length > 0) {
+        const paraMarcar = naoLidas.filter(m => m.status !== 'lida').map(m => ({ id: m.id, status: 'lida', lida_em: new Date(timestamp).toISOString() }));
+        if (paraMarcar.length > 0) {
+          await base44.entities.MensagemWhatsapp.bulkUpdate(paraMarcar);
+          console.log(`✅ ${paraMarcar.length} mensagens do cliente marcadas como lidas (resposta via celular)`);
+        }
+      }
+    } catch (e) {
+      console.error(`⚠️ Erro ao marcar mensagens do cliente como lidas:`, e.message);
+    }
+
     console.log('✅ Mensagem enviada pelo celular salva no histórico:', { conversaId: conversa.id, wamid, telefone });
   } catch (error) {
     console.error('❌ Erro ao processar mensagem enviada pelo celular:', error?.message);

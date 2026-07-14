@@ -636,6 +636,24 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
     responsavel_expira_em: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
   });
 
+  // Marcar todas as mensagens do cliente anteriores como lidas.
+  // Se o atendente respondeu pelo celular, ele obrigatoriamente leu as mensagens do cliente.
+  try {
+    const naoLidas = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+      conversa_id: conversa.id,
+      remetente: 'cliente'
+    }, '-created_date', 200);
+    if (naoLidas && naoLidas.length > 0) {
+      const paraMarcar = naoLidas.filter(m => m.status !== 'lida').map(m => ({ id: m.id, status: 'lida', lida_em: new Date(timestamp).toISOString() }));
+      if (paraMarcar.length > 0) {
+        await base44.asServiceRole.entities.MensagemWhatsapp.bulkUpdate(paraMarcar);
+        console.log(`✅ [Webhook D-API] ${paraMarcar.length} mensagens do cliente marcadas como lidas (resposta via celular)`);
+      }
+    }
+  } catch (e) {
+    console.error(`⚠️ [Webhook D-API] Erro ao marcar mensagens do cliente como lidas:`, e.message);
+  }
+
   return { handled: true, conversaId: conversa.id, messageId: externalMessageId, fromPhone: telefone, viaCelular: true };
 }
 
