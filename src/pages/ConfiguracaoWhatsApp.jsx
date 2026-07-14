@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CheckCircle2, Copy, AlertCircle, Loader2, MessageSquare, XCircle, Wifi, QrCode, RefreshCw, WifiOff, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import LoginMetaOficialButton from '@/components/configuracoes/LoginMetaOficialButton';
+import InstanciasWhatsAppMeta from '@/components/configuracoes/InstanciasWhatsAppMeta';
 import {
   Select,
   SelectContent,
@@ -416,6 +417,37 @@ export default function ConfiguracaoWhatsApp() {
     setTestandoMeta(false);
   };
 
+  // Sincroniza o status atual do número conectado direto na API Meta
+  // (telefone, qualité, status) e persiste na empresa.
+  const [sincronizandoMeta, setSincronizandoMeta] = useState(false);
+  const sincronizarStatusMeta = async () => {
+    if (!empresa?.id) return;
+    setSincronizandoMeta(true);
+    try {
+      const resp = await base44.functions.invoke('metaEmbeddedSignup', {
+        action: 'get_status',
+        empresa_id: empresa.id,
+      });
+      if (resp.data?.ok) {
+        setEmpresa(prev => prev ? {
+          ...prev,
+          meta_display_phone_number: resp.data.display_phone_number || prev.meta_display_phone_number,
+          meta_verified_name: resp.data.verified_name || prev.meta_verified_name,
+          meta_quality_rating: resp.data.quality_rating || prev.meta_quality_rating,
+          meta_phone_status: resp.data.phone_status || prev.meta_phone_status,
+          whatsapp_conectado: resp.data.conectado,
+        } : prev);
+        toast.success(resp.data.conectado ? '✅ Conexão confirmada com a Meta.' : 'Status sincronizado.');
+      } else {
+        toast.error('Erro ao sincronizar: ' + (resp.data?.error || 'Falha'));
+      }
+    } catch (e) {
+      toast.error('Erro ao sincronizar: ' + e.message);
+    } finally {
+      setSincronizandoMeta(false);
+    }
+  };
+
   // Limpa as credenciais da API Oficial Meta salvas nesta empresa — útil quando
   // o número exibido pertence a outro App da Meta e você quer reconectar com o
   // app atual (coexistência). Após limpar, faça o login com a Meta novamente.
@@ -694,6 +726,14 @@ export default function ConfiguracaoWhatsApp() {
             )}
           </CardContent>
         </Card>
+
+        {/* Instâncias WhatsApp — só aparece quando há credenciais salvas */}
+        <InstanciasWhatsAppMeta
+          empresa={empresa}
+          onSync={sincronizarStatusMeta}
+          syncLoading={sincronizandoMeta}
+          onDesconectar={desconectarMeta}
+        />
 
         {/* Status da API Oficial Meta */}
         <Card className={`border-2 ${statusMeta?.success ? 'border-green-500 bg-gradient-to-br from-green-50 to-white' : statusMeta?.error ? 'border-red-400 bg-gradient-to-br from-red-50 to-white' : 'border-slate-200'}`}>
