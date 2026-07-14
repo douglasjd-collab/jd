@@ -163,6 +163,11 @@ Deno.serve(async (req) => {
         await atualizarStatusMensagem(base44, connection, data, 'lida');
         break;
 
+      case 'chats.update':
+        console.log('📋 Evento chats.update:', JSON.stringify(data, null, 2));
+        await processarChatsUpdate(base44, connection, data);
+        break;
+
       case 'call.offer':
         console.log('📞 Evento call.offer:', JSON.stringify(data, null, 2));
         await processarChamadaRecebida(base44, connection, data);
@@ -740,6 +745,80 @@ async function processarConfirmacaoEnvio(base44, connection, data) {
     console.log('ℹ️ Confirmação de envio D-API para wamid:', wamid);
   } catch (e) {
     console.error('❌ Erro ao processar confirmação de envio D-API:', e.message);
+  }
+}
+
+// Processa chats.update do D-API.
+// Quando o usuário ABRE um chat no celular (sem necessariamente responder), o WhatsApp Multi-Device
+// dispara chats.update com unreadCount=0. Esse é o sinal de que o cliente leu as mensagens recebidas
+// — sem ele, o CRM nunca saberia que as mensagens do cliente foram visualizadas, e o badge verde
+// ficaria travado. Aqui marcamos todas as mensagens INBOUND (remetente=cliente) da conversa como "lida".
+async function processarChatsUpdate(base44, connection, data) {
+  try {
+    // data pode ser um único chat, um array de chats, ou { chats: [...] }
+    const chats = Array.isArray(data) ? data : (Array.isArray(data?.chats) ? data.chats : [data]);
+
+    let totalMarcados = 0;
+
+    for (const chat of chats) {
+      const remoteJid = chat?.jid || chat?.id || chat?.remoteJid || chat?.chatId || '';
+      // unreadCount pode vir como unreadCount, unread_count ou via "count" em algumas versões do D-API
+      const unreadCount = (chat?.unreadCount ?? chat?.unread_count ?? chat?.count ?? null);
+
+      if (!remoteJid) {
+        console.log('⚠️ chats.update sem jid:', JSON.stringify(chat, null, 2));
+        continue;
+      }
+
+      // Ignorar grupos (@g.us) — detectados no início, antes de extrair o telefone
+      if (String(remoteJid).includes('@g.us')) {
+        console.log('ℹ️ Ignorando chats.update de grupo:', remoteJid);
+        continue;
+      }
+
+      const telefone = String(remoteJid).replace(/@.*/g, '').replace(/\D/g, '');
+      if (!telefone) continue;
+
+      // Só marca como lidas quando o unreadCount chegou a 0 — sinal de "usuário abriu o chat no celular"
+      if (unreadCount !== 0) {
+        console.log(`ℹ️ chats.update ${telefone} unreadCount=${unreadCount} — ignorando (ainda há não-lidas)`);
+        continue;
+      }
+
+      const conversas = await base44.entities.ConversaWhatsapp.filter({
+        empresa_id: connection.empresa_id,
+        cliente_telefone: telefone
+      }, '-created_date', 1);
+
+      if (!conversas || conversas.length === 0) {
+        console.log(`ℹ️ Conversa não encontrada para chats.update telefone ${telefone}`);
+        continue;
+      }
+
+      const conversa = conversas[0];
+      const agora = new Date().toISOString();
+
+      const msgsCliente = await base44.entities.MensagemWhatsapp.filter({
+        conversa_id: conversa.id,
+        remetente: 'cliente'
+      }, '-created_date', 200);
+
+      const paraMarcar = msgsCliente
+        .filter(m => m.status !== 'lida')
+        .map(m => ({ id: m.id, status: 'lida', lida_em: agora }));
+
+      if (paraMarcar.length > 0) {
+        await base44.entities.MensagemWhatsapp.bulkUpdate(paraMarcar);
+        console.log(`✅ ${paraMarcar.length} mensagens do cliente ${telefone} marcadas como lidas (leitura no celular via chats.update)`);
+        totalMarcados += paraMarcar.length;
+      } else {
+        console.log(`ℹ️ Nenhuma mensagem do cliente ${telefone} pendente de leitura`);
+      }
+    }
+
+    return { marcados: totalMarcados };
+  } catch (e) {
+    console.error('❌ Erro ao processar chats.update:', e?.message);
   }
 }
 
