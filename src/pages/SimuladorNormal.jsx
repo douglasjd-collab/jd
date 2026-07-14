@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +24,7 @@ import { calcularRelogioContemplacao } from '@/components/utils/calcularRelogioC
 import AnaliseContemplacao from '@/components/simulador/AnaliseContemplacao';
 import CadastroMenorLanceModal from '@/components/simulador/CadastroMenorLanceModal';
 import GruposDisponiveisPanel from '@/components/simulador/GruposDisponiveisPanel';
+import ChatFlutuante from '@/components/chat/ChatFlutuante';
 
 export default function SimuladorNormal() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -38,6 +39,7 @@ export default function SimuladorNormal() {
   const [parcelasCarencia, setParcelasCarencia] = useState(3);
   const [parcelaAtoContratacao, setParcelaAtoContratacao] = useState(1);
   const [usarLanceProprio, setUsarLanceProprio] = useState(false);
+  const simulacaoRef = useRef(null);
   const [lanceProprio, setLanceProprio] = useState('');
   const [modoReducao, setModoReducao] = useState('parcela'); // 'parcela' | '5050'
   const [usarLanceEmbutido, setUsarLanceEmbutido] = useState(false);
@@ -1619,6 +1621,17 @@ export default function SimuladorNormal() {
         onSelectPlano={handleSelecionarPlano}
         empresaId={empresaId}
       />
+
+      {/* Chat flutuante do WhatsApp — envia print da simulação sem sair da tela */}
+      {empresaId && currentUser && (
+        <ChatFlutuante
+          empresaId={empresaId}
+          user={currentUser}
+          captureTargetRef={simulacaoRef}
+          captureLabel="simulacao_consorcio"
+          defaultMinimized={true}
+        />
+      )}
     </div>
   );
 }

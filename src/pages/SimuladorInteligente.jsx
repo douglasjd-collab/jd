@@ -17,6 +17,7 @@ import {
 } from 'recharts';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import ChatFlutuante from '@/components/chat/ChatFlutuante';
 
 const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const fmtPct = (v) => `${(v || 0).toFixed(2)}%`;
@@ -83,6 +84,7 @@ export default function SimuladorInteligente() {
   const [resultado, setResultado] = useState(null);
   const [calculando, setCalculando] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const simulacaoRef = useRef(null);
 
   useEffect(() => {
     base44.auth.me().then(async (me) => {
@@ -636,7 +638,7 @@ export default function SimuladorInteligente() {
         </div>
 
         {/* Resultados */}
-        <div className="xl:col-span-2 space-y-5">
+        <div className="xl:col-span-2 space-y-5" ref={simulacaoRef}>
           {!resultado ? (
             <Card className="border-0 shadow-sm h-96 flex items-center justify-center">
               <div className="text-center text-slate-400">
@@ -837,6 +839,17 @@ export default function SimuladorInteligente() {
           )}
         </div>
       </div>
+
+      {/* Chat flutuante do WhatsApp — envia print da simulação sem sair da tela */}
+      {!loadingUser && user?.empresa_id && (
+        <ChatFlutuante
+          empresaId={user.empresa_id}
+          user={user}
+          captureTargetRef={simulacaoRef}
+          captureLabel="simulacao"
+          defaultMinimized={true}
+        />
+      )}
     </div>
   );
 }
