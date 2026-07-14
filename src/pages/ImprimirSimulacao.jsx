@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Printer, ArrowLeft } from 'lucide-react';
+import { Printer, ArrowLeft, Calendar, User, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { calcularChanceContemplacao } from '@/components/simulador/AnaliseContemplacao';
 
@@ -245,17 +245,53 @@ export default function ImprimirSimulacao() {
         <div className="max-w-3xl mx-auto p-6 pt-16 print:pt-0 print:p-3">
 
           {/* Cabeçalho */}
-          <div className="bg-[#083942] text-white rounded-xl p-5 mb-4 flex justify-between items-start">
-            <div>
-              <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" alt="JD Promotora" className="h-9 mb-2 object-contain" />
-              <h1 className="text-xl font-bold tracking-wide">JD PROMOTORA</h1>
-              <p className="text-sm opacity-75">Simulação de Consórcio</p>
+          <div className="relative bg-white rounded-xl border border-slate-200 shadow-sm mb-4 overflow-hidden">
+            <div className="flex items-stretch px-5 py-4 gap-4">
+              {/* Marca */}
+              <div className="flex items-center gap-3">
+                <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png" alt="JD Promotora" className="h-10 w-10 object-contain" />
+                <div>
+                  <h1 className="text-lg font-bold tracking-wide text-[#001529] leading-tight">JD PROMOTORA</h1>
+                  <p className="text-xs text-slate-500">Simulação de Consórcio</p>
+                </div>
+              </div>
+
+              <div className="w-px bg-slate-200 my-1" />
+
+              {/* Data */}
+              <div className="flex items-center gap-2.5">
+                <Calendar className="w-5 h-5 text-[#0047bb] shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-[#001529] leading-tight">{new Date(simulacao.created_date || Date.now()).toLocaleDateString('pt-BR')}</p>
+                  <p className="text-xs text-slate-500">Data</p>
+                </div>
+              </div>
+
+              <div className="w-px bg-slate-200 my-1" />
+
+              {/* Vendedor */}
+              <div className="flex items-center gap-2.5">
+                <User className="w-5 h-5 text-[#0047bb] shrink-0" />
+                <div>
+                  <p className="text-xs text-slate-500 leading-tight">Vendedor</p>
+                  <p className="text-sm font-bold text-[#001529] leading-tight">{simulacao.usuario_nome || '-'}</p>
+                </div>
+              </div>
+
+              <div className="w-px bg-slate-200 my-1" />
+
+              {/* Validade */}
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-[#0047bb] shrink-0" />
+                <div>
+                  <p className="text-xs text-slate-500 leading-tight">Validade</p>
+                  <p className="text-sm font-bold text-[#001529] leading-tight">30 dias</p>
+                </div>
+              </div>
             </div>
-            <div className="text-right text-sm opacity-80">
-              <p>{new Date(simulacao.created_date || Date.now()).toLocaleDateString('pt-BR')}</p>
-              <p>Vendedor: <strong className="text-white">{simulacao.usuario_nome}</strong></p>
-              <p className="text-xs opacity-60 mt-1">Validade: 30 dias</p>
-            </div>
+
+            {/* Linha de acento inferior */}
+            <div className="h-1 w-full bg-gradient-to-r from-cyan-400 to-blue-500" />
           </div>
 
           {/* Bloco 1: Cliente */}
