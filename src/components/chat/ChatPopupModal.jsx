@@ -247,6 +247,7 @@ export default function ChatPopupModal({ open, onOpenChange, contato, empresaId,
                   nomeUsuario={user?.full_name || ''}
                   empresaId={empresaId}
                   telefoneDestino={contato?.telefone}
+                  nomeCliente={contato?.nome}
                   conversaId={conversaId}
                 />
               </div>

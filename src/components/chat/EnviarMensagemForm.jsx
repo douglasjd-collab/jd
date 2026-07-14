@@ -396,9 +396,32 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     ? quickReplies
     : quickReplies.filter(r => r.toLowerCase().startsWith(texto.toLowerCase()));
 
+  const capitalizarNome = (nome) => {
+    if (!nome) return '';
+    const t = nome.trim();
+    if (t === t.toUpperCase() && t.length > 1) {
+      return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+    }
+    return t;
+  };
+
+  const substituirVariaveis = (texto) => {
+    if (!texto) return texto;
+    const nomeCompleto = (nomeCliente || '').trim();
+    const primeiroNomeRaw = nomeCompleto.split(/\s+/)[0] || '';
+    const primeiroNome = capitalizarNome(primeiroNomeRaw);
+    const nomeFormatado = capitalizarNome(nomeCompleto);
+    let resultado = texto;
+    resultado = resultado.replace(/\{primeiro_nome\}/gi, primeiroNome);
+    resultado = resultado.replace(/\{nome_completo\}/gi, nomeFormatado);
+    resultado = resultado.replace(/\{nome\}/gi, nomeFormatado);
+    resultado = resultado.replace(/\{telefone\}/gi, telefoneDestino || '');
+    return resultado;
+  };
+
   const handleUsarMensagemRapida = ({ tipo, conteudo }) => {
     if (tipo === 'texto') {
-      setTexto(conteudo);
+      setTexto(substituirVariaveis(conteudo));
       setTimeout(() => textareaRef.current?.focus(), 100);
     }
   };
