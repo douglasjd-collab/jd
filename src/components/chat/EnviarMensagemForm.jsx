@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import heic2any from 'heic2any';
 import { encodeFloat32ToMp3 } from '@/utils/converterAudioParaMp3';
 import { Button } from '@/components/ui/button';
-import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Plus, MonitorUp } from 'lucide-react';
+import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Plus, Camera } from 'lucide-react';
 import MensagensRapidasModal from './MensagensRapidasModal';
 import TemplateMetaModal from './TemplateMetaModal';
 import ImageEditorModal from './image-editor/ImageEditorModal';
@@ -39,26 +39,46 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     setEditorAberto(true);
   };
 
-  const capturarTela = async () => {
+  const [showEmoji, setShowEmoji] = useState(false);
+
+  const capturarCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       const video = document.createElement('video');
       video.srcObject = stream;
+      video.muted = true;
       await video.play();
-      await new Promise((r) => setTimeout(r, 200));
+      // Aguardar o track fornecer dimensões
+      await new Promise((r) => setTimeout(r, 300));
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
       canvas.getContext('2d').drawImage(video, 0, 0);
       stream.getTracks().forEach((t) => t.stop());
       canvas.toBlob((blob) => {
         if (blob) {
-          const file = new File([blob], `captura_tela_${Date.now()}.png`, { type: 'image/png' });
+          const file = new File([blob], `foto_camera_${Date.now()}.png`, { type: 'image/png' });
           abrirEditorComArquivos([file]);
         }
       }, 'image/png');
     } catch (err) {
-      setErro('Não foi possível capturar a tela. Permissão negada ou cancelada.');
+      setErro('Não foi possível acessar a câmera. Permissão negada ou cancelada.');
+    }
+  };
+
+  const inserirEmoji = (emoji) => {
+    const el = textareaRef.current;
+    if (el) {
+      const start = el.selectionStart ?? texto.length;
+      const end = el.selectionEnd ?? texto.length;
+      const novo = texto.slice(0, start) + emoji + texto.slice(end);
+      setTexto(novo);
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(start + emoji.length, start + emoji.length);
+      });
+    } else {
+      setTexto((prev) => prev + emoji);
     }
   };
 
@@ -95,11 +115,17 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   useEffect(() => {
     if (!menuPlusOpen) return;
     const handler = (e) => {
-      if (!e.target.closest('.menu-plus-container')) setMenuPlusOpen(false);
+      if (!e.target.closest('.menu-plus-container') && !e.target.closest('.emoji-picker-container')) {
+        setMenuPlusOpen(false);
+        setShowEmoji(false);
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [menuPlusOpen]);
+
+  // Lista de emojis nativos para o picker
+  const EMOJIS = ['😀','😁','😂','🤣','😊','😍','😘','😉','😎','🤔','🙃','😅','😢','😭','😡','👍','👎','🙏','👏','💪','❤️','🧡','💛','💚','💙','💜','🖤','✅','❌','⭐','🎉','🔥','💯','🙏','👀','🤝','🤙','✌️','🤞','🙏🏽'];
 
   // Captura amostras PCM diretamente do microfone (evita decodeAudioData sobre
   // blob webm do MediaRecorder, que falha em vários navegadores).
@@ -529,14 +555,15 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
                 </button>
                 <button
                   type="button"
-                  onClick={() => { capturarTela(); setMenuPlusOpen(false); }}
+                  onClick={() => { capturarCamera(); setMenuPlusOpen(false); }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
                 >
-                  <MonitorUp className="w-4 h-4 text-slate-500" />
-                  <span>Capturar tela</span>
+                  <Camera className="w-4 h-4 text-slate-500" />
+                  <span>Câmera</span>
                 </button>
                 <button
                   type="button"
+                  onClick={() => setShowEmoji(prev => !prev)}
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
                 >
                   <Smile className="w-4 h-4 text-slate-500" />
@@ -585,6 +612,24 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
                     {coachIAOpen && <span className="ml-auto text-xs text-violet-500 font-medium">Aberto</span>}
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Emoji picker */}
+            {showEmoji && (
+              <div className="emoji-picker-container absolute bottom-full left-0 mb-2 bg-white border border-slate-200 rounded-2xl shadow-lg p-2 z-30 w-[280px]">
+                <div className="grid grid-cols-8 gap-1 max-h-40 overflow-y-auto">
+                  {EMOJIS.map((emoji, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => { inserirEmoji(emoji); setShowEmoji(false); }}
+                      className="w-8 h-8 flex items-center justify-center text-xl rounded hover:bg-slate-100 transition-colors"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
