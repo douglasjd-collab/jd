@@ -395,10 +395,7 @@ export default function ImprimirSimulacao() {
                 <div className="flex justify-between py-1.5"><span className="text-orange-700">(-) 1ª Parcela (no ato)</span><span className="font-semibold text-orange-700">- {formatCurrency(primeiraParcelaNoAto)}</span></div>
                 <div className="flex justify-between py-1.5"><span className="font-semibold text-slate-900">Saldo Restante</span><span className="font-bold text-slate-900">{formatCurrency(simulacao.saldo_apos_contemplacao)}</span></div>
                 {simulacao.novo_prazo && simulacao.prazo_original && simulacao.novo_prazo < simulacao.prazo_original && (
-                  <>
-                    <div className="flex justify-between py-1.5"><span className="text-slate-400">Carência</span><span className="text-slate-400">{simulacao.prazo_original - simulacao.novo_prazo - 1} meses</span></div>
-                    <div className="flex justify-between py-1.5"><span className="text-slate-400">Parcelas Restantes</span><span className="text-slate-400">{simulacao.novo_prazo} meses</span></div>
-                  </>
+                  <div className="flex justify-between py-1.5"><span className="text-slate-400">Carência</span><span className="text-slate-400">{simulacao.prazo_original - simulacao.novo_prazo - 1} meses</span></div>
                 )}
                 <div className="flex justify-between py-2"><span className="font-bold text-purple-800 text-base">Novo Prazo</span><span className="font-bold text-purple-900 text-lg">{simulacao.novo_prazo} meses</span></div>
                 <div className="flex justify-between py-1.5"><span className="font-bold text-purple-800 text-base">Nova Parcela</span><span className="font-bold text-purple-900 text-lg">{formatCurrency(simulacao.nova_parcela)}</span></div>
