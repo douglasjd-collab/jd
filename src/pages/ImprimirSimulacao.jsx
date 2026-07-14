@@ -388,7 +388,7 @@ export default function ImprimirSimulacao() {
           {renderAnalise()}
 
           {/* Bloco 6+7: Valor que o Cliente Recebe + Resultado Final (lado a lado) */}
-          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="mb-4 grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-3">
             {/* Valor que o Cliente Recebe */}
             <div className="bg-[#083942] text-white rounded-xl p-4 flex flex-col justify-center">
               <p className="text-xs uppercase tracking-wide opacity-75 mb-2">Valor que o Cliente Recebe</p>
