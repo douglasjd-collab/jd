@@ -353,36 +353,7 @@ export default function ImprimirSimulacao() {
             </table>
           </div>
 
-          {/* Bloco 4: Lances */}
-          {simulacao.lance_total > 0 && (
-            <div className="section mb-3">
-              <h2 className="text-sm font-bold text-slate-700 mb-2 pb-1 border-b-2 border-[#083942] uppercase tracking-wide flex items-center gap-2">
-                <span className="w-2 h-4 bg-[#083942] rounded inline-block" /> Lances
-              </h2>
-              <div className="bg-slate-50 border border-slate-200 rounded-lg divide-y divide-slate-100">
-                {simulacao.lance_embutido_ativo && (
-                  <div className="flex justify-between p-2 text-sm">
-                    <span className="text-slate-600">Lance Embutido ({simulacao.lance_embutido_percentual}%)</span>
-                    <span className="font-semibold">{formatCurrency(simulacao.lance_embutido_valor)}</span>
-                  </div>
-                )}
-                {simulacao.lance_proprio_ativo && (
-                  <div className="flex justify-between p-2 text-sm">
-                    <span className="text-slate-600">Lance Próprio ({lanceProprioPercentual}%)</span>
-                    <span className="font-semibold">{formatCurrency(simulacao.lance_proprio_valor)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between p-2 bg-green-50 font-bold text-sm">
-                  <span className="text-green-800">Lance Total</span>
-                  <span className="text-green-800 text-base">{formatCurrency(simulacao.lance_total)}</span>
-                </div>
-                <div className="flex justify-between p-2 text-sm">
-                  <span className="text-slate-600">Percentual Total Ofertado</span>
-                  <span className="font-bold text-[#083942]">{percentualTotalOfertado}%</span>
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {/* Bloco 5: Análise de Contemplação */}
           {renderAnalise()}
@@ -426,8 +397,11 @@ export default function ImprimirSimulacao() {
               <h2 className="text-sm font-bold text-purple-800 uppercase tracking-wide mb-3 text-center">Resultado Final</h2>
               <div className="divide-y divide-slate-200 text-sm">
                 <div className="flex justify-between py-1.5"><span className="text-slate-700">Total do Plano</span><span className="font-semibold text-slate-900">{formatCurrency(simulacao.prazo_original * simulacao.parcela_total)}</span></div>
+                {simulacao.lance_embutido_ativo && simulacao.lance_embutido_valor > 0 && (
+                  <div className="flex justify-between py-1.5"><span className="text-purple-800">(-) Lance Embutido ({simulacao.lance_embutido_percentual}%)</span><span className="font-semibold text-purple-700">- {formatCurrency(simulacao.lance_embutido_valor)}</span></div>
+                )}
                 {simulacao.lance_proprio_ativo && simulacao.lance_proprio_valor > 0 && (
-                  <div className="flex justify-between py-1.5"><span className="text-purple-800">(-) Lance Próprio</span><span className="font-semibold text-purple-700">- {formatCurrency(simulacao.lance_proprio_valor)}</span></div>
+                  <div className="flex justify-between py-1.5"><span className="text-purple-800">(-) Lance Próprio ({lanceProprioPercentual}%)</span><span className="font-semibold text-purple-700">- {formatCurrency(simulacao.lance_proprio_valor)}</span></div>
                 )}
                 <div className="flex justify-between py-1.5"><span className="text-orange-700">(-) 1ª Parcela (no ato)</span><span className="font-semibold text-orange-700">- {formatCurrency(primeiraParcelaNoAto)}</span></div>
                 <div className="flex justify-between py-1.5"><span className="font-semibold text-slate-900">Saldo Restante</span><span className="font-bold text-slate-900">{formatCurrency(simulacao.saldo_apos_contemplacao)}</span></div>
