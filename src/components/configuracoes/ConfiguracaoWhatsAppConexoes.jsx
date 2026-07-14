@@ -48,6 +48,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
+import LoginMetaOficialButton from './LoginMetaOficialButton';
 
 export default function ConfiguracaoWhatsApp() {
   const [user, setUser] = useState(null);
@@ -148,23 +149,24 @@ export default function ConfiguracaoWhatsApp() {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      // Validar e limpar API Key antes de salvar
-      const apiKeyClean = (data.api_key || '').trim();
-      
-      // Validar formato UUID (opcional, mas recomendado para D-API)
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(apiKeyClean)) {
-        console.warn('⚠️ API Key não parece ser UUID válido');
+      const payload = { ...data, empresa_id: user.empresa_id };
+
+      // Meta Oficial não usa API Key/Session ID — credenciais ficam na Empresa
+      if (data.provider_type === 'meta_oficial') {
+        payload.base_url = '';
+        payload.api_key = undefined;
+        payload.api_key_encrypted = '';
+        payload.session_id = '';
+      } else {
+        const apiKeyClean = (data.api_key || '').trim();
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(apiKeyClean)) {
+          console.warn('⚠️ API Key não parece ser UUID válido');
+        }
+        payload.api_key_encrypted = btoa(apiKeyClean);
+        payload.api_key = undefined;
       }
-      
-      // Criptografar API Key em base64
-      const api_key_encrypted = btoa(apiKeyClean);
-      
-      return await base44.entities.WhatsappConnection.create({
-        ...data,
-        empresa_id: user.empresa_id,
-        api_key_encrypted,
-        api_key: undefined
-      });
+
+      return await base44.entities.WhatsappConnection.create(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['whatsapp-connections'] });
@@ -398,9 +400,16 @@ export default function ConfiguracaoWhatsApp() {
     setEditDialogOpen(true);
   };
 
+  const isMetaOficial = formData.provider_type === 'meta_oficial';
+
   const handleSave = () => {
-    if (!formData.nome || !formData.api_key) {
-      toast.error('Preencha todos os campos obrigatórios');
+    if (!formData.nome) {
+      toast.error('Informe o nome da conexão');
+      return;
+    }
+    // Meta Oficial não usa API Key/URL/Session ID — conecta via login com a Meta
+    if (!isMetaOficial && !formData.api_key) {
+      toast.error('Informe a API Key');
       return;
     }
 
@@ -969,6 +978,24 @@ export default function ConfiguracaoWhatsApp() {
               </div>
             </div>
 
+            {isMetaOficial ? (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 space-y-3">
+                <p className="text-sm font-semibold text-emerald-900">
+                  Conexão via Login com a Meta
+                </p>
+                <p className="text-sm text-emerald-800">
+                  Para a API Oficial do WhatsApp, você conecta fazendo login com sua conta Meta Business — sem precisar digitar API Key, URL ou Session ID.
+                </p>
+                {user?.empresa_id && (
+                  <LoginMetaOficialButton empresaId={user.empresa_id} onSuccess={refetch} />
+                )}
+                {selectedConnection && (
+                  <p className="text-xs text-slate-500">
+                    Os campos de credenciais da empresa (Access Token, Phone Number ID) são preenchidos automaticamente após o login na Meta.
+                  </p>
+                )}
+              </div>
+            ) : (
             <div>
               <Label>URL Base *</Label>
               <Input
@@ -978,7 +1005,9 @@ export default function ConfiguracaoWhatsApp() {
                 className="mt-2"
               />
             </div>
+            )}
 
+            {!isMetaOficial && (
             <div>
               <Label>API Key *</Label>
               <div className="flex gap-2 mt-2">
@@ -1001,7 +1030,9 @@ export default function ConfiguracaoWhatsApp() {
                 A API Key será criptografada e armazenada com segurança
               </p>
             </div>
+            )}
 
+            {!isMetaOficial && (
             <div>
               <Label>Session ID</Label>
               <Input
@@ -1011,6 +1042,7 @@ export default function ConfiguracaoWhatsApp() {
                 className="mt-2"
               />
             </div>
+            )}
 
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
