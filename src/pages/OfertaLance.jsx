@@ -49,7 +49,45 @@ export default function OfertaLance() {
   const [editObservacao, setEditObservacao] = useState('');
   const [chatPopup, setChatPopup] = useState(null); // { telefone, nome } contato para o popup
   const [buscandoTelefone, setBuscandoTelefone] = useState(null); // id da venda em busca
+  const [comprovante, setComprovante] = useState(null); // comprovante gerado após ofertar
   const queryClient = useQueryClient();
+
+  // Auto-preencher observação ao selecionar lance fixo 30% ou 50%
+  useEffect(() => {
+    if (tipoLance === 'fixo_30') {
+      setObservacao('Lance embutido de 30% ofertado, suas chances de contemplação aumentaram.');
+    } else if (tipoLance === 'fixo_50') {
+      setObservacao('Lance embutido de 50% ofertado, suas chances de contemplação aumentaram.');
+    }
+  }, [tipoLance]);
+
+  // Texto do comprovante para envio via WhatsApp
+  const gerarTextoComprovante = (c) => {
+    const linhas = [
+      '*COMPROVANTE DE OFERTA DE LANCE*',
+      '',
+      `Cliente: ${c.cliente}`,
+      `Grupo/Cota: ${c.grupo}/${c.cota}`,
+      `Valor da carta: ${formatCurrency(c.valor_carta)}`,
+      `Percentual ofertado: ${c.percentual}%`,
+      `Tipo de lance: ${tipoLanceLabels[c.tipo_lance] || c.tipo_lance}`,
+      `Valor do lance: ${formatCurrency(c.valor_lance)}`,
+    ];
+    if (c.observacao) linhas.push(`Informação do lance: ${c.observacao}`);
+    linhas.push('', `Data: ${c.data}`);
+    if (c.usuario) linhas.push(`Registrado por: ${c.usuario}`);
+    return linhas.join('\n');
+  };
+
+  const enviarComprovanteWhatsApp = () => {
+    if (!comprovante?.telefone) {
+      toast.error('Telefone do cliente não encontrado. Cadastre o telefone no cadastro do cliente.');
+      return;
+    }
+    const texto = gerarTextoComprovante(comprovante);
+    const url = `https://wa.me/${comprovante.telefone}?text=${encodeURIComponent(texto)}`;
+    window.open(url, '_blank');
+  };
 
   // Buscar telefone do cliente (via Cliente entity) e abrir o popup de chat
   const abrirChatCliente = async (venda) => {
@@ -209,10 +247,36 @@ export default function OfertaLance() {
 
       return await base44.entities.OfertaLance.create(data);
     },
-    onSuccess: () => {
+    onSuccess: async (_resp, variables) => {
       queryClient.invalidateQueries({ queryKey: ['oferta-lance-data'] });
-      toast.success('Lance ofertado com sucesso!');
-      closeForm();
+      // Buscar telefone do cliente para o comprovante
+      let telefone = '';
+      if (variables.cliente_id) {
+        try {
+          const clientes = await base44.entities.Cliente.filter({ id: variables.cliente_id }, null, 1);
+          if (clientes?.length > 0) {
+            telefone = clientes[0].celular || clientes[0].telefone_fixo || clientes[0].pj_celular || '';
+          }
+        } catch {}
+      }
+      let telLimpo = String(telefone || '').replace(/\D/g, '');
+      if (telLimpo && !telLimpo.startsWith('55') && telLimpo.length >= 10) {
+        telLimpo = '55' + telLimpo;
+      }
+      setComprovante({
+        cliente: variables.cliente_nome || '',
+        grupo: variables.grupo || '',
+        cota: variables.cota || '',
+        valor_carta: variables.valor_carta || 0,
+        percentual: variables.percentual_lance || 0,
+        valor_lance: variables.valor_lance || 0,
+        tipo_lance: variables.tipo_lance || 'livre',
+        observacao: variables.observacao || '',
+        data: new Date().toLocaleString('pt-BR'),
+        telefone: telLimpo,
+        usuario: variables.usuario_nome || '',
+      });
+      toast.success('Lance ofertado com sucesso! Comprovante gerado.');
     },
     onError: (error) => {
       toast.error(error.message || 'Erro ao ofertar lance');
@@ -274,11 +338,13 @@ export default function OfertaLance() {
 
   const closeForm = () => {
     setFormOpen(false);
+    setComprovante(null);
     setTimeout(() => {
       setSelectedVenda(null);
       setPercentual('');
       setTipoLance('livre');
       setObservacao('');
+      setComprovante(null);
     }, 200);
   };
 
@@ -640,10 +706,53 @@ export default function OfertaLance() {
       <Dialog open={formOpen} onOpenChange={closeForm}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Ofertar Lance</DialogTitle>
+            <DialogTitle>{comprovante ? 'Comprovante de Oferta de Lance' : 'Ofertar Lance'}</DialogTitle>
           </DialogHeader>
-          
-          {selectedVenda && (
+
+          {comprovante ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-slate-50 rounded-lg space-y-1.5 text-sm">
+                <div><span className="text-slate-500">Cliente: </span><span className="font-medium">{comprovante.cliente}</span></div>
+                <div><span className="text-slate-500">Grupo/Cota: </span><span className="font-medium">{comprovante.grupo}/{comprovante.cota}</span></div>
+                <div><span className="text-slate-500">Valor da carta: </span><span className="font-medium">{formatCurrency(comprovante.valor_carta)}</span></div>
+                <div><span className="text-slate-500">Percentual ofertado: </span><span className="font-medium">{comprovante.percentual}%</span></div>
+                <div><span className="text-slate-500">Tipo de lance: </span><span className="font-medium">{tipoLanceLabels[comprovante.tipo_lance] || comprovante.tipo_lance}</span></div>
+                <div><span className="text-slate-500">Valor do lance: </span><span className="font-medium">{formatCurrency(comprovante.valor_lance)}</span></div>
+                {comprovante.observacao && (
+                  <div><span className="text-slate-500">Informação do lance: </span><span className="font-medium">{comprovante.observacao}</span></div>
+                )}
+                <div><span className="text-slate-500">Data: </span><span className="font-medium">{comprovante.data}</span></div>
+                {comprovante.usuario && (
+                  <div><span className="text-slate-500">Registrado por: </span><span className="font-medium">{comprovante.usuario}</span></div>
+                )}
+              </div>
+
+              {comprovante.telefone ? (
+                <p className="text-xs text-slate-500">
+                  Deseja enviar este comprovante para o cliente via WhatsApp ({comprovante.telefone})?
+                </p>
+              ) : (
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  ⚠️ Telefone do cliente não encontrado. Cadastre o telefone no cadastro do cliente para enviar o comprovante.
+                </p>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button type="button" variant="outline" onClick={closeForm}>
+                  Fechar
+                </Button>
+                <Button
+                  type="button"
+                  className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
+                  onClick={enviarComprovanteWhatsApp}
+                  disabled={!comprovante.telefone}
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Enviar pelo WhatsApp
+                </Button>
+              </div>
+            </div>
+          ) : selectedVenda && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="p-4 bg-slate-50 rounded-lg space-y-2">
                 <p className="text-sm text-slate-500">Cliente</p>
