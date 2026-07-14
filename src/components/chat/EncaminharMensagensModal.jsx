@@ -93,7 +93,7 @@ export default function EncaminharMensagensModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden gap-0">
+      <DialogContent className="max-w-md p-0 overflow-hidden gap-0 [&>button.absolute]:hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
           <button
