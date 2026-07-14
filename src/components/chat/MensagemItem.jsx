@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Copy, Pin, Pencil, Check } from 'lucide-react';
+import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Forward, Copy, Pin, Pencil, Check } from 'lucide-react';
 import VideoMensagem from './VideoMensagem';
 import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
 import { format } from 'date-fns';
@@ -829,6 +829,20 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
   const isContatoMsg = !!(mensagem.texto && (mensagem.texto.includes('contactMessage') || mensagem.texto.includes('BEGIN:VCARD')));
   const isImagemLimpa = mensagem.tipo_conteudo === 'imagem' && textoVazio && !isContatoMsg;
 
+  // Atalho "Encaminhar" exibido ao lado do balão — somente para Imagem e PDF/Documento (não texto/áudio/vídeo)
+  const mostrarAtalhoEncaminhar = !modoSelecao && ['imagem', 'pdf', 'documento'].includes(mensagem.tipo_conteudo);
+  const atalhoEncaminhar = mostrarAtalhoEncaminhar ? (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onEncaminhar?.(mensagem); }}
+      className="self-center flex-shrink-0 w-9 h-9 bg-white rounded-full shadow-md border border-slate-200 flex items-center justify-center hover:scale-105 hover:shadow-lg active:scale-95 transition-all z-10"
+      title="Encaminhar"
+      aria-label="Encaminhar"
+    >
+      <Forward className="w-4 h-4 text-slate-600" />
+    </button>
+  ) : null;
+
   if (isImagemLimpa) {
     const stickerSize = 33;
     return (
@@ -840,6 +854,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
               : <span className="inline-flex items-center justify-center w-5 h-5 rounded-md border-2 border-slate-300 bg-white/80" />}
           </button>
         )}
+        {!isVendedor && atalhoEncaminhar}
         <div
           onClick={modoSelecao ? () => onToggleSelecao?.(mensagem.id) : undefined}
           style={isSticker
@@ -918,6 +933,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             <img src={mediaUrl} alt="Imagem ampliada" className="max-w-full max-h-[90vh] rounded-lg object-contain" onClick={e => e.stopPropagation()} />
           </div>
         )}
+        {isVendedor && atalhoEncaminhar}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="icon" variant="ghost" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity self-end" disabled={deletando}>
@@ -953,6 +969,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             : <span className="inline-flex items-center justify-center w-5 h-5 rounded-md border-2 border-slate-300 bg-white/80" />}
         </button>
       )}
+      {!isVendedor && atalhoEncaminhar}
       <div
         onClick={modoSelecao ? () => onToggleSelecao?.(mensagem.id) : undefined}
         className={`max-w-md rounded-2xl shadow-sm ${
@@ -1050,6 +1067,8 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           </div>
         </div>
       </div>
+
+      {isVendedor && atalhoEncaminhar}
 
       {/* Menu de ações - aparecer ao hover */}
       <DropdownMenu>
