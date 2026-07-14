@@ -173,6 +173,7 @@ export default function ChatPopupModal({ open, onOpenChange, contato, empresaId,
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        showCloseButton={false}
         className="p-0 overflow-hidden flex flex-col"
         style={{ maxWidth: '680px', width: '95vw', height: '85vh', maxHeight: '700px' }}
       >
@@ -195,6 +196,13 @@ export default function ChatPopupModal({ open, onOpenChange, contato, empresaId,
                 <Phone className="w-4 h-4" />
               </a>
             )}
+            <button
+              onClick={() => onOpenChange?.(false)}
+              className="p-2 rounded-full hover:bg-white/10 transition-colors"
+              title="Fechar"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
