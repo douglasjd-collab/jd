@@ -13,7 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select.jsx';
 import { Switch } from '@/components/ui/switch';
-import { Calculator, Plus, Download, Loader2, TrendingUp, X, Copy, ShoppingBag, History } from 'lucide-react';
+import { Calculator, Plus, Download, Loader2, TrendingUp, X, Copy, ShoppingBag, History, Sparkles, Wallet, Settings as SettingsIcon, BarChart3, Info, BadgeCheck } from 'lucide-react';
+import AccordionSection from '@/components/simulador/AccordionSection';
 import { toast } from 'sonner';
 import { createPageUrl } from '@/utils';
 import SelecionarPlanoCanopusModal from '@/components/simulador/SelecionarPlanoCanopusModal';
@@ -1145,11 +1146,8 @@ export default function SimuladorNormal() {
             </Card>
           )}
 
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">✨ Lance Embutido (Opcional)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <AccordionSection icon={Sparkles} iconColor="text-violet-500" title="Lance Embutido (Opcional)" subtitle="Lance pago com o próprio crédito (% do crédito total)">
+            <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-200">
                 <div>
                   <Label className="text-sm font-medium">Deseja usar Lance Embutido?</Label>
@@ -1202,14 +1200,11 @@ export default function SimuladorNormal() {
                   )}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </AccordionSection>
 
-          <Card className="border-0 shadow-sm" id="card-lance-proprio">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">💰 Lance Próprio (Opcional)</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <AccordionSection icon={Wallet} iconColor="text-emerald-500" title="Lance Próprio (Opcional)" subtitle="Oferece um valor adicional para reduzir as parcelas">
+            <div className="space-y-4">
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                 <div>
                   <Label className="text-sm font-medium">Deseja ofertar Recurso Próprio?</Label>
@@ -1324,14 +1319,11 @@ export default function SimuladorNormal() {
                   )}
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </AccordionSection>
 
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">⚙️ Opções de Pagamento</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <AccordionSection icon={SettingsIcon} iconColor="text-slate-500" title="Opções de Pagamento" subtitle="Carência de 3 parcelas + 1 parcela no ato">
+            <div className="space-y-4">
               {(tipoGrupo === 'automovel' || tipoGrupo === 'imovel') && (
                 <>
                   <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
@@ -1374,20 +1366,22 @@ export default function SimuladorNormal() {
                   Regra Canopus disponível apenas para Automóvel e Imóvel
                 </p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </AccordionSection>
 
-          <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">📊 Calcular</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={calcularSimulacao} className="w-full bg-blue-600 hover:bg-blue-700 gap-2">
-                <Calculator className="w-4 h-4" />
-                Calcular Simulação
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+            <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+              <BarChart3 className="w-4 h-4 text-blue-600" /> Calcular
+            </p>
+            <Button onClick={calcularSimulacao} className="w-full bg-blue-600 hover:bg-blue-700 gap-2">
+              <Calculator className="w-4 h-4" />
+              Calcular Simulação
+            </Button>
+            <p className="text-[11px] text-slate-400 flex items-start gap-1.5">
+              <Info className="w-3 h-3 mt-0.5 shrink-0" />
+              As informações são baseadas nas condições informadas e não garantem aprovação ou contemplação.
+            </p>
+          </div>
         </div>
 
         <div className="lg:col-span-1">
