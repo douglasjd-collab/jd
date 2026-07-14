@@ -57,6 +57,7 @@ import GruposConsorcio from './pages/GruposConsorcio';
 import GrupoConsorcioDetalhes from './pages/GrupoConsorcioDetalhes';
 import AssinarDocumento from './pages/AssinarDocumento';
 import ValidarDocumento from './pages/ValidarDocumento';
+import MetaLogin from './pages/MetaLogin';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -167,6 +168,7 @@ function App() {
   // por isso fica fora do AuthProvider/gate de autenticação do restante do app.
   const isRotaAssinaturaPublica = window.location.pathname.startsWith('/assinar/');
   const isRotaValidacaoPublica = window.location.pathname.startsWith('/validar/');
+  const isRotaMetaLoginPublica = window.location.pathname.startsWith('/meta-login');
 
   return (
     <QueryClientProvider client={queryClientInstance}>
@@ -178,6 +180,10 @@ function App() {
         ) : isRotaValidacaoPublica ? (
           <Routes>
             <Route path="/validar/:termoId" element={<ValidarDocumento />} />
+          </Routes>
+        ) : isRotaMetaLoginPublica ? (
+          <Routes>
+            <Route path="/meta-login" element={<MetaLogin />} />
           </Routes>
         ) : (
           <AuthProvider>

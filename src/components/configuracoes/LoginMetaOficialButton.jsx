@@ -1,185 +1,60 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2, MessageSquare } from 'lucide-react';
+import { MessageSquare, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 
-const APP_ID = '1574136874002258';
-const CONFIG_ID = '1355211576800271';
-const TIMEOUT_MS = 45000;
-const AVISO_BLOQUEIO_MS = 8000;
-
+/**
+ * Botão de login com a Meta (Embedded Signup).
+ *
+ * O fluxo de Embedded Signup usa window.FB.login(), que abre um POP-UP.
+ * Em navegadores modernos, pop-ups são frequentemente bloqueados quando a
+ * chamada parte de dentro de um iframe (preview do Base44) ou em situações
+ * onde o gesto do usuário não é reconhecido como direto. Para zerar esses
+ * bloqueios, este botão SEMPRE abre uma página dedicada (/meta-login) em
+ * uma NOVA ABA. Numa aba de NÍVEL TOPO do navegador, pop-ups nunca são
+ * bloqueados. A nova aba faz todo o fluxo FB.login → troca de código →
+ * salvar credenciais, e avisa esta janela via postMessage quando dá certo.
+ */
 export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
-  const [sdkReady, setSdkReady] = useState(false);
-  const [conectando, setConectando] = useState(false);
-  const [avisoBloqueio, setAvisoBloqueio] = useState(false);
-  const timeoutRef = useRef(null);
-  const avisoRef = useRef(null);
-  const sessionInfoRef = useRef(null);
-  const emIframe = typeof window !== 'undefined' && window.self !== window.top;
+  const abrirNovaAba = () => {
+    if (!empresaId) {
+      toast.error('Empresa não identificada. Recarregue a página e tente novamente.');
+      return;
+    }
+    const url = `${window.location.origin}/meta-login?empresa_id=${empresaId}`;
+    const novaAba = window.open(url, '_blank');
+    if (!novaAba) {
+      toast.error('O navegador bloqueou a abertura da nova aba. Permita pop-ups para este site e tente novamente.');
+      return;
+    }
+    novaAba.focus();
+    toast.info('Abrimos uma nova aba para o login com a Meta. Conclua lá e volte para o CRM.');
+  };
 
-  useEffect(() => {
+  React.useEffect(() => {
     const handleMessage = (event) => {
-      if (!event.origin.endsWith('facebook.com')) return;
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
-          sessionInfoRef.current = {
-            waba_id: data.data?.waba_id,
-            phone_number_id: data.data?.phone_number_id,
-          };
-        }
-      } catch (_) {
-        // Ignorar mensagens que não são JSON (não relacionadas ao embedded signup)
+      if (event.data && event.data.type === 'META_LOGIN_SUCESSO') {
+        toast.success('✅ WhatsApp Oficial conectado com sucesso!');
+        onSuccess?.();
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  useEffect(() => {
-    if (window.FB) {
-      setSdkReady(true);
-      return;
-    }
-    window.fbAsyncInit = function () {
-      window.FB.init({ appId: APP_ID, autoLogAppEvents: true, xfbml: true, version: 'v21.0' });
-      setSdkReady(true);
-    };
-    if (!document.getElementById('facebook-jssdk')) {
-      const script = document.createElement('script');
-      script.id = 'facebook-jssdk';
-      script.src = 'https://connect.facebook.net/pt_BR/sdk.js';
-      script.async = true;
-      script.defer = true;
-      document.body.appendChild(script);
-    }
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  const finalizar = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    if (avisoRef.current) clearTimeout(avisoRef.current);
-    setConectando(false);
-    setAvisoBloqueio(false);
-  };
-
-  const iniciarLogin = () => {
-    if (!sdkReady || !window.FB) {
-      toast.error('O SDK do Facebook ainda está carregando. Aguarde alguns segundos e tente novamente.');
-      return;
-    }
-    if (!empresaId) {
-      toast.error('Empresa não identificada.');
-      return;
-    }
-
-    // Testa imediatamente (mesmo clique) se o navegador permite abrir pop-up.
-    // Se bloquear aqui, avisamos na hora em vez de esperar o timeout todo.
-    const testPopup = window.open('', '_blank', 'width=1,height=1');
-    if (!testPopup || testPopup.closed || typeof testPopup.closed === 'undefined') {
-      toast.error('Seu navegador bloqueou o pop-up de login. Clique no ícone de bloqueio de pop-up na barra de endereço e permita pop-ups para este site, depois tente novamente.');
-      return;
-    }
-    testPopup.close();
-
-    setConectando(true);
-    setAvisoBloqueio(false);
-    sessionInfoRef.current = null;
-
-    // Se em poucos segundos não houve resposta, provavelmente o navegador bloqueou o pop-up
-    avisoRef.current = setTimeout(() => {
-      setAvisoBloqueio(true);
-    }, AVISO_BLOQUEIO_MS);
-
-    // Failsafe: se o Facebook não responder em 45s, libera o botão e avisa o usuário
-    timeoutRef.current = setTimeout(() => {
-      toast.error('O login com o Facebook não respondeu. Verifique se a janela de login foi bloqueada pelo navegador, ou se o app da Meta está com o domínio autorizado corretamente, e tente novamente.');
-      finalizar();
-    }, TIMEOUT_MS);
-
-    window.FB.login(
-      async (response) => {
-        if (response.authResponse && response.authResponse.code) {
-          try {
-            const resp = await base44.functions.invoke('metaEmbeddedSignup', {
-              action: 'exchange_code',
-              empresa_id: empresaId,
-              code: response.authResponse.code,
-              waba_id: sessionInfoRef.current?.waba_id,
-              phone_number_id: sessionInfoRef.current?.phone_number_id,
-            });
-            if (resp.data?.ok) {
-              toast.success('✅ WhatsApp conectado! Credenciais preenchidas automaticamente.');
-              onSuccess?.();
-            } else {
-              toast.error('Erro: ' + (resp.data?.error || 'Falha na conexão'));
-            }
-          } catch (e) {
-            toast.error('Erro ao processar conexão: ' + e.message);
-          }
-        } else if (response.status === 'not_authorized') {
-          toast.error('Você não autorizou o app. Tente novamente.');
-        } else {
-          toast.info('Conexão cancelada.');
-        }
-        finalizar();
-      },
-      {
-        config_id: CONFIG_ID,
-        response_type: 'code',
-        override_default_response_type: true,
-        extras: {
-          feature: 'whatsapp_embedded_signup',
-          sessionInfoVersion: 3,
-        },
-      }
-    );
-  };
-
-  if (emIframe) {
-    return (
-      <div className="space-y-2">
-        <Button
-          type="button"
-          className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
-          onClick={() => window.open(window.location.href, '_blank')}
-        >
-          <MessageSquare className="w-5 h-5" /> Abrir em nova aba para fazer Login com a Meta
-        </Button>
-        <p className="text-xs text-slate-500">
-          Você está numa visualização em preview (dentro de um iframe), e o navegador bloqueia pop-ups nesse caso. Clique acima para abrir esta página em uma aba de verdade e fazer o login por lá.
-        </p>
-      </div>
-    );
-  }
+  }, [onSuccess]);
 
   return (
     <div className="space-y-2">
       <Button
         type="button"
-        className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white h-12 text-base font-semibold"
-        onClick={iniciarLogin}
-        disabled={conectando || !sdkReady}
+        className="w-full gap-2 bg-emerald-700 hover:bg-emerald-800 text-white h-12 text-base font-semibold"
+        onClick={abrirNovaAba}
       >
-        {conectando
-          ? <><Loader2 className="w-5 h-5 animate-spin" /> Aguardando autorização...</>
-          : !sdkReady
-            ? <><Loader2 className="w-5 h-5 animate-spin" /> Carregando...</>
-            : <><MessageSquare className="w-5 h-5" /> Fazer Login com a Meta (preenche automaticamente)</>}
+        <MessageSquare className="w-5 h-5" /> Fazer Login com a Meta (abre em nova aba)
+        <ExternalLink className="w-4 h-4 ml-1" />
       </Button>
-      {conectando && avisoBloqueio && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-2">
-          <p className="text-xs text-amber-800">
-            A janela de login não abriu ainda. Verifique se o navegador ou alguma extensão bloqueou o pop-up e libere para este site.
-          </p>
-          <Button type="button" variant="outline" size="sm" onClick={finalizar}>
-            Cancelar e tentar novamente
-          </Button>
-        </div>
-      )}
+      <p className="text-xs text-slate-500 text-center">
+        O CRM abre uma aba separada para o login da Meta — assim o navegador nunca bloqueia o pop-up de autorização.
+      </p>
     </div>
   );
 }
