@@ -374,20 +374,9 @@ export default function ImprimirSimulacao() {
                   <div className="h-1.5 rounded-full bg-[#10B981]" style={{ width: '40%' }} />
                   <div className="h-px flex-1 bg-slate-200" />
                 </div>
-                <div className="flex items-end justify-between mt-2">
-                  <div>
-                    <p className="text-[11px] text-slate-500">Crédito</p>
-                    <p className="text-sm font-bold text-slate-700">{formatCurrency(simulacao.credito_total)}{simulacao.lance_embutido_valor > 0 ? ` − embutido ${formatCurrency(simulacao.lance_embutido_valor)}` : ''}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center">
-                      <Check className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <div className="text-right leading-tight">
-                      <p className="text-[11px] font-bold text-emerald-600">Valor líquido</p>
-                      <p className="text-[10px] text-slate-500">já calculado</p>
-                    </div>
-                  </div>
+                <div className="mt-2">
+                  <p className="text-[11px] text-slate-500">Crédito</p>
+                  <p className="text-sm font-bold text-slate-700">{formatCurrency(simulacao.credito_total)}{simulacao.lance_embutido_valor > 0 ? ` − embutido ${formatCurrency(simulacao.lance_embutido_valor)}` : ''}</p>
                 </div>
               </div>
             </div>
