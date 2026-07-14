@@ -2074,6 +2074,9 @@ export default function BatePapo() {
                           user={user}
                           mensagensEndRef={mensagensEndRef}
                           onEditarReenviar={setEditorReenvioUrl}
+                          onSelecionarOpcaoLista={(opcaoTexto) => {
+                            enviarMensagemMutation.mutate({ texto: opcaoTexto, arquivo: null, mensagemParaResponder: null });
+                          }}
                         />
                       )}
                     </ScrollArea>

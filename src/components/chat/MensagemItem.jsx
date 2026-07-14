@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null, onEditarReenviar = null }) {
+export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null }) {
   // Corrige URLs com espaços não codificados (ex: pastas "CRM JD"), que quebram <img>/<audio>/<video>
   const sanitizeUrl = (url) => (typeof url === 'string' ? url.replace(/ /g, '%20') : url);
 
@@ -362,6 +362,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
       const obj = JSON.parse(mensagem.texto);
       if (obj.contactMessage) return false;
       if (obj.__template) return false; // mensagem de template rico — não bloquear
+      if (obj.__lista) return false; // menu de lista interativa — não bloquear
       if (obj.senderKeyDistributionMessage) return true;
       if (obj.protocolMessage) return true;
       if (obj.ephemeralMessage) return true;
@@ -381,10 +382,53 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
     return null;
   };
 
+  // Tentar parsear menu de lista interativa (D-API) — opções clicáveis, igual ao WhatsApp
+  const parseListaMsg = () => {
+    if (!mensagem.texto) return null;
+    try {
+      const obj = JSON.parse(mensagem.texto);
+      if (obj?.__lista) return obj;
+    } catch {}
+    return null;
+  };
+
   const renderConteudo = () => {
     // Ignorar mensagens internas do WhatsApp codificadas
     if (isJsonEncodedMessage()) {
       return null;
+    }
+
+    // Menu de lista interativa recebido via D-API — renderizar como opções clicáveis
+    const lista = parseListaMsg();
+    if (lista) {
+      return (
+        <div className={`flex flex-col rounded-xl overflow-hidden w-72 ${isVendedor ? 'bg-black/5' : 'bg-white border border-slate-200'}`}>
+          {(lista.titulo || lista.descricao) && (
+            <div className="px-3 py-2 border-b border-black/10">
+              {lista.titulo && <p className="text-xs font-bold">{lista.titulo}</p>}
+              {lista.descricao && <p className="text-xs opacity-80 mt-0.5 whitespace-pre-wrap">{lista.descricao}</p>}
+            </div>
+          )}
+          <div className="flex flex-col divide-y divide-black/5">
+            {(lista.opcoes || []).map((op, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onSelecionarOpcaoLista?.(op.titulo)}
+                disabled={!onSelecionarOpcaoLista}
+                className={`flex items-center justify-between gap-2 px-3 py-2.5 text-left text-xs transition-colors hover:bg-black/5 ${!onSelecionarOpcaoLista ? 'cursor-default opacity-80' : 'cursor-pointer'}`}
+              >
+                <span className="flex-1">
+                  {op.titulo}
+                  {op.descricao && <span className="block text-[11px] opacity-60">{op.descricao}</span>}
+                </span>
+                <span className="w-3.5 h-3.5 rounded-full border border-slate-400 flex-shrink-0" />
+              </button>
+            ))}
+          </div>
+          {lista.rodape && <p className="text-[10px] px-3 py-1.5 opacity-60">{lista.rodape}</p>}
+        </div>
+      );
     }
 
     // Mensagem de template rico (enviada via API Oficial com imagem/botões)

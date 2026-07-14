@@ -304,32 +304,29 @@ async function processarMensagemRecebida(base44, connection, data) {
 
     let arquivo_url = data?.media_url || data?.media_data?.url || null;
 
-    // Mensagens de lista interativa (botões com opções) — a D-API envia as opções
-    // separadas em data.data, então montamos um texto legível com todas elas.
+    // Mensagens de lista interativa (menu com opções) — preservamos a estrutura em JSON
+    // (marcador __lista) para o front-end renderizar como um menu clicável, igual ao WhatsApp.
     if (tipo_conteudo === 'list' || tipo_conteudo === 'list_response' || tipo_conteudo === 'template_button_reply') {
       const listData = data?.data || {};
-      const linhas = [];
-      if (listData.title) linhas.push(`*${listData.title}*`);
-      if (listData.description) linhas.push(listData.description);
-
       const opcoes = [];
       if (Array.isArray(listData.sections)) {
         listData.sections.forEach((sec) => {
-          if (sec?.title) opcoes.push(`_${sec.title}_`);
           (sec?.rows || []).forEach((row) => {
-            opcoes.push(`▸ ${row.title}${row.description ? ' - ' + row.description : ''}`);
+            opcoes.push({ titulo: row.title, descricao: row.description || null, secao: sec?.title || null });
           });
         });
       } else if (Array.isArray(listData.options)) {
-        listData.options.forEach((opt) => opcoes.push(`▸ ${opt}`));
+        listData.options.forEach((opt) => opcoes.push({ titulo: opt, descricao: null, secao: null }));
       }
-      if (opcoes.length > 0) linhas.push(opcoes.join('\n'));
 
-      if (listData.selected_title) linhas.push(`Selecionou: ${listData.selected_title}`);
-      if (listData.selected_display_text) linhas.push(`Selecionou: ${listData.selected_display_text}`);
-      if (listData.footer) linhas.push(listData.footer);
-
-      texto = linhas.filter(Boolean).join('\n\n') || texto || 'Mensagem de lista/botões';
+      texto = JSON.stringify({
+        __lista: true,
+        titulo: listData.title || null,
+        descricao: listData.description || null,
+        opcoes,
+        rodape: listData.footer || null,
+        selecionado: listData.selected_title || listData.selected_display_text || null
+      });
       tipo_conteudo = 'texto';
     } else if (tipo_conteudo === 'contact') {
       // Compartilhamento de contato — monta o mesmo formato JSON que o front-end

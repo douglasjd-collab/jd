@@ -47,7 +47,7 @@ function agruparMensagens(mensagens) {
   return grupos;
 }
 
-export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar }) {
+export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar, onSelecionarOpcaoLista }) {
   const grupos = agruparMensagens(mensagens);
 
   return (
@@ -101,6 +101,7 @@ export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo
               onResponder={onResponder}
               user={user}
               onEditarReenviar={onEditarReenviar}
+              onSelecionarOpcaoLista={onSelecionarOpcaoLista}
             />
           </div>
         );
