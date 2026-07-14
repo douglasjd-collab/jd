@@ -416,6 +416,47 @@ export default function ConfiguracaoWhatsApp() {
     setTestandoMeta(false);
   };
 
+  // Limpa as credenciais da API Oficial Meta salvas nesta empresa — útil quando
+  // o número exibido pertence a outro App da Meta e você quer reconectar com o
+  // app atual (coexistência). Após limpar, faça o login com a Meta novamente.
+  const [desconectandoMeta, setDesconectandoMeta] = useState(false);
+  const desconectarMeta = async () => {
+    if (!empresa?.id) {
+      toast.error('Empresa não identificada');
+      return;
+    }
+    if (!window.confirm('Isso vai apagar o Access Token, Phone Number ID e WABA ID salvos desta empresa (API Oficial Meta). O número conectado em outro App da Meta deixará de aparecer aqui. Deseja continuar?')) return;
+    setDesconectandoMeta(true);
+    try {
+      const resp = await base44.functions.invoke('metaEmbeddedSignup', {
+        action: 'desconectar',
+        empresa_id: empresa.id,
+      });
+      if (resp.data?.ok) {
+        setStatusMeta(null);
+        setWhatsappAccessToken('');
+        setWhatsappPhoneNumberId('');
+        setWhatsappBusinessAccountId('');
+        setEmpresa(prev => prev ? {
+          ...prev,
+          whatsapp_access_token: '',
+          whatsapp_phone_number_id: '',
+          whatsapp_business_account_id: '',
+          whatsapp_conectado: false,
+          meta_display_phone_number: '',
+          meta_verified_name: '',
+        } : prev);
+        toast.success('✅ Credenciais da API Oficial Meta removidas. Agora faça o login com o App atual da Meta.');
+      } else {
+        toast.error('Erro: ' + (resp.data?.error || 'Falha ao desconectar'));
+      }
+    } catch (e) {
+      toast.error('Erro ao desconectar: ' + e.message);
+    } finally {
+      setDesconectandoMeta(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -662,14 +703,28 @@ export default function ConfiguracaoWhatsApp() {
                 <Wifi className="w-5 h-5" />
                 Status da API Oficial (Meta)
               </CardTitle>
-              <Button
-                onClick={testarConexaoMeta}
-                disabled={testandoMeta || !whatsappPhoneNumberId || !whatsappAccessToken}
-                size="sm"
-                variant={statusMeta?.success ? 'outline' : 'default'}
-              >
-                {testandoMeta ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Testando...</> : '🔌 Testar Conexão'}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={testarConexaoMeta}
+                  disabled={testandoMeta || !whatsappPhoneNumberId || !whatsappAccessToken}
+                  size="sm"
+                  variant={statusMeta?.success ? 'outline' : 'default'}
+                >
+                  {testandoMeta ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Testando...</> : '🔌 Testar Conexão'}
+                </Button>
+                {whatsappPhoneNumberId && whatsappAccessToken && (
+                  <Button
+                    onClick={desconectarMeta}
+                    disabled={desconectandoMeta}
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 hover:bg-red-50 border-red-200"
+                    title="Apaga as credenciais salvas (token/WABA/telefone) — use quando o número exibido pertence a outro App da Meta"
+                  >
+                    {desconectandoMeta ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Removendo...</> : <><WifiOff className="w-4 h-4 mr-2" /> Desconectar</>}
+                  </Button>
+                )}
+              </div>
             </div>
             <CardDescription>
               Verifica se as credenciais da API Oficial estão corretas e funcionando
