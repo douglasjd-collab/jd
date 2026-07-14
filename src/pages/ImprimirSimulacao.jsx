@@ -20,13 +20,11 @@ export default function ImprimirSimulacao() {
       
       const params = new URLSearchParams(window.location.search);
       const id = params.get('id');
-      
-      if (!id) {
-        throw new Error('ID da simulação não encontrado');
-      }
 
-      // Buscar a simulação específica
-      const result = await base44.entities.Simulacao.filter({ id });
+      // Buscar a simulação: por id (fluxo normal) ou a mais recente (preview sem id)
+      const result = id
+        ? await base44.entities.Simulacao.filter({ id })
+        : await base44.entities.Simulacao.list('-created_date', 1);
       
       if (!result || result.length === 0) {
         throw new Error('Simulação não encontrada');
