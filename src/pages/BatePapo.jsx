@@ -854,11 +854,6 @@ export default function BatePapo() {
           ultimo_remetente: 'cliente',
         }).catch(() => {});
 
-        const conversaEncerrada = conversasRef.current.find(c => c.id === msgData.conversa_id && c.status === 'encerrada');
-        if (conversaEncerrada) {
-        const nomeContato = conversaEncerrada.cliente_nome || conversaEncerrada.cliente_telefone || 'Cliente';
-        toast.message(`📩 Nova mensagem de ${nomeContato}`, { description: 'Esta conversa está finalizada. Deseja reabri-la?', duration: 15000, action: { label: 'Abrir conversa', onClick: async () => { const eid = empresaIdRef.current; queryClient.setQueryData(['conversas-whatsapp', eid], (old = []) => old.map(c => c.id === conversaEncerrada.id ? { ...c, status: 'ativa', ultimo_remetente: 'cliente', responsavel_id: null, responsavel_expira_em: null } : c)); selecionarConversa({ ...conversaEncerrada, status: 'ativa' }); base44.entities.ConversaWhatsapp.update(conversaEncerrada.id, { status: 'ativa', ultimo_remetente: 'cliente', responsavel_id: null, responsavel_expira_em: null }).catch(() => {}); toast.success('Conversa reaberta!'); } } });
-        }
       }
 
       // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem
