@@ -240,7 +240,7 @@ export default function ImprimirSimulacao() {
           </Button>
         </div>
 
-        <div className="max-w-3xl mx-auto p-6 pt-16 print:pt-0 print:p-3 border-2 border-[#083942]/70 rounded-xl print:rounded-lg shadow-sm">
+        <div className="max-w-3xl mx-auto p-6 pt-16 print:pt-0 print:p-3">
 
           {/* Cabeçalho */}
           <div className="relative bg-white rounded-xl border border-slate-200 shadow-sm mb-4 overflow-hidden">
