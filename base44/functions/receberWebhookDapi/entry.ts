@@ -304,27 +304,50 @@ async function processarMensagemRecebida(base44, connection, data) {
 
     let arquivo_url = data?.media_url || data?.media_data?.url || null;
 
-    // Mensagens de lista interativa (menu com opções) — preservamos a estrutura em JSON
+    // Mensagens de lista/botões interativos — preservamos a estrutura em JSON
     // (marcador __lista) para o front-end renderizar como um menu clicável, igual ao WhatsApp.
-    if (tipo_conteudo === 'list' || tipo_conteudo === 'list_response' || tipo_conteudo === 'template_button_reply') {
+    const tiposInterativos = ['list', 'list_response', 'template_button_reply', 'buttons', 'button', 'interactive', 'template', 'button_message'];
+    if (tiposInterativos.includes(tipo_conteudo)) {
       const listData = data?.data || {};
+      // Texto do corpo: pode estar no data.message (campo principal) ou no data.data.body/text
+      const bodyText = texto || listData.body || listData.text || listData.content || null;
       const opcoes = [];
+
+      // Lista com seções (list message)
       if (Array.isArray(listData.sections)) {
         listData.sections.forEach((sec) => {
           (sec?.rows || []).forEach((row) => {
-            opcoes.push({ titulo: row.title, descricao: row.description || null, secao: sec?.title || null });
+            opcoes.push({ titulo: row.title, descricao: row.description || null });
           });
         });
-      } else if (Array.isArray(listData.options)) {
-        listData.options.forEach((opt) => opcoes.push({ titulo: opt, descricao: null, secao: null }));
+      }
+      // Botões diretos (buttonsMessage)
+      if (Array.isArray(listData.buttons)) {
+        listData.buttons.forEach((btn) => {
+          const titulo =
+            btn?.buttonText?.displayText ||
+            btn?.button_text?.display_text ||
+            btn?.display_text ||
+            btn?.text ||
+            btn?.title ||
+            (typeof btn === 'string' ? btn : null);
+          if (titulo) opcoes.push({ titulo, descricao: null });
+        });
+      }
+      // Array genérico de opções
+      if (Array.isArray(listData.options)) {
+        listData.options.forEach((opt) => {
+          const titulo = typeof opt === 'string' ? opt : (opt?.title || opt?.text || null);
+          if (titulo) opcoes.push({ titulo, descricao: null });
+        });
       }
 
       texto = JSON.stringify({
         __lista: true,
         titulo: listData.title || null,
-        descricao: listData.description || null,
+        descricao: bodyText || listData.description || null,
         opcoes,
-        rodape: listData.footer || null,
+        rodape: listData.footer || listData.footer_text || null,
         selecionado: listData.selected_title || listData.selected_display_text || null
       });
       tipo_conteudo = 'texto';
