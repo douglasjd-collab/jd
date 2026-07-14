@@ -1,118 +1,98 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
-import { Loader2, MessageSquare } from 'lucide-react';
-import { toast } from 'sonner';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import { Loader2, MessageSquare, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
+import { base44 } from '@/api/base44Client';
 
 const APP_ID = '1574136874002258';
 const CONFIG_ID = '1355211576800271';
 
-let sdkPromise = null;
-
-const carregarSdk = () => {
-  if (sdkPromise) return sdkPromise;
-  sdkPromise = new Promise((resolve) => {
-    if (window.FB) {
-      resolve(true);
-      return;
-    }
-    window.fbAsyncInit = function () {
-      window.FB.init({ appId: APP_ID, autoLogAppEvents: true, xfbml: true, version: 'v21.0' });
-      resolve(true);
-    };
-    if (!document.getElementById('facebook-jssdk')) {
-      const script = document.createElement('script');
-      script.id = 'facebook-jssdk';
-      script.src = 'https://connect.facebook.net/pt_BR/sdk.js';
-      script.async = true;
-      script.defer = true;
-      document.body.appendChild(script);
-    }
-  });
-  return sdkPromise;
-};
-
 /**
- * Botão que abre DIRETAMENTE o popup do Facebook (Embedded Signup via FB.login).
- * Não usa aba intermediária: o clique dispara o popup da Meta onboarding.
+ * Botão que abre DIRETAMENTE um POPUP com a URL do onboarding da Meta.
+ * Após o login e a conexão do WhatsApp, a Meta redireciona o popup de volta
+ * para /meta-login?empresa_id=X&code=Y. Aqui detectamos essa URL e trocamos o
+ * code pelas credenciais (via função metaEmbeddedSignup), salvando no CRM.
  */
 export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
-  const [sdkPronto, setSdkPronto] = useState(false);
   const [carregando, setCarregando] = useState(false);
-  const sessionInfoRef = useRef(null);
+  const pollRef = useRef(null);
 
-  useEffect(() => {
-    let mounted = true;
-    carregarSdk().then(() => { if (mounted) setSdkPronto(true); });
-    return () => { mounted = false; };
-  }, []);
-
-  useEffect(() => {
-    const handleMessage = (event) => {
-      if (!event.origin.endsWith('facebook.com')) return;
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
-          sessionInfoRef.current = {
-            waba_id: data.data?.waba_id,
-            phone_number_id: data.data?.phone_number_id,
-          };
-        }
-      } catch (_) {}
+  React.useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
     };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
-  const iniciarLogin = async () => {
+  const abrirPopup = () => {
     if (!empresaId) {
       toast.error('Empresa não identificada. Recarregue a página e tente novamente.');
       return;
     }
-    if (!sdkPronto || !window.FB) {
-      toast.info('Aguardando carregamento do SDK... tente novamente em alguns segundos.');
-      return;
-    }
 
     setCarregando(true);
-    window.FB.login(
-      async (response) => {
-        if (response.authResponse && response.authResponse.code) {
-          try {
-            const resp = await base44.functions.invoke('metaEmbeddedSignup', {
-              action: 'exchange_code',
-              empresa_id: empresaId,
-              code: response.authResponse.code,
-              waba_id: sessionInfoRef.current?.waba_id,
-              phone_number_id: sessionInfoRef.current?.phone_number_id,
-            });
-            if (resp.data?.ok) {
-              toast.success(`✅ WhatsApp Oficial conectado${resp.data.display_phone_number ? ': ' + resp.data.display_phone_number : ''}`);
-              onSuccess?.();
-            } else {
-              toast.error('Erro ao conectar: ' + (resp.data?.error || 'Falha na conexão'));
-            }
-          } catch (e) {
-            toast.error('Erro ao processar conexão: ' + e.message);
-          } finally {
+    const redirectUri = `${window.location.origin}/meta-login?empresa_id=${empresaId}`;
+    const metaUrl = `https://business.facebook.com/messaging/whatsapp/onboard/?app_id=${APP_ID}&config_id=${CONFIG_ID}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+    const popup = window.open(metaUrl, 'meta_login_popup', 'width=520,height=720,scrollbars=yes');
+
+    if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+      setCarregando(false);
+      toast.error('O navegador bloqueou o pop-up. Autorize pop-ups para este site e tente novamente.');
+      return;
+    }
+    popup.focus();
+
+    // Monitorar o popup: quando a Meta redirecionar para nossa origem, parsear ?code=
+    let finalizado = false;
+    pollRef.current = setInterval(async () => {
+      try {
+        if (popup.closed) {
+          if (!finalizado) {
+            clearInterval(pollRef.current);
             setCarregando(false);
+            toast.info('Janela de login fechada. Se você não concluiu, tente novamente.');
+            pollRef.current = null;
           }
-        } else {
+          return;
+        }
+        let href = '';
+        try { href = popup.location.href; } catch (_) { /* cross-origin até redirecionar pra gente */ }
+
+        if (href && href.startsWith(window.location.origin)) {
+          finalizado = true;
+          clearInterval(pollRef.current);
+          pollRef.current = null;
           setCarregando(false);
-          if (response.status === 'not_authorized') {
-            toast.error('Você não autorizou o app. Pode tentar novamente.');
+          const params = new URLSearchParams(popup.location.search);
+          const code = params.get('code');
+          const estado = params.get('state');
+          try { popup.close(); } catch (_) {}
+          if (code) {
+            toast.info('Conexão autorizada! Salvando credenciais...');
+            // /meta-login também processa, mas garantimos aqui
+            try {
+              const resp = await base44.functions.invoke('metaEmbeddedSignup', {
+                action: 'exchange_code',
+                empresa_id: empresaId,
+                code,
+              });
+              if (resp.data?.ok) {
+                toast.success(`✅ WhatsApp Oficial conectado${resp.data.display_phone_number ? ': ' + resp.data.display_phone_number : ''}`);
+                onSuccess?.();
+              } else {
+                toast.error('Erro ao salvar credenciais: ' + (resp.data?.error || 'Falha na conexão'));
+              }
+            } catch (e) {
+              toast.error('Erro ao processar conexão: ' + e.message);
+            }
           } else {
-            toast.info('Login cancelado.');
+            toast.error('A Meta não retornou o código de autorização. Verifique no painel da Meta se a URL de redirecionamento está cadastrada: ' + redirectUri);
           }
         }
-      },
-      {
-        config_id: CONFIG_ID,
-        response_type: 'code',
-        override_default_response_type: true,
-        extras: { feature: 'whatsapp_embedded_signup', sessionInfoVersion: 3 },
+      } catch (_) {
+        // ignora erros de cross-origin durante o fluxo
       }
-    );
+    }, 800);
   };
 
   return (
@@ -120,19 +100,17 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
       <Button
         type="button"
         className="w-full gap-2 bg-emerald-700 hover:bg-emerald-800 text-white h-12 text-base font-semibold"
-        onClick={iniciarLogin}
-        disabled={!sdkPronto || carregando}
+        onClick={abrirPopup}
+        disabled={carregando}
       >
         {carregando ? (
           <><Loader2 className="w-5 h-5 animate-spin" /> Conectando...</>
-        ) : !sdkPronto ? (
-          <><Loader2 className="w-5 h-5 animate-spin" /> Carregando SDK...</>
         ) : (
-          <><MessageSquare className="w-5 h-5" /> Fazer Login com a Meta</>
+          <> <MessageSquare className="w-5 h-5" /> Fazer Login com a Meta<ExternalLink className="w-4 h-4 ml-1" /></>
         )}
       </Button>
       <p className="text-xs text-slate-500 text-center">
-        Ao clicar, uma janela da Meta abre para você autorizar a conexão do seu WhatsApp Business. As credenciais são salvas automaticamente no CRM.
+        Ao clicar, abre uma janela da Meta para autorizar a conexão do seu WhatsApp Business. Ao concluir, a janela volta automaticamente para o CRM e salva as credenciais.
       </p>
     </div>
   );
