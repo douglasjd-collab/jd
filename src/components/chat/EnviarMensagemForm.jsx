@@ -634,6 +634,18 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
             )}
           </div>
 
+          {/* Botão Mensagens Rápidas */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setMensagensRapidasOpen(true)}
+            className="rounded-full w-10 h-10 bg-slate-100 hover:bg-yellow-100 text-slate-600 hover:text-yellow-600 flex-shrink-0 mb-0.5"
+            title="Mensagens Rápidas"
+          >
+            <Zap className="w-5 h-5" />
+          </Button>
+
           {/* Textarea */}
           <div className="flex-1">
             <textarea

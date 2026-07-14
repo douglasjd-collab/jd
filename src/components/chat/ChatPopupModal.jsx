@@ -245,6 +245,9 @@ export default function ChatPopupModal({ open, onOpenChange, contato, empresaId,
                   }}
                   isLoading={enviarMutation.isPending}
                   nomeUsuario={user?.full_name || ''}
+                  empresaId={empresaId}
+                  telefoneDestino={contato?.telefone}
+                  conversaId={conversaId}
                 />
               </div>
             </>
