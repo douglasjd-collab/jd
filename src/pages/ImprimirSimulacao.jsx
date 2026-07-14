@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Printer, ArrowLeft, Calendar, User, ShieldCheck, DollarSign } from 'lucide-react';
+import { Printer, ArrowLeft, Calendar, User, ShieldCheck, DollarSign, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { calcularChanceContemplacao } from '@/components/simulador/AnaliseContemplacao';
 
@@ -389,16 +389,36 @@ export default function ImprimirSimulacao() {
 
           {/* Bloco 6+7: Valor que o Cliente Recebe + Resultado Final (lado a lado) */}
           <div className="mb-4 grid grid-cols-1 md:grid-cols-2 print:grid-cols-2 gap-3">
-            {/* Valor que o Cliente Recebe */}
-            <div className="bg-[#083942] text-white rounded-xl p-4 flex flex-col justify-center">
-              <p className="text-xs uppercase tracking-wide opacity-75 mb-2">Valor que o Cliente Recebe</p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0">
-                  <DollarSign className="w-6 h-6 text-black" />
+            {/* Valor que o Cliente Recebe — modelo moderno */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex">
+              <div className="bg-[#083D3E] w-1/4 flex items-center justify-center p-3">
+                <div className="w-12 h-12 rounded-full bg-[#0e6b6e] flex items-center justify-center border-2 border-white/80">
+                  <DollarSign className="w-7 h-7 text-white" />
                 </div>
-                <p className="text-3xl font-bold">{formatCurrency(simulacao.credito_total - (simulacao.lance_embutido_valor || 0))}</p>
               </div>
-              <p className="text-xs opacity-70 mt-2">Crédito {formatCurrency(simulacao.credito_total)}{simulacao.lance_embutido_valor > 0 ? ` menos Lance Embutido ${formatCurrency(simulacao.lance_embutido_valor)}` : ''}</p>
+              <div className="flex-1 p-4 flex flex-col justify-center">
+                <p className="text-[11px] uppercase tracking-wide text-slate-500 mb-1">Valor que o Cliente Recebe</p>
+                <p className="text-2xl font-bold text-[#08292D]">{formatCurrency(simulacao.credito_total - (simulacao.lance_embutido_valor || 0))}</p>
+                <div className="flex items-center gap-1 mt-2">
+                  <div className="h-1.5 rounded-full bg-[#10B981]" style={{ width: '40%' }} />
+                  <div className="h-px flex-1 bg-slate-200" />
+                </div>
+                <div className="flex items-end justify-between mt-2">
+                  <div>
+                    <p className="text-[11px] text-slate-500">Crédito</p>
+                    <p className="text-sm font-bold text-slate-700">{formatCurrency(simulacao.credito_total)}{simulacao.lance_embutido_valor > 0 ? ` − embutido ${formatCurrency(simulacao.lance_embutido_valor)}` : ''}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center">
+                      <Check className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div className="text-right leading-tight">
+                      <p className="text-[11px] font-bold text-emerald-600">Valor líquido</p>
+                      <p className="text-[10px] text-slate-500">já calculado</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Resultado Final */}
