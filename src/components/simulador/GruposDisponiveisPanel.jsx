@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, ChevronDown, ChevronUp, History, CheckCircle2 } from 'lucide-react';
+import { Loader2, Target, Info, CheckCircle2, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   CATEGORIA_LABELS,
@@ -13,12 +13,11 @@ import {
   calcularMediaPercentual,
   obterUltimasAssembleias,
   construirAssembleiasPorGrupo,
-  formatPercent,
   formatCurrency
 } from '@/components/utils/gruposConsorcioHelpers';
-import HistoricoAssembleiaGrupoPanel from './HistoricoAssembleiaGrupoPanel';
+import HistoricoExpansivelGrupo from './HistoricoExpansivelGrupo';
 
-export default function GruposDisponiveisPanel({ empresaId, administradoraId, categoriaBem, credito, grupoSelecionado, onSelectGrupo, lanceClientePercentual }) {
+export default function GruposDisponiveisPanel({ empresaId, administradoraId, categoriaBem, credito, grupoSelecionado, onSelectGrupo }) {
   const [expandido, setExpandido] = useState(null);
   const [buscaNumero, setBuscaNumero] = useState('');
   const [prazoMaxFiltro, setPrazoMaxFiltro] = useState('');
@@ -36,8 +35,6 @@ export default function GruposDisponiveisPanel({ empresaId, administradoraId, ca
     })
   });
 
-  // Dados reais de assembleia vêm das importações (Menu > Consórcio > Resultado de Assembleia),
-  // gravadas em HistoricoLanceDetalhe (lances por grupo) + HistoricoLanceGrupo (data da assembleia).
   const { data: todosDetalhesLance = [] } = useQuery({
     queryKey: ['historico-lance-detalhes', empresaId],
     enabled: habilitado,
@@ -69,37 +66,50 @@ export default function GruposDisponiveisPanel({ empresaId, administradoraId, ca
       lista = lista.filter(g => !g.prazo_maximo || Number(g.prazo_maximo) <= Number(prazoMaxFiltro));
     }
 
-    const comMedia = lista.map(g => {
+    const enriched = lista.map(g => {
       const grupoNormalizado = String(g.numero_grupo || '').replace(/^0+/, '') || '0';
       const assembleiasGrupo = assembleiasPorGrupo[grupoNormalizado] || [];
-      const mediaLivre3m = calcularMediaPercentual(assembleiasGrupo, 3, 'lance_livre_menor_percentual');
-      const ultimaAssembleia = obterUltimasAssembleias(assembleiasGrupo, 1)[0] || null;
-      return { ...g, _assembleias: assembleiasGrupo, _mediaLivre3m: mediaLivre3m, _ultimaAssembleia: ultimaAssembleia };
+      const ultimas3 = obterUltimasAssembleias(assembleiasGrupo, 3);
+      return {
+        ...g,
+        _assembleias: assembleiasGrupo,
+        _mediaLivre3m: calcularMediaPercentual(ultimas3, 3, 'lance_livre_menor_percentual'),
+        _mediaLimitado3m: calcularMediaPercentual(ultimas3, 3, 'lance_limitado_menor_percentual'),
+        _ultimaAssembleia: ultimas3[0] || null,
+        _totalContemplados3m: ultimas3.reduce((sum, a) => sum + (a.total_contemplados || 0), 0)
+      };
     });
 
-    comMedia.sort((a, b) => {
+    enriched.sort((a, b) => {
       const prioA = PRIORIDADE_ORDER[a.prioridade_comercial] ?? 1;
       const prioB = PRIORIDADE_ORDER[b.prioridade_comercial] ?? 1;
       if (prioA !== prioB) return prioA - prioB;
-
       const medA = a._mediaLivre3m ?? -1;
       const medB = b._mediaLivre3m ?? -1;
       if (medA !== medB) return medB - medA;
-
       return (a.numero_grupo || '').localeCompare(b.numero_grupo || '');
     });
 
-    return comMedia;
+    return enriched;
   }, [grupos, assembleiasPorGrupo, credito, buscaNumero, prazoMaxFiltro]);
 
   if (!habilitado) return null;
 
   return (
-    <Card className="border-0 shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">🎯 Grupos Disponíveis</CardTitle>
+    <Card className="border-0 shadow-sm bg-[#F8F9FC]">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-slate-800">
+            <Target className="w-5 h-5 text-red-500" />
+            Grupos Disponíveis
+          </h3>
+          <p className="text-xs text-slate-400 flex items-center gap-1">
+            <Info className="w-3 h-3" />
+            Os dados são das últimas 3 assembleias realizadas
+          </p>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <Input placeholder="Filtrar por número do grupo..." value={buscaNumero} onChange={(e) => setBuscaNumero(e.target.value)} />
           <Input type="number" placeholder="Prazo máximo (meses)" value={prazoMaxFiltro} onChange={(e) => setPrazoMaxFiltro(e.target.value)} />
@@ -110,92 +120,83 @@ export default function GruposDisponiveisPanel({ empresaId, administradoraId, ca
         ) : gruposCompativeis.length === 0 ? (
           <p className="text-center text-slate-500 py-6 text-sm">Nenhum grupo compatível encontrado para os critérios informados.</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-3">
             {gruposCompativeis.map(g => {
               const selecionado = grupoSelecionado === g.numero_grupo;
               const expandidoAtual = expandido === g.id;
-              const ultimaAssembleia = g._ultimaAssembleia;
+              const ultima = g._ultimaAssembleia;
               return (
                 <div
                   key={g.id}
                   className={cn(
-                    'rounded-xl border-2 p-4 transition-all',
-                    selecionado ? 'border-[#23BE84] bg-emerald-50' : 'border-slate-200 bg-white hover:border-slate-300'
+                    'rounded-xl border bg-white p-4 transition-all',
+                    selecionado ? 'border-[#00A388] ring-1 ring-[#00A388]/30'
+                    : 'border-[#E0E4EA] hover:border-slate-300'
                   )}
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-semibold text-slate-700">
+                  {/* Linha superior: categoria + número */}
+                  <div className="mb-3">
+                    <p className="text-sm font-medium text-slate-500 mb-0.5">
                       {CATEGORIA_ICONS[g.categoria_bem] || '📦'} {CATEGORIA_LABELS[g.categoria_bem] || g.categoria_bem}
                     </p>
-                    {selecionado && <span className="text-xs font-bold text-[#23BE84]">✓ Selecionado</span>}
+                    <p className="text-xl font-bold text-slate-900">Grupo {g.numero_grupo}</p>
                   </div>
-                  <p className="text-lg font-bold text-slate-900 mb-2">Grupo {g.numero_grupo}</p>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                  {/* Grid resumido: 4 infos somente */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-sm">
                     <div>
-                      <p className="text-slate-400">Crédito</p>
-                      <p className="font-medium text-slate-700">{formatCurrency(g.credito_minimo)} até {formatCurrency(g.credito_maximo)}</p>
+                      <p className="text-xs text-slate-400">Crédito</p>
+                      <p className="font-medium text-slate-700">{formatCurrency(g.credito_minimo)} – {formatCurrency(g.credito_maximo)}</p>
                     </div>
                     <div>
-                      <p className="text-slate-400">Prazo</p>
+                      <p className="text-xs text-slate-400">Prazo</p>
                       <p className="font-medium text-slate-700">{g.prazo_maximo ? `${g.prazo_maximo} meses` : '-'}</p>
                     </div>
                     <div>
-                      <p className="text-slate-400">Participantes</p>
-                      <p className="font-medium text-slate-700">{g.qtd_participantes ?? '-'}</p>
+                      <p className="text-xs text-slate-400">Participantes</p>
+                      <p className="font-medium text-slate-700">{(g.qtd_participantes ?? 0).toLocaleString('pt-BR')}</p>
                     </div>
                     <div>
-                      <p className="text-slate-400">Último lance livre</p>
-                      <p className="font-medium text-blue-700">{formatPercent(ultimaAssembleia?.lance_livre_menor_percentual)}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs mb-3 pt-2 border-t">
-                    <div>
-                      <p className="text-slate-400">Data última assembleia</p>
+                      <p className="text-xs text-slate-400">Última Assembleia</p>
                       <p className="font-medium text-slate-700">
-                        {ultimaAssembleia?.data_assembleia ? new Date(ultimaAssembleia.data_assembleia + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}
+                        {ultima?.data_assembleia
+                          ? new Date(ultima.data_assembleia + 'T00:00:00').toLocaleDateString('pt-BR')
+                          : '-'}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-slate-400">Menor lance limitado</p>
-                      <p className="font-medium text-orange-700">{formatPercent(ultimaAssembleia?.lance_limitado_menor_percentual)}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-400">Menor lance livre</p>
-                      <p className="font-medium text-blue-700">{formatPercent(ultimaAssembleia?.lance_livre_menor_percentual)}</p>
-                    </div>
-                    <div>
-                      <p className="text-slate-400">Contemplados (última)</p>
-                      <p className="font-medium text-amber-700">{ultimaAssembleia?.total_contemplados ?? 0}</p>
-                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  {/* Botões */}
+                  <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#E0E4EA]">
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
-                      className="h-8 text-xs gap-1"
+                      className="h-8 text-xs gap-1 text-[#2D559E] hover:bg-blue-50"
                       onClick={() => setExpandido(expandidoAtual ? null : g.id)}
                     >
-                      <History className="w-3 h-3" />
-                      Ver histórico dos últimos 3 meses
-                      {expandidoAtual ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      Histórico
                     </Button>
                     <Button
                       type="button"
                       size="sm"
-                      className={cn('h-8 text-xs gap-1', selecionado ? 'bg-[#23BE84] hover:bg-[#1ea873]' : '')}
+                      className="h-8 text-xs gap-1 ml-auto bg-[#00A388] hover:bg-[#008A73]"
                       onClick={() => onSelectGrupo?.(g.numero_grupo)}
                     >
-                      <CheckCircle2 className="w-3 h-3" />
+                      <CheckCircle2 className="w-3.5 h-3.5" />
                       {selecionado ? 'Selecionado' : 'Selecionar grupo'}
                     </Button>
                   </div>
 
+                  {/* Histórico expansível (estilo explorador de arquivos) */}
                   {expandidoAtual && (
-                    <HistoricoAssembleiaGrupoPanel assembleias={g._assembleias} lanceClientePercentual={lanceClientePercentual} />
+                    <HistoricoExpansivelGrupo
+                      assembleias={g._assembleias}
+                      mediaLivre={g._mediaLivre3m}
+                      mediaLimitado={g._mediaLimitado3m}
+                      totalContemplados={g._totalContemplados3m}
+                    />
                   )}
                 </div>
               );

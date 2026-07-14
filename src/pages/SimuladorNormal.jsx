@@ -932,7 +932,6 @@ export default function SimuladorNormal() {
             credito={creditoTotal}
             grupoSelecionado={grupo}
             onSelectGrupo={setGrupo}
-            lanceClientePercentual={usarLanceProprio && lanceProprio ? parseFloat(percentualExibido) : null}
           />
 
           {/* Histórico de Lances do Grupo */}
