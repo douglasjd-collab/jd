@@ -52,15 +52,18 @@ export function construirAssembleiasPorGrupo(detalhes, historicosGrupo) {
 
   const porGrupo = {};
 
+  // Agrupa por mês (YYYY-MM) dentro de cada grupo, mesclando as várias chamadas
+  // (Primeira, Segunda...) da mesma assembleia em uma única entrada mensal.
   (detalhes || []).forEach(d => {
     const dataAssembleia = dataPorHistoricoId[d.historico_id];
     if (!dataAssembleia) return;
     const grupoNormalizado = String(d.grupo || '').replace(/^0+/, '') || '0';
+    const mesKey = String(dataAssembleia).slice(0, 7); // YYYY-MM
 
     if (!porGrupo[grupoNormalizado]) porGrupo[grupoNormalizado] = {};
-    if (!porGrupo[grupoNormalizado][dataAssembleia]) {
-      porGrupo[grupoNormalizado][dataAssembleia] = {
-        id: `${grupoNormalizado}_${dataAssembleia}`,
+    if (!porGrupo[grupoNormalizado][mesKey]) {
+      porGrupo[grupoNormalizado][mesKey] = {
+        id: `${grupoNormalizado}_${mesKey}`,
         data_assembleia: dataAssembleia,
         total_contemplados: 0,
         lance_livre_menor_percentual: null,
@@ -73,7 +76,9 @@ export function construirAssembleiasPorGrupo(detalhes, historicosGrupo) {
       };
     }
 
-    const bucket = porGrupo[grupoNormalizado][dataAssembleia];
+    const bucket = porGrupo[grupoNormalizado][mesKey];
+    // Mantém a data mais recente dentro do mês como representativa
+    if (dataAssembleia > bucket.data_assembleia) bucket.data_assembleia = dataAssembleia;
     bucket.total_contemplados += 1;
     const percent = d.lance_percent;
 
@@ -99,8 +104,8 @@ export function construirAssembleiasPorGrupo(detalhes, historicosGrupo) {
   });
 
   const resultado = {};
-  Object.entries(porGrupo).forEach(([grupo, porData]) => {
-    resultado[grupo] = Object.values(porData).sort((a, b) => new Date(b.data_assembleia) - new Date(a.data_assembleia));
+  Object.entries(porGrupo).forEach(([grupo, porMes]) => {
+    resultado[grupo] = Object.values(porMes).sort((a, b) => b.data_assembleia.localeCompare(a.data_assembleia));
   });
   return resultado;
 }
