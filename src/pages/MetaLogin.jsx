@@ -4,116 +4,71 @@ import { Loader2, MessageSquare, CheckCircle2, XCircle, AlertCircle } from 'luci
 
 const APP_ID = '1574136874002258';
 const CONFIG_ID = '1355211576800271';
+const META_ONBOARD_URL = `https://business.facebook.com/messaging/whatsapp/onboard/?app_id=${APP_ID}&config_id=${CONFIG_ID}`;
 
 export default function MetaLogin() {
   const [empresaId, setEmpresaId] = useState(null);
-  const [sdkReady, setSdkReady] = useState(false);
-  const [status, setStatus] = useState('idle'); // idle | conectando | sucesso | erro
+  const [status, setStatus] = useState('idle'); // idle | processando | sucesso | erro
   const [mensagem, setMensagem] = useState('');
-  const sessionInfoRef = useRef(null);
+  const processadoRef = useRef(false);
 
+  // Capturar empresa_id da URL (direto ou vindo do redirect da Meta)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setEmpresaId(params.get('empresa_id'));
+    setEmpresaId(params.get('empresa_id') || params.get('state'));
+
+    // Se a Meta redirecionou de volta com ?code=..., trocar o code pelas credenciais
+    const code = params.get('code');
+    if (code && !processadoRef.current) {
+      processadoRef.current = true;
+      const empId = params.get('empresa_id') || params.get('state');
+      trocarCodePorCredenciais(code, empId);
+    }
   }, []);
 
-  // Escutar mensagem do Facebook com sessionInfo (waba_id, phone_number_id)
-  useEffect(() => {
-    const handleMessage = (event) => {
-      if (!event.origin.endsWith('facebook.com')) return;
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
-          sessionInfoRef.current = {
-            waba_id: data.data?.waba_id,
-            phone_number_id: data.data?.phone_number_id,
-          };
-        }
-      } catch (_) {}
-    };
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
-
-  // Carregar SDK do Facebook
-  useEffect(() => {
-    if (window.FB) {
-      setSdkReady(true);
+  const trocarCodePorCredenciais = async (code, empId) => {
+    if (!empId) {
+      setStatus('erro');
+      setMensagem('Empresa não identificada no retorno da Meta. Volte ao CRM e tente novamente.');
       return;
     }
-    window.fbAsyncInit = function () {
-      window.FB.init({ appId: APP_ID, autoLogAppEvents: true, xfbml: true, version: 'v21.0' });
-      setSdkReady(true);
-    };
-    if (!document.getElementById('facebook-jssdk')) {
-      const script = document.createElement('script');
-      script.id = 'facebook-jssdk';
-      script.src = 'https://connect.facebook.net/pt_BR/sdk.js';
-      script.async = true;
-      script.defer = true;
-      document.body.appendChild(script);
+    setStatus('processando');
+    setMensagem('Autorização recebida. Salvando credenciais...');
+    try {
+      const resp = await base44.functions.invoke('metaEmbeddedSignup', {
+        action: 'exchange_code',
+        empresa_id: empId,
+        code,
+      });
+      if (resp.data?.ok) {
+        setStatus('sucesso');
+        setMensagem(`Conectado! ${resp.data.display_phone_number || ''} ${resp.data.verified_name || ''}`.trim());
+        try { window.opener?.postMessage({ type: 'META_LOGIN_SUCESSO', empresa_id: empId }, '*'); } catch (_) {}
+      } else {
+        setStatus('erro');
+        setMensagem('Erro: ' + (resp.data?.error || 'Falha na conexão'));
+      }
+    } catch (e) {
+      setStatus('erro');
+      setMensagem('Erro ao processar conexão: ' + e.message);
     }
-  }, []);
+  };
 
   const iniciarLogin = () => {
-    if (!sdkReady || !window.FB) {
-      setMensagem('O SDK do Facebook ainda está carregando. Aguarde alguns segundos...');
-      return;
-    }
     if (!empresaId) {
       setStatus('erro');
       setMensagem('Empresa não identificada. Volte para o CRM e tente novamente.');
       return;
     }
-
-    setStatus('conectando');
-    setMensagem('Abrindo janela de login da Meta...');
-
-    window.FB.login(
-      async (response) => {
-        if (response.authResponse && response.authResponse.code) {
-          setMensagem('Autorização recebida. Salvando credenciais...');
-          try {
-            const resp = await base44.functions.invoke('metaEmbeddedSignup', {
-              action: 'exchange_code',
-              empresa_id: empresaId,
-              code: response.authResponse.code,
-              waba_id: sessionInfoRef.current?.waba_id,
-              phone_number_id: sessionInfoRef.current?.phone_number_id,
-            });
-            if (resp.data?.ok) {
-              setStatus('sucesso');
-              setMensagem(`Conectado! ${resp.data.display_phone_number || ''} ${resp.data.verified_name || ''}`.trim());
-              // Avisar a janela que abriu esta aba para atualizar
-              try {
-                window.opener?.postMessage({ type: 'META_LOGIN_SUCESSO', empresa_id: empresaId }, '*');
-              } catch (_) {}
-            } else {
-              setStatus('erro');
-              setMensagem('Erro: ' + (resp.data?.error || 'Falha na conexão'));
-            }
-          } catch (e) {
-            setStatus('erro');
-            setMensagem('Erro ao processar conexão: ' + e.message);
-          }
-        } else if (response.status === 'not_authorized') {
-          setStatus('erro');
-          setMensagem('Você não autorizou o app. Pode fechar esta aba e tentar novamente no CRM.');
-        } else {
-          setStatus('idle');
-          setMensagem('Conexão cancelada. Pode fechar esta aba.');
-        }
-      },
-      {
-        config_id: CONFIG_ID,
-        response_type: 'code',
-        override_default_response_type: true,
-        extras: {
-          feature: 'whatsapp_embedded_signup',
-          sessionInfoVersion: 3,
-        },
-      }
-    );
+    // Navega direto para o fluxo de Embedded Signup da Meta.
+    // A Meta redireciona de volta para /meta-login?code=... (com mesma empresa_id no state),
+    // e o useEffect acima captura o code e conclui a conexão.
+    const redirectUri = `${window.location.origin}/meta-login`;
+    const state = empresaId;
+    const url = `${META_ONBOARD_URL}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
+    setStatus('processando');
+    setMensagem('Abrindo o login da Meta...');
+    window.location.href = url;
   };
 
   return (
@@ -125,7 +80,6 @@ export default function MetaLogin() {
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Painel instrutivo */}
           <div className="bg-green-50 border border-green-200 rounded-xl p-4">
             <p className="text-sm font-semibold text-green-900 mb-1">API Oficial do WhatsApp (Meta)</p>
             <p className="text-sm text-green-800">
@@ -138,14 +92,9 @@ export default function MetaLogin() {
               <button
                 type="button"
                 onClick={iniciarLogin}
-                disabled={!sdkReady}
-                className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-60 text-white text-base font-semibold transition-colors"
+                className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-base font-semibold transition-colors"
               >
-                {!sdkReady ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Carregando SDK...</>
-                ) : (
-                  <><MessageSquare className="w-5 h-5" /> Fazer Login com a Meta</>
-                )}
+                <MessageSquare className="w-5 h-5" /> Fazer Login com a Meta
               </button>
               <p className="text-xs text-center text-slate-500">
                 Uma janela da Meta vai abrir para você autorizar a conexão do seu WhatsApp Business.
@@ -153,12 +102,12 @@ export default function MetaLogin() {
             </>
           )}
 
-          {status === 'conectando' && (
+          {status === 'processando' && (
             <div className="flex flex-col items-center gap-3 py-4">
               <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
               <p className="text-sm font-medium text-slate-700">{mensagem}</p>
               <p className="text-xs text-slate-500 text-center">
-                Se a janela não abriu, verifique se o navegador não bloqueou pop-ups para este site.
+                Aguarde — você será redirecionado de volta automaticamente após autorizar na Meta.
               </p>
             </div>
           )}
