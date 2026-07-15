@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export default function OfertaLance() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -429,7 +430,12 @@ export default function OfertaLance() {
       cell: (row) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-xs font-medium capitalize hover:bg-slate-50 transition-colors">
+            <button className={cn(
+              "flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium capitalize hover:bg-slate-50 transition-colors",
+              row.status === 'em_atraso'
+                ? "border-orange-300 bg-orange-100 text-orange-700"
+                : "border-slate-200 text-slate-700"
+            )}>
               {row.status}
               <ChevronDown className="w-3 h-3 text-slate-400" />
             </button>
