@@ -527,7 +527,14 @@ export default function OfertaLance() {
     },
     {
       header: 'Usuário',
-      cell: (row) => row.usuario_nome
+      cell: (row) => (
+        <span className={cn(
+          "px-1.5 py-0.5 rounded text-xs font-medium",
+          currentUser?.perfil === 'admin' ? "bg-[#23BE84]/15 text-[#23BE84]" : "text-slate-700"
+        )}>
+          {currentUser?.nome_perfil || currentUser?.full_name || '—'}
+        </span>
+      )
     },
     {
       header: '',
