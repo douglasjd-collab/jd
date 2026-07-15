@@ -219,7 +219,7 @@ export default function OfertaLance() {
 
   // Vendas pendentes (sem oferta no mês atual, status ativa/pendente/aguardando_aprovacao)
   const vendasPendentes = todasVendas.filter(v => {
-    const statusValido = ['ativa', 'pendente', 'aguardando_aprovacao', 'atraso'].includes(v.status);
+    const statusValido = ['ativa', 'pendente', 'aguardando_aprovacao', 'em_atraso'].includes(v.status);
     const jaOfertado = ofertasAtual.some(o => o.venda_id === v.id);
     const matchSearch = search === '' || 
       v.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
