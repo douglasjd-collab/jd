@@ -80,14 +80,82 @@ export default function OfertaLance() {
     return linhas.join('\n');
   };
 
-  const enviarComprovanteWhatsApp = () => {
+  const [enviandoComprovante, setEnviandoComprovante] = useState(false);
+  const enviarComprovanteWhatsApp = async () => {
     if (!comprovante?.telefone) {
       toast.error('Telefone do cliente não encontrado. Cadastre o telefone no cadastro do cliente.');
       return;
     }
-    const texto = gerarTextoComprovante(comprovante);
-    const url = `https://wa.me/${comprovante.telefone}?text=${encodeURIComponent(texto)}`;
-    window.open(url, '_blank');
+    if (!currentUser?.empresa_id) {
+      toast.error('Empresa não identificada. Não é possível enviar pelo CRM.');
+      return;
+    }
+    setEnviandoComprovante(true);
+    try {
+      const tel = String(comprovante.telefone).replace(/\D/g, '');
+      // Buscar conversa existente pelo telefone (tenta variações com/sem 9º dígito)
+      const variacoes = [tel];
+      if (tel.startsWith('55') && tel.length === 12) variacoes.push(tel.slice(0, 4) + '9' + tel.slice(4));
+      if (tel.startsWith('55') && tel.length === 13) variacoes.push(tel.slice(0, 4) + tel.slice(5));
+
+      let conversa = null;
+      for (const v of variacoes) {
+        const convs = await base44.entities.ConversaWhatsapp.filter(
+          { empresa_id: currentUser.empresa_id, cliente_telefone: v },
+          '-data_ultima_mensagem', 1
+        );
+        if (convs?.length > 0) { conversa = convs[0]; break; }
+      }
+
+      // Criar conversa se não existir
+      if (!conversa) {
+        let dadosCanal = { tipo_conexao: 'empresa' };
+        try {
+          const conexoesDapi = await base44.entities.WhatsappConnection.filter({
+            empresa_id: currentUser.empresa_id,
+            provider_type: 'dapi',
+            is_active: true
+          }, '-created_date', 1);
+          const conexaoDapi = conexoesDapi?.[0];
+          if (conexaoDapi) {
+            dadosCanal = {
+              tipo_conexao: 'dapi',
+              canal_origem: 'dapi',
+              provider: 'dapi',
+              instancia: conexaoDapi.session_id || 'D-API',
+              connection_id: conexaoDapi.id,
+              locked_provider: true,
+            };
+          }
+        } catch (_) {}
+        conversa = await base44.entities.ConversaWhatsapp.create({
+          empresa_id: currentUser.empresa_id,
+          cliente_id: '',
+          cliente_nome: comprovante.cliente || tel,
+          cliente_telefone: tel,
+          whatsapp_id: `conv_${Date.now()}`,
+          status: 'ativa',
+          ultima_mensagem: '',
+          data_ultima_mensagem: new Date().toISOString(),
+          ...dadosCanal
+        });
+      }
+
+      const texto = gerarTextoComprovante(comprovante);
+      const res = await base44.functions.invoke('enviarMensagemWhatsapp', {
+        conversa_id: conversa.id,
+        numero_cliente: tel,
+        mensagem_texto: texto,
+      });
+      if (res?.data?.error) throw new Error(res.data.error);
+      toast.success('Comprovante enviado pelo WhatsApp do CRM!');
+      closeForm();
+    } catch (e) {
+      console.error('Erro ao enviar comprovante:', e);
+      toast.error('Erro ao enviar pelo CRM: ' + (e.message || 'Erro desconhecido'));
+    } finally {
+      setEnviandoComprovante(false);
+    }
   };
 
   // Buscar telefone do cliente (via Cliente entity) e abrir o popup de chat
@@ -758,10 +826,12 @@ export default function OfertaLance() {
                   type="button"
                   className="bg-[#23BE84] hover:bg-[#1da570] gap-2"
                   onClick={enviarComprovanteWhatsApp}
-                  disabled={!comprovante.telefone}
+                  disabled={!comprovante.telefone || enviandoComprovante}
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  Enviar pelo WhatsApp
+                  {enviandoComprovante
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <MessageCircle className="w-4 h-4" />}
+                  {enviandoComprovante ? 'Enviando...' : 'Enviar pelo WhatsApp'}
                 </Button>
               </div>
             </div>
