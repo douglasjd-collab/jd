@@ -244,6 +244,7 @@ export default function OfertaLance() {
         colaborador_id: colab.id,
         empresa_id: colab.empresa_id || null,
         perfil: colab.perfil || 'vendedor',
+        nome_perfil: colab.nome || me.full_name || '',
       });
     } catch (error) {
       console.error('Erro ao carregar usuário:', error);
@@ -380,7 +381,7 @@ export default function OfertaLance() {
       valor_novo: valorNovo,
       tipo_novo: editTipoLance,
       data_alteracao: new Date().toISOString(),
-      usuario_nome: currentUser?.full_name || currentUser?.nome_perfil || '',
+      usuario_nome: currentUser?.nome_perfil || currentUser?.full_name || '',
     });
 
     await base44.entities.OfertaLance.update(editOferta.id, {
@@ -436,7 +437,7 @@ export default function OfertaLance() {
       cliente_nome: selectedVenda.cliente_nome,
       empresa_id: selectedVenda.empresa_id,
       usuario_id: currentUser.colaborador_id || currentUser.id,
-      usuario_nome: currentUser.full_name || currentUser.nome_perfil,
+      usuario_nome: currentUser.nome_perfil || currentUser.full_name || '',
       competencia: competenciaAtual,
       percentual_lance: percentualNum,
       valor_lance: valorLance,
