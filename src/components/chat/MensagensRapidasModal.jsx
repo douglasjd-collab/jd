@@ -126,6 +126,13 @@ export default function MensagensRapidasModal({ open, onOpenChange, empresaId, o
     toast.info(`Categoria "${nomeCat}" pronta! Preencha o título e conteúdo para salvar.`);
   };
 
+  const adicionarMensagemEmCategoria = (nomeCat) => {
+    setForm({ categoria: nomeCat, titulo: '', tipo: 'texto', conteudo: '' });
+    setEditando(null);
+    setCriandoNova(true);
+    setAbaAtiva('mensagens');
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
@@ -317,7 +324,16 @@ export default function MensagensRapidasModal({ open, onOpenChange, empresaId, o
                   {categorias.map(cat => (
                     <div key={cat} className="flex items-center justify-between px-3 py-2 rounded-lg border border-slate-200 bg-slate-50">
                       <span className="text-sm font-medium text-slate-700">{cat}</span>
-                      <span className="text-xs text-slate-400">{porCategoria[cat].length} mensagem(s)</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400">{porCategoria[cat].length} mensagem(s)</span>
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 gap-1 h-7 px-2 text-xs"
+                          onClick={() => adicionarMensagemEmCategoria(cat)}
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Adicionar mensagem
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
