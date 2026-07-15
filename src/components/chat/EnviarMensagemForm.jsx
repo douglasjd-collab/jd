@@ -91,8 +91,11 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     if (scriptExterno) {
       setTexto(scriptExterno);
       setTimeout(() => {
-        textareaRef.current?.focus();
-        textareaRef.current?.setSelectionRange(0, 0);
+        if (textareaRef.current) {
+          textareaRef.current.focus();
+          textareaRef.current.setSelectionRange(0, 0);
+          autoResizeTextarea(textareaRef.current);
+        }
       }, 150);
     }
   }, [scriptExterno]);
@@ -334,11 +337,8 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     textareaRef.current?.focus();
   };
 
-  const handleChange = (e) => {
-    const val = e.target.value;
-    setTexto(val);
-    setShowQuickReplies(val === '/' || (val.startsWith('/') && !val.includes(' ')));
-    const el = e.target;
+  const autoResizeTextarea = (el) => {
+    if (!el) return;
     el.style.height = '40px';
     const scrollH = el.scrollHeight;
     if (scrollH >= MAX_HEIGHT) {
@@ -350,6 +350,13 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       el.style.overflowY = 'hidden';
       setShowScroll(false);
     }
+  };
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setTexto(val);
+    setShowQuickReplies(val === '/' || (val.startsWith('/') && !val.includes(' ')));
+    autoResizeTextarea(e.target);
   };
 
   const handleArquivo = (e) => {
@@ -421,8 +428,15 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
 
   const handleUsarMensagemRapida = ({ tipo, conteudo }) => {
     if (tipo === 'texto') {
-      setTexto(substituirVariaveis(conteudo));
-      setTimeout(() => textareaRef.current?.focus(), 100);
+      const novo = substituirVariaveis(conteudo);
+      setTexto(novo);
+      setTimeout(() => {
+        textareaRef.current?.focus();
+        if (textareaRef.current) {
+          textareaRef.current.value = novo;
+          autoResizeTextarea(textareaRef.current);
+        }
+      }, 100);
     }
   };
 
