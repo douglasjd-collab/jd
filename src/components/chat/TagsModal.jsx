@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, X, Loader2 } from 'lucide-react';
+import { Plus, X, Loader2, Pencil, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -33,6 +33,10 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId, onTa
   const [novaTagCor, setNovaTagCor] = useState('#3B82F6');
   const [criandoTag, setCriandoTag] = useState(false);
   const [carregando, setCarregando] = useState(false);
+  const [editandoTagId, setEditandoTagId] = useState(null);
+  const [editNome, setEditNome] = useState('');
+  const [editCor, setEditCor] = useState('#3B82F6');
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
 
   useEffect(() => {
     if (!open || !empresaId || !contato?.cliente_telefone) return;
@@ -99,6 +103,44 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId, onTa
       toast.error('Erro ao criar tag');
     } finally {
       setCriandoTag(false);
+    }
+  };
+
+  const iniciarEdicaoTag = (tag) => {
+    setEditandoTagId(tag.id);
+    setEditNome(tag.nome || '');
+    setEditCor(tag.cor || '#3B82F6');
+  };
+
+  const cancelarEdicaoTag = () => {
+    setEditandoTagId(null);
+    setEditNome('');
+    setEditCor('#3B82F6');
+  };
+
+  const salvarEdicaoTag = async (tagId) => {
+    if (!editNome.trim()) {
+      toast.error('Nome da tag é obrigatório');
+      return;
+    }
+    if (tags.some(t => t.id !== tagId && t.nome?.toLowerCase() === editNome.trim().toLowerCase())) {
+      toast.error('Já existe uma tag com este nome');
+      return;
+    }
+    setSalvandoEdicao(true);
+    try {
+      await base44.entities.ContatoTag.update(tagId, {
+        nome: editNome.trim(),
+        cor: editCor,
+      });
+      setTags(prev => prev.map(t => t.id === tagId ? { ...t, nome: editNome.trim(), cor: editCor } : t));
+      queryClient.invalidateQueries({ queryKey: ['tags-crm', empresaId] });
+      toast.success('Tag atualizada! A alteração se aplica a todos os contatos.');
+      cancelarEdicaoTag();
+    } catch (e) {
+      toast.error('Erro ao atualizar tag: ' + e.message);
+    } finally {
+      setSalvandoEdicao(false);
     }
   };
 
@@ -227,36 +269,88 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId, onTa
                   </p>
                 ) : (
                   tags.map(tag => (
-                    <button
-                      key={tag.id}
-                      onClick={() => adicionarTagAoContato(tag.id)}
-                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all text-sm ${
-                        contatoTags.includes(tag.id)
-                          ? 'border-slate-400 bg-slate-50'
-                          : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <div
-                        className="w-4 h-4 rounded-full border-2 border-slate-300 flex items-center justify-center"
-                        style={{
-                          backgroundColor: contatoTags.includes(tag.id)
-                            ? tag.cor
-                            : 'transparent',
-                        }}
-                      >
-                        {contatoTags.includes(tag.id) && (
-                          <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                        )}
+                    editandoTagId === tag.id ? (
+                      <div key={tag.id} className="flex flex-col gap-2 p-2.5 rounded-lg border-2 border-slate-300 bg-slate-50">
+                        <div className="flex gap-2">
+                          <input
+                            type="color"
+                            value={editCor}
+                            onChange={e => setEditCor(e.target.value)}
+                            className="w-9 h-9 rounded cursor-pointer border border-slate-200"
+                          />
+                          <Input
+                            value={editNome}
+                            onChange={e => setEditNome(e.target.value)}
+                            placeholder="Nome da tag"
+                            className="text-sm"
+                            autoFocus
+                            onKeyDown={e => e.key === 'Enter' && salvarEdicaoTag(tag.id)}
+                          />
+                        </div>
+                        <div className="flex gap-1.5">
+                          <Button
+                            size="sm"
+                            className="flex-1 h-7 gap-1"
+                            onClick={() => salvarEdicaoTag(tag.id)}
+                            disabled={salvandoEdicao}
+                          >
+                            {salvandoEdicao ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                            Salvar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 h-7"
+                            onClick={cancelarEdicaoTag}
+                            disabled={salvandoEdicao}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
                       </div>
-                      <span
-                        className="inline-block w-2 h-2 rounded-full mr-1"
-                        style={{ backgroundColor: tag.cor }}
-                      />
-                      <span className="flex-1 text-left">{tag.nome}</span>
-                      {contatoTags.includes(tag.id) && (
-                        <span className="text-slate-400">✓</span>
-                      )}
-                    </button>
+                    ) : (
+                      <div
+                        key={tag.id}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all text-sm ${
+                          contatoTags.includes(tag.id)
+                            ? 'border-slate-400 bg-slate-50'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <button
+                          onClick={() => adicionarTagAoContato(tag.id)}
+                          className="flex items-center gap-2 flex-1 text-left"
+                        >
+                          <div
+                            className="w-4 h-4 rounded-full border-2 border-slate-300 flex items-center justify-center flex-shrink-0"
+                            style={{
+                              backgroundColor: contatoTags.includes(tag.id)
+                                ? tag.cor
+                                : 'transparent',
+                            }}
+                          >
+                            {contatoTags.includes(tag.id) && (
+                              <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                            )}
+                          </div>
+                          <span
+                            className="inline-block w-2 h-2 rounded-full mr-1 flex-shrink-0"
+                            style={{ backgroundColor: tag.cor }}
+                          />
+                          <span className="flex-1 text-left truncate">{tag.nome}</span>
+                          {contatoTags.includes(tag.id) && (
+                            <span className="text-slate-400">✓</span>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => iniciarEdicaoTag(tag)}
+                          className="p-1.5 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 flex-shrink-0"
+                          title="Editar tag"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )
                   ))
                 )}
               </div>
