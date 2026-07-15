@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
@@ -23,26 +24,60 @@ export default function FunilSelectionModal({
   const [etapas, setEtapas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
+  const [valor, setValor] = useState(existingOportunidade?.valor_estimado?.toString() || '');
+  const [vendedorId, setVendedorId] = useState(existingOportunidade?.vendedor_id || '');
+  const [vendedores, setVendedores] = useState([]);
+  const [previsaoFechamento, setPrevisaoFechamento] = useState(
+    existingOportunidade?.data_fechamento_prevista || ''
+  );
+  const [currentUser, setCurrentUser] = useState(null);
 
   React.useEffect(() => {
     if (!open || !empresaId) return;
-    
+
+    setVendedorId(existingOportunidade?.vendedor_id || '');
+    setValor(existingOportunidade?.valor_estimado?.toString() || '');
+    setPrevisaoFechamento(existingOportunidade?.data_fechamento_prevista || '');
+
     const carregarFunis = async () => {
       setLoading(true);
       try {
         const etapasData = await base44.entities.EtapaFunil.filter({ empresa_id: empresaId });
         setEtapas(etapasData);
-        
-        // Extrair funis únicos
+
         const funisUnicos = [...new Set(etapasData.map(e => e.produto))].filter(Boolean);
         setFunis(funisUnicos);
+
+        // Carregar vendedores da empresa
+        const perfisVendedor = ['vendedor', 'colaborador_vendedor', 'gerente', 'admin', 'parceiro'];
+        const colabs = await base44.entities.Colaborador.filter(
+          { empresa_id: empresaId, status: 'ativo' },
+          'nome',
+          500
+        );
+        const vendedoresFiltrados = (colabs || []).filter(c =>
+          perfisVendedor.includes(c.perfil)
+        );
+        setVendedores(vendedoresFiltrados);
+
+        // Carregar usuário atual e pré-selecionar
+        try {
+          const me = await base44.auth.me();
+          setCurrentUser(me);
+          if (!existingOportunidade?.vendedor_id) {
+            const colabAtual = vendedoresFiltrados.find(c => c.user_id === me.id);
+            if (colabAtual) {
+              setVendedorId(colabAtual.id);
+            }
+          }
+        } catch {}
       } catch (e) {
         toast.error('Erro ao carregar funis: ' + e.message);
       } finally {
         setLoading(false);
       }
     };
-    
+
     carregarFunis();
   }, [open, empresaId]);
 
@@ -60,29 +95,48 @@ export default function FunilSelectionModal({
     setSalvando(true);
     try {
       const etapaData = etapas.find(e => e.id === etapaSelecionada);
-      
+
+      // Determinar vendedor (selecionado ou atual)
+      let vendedorSelecionado = vendedores.find(v => v.id === vendedorId);
+      let vIdFinal = vendedorId;
+      let vNomeFinal = '';
+      let vFotoFinal = '';
+
+      if (!vendedorSelecionado && currentUser) {
+        // Fallback: usuário atual se não selecionou vendedor
+        vIdFinal = currentUser.colaborador_id || currentUser.id;
+        vNomeFinal = currentUser.nome_perfil || currentUser.full_name || 'Desconhecido';
+        vFotoFinal = currentUser.foto_perfil || '';
+      } else if (vendedorSelecionado) {
+        vNomeFinal = vendedorSelecionado.nome || 'Desconhecido';
+        vFotoFinal = vendedorSelecionado.foto_perfil || '';
+      }
+
+      if (!vIdFinal) {
+        toast.error('Selecione um vendedor responsável.');
+        setSalvando(false);
+        return;
+      }
+
+      const valorNumerico = parseFloat(String(valor).replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+
       if (existingOportunidade) {
-        // Atualizar oportunidade existente
         await base44.entities.Oportunidade.update(existingOportunidade.id, {
           etapa_id: etapaSelecionada,
           etapa_nome: etapaData?.nome || 'Desconhecida',
-          produto: funilSelecionado
+          produto: funilSelecionado,
+          valor_estimado: valorNumerico,
+          vendedor_id: vIdFinal,
+          vendedor_nome: vNomeFinal,
+          foto_perfil_responsavel: vFotoFinal,
+          responsaveis_ids: JSON.stringify([vIdFinal]),
+          responsaveis_nomes: JSON.stringify([vNomeFinal]),
+          responsaveis_fotos: JSON.stringify([vFotoFinal]),
+          data_fechamento_prevista: previsaoFechamento || null,
         });
-        toast.success('Oportunidade movida com sucesso!');
+        toast.success('Oportunidade atualizada com sucesso!');
       } else {
-        // Criar nova oportunidade - precisa de vendedor_id obrigatório
-        const user = await base44.auth.me();
-        const vendedorId = user?.colaborador_id || user?.id || '';
-        
-        if (!vendedorId) {
-          toast.error('Erro: usuário não identificado. Contate o suporte.');
-          return;
-        }
-
-        const vendedorNome = user?.nome_perfil || user?.full_name || 'Desconhecido';
-        const vendedorFoto = user?.foto_perfil || '';
-
-        const novaOportunidade = await base44.entities.Oportunidade.create({
+        await base44.entities.Oportunidade.create({
           empresa_id: empresaId,
           titulo: contato?.nome || contato?.telefone || 'Lead',
           cliente_id: contato?.id || '',
@@ -90,17 +144,18 @@ export default function FunilSelectionModal({
           cliente_telefone: contato?.telefone || '',
           etapa_id: etapaSelecionada,
           etapa_nome: etapaData?.nome || 'Desconhecida',
-          vendedor_id: vendedorId,
-          vendedor_nome: vendedorNome,
-          foto_perfil_responsavel: vendedorFoto,
-          responsaveis_ids: JSON.stringify([vendedorId]),
-          responsaveis_nomes: JSON.stringify([vendedorNome]),
-          responsaveis_fotos: JSON.stringify([vendedorFoto]),
+          vendedor_id: vIdFinal,
+          vendedor_nome: vNomeFinal,
+          foto_perfil_responsavel: vFotoFinal,
+          responsaveis_ids: JSON.stringify([vIdFinal]),
+          responsaveis_nomes: JSON.stringify([vNomeFinal]),
+          responsaveis_fotos: JSON.stringify([vFotoFinal]),
           status: 'aberta',
           produto: funilSelecionado,
           origem: 'BatePapo',
-          valor_estimado: 0,
-          data_cadastro_lead: new Date().toISOString().split('T')[0]
+          valor_estimado: valorNumerico,
+          data_fechamento_prevista: previsaoFechamento || null,
+          data_cadastro_lead: new Date().toISOString().split('T')[0] // automático: data atual
         });
         toast.success('Contato lançado no funil com sucesso!');
       }
@@ -176,6 +231,47 @@ export default function FunilSelectionModal({
               </Select>
             </div>
           )}
+
+          {/* Valor */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">Valor</Label>
+            <Input
+              type="text"
+              inputMode="decimal"
+              placeholder="0,00"
+              value={valor}
+              onChange={e => setValor(e.target.value)}
+              disabled={salvando}
+            />
+          </div>
+
+          {/* Vendedor */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">Vendedor</Label>
+            <Select value={vendedorId} onValueChange={setVendedorId} disabled={loading || salvando}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um vendedor..." />
+              </SelectTrigger>
+              <SelectContent>
+                {vendedores.map(v => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.nome} {v.perfil ? `(${v.perfil})` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Previsão de fechamento */}
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold">Previsão de fechamento</Label>
+            <Input
+              type="date"
+              value={previsaoFechamento}
+              onChange={e => setPrevisaoFechamento(e.target.value)}
+              disabled={salvando}
+            />
+          </div>
         </div>
 
         <DialogFooter>
@@ -184,7 +280,7 @@ export default function FunilSelectionModal({
           </Button>
           <Button 
             onClick={handleSalvar} 
-            disabled={!funilSelecionado || !etapaSelecionada || salvando || loading}
+            disabled={!funilSelecionado || !etapaSelecionada || salvando || loading || !vendedorId}
             className="bg-blue-600 hover:bg-blue-700"
           >
             {salvando ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
