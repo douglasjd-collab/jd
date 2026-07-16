@@ -41,7 +41,7 @@ export default function GerenciarEtapasModal({ open, onOpenChange, empresaId, cu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Layers className="w-5 h-5 text-[#1e3a5f]" />
@@ -245,7 +245,7 @@ function AbaGlobais({ empresaId, tarefas, statusList, podeEditar, onStatusChange
   const temNoBanco = statusRaw.length > 0;
 
   return (
-    <ScrollArea className="flex-1 pr-2">
+    <ScrollArea className="flex-1 min-h-0 pr-2">
       <div className="space-y-3 pb-4">
         {/* Cabeçalho */}
         <div className="flex items-center justify-between">
@@ -465,7 +465,7 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
   };
 
   return (
-    <ScrollArea className="flex-1 pr-2">
+    <ScrollArea className="flex-1 min-h-0 pr-2">
       <div className="space-y-4 pb-4">
         <p className="text-xs text-slate-400">
           Configure etapas específicas por setor. Setores sem configuração usarão as etapas globais automaticamente.
