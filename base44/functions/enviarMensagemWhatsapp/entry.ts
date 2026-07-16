@@ -338,6 +338,104 @@ Deno.serve(async (req) => {
       console.log('⚙️ Provedor por preferência da empresa:', usaMetaOficial ? 'Meta' : 'Evolution');
     }
 
+    // ── REAÇÃO (emoji único como resposta) ─────────────────────────────────
+    // No WhatsApp, reagir a uma mensagem com um emoji (ex: 👍) gruda o emoji como
+    // reação na mensagem original — NÃO cria uma bolha de texto "solta". Detectamos
+    // esse padrão (texto = 1 emoji + resposta_para_message_id) e aplicamos como
+    // reação na mensagem original, enviando ao WhatsApp (D-API/Evolution/Meta) e
+    // atualizando o campo `reaction` no banco.
+    const EMOJI_REACAO_RE = /^(\p{Extended_Pictographic}(\p{Emoji_Modifier}|\uFE0F\u200D\p{Extended_Pictographic})*\uFE0F?)$/u;
+    const textoTrimReacao = (mensagem_texto || '').trim();
+    const isReacaoEmoji =
+      !arquivo &&
+      !!textoTrimReacao &&
+      EMOJI_REACAO_RE.test(textoTrimReacao) &&
+      !!resposta_para_message_id;
+
+    if (isReacaoEmoji) {
+      const emojiReacao = textoTrimReacao;
+      console.log(`👍 Reação detectada: "${emojiReacao}" → mensagem ${resposta_para_message_id}`);
+
+      const originais = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+        { whatsapp_message_id: String(resposta_para_message_id) }, '-created_date', 5
+      );
+      const original = (originais && originais.length > 0)
+        ? (originais.find(m => m.empresa_id === empresaId) || originais[0])
+        : null;
+
+      // Número normalizado para envio da reação (E.164 Brasil sem "+")
+      let numeroReacao = String(numero_cliente || '').replace(/\D/g, '').replace(/@.*$/, '');
+      if (!numeroReacao.startsWith('55') && numeroReacao.length >= 10 && numeroReacao.length <= 11) {
+        numeroReacao = '55' + numeroReacao;
+      }
+
+      // Enviar a reação ao WhatsApp conforme o provedor (best-effort)
+      try {
+        if (conexaoDapi && !conversaEhMetaOficial && canalAtendimento !== 'instagram') {
+          const rr = await base44.functions.invoke('whatsappService', {
+            connectionId: conexaoDapi.id,
+            action: 'sendReaction',
+            phoneNumber: numeroReacao,
+            messageId: String(resposta_para_message_id),
+            emoji: emojiReacao
+          });
+          console.log('📡 D-API sendReaction:', rr?.data?.success, rr?.data?.data?.messageId || rr?.data?.data?.message?.id);
+        } else if (usaMetaOficial && accessTokenMeta && phoneNumberIdMeta) {
+          const metaReactionUrl = `https://graph.facebook.com/${metaApiVersion}/${phoneNumberIdMeta}/messages`;
+          const metaReactionResp = await fetch(metaReactionUrl, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${accessTokenMeta}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              to: numeroReacao,
+              type: 'reaction',
+              reaction: { message_id: String(resposta_para_message_id), emoji: emojiReacao }
+            })
+          });
+          console.log('📡 Meta reaction status:', metaReactionResp.status);
+        } else if (!usaMetaOficial && temCredenciaisEvolution) {
+          const baseUrlEvo = evolutionApiUrl.replace(/\/$/, '');
+          const evoUrl = `${baseUrlEvo}/message/sendReaction/${instanceName}`;
+          await fetch(evoUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': evolutionApiKey },
+            body: JSON.stringify({
+              number: numeroReacao,
+              key: { id: String(resposta_para_message_id) },
+              reaction: emojiReacao
+            })
+          });
+          console.log('📡 Evolution sendReaction enviada');
+        }
+      } catch (e) {
+        console.warn('⚠️ Erro ao enviar reação ao WhatsApp (atualizando local mesmo assim):', e.message);
+      }
+
+      if (original) {
+        await base44.asServiceRole.entities.MensagemWhatsapp.update(original.id, {
+          reaction: emojiReacao
+        });
+        console.log(`✅ Reação "${emojiReacao}" aplicada à mensagem ${original.id}`);
+
+        await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+          ultima_mensagem: emojiReacao,
+          data_ultima_mensagem: new Date().toISOString(),
+          ultimo_remetente: 'vendedor'
+        });
+
+        return Response.json({
+          success: true,
+          reaction: true,
+          message_id: original.id,
+          emoji: emojiReacao,
+          whatsapp_id: resposta_para_message_id
+        });
+      }
+
+      console.warn('⚠️ Mensagem original não encontrada para reação — segue como reply normal');
+      // (segue o fluxo normal de envio de texto/reply)
+    }
+
     // ── ENVIO VIA D-API ──────────────────────────────────────────────────────
     // Só usar D-API se a conversa NÃO for da API Oficial Meta — nunca sequestrar conversas Meta.
     if (conexaoDapi && !conversaEhMetaOficial) {

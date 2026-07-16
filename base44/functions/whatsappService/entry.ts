@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     }
     
     const payload = await req.json().catch(() => ({}));
-    const { connectionId, action, webhookUrl, phoneNumber, text, imageUrl, audioUrl, documentUrl, videoUrl, caption, fileName, messageIds } = payload;
+    const { connectionId, action, webhookUrl, phoneNumber, text, imageUrl, audioUrl, documentUrl, videoUrl, caption, fileName, messageIds, messageId, emoji } = payload;
     
     // Buscar conexão
     const connections = await base44.entities.WhatsappConnection.filter({ id: connectionId });
@@ -452,6 +452,18 @@ Deno.serve(async (req) => {
         return await this.request('/api/v1/messages/send/video', 'POST', messagePayload);
       },
       
+      // Enviar reação (emoji) a uma mensagem - POST /api/v1/messages/send/reaction
+      async sendReaction(phoneNumber, reactionMessageId, reactionEmoji) {
+        const normalizedPhone = phoneNumber.replace(/\D/g, '');
+        const messagePayload = {
+          sessionId: this.sessionId,
+          to: normalizedPhone,
+          messageId: reactionMessageId,
+          emoji: reactionEmoji
+        };
+        return await this.request('/api/v1/messages/send/reaction', 'POST', messagePayload);
+      },
+      
       // Marcar mensagens como lidas - POST /api/v1/chats/read
       async markAsRead(phoneNumber, messageIds) {
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
@@ -728,6 +740,13 @@ Deno.serve(async (req) => {
           return Response.json({ error: 'phoneNumber and videoUrl required' }, { status: 400 });
         }
         result = await adapter.sendVideo(phoneNumber, videoUrl, caption);
+        break;
+        
+      case 'sendReaction':
+        if (!phoneNumber || !messageId || !emoji) {
+          return Response.json({ error: 'phoneNumber, messageId and emoji required' }, { status: 400 });
+        }
+        result = await adapter.sendReaction(phoneNumber, messageId, emoji);
         break;
         
       case 'markAsRead':
