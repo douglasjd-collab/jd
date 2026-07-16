@@ -50,7 +50,7 @@ import SincronizacaoCanopus from '@/components/configuracoes/SincronizacaoCanopu
 import ConfiguracaoWhatsApp from '@/pages/ConfiguracaoWhatsApp';
 import ConfiguracaoApi from '@/pages/ConfiguracaoApi';
 import IntegracaoFinantoBank from '@/pages/IntegracaoFinantoBank';
-import IntegracaoWhatsAppMeta from '@/components/configuracoes/IntegracaoWhatsAppMeta';
+import CredenciaisWhatsApp from '@/components/configuracoes/CredenciaisWhatsApp';
 import IntegracaoInstagram from '@/components/configuracoes/IntegracaoInstagram';
 
 
@@ -244,7 +244,7 @@ export default function Configuracoes() {
         </TabsContent>
 
         <TabsContent value="meta-wpp">
-          <IntegracaoWhatsAppMeta empresaId={empresa?.id} />
+          <CredenciaisWhatsApp empresaId={empresa?.id} />
         </TabsContent>
 
         <TabsContent value="instagram">
