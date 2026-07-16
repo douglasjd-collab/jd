@@ -453,13 +453,15 @@ Deno.serve(async (req) => {
       },
       
       // Enviar reação (emoji) a uma mensagem - POST /api/v1/messages/send/reaction
+      // fromMe=false porque reagimos a mensagens RECEBIDAS do cliente (não enviadas por nós)
       async sendReaction(phoneNumber, reactionMessageId, reactionEmoji) {
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
         const messagePayload = {
           sessionId: this.sessionId,
           to: normalizedPhone,
           messageId: reactionMessageId,
-          emoji: reactionEmoji
+          emoji: reactionEmoji,
+          fromMe: false
         };
         return await this.request('/api/v1/messages/send/reaction', 'POST', messagePayload);
       },
