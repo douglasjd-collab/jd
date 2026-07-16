@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import {
   Plus, Trash2, Pencil, Check, X, GripVertical,
-  Layers, AlertTriangle, Star, Eye, EyeOff
+  Layers, AlertTriangle, Star, Eye, EyeOff, FolderTree
 } from 'lucide-react';
 import SetoresManager from '@/components/tarefas/SetoresManager';
 
@@ -45,10 +45,10 @@ export default function GerenciarEtapasModal({ open, onOpenChange, empresaId, cu
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Layers className="w-5 h-5 text-[#1e3a5f]" />
-            Gerenciar Etapas de Tarefas
+            Gerencia Setores
           </DialogTitle>
           <DialogDescription>
-            Configure as etapas do fluxo operacional das tarefas da empresa.
+            Gerencie os setores, subcategorias e etapas das tarefas da empresa.
           </DialogDescription>
         </DialogHeader>
 
@@ -467,10 +467,44 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
   return (
     <div className="flex-1 min-h-0 overflow-y-auto pr-2">
       <div className="space-y-4 pb-4">
-        <p className="text-xs text-slate-400">
-          Configure etapas específicas por setor. Setores sem configuração usarão as etapas globais automaticamente.
-        </p>
-  ...
+        {/* Gerenciador de Setores e Subcategorias */}
+        <div className="border rounded-xl p-3 bg-white">
+          <SetoresManager empresaId={empresaId} podeEditar={podeEditar} />
+        </div>
+
+        {/* Editor de etapas por setor */}
+        <div className="space-y-3">
+          {setoresCombinados.map(setor => {
+            const cfg = getConfigSetor(setor.id);
+            const statusDoSetor = (cfg.status_slugs || [])
+              .map(slug => statusAtivos.find(s => (s.slug || s.id) === slug))
+              .filter(Boolean);
+            return (
+              <div key={setor.id} className="border rounded-lg p-3 bg-slate-50/50">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <FolderTree className="w-4 h-4 text-[#1e3a5f]" />
+                    <span className="text-sm font-semibold text-slate-700">{setor.nome}</span>
+                    {cfg.usar_especificas && <Badge className="text-[10px] py-0">Personalizado</Badge>}
+                  </div>
+                  <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer" title="Usar etapas específicas deste setor">
+                    <Switch checked={cfg.usar_especificas || false} onCheckedChange={() => podeEditar && toggleUsarEspecificas(setor.id)} className="scale-75" />
+                    {cfg.usar_especificas ? 'Específicas' : 'Globais'}
+                  </label>
+                </div>
+                {cfg.usar_especificas && (
+                  <SetorEtapasEditor
+                    setorId={setor.id}
+                    statusAtivos={statusAtivos}
+                    statusDoSetor={statusDoSetor}
+                    onToggle={podeEditar ? toggleStatusNoSetor : () => {}}
+                    onReorder={podeEditar ? reordenarSetor : () => {}}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
        </div>
      </div>
    );

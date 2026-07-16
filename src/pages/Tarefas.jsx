@@ -374,7 +374,7 @@ export default function Tarefas() {
         {!isParceiro && (
           <Button variant="outline" size="sm" className="gap-1.5 px-2 sm:px-3" onClick={() => setConfigOpen(true)}>
             <Layers className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs">Gerenciar Etapas</span>
+            <span className="hidden sm:inline text-xs">Gerencia Setores</span>
           </Button>
         )}
       </PageHeader>
