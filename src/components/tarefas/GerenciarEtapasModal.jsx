@@ -14,6 +14,7 @@ import {
   Plus, Trash2, Pencil, Check, X, GripVertical,
   Layers, AlertTriangle, Star, Eye, EyeOff
 } from 'lucide-react';
+import SetoresManager from '@/components/tarefas/SetoresManager';
 
 const STATUS_PADRAO = [
   { slug: 'a_fazer', nome: 'A Fazer', cor: '#f59e0b', ordem: 1 },
@@ -469,6 +470,11 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
         <p className="text-xs text-slate-400">
           Configure etapas específicas por setor. Setores sem configuração usarão as etapas globais automaticamente.
         </p>
+
+        {/* Gerenciador de Setores e Subcategorias */}
+        <div className="border rounded-xl p-3 bg-white">
+          <SetoresManager empresaId={empresaId} podeEditar={podeEditar} />
+        </div>
 
         {/* Lista de setores */}
         <div className="space-y-3">

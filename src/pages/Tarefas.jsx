@@ -664,6 +664,8 @@ export default function Tarefas() {
         onStatusChanged={() => {
           queryClient.invalidateQueries({ queryKey: ['status-tarefa'] });
           queryClient.invalidateQueries({ queryKey: ['tarefas'] });
+          queryClient.invalidateQueries({ queryKey: ['setores-tarefa'] });
+          queryClient.invalidateQueries({ queryKey: ['subsetores-tarefa'] });
         }}
       />
     </div>
