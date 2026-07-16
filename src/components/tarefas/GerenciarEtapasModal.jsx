@@ -465,73 +465,18 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
   };
 
   return (
-    <ScrollArea className="flex-1 min-h-0 pr-2">
+    <div className="flex-1 min-h-0 overflow-y-auto pr-2">
       <div className="space-y-4 pb-4">
         <p className="text-xs text-slate-400">
           Configure etapas específicas por setor. Setores sem configuração usarão as etapas globais automaticamente.
         </p>
+  ...
+       </div>
+     </div>
+   );
+  }
 
-        {/* Gerenciador de Setores e Subcategorias */}
-        <div className="border rounded-xl p-3 bg-white">
-          <SetoresManager empresaId={empresaId} podeEditar={podeEditar} />
-        </div>
-
-        {/* Lista de setores */}
-        <div className="space-y-3">
-          {setoresCombinados.map(setor => {
-            const config = getConfigSetor(setor.id);
-            const usandoEspecificas = config.usar_especificas;
-            const statusDoSetor = usandoEspecificas
-              ? config.status_slugs.map(slug => statusAtivos.find(s => (s.slug || s.id) === slug)).filter(Boolean)
-              : statusAtivos;
-
-            return (
-              <div key={setor.id} className="border rounded-xl overflow-hidden">
-                {/* Cabeçalho do setor */}
-                <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-slate-800">{setor.nome}</span>
-                    {usandoEspecificas && <Badge className="text-xs bg-[#1e3a5f] text-white">Específico</Badge>}
-                  </div>
-                  {podeEditar && (
-                    <label className="flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
-                      <span>Etapas específicas</span>
-                      <Switch checked={usandoEspecificas} onCheckedChange={() => toggleUsarEspecificas(setor.id)} className="scale-75" />
-                    </label>
-                  )}
-                </div>
-
-                {/* Etapas do setor */}
-                <div className="p-3 space-y-1.5">
-                  {usandoEspecificas && podeEditar ? (
-                    <SetorEtapasEditor
-                      setorId={setor.id}
-                      statusAtivos={statusAtivos}
-                      statusDoSetor={statusDoSetor}
-                      onToggle={toggleStatusNoSetor}
-                      onReorder={reordenarSetor}
-                    />
-                  ) : (
-                    <div className="flex flex-wrap gap-1.5">
-                      {statusDoSetor.map(s => (
-                        <Badge key={s.slug || s.id} variant="secondary" className="flex items-center gap-1 text-xs py-1">
-                          <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: s.cor || '#3b82f6' }} />
-                          {s.nome}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </ScrollArea>
-  );
-}
-
-function SetorEtapasEditor({ setorId, statusAtivos, statusDoSetor, onToggle, onReorder }) {
+  function SetorEtapasEditor({ setorId, statusAtivos, statusDoSetor, onToggle, onReorder }) {
   const statusSlugsNoSetor = statusDoSetor.map(s => s.slug || s.id);
   const statusDisponiveis = statusAtivos.filter(s => !statusSlugsNoSetor.includes(s.slug || s.id));
 
