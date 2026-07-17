@@ -428,7 +428,15 @@ export default function ConfiguracaoWhatsApp() {
         action: 'get_status',
         empresa_id: empresa.id,
       });
-      if (resp.data?.ok) {
+      if (resp.data?.ok || resp.data?.conectado !== undefined) {
+        setStatusMeta({
+          success: !!resp.data.conectado,
+          phone_number: resp.data.display_phone_number,
+          verified_name: resp.data.verified_name,
+          quality_rating: resp.data.quality_rating,
+          account_mode: resp.data.phone_status,
+          error: !resp.data.conectado ? (resp.data.erro || 'Sem credenciais salvas pelo login da Meta.') : undefined,
+        });
         setEmpresa(prev => prev ? {
           ...prev,
           meta_display_phone_number: resp.data.display_phone_number || prev.meta_display_phone_number,
@@ -439,9 +447,11 @@ export default function ConfiguracaoWhatsApp() {
         } : prev);
         toast.success(resp.data.conectado ? '✅ Conexão confirmada com a Meta.' : 'Status sincronizado.');
       } else {
+        setStatusMeta({ success: false, error: resp.data?.error || 'Falha ao consultar a Meta' });
         toast.error('Erro ao sincronizar: ' + (resp.data?.error || 'Falha'));
       }
     } catch (e) {
+      setStatusMeta({ success: false, error: e.message });
       toast.error('Erro ao sincronizar: ' + e.message);
     } finally {
       setSincronizandoMeta(false);
@@ -745,12 +755,12 @@ export default function ConfiguracaoWhatsApp() {
               </CardTitle>
               <div className="flex items-center gap-2">
                 <Button
-                  onClick={testarConexaoMeta}
-                  disabled={testandoMeta || !whatsappPhoneNumberId || !whatsappAccessToken}
+                  onClick={sincronizarStatusMeta}
+                  disabled={sincronizandoMeta || !empresa?.id}
                   size="sm"
                   variant={statusMeta?.success ? 'outline' : 'default'}
                 >
-                  {testandoMeta ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Testando...</> : '🔌 Testar Conexão'}
+                  {sincronizandoMeta ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Verificando...</> : <><RefreshCw className="w-4 h-4 mr-2" /> Verificar Status</>}
                 </Button>
                 {whatsappPhoneNumberId && whatsappAccessToken && (
                   <Button
@@ -775,11 +785,9 @@ export default function ConfiguracaoWhatsApp() {
               <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <Wifi className="w-5 h-5 text-slate-400" />
                 <div>
-                  <p className="text-sm font-medium text-slate-600">Conexão não testada</p>
+                  <p className="text-sm font-medium text-slate-600">Sem credenciais salvas pelo login da Meta</p>
                   <p className="text-xs text-slate-500">
-                    {(!whatsappPhoneNumberId || !whatsappAccessToken)
-                      ? 'Preencha as credenciais na aba "API Oficial" e clique em Testar Conexão'
-                      : 'Clique em "Testar Conexão" para verificar se as credenciais estão corretas'}
+                    Faça o login com a Meta mais arriba e clique em "Verificar Status" para confirmar a conexão.
                   </p>
                 </div>
               </div>
