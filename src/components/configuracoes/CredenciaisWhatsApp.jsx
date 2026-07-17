@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Link as LinkIcon, Wifi, Loader2, CheckCircle2, XCircle, Power } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -20,9 +20,21 @@ export default function CredenciaisWhatsApp({ empresaId }) {
       return await base44.entities.Empresa.get(empresaId);
     },
     enabled: !!empresaId,
+    // Poll enquanto ainda não conectado para detectar login concluído em outra aba/popup
+    refetchInterval: (query) => {
+      const e = query.state.data;
+      return e && e.whatsapp_access_token && e.whatsapp_phone_number_id ? false : 4000;
+    },
   });
 
   const conectado = !!(empresa?.whatsapp_access_token && empresa?.whatsapp_phone_number_id);
+
+  // Re-busca a empresa quando a aba do CRM volta ao foco (voltou do Facebook/popup)
+  useEffect(() => {
+    const onFocus = () => refetch();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [refetch]);
 
   const handleTestar = async () => {
     if (!conectado) {
