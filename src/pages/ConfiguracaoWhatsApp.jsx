@@ -760,59 +760,40 @@ export default function ConfiguracaoWhatsApp() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!statusMeta && !testandoMeta && (
+            {(whatsappPhoneNumberId && whatsappAccessToken) ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 p-3 bg-green-100 rounded-lg border border-green-300">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                  <span className="text-sm font-bold text-green-800">✅ Conexão ativa — credenciais salvas pelo login da Meta</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-white rounded-lg border border-green-200">
+                    <p className="text-xs text-slate-500 mb-1">Número de Telefone</p>
+                    <p className="font-bold text-green-700">{empresa?.meta_display_phone_number || '—'}</p>
+                  </div>
+                  <div className="p-3 bg-white rounded-lg border border-green-200">
+                    <p className="text-xs text-slate-500 mb-1">Nome Verificado</p>
+                    <p className="font-bold text-green-700">{empresa?.meta_verified_name || '—'}</p>
+                  </div>
+                  <div className="p-3 bg-white rounded-lg border border-green-200">
+                    <p className="text-xs text-slate-500 mb-1">Qualidade</p>
+                    <p className="font-bold text-green-700">{empresa?.meta_quality_rating || '—'}</p>
+                  </div>
+                  <div className="p-3 bg-white rounded-lg border border-green-200">
+                    <p className="text-xs text-slate-500 mb-1">Status do número</p>
+                    <p className="font-bold text-green-700">{empresa?.meta_phone_status || '—'}</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
               <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <Wifi className="w-5 h-5 text-slate-400" />
                 <div>
                   <p className="text-sm font-medium text-slate-600">Sem credenciais salvas pelo login da Meta</p>
                   <p className="text-xs text-slate-500">
-                    Faça o login com a Meta mais arriba e clique em "Verificar Status" para confirmar a conexão.
+                    Faça o login com a Meta acima para conectar automaticamente.
                   </p>
                 </div>
-              </div>
-            )}
-            {testandoMeta && (
-              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
-                <p className="text-sm text-blue-700">Conectando à API da Meta...</p>
-              </div>
-            )}
-            {statusMeta?.success && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 p-3 bg-green-100 rounded-lg border border-green-300">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  <span className="text-sm font-bold text-green-800">✅ Conexão OK — API Oficial funcionando!</span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="p-3 bg-white rounded-lg border border-green-200">
-                    <p className="text-xs text-slate-500 mb-1">Número de Telefone</p>
-                    <p className="font-bold text-green-700">{statusMeta.phone_number}</p>
-                  </div>
-                  <div className="p-3 bg-white rounded-lg border border-green-200">
-                    <p className="text-xs text-slate-500 mb-1">Nome Verificado</p>
-                    <p className="font-bold text-green-700">{statusMeta.verified_name}</p>
-                  </div>
-                  <div className="p-3 bg-white rounded-lg border border-green-200">
-                    <p className="text-xs text-slate-500 mb-1">Qualidade</p>
-                    <p className="font-bold text-green-700">{statusMeta.quality_rating || '—'}</p>
-                  </div>
-                  <div className="p-3 bg-white rounded-lg border border-green-200">
-                    <p className="text-xs text-slate-500 mb-1">Modo da Conta</p>
-                    <p className="font-bold text-green-700">{statusMeta.account_mode || '—'}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-            {statusMeta?.error && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 p-3 bg-red-100 rounded-lg border border-red-300">
-                  <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-bold text-red-800">❌ Erro na conexão</p>
-                    <p className="text-xs text-red-700 mt-1">{statusMeta.error}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-slate-500 px-1">Verifique se o Access Token e o Phone Number ID estão corretos na aba "API Oficial".</p>
               </div>
             )}
           </CardContent>
