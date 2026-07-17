@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Link as LinkIcon, Wifi, Loader2, CheckCircle2, XCircle, Power } from 'lucide-react';
+import { Settings, Link as LinkIcon, Wifi, Loader2, CheckCircle2, XCircle, Power, Facebook, RefreshCw, Trash2 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import LoginMetaOficialButton from '@/components/configuracoes/LoginMetaOficialButton';
 import ConfiguracaoWhatsAppConexoes from '@/components/configuracoes/ConfiguracaoWhatsAppConexoes';
 
@@ -86,6 +88,10 @@ export default function CredenciaisWhatsApp({ empresaId }) {
     }
   };
 
+  const handleVerLogs = () => {
+    window.location.href = '/RobosIntegracoes';
+  };
+
   return (
     <div className="space-y-4">
       {/* Cabeçalho da seção */}
@@ -160,20 +166,83 @@ export default function CredenciaisWhatsApp({ empresaId }) {
                 }}
               />
             ) : (
-              <div className="flex items-center gap-3 rounded-lg bg-emerald-100 border border-emerald-300 px-4 py-3">
-                <CheckCircle2 className="w-5 h-5 text-emerald-700 flex-shrink-0" />
-                <div className="text-sm">
-                  <p className="font-semibold text-emerald-900">
-                    Conectado à Meta
-                    {empresa?.meta_display_phone_number
-                      ? ` · ${empresa.meta_display_phone_number}`
-                      : ''}
+              <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                {/* Cabeçalho */}
+                <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Facebook className="w-5 h-5 text-[#1877f2] flex-shrink-0" />
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+                        WhatsApp Oficial · Coexistência
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#22c55e] text-white">
+                          API Oficial - Coexistente
+                        </span>
+                      </p>
+                      <p className="text-xs text-slate-600 mt-0.5">
+                        {empresa?.meta_display_phone_number || empresa?.whatsapp_phone_number_id || '-'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#22c55e] text-white">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Conectado
+                    </span>
+                    <Button variant="ghost" size="icon" onClick={() => refetch()} title="Atualizar">
+                      <RefreshCw className="w-4 h-4 text-slate-600" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={handleDesconectar} title="Desconectar">
+                      <Trash2 className="w-4 h-4 text-[#ef4444]" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Conteúdo verde */}
+                <div className="bg-[#f0fdf4] border-y border-[#dcfce7] p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <div>
+                        <span className="block text-xs font-semibold uppercase text-slate-500">NOME</span>
+                        <span className="block text-sm font-medium text-slate-900">
+                          WhatsApp Oficial · Coexistência
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600">
+                        Conectado via login Facebook — credenciais automáticas
+                      </p>
+                      <p className="text-xs text-slate-700">
+                        WABA: {empresa?.whatsapp_business_account_id || '-'}
+                      </p>
+                      <p className="text-xs text-slate-700">
+                        Phone ID: {empresa?.whatsapp_phone_number_id || '-'}
+                      </p>
+                      <p className="text-[11px] text-slate-500 pt-1">
+                        Gerencie a conexão no painel "WhatsApp — API Oficial Meta" abaixo.
+                      </p>
+                    </div>
+                    <div>
+                      <span className="block text-xs font-semibold uppercase text-slate-500">STATUS</span>
+                      <span className="block text-sm font-medium text-slate-900">Conectado</span>
+                    </div>
+                    <div>
+                      <span className="block text-xs font-semibold uppercase text-slate-500">NÚMERO</span>
+                      <span className="block text-sm font-medium text-slate-900">
+                        {empresa?.meta_display_phone_number || empresa?.whatsapp_phone_number_id || '-'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rodapé */}
+                <div className="flex flex-wrap items-center justify-between gap-2 p-3">
+                  <p className="text-xs text-slate-500">
+                    Última conexão:{' '}
+                    {empresa?.whatsapp_token_atualizado_em
+                      ? format(parseISO(empresa.whatsapp_token_atualizado_em), 'dd/MM/yyyy, HH:mm:ss', { locale: ptBR })
+                      : '-'}
                   </p>
-                  <p className="text-emerald-800 text-xs">
-                    {empresa?.meta_verified_name
-                      ? `Perfil: ${empresa.meta_verified_name}`
-                      : 'Credenciais salvas no CRM.'}
-                  </p>
+                  <Button variant="outline" size="sm" onClick={handleVerLogs}>
+                    Ver Logs
+                  </Button>
                 </div>
               </div>
             )}
