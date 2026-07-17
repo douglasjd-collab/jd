@@ -32,23 +32,34 @@ export default function MetaLogin() {
         return;
       }
 
-      if (!empresaId) {
+      // A Meta às vezes devolve só o `code` e descarta parâmetros custom da
+      // redirect_uri (empresa_id). Nesse caso, recupera do usuário logado.
+      let empresaFinalId = empresaId;
+      if (!empresaFinalId) {
+        try {
+          const me = await base44.auth.me();
+          empresaFinalId = me?.empresa_id || null;
+        } catch (_) {}
+      }
+
+      if (!empresaFinalId) {
         setStatus('erro');
         setMensagem('Empresa não identificada no retorno. Feche e tente novamente pelo CRM.');
         return;
       }
+      const empresaIdFinal = empresaFinalId;
 
       setMensagem('Conexão autorizada! Salvando credenciais...');
       try {
         const resp = await base44.functions.invoke('metaEmbeddedSignup', {
           action: 'exchange_code',
-          empresa_id: empresaId,
+          empresa_id: empresaIdFinal,
           code,
         });
         if (resp.data?.ok) {
           setStatus('sucesso');
           setMensagem(`${resp.data.display_phone_number || ''} ${resp.data.verified_name || ''}`.trim());
-          try { window.opener?.postMessage({ type: 'META_LOGIN_SUCESSO', empresa_id: empresaId }, '*'); } catch (_) {}
+          try { window.opener?.postMessage({ type: 'META_LOGIN_SUCESSO', empresa_id: empresaIdFinal }, '*'); } catch (_) {}
           // Fechar janela automaticamente após 2s
           setTimeout(() => { try { window.close(); } catch (_) {} }, 2000);
         } else {

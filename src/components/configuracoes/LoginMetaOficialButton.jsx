@@ -94,12 +94,16 @@ export default function LoginMetaOficialButton({ empresaId, onSuccess }) {
     popup.focus?.();
 
     // Monitora se o usuário fecha o popup sem concluir — só reseta o estado,
-    // sem erro (cancelamento manual).
+    // sem erro (cancelamento manual). Mesmo sem o postMessage chegar (popup
+    // voltou cross-origin → window.opener pode ser null), dispara onSuccess
+    // para o CRM refazer a busca da empresa e exibir o card "Conectado".
     closedTimerRef.current = setInterval(() => {
       const p = popupRef.current;
       if (!p || p.closed) {
         setCarregando(false);
         limparPopupWatch();
+        // Dá um pequeno atraso para o /meta-login concluir o exchange_code.
+        setTimeout(() => { try { onSuccess?.(); } catch (_) {} }, 800);
       }
     }, 600);
   };
