@@ -753,28 +753,7 @@ export default function ConfiguracaoWhatsApp() {
                 <Wifi className="w-5 h-5" />
                 Status da API Oficial (Meta)
               </CardTitle>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={sincronizarStatusMeta}
-                  disabled={sincronizandoMeta || !empresa?.id}
-                  size="sm"
-                  variant={statusMeta?.success ? 'outline' : 'default'}
-                >
-                  {sincronizandoMeta ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Verificando...</> : <><RefreshCw className="w-4 h-4 mr-2" /> Verificar Status</>}
-                </Button>
-                {whatsappPhoneNumberId && whatsappAccessToken && (
-                  <Button
-                    onClick={desconectarMeta}
-                    disabled={desconectandoMeta}
-                    size="sm"
-                    variant="outline"
-                    className="text-red-600 hover:bg-red-50 border-red-200"
-                    title="Apaga as credenciais salvas (token/WABA/telefone) — use quando o número exibido pertence a outro App da Meta"
-                  >
-                    {desconectandoMeta ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Removendo...</> : <><WifiOff className="w-4 h-4 mr-2" /> Desconectar</>}
-                  </Button>
-                )}
-              </div>
+              {/* Botões removidos a pedido — nenhuma ação manual neste card. */}
             </div>
             <CardDescription>
               Verifica se as credenciais da API Oficial estão corretas e funcionando
