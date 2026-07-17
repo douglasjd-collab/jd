@@ -19,7 +19,9 @@ import {
   Plus,
   Loader2,
   Eye,
-  TestTube
+  TestTube,
+  Facebook,
+  LayoutGrid
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO } from 'date-fns';
@@ -30,6 +32,48 @@ export default function MonitoramentoInstancias() {
   const [loading, setLoading] = useState(true);
   const [testeEnvio, setTesteEnvio] = useState({ open: false, instancia: null, telefone: '' });
   const [testando, setTestando] = useState(false);
+  const [empresa, setEmpresa] = useState(null);
+
+  const carregarEmpresa = useCallback(async () => {
+    try {
+      const me = await base44.auth.me();
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+      const empId = colabs?.[0]?.empresa_id || me.empresa_id;
+      if (empId) {
+        const emps = await base44.entities.Empresa.filter({ id: empId });
+        if (emps && emps.length > 0) setEmpresa(emps[0]);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar empresa:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    carregarEmpresa();
+  }, [carregarEmpresa]);
+
+  const metaConectado = !!(empresa?.whatsapp_access_token && empresa?.whatsapp_phone_number_id);
+
+  const desconectarMeta = async () => {
+    if (!empresa?.id) return;
+    if (!window.confirm('Desconectar a API Oficial da Meta?')) return;
+    try {
+      await base44.entities.Empresa.update(empresa.id, {
+        whatsapp_access_token: '',
+        whatsapp_phone_number_id: '',
+        whatsapp_business_account_id: '',
+        whatsapp_token_tipo: 'temporario',
+        meta_phone_status: '',
+        meta_display_phone_number: '',
+        meta_verified_name: '',
+        meta_quality_rating: '',
+      });
+      toast.success('Conexão Meta desconectada.');
+      carregarEmpresa();
+    } catch (e) {
+      toast.error('Erro ao desconectar: ' + e.message);
+    }
+  };
 
   const carregarInstancias = useCallback(async () => {
     setLoading(true);
@@ -149,14 +193,107 @@ export default function MonitoramentoInstancias() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Monitoramento de Instâncias</h1>
-          <p className="text-sm text-slate-500 mt-1">Acompanhe o status das instâncias WhatsApp Evolution</p>
+          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            <LayoutGrid className="w-6 h-6 text-emerald-600" />
+            Instâncias WhatsApp
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Acompanhe o status da sua conexão com a API Oficial Meta
+          </p>
         </div>
-        <Button onClick={carregarInstancias} variant="outline" size="sm">
+        <Button onClick={() => { carregarInstancias(); carregarEmpresa(); }} variant="outline" size="sm">
           <RefreshCw className="w-4 h-4 mr-2" />
           Atualizar
         </Button>
       </div>
+
+      {/* Barra de resumo */}
+      <div className="text-sm text-slate-700">
+        Conectadas: <strong className="text-emerald-700">
+          {instancias.filter(i => i.status_envio === 'operacional').length + (metaConectado ? 1 : 0)}
+        </strong> | Conectando: <strong className="text-yellow-600">
+          {instancias.filter(i => i.status_envio === 'instavel').length}
+        </strong> | Desconectadas: <strong className="text-red-600">
+          {instancias.filter(i => i.status_envio === 'falhando' || i.status_envio === 'offline').length}
+        </strong>
+      </div>
+
+      {/* Instância WhatsApp Oficial Meta (Coexistência) */}
+      {metaConectado && (
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-slate-100">
+            <div className="flex items-center gap-3 min-w-0">
+              <Facebook className="w-5 h-5 text-blue-600 flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="font-bold text-slate-900 truncate flex items-center gap-2 flex-wrap">
+                  WhatsApp Oficial - Coexistência
+                  <Badge className="bg-emerald-700 text-white">API Oficial - Coexistente</Badge>
+                </p>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  {empresa?.meta_display_phone_number || empresa?.whatsapp_phone_number_id || '-'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Badge className="bg-green-500 text-white gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Conectado
+              </Badge>
+              <Button variant="ghost" size="icon" onClick={carregarEmpresa} title="Atualizar">
+                <RefreshCw className="w-4 h-4 text-slate-600" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={desconectarMeta} title="Desconectar">
+                <Trash2 className="w-4 h-4 text-red-600" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="bg-emerald-50/60 p-4 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-xs font-semibold uppercase text-slate-500">NOME</p>
+                <p className="font-medium text-slate-800">WhatsApp Oficial - Coexistência</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase text-slate-500">STATUS</p>
+                <p className="font-medium text-emerald-700">Conectado</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase text-slate-500">NÚMERO</p>
+                <p className="font-medium text-slate-800">
+                  {empresa?.meta_display_phone_number || empresa?.whatsapp_phone_number_id || '-'}
+                </p>
+              </div>
+            </div>
+            <div className="text-sm space-y-1">
+              <p className="text-emerald-700 font-medium">
+                Conectado via login Facebook — credenciais automáticas
+              </p>
+              <p className="text-slate-700">WABA: {empresa?.whatsapp_business_account_id || '-'}</p>
+              <p className="text-slate-700">Phone ID: {empresa?.whatsapp_phone_number_id || '-'}</p>
+              <p className="text-slate-500 text-xs">
+                Gerencie a conexão no painel 'WhatsApp — API Oficial Meta' abaixo.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3 border-t border-slate-100 flex items-center justify-between">
+            <p className="text-xs text-slate-500">
+              Última conexão:{' '}
+              {empresa?.whatsapp_token_atualizado_em
+                ? format(parseISO(empresa.whatsapp_token_atualizado_em), 'dd/MM/yyyy, HH:mm:ss', { locale: ptBR })
+                : '-'}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { window.location.href = '/RobosIntegracoes'; }}
+            >
+              Ver Logs
+            </Button>
+          </div>
+        </div>
+      )}
+
 
       {/* Cards de resumo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
