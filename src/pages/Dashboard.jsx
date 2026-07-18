@@ -24,7 +24,7 @@ import {
 } from 'recharts';
 import {
   LayoutDashboard, TrendingUp, DollarSign, Users, Target, Cake, Search,
-  Upload, ShoppingCart, AlertCircle, Building2
+  Upload, ShoppingCart, AlertCircle, Building2, ArrowLeftRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, startOfMonth, endOfMonth, subMonths, startOfWeek, endOfWeek, subDays } from 'date-fns';
@@ -231,6 +231,21 @@ export default function Dashboard() {
     staleTime: 300000,
   });
 
+  // Transferências de cota (indicador operacional, separado das vendas)
+  const { data: transferenciasCota = [] } = useQuery({
+    queryKey: ['transferencias-cota-exec', user?.empresa_id],
+    enabled: !!user,
+    queryFn: () => {
+      const f = {};
+      if (user?.empresa_id) f.empresa_id = user.empresa_id;
+      return Object.keys(f).length > 0
+        ? base44.entities.TransferenciaCota.filter(f, '-created_date', 300)
+        : base44.entities.TransferenciaCota.list('-created_date', 300);
+    },
+    staleTime: 300000,
+    refetchOnWindowFocus: false,
+  });
+
   // Mapa colaborador_id → filial_nome para enriquecer o ranking de filiais
   const { data: colaboradores = [] } = useQuery({
     queryKey: ['colabs-filial-exec', user?.empresa_id],
@@ -261,15 +276,35 @@ export default function Dashboard() {
     staleTime: 300000, // 5 minutos
   });
 
-  // Filtros aplicados
+  // Indica se a venda é uma transferência de cota (não deve contar como nova venda)
+  const isTransferencia = (v) =>
+    v.origem_proposta === 'transferencia_cota' ||
+    (v.proposta_origem_id && v.transferencia_id);
+
+  // Filtros aplicados — Transferências de cota não somam como vendas
   const vendasFiltradas = useMemo(() => vendas.filter(v => {
     if (v.status === 'cancelada') return false;
+    if (isTransferencia(v)) return false;
     if ((isVendedor || isParceiro) && user?.colaborador_id && v.vendedor_id !== user.colaborador_id) return false;
     if (isGerente && user?.colaborador_id && v.gerente_id !== user.colaborador_id && v.vendedor_id !== user.colaborador_id) return false;
     if (filtroVendedor !== 'todos' && v.vendedor_nome !== filtroVendedor) return false;
     if (filtroFilial !== 'todos' && v.filial_nome !== filtroFilial) return false;
     return true;
   }), [vendas, isVendedor, isGerente, user, filtroVendedor, filtroFilial]);
+
+  // Indicador operacional de Transferências de cota (não é vendas)
+  const transferenciasResumo = useMemo(() => {
+    const pendentes = transferenciasCota.filter(t => ['aguardando_aprovacao', 'aguardando_documentos'].includes(t.situacao));
+    const aprovadas = transferenciasCota.filter(t => t.situacao === 'aprovada' && !t.estornado);
+    const canceladas = transferenciasCota.filter(t => ['cancelada', 'reprovada'].includes(t.situacao));
+    return {
+      total: transferenciasCota.length,
+      valorTotal: aprovadas.reduce((a, t) => a + (t.valor_credito_novo ?? t.valor_credito_anterior ?? 0), 0),
+      pendentes: pendentes.length,
+      aprovadas: aprovadas.length,
+      canceladas: canceladas.length,
+    };
+  }, [transferenciasCota]);
 
   const oportunidadesFiltradas = useMemo(() => oportunidades.filter(o => {
     if ((isVendedor || isParceiro) && user?.colaborador_id && o.vendedor_id !== user.colaborador_id) return false;
@@ -493,6 +528,43 @@ export default function Dashboard() {
                 </div>
               ))}
             </div>
+
+            {/* Indicador operacional de Transferências de cota (não soma em vendas) */}
+            {transferenciasResumo.total > 0 && (
+              <Card className="border-blue-200 bg-blue-50/50 shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2 text-blue-800">
+                    <ArrowLeftRight className="w-4 h-4" />
+                    Transferências de cota
+                    <span className="text-xs font-normal text-blue-500">(operacional — não soma em vendas)</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+                    <div>
+                      <p className="text-xs text-slate-500">Total realizadas</p>
+                      <p className="text-lg font-bold text-slate-900">{transferenciasResumo.total}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Crédito transferido</p>
+                      <p className="text-lg font-bold text-slate-900">{BRL(transferenciasResumo.valorTotal)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-amber-600">Pendentes</p>
+                      <p className="text-lg font-bold text-amber-600">{transferenciasResumo.pendentes}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-green-600">Aprovadas</p>
+                      <p className="text-lg font-bold text-green-600">{transferenciasResumo.aprovadas}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-red-600">Canceladas/Reprovadas</p>
+                      <p className="text-lg font-bold text-red-600">{transferenciasResumo.canceladas}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <GraficoProducao 
               dados={vendasPorMes.map(d => ({ ...d, quantidade: d.vendas }))}

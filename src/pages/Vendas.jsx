@@ -416,6 +416,24 @@ export default function Vendas() {
       cell: (row) => row.vendedor_nome || '-'
     },
     {
+      header: 'Origem',
+      cell: (row) => {
+        const origem = row.origem_proposta || 'venda_nova';
+        const config = {
+          venda_nova: { label: 'Venda nova', cls: 'bg-green-100 text-green-700 border-green-200' },
+          transferencia_cota: { label: 'Transferência de cota', cls: 'bg-blue-100 text-blue-700 border-blue-200' },
+          importacao: { label: 'Importação', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+          renovacao: { label: 'Renovação', cls: 'bg-purple-100 text-purple-700 border-purple-200' },
+          outro: { label: 'Outro', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+        }[origem] || { label: origem, cls: 'bg-slate-100 text-slate-600 border-slate-200' };
+        return (
+          <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border ${config.cls}`}>
+            {config.label}
+          </span>
+        );
+      }
+    },
+    {
       header: 'Data',
       cell: (row) => {
         if (!row.data_venda) return '-';
