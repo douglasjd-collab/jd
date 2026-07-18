@@ -104,7 +104,8 @@ sexo ("Masculino" ou "Feminino"), naturalidade, nacionalidade, estado_civil, pro
 ENDEREÇO (do comprovante de residência ou fatura):
 cep, logradouro (rua/av), numero, complemento, bairro, cidade, estado (sigla UF 2 letras)
 
-CONTATO: telefone e e-mail apenas se aparecerem nos documentos.`;
+CONTATO: telefone e e-mail. Procure e-mail em TODO o conteúdo, inclusive no verso de documentos, comprovantes, anotações ou campos pequenos.
+Todo texto contendo "@" seguido de domínio (ex: @gmail.com, @hotmail.com, @icloud.com, @outlook.com, @yahoo.com.br) deve ser extraído como e-mail. Não retorne "nao_identificado" se houver um e-mail visível em qualquer lugar do arquivo.`;
 
     const campo = (extra = {}) => ({
       type: 'object',
@@ -236,6 +237,57 @@ CONTATO: telefone e e-mail apenas se aparecerem nos documentos.`;
     // Usa telefone da conversa como sugestão de alta confiança quando não houver
     if (telefoneConversa && !lid.contato?.telefone?.valor) {
       lid.contato.telefone = { valor: telefoneConversa, confianca: 'alta' };
+    }
+
+    // ── Varredura de e-mail nas mensagens do chat ──
+    // Clientes costumam digitar o e-mail no chat (não no documento). Se o documento não
+    // trouxe um e-mail, procuramos em todas as mensagens de texto da conversa por
+    // qualquer token com "@" (gmail, hotmail, icloud, outlook, etc.) — conforme regra do usuário.
+    const emailAtual = lid.contato?.email?.valor;
+    const temEmailValido = emailAtual
+      && emailAtual.trim() !== ''
+      && emailAtual.toLowerCase() !== 'nao_identificado'
+      && emailAtual.includes('@');
+
+    if (!temEmailValido) {
+      try {
+        const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+          { conversa_id, tipo_conteudo: 'texto' }, '-data_envio', 100
+        );
+        const DOMINIOS_CONHECIDOS = [
+          '@gmail.com', '@googlemail.com',
+          '@hotmail.com', '@outlook.com', '@live.com', '@msn.com',
+          '@icloud.com', '@me.com', '@mac.com',
+          '@yahoo.com.br', '@yahoo.com', '@ymail.com',
+          '@uol.com.br', '@bol.com.br', '@terra.com.br',
+          '@globomail.com', '@ig.com.br',
+          '@proton.me', '@protonmail.com', '@zoho.com',
+          '@aol.com', '@mail.com',
+        ];
+        const regexEmail = /[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g;
+        let emailEncontrado = '';
+        let confiancaEmail = 'media';
+        for (const msg of mensagens) {
+          const texto = (msg.texto || '').toLowerCase();
+          if (!texto.includes('@')) continue;
+          const matches = (msg.texto || '').match(regexEmail) || [];
+          for (const m of matches) {
+            const lower = m.toLowerCase();
+            const ehDominioConhecido = DOMINIOS_CONHECIDOS.some((d) => lower.endsWith(d));
+            if (ehDominioConhecido || /@[\w.-]+\.[A-Za-z]{2,}/.test(lower)) {
+              emailEncontrado = m.trim();
+              confiancaEmail = ehDominioConhecido ? 'alta' : 'media';
+              break;
+            }
+          }
+          if (emailEncontrado) break;
+        }
+        if (emailEncontrado) {
+          lid.contato.email = { valor: emailEncontrado, confianca: confiancaEmail };
+        }
+      } catch (e) {
+        console.log('[analisarDocumentosConversa] varredura de email nas mensagens falhou:', e.message);
+      }
     }
 
     // ── Busca de duplicidade no CRM ──
