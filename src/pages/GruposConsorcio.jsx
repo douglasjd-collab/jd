@@ -14,8 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select.jsx';
-import { Search } from 'lucide-react';
+import { Search, Sparkles } from 'lucide-react';
 import { CATEGORIA_LABELS, CATEGORIA_ICONS, PRIORIDADE_STARS, formatCurrency } from '@/components/utils/gruposConsorcioHelpers';
+import AgenteRecomendacaoModal from '@/components/grupos/AgenteRecomendacaoModal';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 export default function GruposConsorcio() {
   const navigate = useNavigate();
@@ -24,6 +27,7 @@ export default function GruposConsorcio() {
   const [filtroAdministradora, setFiltroAdministradora] = useState('todas');
   const [filtroCategoria, setFiltroCategoria] = useState('todas');
   const [filtroStatus, setFiltroStatus] = useState('todos');
+  const [agenteOpen, setAgenteOpen] = useState(false);
 
   useEffect(() => {
     const loadEmpresa = async () => {
@@ -91,6 +95,22 @@ export default function GruposConsorcio() {
         subtitle={`${grupos.length} grupos cadastrados`}
         actionLabel="Novo Grupo"
         onAction={() => navigate(createPageUrl('GrupoConsorcioDetalhes'))}
+      />
+
+      <div className="flex justify-end">
+        <Button onClick={() => setAgenteOpen(true)} className="gap-2 bg-violet-600 hover:bg-violet-700">
+          <Sparkles className="w-4 h-4" /> Agente de IA — Recomendar Grupo
+        </Button>
+      </div>
+
+      <AgenteRecomendacaoModal
+        empresaId={empresaId}
+        open={agenteOpen}
+        onOpenChange={setAgenteOpen}
+        onSelectGrupo={(grupo) => {
+          toast.success(`Grupo ${grupo.numero_grupo} selecionado.`);
+          navigate(createPageUrl('GrupoConsorcioDetalhes') + `?id=${grupo.id}`);
+        }}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
