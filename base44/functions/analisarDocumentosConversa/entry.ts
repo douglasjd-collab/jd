@@ -182,8 +182,11 @@ CONTATO: telefone e e-mail apenas se aparecerem nos documentos.`;
       model: 'claude_sonnet_4_6'
     });
 
-    // Garante que a estrutura venha completa
-    const lid = leitura || {};
+    // Alguns modelos (Claude) embrulham a resposta em uma chave "response" — desembrulha
+    const lid = (leitura && leitura.response && typeof leitura.response === 'object' && !Array.isArray(leitura.response))
+      ? leitura.response
+      : (leitura || {});
+
     lid.documentos = Array.isArray(lid.documentos) ? lid.documentos : [];
     lid.dados_pessoais = lid.dados_pessoais || {};
     lid.endereco = lid.endereco || {};

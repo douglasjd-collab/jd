@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import {
@@ -57,6 +57,7 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
   const [status, setStatus] = useState('idle');
   const [resultado, setResultado] = useState(null);
   const [form, setForm] = useState({});
+  const [jaAnalisou, setJaAnalisou] = useState(null);
 
   const documentos = useMemo(() => {
     if (!Array.isArray(mensagens)) return [];
@@ -65,6 +66,27 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
       .map((m) => ({ url: m.arquivo_url, tipo: m.tipo_conteudo, nome: m.arquivo_nome || '' }))
       .slice(-10);
   }, [mensagens]);
+
+  // Análise automática: dispara quando chega documento novo e ainda não analisamos
+  useEffect(() => {
+    if (!documentos.length) return;
+    // Chave de controle = último arquivo analisado
+    const ultimaUrl = documentos[documentos.length - 1]?.url;
+    if (status === 'idle' && ultimaUrl && jaAnalisou !== ultimaUrl) {
+      setJaAnalisou(ultimaUrl);
+      analisar();
+    }
+  }, [documentos]);
+
+  // Lembrete de cadastro quando todos os campos principais já foram extraídos
+  const cadastroPronto = useMemo(() => {
+    if (!resultado?.leitura || status !== 'review') return false;
+    const principais = CAMPOS.filter((c) => c.principal);
+    return principais.every((c) => {
+      const v = valorDe(resultado.leitura, c.id);
+      return String(v || '').trim() !== '';
+    });
+  }, [resultado, status]);
 
   const analisar = async () => {
     if (!documentos.length) {
@@ -292,6 +314,16 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
         <div className="cs-t">Dados pessoais</div>
         <div className="grid grid-cols-2 gap-1.5">{renderCampos('pessoais')}</div>
       </div>
+
+      {cadastroPronto && (
+        <div className="rounded-lg p-3 border border-emerald-500/40 bg-emerald-500/10 text-[11px] text-emerald-200 flex items-start gap-2 animate-pulse">
+          <Sparkles size={14} className="text-emerald-400 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium">Tudo pronto para cadastrar!</p>
+            <p className="text-emerald-200/70 mt-0.5">Todos os campos principais foram identificados. Deseja cadastrar este cliente agora?</p>
+          </div>
+        </div>
+      )}
 
       <div>
         <div className="cs-t">Endereço</div>
