@@ -32,6 +32,9 @@ import {
 import { format } from 'date-fns';
 import { formatDateBR } from '@/components/utils/dateHelpers';
 import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import HistoricoTitularidade from '@/components/vendas/HistoricoTitularidade';
 
 export default function VendaDetalhes() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -474,6 +477,42 @@ export default function VendaDetalhes() {
           </CardContent>
         </Card>
       )}
+
+      {/* Alerta de transferência */}
+      {venda.status === 'transferida' && (
+        <div className="rounded-xl border bg-blue-50 p-4 text-sm text-blue-800 flex flex-col gap-1">
+          <p className="font-medium">Cota transferida para {venda.transferencia_cliente_destino_nome || 'novo titular'}</p>
+          {venda.transferencia_data && (
+            <p>em {format(new Date(venda.transferencia_data), 'dd/MM/yyyy')}</p>
+          )}
+          {venda.proposta_destino_id && (
+            <Link to={`${createPageUrl('VendaDetalhes')}?id=${venda.proposta_destino_id}`} className="text-blue-600 hover:underline mt-1">
+              ↪ Ver proposta do novo titular
+            </Link>
+          )}
+        </div>
+      )}
+      {venda.status === 'transferencia_andamento' && (
+        <div className="rounded-xl border bg-orange-50 p-4 text-sm text-orange-800">
+          Transferência em andamento — aguardando aprovação. A cota permanece ativa apenas para o cliente atual.
+        </div>
+      )}
+      {venda.status === 'transferencia_reprovada' && (
+        <div className="rounded-xl border bg-red-50 p-4 text-sm text-red-800">
+          Transferência reprovada. A cota mantém-se vinculada ao cliente atual.
+        </div>
+      )}
+      {venda.proposta_origem_id && (
+        <div className="rounded-xl border bg-slate-50 p-4 text-sm text-slate-700">
+          Esta proposta foi originada por transferência de titularidade.
+          <Link to={`${createPageUrl('VendaDetalhes')}?id=${venda.proposta_origem_id}`} className="text-blue-600 hover:underline ml-1">
+            ↩ Ver titular anterior
+          </Link>
+        </div>
+      )}
+
+      {/* Histórico de Lances */}
+      <HistoricoTitularidade venda={venda} empresaId={venda.empresa_id} />
 
       {/* Histórico de Lances */}
       <Card className="border-0 shadow-sm">

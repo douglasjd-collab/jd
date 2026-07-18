@@ -1,0 +1,205 @@
+{
+  "name": "TransferenciaCota",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "proposta_origem_id": {
+      "type": "string",
+      "description": "ID da Venda (Cons\u00f3rcio) de origem"
+    },
+    "proposta_destino_id": {
+      "type": "string",
+      "description": "ID da nova Venda criada para o novo titular (ap\u00f3s aprova\u00e7\u00e3o)"
+    },
+    "cliente_origem_id": {
+      "type": "string"
+    },
+    "cliente_origem_nome": {
+      "type": "string"
+    },
+    "cliente_origem_cpf": {
+      "type": "string"
+    },
+    "cliente_destino_id": {
+      "type": "string"
+    },
+    "cliente_destino_nome": {
+      "type": "string"
+    },
+    "cliente_destino_cpf": {
+      "type": "string"
+    },
+    "administradora_id": {
+      "type": "string"
+    },
+    "administradora_nome": {
+      "type": "string"
+    },
+    "tipo_consorcio": {
+      "type": "string",
+      "enum": [
+        "automovel",
+        "imovel",
+        "motocicleta",
+        "servico",
+        "bens_moveis"
+      ]
+    },
+    "grupo": {
+      "type": "string",
+      "description": "Grupo da cota de origem (preservado)"
+    },
+    "cota": {
+      "type": "string",
+      "description": "Cota da origem (preservado)"
+    },
+    "contrato_anterior": {
+      "type": "string",
+      "description": "Contrato original, mantido no hist\u00f3rico"
+    },
+    "manter_contrato": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se a administradora manter\u00e1 o mesmo n\u00famero de contrato"
+    },
+    "contrato_novo": {
+      "type": "string",
+      "description": "Novo contrato quando a administradora gerar um novo"
+    },
+    "valor_credito_anterior": {
+      "type": "number",
+      "description": "Valor do cr\u00e9dito na proposta original"
+    },
+    "valor_credito_novo": {
+      "type": "number",
+      "description": "Valor do cr\u00e9dito atualizado para o novo titular"
+    },
+    "vendedor_responsavel_id": {
+      "type": "string"
+    },
+    "vendedor_responsavel_nome": {
+      "type": "string"
+    },
+    "data_solicitacao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data em que a transfer\u00eancia foi solicitada"
+    },
+    "data_efetiva": {
+      "type": "string",
+      "format": "date",
+      "description": "Data efetiva da transfer\u00eancia (informada)"
+    },
+    "motivo": {
+      "type": "string"
+    },
+    "observacoes": {
+      "type": "string"
+    },
+    "taxa_transferencia": {
+      "type": "number"
+    },
+    "protocolo_administradora": {
+      "type": "string"
+    },
+    "situacao": {
+      "type": "string",
+      "enum": [
+        "aguardando_documentos",
+        "aguardando_aprovacao",
+        "aprovada",
+        "reprovada",
+        "cancelada"
+      ],
+      "default": "aguardando_documentos",
+      "description": "Situa\u00e7\u00e3o da transfer\u00eancia"
+    },
+    "documentos_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "documentos_nomes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "comprovante_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "comprovante_nomes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "solicitado_por_id": {
+      "type": "string"
+    },
+    "solicitado_por_nome": {
+      "type": "string"
+    },
+    "aprovado_por_id": {
+      "type": "string"
+    },
+    "aprovado_por_nome": {
+      "type": "string"
+    },
+    "data_aprovacao": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "estornado": {
+      "type": "boolean",
+      "default": false
+    },
+    "estornado_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "estornado_por_id": {
+      "type": "string"
+    },
+    "estornado_por_nome": {
+      "type": "string"
+    },
+    "estorno_justificativa": {
+      "type": "string"
+    },
+    "ip_origem": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "proposta_origem_id",
+    "cliente_origem_id",
+    "situacao"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente','vendedor','colaborador','funcionario','colaborador_vendedor','parceiro'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente','vendedor','colaborador','funcionario','colaborador_vendedor'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

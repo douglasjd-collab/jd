@@ -32,11 +32,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Search, MoreHorizontal, Pencil, Eye, Filter, Trash2 } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, Eye, Filter, Trash2, ArrowLeftRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import TransferirCotaModal from '@/components/vendas/TransferirCotaModal';
+import EstornarTransferenciaModal from '@/components/vendas/EstornarTransferenciaModal';
 
 export default function Vendas() {
   const [formOpen, setFormOpen] = useState(false);
@@ -47,6 +49,8 @@ export default function Vendas() {
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [vendaToDelete, setVendaToDelete] = useState(null);
+  const [transferenciaVenda, setTransferenciaVenda] = useState(null);
+  const [estornoVenda, setEstornoVenda] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -261,6 +265,12 @@ export default function Vendas() {
 
   const updateStatusMutation = useMutation({
     mutationFn: async ({ venda, status }) => {
+      if (venda.status === 'transferida') {
+        throw new Error('Proposta transferida não pode ter o status alterado manualmente. Use estornar transferência para reverter.');
+      }
+      if (venda.bloqueio_status) {
+        throw new Error('Status da proposta bloqueado (transferência/estorno em andamento).');
+      }
       return base44.entities.Venda.update(venda.id, { status });
     },
     onSuccess: () => {
@@ -383,15 +393,15 @@ export default function Vendas() {
     },
     {
       header: 'Grupo',
-      cell: (row) => <p className="font-medium">{row.grupo || '-'}</p>
+      cell: (row) => <p className="font-medium">{row.status === 'transferida' ? '—' : row.grupo || '-'}</p>
     },
     {
       header: 'Cota',
-      cell: (row) => <p className="font-medium">{row.cota || '-'}</p>
+      cell: (row) => <p className="font-medium">{row.status === 'transferida' ? '—' : row.cota || '-'}</p>
     },
     {
       header: 'Contrato',
-      cell: (row) => row.contrato || '-'
+      cell: (row) => <p className="font-medium">{row.status === 'transferida' ? 'Transferido' : row.contrato || '-'}</p>
     },
     {
       header: 'Administradora',
@@ -417,71 +427,95 @@ export default function Vendas() {
     {
       header: 'Status',
       cell: (row) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 px-2">
-              <StatusBadge status={row.status} />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem 
-              onSelect={(e) => {
-                e.preventDefault();
-                updateStatusMutation.mutate({ venda: row, status: 'ativa' });
-              }}
-            >
-              Ativa
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onSelect={(e) => {
-                e.preventDefault();
-                updateStatusMutation.mutate({ venda: row, status: 'pendente' });
-              }}
-            >
-              Pendente
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onSelect={(e) => {
-                e.preventDefault();
-                updateStatusMutation.mutate({ venda: row, status: 'cancelada' });
-              }}
-            >
-              Cancelada
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onSelect={(e) => {
-                e.preventDefault();
-                updateStatusMutation.mutate({ venda: row, status: 'em_atraso' });
-              }}
-            >
-              Em Atraso
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-               onSelect={(e) => {
-                 e.preventDefault();
-                 updateStatusMutation.mutate({ venda: row, status: 'aguardando_aprovacao' });
-               }}
-             >
-               Aguardando Aprovação
-             </DropdownMenuItem>
-            <DropdownMenuItem 
-               onSelect={(e) => {
-                 e.preventDefault();
-                 updateStatusMutation.mutate({ venda: row, status: 'docs_pendentes' });
-               }}
-             >
-               Doc. Pendentes
-             </DropdownMenuItem>
-             <DropdownMenuItem 
-               onSelect={(e) => {
-                 e.preventDefault();
-                 updateStatusMutation.mutate({ venda: row, status: 'contemplada' });
-               }}
-             >
-               Contemplada
-             </DropdownMenuItem>
+        <div className="flex flex-col gap-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 px-2">
+                <StatusBadge status={row.status} />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onSelect={(e) => {
+                  e.preventDefault();
+                  updateStatusMutation.mutate({ venda: row, status: 'ativa' });
+                }}
+                disabled={row.status === 'transferida' || row.bloqueio_status}
+              >
+                Ativa
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onSelect={(e) => {
+                  e.preventDefault();
+                  updateStatusMutation.mutate({ venda: row, status: 'pendente' });
+                }}
+                disabled={row.status === 'transferida' || row.bloqueio_status}
+              >
+                Pendente
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onSelect={(e) => {
+                  e.preventDefault();
+                  updateStatusMutation.mutate({ venda: row, status: 'cancelada' });
+                }}
+                disabled={row.status === 'transferida' || row.bloqueio_status}
+              >
+                Cancelada
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onSelect={(e) => {
+                  e.preventDefault();
+                  updateStatusMutation.mutate({ venda: row, status: 'em_atraso' });
+                }}
+                disabled={row.status === 'transferida' || row.bloqueio_status}
+              >
+                Em Atraso
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    updateStatusMutation.mutate({ venda: row, status: 'aguardando_aprovacao' });
+                  }}
+                  disabled={row.status === 'transferida' || row.bloqueio_status}
+                >
+                  Aguardando Aprovação
+                </DropdownMenuItem>
+              <DropdownMenuItem 
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    updateStatusMutation.mutate({ venda: row, status: 'docs_pendentes' });
+                  }}
+                  disabled={row.status === 'transferida' || row.bloqueio_status}
+                >
+                  Doc. Pendentes
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    updateStatusMutation.mutate({ venda: row, status: 'contemplada' });
+                  }}
+                  disabled={row.status === 'transferida' || row.bloqueio_status}
+                >
+                  Contemplada
+                </DropdownMenuItem>
+                {/* Separador + opção de Transferir cota */}
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    setTransferenciaVenda(row);
+                  }}
+                  disabled={row.status === 'transferida'}
+                  className="border-t mt-1 pt-1"
+                >
+                  <ArrowLeftRight className="w-4 h-4 mr-2" />
+                  Transferir cota
+                </DropdownMenuItem>
             </DropdownMenuContent>
-        </DropdownMenu>
+          </DropdownMenu>
+          {row.transferencia_cliente_destino_nome && row.status === 'transferida' && (
+            <p className="text-xs text-blue-600 leading-tight">Para {row.transferencia_cliente_destino_nome}</p>
+          )}
+        </div>
       )
     },
     {
@@ -505,6 +539,21 @@ export default function Vendas() {
              <Pencil className="w-4 h-4 mr-2" />
              Editar
            </DropdownMenuItem>
+           {(row.status === 'transferida' || row.status === 'transferencia_andamento' || row.transferencia_id) && (
+             <DropdownMenuItem onClick={() => setTransferenciaVenda(row)}>
+               <ArrowLeftRight className="w-4 h-4 mr-2" />
+               {row.status === 'transferida' ? 'Ver transferência' : 'Editar transferência'}
+             </DropdownMenuItem>
+           )}
+           {isAdmin && row.status === 'transferida' && (
+             <DropdownMenuItem 
+               onClick={() => setEstornoVenda(row)}
+               className="text-amber-600 focus:text-amber-600"
+             >
+               <ArrowLeftRight className="w-4 h-4 mr-2" />
+               Estornar transferência
+             </DropdownMenuItem>
+           )}
            {isAdmin && (
              <DropdownMenuItem 
                onClick={() => handleDelete(row)}
@@ -578,15 +627,18 @@ export default function Vendas() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-               <SelectItem value="todos">Todos</SelectItem>
-               <SelectItem value="ativa">Ativas</SelectItem>
-               <SelectItem value="pendente">Pendentes</SelectItem>
-               <SelectItem value="aguardando_aprovacao">Aguardando Aprovação</SelectItem>
-               <SelectItem value="docs_pendentes">Doc. Pendentes</SelectItem>
-               <SelectItem value="cancelada">Canceladas</SelectItem>
-               <SelectItem value="em_atraso">Em Atraso</SelectItem>
-               <SelectItem value="contemplada">Contempladas</SelectItem>
-             </SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="ativa">Ativas</SelectItem>
+              <SelectItem value="pendente">Pendentes</SelectItem>
+              <SelectItem value="aguardando_aprovacao">Aguardando Aprovação</SelectItem>
+              <SelectItem value="docs_pendentes">Doc. Pendentes</SelectItem>
+              <SelectItem value="cancelada">Canceladas</SelectItem>
+              <SelectItem value="em_atraso">Em Atraso</SelectItem>
+              <SelectItem value="contemplada">Contempladas</SelectItem>
+              <SelectItem value="transferencia_andamento">Transferência em andamento</SelectItem>
+              <SelectItem value="transferida">Transferidas</SelectItem>
+              <SelectItem value="transferencia_reprovada">Transferência reprovada</SelectItem>
+            </SelectContent>
           </Select>
         </div>
       </Card>
@@ -616,18 +668,6 @@ export default function Vendas() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir esta venda?
-              {vendaToDelete && (
-                <div className="mt-3 p-3 bg-slate-50 rounded-lg">
-                  <p className="font-medium text-slate-900">{vendaToDelete.cliente_nome}</p>
-                  <p className="text-sm text-slate-600">Grupo: {vendaToDelete.grupo} / Cota: {vendaToDelete.cota}</p>
-                </div>
-              )}
-              <p className="mt-3 text-sm text-red-600">
-                Esta ação não pode ser desfeita. Todas as comissões e parcelas relacionadas também serão afetadas.
-              </p>
-            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -640,6 +680,23 @@ export default function Vendas() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal de Transferência de Cota */}
+      <TransferirCotaModal
+        open={!!transferenciaVenda}
+        onOpenChange={(o) => !o && setTransferenciaVenda(null)}
+        venda={transferenciaVenda}
+        currentUser={currentUser}
+        onConcluido={() => queryClient.invalidateQueries({ queryKey: ['vendas'] })}
+      />
+
+      {/* Modal de Estorno */}
+      <EstornarTransferenciaModal
+        open={!!estornoVenda}
+        onOpenChange={(o) => !o && setEstornoVenda(null)}
+        venda={estornoVenda}
+        onConcluido={() => queryClient.invalidateQueries({ queryKey: ['vendas'] })}
+      />
     </div>
   );
 }

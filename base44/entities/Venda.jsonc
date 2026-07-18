@@ -56,15 +56,15 @@
     },
     "grupo": {
       "type": "string",
-      "description": "C\u00f3digo do grupo"
+      "description": "C\u00f3digo do grupo (preservado mesmo ap\u00f3s transfer\u00eancia)"
     },
     "cota": {
       "type": "string",
-      "description": "N\u00famero da cota (pode ficar vazio = pendente)"
+      "description": "N\u00famero da cota (pode ficar vazio = pendente; preservado ap\u00f3s transfer\u00eancia)"
     },
     "contrato": {
       "type": "string",
-      "description": "N\u00famero do contrato (opcional)"
+      "description": "N\u00famero do contrato (preservado historicamente)"
     },
     "prazo": {
       "type": "number",
@@ -115,9 +115,47 @@
         "aguardando_aprovacao",
         "cancelada",
         "em_atraso",
-        "contemplada"
+        "contemplada",
+        "transferencia_andamento",
+        "transferida",
+        "transferencia_reprovada"
       ],
-      "default": "ativa"
+      "default": "ativa",
+      "description": "Status da proposta. transferida e transferencia_* s\u00e3o controlados pelo fluxo de transfer\u00eancia de cota"
+    },
+    "transferencia_id": {
+      "type": "string",
+      "description": "ID do TransferenciaCota quando h\u00e1 transfer\u00eancia pendente/conclu\u00edda"
+    },
+    "proposta_origem_id": {
+      "type": "string",
+      "description": "Quando esta proposta foi criada via transfer\u00eancia, aponta para a proposta de origem"
+    },
+    "proposta_destino_id": {
+      "type": "string",
+      "description": "Quando esta proposta foi transferida, aponta para a nova proposta do novo titular"
+    },
+    "titularidade_inicio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data em que este titular se tornou o respons\u00e1vel pela cota"
+    },
+    "transferencia_data": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data em que a cota foi transferida para outro titular"
+    },
+    "transferencia_cliente_destino_nome": {
+      "type": "string",
+      "description": "Nome do novo titular (denormalizado para exibi\u00e7\u00e3o na proposta de origem)"
+    },
+    "transferencia_cliente_destino_cpf": {
+      "type": "string"
+    },
+    "bloqueio_status": {
+      "type": "boolean",
+      "default": false,
+      "description": "Quando true, o status n\u00e3o pode ser alterado manualmente (propostas transferidas/estornadas)"
     },
     "comissao_total_prevista": {
       "type": "number",
