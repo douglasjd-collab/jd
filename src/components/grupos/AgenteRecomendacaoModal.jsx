@@ -69,6 +69,7 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
   const [verAnalise, setVerAnalise] = useState(false);
   const [verComparacao, setVerComparacao] = useState(false);
   const [copiouMsg, setCopiouMsg] = useState(false);
+  const [exibirMoedaCredito, setExibirMoedaCredito] = useState(true);
 
   const set = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
 
@@ -174,9 +175,11 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
             <Label>Valor do crédito desejado (R$)</Label>
             <Input
               inputMode="numeric"
-              placeholder="R$ 0,00"
-              value={form.valor_credito ? formatarMoeda(form.valor_credito) : ''}
-              onChange={(e) => set('valor_credito', String(extrairNumero(e.target.value)))}
+              placeholder="Ex: 100000"
+              value={exibirMoedaCredito && form.valor_credito ? formatarMoeda(form.valor_credito) : form.valor_credito}
+              onFocus={() => setExibirMoedaCredito(false)}
+              onBlur={() => setExibirMoedaCredito(true)}
+              onChange={(e) => set('valor_credito', e.target.value.replace(/\D/g, ''))}
             />
           </div>
           <div className="space-y-1.5">
