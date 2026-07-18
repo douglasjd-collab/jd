@@ -12,10 +12,10 @@ const riskClass = (p) => p >= 70 ? 'rh' : p >= 40 ? 'rm' : 'rl';
 // ── Scripts alternativos ──────────────────────────────────────────────
 const ALT_SCRIPTS = [];
 
-export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible, onClose, onSendScript }) {
+export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible, onClose, onSendScript, initialTab = 'agora' }) {
   const [analise, setAnalise] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState('agora');
+  const [tab, setTab] = useState(initialTab || 'agora');
   const [error, setError] = useState(null);
   const [scriptIdx, setScriptIdx] = useState(0);
   const [kbSearch, setKbSearch] = useState('');
@@ -25,6 +25,15 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
   const [kbItems, setKbItems] = useState([]);
   const [kbLoaded, setKbLoaded] = useState(false);
   const kbFileRef = useRef(null);
+  const prevVisible = useRef(visible);
+
+  // Ao abrir o painel (visível transiciona para true), aplica a aba inicial solicitada
+  useEffect(() => {
+    if (visible && !prevVisible.current && initialTab) {
+      setTab(initialTab);
+    }
+    prevVisible.current = visible;
+  }, [visible, initialTab]);
 
   useEffect(() => {
     if (tab === 'kb' && empresaId && !kbLoaded) {

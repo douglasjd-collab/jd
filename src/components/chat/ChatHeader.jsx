@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import {
   Check, ArrowRightLeft, MoreVertical, RefreshCw, Tag, Clock,
   Contact, Pencil, BellOff, Pin, X, AlignJustify, CalendarClock, TrendingUp,
-  PhoneCall, PhoneOff,
+  PhoneCall, PhoneOff, UserPlus,
 } from "lucide-react";
 import AvatarContato from './AvatarContato';
 import { toast } from 'sonner';
@@ -43,6 +43,7 @@ export default function ChatHeader({
   erroSip,
   coachIAOpen,
   setCoachIAOpen,
+  onAbrirCadastroIA,
 }) {
   const navigate = useNavigate();
   const [canalOverride, setCanalOverride] = useState(null);
@@ -429,6 +430,10 @@ export default function ChatHeader({
                 <Tag className="mr-2 h-3.5 w-3.5" />
                 Criar Proposta
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onAbrirCadastroIA?.()}>
+                <UserPlus className="mr-2 h-3.5 w-3.5" />
+                Solicitar cadastro de cliente
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setCriarTarefaOpen(true)}>
                 <Clock className="mr-2 h-3.5 w-3.5" />
                 Criar Tarefa
@@ -521,21 +526,6 @@ export default function ChatHeader({
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {setCoachIAOpen && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={coachIAOpen ? "secondary" : "outline"}
-                  size="icon"
-                  className="h-8 w-8 rounded-md border-violet-300 bg-violet-50 hover:bg-violet-100"
-                  onClick={() => setCoachIAOpen(!coachIAOpen)}
-                >
-                  <span className="text-sm">🤖</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Coach IA — Análise da conversa</TooltipContent>
-            </Tooltip>
-          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

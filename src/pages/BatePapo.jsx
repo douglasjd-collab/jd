@@ -304,6 +304,11 @@ export default function BatePapo() {
   const [nvoipConfig, setNvoipConfig] = useState(null);
   const [produtividadeOpen, setProdutividadeOpen] = useState(false);
   const [coachIAOpen, setCoachIAOpen] = useState(false);
+  const [coachIATab, setCoachIATab] = useState('agora');
+  const abrirCadastroIA = useCallback(() => {
+    setCoachIATab('cadastro');
+    setCoachIAOpen(true);
+  }, []);
   const [scriptCoach, setScriptCoach] = useState(null);
   const [mobileActionSheet, setMobileActionSheet] = useState({ open: false, conversa: null });
   const [editorReenvioUrl, setEditorReenvioUrl] = useState(null);
@@ -2107,6 +2112,7 @@ export default function BatePapo() {
                 erroSip={erroSip}
                 coachIAOpen={coachIAOpen}
                 setCoachIAOpen={setCoachIAOpen}
+                onAbrirCadastroIA={abrirCadastroIA}
                 />
                 {dapiChamadaAtivaVisivel ? (
                   <DapiCallBar
@@ -2214,7 +2220,7 @@ export default function BatePapo() {
                     {/* Botão Flutuante Coach IA */}
                     {!coachIAOpen && conversaSelecionada && (
                       <button
-                        onClick={() => setCoachIAOpen(true)}
+                        onClick={() => { setCoachIATab('agora'); setCoachIAOpen(true); }}
                         className="coach-float-btn"
                         title="Coach IA"
                       >
@@ -2281,6 +2287,7 @@ export default function BatePapo() {
                     mensagens={mensagens}
                     empresaId={empresaId}
                     visible={coachIAOpen}
+                    initialTab={coachIATab}
                     onClose={() => setCoachIAOpen(false)}
                     onSendScript={(script) => {
                       if (script && conversaSelecionada) {
