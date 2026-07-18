@@ -111,7 +111,7 @@ export default function Vendas() {
 
   const { data: vendas = [], isLoading } = useQuery({
     queryKey: ['vendas'],
-    queryFn: () => base44.entities.Venda.list('-created_date'),
+    queryFn: () => base44.entities.Venda.list('-created_date', 5000),
   });
 
   const { data: tabelas = [] } = useQuery({
