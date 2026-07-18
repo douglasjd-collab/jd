@@ -123,6 +123,18 @@
       "default": "ativa",
       "description": "Status da proposta. transferida e transferencia_* s\u00e3o controlados pelo fluxo de transfer\u00eancia de cota"
     },
+    "origem_proposta": {
+      "type": "string",
+      "enum": [
+        "venda_nova",
+        "transferencia_cota",
+        "importacao",
+        "renovacao",
+        "outro"
+      ],
+      "default": "venda_nova",
+      "description": "Origem da proposta. transferencia_cota indica que o registro foi criado a partir de uma transfer\u00eancia de titularidade e N\u00c3O deve ser contabilizado como nova venda, produ\u00e7\u00e3o, meta, ranking ou comiss\u00e3o."
+    },
     "transferencia_id": {
       "type": "string",
       "description": "ID do TransferenciaCota quando h\u00e1 transfer\u00eancia pendente/conclu\u00edda"
@@ -134,6 +146,14 @@
     "proposta_destino_id": {
       "type": "string",
       "description": "Quando esta proposta foi transferida, aponta para a nova proposta do novo titular"
+    },
+    "titular_anterior_id": {
+      "type": "string",
+      "description": "ID do cliente titular anterior (quando cria\u00e7\u00e3o via transfer\u00eancia de cota)"
+    },
+    "titular_anterior_nome": {
+      "type": "string",
+      "description": "Nome do cliente titular anterior (quando cria\u00e7\u00e3o via transfer\u00eancia de cota)"
     },
     "titularidade_inicio": {
       "type": "string",

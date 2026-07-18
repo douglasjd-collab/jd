@@ -126,7 +126,12 @@ Deno.serve(async (req) => {
         gerente_nome: origem.gerente_nome,
         data_venda: dataVenda,
         status: 'ativa',
+        // --- CORREÇÃO: transferência de cota NÃO é nova venda ---
+        origem_proposta: 'transferencia_cota',
         proposta_origem_id: origem.id,
+        transferencia_id: transfer.id,
+        titular_anterior_id: origem.cliente_id,
+        titular_anterior_nome: origem.cliente_nome,
         titularidade_inicio: new Date().toISOString(),
       });
 
