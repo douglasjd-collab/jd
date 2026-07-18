@@ -20,6 +20,15 @@ import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
 const MODALIDADES = Object.entries(CATEGORIA_LABELS).map(([value, label]) => ({ value, label }));
+
+const formatarMoeda = (raw) => {
+  const num = extrairNumero(raw);
+  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
+const extrairNumero = (str) => {
+  const digits = String(str ?? '').replace(/\D/g, '');
+  return Number(digits) || 0;
+};
 const TIPOS_LANCE = [
   { value: 'lance_livre', label: 'Lance Livre' },
   { value: 'lance_limitado', label: 'Lance Limitado' },
@@ -163,8 +172,12 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
           </div>
           <div className="space-y-1.5">
             <Label>Valor do crédito desejado (R$)</Label>
-            <Input type="number" min="0" placeholder="Ex: 100000"
-              value={form.valor_credito} onChange={(e) => set('valor_credito', e.target.value)} />
+            <Input
+              inputMode="numeric"
+              placeholder="R$ 0,00"
+              value={form.valor_credito ? formatarMoeda(form.valor_credito) : ''}
+              onChange={(e) => set('valor_credito', String(extrairNumero(e.target.value)))}
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Prazo desejado (meses) — opcional</Label>
