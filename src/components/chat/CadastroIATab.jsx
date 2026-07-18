@@ -5,6 +5,7 @@ import {
   Loader2, Sparkles, FileText, ImageIcon, AlertTriangle, UserPlus,
   UserCheck, X, CheckCircle2, FileWarning, Send, RefreshCw
 } from 'lucide-react';
+import CadastroSeletivoPanel from './CadastroSeletivoPanel';
 
 const CAMPOS = [
   { id: 'nome_completo', label: 'Nome completo', grupo: 'pessoais', principal: true },
@@ -58,6 +59,9 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
   const [resultado, setResultado] = useState(null);
   const [form, setForm] = useState({});
   const [jaAnalisou, setJaAnalisou] = useState(null);
+  // Cadastro Seletivo — guarda a seleção (cliente_alvo + documentos selecionados) para passar ao confirmar.
+  const [clienteAlvo, setClienteAlvo] = useState('');
+  const [ultimaSelecao, setUltimaSelecao] = useState(null);
 
   const documentos = useMemo(() => {
     if (!Array.isArray(mensagens)) return [];
@@ -119,6 +123,20 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
     }
   };
 
+  // Recebe o resultado da análise seletiva (somente documentos do cliente-alvo)
+  // e popula o formulário de revisão, mantendo a seleção/auditoria em estado.
+  const onResultadoSeletivo = (dadosAnalise) => {
+    const inicial = {};
+    CAMPOS.forEach((c) => { inicial[c.id] = valorDe(dadosAnalise.leitura, c.id); });
+    setForm(inicial);
+    setResultado(dadosAnalise);
+    setClienteAlvo(dadosAnalise.cliente_alvo || '');
+    setUltimaSelecao(dadosAnalise.selecao || null);
+    setStatus('review');
+    const nome = dadosAnalise.selecao?.grupo_selecionado?.nome || dadosAnalise.cliente_alvo || '';
+    toast.success(`Documento(s) de ${nome} preparado(s) para revisão.`);
+  };
+
   const setCampo = (id, v) => setForm((p) => ({ ...p, [id]: v }));
 
   const confirmar = async () => {
@@ -129,13 +147,21 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
     }
     setStatus('saving');
     try {
+      // Se a operação veio do cadastro seletivo, repassamos cliente_alvo + seleção
+      // para que a auditoria registre corretamente os documentos usados/descartados.
+      const documentosUrls = ultimaSelecao && Array.isArray(ultimaSelecao.documentos_selecionados)
+        ? ultimaSelecao.documentos_selecionados
+        : documentos.map((d) => d.url);
+
       const resp = await base44.functions.invoke('confirmarCadastroCliente', {
         conversa_id: conversaId,
         empresa_id: empresaId,
         dados: form,
         acao: resultado?.acao_sugerida === 'atualizar' && resultado?.cliente_existente_id ? 'atualizar' : 'criar',
         cliente_existente_id: resultado?.cliente_existente_id,
-        documentos_urls: documentos.map((d) => d.url)
+        documentos_urls: documentosUrls,
+        cliente_alvo: clienteAlvo || undefined,
+        selecao: ultimaSelecao || undefined
       });
       const data = resp.data || {};
       if (!data.success) {
@@ -155,6 +181,9 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
       }
       setStatus('done');
       setResultado((r) => ({ ...(r || {}), cliente_id: data.cliente_id, mensagem_salvo: data.mensagem }));
+      // Limpa os dados de seleção após salvar — auditoria já foi persistida.
+      setUltimaSelecao(null);
+      setClienteAlvo('');
       toast.success(data.mensagem);
     } catch (e) {
       toast.error('Erro: ' + (e.message || 'Falha ao salvar'));
@@ -189,6 +218,13 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
   if (status === 'idle') {
     return (
       <div className="space-y-3">
+        <CadastroSeletivoPanel
+          conversaId={conversaId}
+          empresaId={empresaId}
+          telefoneConversa={telefoneConversa}
+          documentos={documentos}
+          onResultadoPronto={onResultadoSeletivo}
+        />
         <div className="cs-t">Cadastro IA · {documentos.length} arquivo(s) na conversa</div>
         <div className="text-[11px] text-zinc-300 leading-relaxed">
           Encontrei <strong className="text-zinc-100">{documentos.length} documento(s)</strong> pessoal(is) nesta conversa. Deseja analisar os arquivos e preparar o cadastro do cliente?

@@ -1,0 +1,128 @@
+{
+  "name": "CadastrosAuditoria",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "conversa_id": {
+      "type": "string",
+      "description": "ID da conversa vinculada"
+    },
+    "parceiro_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que solicitou o cadastro no CRM"
+    },
+    "parceiro_nome": {
+      "type": "string"
+    },
+    "datahora": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora em que a opera\u00e7\u00e3o foi realizada"
+    },
+    "nome_solicitado": {
+      "type": "string",
+      "description": "Nome ou CPF informado pelo parceiro no comando de cadastro"
+    },
+    "nome_resolvido": {
+      "type": "string",
+      "description": "Nome final identificado ap\u00f3s sele\u00e7\u00e3o no hist\u00f3rico"
+    },
+    "cpf_resolvido": {
+      "type": "string",
+      "description": "CPF final identificado para a opera\u00e7\u00e3o"
+    },
+    "grupo_pessoa_selecionado_id": {
+      "type": "string",
+      "description": "ID do grupo de pessoa utilizado (DocumentoIndexado.grupo_pessoa_id)"
+    },
+    "documentos_utilizados_ids": {
+      "type": "string",
+      "description": "JSON array com os IDs dos DocumentoIndexado utilizados na opera\u00e7\u00e3o"
+    },
+    "documentos_utilizados_resumo": {
+      "type": "string",
+      "description": "JSON array [{id, arquivo_url, tipo, data_envio}] dos documentos utilizados"
+    },
+    "documentos_descartados_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade de documentos descartados (pertencentes a outras pessoas)"
+    },
+    "criterios_vinculacao": {
+      "type": "string",
+      "description": "JSON com crit\u00e9rios aplicados (cpf_exato, nome_nascimento, nome_filiacao, nome_rg, etc.)"
+    },
+    "nivel_confianca": {
+      "type": "string",
+      "enum": [
+        "alta",
+        "media",
+        "baixa",
+        "nao_identificado"
+      ],
+      "default": "nao_identificado"
+    },
+    "divergencias": {
+      "type": "string",
+      "description": "JSON array com as diverg\u00eancias encontradas entre os documentos"
+    },
+    "ambiguidades": {
+      "type": "string",
+      "description": "JSON array de candidatos amb\u00edguos (mais de uma pessoa com mesmo nome/CPF parcial)"
+    },
+    "dados_criados": {
+      "type": "string",
+      "description": "JSON com os campos efetivamente criados"
+    },
+    "dados_atualizados": {
+      "type": "string",
+      "description": "JSON com os campos atualizados no cliente existente"
+    },
+    "acao_realizada": {
+      "type": "string",
+      "enum": [
+        "criar",
+        "atualizar",
+        "cancelado",
+        "pendente_confirmacao",
+        "ambiguidade"
+      ],
+      "description": "A\u00e7\u00e3o executada pela Coach IA"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID do cliente criado ou atualizado"
+    },
+    "confirmado_por_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que confirmou a opera\u00e7\u00e3o"
+    },
+    "mensagem": {
+      "type": "string",
+      "description": "Mensagem final apresentada ao parceiro"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "parceiro_id",
+    "datahora",
+    "acao_realizada"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

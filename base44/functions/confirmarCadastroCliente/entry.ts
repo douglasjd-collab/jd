@@ -50,7 +50,10 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { conversa_id, empresa_id, dados = {}, acao, cliente_existente_id, documentos_urls = [] } = body;
+    const {
+      conversa_id, empresa_id, dados = {}, acao, cliente_existente_id,
+      documentos_urls = [], cliente_alvo, selecao
+    } = body;
 
     if (!empresa_id) return Response.json({ error: 'empresa_id é obrigatório.' }, { status: 400 });
 
@@ -175,14 +178,86 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Vincula DocumentoIndexado ao cliente e atualiza status ──
+    const documentosUsadosIds = Array.isArray(selecao?.documentos_selecionados_ids) ? selecao.documentos_selecionados_ids : [];
+    if (documentosUsadosIds.length) {
+      try {
+        await base44.asServiceRole.entities.DocumentoIndexado.updateMany(
+          { _id: { $in: documentosUsadosIds } },
+          { $set: { status_vinculacao: 'vinculado', cliente_vinculado_id: clienteId } }
+        );
+      } catch (e) {
+        console.log('[confirmarCadastroCliente] erro ao marcar documentos vinculados:', e.message);
+      }
+    }
+    // Documentos descartados (pertencentes a outras pessoas): status descartado
+    if (selecao?.encontrado && Array.isArray(selecao.documentos_selecionados)) {
+      try {
+        const documentosConversa = await base44.asServiceRole.entities.DocumentoIndexado.filter(
+          { conversa_id }, null, 2000
+        );
+        const descartados = documentosConversa
+          .filter((d) => !selecao.documentos_selecionados.includes(d.arquivo_url))
+          .map((d) => d.id);
+        if (descartados.length) {
+          const jaMarcados = new Set(documentosUsadosIds);
+          const descartarIds = descartados.filter((id) => !jaMarcados.has(id));
+          if (descartarIds.length) {
+            await base44.asServiceRole.entities.DocumentoIndexado.updateMany(
+              { _id: { $in: descartarIds } },
+              { $set: { status_vinculacao: 'descartado' } }
+            );
+          }
+        }
+      } catch (e) {
+        console.log('[confirmarCadastroCliente] erro ao marcar documentos descartados:', e.message);
+      }
+    }
+
+    // ── Persistir Auditoria de Cadastro (CadastrosAuditoria) ──
+    try {
+      await base44.asServiceRole.entities.CadastrosAuditoria.create({
+        empresa_id,
+        conversa_id: conversa_id || '',
+        parceiro_id: user.id,
+        parceiro_nome: user.full_name || user.email || '',
+        datahora: new Date().toISOString(),
+        nome_solicitado: cliente_alvo || '',
+        nome_resolvido: dados.nome_completo || selecao?.grupo_selecionado?.nome || '',
+        cpf_resolvido: limparCpf(dados.cpf || selecao?.grupo_selecionado?.cpf || ''),
+        grupo_pessoa_selecionado_id: selecao?.grupo_selecionado?.grupo_id || '',
+        documentos_utilizados_ids: JSON.stringify(documentosUsadosIds),
+        documentos_utilizados_resumo: JSON.stringify(
+          (documentos_urls || []).map((url) => ({ arquivo_url: url }))
+        ),
+        documentos_descartados_count: selecao?.documentos_descartados_count || 0,
+        criterios_vinculacao: JSON.stringify(selecao?.criterios_uso || []),
+        nivel_confianca: selecao?.nivel_confianca_selecao || 'nao_identificado',
+        divergencias: JSON.stringify((dados.divergencias || [])),
+        ambiguidades: JSON.stringify((selecao?.candidatos || [])),
+        dados_criados: acaoFinal === 'criar' ? JSON.stringify(payload) : JSON.stringify({}),
+        dados_atualizados: acaoFinal === 'atualizar' ? JSON.stringify(payload) : JSON.stringify({}),
+        acao_realizada: acaoFinal,
+        cliente_id: clienteId,
+        confirmado_por_id: user.id,
+        mensagem: acaoFinal === 'atualizar'
+          ? 'Cadastro atualizado com sucesso. As informações foram adicionadas ao cadastro existente e a conversa foi vinculada.'
+          : `Cliente cadastrado com sucesso. Foram utilizados ${documentosUsadosIds.length || documentos_urls.length} documento(s) correspondente(s). Os demais documentos da conversa foram ignorados.`
+      });
+    } catch (e) {
+      console.log('[confirmarCadastroCliente] erro ao salvar auditoria:', e.message);
+    }
+
     return Response.json({
       success: true,
       cliente_id: clienteId,
       acao: acaoFinal,
       conversa_vinculada: Boolean(conversa_id),
       mensagem: acaoFinal === 'atualizar'
-        ? 'Cadastro atualizado com sucesso. As informações foram adicionadas ao cadastro existente e a conversa foi vinculada.'
-        : 'Cliente cadastrado com sucesso. O cadastro foi vinculado a esta conversa.',
+        ? `${dados.nome_completo || 'O cliente'} já possuía cadastro. Os dados foram atualizados sem criar duplicidade.`
+        : `Cliente ${dados.nome_completo || ''} cadastrado com sucesso. Foram utilizados ${documentosUsadosIds.length || documentos_urls.length} documento(s) correspondente(s) ao cliente. Os demais documentos da conversa foram ignorados.`,
+      documentos_utilizados_count: documentosUsadosIds.length || documentos_urls.length,
+      documentos_descartados_count: selecao?.documentos_descartados_count || 0,
       autorizado_por: { id: user.id, nome: user.full_name || user.email }
     });
   } catch (error) {

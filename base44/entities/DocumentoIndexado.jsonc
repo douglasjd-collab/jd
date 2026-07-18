@@ -1,0 +1,151 @@
+{
+  "name": "DocumentoIndexado",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "conversa_id": {
+      "type": "string",
+      "description": "ID da conversa vinculada"
+    },
+    "parceiro_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio/parceiro respons\u00e1vel pela conversa (created_by_id)"
+    },
+    "mensagem_id": {
+      "type": "string",
+      "description": "ID da mensagem que originou o documento"
+    },
+    "arquivo_url": {
+      "type": "string",
+      "description": "URL p\u00fablica do arquivo"
+    },
+    "arquivo_nome": {
+      "type": "string",
+      "description": "Nome original do arquivo"
+    },
+    "arquivo_hash": {
+      "type": "string",
+      "description": "Hash identificador (em aus\u00eancia de hash, chave por conversa_id+arquivo_url)"
+    },
+    "data_envio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora em que o documento foi enviado na conversa"
+    },
+    "tipo_documento": {
+      "type": "string",
+      "enum": [
+        "rg_frente",
+        "rg_verso",
+        "cin",
+        "cnh",
+        "cpf",
+        "comprovante_residencia",
+        "certidao",
+        "complementar",
+        "nao_identificado"
+      ],
+      "default": "nao_identificado",
+      "description": "Tipo do documento identificado"
+    },
+    "lado": {
+      "type": "string",
+      "enum": [
+        "frente",
+        "verso",
+        "completo",
+        "nao_identificado"
+      ],
+      "default": "nao_identificado"
+    },
+    "legivel": {
+      "type": "boolean",
+      "default": true,
+      "description": "Se o documento est\u00e1 leg\u00edvel"
+    },
+    "nome_identificado": {
+      "type": "string",
+      "description": "Nome completo identificado no documento"
+    },
+    "cpf_identificado": {
+      "type": "string",
+      "description": "CPF identificado (somente d\u00edgitos)"
+    },
+    "rg_identificado": {
+      "type": "string",
+      "description": "RG/registro identificado"
+    },
+    "data_nascimento_identificada": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de nascimento identificada (ISO)"
+    },
+    "nome_mae_identificado": {
+      "type": "string"
+    },
+    "nome_pai_identificado": {
+      "type": "string"
+    },
+    "endereco_resumo": {
+      "type": "string",
+      "description": "Endere\u00e7o resumido extra\u00eddo do documento (logradouro, bairro, cidade/UF)"
+    },
+    "grupo_pessoa_id": {
+      "type": "string",
+      "description": "Identificador l\u00f3gico do dono do documento (CPF normalizado quando existe, caso contr\u00e1rio hash normalizado de nome+nascimento)"
+    },
+    "nivel_confianca": {
+      "type": "string",
+      "enum": [
+        "alta",
+        "media",
+        "baixa",
+        "nao_identificado"
+      ],
+      "default": "nao_identificado"
+    },
+    "status_vinculacao": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "vinculado",
+        "descartado"
+      ],
+      "default": "pendente"
+    },
+    "cliente_vinculado_id": {
+      "type": "string",
+      "description": "ID do Cliente no CRM quando vinculado"
+    },
+    "observacao": {
+      "type": "string"
+    },
+    "indexado_em": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "conversa_id",
+    "arquivo_url",
+    "grupo_pessoa_id"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

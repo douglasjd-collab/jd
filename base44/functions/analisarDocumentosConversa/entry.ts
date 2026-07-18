@@ -32,6 +32,15 @@ const mascararCpf = (cpf) => {
   return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
 };
 
+const normalizarNome = (s) => (s || '')
+  .toString()
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9 ]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -39,7 +48,7 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { conversa_id, empresa_id, documentos, telefone_conversa } = body;
+    const { conversa_id, empresa_id, documentos, telefone_conversa, cliente_alvo } = body;
 
     if (!conversa_id || !empresa_id) {
       return Response.json({ error: 'conversa_id e empresa_id são obrigatórios.' }, { status: 400 });
@@ -54,16 +63,154 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ── Seleção seletiva: SE cliente_alvo informado, filtra a lista de
+    // arquivos a usar pela indexação de documentos da conversa ──
+    let selecao = null;
+    if (cliente_alvo && cliente_alvo.trim()) {
+      try {
+        const idxRes = await base44.functions.invoke('indexarDocumentosConversa', {
+          conversa_id, empresa_id
+        });
+        const idxData = idxRes.data || idxRes;
+        if (!idxData?.success) throw new Error('indexação falhou');
+        const grupos = Array.isArray(idxData.grupos) ? idxData.grupos : [];
+
+        // Pausa nomes úteis (CPF normalizado quando só dígitos)
+        const alvoLimpo = limparCpf(cliente_alvo);
+        const alvoNome = normalizarNome(cliente_alvo);
+        const alvoEhCpf = alvoLimpo && alvoLimpo.length === 11 && validarCpf(alvoLimpo);
+
+        let gruposSelecionados = [];
+        if (alvoEhCpf) {
+          gruposSelecionados = grupos.filter((g) => limparCpf(g.cpf) === alvoLimpo);
+        } else {
+          // Comparação por nome (substring bidirecional)
+          gruposSelecionados = grupos.filter((g) => {
+            const gNome = normalizarNome(g.nome);
+            if (!gNome || !alvoNome) return false;
+            return gNome === alvoNome
+              || gNome.startsWith(alvoNome)
+              || alvoNome.startsWith(gNome)
+              || gNome.includes(alvoNome)
+              || alvoNome.includes(gNome);
+          });
+        }
+
+        const totalArquivos = (documentos || []).length;
+        const totalDocumentosIndexados = grupos.reduce((s, g) => s + g.documentos.length, 0);
+
+        if (gruposSelecionados.length === 0) {
+          // Nenhum documento correspondente ao alvo
+          selecao = {
+            encontrado: false,
+            ambiguidade: false,
+            alvo: cliente_alvo,
+            candidatos: [],
+            documentos_selecionados: [],
+            documentos_descartados_count: totalDocumentosIndexados,
+            criterios_uso: alvoEhCpf ? ['cpf_exato'] : ['nome_substring'],
+            nivel_confianca_selecao: 'baixa',
+            motivo: `Não encontrei documentos que possam ser vinculados com segurança a ${cliente_alvo} nesta conversa.`
+          };
+        } else if (gruposSelecionados.length > 1) {
+          // Ambiguidade — mais de uma pessoa com o nome/CPF informado
+          selecao = {
+            encontrado: false,
+            ambiguidade: true,
+            alvo: cliente_alvo,
+            candidatos: gruposSelecionados.map((g) => ({
+              grupo_id: g.grupo_id,
+              nome: g.nome,
+              cpf: g.cpf,
+              data_nascimento: g.data_nascimento,
+              primeiro_documento_data: g.documentos?.[0]?.data_envio || null,
+              documentos_count: g.documentos?.length || 0,
+              nivel_confianca: g.nivel_confianca
+            })),
+            documentos_selecionados: [],
+            documentos_descartados_count: totalDocumentosIndexados,
+            criterios_uso: alvoEhCpf ? ['cpf_exato'] : ['nome_substring'],
+            nivel_confianca_selecao: 'baixa',
+            motivo: `Encontrei mais de uma pessoa compatível com "${cliente_alvo}". Selecione o cliente correto para continuar.`
+          };
+        } else {
+          const grupo = gruposSelecionados[0];
+          // Determina critério principal aplicado e nível de confiança da seleção
+          const criterios = [];
+          let nivel = 'media';
+          if (alvoEhCpf) {
+            criterios.push('cpf_exato');
+            nivel = 'alta';
+          } else {
+            if (normalizarNome(grupo.nome) === alvoNome) criterios.push('nome_completo');
+            else criterios.push('nome_substring');
+            // Passa para alta quando temos RG/filiação compatíveis ou nome + nascimento
+            if (grupo.data_nascimento || grupo.nome_mae || grupo.rg) nivel = 'media';
+            if (!grupo.cpf) nivel = grupo.nome_mae || grupo.data_nascimento ? 'media' : 'baixa';
+          }
+          const descartadosCount = totalDocumentosIndexados - grupo.documentos.length;
+          selecao = {
+            encontrado: true,
+            ambiguidade: false,
+            alvo: cliente_alvo,
+            grupo_selecionado: {
+              grupo_id: grupo.grupo_id,
+              nome: grupo.nome,
+              cpf: grupo.cpf,
+              rg: grupo.rg,
+              data_nascimento: grupo.data_nascimento,
+              nome_mae: grupo.nome_mae,
+              nome_pai: grupo.nome_pai,
+              nivel_confianca: grupo.nivel_confianca
+            },
+            candidatos: [],
+            documentos_selecionados: grupo.documentos.map((d) => d.arquivo_url),
+            documentos_selecionados_ids: grupo.documentos.map((d) => d.id),
+            documentos_descartados_count: descartadosCount,
+            criterios_uso: criterios,
+            nivel_confianca_selecao: nivel,
+            motivo: `Selecionados ${grupo.documentos.length} documento(s) correspondentes a ${grupo.nome || cliente_alvo}. ${descartadosCount} documento(s) de outras pessoas foram ignorados.`
+          };
+        }
+      } catch (e) {
+        console.log('[analisarDocumentosConversa] seleção por cliente_alvo falhou:', e.message);
+        // Continua sem seleção (comportamento legado).
+      }
+    }
+    if (selecao && !selecao.encontrado) {
+      // Resposta de bloqueio — não procede com análise para evitar mistura
+      return Response.json({
+        success: true,
+        conversa_id,
+        selecao,
+        leitura: { documentos: [], dados_pessoais: {}, endereco: {}, contato: {} },
+        sem_documentos_selecionados: true,
+        mensagem: selecao.motivo,
+        cliente_alvo
+      });
+    }
+
     // Prioriza PDFs (costumam conter TODO o cadastro) — mantém todos os PDFs e preenche
     // o restante com as imagens mais recentes, até no máximo 15 arquivos.
     const docsComUrl = documentos
       .map((d) => ({ url: d.url || d.arquivo_url, tipo: (d.tipo || '').toLowerCase() }))
       .filter((d) => d.url);
-    const pdfs = docsComUrl.filter((d) => d.tipo === 'pdf' || /\.pdf($|\?)/i.test(d.url));
-    const imagens = docsComUrl.filter((d) => !pdfs.includes(d));
+    // Se temos seleção ativa, restringe os arquivos a apenas os selecionados
+    const docsFiltrados = selecao?.encontrado && selecao.documentos_selecionados?.length
+      ? docsComUrl.filter((d) => selecao.documentos_selecionados.includes(d.url))
+      : docsComUrl;
+    const pdfs = docsFiltrados.filter((d) => d.tipo === 'pdf' || /\.pdf($|\?)/i.test(d.url));
+    const imagens = docsFiltrados.filter((d) => !pdfs.includes(d));
     const arquivos = [...pdfs, ...imagens.slice(-Math.max(0, 15 - pdfs.length))].map((d) => d.url);
     if (!arquivos.length) {
-      return Response.json({ error: 'Sem URLs de arquivo válidas.' }, { status: 400 });
+      return Response.json({
+        success: true,
+        conversa_id,
+        leitura: { documentos: [], dados_pessoais: {}, endereco: {}, contato: {} },
+        sem_documentos: true,
+        selecao,
+        mensagem: 'Nenhum documento selecionado para análise.'
+      });
     }
 
     // Tenta pegar telefone da própria conversa quando não informado
@@ -353,7 +500,9 @@ Todo texto contendo "@" seguido de domínio (ex: @gmail.com, @hotmail.com, @iclo
         : null,
       possivel_duplicidade: possivelDuplicidade,
       cpf_valido: lid.dados_pessoais.cpf?.valido === true,
-      acao_sugerida: clienteExistente ? 'atualizar' : 'criar'
+      acao_sugerida: clienteExistente ? 'atualizar' : 'criar',
+      selecao: selecao || null,
+      cliente_alvo: cliente_alvo || null
     });
   } catch (error) {
     console.error('[analisarDocumentosConversa] Erro:', error.message);
