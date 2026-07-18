@@ -98,7 +98,7 @@ export default function TransferirCotaModal({ open, onOpenChange, venda, current
       const todos = await base44.entities.Cliente.filter(
         venda?.empresa_id ? { empresa_id: venda.empresa_id } : {},
         '-created_date',
-        200
+        5000
       );
       const l = busca.toLowerCase();
       return todos.filter(
