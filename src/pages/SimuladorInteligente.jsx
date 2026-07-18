@@ -343,7 +343,9 @@ export default function SimuladorInteligente() {
     const vBem = parseFloat(valorBem) || 0;
     const vDisp = parseFloat(valorDisponivel) || 0;
     const pct = parseFloat(percentualLance) || 0;
-    const prazo = parseInt(periodoPosseMeses) || 0;
+    // Compatibilidade com os campos básicos já exibidos no formulário
+    const prazoCons = parseInt(consPrazo) || parseInt(prazoConsorcio) || 0;
+    const prazo = parseInt(periodoPosseMeses) || parseInt(prazoAnalise) || prazoCons;
     // Se capital = valor do veículo, à vista usa 100% do capital
     const credit = parseFloat(consCredito) || vBem;
 
@@ -352,13 +354,13 @@ export default function SimuladorInteligente() {
       plano: consPlano,
       grupo: consGrupo,
       credito: credit,
-      prazo: parseInt(consPrazo) || prazo,
-      parcelaInicial: parseFloat(consParcelaInicial) || 0,
+      prazo: prazoCons,
+      parcelaInicial: parseFloat(consParcelaInicial) || parseFloat(parcelaConsorcio) || 0,
       taxaAdm: parseFloat(consTaxaAdm) || 0,
       fundoReserva: parseFloat(consFundoReserva) || 0,
       seguro: parseFloat(consSeguro) || 0,
       outros: parseFloat(consOutros) || 0,
-      reajusteAnual: parseFloat(consReajusteAnual) || 0,
+      reajusteAnual: parseFloat(consReajusteAnual) || parseFloat(reajusteAnual) || 0,
       mesContemplacao: parseInt(consMesContemplacao) || 1,
       formaAbatimento: consFormaAbatimento,
       parcelaOficialPosLance: consParcelaOficial
@@ -366,7 +368,7 @@ export default function SimuladorInteligente() {
         : null,
     };
     const investimento = {
-      rentabilidadeMensal: parseFloat(invRentabilidadeMensal) || 0,
+      rentabilidadeMensal: parseFloat(invRentabilidadeMensal) || parseFloat(rentabilidadeMensal) || 0,
       prazo: parseInt(invPrazo) || prazo,
       reinvestir: invReinvestir,
       taxasImpostos: parseFloat(invTaxasImpostos) || 0,
@@ -826,8 +828,14 @@ export default function SimuladorInteligente() {
             </Card>
           )}
 
-          <Button onClick={calcular} disabled={calculando} className="w-full bg-[#10353C] hover:bg-[#083942] text-white h-11 text-base font-semibold">
-            {calculando ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Calculando...</> : <><Calculator className="w-4 h-4 mr-2" />Calcular Comparativo</>}
+          <Button
+            onClick={tipoComparacao === 'avista_consorcio' ? calcularAvistaConsorcio : calcular}
+            disabled={calculando}
+            className="w-full bg-[#10353C] hover:bg-[#083942] text-white h-11 text-base font-semibold"
+          >
+            {calculando
+              ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Calculando...</>
+              : <><Calculator className="w-4 h-4 mr-2" />{tipoComparacao === 'avista_consorcio' ? 'Calcular À Vista × Consórcio' : 'Calcular Comparativo'}</>}
           </Button>
         </div>
 
