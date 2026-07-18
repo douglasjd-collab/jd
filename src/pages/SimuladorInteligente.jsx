@@ -18,6 +18,8 @@ import {
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import ChatFlutuante from '@/components/chat/ChatFlutuante';
+import { simularAvistaConsorcio, TAXAS_DESVAL_PADRAO } from '@/components/simulador/avistaConsorcioCalc';
+import ResultadoAvistaConsorcio from '@/components/simulador/ResultadoAvistaConsorcio';
 
 const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 const fmtPct = (v) => `${(v || 0).toFixed(2)}%`;
@@ -80,6 +82,37 @@ export default function SimuladorInteligente() {
   const [taxaJurosAnual, setTaxaJurosAnual] = useState('12');
   const [sistemaFinanciamento, setSistemaFinanciamento] = useState('PRICE');
   const [prazoFinanciamento, setPrazoFinanciamento] = useState('');
+
+  // ===== À Vista × Consórcio =====
+  const [condicaoVeiculo, setCondicaoVeiculo] = useState('zero'); // 'zero' | 'seminovo'
+  const [idadeVeiculo, setIdadeVeiculo] = useState('3');
+  const [valorAtualSeminovo, setValorAtualSeminovo] = useState('');
+  const [anoModelo, setAnoModelo] = useState('');
+  const [periodoPosseMeses, setPeriodoPosseMeses] = useState('');
+  const [dataPrevistaCompra, setDataPrevistaCompra] = useState('');
+  const [taxasDesvalorCustom, setTaxasDesvalorCustom] = useState(TAXAS_DESVAL_PADRAO);
+  const [taxasDesvalorEditorOpen, setTaxasDesvalorEditorOpen] = useState(false);
+  // Consórcio detalhado
+  const [consAdmin, setConsAdmin] = useState('');
+  const [consPlano, setConsPlano] = useState('');
+  const [consGrupo, setConsGrupo] = useState('');
+  const [consCredito, setConsCredito] = useState('');
+  const [consPrazo, setConsPrazo] = useState('');
+  const [consParcelaInicial, setConsParcelaInicial] = useState('');
+  const [consTaxaAdm, setConsTaxaAdm] = useState('');
+  const [consFundoReserva, setConsFundoReserva] = useState('');
+  const [consSeguro, setConsSeguro] = useState('');
+  const [consOutros, setConsOutros] = useState('');
+  const [consReajusteAnual, setConsReajusteAnual] = useState('4.5');
+  const [consMesContemplacao, setConsMesContemplacao] = useState('1');
+  const [consFormaAbatimento, setConsFormaAbatimento] = useState('reduzir_parcelas'); // 'reduzir_parcelas' | 'reduzir_prazo' | 'regra_administradora'
+  const [consParcelaOficial, setConsParcelaOficial] = useState(''); // string com cronograma oficial separado por vírgula (opcional)
+  // Investimento detalhado
+  const [invRentabilidadeMensal, setInvRentabilidadeMensal] = useState('1.20');
+  const [invPrazo, setInvPrazo] = useState('');
+  const [invReinvestir, setInvReinvestir] = useState(true);
+  const [invTaxasImpostos, setInvTaxasImpostos] = useState('');
+  const [resultadoAvista, setResultadoAvista] = useState(null);
 
   const [resultado, setResultado] = useState(null);
   const [calculando, setCalculando] = useState(false);
@@ -303,6 +336,167 @@ export default function SimuladorInteligente() {
 
     setCalculando(false);
     toast.success('Simulação calculada com sucesso!');
+  };
+
+  // ===== Cálculo do modo À Vista × Consórcio =====
+  const calcularAvistaConsorcio = () => {
+    const vBem = parseFloat(valorBem) || 0;
+    const vDisp = parseFloat(valorDisponivel) || 0;
+    const pct = parseFloat(percentualLance) || 0;
+    const prazo = parseInt(periodoPosseMeses) || 0;
+    // Se capital = valor do veículo, à vista usa 100% do capital
+    const credit = parseFloat(consCredito) || vBem;
+
+    const consorcio = {
+      administradora: consAdmin || consPlano || '—',
+      plano: consPlano,
+      grupo: consGrupo,
+      credito: credit,
+      prazo: parseInt(consPrazo) || prazo,
+      parcelaInicial: parseFloat(consParcelaInicial) || 0,
+      taxaAdm: parseFloat(consTaxaAdm) || 0,
+      fundoReserva: parseFloat(consFundoReserva) || 0,
+      seguro: parseFloat(consSeguro) || 0,
+      outros: parseFloat(consOutros) || 0,
+      reajusteAnual: parseFloat(consReajusteAnual) || 0,
+      mesContemplacao: parseInt(consMesContemplacao) || 1,
+      formaAbatimento: consFormaAbatimento,
+      parcelaOficialPosLance: consParcelaOficial
+        ? consParcelaOficial.split(',').map((s) => parseFloat(s.trim())).filter((n) => !isNaN(n))
+        : null,
+    };
+    const investimento = {
+      rentabilidadeMensal: parseFloat(invRentabilidadeMensal) || 0,
+      prazo: parseInt(invPrazo) || prazo,
+      reinvestir: invReinvestir,
+      taxasImpostos: parseFloat(invTaxasImpostos) || 0,
+    };
+
+    const sim = simularAvistaConsorcio({
+      valorVeiculo: vBem,
+      condicaoVeiculo,
+      idadeVeiculoAnos: parseInt(idadeVeiculo) || 0,
+      capitalDisponivel: vDisp,
+      percentualLance: pct,
+      prazoAnalise: prazo,
+      dataPrevistaCompra,
+      consorcio,
+      investimento,
+      taxasCustomDesvalor: taxasDesvalorCustom,
+    });
+
+    if (!sim.ok) {
+      toast.error(sim.erros[0] || 'Erro no cálculo');
+      setResultadoAvista(null);
+      return;
+    }
+
+    setResultadoAvista({
+      ...sim,
+      awakeForm: {
+        valorBem, valorDisponivel, percentualLance, periodoPosseMeses, condicaoVeiculo,
+        idadeVeiculo, consCredito, consPlano, consPrazo, consParcelaInicial,
+        consReajusteAnual, consMesContemplacao, consFormaAbatimento,
+        rentabilidadeMensal: invRentabilidadeMensal,
+      },
+    });
+    toast.success('Simulação À Vista × Consórcio calculada');
+  };
+
+  const salvarHistoricoAvista = async () => {
+    if (!resultadoAvista || !user) return;
+    setSalvando(true);
+    try {
+      await base44.entities.Simulacao.create({
+        empresa_id: user.empresa_id,
+        cliente_nome: 'Simulador À Vista × Consórcio',
+        tipo_grupo: tipoBem,
+        credito_total: parseFloat(consCredito) || parseFloat(valorBem) || 0,
+        usuario_id: user.id,
+        usuario_nome: user.nome,
+        status: 'ativa',
+        observacoes: JSON.stringify({
+          tipo: 'avista_consorcio',
+          patrimonioAvista: resultadoAvista.patrimonioAvista,
+          patrimonioConsorcio: resultadoAvista.patrimonioConsorcio,
+          diferencaEquivalente: resultadoAvista.diferencaEquivalente,
+        }),
+      });
+      toast.success('Simulação salva!');
+    } catch {
+      toast.error('Erro ao salvar simulação');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const gerarPDFAvista = () => {
+    if (!resultadoAvista) return;
+    const r = resultadoAvista;
+    const doc = new jsPDF({ orientation: 'portrait', format: 'a4' });
+    const pw = doc.internal.pageSize.getWidth();
+    doc.setFillColor(8, 57, 66); doc.rect(0, 0, pw, 28, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+    doc.text('JD PROMOTORA — À Vista × Consórcio', 14, 12);
+    doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text(new Date().toLocaleString('pt-BR'), pw - 14, 12, { align: 'right' });
+
+    doc.setFontSize(9); doc.setTextColor(8, 57, 66); doc.setFont('helvetica', 'bold');
+    doc.text('Comparação financeira equivalente', 14, 38);
+    doc.setFontSize(10);
+    doc.text(r.diferencaEquivalente >= 0 ? 'Consórcio superior' : 'À vista superior', 14, 44);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(60, 60, 60);
+    doc.text(`Diferença: ${fmt(Math.abs(r.diferencaEquivalente))}`, 14, 50);
+    doc.text(`Comparação simplificada: ${fmt(Math.abs(r.diferencaSimplificada))} a favor do ${r.diferencaSimplificada > 0 ? 'consórcio' : 'à vista'}`, 14, 55);
+
+    doc.autoTable({
+      startY: 62,
+      head: [['Indicador', 'Compra à Vista', 'Consórcio']],
+      body: [
+        ['Patrimônio final', fmt(r.patrimonioAvista), fmt(r.patrimonioConsorcio)],
+        ['Valor final do veículo', fmt(r.valorFinalVeiculo), fmt(r.valorFinalVeiculo)],
+        ['Investimento / Aportes', fmt(r.invAportesSaldoFinal), fmt(r.saldoFinalLiquidoConsorcio)],
+        ['Total pago ao consórcio (lance + parcelas)', '—', fmt(r.totalPagoConsorcio)],
+        ['Perda por desvalorização', `−${fmt(r.perdaDesvalorizacao)}`, `−${fmt(r.perdaDesvalorizacao)}`],
+      ],
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [8, 57, 66], textColor: 255, fontStyle: 'bold' },
+      margin: { left: 14, right: 14 },
+    });
+
+    const parmsY = doc.lastAutoTable.finalY + 8;
+    doc.autoTable({
+      startY: parmsY,
+      head: [['Premissas', 'Valor']],
+      body: [
+        ['Valor do veículo', fmt(parseFloat(valorBem))],
+        ['Capital disponível', fmt(parseFloat(valorDisponivel))],
+        ['Lance próprio', `${(parseFloat(percentualLance) || 0).toFixed(0)}%   (${fmt(r.valorLance)})`],
+        ['Investimento inicial', fmt(r.valorInvestimentoInicial)],
+        ['Prazo de análise (meses)', r.prazoAnalise],
+        ['Rentabilidade mensal (%)', fmtPct(parseFloat(invRentabilidadeMensal) || 0)],
+        ['Reajuste anual (%)', (parseFloat(consReajusteAnual) || 0).toFixed(1) + '%'],
+        ['Forma de abatimento',
+          r.formaAbatimento === 'reduzir_parcelas' ? 'Reduzir parcelas'
+          : r.formaAbatimento === 'reduzir_prazo' ? 'Reduzir prazo'
+          : 'Regra administradora'],
+        ['Origem do cronograma pós-lance',
+          r.origemCronograma === 'oficial' ? 'Cálculo oficial' : 'Estimativa proporcional'],
+      ],
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [8, 57, 66], textColor: 255, fontStyle: 'bold' },
+      margin: { left: 14, right: 14 },
+      tableWidth: (pw - 28) / 1.5,
+    });
+
+    const footY = doc.internal.pageSize.getHeight() - 18;
+    doc.setFillColor(8, 57, 66); doc.rect(0, footY, pw, 18, 'F');
+    doc.setTextColor(255, 255, 255); doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+    doc.text('Simulação informativa baseada nas premissas selecionadas. A contemplação por lance depende da assembleia.', pw / 2, footY + 6, { align: 'center' });
+    doc.text('Rentabilidade estimada. Fundos imobiliários possuem oscilação nas cotas e nos rendimentos.', pw / 2, footY + 11, { align: 'center' });
+
+    doc.save(`avista_consorcio_${new Date().toISOString().slice(0, 10)}.pdf`);
+    toast.success('PDF gerado!');
   };
 
   const salvarHistorico = async () => {
@@ -639,7 +833,26 @@ export default function SimuladorInteligente() {
 
         {/* Resultados */}
         <div className="xl:col-span-2 space-y-5" ref={simulacaoRef}>
-          {!resultado ? (
+          {tipoComparacao === 'avista_consorcio' ? (
+            resultadoAvista ? (
+              <ResultadoAvistaConsorcio
+                salvando={salvando}
+                simulacao={resultadoAvista}
+                onEditarPremissas={() => {}}
+                onWhatsapp={() => { toast.info('Use o chat flutuante abaixo para anexar o print da simulação.'); }}
+                onSalvar={salvarHistoricoAvista}
+                onExportarPDF={gerarPDFAvista}
+              />
+            ) : (
+              <Card className="border-0 shadow-sm h-96 flex items-center justify-center">
+                <div className="text-center text-slate-400">
+                  <BarChart3 className="w-16 h-16 mx-auto mb-3 opacity-30" />
+                  <p className="text-lg font-medium">Preencha os dados e calcule</p>
+                  <p className="text-sm mt-1">Comparativo À Vista × Consórcio aparecerá aqui</p>
+                </div>
+              </Card>
+            )
+          ) : !resultado ? (
             <Card className="border-0 shadow-sm h-96 flex items-center justify-center">
               <div className="text-center text-slate-400">
                 <BarChart3 className="w-16 h-16 mx-auto mb-3 opacity-30" />
