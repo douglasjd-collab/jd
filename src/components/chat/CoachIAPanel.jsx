@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Copy, Send, RefreshCw, X, Search, Plus, Upload, Link, FileText, Image, Video, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import CadastroIATab from './CadastroIATab';
 
 const tagColors = { red: 'border-red-300/20 bg-red-500/10 text-red-400', amber: 'border-amber-300/20 bg-amber-500/10 text-amber-400', blue: 'border-blue-300/20 bg-blue-500/10 text-blue-400', green: 'border-green-300/20 bg-green-500/10 text-green-400', purple: 'border-purple-300/20 bg-purple-500/10 text-purple-400' };
 const riskClass = (p) => p >= 70 ? 'rh' : p >= 40 ? 'rm' : 'rl';
@@ -226,7 +227,7 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
       <div className="shrink-0 bg-[#0d0d0f] border-b border-zinc-800">
         {/* Linha 1 */}
         <div className="flex">
-          {[['agora','Agora'],['cadencia','Cadência'],['nao-fechou','Não Fechou'],['analise','Análise'],['kb','📚 Base']].map(([k,v]) => (
+          {[['agora','Agora'],['cadastro','👤 Cad.'],['cadencia','Cadência'],['nao-fechou','Não Fechou'],['analise','Análise'],['kb','📚 Base']].map(([k,v]) => (
             <button key={k} onClick={() => setTab(k)} className={`flex-1 text-[10px] font-medium py-2 border-b-2 whitespace-nowrap transition-colors ${tab === k ? 'text-violet-400 border-violet-600' : 'text-zinc-500 border-transparent hover:text-zinc-400'}`}>{v}</button>
           ))}
         </div>
@@ -241,6 +242,16 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
       {/* ── Body ── */}
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-3">
+
+          {/* ═══ TAB: CADASTRO IA ═══ */}
+          {!loading && tab === 'cadastro' && (
+            <CadastroIATab
+              conversaId={conversaId}
+              mensagens={mensagens}
+              empresaId={empresaId}
+              onEnviarMensagem={onSendScript}
+            />
+          )}
 
           {loading && (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
