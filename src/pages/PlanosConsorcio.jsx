@@ -50,6 +50,7 @@ export default function PlanosConsorcio() {
   const [selectedPlano, setSelectedPlano] = useState(null);
   const [search, setSearch] = useState('');
   const [deleteId, setDeleteId] = useState(null);
+  const [deleteGroupName, setDeleteGroupName] = useState(null);
   const [syncLoading, setSyncLoading] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [user, setUser] = useState(null);
@@ -96,14 +97,25 @@ export default function PlanosConsorcio() {
     },
   });
 
+  // deleteId pode ser um id único (string) ou um array de ids (grupo)
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.PlanoConsorcio.delete(id),
+    mutationFn: async (ids) => {
+      const idArray = Array.isArray(ids) ? ids : [ids];
+      await Promise.all(idArray.map(id => base44.entities.PlanoConsorcio.delete(id)));
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['planos-consorcio'] });
       setDeleteId(null);
-      toast.success('Plano excluído com sucesso!');
+      setDeleteGroupName(null);
+      toast.success('Plano(s) excluído(s) com sucesso!');
     },
   });
+
+  const handleExcluirGrupo = (groupName, items, e) => {
+    e.stopPropagation();
+    setDeleteGroupName(groupName);
+    setDeleteId(items.map(i => i.id));
+  };
 
   const openForm = (plano = null) => {
     if (plano) {
@@ -207,6 +219,16 @@ export default function PlanosConsorcio() {
             </div>
             <div className="text-right min-w-[80px]">
               <StatusBadge status={firstItem?.status} />
+            </div>
+            <div className="flex justify-end min-w-[40px]">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => handleExcluirGrupo(groupName, items, e)}
+                title="Excluir todos os planos deste grupo"
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </Button>
             </div>
           </div>
         );
@@ -427,12 +449,20 @@ export default function PlanosConsorcio() {
       </Dialog>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+      <AlertDialog open={!!deleteId} onOpenChange={() => { setDeleteId(null); setDeleteGroupName(null); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir plano?</AlertDialogTitle>
+            <AlertDialogTitle>Excluir plano(s)?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita.
+              {deleteGroupName ? (
+                <>
+                  Tem certeza que deseja excluir o plano <strong>{deleteGroupName}</strong> e todas as suas <strong>{Array.isArray(deleteId) ? deleteId.length : 1} variação(ões)</strong>?
+                  <br /><br />
+                  Esta ação não pode ser desfeita.
+                </>
+              ) : (
+                'Esta ação não pode ser desfeita.'
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -440,8 +470,16 @@ export default function PlanosConsorcio() {
             <AlertDialogAction
               onClick={() => deleteMutation.mutate(deleteId)}
               className="bg-red-600 hover:bg-red-700"
+              disabled={deleteMutation.isPending}
             >
-              Excluir
+              {deleteMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                'Excluir'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
