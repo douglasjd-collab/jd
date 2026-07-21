@@ -26,7 +26,7 @@ export default function ResultadoAvistaConsorcio({ simulacao, onEditarPremissas,
                 ? `Consórcio com patrimônio estimado R$ ${Math.abs(r.diferencaEquivalente).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} superior`
                 : `Compra à vista com patrimônio estimado R$ ${Math.abs(r.diferencaEquivalente).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} superior`}
             </p>
-            <p className="text-xs opacity-70 mt-1">Considerando o mesmo esforço financeiro mensal (aporte = parcela do consórcio)</p>
+            <p className="text-xs opacity-70 mt-1">Compra à vista (capital consumido, sem aportes) vs. Consórcio (lance + investimento do restante + reajuste anual da parcela)</p>
           </div>
           <MessageCircle className="w-9 h-9 opacity-80" />
         </div>
@@ -39,8 +39,8 @@ export default function ResultadoAvistaConsorcio({ simulacao, onEditarPremissas,
           Desembolso à vista: <strong>{fmt(r.desembolsoAvista)}</strong> · Custo líquido consórcio: <strong>{fmt(r.custoLiquidoConsorcio)}</strong> ·
           {'  '}Diferença a favor do {r.diferencaSimplificada > 0 ? 'consórcio' : 'à vista'}: <strong>{fmt(Math.abs(r.diferencaSimplificada))}</strong>
         </p>
-        <p className="text-amber-700 mt-2">
-          ⚠️ Este resultado não considera que o comprador à vista poderia investir mensalmente o valor das parcelas do consórcio.
+        <p className="text-slate-500 mt-2">
+          ℹ️ Na compra à vista, todo o capital foi usado na aquisição — ao final do prazo resta apenas o valor residual do veículo. No consórcio, parte do capital vira lance e o restante é investido enquanto as parcelas são pagas mensalmente.
         </p>
       </div>
 
@@ -58,8 +58,9 @@ export default function ResultadoAvistaConsorcio({ simulacao, onEditarPremissas,
             <Linha1 label="Valor estimado do veículo ao final" v={fmt(r.valorFinalVeiculo)} t="blue" />
             <Linha1 label="Desvalorização acumulada" v={`−${fmt(r.perdaDesvalorizacao)}`} t="red" />
             <Linha1 label="Saldo inicial não utilizado" v={fmt(r.saldoInicialNaoUtilizadoAvista)} />
-            <Linha1 label="Aportes mensais equivalentes (total)" v={fmt(r.invAportesTotalAportado)} />
-            <Linha1 label="Saldo dos aportes ao final" v={fmt(r.invAportesSaldoFinal)} t="green" />
+            <div className="text-[11px] text-slate-400 italic py-0.5">
+              Na compra à vista o capital foi integralmente consumido — não há aportes mensais.
+            </div>
             <hr className="my-1.5" />
             <Linha1 label="Patrimônio final à vista" v={fmt(r.patrimonioAvista)} strong />
           </CardContent>
@@ -135,8 +136,8 @@ export default function ResultadoAvistaConsorcio({ simulacao, onEditarPremissas,
               <Mem label="Rendimento bruto do investimento" v={fmt(r.memoria.rendimentoBruto)} />
               <Mem label="Impostos/taxas informados" v={fmt(r.memoria.taxasImpostos)} />
               <Mem label="Saldo final líquido (consórcio)" v={fmt(r.memoria.saldoFinalLiquidoConsorcio)} />
-              <Mem label="Total aportado mensalmente (à vista)" v={fmt(r.memoria.aportesEquivalentesTotal)} />
-              <Mem label="Saldo final dos aportes mensais (à vista)" v={fmt(r.memoria.aportesSaldoFinal)} />
+              <Mem label="Aportes mensais (à vista)" v="R$ 0,00 (capital consumido na compra)" />
+              <Mem label="Saldo final dos aportes (à vista)" v="R$ 0,00" />
               <Mem label="Valor final do veículo" v={fmt(r.memoria.valorFinalVeiculo)} />
               <Mem label="Perda por desvalorização" v={`−${fmt(r.memoria.perdaDesvalorizacao)}`} />
             </div>

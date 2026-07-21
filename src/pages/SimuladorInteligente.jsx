@@ -59,8 +59,8 @@ export default function SimuladorInteligente() {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
 
-  // Formulário
-  const [tipoBem, setTipoBem] = useState('imovel');
+  // Formulário — padrão: Automóvel (Imóvel terá comportamento distinto)
+  const [tipoBem, setTipoBem] = useState('automovel');
   const [tipoComparacao, setTipoComparacao] = useState('completo');
   const [valorBem, setValorBem] = useState('');
   const [valorDisponivel, setValorDisponivel] = useState('');
@@ -69,7 +69,7 @@ export default function SimuladorInteligente() {
   // Consórcio
   const [parcelaConsorcio, setParcelaConsorcio] = useState('');
   const [prazoConsorcio, setPrazoConsorcio] = useState('');
-  const [reajusteAnual, setReajusteAnual] = useState('3');
+  const [reajusteAnual, setReajusteAnual] = useState('5');
 
   // Desvalorização
   const [desvalorizacaoAnual, setDesvalorizacaoAnual] = useState('10');
@@ -103,7 +103,7 @@ export default function SimuladorInteligente() {
   const [consFundoReserva, setConsFundoReserva] = useState('');
   const [consSeguro, setConsSeguro] = useState('');
   const [consOutros, setConsOutros] = useState('');
-  const [consReajusteAnual, setConsReajusteAnual] = useState('4.5');
+  const [consReajusteAnual, setConsReajusteAnual] = useState('5');
   const [consMesContemplacao, setConsMesContemplacao] = useState('1');
   const [consFormaAbatimento, setConsFormaAbatimento] = useState('reduzir_parcelas'); // 'reduzir_parcelas' | 'reduzir_prazo' | 'regra_administradora'
   const [consParcelaOficial, setConsParcelaOficial] = useState(''); // string com cronograma oficial separado por vírgula (opcional)
@@ -457,7 +457,7 @@ export default function SimuladorInteligente() {
       body: [
         ['Patrimônio final', fmt(r.patrimonioAvista), fmt(r.patrimonioConsorcio)],
         ['Valor final do veículo', fmt(r.valorFinalVeiculo), fmt(r.valorFinalVeiculo)],
-        ['Investimento / Aportes', fmt(r.invAportesSaldoFinal), fmt(r.saldoFinalLiquidoConsorcio)],
+        ['Aportes mensais (à vista) / Investimento (consórcio)', fmt(r.invAportesSaldoFinal), fmt(r.saldoFinalLiquidoConsorcio)],
         ['Total pago ao consórcio (lance + parcelas)', '—', fmt(r.totalPagoConsorcio)],
         ['Perda por desvalorização', `−${fmt(r.perdaDesvalorizacao)}`, `−${fmt(r.perdaDesvalorizacao)}`],
       ],

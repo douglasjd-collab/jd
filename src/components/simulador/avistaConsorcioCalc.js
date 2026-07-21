@@ -240,37 +240,19 @@ export function simularAvistaConsorcio(input) {
   const diferencaSimplificada = desembolsoAvista - custoLiquidoConsorcio; // >0 = consórcio favorável
 
   // ===== RESULTADO 2 — COMPARAÇÃO FINANCEIRA EQUIVALENTE (principal) =====
-  // Quem comprou à vista não paga parcelas; portanto investe mensalmente o mesmo valor
-  // das parcelas do consórcio. Aporte ao final de cada mês.
-  // Construir o array de aportes mensais (parcelas do consórcio mês a mês, incluindo antes/depois do lance)
-  const aportesEquivalentes = [];
-  for (let m = 1; m <= prazoAnalise; m++) {
-    let parcela = 0;
-    if (m < mesContemplacao) {
-      const ano = Math.floor((m - 1) / 12);
-      parcela = parcelaInicial * Math.pow(1 + reajusteAnual, ano);
-    } else if (m <= prazoConsorcio) {
-      const idx = m - mesContemplacao;
-      if (posLance.serie && posLance.serie[idx]) parcela = posLance.serie[idx].parcela;
-      else if (posLance.parcelaBase) {
-        const ano = Math.floor((m - 1) / 12);
-        parcela = posLance.parcelaBase * Math.pow(1 + reajusteAnual, ano);
-      }
-    }
-    aportesEquivalentes.push(parcela);
-  }
-  const invAportesAvista = investimentoAportesMensais({
-    aportesMensais: aportesEquivalentes,
-    taxaMensal: rentMensal,
-    meses: prazoAnalise,
-  });
+  // Na compra à vista, TODO o capital disponível foi usado para adquirir o veículo — não
+  // há aportes mensais (saldo zero). Ao final do prazo, o patrimônio do comprador à
+  // vista é apenas o valor residual do veículo (+ eventual saldo inicial não utilizado,
+  // quando o capital é maior que o valor do veículo). Comparamos então com o consórcio,
+  // que mantém investimento do restante + reajuste anual de 5% na parcela.
 
   // Patrimônio À Vista:
-  // saldo_inicial_nao_utilizado = capital_disponivel − valor_veiculo (se sobrou)
   const saldoInicialNaoUtilizadoAvista = Math.max(0, capitalDisponivel - valorVeiculo);
+  const patrimonioAvista = valorFinalVeiculo + saldoInicialNaoUtilizadoAvista;
 
-  // Patrimônio final à vista = valor_final_veiculo + saldo_investimento_dos_aportes + saldo_inicial_nao_utilizado
-  const patrimonioAvista = valorFinalVeiculo + invAportesAvista.saldoFinal + saldoInicialNaoUtilizadoAvista;
+  // Manutenção de compatibilidade dos campos antigos (aportes zerados)
+  const invAportesSaldoFinal_ZERO = 0;
+  const invAportesTotalAportado_ZERO = 0;
 
   // Patrimônio no Consórcio = valor_final_veiculo + saldo_investimento_dos_(restante)
   const patrimonioConsorcio = valorFinalVeiculo + saldoFinalLiquidoConsorcio;
@@ -292,8 +274,8 @@ export function simularAvistaConsorcio(input) {
     rendimentoBruto: invCons.rendimento,
     taxasImpostos,
     saldoFinalLiquidoConsorcio,
-    aportesEquivalentesTotal: invAportesAvista.totalAportado,
-    aportesSaldoFinal: invAportesAvista.saldoFinal,
+    aportesEquivalentesTotal: invAportesTotalAportado_ZERO,
+    aportesSaldoFinal: invAportesSaldoFinal_ZERO,
     valorFinalVeiculo,
     perdaDesvalorizacao,
     patrimonioAvista,
@@ -321,8 +303,8 @@ export function simularAvistaConsorcio(input) {
     rendimentoLiquidoConsorcio,
     // À vista
     saldoInicialNaoUtilizadoAvista,
-    invAportesSaldoFinal: invAportesAvista.saldoFinal,
-    invAportesTotalAportado: invAportesAvista.totalAportado,
+    invAportesSaldoFinal: invAportesSaldoFinal_ZERO,
+    invAportesTotalAportado: invAportesTotalAportado_ZERO,
     patrimonioAvista,
     patrimonioConsorcio,
     // Resultados numéricos principais
