@@ -63,7 +63,8 @@
       "enum": [
         "whatsapp_meta",
         "evolution",
-        "instagram"
+        "instagram",
+        "dapi"
       ],
       "description": "Provider pelo qual esta mensagem foi enviada ou recebida"
     },
@@ -140,6 +141,51 @@
     "erro_envio": {
       "type": "string",
       "description": "Motivo do erro reportado pela Meta/Evolution quando o envio falha (status=erro)"
+    },
+    "editada": {
+      "type": "boolean",
+      "default": false,
+      "description": "Indica que esta mensagem foi editada. Quando true, o campo texto cont\u00e9m o conte\u00fado atual e texto_anterior cont\u00e9m a vers\u00e3o anterior (exibida com meia opacidade no CRM)."
+    },
+    "edicao_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantas vezes a mensagem foi editada"
+    },
+    "texto_anterior": {
+      "type": "string",
+      "description": "Vers\u00e3o imediatamente anterior da mensagem (antes da \u00faltima edi\u00e7\u00e3o). Exibida no CRM com meia opacidade."
+    },
+    "historico_edicoes": {
+      "type": "string",
+      "description": "JSON array com o hist\u00f3rico completo de edi\u00e7\u00f5es [{texto, data, editado_por_id, editado_por_nome}]. Auditoria completa."
+    },
+    "data_edicao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora da \u00faltima edi\u00e7\u00e3o"
+    },
+    "editado_por_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que editou a mensagem"
+    },
+    "editado_por_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio que editou a mensagem"
+    },
+    "edicao_api_status": {
+      "type": "string",
+      "enum": [
+        "sucesso",
+        "falhou",
+        "nao_aplicavel"
+      ],
+      "default": "nao_aplicavel",
+      "description": "Resultado da tentativa de refletir a edi\u00e7\u00e3o no WhatsApp do aparelho conectado"
+    },
+    "edicao_api_erro": {
+      "type": "string",
+      "description": "Mensagem de erro retornada pela API do WhatsApp ao tentar editar a mensagem no aparelho, se houver"
     }
   },
   "required": [

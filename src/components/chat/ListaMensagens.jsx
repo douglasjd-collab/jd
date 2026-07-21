@@ -49,7 +49,7 @@ function agruparMensagens(mensagens) {
   return grupos;
 }
 
-export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar, onSelecionarOpcaoLista, modoSelecao = false, idsSelecionados = new Set(), onToggleSelecao = null, onEncaminhar = null, onCancelarSelecao = null, onConfirmarSelecao = null }) {
+export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar, onSelecionarOpcaoLista, modoSelecao = false, idsSelecionados = new Set(), onToggleSelecao = null, onEncaminhar = null, onCancelarSelecao = null, onConfirmarSelecao = null, onEditar = null }) {
   const grupos = modoSelecao ? mensagens.map(msg => ({ type: 'mensagem', msg })) : agruparMensagens(mensagens);
 
   return (
@@ -108,6 +108,7 @@ export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo
               selecionada={idsSelecionados.has(item.msg.id)}
               onToggleSelecao={onToggleSelecao}
               onEncaminhar={onEncaminhar}
+              onEditar={onEditar}
             />
           </div>
         );

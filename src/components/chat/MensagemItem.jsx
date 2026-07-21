@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null, modoSelecao = false, selecionada = false, onToggleSelecao = null, onEncaminhar = null }) {
+export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null, modoSelecao = false, selecionada = false, onToggleSelecao = null, onEncaminhar = null, onEditar = null }) {
   // Corrige URLs com espaços não codificados (ex: pastas "CRM JD"), que quebram <img>/<audio>/<video>
   const sanitizeUrl = (url) => (typeof url === 'string' ? url.replace(/ /g, '%20') : url);
 
@@ -540,7 +540,23 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
     switch (mensagem.tipo_conteudo) {
       case 'texto': {
-        return <p className="break-words whitespace-pre-wrap">{formatarTexto(mensagem.texto)}</p>;
+        return (
+          <div className="flex flex-col gap-1">
+            {/* Versão anterior — meia opacidade quando a mensagem foi editada */}
+            {mensagem.editada && mensagem.texto_anterior && (
+              <div className="text-xs leading-snug line-through opacity-40 whitespace-pre-wrap" title={mensagem.data_edicao ? `Editada em ${new Date(mensagem.data_edicao).toLocaleString('pt-BR')}` : 'Editada'}>
+                {mensagem.texto_anterior}
+              </div>
+            )}
+            <p className="break-words whitespace-pre-wrap">{formatarTexto(mensagem.texto)}</p>
+            {/* Marcador "Editada" estilo WhatsApp */}
+            {mensagem.editada && (
+              <span className="text-[10px] italic opacity-50 -mb-1">
+                ✏️ Editada{mensagem.data_edicao ? ` • ${format(new Date(mensagem.data_edicao), 'HH:mm', { locale: ptBR })}` : ''}
+              </span>
+            )}
+          </div>
+        );
       }
 
       case 'imagem':
@@ -1091,6 +1107,12 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
              <Share2 className="w-4 h-4 mr-2" />
              Encaminhar
            </DropdownMenuItem>
+           {isVendedor && mensagem.tipo_conteudo === 'texto' && onEditar && !mensagem.id?.startsWith('temp_') && (
+             <DropdownMenuItem onClick={() => onEditar(mensagem)}>
+               <Pencil className="w-4 h-4 mr-2" />
+               Editar mensagem
+             </DropdownMenuItem>
+           )}
            {mensagem.tipo_conteudo === 'imagem' && mediaUrl && (
              <DropdownMenuItem onClick={() => onEditarReenviar?.(mediaUrl)}>
                <FileText className="w-4 h-4 mr-2" />

@@ -77,6 +77,7 @@ import CoachIAPanel from '@/components/chat/CoachIAPanel';
 import MobileBottomNav from '@/components/chat/MobileBottomNav';
 import MobileConversationActions from '@/components/chat/MobileConversationActions';
 import ImageEditorModal from '@/components/chat/image-editor/ImageEditorModal';
+import EditarMensagemModal from '@/components/chat/EditarMensagemModal';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -312,6 +313,7 @@ export default function BatePapo() {
   const [scriptCoach, setScriptCoach] = useState(null);
   const [mobileActionSheet, setMobileActionSheet] = useState({ open: false, conversa: null });
   const [editorReenvioUrl, setEditorReenvioUrl] = useState(null);
+  const [editarMensagemModal, setEditarMensagemModal] = useState(null); // { mensagem }
   // ── Modo Encaminhar (seleção multipla de mensagens) ──
   const [modoEncaminhar, setModoEncaminhar] = useState(false);
   const [idsEncaminhar, setIdsEncaminhar] = useState(() => new Set());
@@ -1716,6 +1718,14 @@ export default function BatePapo() {
           }}
         />
 
+        {/* Modal Editar Mensagem — apenas para mensagens de texto enviadas pelo atendente */}
+        <EditarMensagemModal
+          open={!!editarMensagemModal}
+          onOpenChange={(v) => !v && setEditarMensagemModal(null)}
+          mensagem={editarMensagemModal?.mensagem}
+          conversaId={conversaSelecionada?.id}
+        />
+
         {/* Modal Salvar/Editar Contato CRM */}
         <Dialog open={!!salvarCrmModal} onOpenChange={(v) => !v && setSalvarCrmModal(null)}>
           <DialogContent className="max-w-sm">
@@ -2203,6 +2213,7 @@ export default function BatePapo() {
                           onEncaminhar={iniciarEncaminhar}
                           onCancelarSelecao={cancelarEncaminhar}
                           onConfirmarSelecao={abrirModalEncaminhar}
+                          onEditar={(msg) => setEditarMensagemModal({ mensagem: msg })}
                         />
                       )}
                     </ScrollArea>
