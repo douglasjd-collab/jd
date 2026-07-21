@@ -1314,12 +1314,19 @@ export default function BatePapo() {
       const temIdentificador = c.cliente_telefone || c.whatsapp_id;
       if (!temIdentificador) return false;
 
-      // Pesquisa dentro do filtro ativo
+      // Pesquisa dentro do filtro ativo — inclui nome do contato no CRM (que pode ter apelidos)
       if (searchConversas) {
         const q = searchConversas.toLowerCase();
+        const tel = (c.cliente_telefone || '').replace(/\D/g, '');
+        const telQ = searchConversas.replace(/\D/g, '');
+        const nomeCache = (contatosWhatsapp[c.id]?.nome || '').toLowerCase();
+        const nomeConv = (c.cliente_nome || '').toLowerCase();
+        const whatsappId = (c.whatsapp_id || '').toLowerCase();
         const match =
-          (c.cliente_nome || '').toLowerCase().includes(q) ||
-          (c.cliente_telefone || '').includes(searchConversas);
+          nomeCache.includes(q) ||
+          nomeConv.includes(q) ||
+          whatsappId.includes(q) ||
+          (telQ && tel.includes(telQ));
         if (!match) return false;
       }
 
