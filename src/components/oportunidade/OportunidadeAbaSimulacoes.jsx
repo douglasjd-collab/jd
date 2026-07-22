@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, Printer, Calculator, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
-import { imprimirSimulacao } from '@/components/simulador/printSimulacao';
+import { createPageUrl } from '@/utils';
 
 const formatCurrency = (v) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
@@ -56,7 +56,11 @@ export default function OportunidadeAbaSimulacoes({ oportunidade }) {
   });
 
   const imprimir = (simulacao) => {
-    imprimirSimulacao(simulacao);
+    // 2ª via precisa ser idêntica ao PDF gerado durante a simulação.
+    // Abrimos a mesma página (ImprimirSimulacao) usada pelo fluxo original
+    // em uma nova aba com auto-impressão — garante layout idêntico ao 1º PDF.
+    const url = `${window.location.origin}${createPageUrl('ImprimirSimulacao')}?id=${simulacao.id}&autoPrint=1`;
+    window.open(url, '_blank');
   };
 
   if (isLoading) {

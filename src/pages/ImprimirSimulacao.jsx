@@ -13,6 +13,18 @@ export default function ImprimirSimulacao() {
     loadSimulacao();
   }, []);
 
+  // Auto-impressão (2ª via): quando a URL contém ?autoPrint=1, dispara o
+  // diálogo de impressão automaticamente após carregar e renderizar a
+  // simulação — produz PDF idêntico ao gerado durante a simulação.
+  useEffect(() => {
+    if (!simulacao) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('autoPrint') === '1') {
+      const t = setTimeout(() => window.print(), 400);
+      return () => clearTimeout(t);
+    }
+  }, [simulacao]);
+
   const loadSimulacao = async () => {
     try {
       setLoading(true);
