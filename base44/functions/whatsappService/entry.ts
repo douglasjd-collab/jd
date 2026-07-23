@@ -489,24 +489,55 @@ Deno.serve(async (req) => {
         return await this.request('/api/v1/chats/read', 'POST', messagePayload);
       },
 
-      // Atualizar webhook da sessão - PATCH /api/v1/sessions/{sessionId}
-      // Conforme documentação oficial D-API
-      async updateWebhook(webhookUrl) {
+      // Atualizar webhook da sessão - POST /api/v1/sessions/{sessionId}/webhook-config
+      // Endpoint oficial (validado contra OpenAPI da D-API em 2026-07-23): usa o schema
+      // completo webhookConfig (mesma estrutura enviada na criação) que popula settings.webhook.
+      // O endpoint alternativo /webhook só salva webhookUrl na raiz da sessão e NÃO popula
+      // settings.webhook → por isso as mensagens cloud chegam vazias no payload de diagnóstico.
+      async updateWebhook(webhookUrl, mode = 'per_event') {
         const startTime = Date.now();
-        // Endpoint oficial correto: POST /api/v1/sessions/{sessionId}/webhook com body { webhookUrl }
-        // (PATCH em /sessions/{id} retorna 500 para sessões cloud_api — validado 2026-07-23)
-        const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}/webhook`;
+        const endpoint = '/webhook-config'; // popula settings.webhook (estrutura completa)
+        const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}${endpoint}`;
         
         console.log('🔗 Atualizando webhook da sessão:', {
           sessionId: this.sessionId,
           webhookUrl,
+          mode,
           baseUrl: this.baseUrl
         });
         
-        // Payload mínimo exigido pela D-API: { webhookUrl: string } — todos os eventos são roteados automaticamente
-        const updatePayload = { webhookUrl };
+        // Lista oficial de eventos suportados (constante da documentação D-API)
+        const EVENTS = [
+          'messages.received', 'messages.sent',
+          'message.read', 'message.delivered', 'message.deleted', 'message.update',
+          'connection.qrcode', 'connection.paircode', 'connection.status',
+          'logged_out',
+          'chats.update', 'chats.upsert',
+          'contacts.update', 'contacts.upsert',
+          'presence',
+          'groups_participants.join', 'groups_participants.leave',
+          'groups_participants.promote', 'groups_participants.demote',
+          'group_participants.join-request',
+          'group_participants.join-request.revoked',
+          'group_participants.join-request.approved',
+          'call.offer', 'call.accepted', 'call.rejected'
+        ];
         
-        console.log('📦 Payload de atualização:', JSON.stringify(updatePayload, null, 2));
+        const eventsConfig = {};
+        for (const ev of EVENTS) {
+          eventsConfig[ev] = { enabled: true, webhookUrl };
+        }
+        
+        // Schema do webhook-config:
+        //   enabled: true, type: 'single' (uma URL) ou 'per_event' (URL por evento),
+        //   events: { [eventName]: { enabled, webhookUrl } }
+        const updatePayload = {
+          enabled: true,
+          type: mode === 'single' ? 'single' : 'per_event',
+          events: eventsConfig
+        };
+        
+        console.log('📦 Payload webhook-config:', JSON.stringify(updatePayload).slice(0, 500) + '...');
         
         const headers = {
           'Authorization': this.apiKey,
@@ -523,7 +554,7 @@ Deno.serve(async (req) => {
           const responseData = await response.json().catch(() => ({}));
           const responseTime = Date.now() - startTime;
           
-          console.log('📡 Resposta D-API (update webhook):', {
+          console.log('📡 Resposta D-API (update webhook-config):', {
             status: response.status,
             ok: response.ok,
             traceId: responseData.traceId,
@@ -750,7 +781,7 @@ Deno.serve(async (req) => {
         if (!webhookUrl) {
           return Response.json({ error: 'webhookUrl required' }, { status: 400 });
         }
-        result = await adapter.updateWebhook(webhookUrl);
+        result = await adapter.updateWebhook(webhookUrl, payload.mode || 'per_event');
         break;
         
       case 'getStatus':
