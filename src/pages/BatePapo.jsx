@@ -94,6 +94,21 @@ export default function BatePapo() {
   const isInstagram = (c) => c?.cliente_telefone?.startsWith('ig_') || c?.instancia === 'INSTAGRAM' || c?.tipo_conexao === 'instagram';
 
   const selecionarConversa = async (conversa, forcarSync = true, abrirMobile = true) => {
+     // ───────── ETAPA 10 — Clique na conversa da Beatriz ─────────
+     // Registra exatamente o que o front recebeu: conversation_id, session_id (instancia),
+     // telefone, cliente_id. Faz o parâmetro bater com o que o backend gravou.
+     console.log(`🔍 [ETAPA 10] BatePapo selecionarConversa`, {
+       conversation_id_recebido: conversa?.id || null,
+       session_id_recebido: conversa?.instancia || conversa?.connection_id || null,
+       telefone_recebido: conversa?.cliente_telefone || null,
+       cliente_id: conversa?.cliente_id || null,
+       provider: conversa?.provider || null,
+       canal_origem: conversa?.canal_origem || null,
+       ultima_mensagem_no_card: conversa?.ultima_mensagem || null,
+       data_ultima_mensagem: conversa?.data_ultima_mensagem || null,
+       ultimo_remetente: conversa?.ultimo_remetente || null,
+     });
+
      setConversaSelecionada(conversa);
      // Só ativar mobileViewChat se for dispositivo mobile E abrirMobile for true
      if (abrirMobile && window.innerWidth < 1024) setMobileViewChat(true);
@@ -640,12 +655,40 @@ export default function BatePapo() {
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
       if (!conversaSelecionadaId) return [];
+      // Equivalente a: SELECT id, conversation_id, whatsapp_message_id, remetente, texto,
+      // tipo_conteudo, arquivo_url, status, data_envio, created_date FROM mensagem_whatsapp
+      // WHERE conversa_id = :conversaSelecionadaId ORDER BY data_envio DESC LIMIT 1000;
       const msgs = await base44.entities.MensagemWhatsapp.filter(
         { conversa_id: conversaSelecionadaId },
         '-data_envio',
         1000
       );
       console.log(`✅ Carregadas ${msgs.length} mensagens para conversa ${conversaSelecionadaId}`);
+
+      // ───────── ETAPA 11 — Comparar conversation IDs ─────────
+      // O conversation_id usado pelo backend ao salvar deve ser IGUAL ao conversation_id
+      // usado pelo front para buscar e ao exibido no card. Se三者 forem diferentes, é aqui.
+      console.log(`🔍 [ETAPA 11] Comparação de conversation IDs`, {
+        conversation_id_card: conversaSelecionada?.id || null,
+        session_id_card: conversaSelecionada?.instancia || null,
+        telefone_card: conversaSelecionada?.cliente_telefone || null,
+        conversation_id_usado_no_query: conversaSelecionadaId,
+        iguais_card_vs_query: conversaSelecionada?.id === conversaSelecionadaId,
+        total_mensagens_no_banco: msgs.length,
+        amostra_primeiras_3: msgs.slice(-3).map(m => ({
+          id: m.id,
+          conversa_id: m.conversa_id,
+          remetente: m.remetente,
+          whatsapp_message_id: m.whatsapp_message_id,
+          texto: String(m.texto || '').slice(0, 30),
+          data_envio: m.data_envio,
+        })),
+      });
+
+      // ───────── ETAPA 13 — Filtros incorretos no front ─────────
+      // O front não adiciona filtros extras (empresa, status, deleted/archive); só filtra por
+      // conversa_id. Se aparecer zero aqui por outro motivo, será detectado.
+      console.log(`🔍 [ETAPA 13] Query SEM filtros adicionais — apenas conversa_id=${conversaSelecionadaId}`);
       // Remover msgs temp_ do cache ao fazer o fetch real (evita duplicatas)
       const ordenadas = [...msgs].reverse();
       return ordenadas;

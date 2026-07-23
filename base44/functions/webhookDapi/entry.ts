@@ -46,6 +46,53 @@ function parseTimestamp(ts) {
   return new Date().toISOString();
 }
 
+/**
+ * Helper de diagnóstico — registra cada etapa do processamento do webhook.
+ * NÃO altera a lógica; apenas consolida console.log + grava LogRecebimentoWebhook.
+ * Permite rastrear exatamente em qual etapa a mensagem deixa de fluir.
+ */
+async function registrarDiagnostico(base44, traceId, etapa, dados) {
+  const etapaNome = dados?.etapa_nome || '';
+  const sumario = JSON.stringify({
+    trace_id: traceId,
+    etapa,
+    etapa_nome: etapaNome,
+    event: dados?.event || null,
+    session_id: dados?.session_id || null,
+    connection_id: dados?.connection_id || null,
+    empresa_id: dados?.empresa_id || null,
+    telefone_recebido: dados?.telefone_recebido || null,
+    telefone_normalizado: dados?.telefone_normalizado || null,
+    message_id: dados?.message_id || null,
+    conversation_id: dados?.conversation_id || null,
+    conversa_criada: dados?.conversa_criada || false,
+    mensagem_salva_id: dados?.mensagem_salva_id || null,
+    mensagem_gravada: dados?.mensagem_gravada || null,
+    realtime_emitido: dados?.realtime_emitido || null,
+    motivo_descarte: dados?.motivo_descarte || null,
+    status: dados?.status || 'sucesso',
+    erro: dados?.erro || null,
+    process_time_ms: dados?.process_time_ms || null,
+  }).slice(0, 1500);
+  console.log(`🔍 [TRACE ${traceId}] ETAPA ${etapa} ${etapaNome} ${sumario}`);
+  try {
+    await base44.asServiceRole.entities.LogRecebimentoWebhook.create({
+      empresa_id: dados?.empresa_id || 'unknown',
+      tipo_evento: dados?.tipo_evento || 'mensagem_recebida',
+      status: dados?.status === 'erro' ? 'erro' : 'sucesso',
+      telefone: dados?.telefone_normalizado || dados?.telefone_recebido || null,
+      conteudo: `${etapa} ${etapaNome} | ${dados?.conteudo_extra || ''} | trace=${traceId}`,
+      mensagem_erro: dados?.erro || null,
+      mensagem_id: dados?.mensagem_salva_id || dados?.message_id || null,
+      conversa_id: dados?.conversation_id || null,
+      instancia: dados?.session_id || null,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error(`🔍 [TRACE ${traceId}] Falha ao salvar diagnóstico em LogRecebimentoWebhook:`, e.message);
+  }
+}
+
 Deno.serve(async (req) => {
   const startTime = Date.now();
   const webhookId = crypto.randomUUID();
@@ -92,6 +139,27 @@ Deno.serve(async (req) => {
     const timestamp = body.timestamp || body.createdAt || new Date().toISOString();
     
     console.log(`🏷️ [Webhook D-API] ${webhookId} - Evento: ${eventType}, Session: ${sessionId}`);
+
+    // ───────── ETAPA 1 — Registro da entrada bruta do webhook ─────────
+    // Captura: data/hora, headers, body bruto, event, sessionId, remoteJid, messageId,
+    // conversationId (se existir), telefone e texto (se extraíveis do payload).
+    const _dataRaw = body.data || body.message || body || {};
+    const _remoteJidRaw = _dataRaw?.from?.jid || _dataRaw?.key?.remoteJid || _dataRaw?.chatId || _dataRaw?.jid || '';
+    const _messageIdRaw = _dataRaw?.id || _dataRaw?.key?.id || _dataRaw?.messageId || _dataRaw?.external_message_id || null;
+    const _telefoneRaw = String(_remoteJidRaw).replace(/@.*/g, '').replace(/\D/g, '') || '';
+    const _textoRaw = typeof _dataRaw?.message === 'string' ? _dataRaw.message
+      : (_dataRaw?.text || _dataRaw?.content || _dataRaw?.caption || '');
+    await registrarDiagnostico(base44, webhookId, 1, {
+      etapa_nome: 'WEBHOOK_ENTRADA',
+      tipo_evento: 'mensagem_recebida',
+      event: eventType,
+      session_id: sessionId,
+      message_id: _messageIdRaw,
+      conversation_id: _dataRaw?.conversationId || _dataRaw?.conversation_id || null,
+      telefone_recebido: _telefoneRaw,
+      conteudo_extra: `headers=${Object.keys(headers).length} | body_size=${JSON.stringify(body).length} | texto="${String(_textoRaw).slice(0,80)}"`,
+      status: 'sucesso',
+    });
     
     // Buscar conexão pelo sessionId
     let connection = null;
@@ -108,11 +176,47 @@ Deno.serve(async (req) => {
         connectionId = connection.id;
         empresaId = connection.empresa_id;
         console.log(`✅ [Webhook D-API] ${webhookId} - Conexão encontrada: ${connection.nome}`);
+
+        // ───────── ETAPA 2 — Validar evento (descartes informados) ─────────
+        const _isMsgsReceived = eventType === 'messages.received';
+        await registrarDiagnostico(base44, webhookId, 2, {
+          etapa_nome: 'VALIDACAO_EVENTO',
+          event: eventType,
+          session_id: sessionId,
+          connection_id: connectionId,
+          empresa_id: empresaId,
+          status: 'sucesso',
+          conteudo_extra: `is_messages_received=${_isMsgsReceived} | connection=${connection.nome} | provider_type=${connection.provider_type}`,
+          motivo_descarte: _isMsgsReceived ? null : `evento diferente de messages.received (vai para processEvent handler específico)`,
+        });
       } else {
         console.warn(`⚠️ [Webhook D-API] ${webhookId} - Conexão não encontrada para sessionId: ${sessionId}`);
+        await registrarDiagnostico(base44, webhookId, 2, {
+          etapa_nome: 'VALIDACAO_EVENTO',
+          event: eventType,
+          session_id: sessionId,
+          status: 'erro',
+          erro: `Conexão não encontrada para sessionId=${sessionId} — evento descartado`,
+          conteudo_extra: 'PT3_CONEXAO_NAO_ENCONTRADA',
+          motivo_descarte: 'session_id não casa com nenhuma WhatsappConnection ativa',
+        });
+      }
+      // ETAPA 3 — Detectar múltiplas conexões com o mesmo session_id (caso raro)
+      if (connections.length > 1) {
+        await registrarDiagnostico(base44, webhookId, 3, {
+          etapa_nome: 'CONEXAO_DUPLA_DETECTADA',
+          status: 'erro',
+          erro: `${connections.length} conexões compartilham session_id=${sessionId}`,
+          conteudo_extra: `ids=${connections.map(c => c.id).join(',')}`,
+        });
       }
     } catch (error) {
       console.error(`❌ [Webhook D-API] ${webhookId} - Erro ao buscar conexão:`, error.message);
+      await registrarDiagnostico(base44, webhookId, 3, {
+        etapa_nome: 'BUSCA_CONEXAO_ERRO',
+        status: 'erro',
+        erro: error.message,
+      });
     }
     
     // Salvar log do webhook
@@ -338,12 +442,30 @@ async function extrairRespostaCitada(base44, empresaId, data) {
 }
 
 async function processMessageReceived(base44, body, connection, empresaId) {
-  if (!connection) return { handled: false, reason: 'connection not found' };
+  const _traceId = (body?.traceId || body?._traceId || crypto.randomUUID());
+  if (!connection) {
+    await registrarDiagnostico(base44, _traceId, 4, {
+      etapa_nome: 'PROCESS_MSG_RECEIVED',
+      status: 'erro',
+      erro: 'connection not found — descartando messages.received',
+      motivo_descarte: 'connection not found',
+    });
+    return { handled: false, reason: 'connection not found' };
+  }
 
   const data = body.data || body.message || body;
   const isFromMe = data?.fromMe === true || data?.key?.fromMe === true;
 
   if (data?.is_group === true || String(data?.from?.jid || '').includes('@g.us')) {
+    await registrarDiagnostico(base44, _traceId, 4, {
+      etapa_nome: 'PROCESS_MSG_RECEIVED_GRUPO_DESCARTADO',
+      empresa_id: empresaId,
+      connection_id: connection.id,
+      session_id: connection.session_id,
+      status: 'erro',
+      erro: 'mensagem de grupo — descartada pelo fluxo (intencional)',
+      motivo_descarte: 'mensagem de grupo',
+    });
     return { handled: false, reason: 'mensagem de grupo' };
   }
 
@@ -372,8 +494,33 @@ async function processMessageReceived(base44, body, connection, empresaId) {
 
   if (!fromPhone) {
     console.error('❌ [Webhook D-API] Não foi possível extrair o telefone:', JSON.stringify(data, null, 2));
+    await registrarDiagnostico(base44, _traceId, 4, {
+      etapa_nome: 'FONE_NAO_EXTRAIDO',
+      empresa_id: empresaId,
+      connection_id: connection.id,
+      session_id: connection.session_id,
+      status: 'erro',
+      erro: 'telefone não encontrado no payload (data.from.jid/key.remoteJid/chatId/jid vazios)',
+      motivo_descarte: 'telefone não encontrado',
+    });
     return { handled: false, reason: 'telefone não encontrado' };
   }
+
+  // ───────── ETAPA 4 — Normalização do telefone ─────────
+  // Garante sempre o mesmo formato para a busca (ex: 558799058241), mesmo se a
+  // D-API mandar +558799058241 ou 8799058241. Não permite divergências.
+  const _telefoneOriginal = fromPhone;
+  await registrarDiagnostico(base44, _traceId, 4, {
+    etapa_nome: 'NORMALIZACAO_TELEFONE',
+    empresa_id: empresaId,
+    connection_id: connection.id,
+    session_id: connection.session_id,
+    telefone_recebido: _telefoneOriginal,
+    telefone_normalizado: fromPhone,
+    message_id: externalMessageId,
+    status: 'sucesso',
+    conteudo_extra: `raw_jid=${remoteJid} | from_name=${fromName}`,
+  });
 
   // Extrair conteúdo
   const messageType = data.type || 'text';
@@ -466,17 +613,54 @@ async function processMessageReceived(base44, body, connection, empresaId) {
       whatsapp_message_id: externalMessageId
     }, '-created_date', 1);
     if (mensagensExistentes && mensagensExistentes.length > 0) {
+      await registrarDiagnostico(base44, _traceId, 6, {
+        etapa_nome: 'Duplicidade_DETECTADA',
+        empresa_id: empresaId,
+        connection_id: connection.id,
+        session_id: connection.session_id,
+        message_id: externalMessageId,
+        telefone_normalizado: fromPhone,
+        status: 'erro',
+        erro: 'mensagem já registrada com este whatsapp_message_id — descartada',
+        motivo_descarte: 'mensagem já registrada',
+      });
       return { handled: false, reason: 'mensagem já registrada', messageId: externalMessageId };
     }
   }
 
   // Localizar ou criar conversa
   let conversa = null;
+  let _conversaCriada = false;
+  let _antesUltimaMensagem = null;
+  let _antesUltimaMensagemEm = null;
   try {
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
       empresa_id: empresaId,
       cliente_telefone: fromPhone
     }, '-created_date', 1);
+
+    // ───────── ETAPA 5 — Localizar a conversa ─────────
+    // Lista TODAS as conversas com o mesmo telefone para detectar duplicidade.
+    let _todasConversasTelefone = [];
+    try {
+      _todasConversasTelefone = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+        empresa_id: empresaId,
+        cliente_telefone: fromPhone
+      }, '-created_date', 50);
+    } catch (_) {}
+
+    await registrarDiagnostico(base44, _traceId, 5, {
+      etapa_nome: conversas.length > 0 ? 'CONVERSA_ENCONTRADA' : 'CONVERSA_NAO_ENCONTRADA',
+      empresa_id: empresaId,
+      connection_id: connection.id,
+      session_id: connection.session_id,
+      telefone_normalizado: fromPhone,
+      conversation_id: conversas[0]?.id || null,
+      conteudo_extra: `total_conversas_mes_telefone=${_todasConversasTelefone.length} | ids=${_todasConversasTelefone.map(c => c.id).slice(0,5).join(',')} | status=${_todasConversasTelefone.map(c => c.status).slice(0,5).join(',')}`,
+      status: conversas.length > 0 ? 'sucesso' : 'erro',
+      erro: conversas.length === 0 ? 'nenhuma conversa com este telefone — será criada' : null,
+      motivo_descarte: conversas.length > 1 ? `EXISTEM ${conversas.length}+ conversas com mesmo telefone — picked [0]` : null,
+    });
 
     if (conversas.length > 0) {
       conversa = conversas[0];
@@ -501,7 +685,19 @@ async function processMessageReceived(base44, body, connection, empresaId) {
         atualizarConversa.responsavel_id = null;
         atualizarConversa.responsavel_expira_em = null;
       }
+      _antesUltimaMensagem = conversa.ultima_mensagem;
+      _antesUltimaMensagemEm = conversa.data_ultima_mensagem;
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, atualizarConversa);
+      await registrarDiagnostico(base44, _traceId, 5, {
+        etapa_nome: 'CONVERSA_EXISTENTE_ATUALIZADA',
+        empresa_id: empresaId,
+        connection_id: connection.id,
+        session_id: connection.session_id,
+        conversation_id: conversa.id,
+        telefone_normalizado: fromPhone,
+        status: 'sucesso',
+        conteudo_extra: `provider=${conversa.provider} | locked=${conversa.locked_provider} | status=${conversa.status}`,
+      });
     } else {
       conversa = await base44.asServiceRole.entities.ConversaWhatsapp.create({
         empresa_id: empresaId,
@@ -521,10 +717,30 @@ async function processMessageReceived(base44, body, connection, empresaId) {
         cliente_respondeu: true,
         data_primeira_resposta: new Date().toISOString()
       });
+      _conversaCriada = true;
       console.log(`✅ [Webhook D-API] Conversa criada: ${conversa.id}`);
+      await registrarDiagnostico(base44, _traceId, 5, {
+        etapa_nome: 'CONVERSA_CRIADA',
+        empresa_id: empresaId,
+        connection_id: connection.id,
+        session_id: connection.session_id,
+        conversation_id: conversa.id,
+        conversa_criada: true,
+        telefone_normalizado: fromPhone,
+        status: 'sucesso',
+        conteudo_extra: `nova conversa para ${fromPhone}`,
+      });
     }
   } catch (error) {
     console.error(`❌ [Webhook D-API] Erro ao buscar/criar conversa:`, error.message);
+    await registrarDiagnostico(base44, _traceId, 5, {
+      etapa_nome: 'CONVERSA_ERRO',
+      empresa_id: empresaId,
+      connection_id: connection.id,
+      session_id: connection.session_id,
+      status: 'erro',
+      erro: error.message,
+    });
     return { handled: false, error: error.message };
   }
 
@@ -547,7 +763,58 @@ async function processMessageReceived(base44, body, connection, empresaId) {
     data_envio: new Date(timestamp).toISOString()
   };
 
-  await base44.asServiceRole.entities.MensagemWhatsapp.create(mensagemData);
+  let _mensagemSalva = null;
+  try {
+    _mensagemSalva = await base44.asServiceRole.entities.MensagemWhatsapp.create(mensagemData);
+  } catch (_e) {
+    await registrarDiagnostico(base44, _traceId, 6, {
+      etapa_nome: 'MENSAGEM_SAVE_ERRO',
+      empresa_id: empresaId,
+      connection_id: connection.id,
+      session_id: connection.session_id,
+      conversation_id: conversa.id,
+      telefone_normalizado: fromPhone,
+      status: 'erro',
+      erro: _e?.message,
+      message_id: externalMessageId,
+    });
+    throw _e;
+  }
+
+  // ───────── ETAPA 6 — Mensagem salva ─────────
+  await registrarDiagnostico(base44, _traceId, 6, {
+    etapa_nome: 'MENSAGEM_SALVA',
+    empresa_id: empresaId,
+    connection_id: connection.id,
+    session_id: connection.session_id,
+    conversation_id: conversa.id,
+    telefone_normalizado: fromPhone,
+    message_id: externalMessageId,
+    mensagem_salva_id: _mensagemSalva?.id || null,
+    conteudo_extra: `direction=cliente | tipo=${crmMessageType} | texto="${String(content).slice(0,50)}"`,
+    status: 'sucesso',
+  });
+
+  // ───────── ETAPA 7 — Conferir no banco (re-query by id) ─────────
+  let _msgConfirmada = null;
+  try {
+    _msgConfirmada = _mensagemSalva?.id ? await base44.asServiceRole.entities.MensagemWhatsapp.get(_mensagemSalva.id) : null;
+  } catch (_e) {
+    _msgConfirmada = null;
+  }
+  const _gravadaOk = !!(_msgConfirmada && _msgConfirmada.id === _mensagemSalva?.id);
+  await registrarDiagnostico(base44, _traceId, 7, {
+    etapa_nome: 'MENSAGEM_CONFERIDA_BANCO',
+    empresa_id: empresaId,
+    connection_id: connection.id,
+    session_id: connection.session_id,
+    conversation_id: conversa.id,
+    mensagem_salva_id: _mensagemSalva?.id,
+    mensagem_gravada: _gravadaOk,
+    conteudo_extra: `query=MensagemWhatsapp.get(${_mensagemSalva?.id}) | conversa_id_banco=${_msgConfirmada?.conversa_id || 'N/A'} | direction_banco=${_msgConfirmada?.remetente || 'N/A'}`,
+    status: _gravadaOk ? 'sucesso' : 'erro',
+    erro: _gravadaOk ? null : 'Mensagem NÃO foi encontrada no banco após o create',
+  });
 
   // Atualizar conversa
   await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
@@ -558,11 +825,41 @@ async function processMessageReceived(base44, body, connection, empresaId) {
     last_inbound_provider: 'dapi'
   });
 
+  // ───────── ETAPA 8 — Atualização da conversa (antes/depois) ─────────
+  await registrarDiagnostico(base44, _traceId, 8, {
+    etapa_nome: 'CONVERSA_ATUALIZADA',
+    empresa_id: empresaId,
+    connection_id: connection.id,
+    session_id: connection.session_id,
+    conversation_id: conversa.id,
+    telefone_normalizado: fromPhone,
+    mensagem_salva_id: _mensagemSalva?.id,
+    conteudo_extra: `antes_ultima_mensagem="${String(_antesUltimaMensagem||'').slice(0,40)}" | antes_em=${_antesUltimaMensagemEm||'-'} | depois_ultima_mensagem="${String(content).slice(0,40)}" | depois_depois_em=${new Date(timestamp).toISOString()}`,
+    status: 'sucesso',
+  });
+
+  // ───────── ETAPA 9 — Emissão realtime ─────────
+  // O Base44 dispara realtime automaticamente quando uma MensagemWhatsapp é criada.
+  // Não há Socket/SSE manual: o sdk do frontend (base44.entities.MensagemWhatsapp.subscribe)
+  // recebe eventos de "create" do banco em tempo real. Registramos aqui o evento disparado.
+  await registrarDiagnostico(base44, _traceId, 9, {
+    etapa_nome: 'REALTIME_EMITIDO_SISTEMA',
+    empresa_id: empresaId,
+    connection_id: connection.id,
+    session_id: connection.session_id,
+    conversation_id: conversa.id,
+    mensagem_salva_id: _mensagemSalva?.id,
+    realtime_emitido: true,
+    conteudo_extra: 'base44.entities.MensagemWhatsapp.create() dispara realtime automaticamente para subscribers do front (BatePapo.jsx)',
+    status: 'sucesso',
+  });
+
   return {
     handled: true,
     conversaId: conversa.id,
     messageId: externalMessageId,
-    fromPhone
+    fromPhone,
+    traceId: _traceId,
   };
 }
 
