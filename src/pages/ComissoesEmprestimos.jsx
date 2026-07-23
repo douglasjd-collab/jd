@@ -21,6 +21,8 @@ import 'moment/locale/pt-br';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { createPageUrl } from '@/utils';
+import { gerarPdfComprovanteEmprestimo, gerarCodigoAutenticacao } from '@/components/comissoes/pdfComprovanteEmprestimo';
+import { mascararChavePix, mascararDocumento } from '@/utils/mascaraPix';
 
 moment.locale('pt-br');
 
@@ -72,6 +74,18 @@ export default function ComissoesEmprestimos() {
   const [adiantamentosVendedor, setAdiantamentosVendedor] = useState([]);
   const [adiantamentosSelecionados, setAdiantamentosSelecionados] = useState(new Set());
   const [dadosBancariosVendedor, setDadosBancariosVendedor] = useState(null);
+
+  // PIX do vendedor (snapshot imutável no comprovante)
+  const [pixVendedor, setPixVendedor] = useState(null);
+  // Modal de confirmação do pagamento (passo 2 do fluxo PIX)
+  const [confirmarModal, setConfirmarModal] = useState(false);
+  // Comprovante bancário anexo + identificador da transação PIX
+  const [comprovanteFile, setComprovanteFile] = useState(null);
+  const [comprovanteTransacaoId, setComprovanteTransacaoId] = useState('');
+  // Código único de autenticação gerado na confirmação (UUID curto)
+  const [codigoAutenticacao, setCodigoAutenticacao] = useState('');
+  // Logo configurada (passada para o gerador do comprovante PDF)
+  const [logoUrlComprovante, setLogoUrlComprovante] = useState(null);
 
   // Modal marcar comissão do banco
   const [marcarBancoModal, setMarcarBancoModal] = useState(false);
@@ -314,7 +328,14 @@ export default function ComissoesEmprestimos() {
     setAcrescimoDescricao('');
     setAdiantamentosSelecionados(new Set());
 
-    // Busca adiantamentos pendentes e dados bancários do vendedor em paralelo
+    // Reset do passo de confirmação / comprovante / PIX (snapshot por chamada)
+    setPixVendedor(null);
+    setConfirmarModal(false);
+    setComprovanteFile(null);
+    setComprovanteTransacaoId('');
+    setCodigoAutenticacao('');
+
+    // Busca adiantamentos pendentes e dados bancários/PIX do vendedor em paralelo
     try {
       const filtro = { status: 'pendente' };
       if (vendedor.vendedor_id) filtro.colaborador_id = vendedor.vendedor_id;
@@ -327,12 +348,22 @@ export default function ComissoesEmprestimos() {
       setAdiantamentosVendedor(adis.filter(a => a.colaborador_id === vendedor.vendedor_id || (!vendedor.vendedor_id && !a.colaborador_id)));
       if (colabs.length > 0) {
         const c = colabs[0];
+        // Snapshot de PIX — captura do cadastro atual do vendedor (imutável no comprovante)
+        const pixChave = c.pix_chave || c.chave_pix || null;
+        const pixTipo = c.pix_tipo || c.tipo_chave_pix || null;
+        setPixVendedor(pixChave ? {
+          tipo: pixTipo,
+          chave: pixChave,
+          titularNome: c.pix_titular_nome || c.favorecido_nome || c.nome,
+          titularDocumento: c.pix_titular_documento || c.favorecido_cpf || c.cpf_cnpj,
+          instituicao: c.pix_instituicao || c.banco_nome || c.banco,
+        } : null);
         setDadosBancariosVendedor({
           banco: c.banco_nome || c.banco || null,
           agencia: c.agencia || null,
           conta: c.conta || null,
           tipo_conta: c.tipo_conta || null,
-          pix: c.pix_chave || c.chave_pix || null,
+          pix: pixChave,
         });
       } else {
         setDadosBancariosVendedor(null);
@@ -341,6 +372,12 @@ export default function ComissoesEmprestimos() {
       setAdiantamentosVendedor([]);
       setDadosBancariosVendedor(null);
     }
+
+    // Logo configurada para o comprovante PDF (buscada aqui para passar ao gerador)
+    try {
+      const configs = await base44.entities.ConfiguracaoSistema.filter({ chave: 'logo_url' });
+      if (configs && configs.length > 0 && configs[0].valor) setLogoUrlComprovante(configs[0].valor);
+    } catch (_) {}
 
     setPagarModal(true);
   };
@@ -382,229 +419,24 @@ export default function ComissoesEmprestimos() {
     }
   };
 
-  const gerarPDF = async (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}, adiantamentosDesc = [], dadosBancarios = null, acrescimoVal = 0, acrescimoDesc = '') => {
-    const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-
-    // Buscar logo configurada
-    let logoConfigurada = null;
-    try {
-      const configs = await base44.entities.ConfiguracaoSistema.filter({ chave: 'logo_url' });
-      if (configs && configs.length > 0 && configs[0].valor) {
-        logoConfigurada = configs[0].valor;
-      }
-    } catch (e) { /* sem logo */ }
-
-    // Cálculo correto: usa percMap congelado no momento do pagamento
-    const totalBruto = propostasLista.reduce((acc, p) => {
-      const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualVendedor(p);
-      const base = p.comissao_banco_base_comissao || p.valor_credito || 0;
-      return acc + base * (perc / 100);
-    }, 0);
-    const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
-    const totalLiquido = Math.max(0, totalBruto - totalAdiantamentos + acrescimoVal);
-
-    // ===== HEADER VISUAL COM LOGO PROMOTORA =====
-    doc.setFillColor(16, 53, 60);
-    doc.rect(0, 0, pageWidth, 22, 'F');
-
-    // Logo configurada pelo sistema
-    if (logoConfigurada) {
-      try {
-        doc.addImage(logoConfigurada, 'PNG', 7, 3, 40, 16);
-      } catch (e) { /* silencioso */ }
-    }
-
-    // Título e informações (texto branco)
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-    doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO — EMPRÉSTIMOS', 165, 10, { align: 'center' });
-    doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(200, 220, 220);
-    doc.text(`Lote: ${loteCode}  |  Gerado em: ${moment().format('DD/MM/YYYY HH:mm')}`, 165, 17, { align: 'center' });
-
-    // ===== BLOCO DE INFORMAÇÕES (4 colunas) =====
-    doc.setTextColor(0, 0, 0);
-    const infoY = 26;
-    const colW = (pageWidth - 20) / 4;
-    const cols = [
-      { label: 'VENDEDOR', value: vendedorInfo?.vendedor_nome || '-' },
-      { label: 'DATA PAGAMENTO', value: moment(dataPagamento, 'YYYY-MM-DD').format('DD/MM/YYYY') },
-      { label: 'FORMA PAGAMENTO', value: formaPagto || '-' },
-      { label: 'QTD. ITENS', value: String(propostasLista.length) },
-    ];
-
-    cols.forEach((col, i) => {
-      const x = 10 + colW * i;
-      doc.setFillColor(245, 247, 250);
-      doc.rect(x, infoY, colW - 2, 16, 'F');
-      doc.setDrawColor(200, 215, 230);
-      doc.setLineWidth(0.4);
-      doc.rect(x, infoY, colW - 2, 16);
-
-      // Label
-      doc.setFontSize(6); doc.setFont('helvetica', 'bold');
-      doc.setTextColor(100, 120, 140);
-      doc.text(col.label, x + 3, infoY + 5);
-
-      // Valor
-      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-      doc.setTextColor(16, 53, 60);
-      const maxWidth = colW - 6;
-      const displayValue = doc.splitTextToSize(col.value, maxWidth)[0] || col.value;
-      doc.text(displayValue, x + 3, infoY + 12);
+  const gerarPDF = async (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}, adiantamentosDesc = [], dadosBancarios = null, acrescimoVal = 0, acrescimoDesc = '', pixInfo = null, codigoAutentic = '', comprovanteAnexado = false) => {
+    const doc = gerarPdfComprovanteEmprestimo({
+      vendedorNome: vendedorInfo?.vendedor_nome || '-',
+      dataPagamento,
+      formaPagamento: formaPagto || '-',
+      loteCode,
+      itens: propostasLista,
+      percMap,
+      adiantamentosDesc,
+      acrescimoVal,
+      acrescimoDesc,
+      pix: pixInfo,
+      codigoAutenticacao: codigoAutentic,
+      comprovanteAnexado,
+      logoUrl: logoUrlComprovante,
     });
-
-    // ===== TABELA PRINCIPAL =====
-    const tableStartY = 47;
-    doc.autoTable({
-      startY: tableStartY,
-      head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
-      body: propostasLista.map(p => {
-        const perc = percMap[p.id] !== undefined ? percMap[p.id] : getPercentualVendedor(p);
-        const base = p.comissao_banco_base_comissao || p.valor_credito || 0;
-        const valPagar = base * (perc / 100);
-        return [
-          p.cliente_nome || '-',
-          p.cliente_cpf || '-',
-          p.contrato || '-',
-          getTipoLabel(p.emprestimo_tipo),
-          p.administradora_nome || '-',
-          p.emprestimo_data_liberacao ? moment(p.emprestimo_data_liberacao).format('DD/MM/YYYY') : '-',
-          fmt(p.valor_credito),
-          p.valor_liquido ? fmt(p.valor_liquido) : '-',
-          p.emprestimo_valor_parcela ? fmt(p.emprestimo_valor_parcela) : '-',
-          `${perc.toFixed(2)}%`,
-          fmt(valPagar),
-        ];
-      }),
-      styles: { fontSize: 7, cellPadding: 2 },
-      headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' }, 10: { halign: 'right', textColor: [0, 100, 180], fontStyle: 'bold' } },
-      margin: { left: 10, right: 10 },
-    });
-
-    const tableEndY = doc.lastAutoTable.finalY;
-    const sectionY = tableEndY + 12; // Mais espaço após tabela
-
-    // Adiantamentos são agora exibidos no resumo financeiro lateral
-    const adiantamentosEndY = sectionY;
-
-    // ===== LAYOUT LADO A LADO: RESUMO FINANCEIRO (esq) + DETALHES ACRÉSCIMOS (dir) =====
-    const colEsqX = 10;
-    const colEsqW = 130;
-    const colDirX = 148;
-    const colDirW = pageWidth - colDirX - 10;
-    const boxPad = 4;
-    const lineH = 6;
-
-    // --- CAIXA ESQUERDA: RESUMO FINANCEIRO ---
-    const resumoLinhas = [
-      { label: 'Subtotal de Comissões', valor: fmt(totalBruto), cor: [0, 100, 180] },
-      { label: '(-) Adiantamentos', valor: fmt(totalAdiantamentos), cor: [200, 100, 0] },
-      { label: '(+) Acréscimos', valor: fmt(acrescimoVal), cor: [60, 60, 60] },
-    ];
-    const resumoContentH = 8 + resumoLinhas.length * lineH + 2 + 14; // título + linhas + separador + liquidoH
-    doc.setFillColor(255, 255, 255);
-    doc.setDrawColor(200, 210, 220);
-    doc.setLineWidth(0.4);
-    doc.roundedRect(colEsqX, sectionY, colEsqW, resumoContentH, 1, 1, 'FD');
-
-    // Título
-    doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(40, 40, 40);
-    doc.text('RESUMO FINANCEIRO', colEsqX + boxPad, sectionY + 6);
-
-    // Linhas de valores
-    resumoLinhas.forEach((l, i) => {
-      const ly = sectionY + 12 + i * lineH;
-      doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-      doc.setTextColor(80, 80, 80);
-      doc.text(l.label, colEsqX + boxPad, ly);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...l.cor);
-      doc.text(l.valor, colEsqX + colEsqW - boxPad, ly, { align: 'right' });
-    });
-
-    // Separador
-    const sepY = sectionY + 12 + resumoLinhas.length * lineH + 2;
-    doc.setDrawColor(180, 195, 210);
-    doc.setLineWidth(0.3);
-    doc.line(colEsqX + boxPad, sepY, colEsqX + colEsqW - boxPad, sepY);
-
-    // Valor Líquido — separador + linha igual ao TOTAL DE ACRÉSCIMOS
-    const liqBoxY = sepY + 4;
-    doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(40, 40, 40);
-    doc.text('VALOR LÍQUIDO A PAGAR', colEsqX + boxPad, liqBoxY + 4);
-    doc.text(fmt(totalLiquido), colEsqX + colEsqW - boxPad, liqBoxY + 4, { align: 'right' });
-
-    // --- CAIXA DIREITA: DETALHES DOS ACRÉSCIMOS (sempre visível, mesmo sem acréscimos) ---
-    const acrescimos = adiantamentosDesc.length > 0 ? [] : []; // neste fluxo não há acréscimos
-    const acrescimoLinhas = acrescimos; // placeholder para compatibilidade futura
-    const dirContentH = resumoContentH;
-    doc.setFillColor(255, 255, 255);
-    doc.setDrawColor(200, 210, 220);
-    doc.setLineWidth(0.4);
-    doc.roundedRect(colDirX, sectionY, colDirW, dirContentH, 1, 1, 'FD');
-
-    // Título
-    doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(40, 40, 40);
-    doc.text('DETALHES DOS ACRÉSCIMOS', colDirX + boxPad, sectionY + 6);
-
-    // Subtítulo
-    doc.setFontSize(6); doc.setFont('helvetica', 'normal');
-    doc.setTextColor(130, 130, 130);
-    doc.text('ⓘ Acréscimos lançados manualmente.', colDirX + boxPad, sectionY + 11);
-
-    // Cabeçalho da mini-tabela
-    const tblY = sectionY + 15;
-    doc.setFillColor(240, 242, 245);
-    doc.rect(colDirX + boxPad, tblY, colDirW - boxPad * 2, 6, 'F');
-    doc.setFontSize(6); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(80, 80, 80);
-    doc.text('Descrição do Acréscimo', colDirX + boxPad + 2, tblY + 4);
-    doc.text('Tipo', colDirX + boxPad + 70, tblY + 4);
-    doc.text('Valor', colDirX + colDirW - boxPad - 2, tblY + 4, { align: 'right' });
-
-    // Linhas de acréscimos
-    if (acrescimoVal > 0) {
-      const acrescimoRowY = tblY + 7;
-      doc.setFontSize(6); doc.setFont('helvetica', 'normal');
-      doc.setTextColor(60, 60, 60);
-      const descText = acrescimoDesc || 'Acréscimo';
-      doc.text(doc.splitTextToSize(descText, 65)[0], colDirX + boxPad + 2, acrescimoRowY + 3);
-      doc.text('Manual', colDirX + boxPad + 70, acrescimoRowY + 3);
-      doc.setTextColor(0, 100, 0); doc.setFont('helvetica', 'bold');
-      doc.text(fmt(acrescimoVal), colDirX + colDirW - boxPad - 2, acrescimoRowY + 3, { align: 'right' });
-    }
-
-    // Rodapé: Total de Acréscimos
-    const totalAcrescimosDir = acrescimoVal;
-    const totalAcrescimosY = sectionY + dirContentH - 8;
-    doc.setDrawColor(180, 195, 210);
-    doc.setLineWidth(0.3);
-    doc.line(colDirX + boxPad, totalAcrescimosY - 2, colDirX + colDirW - boxPad, totalAcrescimosY - 2);
-    doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-    doc.setTextColor(40, 40, 40);
-    doc.text('TOTAL DE ACRÉSCIMOS', colDirX + boxPad, totalAcrescimosY + 3);
-    doc.setTextColor(0, 0, 0);
-    doc.text(fmt(totalAcrescimosDir), colDirX + colDirW - boxPad - 2, totalAcrescimosY + 3, { align: 'right' });
-
-    const resumoEndY = Math.max(adiantamentosEndY, sectionY + resumoContentH + 2);
-    const footerY = Math.max(resumoEndY + 8, pageHeight - 12);
-    doc.line(10, footerY, pageWidth - 10, footerY);
-    doc.setFontSize(6.2); doc.setTextColor(100, 100, 100);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Comprovante emitido eletronicamente.', 10, footerY + 3.5);
-    doc.text('JD PROMOTORA', 148, footerY + 3.5, { align: 'center' });
-    doc.text('CNPJ: 45.123.789/0001-40', 148, footerY + 6, { align: 'center' });
-    doc.text('www.promotora.com.br', pageWidth - 10, footerY + 3.5, { align: 'right' });
-
-    doc.save(`comissao_emp_${vendedorInfo?.vendedor_nome?.replace(/\s+/g, '_') || 'vendedor'}_${moment(dataPagamento).format('YYYYMMDD')}.pdf`);
+    doc.save(`comprovante_emp_${vendedorInfo?.vendedor_nome?.replace(/\s+/g, '_') || 'vendedor'}_${moment(dataPagamento).format('YYYYMMDD')}.pdf`);
+    return doc;
   };
 
   const totalAdiantamentosDesc = Array.from(adiantamentosSelecionados)
@@ -614,14 +446,38 @@ export default function ComissoesEmprestimos() {
 
   const handleConfirmarPagamento = async () => {
     if (modalSelecionados.size === 0 || !vendedorModal) return;
+
+    // Validação: PIX obrigatório quando forma de pagamento for PIX
+    if (formaPagamento === 'PIX' && (!pixVendedor || !pixVendedor.chave)) {
+      toast.error('O vendedor não possui uma chave PIX cadastrada. Atualize o cadastro antes de realizar o pagamento.');
+      return;
+    }
+
     setIsPaying(true);
     try {
       const ids = Array.from(modalSelecionados);
       const paraPagar = propostas.filter(p => ids.includes(p.id) && p.comissao_banco_recebida && !p.comissao_vendedor_paga);
       if (paraPagar.length === 0) { toast.error('Nenhum contrato válido para pagar'); return; }
 
+      // Upload do comprovante bancário anexado (se houver)
+      let comprovanteUrl = null;
+      if (comprovanteFile) {
+        try {
+          const respUpload = await base44.integrations.Core.UploadFile({ file: comprovanteFile });
+          comprovanteUrl = respUpload?.file_url || null;
+        } catch (e) {
+          console.warn('Falha ao anexar comprovante:', e);
+          toast.error('Erro ao anexar comprovante. Tente novamente.');
+          setIsPaying(false);
+          return;
+        }
+      }
+
       const dataPagamento = moment().format('YYYY-MM-DD');
+      const dataHoraQuitacao = moment().toISOString();
       const loteCode = `EMPC${String(Date.now()).slice(-6)}`;
+      const codigoAutentic = codigoAutenticacao || gerarCodigoAutenticacao();
+      setCodigoAutenticacao(codigoAutentic);
 
       // Calcular totais com percentuais congelados agora
       const itensComValores = paraPagar.map(p => {
@@ -637,19 +493,35 @@ export default function ComissoesEmprestimos() {
       const acrescimoVal = parseFloat(acrescimoValor) || 0;
       const valorTotal = Math.max(0, valorTotalBruto - totalAdiantamentosDesc + acrescimoVal);
 
-      // 1. Criar lote
+      // 1. Criar lote (com snapshot imutável do PIX + comprovante + autenticação + responsável)
       const lote = await base44.entities.LotePagamentoComissaoEmprestimo.create({
         empresa_id: vendedorModal.propostas[0]?.empresa_id || user?.empresa_id,
         vendedor_id: vendedorModal.vendedor_id,
         vendedor_nome: vendedorModal.vendedor_nome,
         data_pagamento: dataPagamento,
+        data_quitacao: dataPagamento,
+        data_hora_quitacao: dataHoraQuitacao,
         valor_total: valorTotal,
+        valor_efetivamente_pago: valorTotal,
         quantidade_propostas: itensComValores.length,
         forma_pagamento: formaPagamento,
         observacao: observacao || '',
         lote_codigo: loteCode,
         acrescimos: acrescimoVal,
         acrescimo_descricao: acrescimoDescricao || '',
+        descontos: totalAdiantamentosDesc,
+        comprovante_url: comprovanteUrl,
+        comprovante_anexado: !!comprovanteUrl,
+        comprovante_transacao_id: comprovanteTransacaoId || null,
+        codigo_autenticacao: codigoAutentic,
+        status: 'quitado',
+        quitado_por_id: user?.colaborador_id || user?.id || null,
+        quitado_por_nome: user?.full_name || null,
+        pix_tipo: pixVendedor?.tipo || null,
+        pix_chave: pixVendedor?.chave || null,
+        pix_titular_nome: pixVendedor?.titularNome || null,
+        pix_titular_documento: pixVendedor?.titularDocumento || null,
+        pix_instituicao: pixVendedor?.instituicao || null,
       });
 
       // 2. Criar snapshot dos itens e atualizar propostas
@@ -765,14 +637,30 @@ export default function ComissoesEmprestimos() {
       // PDF usa os valores já calculados (congelados)
       const percMapFinal = {};
       itensComValores.forEach(({ p, percVendedor }) => { percMapFinal[p.id] = percVendedor; });
-      await gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal, adisDesc, dadosBancariosVendedor, acrescimoVal, acrescimoDescricao);
+      const doc = await gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal, adisDesc, dadosBancariosVendedor, acrescimoVal, acrescimoDescricao, pixVendedor, codigoAutentic, !!comprovanteUrl);
+
+      // Salvar PDF no histórico do lote (storage)
+      try {
+        const pdfBlob = doc.output('blob');
+        const pdfFile = new File([pdfBlob], `comprovante_${loteCode}.pdf`, { type: 'application/pdf' });
+        const { file_url: pdfUrl } = await base44.integrations.Core.UploadFile({ file: pdfFile });
+        if (pdfUrl) {
+          await base44.entities.LotePagamentoComissaoEmprestimo.update(lote.id, { pdf_url: pdfUrl });
+        }
+      } catch (e) {
+        console.warn('Não foi possível salvar o PDF no histórico:', e);
+      }
 
       queryClient.invalidateQueries(['propostas-emp-cons-comissoes']);
       const msgAdis = adisDesc.length > 0 ? ` ${adisDesc.length} adiantamento(s) descontado(s).` : '';
       toast.success(`✅ ${paraPagar.length} comissão(ões) paga(s)! PDF gerado.${msgAdis}`);
       setPagarModal(false);
+      setConfirmarModal(false);
       setModalSelecionados(new Set());
       setVendedorModal(null);
+      setComprovanteFile(null);
+      setComprovanteTransacaoId('');
+      setCodigoAutenticacao('');
     } catch (err) {
       console.error(err);
       toast.error('Erro ao processar pagamento');
@@ -1508,14 +1396,127 @@ export default function ComissoesEmprestimos() {
             </div>
           </div>
 
+          {formaPagamento === 'PIX' && (!pixVendedor || !pixVendedor.chave) && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-md px-3 py-2 text-xs flex items-center gap-2 mb-2">
+              <AlertCircle className="w-3.5 h-3.5" />
+              O vendedor não possui uma chave PIX cadastrada. Atualize o cadastro antes de realizar o pagamento.
+            </div>
+          )}
+
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setPagarModal(false)} disabled={isPaying}>Cancelar</Button>
-            <Button disabled={modalSelecionados.size === 0 || isPaying} onClick={handleConfirmarPagamento}
+            <Button
+              disabled={modalSelecionados.size === 0 || isPaying || (formaPagamento === 'PIX' && (!pixVendedor || !pixVendedor.chave))}
+              onClick={() => setConfirmarModal(true)}
               className="bg-[#10353C] hover:bg-[#1a5060] text-white">
               {isPaying ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processando...</>
               ) : (
-                <><CheckCircle2 className="w-4 h-4 mr-2" />Pagar {modalSelecionados.size} contrato(s) ({fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc + (parseFloat(acrescimoValor) || 0)))})</>
+                <><CheckCircle2 className="w-4 h-4 mr-2" />Revisar e Confirmar ({fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc + (parseFloat(acrescimoValor) || 0)))})</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Confirmação (Passo 2 — Revisão do Pagamento PIX) */}
+      <Dialog open={confirmarModal} onOpenChange={setConfirmarModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-[#10353C]" />
+              Confirmar Pagamento
+            </DialogTitle>
+            <p className="text-xs text-slate-500">Revise os dados do pagamento antes de confirmar.</p>
+          </DialogHeader>
+
+          {pixVendedor && (
+            <div className="space-y-2.5 text-sm">
+              <div className="grid grid-cols-3 gap-2 items-center">
+                <span className="text-xs text-slate-500 font-semibold uppercase">Vendedor</span>
+                <span className="col-span-2 font-semibold text-slate-800">{vendedorModal?.vendedor_nome || '-'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 items-center">
+                <span className="text-xs text-slate-500 font-semibold uppercase">Valor líquido</span>
+                <span className="col-span-2 font-bold text-[#10353C]">{fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc + (parseFloat(acrescimoValor) || 0)))}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 items-center">
+                <span className="text-xs text-slate-500 font-semibold uppercase">Forma</span>
+                <span className="col-span-2 font-semibold text-slate-800">{formaPagamento}</span>
+              </div>
+              {pixVendedor?.tipo && (
+                <div className="grid grid-cols-3 gap-2 items-center">
+                  <span className="text-xs text-slate-500 font-semibold uppercase">Tipo da chave</span>
+                  <span className="col-span-2 font-semibold text-slate-800 uppercase">{pixVendedor.tipo}</span>
+                </div>
+              )}
+              {pixVendedor?.chave && (
+                <div className="grid grid-cols-3 gap-2 items-center">
+                  <span className="text-xs text-slate-500 font-semibold uppercase">Chave PIX</span>
+                  <span className="col-span-2 font-semibold text-slate-800 font-mono">{mascararChavePix(pixVendedor.chave, pixVendedor.tipo)}</span>
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-2 items-center">
+                <span className="text-xs text-slate-500 font-semibold uppercase">Favorecido</span>
+                <span className="col-span-2 font-semibold text-slate-800">{pixVendedor?.titularNome || vendedorModal?.vendedor_nome || '-'}</span>
+              </div>
+              {pixVendedor?.titularDocumento && (
+                <div className="grid grid-cols-3 gap-2 items-center">
+                  <span className="text-xs text-slate-500 font-semibold uppercase">CPF/CNPJ</span>
+                  <span className="col-span-2 font-semibold text-slate-800 font-mono">{mascararDocumento(pixVendedor.titularDocumento)}</span>
+                </div>
+              )}
+              {pixVendedor?.instituicao && (
+                <div className="grid grid-cols-3 gap-2 items-center">
+                  <span className="text-xs text-slate-500 font-semibold uppercase">Instituição</span>
+                  <span className="col-span-2 font-semibold text-slate-800">{pixVendedor.instituicao}</span>
+                </div>
+              )}
+              <div className="grid grid-cols-3 gap-2 items-center">
+                <span className="text-xs text-slate-500 font-semibold uppercase">Data do pagamento</span>
+                <span className="col-span-2 font-semibold text-slate-800">{moment().format('DD/MM/YYYY [às] HH:mm')}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Anexar comprovante bancário e/ou informar identificador da transação PIX */}
+          <div className="border-t pt-3 space-y-2">
+            <div>
+              <Label className="text-xs text-slate-500 font-semibold">Comprovante bancário (PDF, JPG ou PNG) — opcional</Label>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                onChange={e => setComprovanteFile(e.target.files?.[0] || null)}
+                className="text-xs mt-1 w-full file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-slate-100 file:text-slate-700 file:cursor-pointer"
+              />
+              {comprovanteFile && (
+                <p className="text-xs text-emerald-700 mt-1 flex items-center gap-1">
+                  <FileText className="w-3 h-3" />
+                  {comprovanteFile.name} ({Math.round(comprovanteFile.size / 1024)} KB)
+                </p>
+              )}
+            </div>
+            <div>
+              <Label className="text-xs text-slate-500 font-semibold">Identificador da transação PIX (quando disponível)</Label>
+              <Input
+                placeholder="Ex: E0001234567890..."
+                value={comprovanteTransacaoId}
+                onChange={e => setComprovanteTransacaoId(e.target.value)}
+                className="mt-1 text-sm"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmarModal(false)} disabled={isPaying}>Voltar</Button>
+            <Button
+              disabled={isPaying}
+              onClick={handleConfirmarPagamento}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              {isPaying ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Confirmando...</>
+              ) : (
+                <><CheckCircle2 className="w-4 h-4 mr-2" />Confirmar Pagamento</>
               )}
             </Button>
           </DialogFooter>
