@@ -128,47 +128,76 @@ Deno.serve(async (req) => {
       if (!webhookUrl) return Response.json({ error: 'webhookUrl obrigatório' }, { status: 400 });
       if (!empresa_id) return Response.json({ error: 'empresa_id obrigatório' }, { status: 400 });
 
-      // 1. Verificar que a sessão existe na D-API
-      const sResp = await fetch(`${DAPI_BASE}/api/v1/sessions/${encodeURIComponent(connectionId)}`, {
-        method: 'GET',
-        headers: { 'Authorization': apiKey }
-      });
-      const sData = await sResp.json().catch(() => ({}));
-      if (!sResp.ok) {
+      // 1. Resolver o session_id LEGÍVEL (cloud-xxx) a partir do connectionId recebido.
+      // O frontend pode enviar tanto o UUID (connectionId) quanto o readable session_id.
+      // A D-API só aceita o readable session_id nos paths /sessions/{id}/...
+      const headers = { 'Authorization': apiKey, 'Content-Type': 'application/json' };
+
+      // Tentativa A: GET direto em /sessions/{connectionId}
+      let session: any = null;
+      try {
+        const sResp = await fetch(`${DAPI_BASE}/api/v1/sessions/${encodeURIComponent(connectionId)}`, {
+          method: 'GET',
+          headers: { 'Authorization': apiKey }
+        });
+        const sData = await sResp.json().catch(() => ({}));
+        if (sResp.ok && !sData?.error && (sData?.session || sData?.id)) {
+          session = sData.session || sData;
+        }
+      } catch (_) {}
+
+      // Tentativa B: listar todas e achar por UUID ou readable id
+      if (!session) {
+        const listResp = await fetch(`${DAPI_BASE}/api/v1/sessions`, { headers: { 'Authorization': apiKey } });
+        const listJson = await listResp.json().catch(() => ({}));
+        const list = listJson?.data || listJson?.sessions || listJson || [];
+        const match = (Array.isArray(list) ? list : []).find((s: any) =>
+          s.id === connectionId || s.connectionId === connectionId || s.uuid === connectionId
+        );
+        if (match) session = match;
+      }
+
+      if (!session) {
         return Response.json({
-          error: `Sessão ${connectionId} não encontrada na D-API (HTTP ${sResp.status})`,
-          response: sData
+          error: `Sessão ${connectionId} não encontrada na D-API`,
         }, { status: 400 });
       }
-      const session = sData.session || sData;
+
+      const readableSessionId = session.id; // ex: "cloud-ea36bc0e-..."
+      const uuid = session.connectionId || session.uuid || connectionId;
       const phoneFromSession = session.phoneNumber || session.phone_number ||
         session.displayPhoneNumber || phoneNumber || '';
       const profileName = session.profileName || session.verified_name || '';
 
-      // 2. Registrar webhook-config completo (popula settings.webhook)
-      const eventsConfig = {};
+      // 2. Registrar webhook-config completo usando o readable session_id
+      const eventsConfig: any = {};
       for (const ev of EVENTS) eventsConfig[ev] = { enabled: true, webhookUrl };
       const wcBody = { enabled: true, type: 'per_event', events: eventsConfig };
 
-      const wResp = await fetch(`${DAPI_BASE}/api/v1/sessions/${encodeURIComponent(connectionId)}/webhook-config`, {
+      const wResp = await fetch(`${DAPI_BASE}/api/v1/sessions/${encodeURIComponent(readableSessionId)}/webhook-config`, {
         method: 'POST',
-        headers: { 'Authorization': apiKey, 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(wcBody)
       });
-      const wData = await wResp.json().catch(() => ({}));
-      if (!wResp.ok) {
+      const wText = await wResp.text();
+      let wData: any = null;
+      try { wData = JSON.parse(wText); } catch (_) {}
+      // D-API pode retornar HTTP 200 com body de erro ("Session not found") — detectar isso
+      const webhookFailed = !wResp.ok || wData?.error === 'Session not found' || wData?.success === false;
+      if (webhookFailed) {
         return Response.json({
           error: `Falha ao configurar webhook (HTTP ${wResp.status})`,
-          response: wData
+          response: wData || wText.slice(0, 500)
         }, { status: 500 });
       }
 
       // 3. Criar ou atualizar o registro WhatsappConnection (api key em base64)
       const apiKeyEncrypted = btoa(apiKey);
-      const nomeFinal = nome || `D-API Cloud ${phoneFromSession || connectionId.slice(0, 8)}`;
+      const nomeFinal = nome || `D-API Cloud ${phoneFromSession || readableSessionId.slice(0, 12)}`;
+      const configJson = JSON.stringify({ uuid, readable_session_id: readableSessionId, mode: mode || 'standard' });
 
       const existing = await base44.asServiceRole.entities.WhatsappConnection.filter(
-        { session_id: connectionId },
+        { session_id: readableSessionId },
         null,
         1
       );
@@ -183,6 +212,7 @@ Deno.serve(async (req) => {
         status: 'conectado',
         webhook_url: webhookUrl,
         is_active: true,
+        config_json: configJson,
         last_health_check_at: new Date().toISOString(),
         last_success_at: new Date().toISOString(),
         last_error_at: null,
@@ -190,12 +220,13 @@ Deno.serve(async (req) => {
       };
 
       if (existing?.[0]) {
-        await base44.asServiceRole.entities.WhatsappConnection.update(existing[0].id, base);
+        await base44.asServiceRole.entities.WhatsappConnection.update(existing[0].id, { ...base, session_id: readableSessionId });
         recordId = existing[0].id;
       } else {
         const created = await base44.asServiceRole.entities.WhatsappConnection.create({
           empresa_id,
           nome: nomeFinal,
+          session_id: readableSessionId,
           ...base
         });
         recordId = created?.id;
@@ -205,7 +236,8 @@ Deno.serve(async (req) => {
         success: true,
         connection_id: recordId,
         session: {
-          id: connectionId,
+          id: readableSessionId,
+          uuid,
           status: session.status,
           provider: session.provider,
           connectionType: session.connectionType
