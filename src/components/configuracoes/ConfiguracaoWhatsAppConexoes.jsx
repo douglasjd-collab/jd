@@ -536,7 +536,9 @@ export default function ConfiguracaoWhatsApp() {
 
   const handleCreateSession = (connection) => {
     // URL pública do webhook do CRM para receber eventos da D-API
-    const webhookUrl = `${window.location.origin}/functions/receberWebhookDapi`;
+    // Endpoints públicos confirmados: webhookDapi (D-API) — NÃO usar receberWebhookDapi
+    const origin = (window.location.origin || 'https://app.jdpromotora.com.br').replace('https://preview-sandbox--6950a9860c8af0e2ff10fc9e.base44.app', 'https://app.jdpromotora.com.br');
+    const webhookUrl = `${origin}/functions/webhookDapi`;
     
     console.log('🔗 Criando sessão com webhook:', {
       connectionId: connection.id,
@@ -655,7 +657,9 @@ export default function ConfiguracaoWhatsApp() {
   };
 
   const handleUpdateWebhook = async (connection) => {
-    const webhookUrl = `${window.location.origin}/functions/receberWebhookDapi`;
+    // Endpoints públicos confirmados: webhookDapi (D-API) — NÃO usar receberWebhookDapi
+    const origin = (window.location.origin || 'https://app.jdpromotora.com.br').replace('https://preview-sandbox--6950a9860c8af0e2ff10fc9e.base44.app', 'https://app.jdpromotora.com.br');
+    const webhookUrl = `${origin}/functions/webhookDapi`;
     
     try {
       const response = await base44.functions.invoke('whatsappService', {
