@@ -45,10 +45,12 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  RefreshCw
+  RefreshCw,
+  Shield
 } from 'lucide-react';
 import { toast } from 'sonner';
 import LoginMetaOficialButton from './LoginMetaOficialButton';
+import ConectarDapiCloudModal from './ConectarDapiCloudModal';
 
 export default function ConfiguracaoWhatsApp() {
   const [user, setUser] = useState(null);
@@ -63,6 +65,7 @@ export default function ConfiguracaoWhatsApp() {
   const [pollingInterval, setPollingInterval] = useState(null);
   const [debugDialogOpen, setDebugDialogOpen] = useState(false);
   const [debugData, setDebugData] = useState(null);
+  const [cloudConnectOpen, setCloudConnectOpen] = useState(false);
   const [formData, setFormData] = useState({
     nome: '',
     provider_type: 'dapi',
@@ -902,10 +905,18 @@ export default function ConfiguracaoWhatsApp() {
               Configure e gerencie suas conexões com diferentes provedores
             </CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline" onClick={() => refetch()}>
               <RefreshCw className="w-4 h-4 mr-2" />
               Atualizar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setCloudConnectOpen(true)}
+              className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+            >
+              <Shield className="w-4 h-4 mr-2" />
+              Conectar Cloud (Oficial)
             </Button>
             <Button onClick={() => { resetForm(); setEditDialogOpen(true); }}>
               <Plus className="w-4 h-4 mr-2" />
@@ -1199,6 +1210,14 @@ export default function ConfiguracaoWhatsApp() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal Conectar WhatsApp Oficial via D-API (Embedded Signup) */}
+      <ConectarDapiCloudModal
+        open={cloudConnectOpen}
+        onOpenChange={setCloudConnectOpen}
+        empresaId={user?.empresa_id}
+        onSuccess={refetch}
+      />
 
       {/* Dialog QR Code */}
       <Dialog open={qrDialogOpen} onOpenChange={(open) => {
