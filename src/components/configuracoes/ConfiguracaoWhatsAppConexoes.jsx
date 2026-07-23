@@ -681,7 +681,12 @@ export default function ConfiguracaoWhatsApp() {
           action: 'getStatus'
         });
         
-        const statusData = statusResponse.data;
+        // Desembrulhar wrapper duplo do Base44 (statusResponse.data = {success, data: {...}});
+        // o conteúdo real da D-API fica em .data
+        let statusData = statusResponse.data?.data || statusResponse.data;
+        if (!statusData.endpoint && statusData?.data && typeof statusData.data === 'object') {
+          statusData = statusData.data;
+        }
         console.log('Status após webhook:', statusData);
         
         // Mostrar resultado no debug
