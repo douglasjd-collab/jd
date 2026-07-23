@@ -67,7 +67,10 @@ async function registrarDiagnostico(base44, traceId, etapa, dados) {
       empresa_id: dados?.empresa_id || 'unknown',
       tipo_evento: dados?.tipo_evento || 'mensagem_recebida',
       status: status === 'erro' ? 'erro' : 'sucesso',
-      telefone: null,
+      // Fase diagnóstica temporária: o telefone é persistido APENAS no log inicial (etapa 1),
+      // para permitir o pareamento (telefone ⇄ D-API ⇄ cliente) quando eles restaurarem o
+      // messages.received. Etapas subsequentes continuam sem persistir telefone.
+      telefone: etapa === 1 ? (dados?.telefone_normalizado || dados?.telefone_recebido || null) : null,
       conteudo: `etapa=${etapa} ${etapaNome} | trace=${traceId} | event=${event}`,
       mensagem_erro: dados?.erro || null,
       mensagem_id,
