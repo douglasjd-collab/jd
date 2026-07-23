@@ -158,6 +158,13 @@ export default function ChatHeader({
   const providerBanco = conversaSelecionada.provider || null;
   const canalOrigemBanco = conversaSelecionada.canal_origem || null;
   const tipoConexaoEfetivo = canalOverride || conversaSelecionada.tipo_conexao;
+
+  // Conexão amarrada à conversa (multi-D-API). Usamos a conexão correspondente
+  // ao connection_id gravado na conversa; só caímos no fallback (primeira D-API
+  // ativa) quando a conversa ainda não tem uma conexão específica amarrada.
+  const conexaoAtivaConversa =
+    conexoesAtivas.find(c => c.id === conversaSelecionada.connection_id) ||
+    conexaoDapiAtiva;
   
   const ehMeta =
     !ehInstagram && (
@@ -232,11 +239,11 @@ export default function ChatHeader({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      title={`Respondendo via D-API - ${conexaoDapiAtiva.nome || conexaoDapiAtiva.session_id} — clique para trocar`}
+                      title={`Respondendo via D-API - ${conexaoAtivaConversa?.nome || conexaoAtivaConversa?.session_id || ''} — clique para trocar`}
                       className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 bg-cyan-600"
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
-                      D-API - {conexaoDapiAtiva.nome || conexaoDapiAtiva.session_id}
+                      D-API - {conexaoAtivaConversa?.nome || conexaoAtivaConversa?.session_id || 'D-API'}
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" side="bottom" className="z-[200]">
