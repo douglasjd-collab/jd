@@ -40,9 +40,7 @@ Deno.serve(async (req) => {
     
     const payload = await req.json().catch(() => ({}));
 
-    console.log("========== WEBHOOK BRUTO ==========");
-    console.log(JSON.stringify(payload, null, 2));
-    console.log("==================================");
+    // Log bruto do payload removido — não persistir corpo do webhook em logs.
 
     const { event, sessionId, data, timestamp, traceId } = payload;
 
@@ -177,13 +175,13 @@ Deno.serve(async (req) => {
         console.log('ℹ️ Evento não tratado:', event, JSON.stringify(data, null, 2));
     }
     
-    // Salvar log do webhook (payload bruto sempre salvo, útil para diagnóstico de eventos não mapeados)
+    // Salvar log do webhook — apenas metadados seguros ( sem corpo bruto do payload,
+    // que pode conter telefones e conteúdo de mensagem ).
     await base44.entities.WhatsappConnectionLog.create({
       empresa_id: connection.empresa_id,
       connection_id: connection.id,
       event_type: event,
       direction: 'inbound',
-      payload_json: JSON.stringify(payload),
       response_json: JSON.stringify({ success: true, event, sessionId, updates }),
       error_message: null,
       response_time_ms: 0,

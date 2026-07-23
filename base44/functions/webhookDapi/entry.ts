@@ -51,41 +51,28 @@ function parseTimestamp(ts) {
  * NÃO altera a lógica; apenas consolida console.log + grava LogRecebimentoWebhook.
  * Permite rastrear exatamente em qual etapa a mensagem deixa de fluir.
  */
+// Logs de diagnóstico de webhook em produção — apenas metadados seguros (sem corpo bruto,
+// telefone, conteúdo de mensagem, headers, tokens ou mídia). Telefones e trechos de mensagem
+// permanecem apenas no console.log (efêmero, servidor) p/ diagnóstico operacional.
 async function registrarDiagnostico(base44, traceId, etapa, dados) {
   const etapaNome = dados?.etapa_nome || '';
-  const sumario = JSON.stringify({
-    trace_id: traceId,
-    etapa,
-    etapa_nome: etapaNome,
-    event: dados?.event || null,
-    session_id: dados?.session_id || null,
-    connection_id: dados?.connection_id || null,
-    empresa_id: dados?.empresa_id || null,
-    telefone_recebido: dados?.telefone_recebido || null,
-    telefone_normalizado: dados?.telefone_normalizado || null,
-    message_id: dados?.message_id || null,
-    conversation_id: dados?.conversation_id || null,
-    conversa_criada: dados?.conversa_criada || false,
-    mensagem_salva_id: dados?.mensagem_salva_id || null,
-    mensagem_gravada: dados?.mensagem_gravada || null,
-    realtime_emitido: dados?.realtime_emitido || null,
-    motivo_descarte: dados?.motivo_descarte || null,
-    status: dados?.status || 'sucesso',
-    erro: dados?.erro || null,
-    process_time_ms: dados?.process_time_ms || null,
-  }).slice(0, 1500);
-  console.log(`🔍 [TRACE ${traceId}] ETAPA ${etapa} ${etapaNome} ${sumario}`);
+  const status = dados?.status || 'sucesso';
+  const event = dados?.event || '-';
+  const session_id = dados?.session_id || '-';
+  const conversation_id = dados?.conversation_id || '-';
+  const message_id = dados?.mensagem_salva_id || dados?.message_id || '-';
+  console.log(`🔍 [TRACE ${traceId}] ETAPA ${etapa} ${etapaNome} event=${event} session_id=${session_id} conversation_id=${conversation_id} message_id=${message_id} status=${status}${dados?.erro ? ' erro=' + dados?.erro : ''}`);
   try {
     await base44.asServiceRole.entities.LogRecebimentoWebhook.create({
       empresa_id: dados?.empresa_id || 'unknown',
       tipo_evento: dados?.tipo_evento || 'mensagem_recebida',
-      status: dados?.status === 'erro' ? 'erro' : 'sucesso',
-      telefone: dados?.telefone_normalizado || dados?.telefone_recebido || null,
-      conteudo: `${etapa} ${etapaNome} | ${dados?.conteudo_extra || ''} | trace=${traceId}`,
+      status: status === 'erro' ? 'erro' : 'sucesso',
+      telefone: null,
+      conteudo: `etapa=${etapa} ${etapaNome} | trace=${traceId} | event=${event}`,
       mensagem_erro: dados?.erro || null,
-      mensagem_id: dados?.mensagem_salva_id || dados?.message_id || null,
-      conversa_id: dados?.conversation_id || null,
-      instancia: dados?.session_id || null,
+      mensagem_id,
+      conversa_id: conversation_id,
+      instancia: session_id,
       timestamp: new Date().toISOString(),
     });
   } catch (e) {
@@ -131,7 +118,8 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
     
-    console.log(`📦 [Webhook D-API] ${webhookId} - Payload:`, JSON.stringify(body, null, 2));
+    // Log bruto do payload removido — não persiste corpo do webhook (pode conter telefones e
+    // conteúdo de mensagem). Detalhamento das etapas permanece via registrarDiagnostico.
     
     // Identificar tipo do evento
     const eventType = body.event || body.type || 'unknown';
@@ -219,19 +207,14 @@ Deno.serve(async (req) => {
       });
     }
     
-    // Salvar log do webhook
+    // Log do webhook — somente metadados seguros. Não persistimos mais corpo bruto do payload
+    // (body) nem fromPhone/fromName/conteúdo do result. Apenas: event, sessionId, conversation_id,
+    // message_id, status, trace/webhookId p/ auditoria.
     const logData = {
       empresa_id: empresaId || 'unknown',
       connection_id: connectionId,
       event_type: eventType,
       direction: 'inbound',
-      payload_json: JSON.stringify({
-        webhookId,
-        event: eventType,
-        sessionId,
-        timestamp,
-        body
-      }),
       response_json: null,
       error_message: null,
       response_time_ms: Date.now() - startTime,
@@ -244,25 +227,27 @@ Deno.serve(async (req) => {
     
     try {
       processResult = await processEvent(base44, eventType, body, connection, empresaId);
-      console.log(`✅ [Webhook D-API] ${webhookId} - Processado:`, processResult);
+      console.log(`✅ [Webhook D-API] ${webhookId} - Processado: handled=${!!processResult?.handled}`);
     } catch (error) {
       errorMessage = error.message;
       console.error(`❌ [Webhook D-API] ${webhookId} - Erro ao processar:`, error.message);
     }
     
-    // Atualizar log com resultado
+    // Atualizar log com resultado — somente metadados seguros (sem telefone, conteúdo, etc.)
     logData.response_json = JSON.stringify({
-      success: true,
+      success: !errorMessage,
       event: eventType,
       sessionId,
       processed: !!processResult,
-      result: processResult,
+      handled: !!processResult?.handled,
+      conversation_id: processResult?.conversaId || null,
+      message_id: processResult?.messageId || null,
       webhookId,
       timestamp: new Date().toISOString()
     });
     logData.error_message = errorMessage;
     
-    // Salvar log (não bloquear resposta) — usa WhatsappConnectionLog, que é o schema correto para este payload
+    // Salvar log (não bloquear resposta)
     base44.asServiceRole.entities.WhatsappConnectionLog.create(logData).catch(e => {
       console.error(`❌ [Webhook D-API] ${webhookId} - Erro ao salvar log:`, e.message);
     });
