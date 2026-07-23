@@ -48,6 +48,36 @@ Deno.serve(async (req) => {
     const action = body.action;
 
     // ---------------------------------------------------------------- get pk
+    // GET webhook config
+    if (action === 'get_webhook_config') {
+      const { session_id } = body;
+      if (!session_id) return Response.json({ error: 'session_id obrigatório' }, { status: 400 });
+      const r = await fetch(`${DAPI_BASE}/api/v1/sessions/${encodeURIComponent(session_id)}`, {
+        method: 'GET',
+        headers: { 'Authorization': apiKey }
+      });
+      const data = await r.json().catch(() => ({}));
+      return Response.json({
+        success: r.ok,
+        status: r.status,
+        session: data?.session || data,
+        settings_webhook: data?.session?.settings?.webhook || data?.session?.webhookSettings || data?.session?.webhook || null,
+        root_webhook: data?.session?.webhookUrl || data?.session?.webhook_url || null
+      });
+    }
+
+    // GET webhook event log (últimos eventos tentados)
+    if (action === 'get_webhook_events_log') {
+      const { session_id, limit = 20 } = body;
+      if (!session_id) return Response.json({ error: 'session_id obrigatório' }, { status: 400 });
+      const r = await fetch(`${DAPI_BASE}/api/v1/sessions/${encodeURIComponent(session_id)}/webhook-config/events-log?limit=${limit}`, {
+        method: 'GET',
+        headers: { 'Authorization': apiKey }
+      });
+      const data = await r.json().catch(() => ({}));
+      return Response.json({ success: r.ok, status: r.status, data });
+    }
+
     if (action === 'get_publishable_key') {
       // Reuso cache: pk é público e limitado por taxa; reaproveitar evita
       // пояснение кровообращение do limite e simplifica a UX.
