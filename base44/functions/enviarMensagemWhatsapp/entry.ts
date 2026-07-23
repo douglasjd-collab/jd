@@ -148,6 +148,27 @@ Deno.serve(async (req) => {
           } catch (_) {}
         }
         if (!conexaoDapi) {
+          // Tenta a conexão amarrada à conversa via instancia (session_id).
+          // Mantém "última conexão que recebeu = conexão que envia" — multi-D-API.
+          if (instanciaConversa) {
+            try {
+              const matches = await base44.asServiceRole.entities.WhatsappConnection.filter({
+                empresa_id: empresaId,
+                provider_type: 'dapi',
+                session_id: instanciaConversa,
+                is_active: true
+              }, '-created_date', 1);
+              conexaoDapi = matches[0] || null;
+              if (conexaoDapi) {
+                console.log('✅ D-API conexão amarrada pela instancia:', conexaoDapi.id, conexaoDapi.session_id);
+              }
+            } catch (e) {
+              console.warn('⚠️ Erro ao buscar D-API por session_id:', e.message);
+            }
+          }
+        }
+        if (!conexaoDapi) {
+          // Último fallback: qualquer D-API ativo da empresa (comportamento anterior).
           const conexoes = await base44.asServiceRole.entities.WhatsappConnection.filter({
             empresa_id: empresaId,
             provider_type: 'dapi',

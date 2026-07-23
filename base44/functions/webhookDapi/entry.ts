@@ -482,10 +482,13 @@ async function processMessageReceived(base44, body, connection, empresaId) {
       conversa = conversas[0];
       // Canal de ENVIO travado manualmente pelo usuário — não sobrescrever.
       const canalTravado = conversa.locked_provider === true;
+      // connection_id amarra a conversa à conexão (D-API Oficial / Douglas) que recebeu
+      // a última mensagem — usado no envio para escolher o canal certo (multi-D-API).
       const atualizarConversa = {
         cliente_nome: fromName,
         last_inbound_provider: 'dapi',
-        cliente_respondeu: true
+        cliente_respondeu: true,
+        connection_id: connection.id
       };
       if (!canalTravado) {
         atualizarConversa.provider = 'dapi';
@@ -508,6 +511,7 @@ async function processMessageReceived(base44, body, connection, empresaId) {
         provider: 'dapi',
         canal_origem: 'dapi',
         tipo_conexao: 'usuario',
+        connection_id: connection.id,
         instancia: connection.session_id,
         status: 'ativa',
         ultima_mensagem: String(content).substring(0, 200),
@@ -630,6 +634,7 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
       provider: 'dapi',
       canal_origem: 'dapi',
       tipo_conexao: 'usuario',
+      connection_id: connection.id,
       instancia: connection.session_id,
       status: 'ativa',
       ultima_mensagem: '',

@@ -115,7 +115,8 @@
       "enum": [
         "meta",
         "evolution",
-        "instagram"
+        "instagram",
+        "dapi"
       ],
       "description": "Canal de origem fixo da conversa"
     },
@@ -124,7 +125,8 @@
       "enum": [
         "whatsapp_meta",
         "evolution",
-        "instagram"
+        "instagram",
+        "dapi"
       ],
       "description": "Provider t\u00e9cnico usado para envio/recebimento"
     },
@@ -141,9 +143,13 @@
       "type": "string",
       "description": "ID do colaborador dono da inst\u00e2ncia"
     },
+    "connection_id": {
+      "type": "string",
+      "description": "ID da WhatsappConnection ativa na conversa (multi-D-API). Recebida via webhook, determina qual conex\u00e3o usar no envio."
+    },
     "instancia": {
       "type": "string",
-      "description": "Nome da inst\u00e2ncia Evolution"
+      "description": "Nome da inst\u00e2ncia Evolution / session_id D-API"
     },
     "instance_id": {
       "type": "string",
