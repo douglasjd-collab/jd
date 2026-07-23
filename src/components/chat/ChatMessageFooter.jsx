@@ -17,6 +17,7 @@ export default function ChatMessageFooter({
   mensagemParaResponder,
   setMensagemParaResponder,
   enviarMensagemMutation,
+  dispatchEnvio,
   user,
   empresaId,
   selecionarConversa,
@@ -118,11 +119,22 @@ export default function ChatMessageFooter({
       )}
       <EnviarMensagemForm
         key={conversaSelecionada?.id}
-        onEnviar={async ({ texto, arquivo }) => {
-          await enviarMensagemMutation.mutateAsync({ texto, arquivo, mensagemParaResponder });
-          setMensagemParaResponder(null);
+        onEnviar={({ texto, arquivo }) => {
+          // Envio assíncrono: a bolha é adicionada no cache imediatamente com
+          // um tempId; upload e chamada ao backend rodam em background. O
+          // campo de digitação e os botões ficam liberados para o próximo envio.
+          if (!dispatchEnvio) {
+            // Fallback legado (ex.: outro fluxo sem dispatcher)
+            enviarMensagemMutation?.mutateAsync({ texto, arquivo, mensagemParaResponder });
+            setMensagemParaResponder(null);
+            return;
+          }
+          const ok = dispatchEnvio({ texto, arquivo, mensagemParaResponder });
+          // Limpa a citação SOMENTE se o dispatcher aceitou (não dispara toast de erro
+          // em validação de envio — o erro já é exibido dentro do hook/store).
+          if (ok !== false) setMensagemParaResponder(null);
         }}
-        isLoading={enviarMensagemMutation.isPending}
+        isLoading={false}
         nomeUsuario={user?.full_name || ''}
         empresaId={empresaId}
         telefoneDestino={conversaSelecionada?.cliente_telefone}

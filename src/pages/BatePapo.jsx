@@ -46,6 +46,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
+import { useFilaEnvio } from '@/components/chat/useFilaEnvio';
+import { temPendentesGlobal } from '@/components/chat/filaEnvioStore';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageFooter from '@/components/chat/ChatMessageFooter';
 import ConversaContextMenu from '@/components/chat/ConversaContextMenu';
@@ -1053,6 +1055,67 @@ export default function BatePapo() {
       toast.success('Mensagem enviada');
     }
   });
+
+  // ── Fila de envio assíncrona (Bate-Papo) ────────────────────────────────
+  // Substitui o fluxo bloqueante (await enviarMensagemMutation.mutateAsync)
+  // por envios paralelos com estado individual por mensagem — permitindo vários
+  // envios consecutivos enquanto mídia anterior ainda carrega/envia.
+  const filaEnvio = useFilaEnvio();
+
+  const dispatchEnvio = useCallback(({ texto, arquivo, mensagemParaResponder }) => {
+    if (!conversaSelecionada?.id) {
+      toast.error('Selecione uma conversa para enviar.');
+      return false;
+    }
+    try {
+      filaEnvio.enqueue({
+        conversaId: conversaSelecionada.id,
+        conversa: conversaSelecionada,
+        texto,
+        arquivo,
+        mensagemParaResponder,
+        usuarioNome: user?.nome_perfil || user?.full_name || 'Atendente',
+        empresaId,
+        numeroCliente: conversaSelecionada.cliente_telefone,
+        whatsappIdDestino: conversaSelecionada.whatsapp_id,
+      });
+      // Atualiza a conversa para "Em Atendimento" imediatamente (mesmo efeito
+      // do enviarMensagemMutation.onSuccess, mas sem bloquear).
+      if (conversaSelecionada) {
+        const msgExibicao = texto || (arquivo?.nome || '');
+        const expira = new Date(Date.now() + (window.TEMPO_ATENDIMENTO_MS || 10 * 60 * 1000)).toISOString();
+        queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
+          (Array.isArray(old) ? old : []).map((c) => c.id === conversaSelecionada.id
+            ? { ...c, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString(), responsavel_id: user?.colaborador_id || user?.id, responsavel_nome: user?.nome_perfil || user?.full_name || 'Atendente', responsavel_expira_em: expira }
+            : c));
+      }
+      return true;
+    } catch (e) {
+      toast.error(e?.message || 'Não foi possível iniciar o envio');
+      return false;
+    }
+  }, [filaEnvio, conversaSelecionada, user, empresaId, queryClient]);
+
+  const handleCancelarEnvio = useCallback((tempId) => {
+    filaEnvio.cancelar(tempId);
+  }, [filaEnvio]);
+
+  const handleReenviarEnvio = useCallback((tempId) => {
+    filaEnvio.reenviar(tempId);
+  }, [filaEnvio]);
+
+  // Aviso antes de sair/atualizar a página quando há uploads/envios em andamento
+  useEffect(() => {
+    const handler = (e) => {
+      if (temPendentesGlobal()) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, []);
 
   const scrollAreaRef = React.useRef(null);
 
@@ -2205,7 +2268,7 @@ export default function BatePapo() {
                           mensagensEndRef={mensagensEndRef}
                           onEditarReenviar={setEditorReenvioUrl}
                           onSelecionarOpcaoLista={(opcaoTexto) => {
-                            enviarMensagemMutation.mutate({ texto: opcaoTexto, arquivo: null, mensagemParaResponder: null });
+                            dispatchEnvio({ texto: opcaoTexto, arquivo: null, mensagemParaResponder: null });
                           }}
                           modoSelecao={modoEncaminhar}
                           idsSelecionados={idsEncaminhar}
@@ -2214,6 +2277,8 @@ export default function BatePapo() {
                           onCancelarSelecao={cancelarEncaminhar}
                           onConfirmarSelecao={abrirModalEncaminhar}
                           onEditar={(msg) => setEditarMensagemModal({ mensagem: msg })}
+                          onReenviarEnvio={handleReenviarEnvio}
+                          onCancelarEnvio={handleCancelarEnvio}
                         />
                       )}
                     </ScrollArea>
@@ -2225,6 +2290,7 @@ export default function BatePapo() {
                       mensagemParaResponder={mensagemParaResponder}
                       setMensagemParaResponder={setMensagemParaResponder}
                       enviarMensagemMutation={enviarMensagemMutation}
+                      dispatchEnvio={dispatchEnvio}
                       user={user}
                       empresaId={empresaId}
                       selecionarConversa={selecionarConversa}

@@ -86,6 +86,22 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     setTimeout(() => textareaRef.current?.focus(), 100);
   }, []);
 
+  // Rascunho por conversa — preserva o texto digitado quando o atendente troca
+  // de conversa. O form é remontado a cada troca (key={conversaId}), então
+  // restauramos/mantemos o rascunho via localStorage.
+  const RASCUNHO_PREFIX = 'rascunho_batepapo_';
+  useEffect(() => {
+    if (!conversaId) return;
+    const salvo = localStorage.getItem(RASCUNHO_PREFIX + conversaId);
+    if (salvo != null) setTexto(salvo);
+  }, [conversaId]);
+
+  useEffect(() => {
+    if (!conversaId) return;
+    localStorage.setItem(RASCUNHO_PREFIX + conversaId, texto);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [texto, conversaId]);
+
   // Script externo (Coach IA)
   useEffect(() => {
     if (scriptExterno) {
@@ -232,14 +248,11 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     setAudioPreview(null);
     URL.revokeObjectURL(url);
     const { base64, mimeType = 'audio/webm', ext = 'webm' } = preview;
-    try {
-      await onEnviar({
-        texto: '',
-        arquivo: { base64, nome: `audio.${ext}`, tipo: mimeType }
-      });
-    } catch (err) {
-      setErro(err.message || 'Erro ao enviar áudio.');
-    }
+    // Não awaited — o envio ocorre em background, liberando o microfone/botão.
+    onEnviar({
+      texto: '',
+      arquivo: { base64, nome: `audio.${ext}`, tipo: mimeType, tamanho: 0 }
+    });
   };
 
   // mantido para compatibilidade (não usado mais diretamente)
@@ -286,15 +299,16 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   };
 
   const handleEnviar = async (e) => {
-    e.preventDefault();
+    e && e.preventDefault && e.preventDefault();
     if (!texto.trim() && arquivos.length === 0) return;
-    if (isLoading) return;
+    // Não bloquear mais: cada mensagem tem status próprio na fila (FilaEnvioBadge).
+    // O campo continua liberado para o próximo envio, mesmo com mídia ainda em upload.
 
     const assinatura = assinaturaAtiva && nomeUsuario ? `*Atendente - ${nomeUsuario}*\n\n` : '';
     const textoEnviar = assinatura + texto.trim();
     setErro(null);
 
-    // Limpar UI imediatamente
+    // Limpar UI imediatamente — desacopla o estado do form do pipeline de envio
     const arquivosParaEnviar = [...arquivos];
     setTexto('');
     setArquivos([]);
@@ -306,23 +320,23 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
 
     try {
       if (arquivosParaEnviar.length === 0) {
-        // Só texto
-        await onEnviar({ texto: textoEnviar, arquivo: null });
+        // Só texto — dispara sem await
+        onEnviar({ texto: textoEnviar, arquivo: null });
       } else if (arquivosParaEnviar.length === 1) {
-        // Um arquivo + texto opcional
-        const { base64, file: filePreparado } = await lerArquivoBase64(arquivosParaEnviar[0]);
-        await onEnviar({
+        // Um arquivo: passar File (não base64) — a fila lê com progresso real
+        const filePreparado = await prepararArquivo(arquivosParaEnviar[0]);
+        onEnviar({
           texto: textoEnviar,
-          arquivo: { base64, nome: filePreparado.name, tipo: getMimeType(filePreparado) }
+          arquivo: { file: filePreparado, nome: filePreparado.name, tipo: getMimeType(filePreparado), tamanho: filePreparado.size }
         });
       } else {
-        // Múltiplos arquivos: enviar cada um separadamente
+        // Múltiplos arquivos: cada um vira um item independente da fila
         for (let i = 0; i < arquivosParaEnviar.length; i++) {
-          const { base64, file: filePreparado } = await lerArquivoBase64(arquivosParaEnviar[i]);
+          const filePreparado = await prepararArquivo(arquivosParaEnviar[i]);
           // Texto só na primeira mensagem
-          await onEnviar({
+          onEnviar({
             texto: i === 0 ? textoEnviar : '',
-            arquivo: { base64, nome: filePreparado.name, tipo: getMimeType(filePreparado) }
+            arquivo: { file: filePreparado, nome: filePreparado.name, tipo: getMimeType(filePreparado), tamanho: filePreparado.size }
           });
         }
       }

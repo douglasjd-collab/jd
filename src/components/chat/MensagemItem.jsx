@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Forward, Copy, Pin, Pencil, Check } from 'lucide-react';
 import VideoMensagem from './VideoMensagem';
+import FilaEnvioBadge from './FilaEnvioBadge';
 import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -11,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null, modoSelecao = false, selecionada = false, onToggleSelecao = null, onEncaminhar = null, onEditar = null }) {
+export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null, modoSelecao = false, selecionada = false, onToggleSelecao = null, onEncaminhar = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null }) {
   // Corrige URLs com espaços não codificados (ex: pastas "CRM JD"), que quebram <img>/<audio>/<video>
   const sanitizeUrl = (url) => (typeof url === 'string' ? url.replace(/ /g, '%20') : url);
 
@@ -1083,6 +1084,10 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           </div>
         </div>
       </div>
+
+      {isVendedor && (mensagem.fila_envio_estado || mensagem.id?.startsWith('tmp_')) && (
+        <FilaEnvioBadge mensagem={mensagem} onReenviarEnvio={onReenviarEnvio} onCancelarEnvio={onCancelarEnvio} />
+      )}
 
       {isVendedor && atalhoEncaminhar}
 
