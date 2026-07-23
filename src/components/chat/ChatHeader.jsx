@@ -266,7 +266,7 @@ export default function ChatHeader({
                           onClick={() => alternarParaConexao(conexao)}
                           className="cursor-pointer"
                         >
-                          {conexao.provider_type === 'dapi' && '🟦'}
+                          {conexao.provider_type === 'dapi' && ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? '🟢' : '🟦')}
                           {conexao.provider_type === 'meta_oficial' && '🟢'}
                           {conexao.provider_type === 'evolution' && '🟣'}
                           {' '}
@@ -298,7 +298,7 @@ export default function ChatHeader({
                           onClick={() => alternarParaConexao(conexao)}
                           className="cursor-pointer"
                         >
-                          {conexao.provider_type === 'dapi' && '🟦'}
+                          {conexao.provider_type === 'dapi' && ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? '🟢' : '🟦')}
                           {conexao.provider_type === 'meta_oficial' && '🟢'}
                           {conexao.provider_type === 'evolution' && '🟣'}
                           {' '}
@@ -330,7 +330,7 @@ export default function ChatHeader({
                           onClick={() => alternarParaConexao(conexao)}
                           className="cursor-pointer"
                         >
-                          {conexao.provider_type === 'dapi' && '🟦'}
+                          {conexao.provider_type === 'dapi' && ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? '🟢' : '🟦')}
                           {conexao.provider_type === 'meta_oficial' && '🟢'}
                           {conexao.provider_type === 'evolution' && '🟣'}
                           {' '}
