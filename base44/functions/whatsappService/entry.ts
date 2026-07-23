@@ -493,7 +493,9 @@ Deno.serve(async (req) => {
       // Conforme documentação oficial D-API
       async updateWebhook(webhookUrl) {
         const startTime = Date.now();
-        const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}`;
+        // Endpoint oficial correto: POST /api/v1/sessions/{sessionId}/webhook com body { webhookUrl }
+        // (PATCH em /sessions/{id} retorna 500 para sessões cloud_api — validado 2026-07-23)
+        const url = `${this.baseUrl}/api/v1/sessions/${encodeURIComponent(this.sessionId)}/webhook`;
         
         console.log('🔗 Atualizando webhook da sessão:', {
           sessionId: this.sessionId,
@@ -501,32 +503,8 @@ Deno.serve(async (req) => {
           baseUrl: this.baseUrl
         });
         
-        // Payload completo com webhookConfig
-        const updatePayload = {
-          webhookUrl: webhookUrl || undefined,
-          webhookConfig: {
-            enabled: true,
-            type: 'single',
-            events: {
-              'messages.received': { enabled: true, webhookUrl },
-              'messages.sent': { enabled: true, webhookUrl },
-              'message.read': { enabled: true, webhookUrl },
-              'message.delivered': { enabled: true, webhookUrl },
-              'message.update': { enabled: true, webhookUrl },
-              'message.deleted': { enabled: true, webhookUrl },
-              'contacts.upsert': { enabled: true, webhookUrl },
-              'contacts.update': { enabled: true, webhookUrl },
-              'chats.upsert': { enabled: true, webhookUrl },
-              'chats.update': { enabled: true, webhookUrl },
-              'logged_out': { enabled: true, webhookUrl },
-              'connection.qrcode': { enabled: true, webhookUrl },
-              'connection.status': { enabled: true, webhookUrl }
-            }
-          },
-          ignoreGroups: true,
-          ignoreStatus: true,
-          historySync: true
-        };
+        // Payload mínimo exigido pela D-API: { webhookUrl: string } — todos os eventos são roteados automaticamente
+        const updatePayload = { webhookUrl };
         
         console.log('📦 Payload de atualização:', JSON.stringify(updatePayload, null, 2));
         
@@ -537,7 +515,7 @@ Deno.serve(async (req) => {
         
         try {
           const response = await fetch(url, {
-            method: 'PATCH',
+            method: 'POST',
             headers,
             body: JSON.stringify(updatePayload)
           });
