@@ -68,10 +68,15 @@ export default function ConfiguracaoWhatsApp() {
     provider_type: 'dapi',
     base_url: 'https://api.d-api.cloud',
     api_key: '',
-    session_id: 'CRM JD',
+    session_id: '',
     is_active: true,
     is_default: false
   });
+
+  // Estado do teste de conexão dentro do formulário (valida ANTES de salvar)
+  const [testFormResult, setTestFormResult] = useState(null);
+  const [testFailed, setTestFailed] = useState(false);
+  const [testFormDialogOpen, setTestFormDialogOpen] = useState(false);
 
   useEffect(() => {
     loadUser();
@@ -252,6 +257,63 @@ export default function ConfiguracaoWhatsApp() {
     }
   });
 
+  // Teste de conexão D-API dentro do formulário (ainda não salvo).
+  // Faz GET autenticado a /api/v1/sessions/{sessionId}, mostra URL chamada (sem expor a API Key),
+  // status HTTP, corpo da resposta, identificador (session_id) e tipo detectado (Cloud vs Padrão).
+  // Bloqueia o "Salvar" quando o teste retorna HTTP 401/404 ou qualquer falha de rede/saneamento.
+  const testFormConnectionMutation = useMutation({
+    mutationFn: async ({ base_url, api_key, session_id, connectionId }) => {
+      const response = await base44.functions.invoke('whatsappService', {
+        action: 'testConnection',
+        connectionId,
+        base_url,
+        api_key,
+        session_id,
+      });
+      return response.data;
+    },
+    onSuccess: (data) => {
+      const result = data?.data || data || {};
+      setTestFormResult(result);
+      setTestFormDialogOpen(true);
+      if (result.success) {
+        setTestFailed(false);
+        toast.success('Teste OK — HTTP ' + result.http_status + '. Identificador: ' + result.session_id_used + ' | Tipo: ' + result.detected_connection_type);
+      } else {
+        setTestFailed(true);
+        toast.error('Teste falhou: ' + (result.error || 'Erro desconhecido'));
+      }
+    },
+    onError: (error) => {
+      setTestFailed(true);
+      toast.error('Erro ao testar conexão: ' + error.message);
+    }
+  });
+
+  const handleTestFormConnection = () => {
+    if (formData.provider_type === 'meta_oficial') return;
+    const baseUrlRaw = (formData.base_url || '').trim();
+    const sessionRaw = (formData.session_id || '').trim();
+    if (!baseUrlRaw || !/^https?:\/\//i.test(baseUrlRaw) || /\/functions\/(receberWebhookDapi|webhookDapi)/i.test(baseUrlRaw) || /\/webhook/i.test(baseUrlRaw)) {
+      const r = { success: false, http_status: 0, error: 'URL Base inválida. Use https://api.d-api.cloud (não a URL do webhook do CRM).', endpoint_called: baseUrlRaw || '(vazio)', session_id_used: sessionRaw, detected_connection_type: null, response_body: {} };
+      setTestFormResult(r); setTestFormDialogOpen(true); setTestFailed(true);
+      toast.error(r.error);
+      return;
+    }
+    if (!sessionRaw || /^CRM\s*JD$/i.test(sessionRaw)) {
+      const r = { success: false, http_status: 0, error: 'Session ID inválido. Use o identificador técnico retornado pela D-API (painel), ex: cloud-ea36bc0e-... — nunca "CRM JD".', endpoint_called: baseUrlRaw, session_id_used: sessionRaw, detected_connection_type: null, response_body: {} };
+      setTestFormResult(r); setTestFormDialogOpen(true); setTestFailed(true);
+      toast.error(r.error);
+      return;
+    }
+    testFormConnectionMutation.mutate({
+      base_url: baseUrlRaw,
+      api_key: formData.api_key,
+      session_id: sessionRaw,
+      connectionId: selectedConnection?.id,
+    });
+  };
+
   const createSessionMutation = useMutation({
     mutationFn: async ({ connectionId, webhookUrl }) => {
       const response = await base44.functions.invoke('whatsappService', {
@@ -379,12 +441,14 @@ export default function ConfiguracaoWhatsApp() {
       provider_type: 'dapi',
       base_url: 'https://api.d-api.cloud',
       api_key: '',
-      session_id: 'CRM JD',
+      session_id: '',
       is_active: true,
       is_default: false
-    });
-    setSelectedConnection(null);
-  };
+      });
+      setSelectedConnection(null);
+      setTestFormResult(null);
+      setTestFailed(false);
+      };
 
   const handleEdit = (connection) => {
     setSelectedConnection(connection);
@@ -393,10 +457,12 @@ export default function ConfiguracaoWhatsApp() {
       provider_type: connection.provider_type,
       base_url: connection.base_url || 'https://api.d-api.cloud',
       api_key: '***hidden***',
-      session_id: connection.session_id || 'CRM JD',
+      session_id: connection.session_id || '',
       is_active: connection.is_active,
       is_default: connection.is_default
     });
+    setTestFormResult(null);
+    setTestFailed(false);
     setEditDialogOpen(true);
   };
 
@@ -408,9 +474,29 @@ export default function ConfiguracaoWhatsApp() {
       return;
     }
     // Meta Oficial não usa API Key/URL/Session ID — conecta via login com a Meta
-    if (!isMetaOficial && !formData.api_key) {
-      toast.error('Informe a API Key');
-      return;
+    if (!isMetaOficial) {
+      if (!formData.api_key && !selectedConnection) {
+        toast.error('Informe a API Key');
+        return;
+      }
+      const baseUrlRaw = (formData.base_url || '').trim();
+      if (!baseUrlRaw || !/^https?:\/\//i.test(baseUrlRaw)) {
+        toast.error('Informe a URL Base da API da D-API (ex: https://api.d-api.cloud)');
+        return;
+      }
+      if (/\/functions\/(receberWebhookDapi|webhookDapi)/i.test(baseUrlRaw) || /\/webhook/i.test(baseUrlRaw)) {
+        toast.error('A URL Base não pode ser a URL do webhook do CRM. Use https://api.d-api.cloud.');
+        return;
+      }
+      const sessionRaw = (formData.session_id || '').trim();
+      if (!sessionRaw || /^CRM\s*JD$/i.test(sessionRaw)) {
+        toast.error('Informe o Session ID técnico (do painel D-API, ex: cloud-...), nunca "CRM JD".');
+        return;
+      }
+      if (testFailed) {
+        toast.error('Teste de conexão falhou (HTTP 401/404). Corrija os dados e teste novamente antes de salvar.');
+        return;
+      }
     }
 
     if (selectedConnection) {
@@ -1067,19 +1153,41 @@ export default function ConfiguracaoWhatsApp() {
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending}>
-              {createMutation.isPending || updateMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <Plus className="w-4 h-4 mr-2" />
-              )}
-              Salvar
-            </Button>
+          <DialogFooter className="flex-col sm:flex-row sm:justify-between gap-2">
+            {!isMetaOficial && (
+              <Button
+                variant="outline"
+                onClick={handleTestFormConnection}
+                disabled={testFormConnectionMutation.isPending}
+                className="sm:mr-auto border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+              >
+                {testFormConnectionMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Zap className="w-4 h-4 mr-2" />
+                )}
+                Testar conexão
+              </Button>
+            )}
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)} className="flex-1 sm:flex-none">
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={createMutation.isPending || updateMutation.isPending || testFailed} className="flex-1 sm:flex-none">
+                {createMutation.isPending || updateMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Plus className="w-4 h-4 mr-2" />
+                )}
+                Salvar
+              </Button>
+            </div>
           </DialogFooter>
+          {testFailed && !isMetaOficial && (
+            <p className="text-xs text-red-600 mt-2 text-center sm:text-right">
+              ⚠ Salvar bloqueado — teste de conexão retornou falha (401/404). Corrija e teste novamente.
+            </p>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -1142,6 +1250,90 @@ export default function ConfiguracaoWhatsApp() {
             <Button onClick={() => setQrDialogOpen(false)}>
               Fechar
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog Resultado do Teste de Conexão (form ainda não salvo) */}
+      <Dialog open={testFormDialogOpen} onOpenChange={setTestFormDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-blue-500" />
+              Teste de Conexão D-API
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            {testFormResult && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-slate-500">Session ID testado</p>
+                    <p className="font-mono text-sm break-all">{testFormResult.session_id_used || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Tipo detectado</p>
+                    <p className="font-medium">{testFormResult.detected_connection_type || 'Não identificado'}</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="p-3 rounded-lg bg-slate-100">
+                    <p className="text-xs text-slate-500">HTTP Status</p>
+                    <p className={`font-bold ${testFormResult.http_status === 200 ? 'text-green-600' : 'text-red-600'}`}>
+                      {testFormResult.http_status ?? 'N/A'}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-slate-100">
+                    <p className="text-xs text-slate-500">Resultado</p>
+                    <p className={`font-bold ${testFormResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                      {testFormResult.success ? 'OK' : 'Falhou'}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-slate-100">
+                    <p className="text-xs text-slate-500">API Key (últimos 4)</p>
+                    <p className="font-mono font-bold text-slate-800">****{testFormResult.api_key_last4 || '****'}</p>
+                  </div>
+                </div>
+                {testFormResult.error && (
+                  <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+                    <p className="text-xs text-red-700">Erro</p>
+                    <p className="font-medium text-red-900 break-all">{testFormResult.error}</p>
+                  </div>
+                )}
+                {testFormResult.success && (
+                  <p className="text-xs text-green-700 bg-green-50 border border-green-200 p-3 rounded-lg">
+                    ✅ Conexão válida. Você já pode clicar em <b>Salvar</b>.
+                  </p>
+                )}
+                <div>
+                  <p className="text-xs text-slate-500 mb-2">Endpoint Chamado (sem expor a API Key)</p>
+                  <code className="block p-3 bg-slate-100 rounded text-xs font-mono text-slate-700 break-all">
+                    {testFormResult.endpoint_called || 'N/A'}
+                  </code>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-slate-500">Resposta da D-API</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(JSON.stringify(testFormResult.response_body, null, 2));
+                        toast.success('Resposta copiada!');
+                      }}
+                    >
+                      Copiar JSON
+                    </Button>
+                  </div>
+                  <pre className="block p-3 bg-slate-900 rounded text-xs font-mono text-green-400 overflow-auto max-h-48">
+                    {JSON.stringify(testFormResult.response_body, null, 2)}
+                  </pre>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setTestFormDialogOpen(false)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

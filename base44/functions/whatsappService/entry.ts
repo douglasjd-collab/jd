@@ -39,32 +39,32 @@ Deno.serve(async (req) => {
     const payload = await req.json().catch(() => ({}));
     const { connectionId, action, webhookUrl, phoneNumber, text, imageUrl, audioUrl, documentUrl, videoUrl, caption, fileName, messageIds, messageId, emoji } = payload;
     
-    // Buscar conexão
-    const connections = await base44.entities.WhatsappConnection.filter({ id: connectionId });
+    // Buscar conexão (opcional p/ ação testConnection com dados do form ainda não salvos)
+    const connections = connectionId ? await base44.entities.WhatsappConnection.filter({ id: connectionId }) : [];
     const connection = connections[0];
     
-    if (!connection) {
+    if (!connection && action !== 'testConnection') {
       return Response.json({ error: 'Connection not found' }, { status: 404 });
     }
     
     // D-API Adapter - endpoints oficiais
-    // Descriptografar API Key (armazenada em base64)
-    let apiKeyDecrypted = connection.api_key_encrypted;
+    // Descriptografar API Key (armazenada em base64) se houver conexão existente
+    let apiKeyDecrypted = connection?.api_key_encrypted || '';
     try {
       // Tentar descriptografar se estiver em base64
-      const decoded = atob(connection.api_key_encrypted);
+      const decoded = connection?.api_key_encrypted ? atob(connection.api_key_encrypted) : '';
       // Validar se é UUID válido (36 chars, formato xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
       if (decoded && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decoded.trim())) {
         apiKeyDecrypted = decoded.trim();
         console.log('✅ API Key descriptografada com sucesso');
       } else {
         // Se não for UUID válido, usar o valor original (pode já estar em texto claro)
-        apiKeyDecrypted = connection.api_key_encrypted.trim();
+        apiKeyDecrypted = (connection?.api_key_encrypted || '').trim();
         console.log('ℹ️ API Key não parece estar em base64, usando valor original');
       }
     } catch (error) {
       // Se falhar descriptografia, usar valor original
-      apiKeyDecrypted = connection.api_key_encrypted.trim();
+      apiKeyDecrypted = (connection?.api_key_encrypted || '').trim();
       console.log('⚠️ Erro ao descriptografar API Key, usando valor original:', error.message);
     }
     
@@ -81,10 +81,11 @@ Deno.serve(async (req) => {
       authorization_header_masked: authorizationHeaderMasked
     });
     
+    // Permite override por payload (usado por testConnection com dados do form ainda não salvos)
     const adapter = {
-      baseUrl: connection.base_url || 'https://api.d-api.cloud',
-      apiKey: apiKeyDecrypted,
-      sessionId: connection.session_id || 'CRM JD',
+      baseUrl: ((payload.base_url || connection?.base_url || 'https://api.d-api.cloud') + '').trim(),
+      apiKey: (payload.api_key && payload.api_key !== '***hidden***') ? String(payload.api_key).trim() : apiKeyDecrypted,
+      sessionId: ((payload.session_id || connection?.session_id || '') + '').trim() || 'CRM JD',
       
       // Request genérico com tratamento de erro padrão
       async request(endpoint, method = 'GET', body = null) {
@@ -769,25 +770,80 @@ Deno.serve(async (req) => {
         result = await adapter.getStatus();
         break;
         
+      case 'testConnection': {
+        // Teste autenticado para validar dados da conexão (form ainda não salvo ou conexão existente).
+        // Confirma o identificador (session_id) e o tipo da conexão (Cloud vs Padrão) sem expor a API Key.
+        const testBaseUrl = ((payload.base_url || connection?.base_url || '') + '').trim();
+        const testSessionId = ((payload.session_id || connection?.session_id || '') + '').trim();
+        let testApiKey = apiKeyDecrypted;
+        if (payload.api_key && String(payload.api_key).trim() !== '' && payload.api_key !== '***hidden***') {
+          testApiKey = String(payload.api_key).trim();
+        }
+        
+        if (!testApiKey) {
+          result = { success: false, http_status: 0, error: 'API Key obrigatória para testar a conexão.', endpoint_called: testBaseUrl || '(vazio)', session_id_used: testSessionId, detected_connection_type: null, response_body: {} };
+          break;
+        }
+        if (!testBaseUrl || !/^https?:\/\//i.test(testBaseUrl)) {
+          result = { success: false, http_status: 0, error: 'URL Base inválida. Preencha a URL da API da D-API (ex: https://api.d-api.cloud).', endpoint_called: testBaseUrl || '(vazio)', session_id_used: testSessionId, detected_connection_type: null, response_body: {} };
+          break;
+        }
+        // Saneamento crítico — base_url não pode ser a URL do webhook do CRM
+        if (/\/functions\/(receberWebhookDapi|webhookDapi)/i.test(testBaseUrl) || /\/webhook/i.test(testBaseUrl)) {
+          result = { success: false, http_status: 0, error: 'A URL Base parece ser a URL do webhook do CRM, não da D-API. Use https://api.d-api.cloud.', endpoint_called: testBaseUrl, session_id_used: testSessionId, detected_connection_type: null, response_body: {} };
+          break;
+        }
+        if (!testSessionId || /^CRM\s*JD$/i.test(testSessionId)) {
+          result = { success: false, http_status: 0, error: 'Session ID inválido. Use o identificador técnico retornado pela D-API (painel), ex: cloud-ea36bc0e-... — nunca "CRM JD".', endpoint_called: testBaseUrl, session_id_used: testSessionId, detected_connection_type: null, response_body: {} };
+          break;
+        }
+        
+        const cleanBaseUrl = testBaseUrl.replace(/\/$/, '');
+        const testUrl = `${cleanBaseUrl}/api/v1/sessions/${encodeURIComponent(testSessionId)}`;
+        const tStart = Date.now();
+        try {
+          const r = await fetch(testUrl, { method: 'GET', headers: { 'Authorization': testApiKey, 'Content-Type': 'application/json' } });
+          const txt = await r.text();
+          let body = {};
+          try { body = JSON.parse(txt); } catch {}
+          result = {
+            success: r.ok,
+            http_status: r.status,
+            endpoint_called: testUrl,
+            session_id_used: testSessionId,
+            detected_connection_type: /^cloud-/i.test(testSessionId) ? 'Cloud (Meta Oficial)' : 'Padrão (QR)',
+            response_body: body,
+            response_time_ms: Date.now() - tStart,
+            api_key_last4: testApiKey.slice(-4),
+            error: r.ok ? null : `HTTP ${r.status}${body?.message ? ': ' + body.message : ''}`
+          };
+        } catch (error) {
+          result = { success: false, http_status: 0, error: 'Erro de rede ao chamar D-API: ' + error.message, endpoint_called: testUrl, session_id_used: testSessionId, detected_connection_type: null, response_body: {} };
+        }
+        break;
+      }
+      
       default:
         return Response.json({ error: `Unknown action: ${action}` }, { status: 400 });
     }
     
-    // Log da operação
-    try {
-      await base44.entities.WhatsappConnectionLog.create({
-        empresa_id: connection.empresa_id,
-        connection_id: connection.id,
-        event_type: action === 'healthCheck' ? 'health.check' : 'api.call',
-        direction: 'outbound',
-        payload_json: JSON.stringify({ action, ...payload }),
-        response_json: JSON.stringify(result),
-        error_message: result.error || null,
-        response_time_ms: result.responseTime || Date.now(),
-        created_at: new Date().toISOString()
-      });
-    } catch (e) {
-      console.error('Erro ao logar:', e);
+    // Log da operação (apenas quando há conexão persistida)
+    if (connection) {
+      try {
+        await base44.entities.WhatsappConnectionLog.create({
+          empresa_id: connection.empresa_id,
+          connection_id: connection.id,
+          event_type: action === 'healthCheck' ? 'health.check' : 'api.call',
+          direction: 'outbound',
+          payload_json: JSON.stringify({ action, ...payload }),
+          response_json: JSON.stringify(result),
+          error_message: result.error || null,
+          response_time_ms: result.responseTime || Date.now(),
+          created_at: new Date().toISOString()
+        });
+      } catch (e) {
+        console.error('Erro ao logar:', e);
+      }
     }
     
     return Response.json({ success: true, data: result });
