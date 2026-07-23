@@ -21,6 +21,31 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  * - logged_out
  */
 
+/**
+ * Parseia timestamp flexível e retorna ISO string válida.
+ * Resolve o bug "Invalid time value" da D-API Cloud API, que envia timestamp
+ * como "1784775654936" (Unix ms em string) — new Date("1784775654936") = Invalid Date.
+ * Aceita: ISO string, número (ms), string numérica (ms ou s), ou null/undefined → agora.
+ */
+function parseTimestamp(ts) {
+  if (!ts) return new Date().toISOString();
+  if (typeof ts === 'number') {
+    let n = ts;
+    if (n < 1e12) n = n * 1000; // seconds → ms
+    return new Date(n).toISOString();
+  }
+  if (typeof ts === 'string') {
+    if (/^\d+$/.test(ts)) {
+      let n = Number(ts);
+      if (n < 1e12) n = n * 1000; // seconds → ms
+      return new Date(n).toISOString();
+    }
+    const d = new Date(ts);
+    if (!isNaN(d.getTime())) return d.toISOString();
+  }
+  return new Date().toISOString();
+}
+
 Deno.serve(async (req) => {
   const startTime = Date.now();
   const webhookId = crypto.randomUUID();
@@ -343,7 +368,7 @@ async function processMessageReceived(base44, body, connection, empresaId) {
   const remoteJid = data?.from?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '';
   const fromPhone = String(remoteJid).replace(/@.*/g, '').replace(/\D/g, '');
   const fromName = data?.from?.name || data?.from_name || data?.pushName || data?.notifyName || fromPhone;
-  const timestamp = data.timestamp || data.createdAt || new Date().toISOString();
+  const timestamp = parseTimestamp(data.timestamp || data.createdAt);
 
   if (!fromPhone) {
     console.error('❌ [Webhook D-API] Não foi possível extrair o telefone:', JSON.stringify(data, null, 2));
@@ -585,7 +610,7 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
   if (!content) {
     content = data?.media_data?.caption || data?.caption || (crmMessageType === 'audio' ? 'Áudio' : crmMessageType === 'imagem' ? 'Imagem' : crmMessageType === 'video' ? 'Vídeo' : crmMessageType === 'documento' ? (data?.media_data?.filename || 'Documento') : 'Mensagem');
   }
-  const timestamp = data.timestamp || data.createdAt || new Date().toISOString();
+  const timestamp = parseTimestamp(data.timestamp || data.createdAt);
 
   const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
     empresa_id: empresaId,
