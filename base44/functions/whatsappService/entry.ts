@@ -81,9 +81,18 @@ Deno.serve(async (req) => {
       authorization_header_masked: authorizationHeaderMasked
     });
     
-    // Permite override por payload (usado por testConnection com dados do form ainda não salvos)
+    // Permite override por payload (usado por testConnection com dados do form ainda não salvos).
+    // Saneamento automático: se a URL Base salva tem o padrão do webhook do CRM (não da D-API),
+    // corrige para o default https://api.d-api.cloud e avisa. Isso impede o 404 legacy quando o
+    // usuário salvou acidentalmente a URL do webhook como base_url.
+    let resolvedBaseUrl = ((payload.base_url || connection?.base_url || 'https://api.d-api.cloud') + '').trim();
+    if (/\/functions\/(receberWebhookDapi|webhookDapi)/i.test(resolvedBaseUrl) || /\/webhook/i.test(resolvedBaseUrl)) {
+      console.log('⚠️ base_url salva parece ser a URL do webhook, não da D-API. Auto-corrigindo para https://api.d-api.cloud');
+      resolvedBaseUrl = 'https://api.d-api.cloud';
+    }
+
     const adapter = {
-      baseUrl: ((payload.base_url || connection?.base_url || 'https://api.d-api.cloud') + '').trim(),
+      baseUrl: resolvedBaseUrl,
       apiKey: (payload.api_key && payload.api_key !== '***hidden***') ? String(payload.api_key).trim() : apiKeyDecrypted,
       sessionId: ((payload.session_id || connection?.session_id || '') + '').trim() || 'CRM JD',
       
