@@ -351,26 +351,21 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
         action: 'send_to_meta',
         template_id: templateId,
       });
+      // base44.functions.invoke retorna AxiosResponse — o corpo fica em res.data.
+      // Sucesso: { success, meta_id, status } | Erro HTTP: axios lança e cai no catch.
       if (res?.data?.success) {
-        // 4) Salvou metaTemplateId, status retornado e data de envio (já feitos no backend).
-        // 8) Após criar o template, sincronizar automaticamente os templates da conexão.
         await syncTemplatesFromMeta();
-        const updated = await loadTemplates();
-        if (!updated || updated.length === 0) {
-          toast.success('Template enviado para análise da Meta (aba Meus Templates).');
-        } else {
-          toast.success('Template enviado para análise da Meta.');
-        }
+        await loadTemplates();
+        toast.success('Template enviado para análise da Meta.');
         setForm(EMPTY_FORM);
-        // 5) Abrir automaticamente a aba "Meus Templates".
         setTab('meus');
       } else {
-        // 7) Caso ocorra erro: mostrar o erro retornado pela API, nunca esconder.
+        // Resposta 2xx inesperada sem success — repassa o erro retornado.
         mostrarErroAprovacao(res?.data);
       }
     } catch (e) {
-      const errData = e?.response?.data || e;
-      mostrarErroAprovacao(errData);
+      // Erro HTTP da Meta: axios lança; o corpo da resposta fica em e.response.data
+      mostrarErroAprovacao(e?.response?.data || e);
     } finally {
       setIsSending(false);
     }

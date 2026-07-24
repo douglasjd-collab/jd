@@ -665,20 +665,22 @@ Deno.serve(async (req) => {
         return Response.json({ error: "Sem permissão" }, { status: 403 });
       }
       // Resolução do WABA: a D-API não retorna wabaId na sessão, então o template
-      // pode estar sem waba_id. Resolvemos automaticamente a partir da empresa.
+      // pode estar sem waba_id. Resolvemos automaticamente: empresa → conexão
+      // vinculada → qualquer conexão ativa da empresa com wabaId populado.
       let wabaId = template.waba_id;
+      let wabaSource = "";
       if (!wabaId) {
         try {
           const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: template.empresa_id });
           const emp = empresas?.[0];
           if (emp?.whatsapp_business_account_id) {
             wabaId = emp.whatsapp_business_account_id;
-            await base44.entities.WhatsappTemplate.update(template_id, { waba_id: wabaId });
+            wabaSource = "empresa";
           }
         } catch {}
       }
       if (!wabaId) {
-        // Último recurso: buscar na conexão vinculada
+        // Buscar na conexão vinculada ao template
         try {
           const conn = await base44.entities.WhatsappConnection.get(template.connection_id);
           if (conn?.config_json) {
@@ -686,13 +688,62 @@ Deno.serve(async (req) => {
             try { cfg = JSON.parse(conn.config_json); } catch {}
             if (cfg?.wabaId) {
               wabaId = cfg.wabaId;
-              await base44.entities.WhatsappTemplate.update(template_id, { waba_id: wabaId });
+              wabaSource = "conexao_template";
             }
           }
         } catch {}
       }
+      if (!wabaId && template.empresa_id) {
+        // Último recurso: varrer todas as conexões oficiais ativas da empresa
+        // para encontrar uma com wabaId populado.
+        try {
+          const conns = await base44.entities.WhatsappConnection.filter(
+            { empresa_id: template.empresa_id, provider_type: "dapi" } as any,
+            null,
+            200,
+          );
+          for (const c of conns || []) {
+            let cfg: any = {};
+            try { cfg = JSON.parse(c.config_json || "{}"); } catch {}
+            if (cfg?.wabaId) {
+              wabaId = cfg.wabaId;
+              wabaSource = "conexao_ativa";
+              // Já vincula ao template para acelerar próximos envios
+              try {
+                await base44.entities.WhatsappTemplate.update(template_id, { waba_id: wabaId });
+              } catch {}
+              break;
+            }
+          }
+        } catch {}
+      }
+      if (wabaId && wabaSource) {
+        try {
+          await base44.entities.WhatsappTemplate.update(template_id, { waba_id: wabaId });
+        } catch {}
+      }
       if (!wabaId) {
-        return Response.json({ error: "Não foi possível identificar a conta WhatsApp Business (WABA) desta conexão. Reconecte a conta via Meta Embedded Signup ou sincronize novamente." }, { status: 400 });
+        // Sem WABA: NÃO deixar o template preso em "enviando". Marca como
+        // erro_envio e registra log, já que a Meta nunca será chamada.
+        const motivo = "Não foi possível identificar a conta WhatsApp Business (WABA) desta conexão. Reconecte a conta via Meta Embedded Signup (Robôs e Integrações) ou sincronize as conexões D-API novamente.";
+        await base44.entities.WhatsappTemplate.update(template_id, {
+          status: "erro_envio",
+          rejection_reason: motivo,
+        });
+        await base44.entities.WhatsappTemplateLog.create({
+          empresa_id: template.empresa_id,
+          template_id,
+          action: "enviar_aprovacao",
+          previous_status: "enviando",
+          new_status: "erro_envio",
+          error_message: motivo,
+          user_id: user.id,
+          user_name: user.full_name,
+        });
+        return Response.json(
+          { error: "Sem WABA", http_status: 400, meta_message: motivo, details: motivo },
+          { status: 400 },
+        );
       }
 
       await base44.entities.WhatsappTemplate.update(template_id, {
