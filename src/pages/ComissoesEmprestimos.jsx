@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Search, Loader2, CheckCircle2, Clock, BarChart2,
   ChevronDown, ChevronUp, DollarSign, AlertCircle,
-  TrendingUp, TrendingDown, FileText, Download, FileSpreadsheet
+  TrendingUp, TrendingDown, FileText, Download, FileSpreadsheet, Calendar
 } from 'lucide-react';
 import PropostaDetalhesModal from '@/components/comissoes/PropostaDetalhesModal';
 import { toast } from 'react-hot-toast';
@@ -82,6 +82,8 @@ export default function ComissoesEmprestimos() {
   // Comprovante bancário anexo + identificador da transação PIX
   const [comprovanteFile, setComprovanteFile] = useState(null);
   const [comprovanteTransacaoId, setComprovanteTransacaoId] = useState('');
+  const [agendarModal, setAgendarModal] = useState(false);
+  const [dataAgendamento, setDataAgendamento] = useState(moment().format('YYYY-MM-DD'));
   // Código único de autenticação gerado na confirmação (UUID curto)
   const [codigoAutenticacao, setCodigoAutenticacao] = useState('');
   // Logo configurada (passada para o gerador do comprovante PDF)
@@ -334,6 +336,8 @@ export default function ComissoesEmprestimos() {
     setComprovanteFile(null);
     setComprovanteTransacaoId('');
     setCodigoAutenticacao('');
+    setAgendarModal(false);
+    setDataAgendamento(moment().format('YYYY-MM-DD'));
 
     // Busca adiantamentos pendentes e dados bancários/PIX do vendedor em paralelo
     try {
@@ -664,6 +668,67 @@ export default function ComissoesEmprestimos() {
     } catch (err) {
       console.error(err);
       toast.error('Erro ao processar pagamento');
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  // Agendar pagamento futuro — cria o lote como "programado" sem quitar as comissões
+  const handleAgendarPagamento = async () => {
+    if (modalSelecionados.size === 0 || !vendedorModal) return;
+    if (!dataAgendamento) { toast.error('Informe a data do agendamento'); return; }
+    if (formaPagamento === 'PIX' && (!pixVendedor || !pixVendedor.chave)) {
+      toast.error('O vendedor não possui uma chave PIX cadastrada. Atualize o cadastro antes de agendar.');
+      return;
+    }
+    setIsPaying(true);
+    try {
+      const ids = Array.from(modalSelecionados);
+      const paraAgendar = propostas.filter(p => ids.includes(p.id) && p.comissao_banco_recebida && !p.comissao_vendedor_paga);
+      if (paraAgendar.length === 0) { toast.error('Nenhum contrato válido para agendar'); return; }
+
+      const loteCode = `EMPC${String(Date.now()).slice(-6)}`;
+      const itensComValores = paraAgendar.map(p => {
+        const percVendedor = percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualEmpresa(p);
+        const base = p.comissao_banco_base_comissao || p.valor_credito || 0;
+        const valVendedor = base * (percVendedor / 100);
+        return { p, percVendedor, valVendedor };
+      });
+      const valorTotalBruto = itensComValores.reduce((acc, i) => acc + i.valVendedor, 0);
+      const acrescimoVal = parseFloat(acrescimoValor) || 0;
+      const valorTotal = Math.max(0, valorTotalBruto - totalAdiantamentosDesc + acrescimoVal);
+
+      await base44.entities.LotePagamentoComissaoEmprestimo.create({
+        empresa_id: vendedorModal.propostas[0]?.empresa_id || user?.empresa_id,
+        vendedor_id: vendedorModal.vendedor_id,
+        vendedor_nome: vendedorModal.vendedor_nome,
+        data_pagamento: dataAgendamento,
+        valor_total: valorTotal,
+        valor_efetivamente_pago: valorTotal,
+        quantidade_propostas: itensComValores.length,
+        forma_pagamento: formaPagamento,
+        observacao: (observacao ? observacao + ' ' : '') + `[Agendado]`,
+        lote_codigo: loteCode,
+        acrescimos: acrescimoVal,
+        acrescimo_descricao: acrescimoDescricao || '',
+        descontos: totalAdiantamentosDesc,
+        status: 'programado',
+        pix_tipo: pixVendedor?.tipo || null,
+        pix_chave: pixVendedor?.chave || null,
+        pix_titular_nome: pixVendedor?.titularNome || null,
+        pix_titular_documento: pixVendedor?.titularDocumento || null,
+        pix_instituicao: pixVendedor?.instituicao || null,
+      });
+
+      queryClient.invalidateQueries(['propostas-emp-cons-comissoes']);
+      toast.success(`Pagamento agendado para ${moment(dataAgendamento).format('DD/MM/YYYY')}! Lote ${loteCode}.`);
+      setPagarModal(false);
+      setAgendarModal(false);
+      setModalSelecionados(new Set());
+      setVendedorModal(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao agendar pagamento');
     } finally {
       setIsPaying(false);
     }
@@ -1403,8 +1468,15 @@ export default function ComissoesEmprestimos() {
             </div>
           )}
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setPagarModal(false)} disabled={isPaying}>Cancelar</Button>
+          <DialogFooter className="gap-2 flex flex-col sm:flex-row sm:items-center">
+            <Button variant="outline" onClick={() => setPagarModal(false)} disabled={isPaying} className="sm:mr-auto">Cancelar</Button>
+            <Button
+              variant="outline"
+              disabled={modalSelecionados.size === 0 || isPaying || (formaPagamento === 'PIX' && (!pixVendedor || !pixVendedor.chave))}
+              onClick={() => { setDataAgendamento(moment().format('YYYY-MM-DD')); setAgendarModal(true); }}
+              className="border-amber-500 text-amber-700 hover:bg-amber-50">
+              <Calendar className="w-4 h-4 mr-2" />Agendar
+            </Button>
             <Button
               disabled={modalSelecionados.size === 0 || isPaying || (formaPagamento === 'PIX' && (!pixVendedor || !pixVendedor.chave))}
               onClick={() => setConfirmarModal(true)}
@@ -1517,6 +1589,55 @@ export default function ComissoesEmprestimos() {
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Confirmando...</>
               ) : (
                 <><CheckCircle2 className="w-4 h-4 mr-2" />Confirmar Pagamento</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Agendamento (programar pagamento futuro) */}
+      <Dialog open={agendarModal} onOpenChange={setAgendarModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-amber-600" />
+              Agendar Pagamento
+            </DialogTitle>
+            <p className="text-xs text-slate-500">Escolha a data do pagamento futuro. O lote será criado como "programado" e as comissões permanecerão a pagar até a quitação.</p>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs text-slate-500 font-semibold">Data do pagamento</Label>
+              <Input
+                type="date"
+                value={dataAgendamento}
+                onChange={e => setDataAgendamento(e.target.value)}
+                className="mt-1 text-sm"
+              />
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-xs text-amber-900 space-y-1">
+              <div className="flex justify-between"><span>Vendedor:</span><strong>{vendedorModal?.vendedor_nome || '-'}</strong></div>
+              <div className="flex justify-between"><span>Valor líquido:</span><strong>{fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc + (parseFloat(acrescimoValor) || 0)))}</strong></div>
+              <div className="flex justify-between"><span>Forma:</span><strong>{formaPagamento}</strong></div>
+              {pixVendedor?.chave && (
+                <div className="flex justify-between"><span>Chave PIX:</span><strong className="font-mono">{mascararChavePix(pixVendedor.chave, pixVendedor.tipo)}</strong></div>
+              )}
+              <div className="flex justify-between"><span>Qtd. propostas:</span><strong>{modalSelecionados.size}</strong></div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAgendarModal(false)} disabled={isPaying}>Cancelar</Button>
+            <Button
+              disabled={isPaying || !dataAgendamento}
+              onClick={handleAgendarPagamento}
+              className="bg-amber-600 hover:bg-amber-700 text-white">
+              {isPaying ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Agendando...</>
+              ) : (
+                <><Calendar className="w-4 h-4 mr-2" />Confirmar Agendamento</>
               )}
             </Button>
           </DialogFooter>
