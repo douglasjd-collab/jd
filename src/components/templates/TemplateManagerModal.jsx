@@ -8,6 +8,7 @@ import TemplateForm from './TemplateForm';
 import TemplatePreview from './TemplatePreview';
 import TemplateList from './TemplateList';
 import { normalizeTemplateName } from './templateHelpers';
+import ConectarMetaOficialDialog from './ConectarMetaOficialDialog';
 
 const EMPTY_FORM = {
   id: null,
@@ -38,6 +39,7 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [conectarOpen, setConectarOpen] = useState(false);
 
   const isSuperAdmin = user?.perfil === 'super_admin' || user?.perfil === 'master';
   const isGerentePlus = isSuperAdmin || user?.perfil === 'admin' || user?.perfil === 'gerente';
@@ -344,6 +346,16 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
             )}
           </div>
         </div>
+
+        <ConectarMetaOficialDialog
+          open={conectarOpen}
+          onOpenChange={setConectarOpen}
+          empresaId={empresaId}
+          onSuccess={async () => {
+            setConectarOpen(false);
+            await loadConnections();
+          }}
+        />
 
         {tab === 'criar' && (
           <SheetFooter className="border-t border-slate-200 px-5 py-3 flex-row items-center justify-end gap-2">

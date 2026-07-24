@@ -82,11 +82,27 @@ function buildComponents(template: any): any[] {
   return components;
 }
 
-async function getToken(): Promise<string> {
+const tokenCache: Record<string, string> = {};
+
+async function getToken(empresaId?: string | null, b44?: any): Promise<string> {
+  if (empresaId && tokenCache[empresaId]) return tokenCache[empresaId];
+  // 1) Token gravado pela empresa (Meta Embedded Signup)
+  if (b44 && empresaId) {
+    try {
+      const empresas = await b44.asServiceRole.entities.Empresa.filter({ id: empresaId });
+      const emp = empresas?.[0];
+      if (emp?.whatsapp_access_token) {
+        tokenCache[empresaId] = emp.whatsapp_access_token;
+        return emp.whatsapp_access_token;
+      }
+    } catch {}
+  }
+  // 2) Fallback: token global da app
   const token = Deno.env.get("META_WHATSAPP_ACCESS_TOKEN");
   if (!token) {
-    throw new Error("A credencial da API Oficial está inválida ou sem permissão. (META_WHATSAPP_ACCESS_TOKEN ausente)");
+    throw new Error("Sem credencial de acesso à API Oficial da Meta. Conecte via Meta Embedded Signup ou configure META_WHATSAPP_ACCESS_TOKEN.");
   }
+  if (empresaId) tokenCache[empresaId] = token;
   return token;
 }
 
@@ -107,8 +123,37 @@ Deno.serve(async (req) => {
       const filtro: any = { provider_type: "meta_oficial" };
       if (user.empresa_id) filtro.empresa_id = user.empresa_id;
       const conns = await base44.entities.WhatsappConnection.filter(filtro, null, 200);
-      // Garantir que só retornamos conectadas (mesmo que status antigo tenha sido diferente)
       const ativas = conns.filter((c) => c.status === "conectado");
+
+      // Garantir uma conexão automática quando a empresa já tem credenciais salvas
+      // via Meta Embedded Signup (LoginMetaOficialButton → /meta-login).
+      if (user.empresa_id) {
+        try {
+          const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: user.empresa_id });
+          const emp = empresas?.[0];
+          if (emp && emp.whatsapp_conectado && emp.whatsapp_access_token && emp.whatsapp_business_account_id && emp.whatsapp_phone_number_id) {
+            const jaExiste = ativas.find((c) => {
+              let cfg: any = {};
+              try { cfg = JSON.parse(c.config_json || "{}"); } catch {}
+              return cfg.wabaId === emp.whatsapp_business_account_id || (c.phone_number && emp.meta_display_phone_number && c.phone_number === emp.meta_display_phone_number);
+            });
+            if (!jaExiste) {
+              const cfg = JSON.stringify({ wabaId: emp.whatsapp_business_account_id, phoneNumberId: emp.whatsapp_phone_number_id });
+              const nova = await base44.asServiceRole.entities.WhatsappConnection.create({
+                empresa_id: user.empresa_id,
+                nome: `WhatsApp Oficial — ${emp.meta_verified_name || emp.meta_display_phone_number || "Empresa"}`,
+                provider_type: "meta_oficial",
+                phone_number: emp.meta_display_phone_number || "",
+                status: "conectado",
+                config_json: cfg,
+                is_active: true,
+              });
+              ativas.push(nova);
+            }
+          }
+        } catch {}
+      }
+
       return Response.json({
         connections: ativas.map((c) => ({
           id: c.id,
@@ -116,7 +161,7 @@ Deno.serve(async (req) => {
           phone_number: c.phone_number,
           status: c.status,
           provider_type: c.provider_type,
-          config_json: c.config_json, // pode conter wabaId/phoneNumberId mas token NÃO
+          config_json: c.config_json, // contém wabaId/phoneNumberId; token fica na Empresa
         })),
       });
     }
@@ -177,7 +222,7 @@ Deno.serve(async (req) => {
         components,
       };
 
-      const token = await getToken();
+      const token = await getToken(template.empresa_id, base44);
       try {
         const url = `${META_BASE_URL}/${META_API_VERSION}/${template.waba_id}/message_templates`;
         const res = await fetch(url, {
@@ -252,7 +297,7 @@ Deno.serve(async (req) => {
       if (!template.meta_template_id) {
         return Response.json({ error: "Template ainda não enviado à Meta" }, { status: 400 });
       }
-      const token = await getToken();
+      const token = await getToken(template.empresa_id, base44);
       const res = await fetch(
         `${META_BASE_URL}/${META_API_VERSION}/${template.meta_template_id}`,
         { headers: { Authorization: `Bearer ${token}` } },
@@ -310,7 +355,7 @@ Deno.serve(async (req) => {
       let rejeitados = 0;
       for (const t of pendentes) {
         try {
-          const token = await getToken();
+          const token = await getToken(t.empresa_id, base44);
           const res = await fetch(
             `${META_BASE_URL}/${META_API_VERSION}/${t.meta_template_id}`,
             { headers: { Authorization: `Bearer ${token}` } },

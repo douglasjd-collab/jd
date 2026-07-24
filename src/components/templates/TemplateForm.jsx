@@ -17,7 +17,7 @@ import {
 
 const TIPO_ICONS = { Type, Image: ImageIcon, Video };
 
-export default function TemplateForm({ value, onChange, connections, loadingConnections }) {
+export default function TemplateForm({ value, onChange, connections, loadingConnections, onOpenConnect }) {
   const [varShow, setVarShow] = useState(false);
 
   const update = (patch) => onChange({ ...value, ...patch });
@@ -79,8 +79,17 @@ export default function TemplateForm({ value, onChange, connections, loadingConn
   return (
     <div className="space-y-4">
       {connections.length === 0 && !loadingConnections && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-3 text-xs">
-          Nenhuma conexão da API Oficial conectada. Crie uma conexão do tipo Cloud API / Meta WhatsApp Business Platform para usar este recurso.
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-3 text-xs space-y-2">
+          <div>Nenhuma conexão da API Oficial conectada.</div>
+          {onOpenConnect && (
+            <button
+              type="button"
+              onClick={onOpenConnect}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-md bg-[#10353C] text-white hover:bg-[#1a5060]"
+            >
+              <Plus className="w-3.5 h-3.5" /> Conectar agora
+            </button>
+          )}
         </div>
       )}
 
