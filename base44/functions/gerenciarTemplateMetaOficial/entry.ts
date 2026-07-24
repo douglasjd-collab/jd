@@ -655,7 +655,62 @@ Deno.serve(async (req) => {
     }
 
     // ----------------------------------------------------------------
-    // send_to_meta — cria o template na Meta e marca status em_analise
+    // Helper: diagnosticar fields da conexão para envio de template.
+    // Retorna checks ✓/✗ de cada campo necessário + WABA/phoneNumberId
+    // resolvidos (se possível) e a empresa como fallback.
+    // ----------------------------------------------------------------
+    async function diagnosticarConexao(template: any, b44: any) {
+      const session_id = (template.session_id || "").trim();
+      const connection_id = template.connection_id || "";
+
+      let conn: any = null;
+      if (connection_id) {
+        try { conn = await b44.entities.WhatsappConnection.get(connection_id); } catch {}
+      }
+      const phone_number = (conn?.phone_number || template.phone_number || "").trim();
+      const connStatus = (conn?.status || "").toLowerCase();
+
+      let cfg: any = {};
+      try { cfg = JSON.parse(conn?.config_json || "{}"); } catch {}
+
+      // Tentativa 1: dados no template
+      let waba_id = (template.waba_id || "").trim();
+      let phone_number_id = (template.phone_number_id || "").trim();
+
+      // Tentativa 2: dados no config_json da conexão
+      if (!waba_id && cfg?.wabaId) waba_id = String(cfg.wabaId).trim();
+      if (!phone_number_id && cfg?.phoneNumberId) phone_number_id = String(cfg.phoneNumberId).trim();
+
+      // Tentativa 3: empresa (Meta Embedded Signup)
+      let empresa_waba = "";
+      let empresa_phone = "";
+      if (template.empresa_id) {
+        try {
+          const empresas = await b44.asServiceRole.entities.Empresa.filter({ id: template.empresa_id });
+          const emp = empresas?.[0];
+          if (emp?.whatsapp_business_account_id) empresa_waba = String(emp.whatsapp_business_account_id).trim();
+          if (emp?.whatsapp_phone_number_id) empresa_phone = String(emp.whatsapp_phone_number_id).trim();
+          if (!waba_id && empresa_waba) waba_id = empresa_waba;
+          if (!phone_number_id && empresa_phone) phone_number_id = empresa_phone;
+        } catch {}
+      }
+
+      const checks: { label: string; ok: boolean; valor: string }[] = [
+        { label: "Sessão Cloud API", ok: !!session_id, valor: session_id || "não localizado" },
+        { label: "Conexão ativa", ok: connStatus === "conectado", valor: connStatus ? `status=${connStatus}` : "sem registro de conexão" },
+        { label: "Número encontrado", ok: !!phone_number, valor: phone_number || "não localizado" },
+        { label: "WABA ID", ok: !!waba_id, valor: waba_id || "não localizado" },
+        { label: "Phone Number ID", ok: !!phone_number_id, valor: phone_number_id || "não localizado" },
+      ];
+
+      return { waba_id, phone_number_id, conn, cfg, checks, empresa_waba, empresa_phone };
+    }
+
+    // ----------------------------------------------------------------
+    // send_to_meta — cria o template na Meta e marca status em_analise.
+    // Antes de chamar a Meta, garante waba_id/phone_number_id resolvidos:
+    // template → config da conexão → empresa (Meta Embedded Signup).
+    // Se ainda assim faltar WABA, devolve diagnóstico granular.
     // ----------------------------------------------------------------
     if (action === "send_to_meta") {
       const { template_id } = body;
@@ -664,68 +719,31 @@ Deno.serve(async (req) => {
       if (template.empresa_id !== user.empresa_id && perfil !== "super_admin" && perfil !== "master") {
         return Response.json({ error: "Sem permissão" }, { status: 403 });
       }
-      // Resolução do WABA: a D-API não retorna wabaId na sessão, então o template
-      // pode estar sem waba_id. Resolvemos automaticamente: empresa → conexão
-      // vinculada → qualquer conexão ativa da empresa com wabaId populado.
-      let wabaId = template.waba_id;
-      let wabaSource = "";
+
+      await base44.entities.WhatsappTemplate.update(template_id, {
+        status: "enviando",
+        submitted_at: new Date().toISOString(),
+        rejection_reason: null,
+      });
+
+      // Passo 1: diagnóstico + resolução completa dos campos da conexão.
+      const diag = await diagnosticarConexao(template, base44);
+      let wabaId = diag.waba_id;
+      let phoneNumberId = diag.phone_number_id;
+
+      // Persiste no template os campos resolvidos (acelera próximos envios)
+      const updatesCampos: any = {};
+      if (wabaId && wabaId !== (template.waba_id || "")) updatesCampos.waba_id = wabaId;
+      if (phoneNumberId && phoneNumberId !== (template.phone_number_id || "")) updatesCampos.phone_number_id = phoneNumberId;
+      if (Object.keys(updatesCampos).length > 0) {
+        try { await base44.entities.WhatsappTemplate.update(template_id, updatesCampos); } catch {}
+      }
+
+      // Passo 2: se ainda falta WABA, NÃO bloqueia em mensagem genérica —
+      // devolve o diagnóstico com checks ✓/✗ para o usuário/suporte.
       if (!wabaId) {
-        try {
-          const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: template.empresa_id });
-          const emp = empresas?.[0];
-          if (emp?.whatsapp_business_account_id) {
-            wabaId = emp.whatsapp_business_account_id;
-            wabaSource = "empresa";
-          }
-        } catch {}
-      }
-      if (!wabaId) {
-        // Buscar na conexão vinculada ao template
-        try {
-          const conn = await base44.entities.WhatsappConnection.get(template.connection_id);
-          if (conn?.config_json) {
-            let cfg: any = {};
-            try { cfg = JSON.parse(conn.config_json); } catch {}
-            if (cfg?.wabaId) {
-              wabaId = cfg.wabaId;
-              wabaSource = "conexao_template";
-            }
-          }
-        } catch {}
-      }
-      if (!wabaId && template.empresa_id) {
-        // Último recurso: varrer todas as conexões oficiais ativas da empresa
-        // para encontrar uma com wabaId populado.
-        try {
-          const conns = await base44.entities.WhatsappConnection.filter(
-            { empresa_id: template.empresa_id, provider_type: "dapi" } as any,
-            null,
-            200,
-          );
-          for (const c of conns || []) {
-            let cfg: any = {};
-            try { cfg = JSON.parse(c.config_json || "{}"); } catch {}
-            if (cfg?.wabaId) {
-              wabaId = cfg.wabaId;
-              wabaSource = "conexao_ativa";
-              // Já vincula ao template para acelerar próximos envios
-              try {
-                await base44.entities.WhatsappTemplate.update(template_id, { waba_id: wabaId });
-              } catch {}
-              break;
-            }
-          }
-        } catch {}
-      }
-      if (wabaId && wabaSource) {
-        try {
-          await base44.entities.WhatsappTemplate.update(template_id, { waba_id: wabaId });
-        } catch {}
-      }
-      if (!wabaId) {
-        // Sem WABA: NÃO deixar o template preso em "enviando". Marca como
-        // erro_envio e registra log, já que a Meta nunca será chamada.
-        const motivo = "Não foi possível identificar a conta WhatsApp Business (WABA) desta conexão. Reconecte a conta via Meta Embedded Signup (Robôs e Integrações) ou sincronize as conexões D-API novamente.";
+        const faltando = diag.checks.filter((c) => !c.ok).map((c) => c.label);
+        const motivo = `Falha ao criar template. Verificação da conexão: ${faltando.join(", ")} ausente(s). Clique em "Sincronizar conexão" para atualizar os dados.`;
         await base44.entities.WhatsappTemplate.update(template_id, {
           status: "erro_envio",
           rejection_reason: motivo,
@@ -737,19 +755,24 @@ Deno.serve(async (req) => {
           previous_status: "enviando",
           new_status: "erro_envio",
           error_message: motivo,
+          request_json: JSON.stringify({ checks: diag.checks }),
           user_id: user.id,
           user_name: user.full_name,
         });
         return Response.json(
-          { error: "Sem WABA", http_status: 400, meta_message: motivo, details: motivo },
+          {
+            error: "Conexão incompleta",
+            http_status: 400,
+            meta_message: motivo,
+            diagnostico: {
+              checks: diag.checks,
+              fonte_waba: diag.empresa_waba ? " empresa (Embedded Signup)" : "",
+              sugestao: "Abra 'Robôs e Integrações' → 'Meta (Embedded Signup)' para vincular a conta WhatsApp Business, ou sincronize a conexão D-API.",
+            },
+          },
           { status: 400 },
         );
       }
-
-      await base44.entities.WhatsappTemplate.update(template_id, {
-        status: "enviando",
-        submitted_at: new Date().toISOString(),
-      });
 
       const components = buildComponents(template);
       const payload = {
@@ -884,6 +907,27 @@ Deno.serve(async (req) => {
           { status: 502 },
         );
       }
+    }
+
+    // ----------------------------------------------------------------
+    // sync_status — consulta a Meta e atualiza o status interno
+    // ----------------------------------------------------------------
+    // ----------------------------------------------------------------
+    // diagnostico_template — devolve checks ✓/✗ dos campos da conexão
+    // sem tentar enviar à Meta. Usado pelo botão "Diagnóstico".
+    // ----------------------------------------------------------------
+    if (action === "diagnostico_template") {
+      const { template_id } = body;
+      const template = await base44.entities.WhatsappTemplate.get(template_id);
+      if (!template) return Response.json({ error: "Template não encontrado" }, { status: 404 });
+      const diag = await diagnosticarConexao(template, base44);
+      return Response.json({
+        success: true,
+        checks: diag.checks,
+        waba_id: diag.waba_id,
+        phone_number_id: diag.phone_number_id,
+        fonte_waba: diag.empresa_waba ? "empresa (Embedded Signup)" : "",
+      });
     }
 
     // ----------------------------------------------------------------

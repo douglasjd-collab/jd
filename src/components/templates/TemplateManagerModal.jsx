@@ -136,9 +136,26 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
     }
   }, []);
 
+  // Mostra diagnóstico granular da conexão (checks ✓/✗) quando o backend
+  // devolve um objeto `diagnostico` (campos de WABA/phoneNumberId faltando).
+  const mostrarDiagnosticoConexao = (errData) => {
+    const diag = errData?.diagnostico;
+    if (!diag?.checks) return false;
+    const linhas = diag.checks.map((c) => {
+      const mark = c.ok ? '✓' : '✗';
+      return `${mark} ${c.label}${c.ok ? '' : ' — ' + c.valor}`;
+    });
+    const intro = errData?.meta_message || 'Falha ao criar template.';
+    const rodape = diag.sugestao ? `\n${diag.sugestao}` : '';
+    toast.error(`${intro}\n${linhas.join('\n')}${rodape}`, { duration: 12000 });
+    console.error('Diagnóstico template Meta', diag);
+    return true;
+  };
+
   // Traduz o erro retornado pelo backend em mensagem amigável conforme
   // o código HTTP reportado pela Meta (401/400/409/500).
   const mostrarErroAprovacao = (errData) => {
+    if (mostrarDiagnosticoConexao(errData)) return; // já exibiu checks granulares
     const httpStatus = errData?.http_status || errData?.status;
     const metaMessage = errData?.meta_message || errData?.error;
     let msg = 'Não foi possível enviar o template para a Meta.';
