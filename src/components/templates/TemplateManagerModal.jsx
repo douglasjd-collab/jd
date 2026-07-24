@@ -393,7 +393,7 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
         side="right"
         className="w-[min(1200px,95vw)] sm:max-w-none p-0 flex flex-col"
       >
-        <SheetHeader className="px-5 py-3 border-b border-slate-200 flex-row items-center justify-between">
+        <SheetHeader className="px-5 py-3 pr-12 border-b border-slate-200 flex-row items-center justify-between">
           <SheetTitle className="text-base font-bold">Gerenciar Templates da API Oficial</SheetTitle>
           <div className="flex items-center gap-2">
             <button
