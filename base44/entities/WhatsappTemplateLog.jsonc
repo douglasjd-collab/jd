@@ -1,0 +1,77 @@
+{
+  "name": "WhatsappTemplateLog",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa (denormalizado para RLS)"
+    },
+    "template_id": {
+      "type": "string",
+      "description": "ID do WhatsappTemplate vinculado"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "criar",
+        "atualizar",
+        "enviar_aprovacao",
+        "sincronizar_status",
+        "excluir_rascunho",
+        "duplicar",
+        "enviar_mensagem",
+        "pausar",
+        "reativar",
+        "upload_midia"
+      ],
+      "description": "A\u00e7\u00e3o realizada sobre o template"
+    },
+    "previous_status": {
+      "type": "string",
+      "description": "Status anterior \u00e0 a\u00e7\u00e3o"
+    },
+    "new_status": {
+      "type": "string",
+      "description": "Novo status ap\u00f3s a a\u00e7\u00e3o"
+    },
+    "request_json": {
+      "type": "string",
+      "description": "JSON do payload enviado \u00e0 Meta (sem credenciais)"
+    },
+    "response_json": {
+      "type": "string",
+      "description": "JSON da resposta da Meta"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Mensagem de erro caso a a\u00e7\u00e3o tenha falhado"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que executou a a\u00e7\u00e3o"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio que executou a a\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "template_id",
+    "action"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; if (['parceiro'].includes(user.perfil)) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return false;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

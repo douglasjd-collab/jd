@@ -1,0 +1,199 @@
+{
+  "name": "WhatsappTemplate",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa propriet\u00e1ria da conex\u00e3o"
+    },
+    "connection_id": {
+      "type": "string",
+      "description": "ID da WhatsappConnection (API Oficial) vinculada"
+    },
+    "connection_nome": {
+      "type": "string",
+      "description": "Nome da conex\u00e3o (denormalizado)"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "sessionId da D-API / Cloud API session"
+    },
+    "waba_id": {
+      "type": "string",
+      "description": "WhatsApp Business Account ID vinculado \u00e0 conex\u00e3o"
+    },
+    "phone_number_id": {
+      "type": "string",
+      "description": "Phone Number ID da conex\u00e3o"
+    },
+    "meta_template_id": {
+      "type": "string",
+      "description": "ID retornado pela Meta ao criar o template"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nome do template (min\u00fasculo, underline, sem espa\u00e7os/acentos)"
+    },
+    "display_name": {
+      "type": "string",
+      "description": "Nome amig\u00e1vel para exibi\u00e7\u00e3o no CRM"
+    },
+    "language": {
+      "type": "string",
+      "default": "pt_BR",
+      "description": "C\u00f3digo do idioma (pt_BR, pt_PT, en_US, es)"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "UTILITY",
+        "MARKETING",
+        "AUTHENTICATION"
+      ],
+      "description": "Categoria Meta: UTILITY, MARKETING, AUTHENTICATION"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "TEXT",
+        "IMAGE",
+        "VIDEO"
+      ],
+      "default": "TEXT",
+      "description": "Tipo do template conforme Header format na Meta"
+    },
+    "header_type": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "TEXT",
+        "IMAGE",
+        "VIDEO"
+      ],
+      "default": "NONE",
+      "description": "Tipo do cabe\u00e7alho do template"
+    },
+    "header_text": {
+      "type": "string",
+      "description": "Texto do cabe\u00e7alho (quando header_type=TEXT)"
+    },
+    "header_media_url": {
+      "type": "string",
+      "description": "URL p\u00fablica/interna protegida da m\u00eddia do cabe\u00e7alho"
+    },
+    "header_media_id": {
+      "type": "string",
+      "description": "Identificador (handle) da m\u00eddia retornado pela Meta"
+    },
+    "header_media_mime": {
+      "type": "string",
+      "description": "MIME type do arquivo de m\u00eddia (valida\u00e7\u00e3o real)"
+    },
+    "header_media_name": {
+      "type": "string",
+      "description": "Nome original do arquivo enviado"
+    },
+    "header_media_size": {
+      "type": "number",
+      "description": "Tamanho do arquivo em bytes"
+    },
+    "body_text": {
+      "type": "string",
+      "description": "Corpo da mensagem (com vari\u00e1veis {{1}}, {{2}}...)"
+    },
+    "footer_text": {
+      "type": "string",
+      "description": "Rodap\u00e9 da mensagem (m\u00e1x 60 chars, sem vari\u00e1veis)"
+    },
+    "components_json": {
+      "type": "string",
+      "description": "JSON completo dos components enviados para a Meta"
+    },
+    "buttons_json": {
+      "type": "string",
+      "description": "JSON array com os bot\u00f5es (QUICK_REPLY/URL/PHONE_NUMBER)"
+    },
+    "variables_json": {
+      "type": "string",
+      "description": "JSON array com as vari\u00e1veis {{n}} e seus valores de exemplo/crmField"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "rascunho",
+        "enviando",
+        "em_analise",
+        "aprovado",
+        "rejeitado",
+        "pausado",
+        "desativado",
+        "erro_envio"
+      ],
+      "default": "rascunho",
+      "description": "Status interno do template no CRM"
+    },
+    "rejection_reason": {
+      "type": "string",
+      "description": "Motivo retornado pela Meta em caso de rejei\u00e7\u00e3o"
+    },
+    "quality_rating": {
+      "type": "string",
+      "description": "Avalia\u00e7\u00e3o de qualidade retornada pela Meta (GREEN/YELLOW/RED)"
+    },
+    "created_by_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que criou o template"
+    },
+    "created_by_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio que criou o template"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora em que foi enviado para an\u00e1lise da Meta"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora em que foi aprovado pela Meta"
+    },
+    "rejected_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora em que foi rejeitado pela Meta"
+    },
+    "last_synced_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora da \u00faltima sincroniza\u00e7\u00e3o de status"
+    },
+    "deleted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora em que foi exclu\u00eddo (soft delete \u2014 rascunhos)"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "connection_id",
+    "name",
+    "language",
+    "category",
+    "status"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; if (['parceiro'].includes(user.perfil)) return false; if (['vendedor','colaborador','funcionario','colaborador_vendedor'].includes(user.perfil)) return record.empresa_id === user.empresa_id && record.status === 'aprovado'; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    }
+  }
+}
