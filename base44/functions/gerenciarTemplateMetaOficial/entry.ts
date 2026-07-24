@@ -131,6 +131,217 @@ function buildComponents(template: any): any[] {
   return components;
 }
 
+// Mapeia o status retornado pela Meta para o status interno do CRM.
+function mapMetaStatusToCrm(metaStatus: string): string {
+  const mapping: Record<string, string> = {
+    APPROVED: "aprovado",
+    REJECTED: "rejeitado",
+    PENDING: "em_analise",
+    IN_APPEAL: "em_analise",
+    PAUSED: "pausado",
+    DISABLED: "desativado",
+  };
+  return mapping[(metaStatus || "").toUpperCase()] || "em_analise";
+}
+
+// Deriva o tipo (TEXT/IMAGE/VIDEO) e header_type a partir dos components locais.
+function deriveTypeFromComponents(comps: any[]): { type: string; header_type: string } {
+  const header = (comps || []).find((c: any) => c.type === "HEADER");
+  if (header) {
+    if (header.format === "IMAGE") return { type: "IMAGE", header_type: "IMAGE" };
+    if (header.format === "VIDEO") return { type: "VIDEO", header_type: "VIDEO" };
+    if (header.format === "TEXT") return { type: "TEXT", header_type: "TEXT" };
+  }
+  return { type: "TEXT", header_type: "NONE" };
+}
+
+// Extrai body_text / footer_text / buttons / header_text dos components
+function extractTextsFromComponents(comps: any[]) {
+  const out: any = { body_text: "", footer_text: "", header_text: "", buttons: [] };
+  for (const c of comps || []) {
+    if (c.type === "BODY" && typeof c.text === "string") out.body_text = c.text;
+    if (c.type === "FOOTER" && typeof c.text === "string") out.footer_text = c.text;
+    if (c.type === "HEADER" && c.format === "TEXT" && typeof c.text === "string") out.header_text = c.text;
+    if (c.type === "BUTTONS" && Array.isArray(c.buttons)) out.buttons = c.buttons;
+  }
+  return out;
+}
+
+// Lista TODOS os templates de uma WABA com paginação (limite de paginação ~100).
+async function listWabaTemplates(wabaId: string, token: string): Promise<any[]> {
+  const all: any[] = [];
+  let url: string | null =
+    `${META_BASE_URL}/${META_API_VERSION}/${wabaId}/message_templates?limit=250`;
+  let guard = 0;
+  while (url && guard < 20) {
+    guard++;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) break;
+    const data = await res.json().catch(() => ({}));
+    if (Array.isArray(data?.data)) all.push(...data.data);
+    url = data?.paging?.next || null;
+  }
+  return all;
+}
+
+// Sincroniza: importa templates da Meta que ainda não existem no CRM.
+// Reúne todas as conexões oficiais da empresa com waba_id resolvido,
+// conforme especificado: "Caso o template exista na Meta e não exista no
+// banco do CRM, importá-lo automaticamente."
+async function syncTemplatesFromMeta(
+  empresaId: string,
+  b44: any,
+): Promise<{
+  imported: number;
+  totalInMeta: number;
+  totalInCrm: number;
+}> {
+  // Identifica wabas disponíveis (de empresa + conexões oficiais)
+  const wabaSet = new Set<string>();
+  let fallbackConnectionId: string | null = null;
+  let fallbackConnName = "";
+
+  // 1) Token da empresa e waba diretamente cadastrado
+  let token: string | null = null;
+  if (empresaId) {
+    try {
+      const empresas = await b44.asServiceRole.entities.Empresa.filter({ id: empresaId });
+      const emp = empresas?.[0];
+      if (emp?.whatsapp_business_account_id) wabaSet.add(emp.whatsapp_business_account_id);
+      if (emp?.whatsapp_access_token) token = emp.whatsapp_access_token;
+    } catch {}
+  }
+  if (!token) {
+    try { token = await getToken(empresaId, b44); } catch {}
+  }
+
+  // 2) Conexões oficiais da empresa (D-API ou Meta oficial)
+  const connFilter = empresaId ? { empresa_id: empresaId } : {};
+  const connections = await b44.entities.WhatsappConnection.filter(connFilter, null, 200);
+  for (const c of connections || []) {
+    if (c.provider_type !== "meta_oficial" && c.provider_type !== "dapi") continue;
+    if (!fallbackConnectionId) {
+      fallbackConnectionId = c.id;
+      fallbackConnName = c.nome;
+    }
+    let cfg: any = {};
+    try { cfg = JSON.parse(c.config_json || "{}"); } catch {}
+    if (cfg?.wabaId) wabaSet.add(cfg.wabaId);
+  }
+
+  if (wabaSet.size === 0 || !token) {
+    // Sem WABA ou sem token — não há o que sincronizar.
+    const existing = await b44.entities.WhatsappTemplate.filter(
+      empresaId ? { empresa_id: empresaId } : {},
+      null,
+      500,
+    );
+    return { imported: 0, totalInMeta: 0, totalInCrm: existing.length };
+  }
+
+  // Templates já cadastrados no CRM (empresa)
+  const crmTemplates = await b44.entities.WhatsappTemplate.filter(
+    empresaId ? { empresa_id: empresaId } : {},
+    null,
+    500,
+  );
+  const crmIndex = new Set(
+    crmTemplates.map((t) => `${(t.name || "").toLowerCase()}|${(t.language || "pt_BR").toLowerCase()}`),
+  );
+
+  // Coleta todos os templates de cada WABA
+  const allMetaTemplates: any[] = [];
+  for (const wabaId of wabaSet) {
+    try {
+      const items = await listWabaTemplates(wabaId, token!);
+      allMetaTemplates.push(...items);
+    } catch {}
+  }
+
+  const toCreate: any[] = [];
+  const defaultConn = fallbackConnectionId || connections?.[0]?.id || null;
+  const defaultConnName = fallbackConnName || connections?.[0]?.nome || "";
+
+  for (const m of allMetaTemplates) {
+    const name = (m.name || "").toLowerCase();
+    if (!name) continue;
+    const language = m.language || "pt_BR";
+    const key = `${name}|${language}`;
+    if (crmIndex.has(key)) {
+      // Atualiza meta_template_id / status se faltarem (preserva dados do CRM)
+      const existing = crmTemplates.find(
+        (t) => (t.name || "").toLowerCase() === name && (t.language || "") === language,
+      );
+      if (existing && !existing.meta_template_id && m.id) {
+        try {
+          await b44.entities.WhatsappTemplate.update(existing.id, {
+            meta_template_id: m.id,
+            status: mapMetaStatusToCrm(m.status),
+            last_synced_at: new Date().toISOString(),
+          });
+        } catch {}
+      }
+      continue;
+    }
+    // Criar novo template importado da Meta
+    const components = Array.isArray(m.components) ? m.components : [];
+    const { type, header_type } = deriveTypeFromComponents(components);
+    const texts = extractTextsFromComponents(components);
+    toCreate.push({
+      empresa_id: empresaId,
+      connection_id: defaultConn,
+      connection_nome: defaultConnName,
+      name: m.name,
+      display_name: m.name,
+      meta_template_id: m.id,
+      language: m.language,
+      category: m.category || "UTILITY",
+      type,
+      header_type,
+      header_text: type === "TEXT" ? texts.header_text : null,
+      body_text: texts.body_text,
+      footer_text: texts.footer_text,
+      buttons_json: JSON.stringify(texts.buttons || []),
+      components_json: JSON.stringify(components),
+      status: mapMetaStatusToCrm(m.status),
+      quality_rating: m.quality_rating || null,
+      rejection_reason: m.rejected_reason || null,
+      submitted_at: m.created_time ? new Date(m.created_time).toISOString() : null,
+      last_synced_at: new Date().toISOString(),
+      created_by_id: null,
+      created_by_nome: "Importado da Meta",
+    });
+  }
+
+  if (toCreate.length > 0) {
+    try {
+      await b44.entities.WhatsappTemplate.bulkCreate(toCreate);
+    } catch {
+      // Em caso de erro de bulk, tenta criar individualmente
+      for (const t of toCreate) {
+        try { await b44.entities.WhatsappTemplate.create(t); } catch {}
+      }
+    }
+    await b44.entities.WhatsappTemplateLog.create({
+      empresa_id: empresaId,
+      template_id: null,
+      action: "sincronizar_status",
+      previous_status: null,
+      new_status: "importado",
+      request_json: JSON.stringify({ action: "sync_templates_from_meta", count: toCreate.length }),
+      response_json: JSON.stringify({ imported: toCreate.length }),
+      user_id: empresaId,
+      user_name: "system",
+    }).catch(() => {});
+  }
+
+  return {
+    imported: toCreate.length,
+    totalInMeta: allMetaTemplates.length,
+    totalInCrm: crmTemplates.length + toCreate.length,
+  };
+}
+
 const tokenCache: Record<string, string> = {};
 
 async function getToken(empresaId?: string | null, b44?: any): Promise<string> {
@@ -509,10 +720,63 @@ Deno.serve(async (req) => {
           body: JSON.stringify(payload),
         });
         const data = await res.json();
+
+        // --- Ramo de ERRO ---
         if (!res.ok) {
-          throw new Error(JSON.stringify(data.error || data));
+          const metaErr = data?.error || null;
+          const metaMsg =
+            (metaErr?.message && String(metaErr.message)) ||
+            (data?.error?.error_user_msg && String(data.error.error_user_msg)) ||
+            "";
+          const metaCode = metaErr?.code ? Number(metaErr.code) : null;
+          const subCode = metaErr?.error_subcode ? Number(metaErr.error_subcode) : null;
+          // Conflito (nome/idioma duplicados) — Meta normalmente responde 400
+          // com subcode 2312001, ou mensagem contendo "already existe"/"duplicate"/"já existe".
+          const isDuplicate =
+            (metaCode === 400 &&
+              (/already exist|já existe|duplicate|duplicad|name has been used/i.test(metaMsg) ||
+                subCode === 2312001)) ||
+            (metaMsg || "").toLowerCase().includes("already exists");
+
+          const httpStatus = isDuplicate
+            ? 409
+            : res.status === 401 || res.status === 400 || res.status === 500
+              ? res.status
+              : 502;
+
+          const motivo = `HTTP ${httpStatus}${metaCode ? ` | META_CODE=${metaCode}` : ""}${subCode ? ` | SUBCODE=${subCode}` : ""} | ${metaMsg || "Sem mensagem da Meta"}`;
+
+          await base44.entities.WhatsappTemplate.update(template_id, {
+            status: "erro_envio",
+            rejection_reason: motivo,
+          });
+          // Sempre registra request, response, código HTTP e mensagem da Meta
+          await base44.entities.WhatsappTemplateLog.create({
+            empresa_id: template.empresa_id,
+            template_id,
+            action: "enviar_aprovacao",
+            previous_status: "enviando",
+            new_status: "erro_envio",
+            request_json: JSON.stringify(payload),
+            response_json: JSON.stringify(data),
+            error_message: motivo,
+            user_id: user.id,
+            user_name: user.full_name,
+          });
+          return Response.json(
+            {
+              error: metaMsg || "Não foi possível enviar o template para a Meta.",
+              http_status: httpStatus,
+              meta_code: metaCode,
+              meta_subcode: subCode,
+              meta_message: metaMsg,
+              details: JSON.stringify(metaErr || data),
+            },
+            { status: httpStatus },
+          );
         }
 
+        // --- Ramo de SUCESSO ---
         await base44.entities.WhatsappTemplate.update(template_id, {
           meta_template_id: data.id,
           status: "em_analise",
@@ -529,6 +793,13 @@ Deno.serve(async (req) => {
           user_id: user.id,
           user_name: user.full_name,
         });
+
+        // Sincroniza templates da Meta logo após o envio — caso o template
+        // recém-criado precise "reaparecer" ou haja templates órfãos no CRM.
+        try {
+          await syncTemplatesFromMeta(template.empresa_id, base44);
+        } catch {}
+
         return Response.json({
           success: true,
           meta_id: data.id,
@@ -536,7 +807,7 @@ Deno.serve(async (req) => {
           message: "Template enviado para análise da Meta.",
         });
       } catch (err) {
-        const motivo = err.message || "Erro desconhecido";
+        const motivo = err?.message || "Erro de rede ao contatar a Meta.";
         await base44.entities.WhatsappTemplate.update(template_id, {
           status: "erro_envio",
           rejection_reason: motivo,
@@ -552,10 +823,15 @@ Deno.serve(async (req) => {
           user_id: user.id,
           user_name: user.full_name,
         });
-        return Response.json({
-          error: "Não foi possível enviar o template para análise da Meta.",
-          details: motivo,
-        }, { status: 502 });
+        return Response.json(
+          {
+            error: "Erro ao contatar a Meta (provável problema de rede).",
+            http_status: 502,
+            meta_message: motivo,
+            details: motivo,
+          },
+          { status: 502 },
+        );
       }
     }
 
@@ -653,6 +929,24 @@ Deno.serve(async (req) => {
         } catch {}
       }
       return Response.json({ success: true, processados, aprovados, rejeitados });
+    }
+
+    // ----------------------------------------------------------------
+    // sync_templates_from_meta — consulta todos os templates na WABA da
+    // empresa e importa automaticamente qualquer template que exista na
+    // Meta mas ainda não exista no CRM. Garante que a lista de templates
+    // nunca fique vazia se houver templates aprovados na conta da Meta.
+    // ----------------------------------------------------------------
+    if (action === "sync_templates_from_meta") {
+      try {
+        const result = await syncTemplatesFromMeta(user.empresa_id, base44);
+        return Response.json({ success: true, ...result });
+      } catch (e: any) {
+        return Response.json(
+          { success: false, error: e?.message || "Falha ao sincronizar templates da Meta" },
+          { status: 502 },
+        );
+      }
     }
 
     // ----------------------------------------------------------------

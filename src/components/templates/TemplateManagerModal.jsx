@@ -111,22 +111,72 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
       const filter = isSuperAdmin ? {} : (empresaId ? { empresa_id: empresaId } : {});
       const items = await base44.entities.WhatsappTemplate.filter(filter, '-created_date', 200);
       setTemplates(items);
+      return items;
     } catch (e) {
       console.error('loadTemplates', e);
       setTemplates([]);
+      return [];
     } finally {
       setLoadingTemplates(false);
     }
   }, [empresaId, isSuperAdmin]);
 
+  // Importa automaticamente templates que existem na Meta mas não no CRM.
+  // Garante que a aba "Meus Templates" nunca fique vazia se a conta da
+  // Meta já tiver templates (criados inclusive via Embedded Signup).
+  const syncTemplatesFromMeta = useCallback(async () => {
+    try {
+      const res = await base44.functions.invoke('gerenciarTemplateMetaOficial', {
+        action: 'sync_templates_from_meta',
+      });
+      return res?.data?.imported || 0;
+    } catch (e) {
+      console.error('sync_templates_from_meta', e);
+      return 0;
+    }
+  }, []);
+
+  // Traduz o erro retornado pelo backend em mensagem amigável conforme
+  // o código HTTP reportado pela Meta (401/400/409/500).
+  const mostrarErroAprovacao = (errData) => {
+    const httpStatus = errData?.http_status || errData?.status;
+    const metaMessage = errData?.meta_message || errData?.error;
+    let msg = 'Não foi possível enviar o template para a Meta.';
+    if (httpStatus === 401) {
+      msg = '401 — Credencial inválida. Reconecte a conta na Meta (Embedded Signup).';
+    } else if (httpStatus === 409) {
+      msg = '409 — Já existe um template com esse nome na conta da Meta.';
+    } else if (httpStatus === 400) {
+      msg = `400 — Template inválido. ${metaMessage || 'Verifique os campos do template.'}`;
+    } else if (httpStatus === 500) {
+      msg = '500 — Erro interno do servidor na Meta. Tente novamente em instantes.';
+    } else if (metaMessage) {
+      msg = metaMessage;
+    }
+    toast.error(msg);
+    console.error('Erro Envio Template Meta', errData);
+  };
+
   useEffect(() => {
+    let mounted = true;
     if (open) {
       loadConnections();
-      loadTemplates();
+      loadTemplates().then(async (items) => {
+        if (!mounted) return;
+        // Requisito: a tela "Templates" nunca deve ficar vazia se existirem
+        // templates na conta da Meta. Se o CRM estiver vazio, sincroniza.
+        if (!items || items.length === 0) {
+          const imported = await syncTemplatesFromMeta();
+          if (imported > 0) {
+            await loadTemplates();
+          }
+        }
+      });
     } else {
       setForm(EMPTY_FORM);
       setTab('criar');
     }
+    return () => { mounted = false; };
   }, [open]);
 
   const handleEdit = (t) => {
@@ -296,22 +346,31 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
         });
       }
 
-      // 3) Envia para a Meta via backend
+      // 3) Envia imediatamente para a Meta via backend
       const res = await base44.functions.invoke('gerenciarTemplateMetaOficial', {
         action: 'send_to_meta',
         template_id: templateId,
       });
       if (res?.data?.success) {
-        toast.success('Template enviado para análise da Meta.');
-        await loadTemplates();
+        // 4) Salvou metaTemplateId, status retornado e data de envio (já feitos no backend).
+        // 8) Após criar o template, sincronizar automaticamente os templates da conexão.
+        await syncTemplatesFromMeta();
+        const updated = await loadTemplates();
+        if (!updated || updated.length === 0) {
+          toast.success('Template enviado para análise da Meta (aba Meus Templates).');
+        } else {
+          toast.success('Template enviado para análise da Meta.');
+        }
         setForm(EMPTY_FORM);
+        // 5) Abrir automaticamente a aba "Meus Templates".
         setTab('meus');
       } else {
-        toast.error(res?.data?.error || 'Não foi possível enviar para análise da Meta.');
+        // 7) Caso ocorra erro: mostrar o erro retornado pela API, nunca esconder.
+        mostrarErroAprovacao(res?.data);
       }
     } catch (e) {
-      const msg = e?.response?.data?.message || e?.message || '';
-      toast.error(`Erro ao enviar: ${msg}`);
+      const errData = e?.response?.data || e;
+      mostrarErroAprovacao(errData);
     } finally {
       setIsSending(false);
     }
@@ -394,6 +453,15 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
                 loading={loadingTemplates}
                 onEdit={handleEdit}
                 onRefresh={loadTemplates}
+                onSyncFromMeta={async () => {
+                  const imported = await syncTemplatesFromMeta();
+                  if (imported > 0) {
+                    toast.success(`${imported} template(s) importado(s) da Meta.`);
+                    await loadTemplates();
+                  } else {
+                    toast('Nenhum template novo encontrado na Meta.', { icon: 'ℹ️' });
+                  }
+                }}
               />
             )}
           </div>
@@ -427,7 +495,7 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
               className="bg-[#10353C] hover:bg-[#1a5060] text-white"
             >
               {isSending
-                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando template para análise...</>
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando template para aprovação...</>
                 : <><Send className="w-4 h-4 mr-2" /> Enviar para aprovação</>}
             </Button>
           </SheetFooter>

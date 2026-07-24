@@ -12,11 +12,12 @@ const FILTROS = [
   { value: 'rejeitado', label: 'Rejeitados' },
 ];
 
-export default function TemplateList({ templates, loading, onEdit, onRefresh }) {
+export default function TemplateList({ templates, loading, onEdit, onRefresh, onSyncFromMeta }) {
   const [filtro, setFiltro] = useState('todos');
   const [syncingId, setSyncingId] = useState(null);
   const [dupId, setDupId] = useState(null);
   const [delId, setDelId] = useState(null);
+  const [importingMeta, setImportingMeta] = useState(false);
 
   const filtrados = filtro === 'todos'
     ? templates
@@ -118,7 +119,21 @@ export default function TemplateList({ templates, loading, onEdit, onRefresh }) 
         </div>
       ) : filtrados.length === 0 ? (
         <div className="text-center py-10 text-slate-400 text-sm">
-          Nenhum template encontrado.
+          <div className="mb-3">Nenhum template encontrado no CRM.</div>
+          {onSyncFromMeta && (
+            <button
+              onClick={async () => {
+                setImportingMeta(true);
+                await onSyncFromMeta();
+                setImportingMeta(false);
+              }}
+              disabled={importingMeta}
+              className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"
+            >
+              {importingMeta ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+              Importar da Meta
+            </button>
+          )}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-slate-200">
