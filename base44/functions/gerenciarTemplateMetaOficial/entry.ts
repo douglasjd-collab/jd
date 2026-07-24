@@ -1112,8 +1112,8 @@ Deno.serve(async (req) => {
       if (!t || (t.empresa_id !== user.empresa_id && perfil !== "super_admin" && perfil !== "master")) {
         return Response.json({ error: "Sem permissão" }, { status: 403 });
       }
-      if (t.status !== "rascunho") {
-        return Response.json({ error: "Apenas rascunhos podem ser excluídos" }, { status: 400 });
+      if (!["rascunho", "erro_envio"].includes(t.status)) {
+        return Response.json({ error: "Apenas rascunhos ou templates com erro de envio podem ser excluídos" }, { status: 400 });
       }
       const vars = await base44.entities.WhatsappTemplateVariable.filter({ template_id, empresa_id: t.empresa_id }, null, 100);
       for (const v of vars) {
