@@ -417,8 +417,6 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario', 'colaborador_vendedor', 'parceiro'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
     { name: 'Robôs e Integrações', icon: Zap, page: 'RobosIntegracoes', roles: ['master', 'super_admin', 'admin'] },
-    { name: 'Monitoramento Instâncias', icon: Activity, page: 'MonitoramentoInstancias', roles: ['master', 'super_admin', 'admin'] },
-    { name: 'Logs Webhook D-API', icon: Zap, page: 'LogsWebhookDapi', roles: ['master', 'super_admin', 'admin'] },
     { 
       name: 'Campanhas', 
       icon: Send, 
