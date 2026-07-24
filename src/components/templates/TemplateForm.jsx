@@ -14,10 +14,11 @@ import {
   EXAMPLE_DEFAULTS,
   extractVariablePositions,
 } from './templateHelpers';
+import TemplateMediaUploader from './TemplateMediaUploader';
 
 const TIPO_ICONS = { Type, Image: ImageIcon, Video };
 
-export default function TemplateForm({ value, onChange, connections, loadingConnections, onOpenConnect, onSync, syncing }) {
+export default function TemplateForm({ value, onChange, connections, loadingConnections, onOpenConnect, onSync, syncing, empresaId }) {
   const [varShow, setVarShow] = useState(false);
 
   const update = (patch) => onChange({ ...value, ...patch });
@@ -238,8 +239,21 @@ export default function TemplateForm({ value, onChange, connections, loadingConn
         </div>
       )}
       {(value.type === 'IMAGE' || value.type === 'VIDEO') && (
-        <div className="bg-slate-50 border border-dashed border-slate-300 rounded-md p-4 text-center text-xs text-slate-500">
-          {value.type === 'IMAGE' ? '🖼️ Upload de imagem' : '🎬 Upload de vídeo'} — disponível em breve. Selecione "Somente texto" para enviar agora.
+        <div>
+          <Label className="text-xs font-semibold text-slate-700">
+            {value.type === 'IMAGE' ? 'Imagem do cabeçalho *' : 'Vídeo do cabeçalho *'}
+          </Label>
+          <TemplateMediaUploader
+            type={value.type}
+            empresaId={empresaId}
+            value={value}
+            onChange={update}
+          />
+          <div className="text-[10px] text-slate-500 mt-0.5">
+            {value.type === 'IMAGE'
+              ? 'Mínimo 50×50px. A imagem é enviada para a biblioteca de mídia da Meta antes de submeter o template.'
+              : 'Vídeo H.264/MP4. O vídeo é enviado para a biblioteca de mídia da Meta antes de submeter o template.'}
+          </div>
         </div>
       )}
 

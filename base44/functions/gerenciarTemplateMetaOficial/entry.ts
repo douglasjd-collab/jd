@@ -453,8 +453,35 @@ Deno.serve(async (req) => {
       if (template.empresa_id !== user.empresa_id && perfil !== "super_admin" && perfil !== "master") {
         return Response.json({ error: "Sem permissão" }, { status: 403 });
       }
-      if (!template.waba_id) {
-        return Response.json({ error: "Não foi possível identificar a conta WhatsApp Business desta conexão." }, { status: 400 });
+      // Resolução do WABA: a D-API não retorna wabaId na sessão, então o template
+      // pode estar sem waba_id. Resolvemos automaticamente a partir da empresa.
+      let wabaId = template.waba_id;
+      if (!wabaId) {
+        try {
+          const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: template.empresa_id });
+          const emp = empresas?.[0];
+          if (emp?.whatsapp_business_account_id) {
+            wabaId = emp.whatsapp_business_account_id;
+            await base44.entities.WhatsappTemplate.update(template_id, { waba_id: wabaId });
+          }
+        } catch {}
+      }
+      if (!wabaId) {
+        // Último recurso: buscar na conexão vinculada
+        try {
+          const conn = await base44.entities.WhatsappConnection.get(template.connection_id);
+          if (conn?.config_json) {
+            let cfg: any = {};
+            try { cfg = JSON.parse(conn.config_json); } catch {}
+            if (cfg?.wabaId) {
+              wabaId = cfg.wabaId;
+              await base44.entities.WhatsappTemplate.update(template_id, { waba_id: wabaId });
+            }
+          }
+        } catch {}
+      }
+      if (!wabaId) {
+        return Response.json({ error: "Não foi possível identificar a conta WhatsApp Business (WABA) desta conexão. Reconecte a conta via Meta Embedded Signup ou sincronize novamente." }, { status: 400 });
       }
 
       await base44.entities.WhatsappTemplate.update(template_id, {
@@ -472,7 +499,7 @@ Deno.serve(async (req) => {
 
       const token = await getToken(template.empresa_id, base44);
       try {
-        const url = `${META_BASE_URL}/${META_API_VERSION}/${template.waba_id}/message_templates`;
+        const url = `${META_BASE_URL}/${META_API_VERSION}/${wabaId}/message_templates`;
         const res = await fetch(url, {
           method: "POST",
           headers: {

@@ -52,14 +52,14 @@ export const TIPOS = [
     label: 'Texto + imagem',
     desc: 'Imagem no cabeçalho, corpo, rodapé e botões.',
     icon: 'Image',
-    enabled: false,
+    enabled: true,
   },
   {
     value: 'VIDEO',
     label: 'Texto + vídeo',
     desc: 'Vídeo no cabeçalho, corpo, rodapé e botões.',
     icon: 'Video',
-    enabled: false,
+    enabled: true,
   },
 ];
 

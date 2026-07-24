@@ -20,6 +20,10 @@ const EMPTY_FORM = {
   type: 'TEXT',
   header_text: '',
   header_media_url: '',
+  header_media_id: '',
+  header_media_mime: '',
+  header_media_name: '',
+  header_media_size: null,
   body_text: '',
   footer_text: '',
   buttons: [],
@@ -140,6 +144,10 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
       type: t.type || 'TEXT',
       header_text: t.header_text || '',
       header_media_url: t.header_media_url || '',
+      header_media_id: t.header_media_id || '',
+      header_media_mime: t.header_media_mime || '',
+      header_media_name: t.header_media_name || '',
+      header_media_size: t.header_media_size ?? null,
       body_text: t.body_text || '',
       footer_text: t.footer_text || '',
       buttons: parsedButtons,
@@ -177,6 +185,9 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
   if (form.footer_text && /\{\{(\d+)\}\}/.test(form.footer_text)) {
     erros.push('rodapé não pode conter variáveis');
   }
+  if ((form.type === 'IMAGE' || form.type === 'VIDEO') && !form.header_media_id) {
+    erros.push(`envie a ${form.type === 'IMAGE' ? 'imagem' : 'vídeo'} do cabeçalho`);
+  }
 
   const buildTemplateRecord = (status) => {
     const conn = connections.find((c) => c.id === form.connection_id);
@@ -194,6 +205,11 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
       type: form.type,
       header_type: form.type === 'TEXT' ? (form.header_text ? 'TEXT' : 'NONE') : form.type,
       header_text: form.type === 'TEXT' ? form.header_text : null,
+      header_media_url: form.type === 'TEXT' ? null : (form.header_media_url || null),
+      header_media_id: form.type === 'TEXT' ? null : (form.header_media_id || null),
+      header_media_mime: form.type === 'TEXT' ? null : (form.header_media_mime || null),
+      header_media_name: form.type === 'TEXT' ? null : (form.header_media_name || null),
+      header_media_size: form.type === 'TEXT' ? null : (form.header_media_size ?? null),
       body_text: form.body_text,
       footer_text: form.footer_text,
       buttons_json: JSON.stringify(form.buttons || []),
@@ -356,6 +372,7 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
                     onOpenConnect={() => setConectarOpen(true)}
                     onSync={handleSyncConnections}
                     syncing={syncingConnections}
+                    empresaId={empresaId}
                   />
                 </div>
                 <div className="lg:sticky lg:top-5">
