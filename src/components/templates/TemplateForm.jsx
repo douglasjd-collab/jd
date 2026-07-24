@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Type, Image as ImageIcon, Video, Plus, X, Trash2 } from 'lucide-react';
+import { Type, Image as ImageIcon, Video, Plus, X, Trash2, RefreshCw } from 'lucide-react';
 import {
   normalizeTemplateName,
   CATEGORIAS,
@@ -17,7 +17,7 @@ import {
 
 const TIPO_ICONS = { Type, Image: ImageIcon, Video };
 
-export default function TemplateForm({ value, onChange, connections, loadingConnections, onOpenConnect }) {
+export default function TemplateForm({ value, onChange, connections, loadingConnections, onOpenConnect, onSync, syncing }) {
   const [varShow, setVarShow] = useState(false);
 
   const update = (patch) => onChange({ ...value, ...patch });
@@ -78,28 +78,41 @@ export default function TemplateForm({ value, onChange, connections, loadingConn
 
   return (
     <div className="space-y-4">
-      {connections.length === 0 && !loadingConnections && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-md p-3 text-xs space-y-2">
-          <div>Nenhuma conexão da API Oficial conectada.</div>
-          {onOpenConnect && (
+      {/* Conexão */}
+      <div>
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-semibold text-slate-700">Conexão da API Oficial *</Label>
+          {onSync && (
             <button
               type="button"
-              onClick={onOpenConnect}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-md bg-[#10353C] text-white hover:bg-[#1a5060]"
+              onClick={onSync}
+              disabled={syncing || loadingConnections}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-[#10353C] hover:text-[#1a5060] disabled:opacity-50"
+              title="Buscar sessões Cloud API na D-API"
             >
-              <Plus className="w-3.5 h-3.5" /> Conectar agora
+              <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
+              Atualizar conexões
             </button>
           )}
         </div>
-      )}
-
-      {/* Conexão */}
-      <div>
-        <Label className="text-xs font-semibold text-slate-700">Conexão da API Oficial *</Label>
         {loadingConnections ? (
           <div className="text-xs text-slate-500 mt-1">Carregando conexões...</div>
+        ) : connections.length === 0 ? (
+          <div className="mt-1 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 space-y-1">
+            <div>Nenhuma conexão da API Oficial foi encontrada.</div>
+            <div>Clique em <strong>Atualizar conexões</strong> para sincronizar as sessões Cloud API da D-API. Se a empresa ainda não tem nenhuma, conecte uma via Meta Embedded Signup.</div>
+            {onOpenConnect && (
+              <button
+                type="button"
+                onClick={onOpenConnect}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-md bg-[#10353C] text-white hover:bg-[#1a5060]"
+              >
+                <Plus className="w-3.5 h-3.5" /> Conectar agora
+              </button>
+            )}
+          </div>
         ) : (
-          <Select value={value.connection_id || ''} onValueChange={(v) => update({ connection_id: v })} disabled={connections.length === 0}>
+          <Select value={value.connection_id || ''} onValueChange={(v) => update({ connection_id: v })}>
             <SelectTrigger className="mt-1 text-sm">
               <SelectValue placeholder="Selecione a conexão Cloud API" />
             </SelectTrigger>
@@ -107,14 +120,27 @@ export default function TemplateForm({ value, onChange, connections, loadingConn
               {connections.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   <div className="flex flex-col">
-                    <span className="font-medium">{c.nome}</span>
-                    <span className="text-[10px] text-slate-500">{c.phone_number} · Conectado – API Oficial</span>
+                    <span className="font-medium">{c.nome || c.session_id}</span>
+                    <span className="text-[10px] text-slate-500">
+                      {c.phone_number ? `${c.phone_number} · ` : ''}API Oficial · Conectada
+                    </span>
                   </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
+        {value.connection_id && (() => {
+          const c = connections.find((cc) => cc.id === value.connection_id);
+          if (!c) return null;
+          return (
+            <div className="mt-1.5 text-[10px] text-slate-500 font-mono space-y-0.5">
+              {c.waba_id && <div>WABA: {c.waba_id}</div>}
+              {c.phone_number_id && <div>Phone Number ID: {c.phone_number_id}</div>}
+              {c.session_id && <div>Session: {c.session_id}</div>}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Nome */}

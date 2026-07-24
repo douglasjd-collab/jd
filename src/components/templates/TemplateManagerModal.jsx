@@ -40,6 +40,7 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [conectarOpen, setConectarOpen] = useState(false);
+  const [syncingConnections, setSyncingConnections] = useState(false);
 
   const isSuperAdmin = user?.perfil === 'super_admin' || user?.perfil === 'master';
   const isGerentePlus = isSuperAdmin || user?.perfil === 'admin' || user?.perfil === 'gerente';
@@ -55,9 +56,10 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
         try { cfg = JSON.parse(c.config_json || '{}'); } catch {}
         return {
           ...c,
-          waba_id: cfg.wabaId || c.waba_id || '',
-          phone_number_id: cfg.phoneNumberId || c.phone_number_id || '',
-          session_id: cfg.sessionId || c.session_id || '',
+          waba_id: c.waba_id || cfg.wabaId || '',
+          phone_number_id: c.phone_number_id || cfg.phoneNumberId || '',
+          session_id: c.session_id || cfg.readable_session_id || cfg.sessionId || '',
+          is_official: c.is_official !== false,
         };
       });
       setConnections(conns);
@@ -66,6 +68,36 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
       setConnections([]);
     } finally {
       setLoadingConnections(false);
+    }
+  }, []);
+
+  const handleSyncConnections = useCallback(async () => {
+    setSyncingConnections(true);
+    try {
+      const res = await base44.functions.invoke('gerenciarTemplateMetaOficial', { action: 'sync_dapi' });
+      const data = res?.data;
+      if (data?.success) {
+        const conns = (data.connections || []).map((c) => {
+          let cfg = {};
+          try { cfg = JSON.parse(c.config_json || '{}'); } catch {}
+          return {
+            ...c,
+            waba_id: c.waba_id || cfg.wabaId || '',
+            phone_number_id: c.phone_number_id || cfg.phoneNumberId || '',
+            session_id: c.session_id || cfg.readable_session_id || cfg.sessionId || '',
+            is_official: true,
+          };
+        });
+        setConnections(conns);
+        toast.success(data.message || 'Conexões da API Oficial atualizadas.');
+      } else {
+        toast.error(data?.error || 'Nenhuma sessão Cloud API foi encontrada na conta da D-API.');
+      }
+    } catch (e) {
+      const msg = e?.response?.data?.error || e?.message || 'Erro ao atualizar conexões da D-API.';
+      toast.error(msg);
+    } finally {
+      setSyncingConnections(false);
     }
   }, []);
 
@@ -321,6 +353,9 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
                     onChange={setForm}
                     connections={connections}
                     loadingConnections={loadingConnections}
+                    onOpenConnect={() => setConectarOpen(true)}
+                    onSync={handleSyncConnections}
+                    syncing={syncingConnections}
                   />
                 </div>
                 <div className="lg:sticky lg:top-5">

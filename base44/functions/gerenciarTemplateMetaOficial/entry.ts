@@ -4,6 +4,55 @@ import { createClientFromRequest } from "npm:@base44/sdk@0.8.40";
 const META_API_VERSION = "v20.0";
 const META_BASE_URL = "https://graph.facebook.com";
 
+// D-API (Cloud API oficial) — chave exclusivamente no backend.
+const DAPI_BASE_URL = "https://api.d-api.cloud";
+
+function dapiKey(): string {
+  const k = Deno.env.get("DAPI_USER_API_KEY");
+  if (!k) throw new Error("DAPI_USER_API_KEY não configurado no backend.");
+  return k;
+}
+
+// Normaliza diferentes formatos de status retornados pela D-API.
+function normalizeDapiStatus(raw: any): string {
+  const s = String(raw || "").toLowerCase();
+  if (["connected", "active", "online", "ready", "open", "authenticated", "authorized"].includes(s)) return "connected";
+  return s || "unknown";
+}
+
+function isOfficialSession(sess: any): boolean {
+  const t = String(sess?.type || sess?.connectionType || sess?.connection_type || "").toLowerCase();
+  const p = String(sess?.provider || "").toLowerCase();
+  if (t === "cloud_api" || t === "cloud api" || t === "cloudapi") return true;
+  if (sess?.isOfficial === true || sess?.is_official === true) return true;
+  if (p === "cloud_api" || p === "official" || p === "meta") return true;
+  if (String(sess?.connectionMode || "").toLowerCase() === "cloud_api") return true;
+  return false;
+}
+
+// Extrai dados padronizados de uma sessão da D-API (response GET /api/v1/sessions).
+// Estrutura real: { id: 'cloud-xxx', type: 'cloud_api', connectionId, phoneNumber, displayPhoneNumber,
+//   meta: { wabaId, phoneNumberId, ... } }  + possíveis variações legacy.
+function normalizeDapiSession(sess: any, empresaId?: string | null): any {
+  const meta = sess?.meta || {};
+  const phone = sess?.displayPhoneNumber || sess?.phoneNumber || sess?.phone_number || "";
+  const sid = sess?.id || sess?.sessionId || "";
+  return {
+    sessionId: sid,
+    uuid: sess?.connectionId || sess?.uuid || sess?.id || "",
+    name: sess?.name || sess?.profileName || sess?.verified_name || sess?.verifiedName || (phone ? `Cloud API ${phone}` : sid),
+    type: "cloud_api",
+    provider: "dapi",
+    status: normalizeDapiStatus(sess?.status),
+    wabaId: meta.wabaId || sess?.wabaId || sess?.waba_id || "",
+    phoneNumberId: meta.phoneNumberId || sess?.phoneNumberId || sess?.phone_number_id || "",
+    businessId: meta.businessId || sess?.businessId || sess?.business_id || null,
+    displayPhoneNumber: phone,
+    verifiedName: sess?.verifiedName || sess?.verified_name || sess?.profileName || "",
+    isOfficial: true,
+  };
+}
+
 // Converte um nome amigável em nome válido para template da Meta:
 // minúsculo, underline, sem acentos/espaços/caracteres especiais.
 function normalizeName(raw: string): string {
@@ -117,16 +166,138 @@ Deno.serve(async (req) => {
     const perfil = (user.perfil || user.role || "").toLowerCase();
 
     // ----------------------------------------------------------------
-    // list_connections — lista conexões Cloud API / Meta Oficial conectadas
+    // list_dapi_sessions — busca sessões Cloud API da D-API e sincroniza
+    // o banco do CRM (WhatsappConnection), retornando apenas conexões
+    // oficiais ativas. Reutiliza a API Key do backend (DAPI_USER_API_KEY).
+    // ----------------------------------------------------------------
+    async function fetchDapiSessions(): Promise<any[]> {
+      const apiKey = dapiKey();
+      const res = await fetch(`${DAPI_BASE_URL}/api/v1/sessions`, {
+        headers: { Authorization: apiKey, Accept: "application/json" },
+      });
+      if (res.status === 401 || res.status === 403) {
+        throw new Error("AUTH_DAPI_INVALID");
+      }
+      if (res.status === 500 || res.status === 502 || res.status === 503) {
+        throw new Error("DAPI_TEMP_FAILURE");
+      }
+      if (!res.ok) {
+        throw new Error(`DAPI_HTTP_${res.status}`);
+      }
+      const json = await res.json().catch(() => []);
+      const list = json?.data || json?.sessions || json || [];
+      const arr = Array.isArray(list) ? list : [];
+      return arr.filter(isOfficialSession);
+    }
+
+    async function syncDapiSessionsIntoCrm(empresaId: string | null): Promise<any[]> {
+      const sessions = await fetchDapiSessions();
+      const apiKey = dapiKey();
+      // GET por sessão para capturar campos detalhados (phoneNumber, wabaId, phoneNumberId)
+      const enriched: any[] = [];
+      for (const s of sessions) {
+        const sid = s?.id || s?.sessionId;
+        if (!sid) continue;
+        let detail = s;
+        try {
+          const r = await fetch(`${DAPI_BASE_URL}/api/v1/sessions/${encodeURIComponent(sid)}`, {
+            headers: { Authorization: apiKey },
+          });
+          if (r.ok) {
+            const j = await r.json().catch(() => ({}));
+            detail = j?.session || j || s;
+          }
+        } catch {}
+        enriched.push(detail);
+      }
+      const normalized = enriched.map((s) => normalizeDapiSession(s, empresaId));
+
+      // Buscar todas conexões D-API ativas da empresa (por session_id)
+      const existing = await base44.asServiceRole.entities.WhatsappConnection.filter(
+        { provider_type: "dapi" },
+        null,
+        300,
+      );
+      const byEmpresa = empresaId ? existing.filter((c) => c.empresa_id === empresaId) : existing;
+
+      const result: any[] = [];
+      for (const ns of normalized) {
+        if (!ns.sessionId) continue;
+        const matched = byEmpresa.find((c) => c.session_id === ns.sessionId);
+        const cfg = JSON.stringify({
+          uuid: ns.uuid,
+          readable_session_id: ns.sessionId,
+          wabaId: ns.wabaId,
+          phoneNumberId: ns.phoneNumberId,
+          businessId: ns.businessId,
+          provider: "dapi",
+          mode: "cloud_api",
+          isOfficial: true,
+        });
+        const nomeFinal = ns.verifiedName || ns.name || `Cloud API ${ns.displayPhoneNumber || ns.sessionId.slice(0, 12)}`;
+        const base: any = {
+          nome: nomeFinal,
+          phone_number: ns.displayPhoneNumber || "",
+          profile_name: ns.verifiedName || "",
+          status: "conectado",
+          is_active: true,
+          config_json: cfg,
+          last_health_check_at: new Date().toISOString(),
+          last_success_at: new Date().toISOString(),
+          last_error_at: null,
+          last_error_message: null,
+        };
+        if (matched) {
+          await base44.asServiceRole.entities.WhatsappConnection.update(matched.id, base);
+          matched.nome = nomeFinal;
+          result.push({ ...matched, ...base });
+        } else {
+          const created = await base44.asServiceRole.entities.WhatsappConnection.create({
+            empresa_id: empresaId || "",
+            provider_type: "dapi",
+            base_url: DAPI_BASE_URL,
+            session_id: ns.sessionId,
+            ...base,
+          });
+          result.push(created);
+        }
+      }
+      return result;
+    }
+
+    // ----------------------------------------------------------------
+    // list_connections — lista conexões oficiais (D-API Cloud API ou Meta
+    // Embedded Signup) sincronizadas com o banco do CRM, prontas para uso
+    // no gerenciador de templates.
     // ----------------------------------------------------------------
     if (action === "list_connections") {
-      const filtro: any = { provider_type: "meta_oficial" };
-      if (user.empresa_id) filtro.empresa_id = user.empresa_id;
-      const conns = await base44.entities.WhatsappConnection.filter(filtro, null, 200);
-      const ativas = conns.filter((c) => c.status === "conectado");
+      const ativas: any[] = [];
 
-      // Garantir uma conexão automática quando a empresa já tem credenciais salvas
-      // via Meta Embedded Signup (LoginMetaOficialButton → /meta-login).
+      // 1) Conexões D-API já salvas no CRM
+      try {
+        const connsDapi = await base44.entities.WhatsappConnection.filter({ provider_type: "dapi" } as any, null, 300);
+        for (const c of connsDapi) {
+          if (user.empresa_id && c.empresa_id !== user.empresa_id) continue;
+          if (c.status !== "conectado") continue;
+          let cfg: any = {};
+          try { cfg = JSON.parse(c.config_json || "{}"); } catch {}
+          ativas.push({
+            id: c.id,
+            nome: c.nome,
+            phone_number: c.phone_number,
+            status: c.status,
+            provider_type: c.provider_type,
+            session_id: cfg.readable_session_id || c.session_id || "",
+            waba_id: cfg.wabaId || "",
+            phone_number_id: cfg.phoneNumberId || "",
+            config_json: c.config_json,
+            is_official: true,
+          });
+        }
+      } catch {}
+
+      // 2) Conexão automática (Meta Embedded Signup) — fallback quando a empresa
+      //    já tem credenciais salvas mas ainda não foi criada como WhatsappConnection.
       if (user.empresa_id) {
         try {
           const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: user.empresa_id });
@@ -135,10 +306,10 @@ Deno.serve(async (req) => {
             const jaExiste = ativas.find((c) => {
               let cfg: any = {};
               try { cfg = JSON.parse(c.config_json || "{}"); } catch {}
-              return cfg.wabaId === emp.whatsapp_business_account_id || (c.phone_number && emp.meta_display_phone_number && c.phone_number === emp.meta_display_phone_number);
+              return cfg.wabaId === emp.whatsapp_business_account_id;
             });
             if (!jaExiste) {
-              const cfg = JSON.stringify({ wabaId: emp.whatsapp_business_account_id, phoneNumberId: emp.whatsapp_phone_number_id });
+              const cfg = JSON.stringify({ wabaId: emp.whatsapp_business_account_id, phoneNumberId: emp.whatsapp_phone_number_id, isOfficial: true });
               const nova = await base44.asServiceRole.entities.WhatsappConnection.create({
                 empresa_id: user.empresa_id,
                 nome: `WhatsApp Oficial — ${emp.meta_verified_name || emp.meta_display_phone_number || "Empresa"}`,
@@ -148,22 +319,99 @@ Deno.serve(async (req) => {
                 config_json: cfg,
                 is_active: true,
               });
-              ativas.push(nova);
+              ativas.push({
+                id: nova.id,
+                nome: nova.nome,
+                phone_number: nova.phone_number,
+                status: nova.status,
+                provider_type: "meta_oficial",
+                session_id: "",
+                waba_id: emp.whatsapp_business_account_id,
+                phone_number_id: emp.whatsapp_phone_number_id,
+                config_json: cfg,
+                is_official: true,
+              });
             }
           }
         } catch {}
       }
 
-      return Response.json({
-        connections: ativas.map((c) => ({
+      return Response.json({ connections: ativas });
+    }
+
+    // ----------------------------------------------------------------
+    // sync_dapi — força nova consulta à D-API e sincroniza o banco,
+    // retornando as conexões oficiais atualizadas.
+    // ----------------------------------------------------------------
+    if (action === "sync_dapi") {
+      let synced: any[] = [];
+      let errorMsg: string | null = null;
+      try {
+        synced = await syncDapiSessionsIntoCrm(user.empresa_id);
+      } catch (e: any) {
+        if (e?.message === "AUTH_DAPI_INVALID") errorMsg = "Não foi possível autenticar na D-API. Verifique a API Key configurada no backend.";
+        else if (e?.message === "DAPI_TEMP_FAILURE") errorMsg = "A D-API apresentou uma falha temporária.";
+        else errorMsg = e?.message || "Erro ao sincronizar conexões da D-API.";
+        return Response.json({ success: false, error: errorMsg, connections: [] }, { status: 502 });
+      }
+      // Reaproveitar o mesmo shape de list_connections
+      const out = synced.map((c) => {
+        let cfg: any = {};
+        try { cfg = JSON.parse(c.config_json || "{}"); } catch {}
+        return {
           id: c.id,
           nome: c.nome,
           phone_number: c.phone_number,
           status: c.status,
           provider_type: c.provider_type,
-          config_json: c.config_json, // contém wabaId/phoneNumberId; token fica na Empresa
-        })),
+          session_id: cfg.readable_session_id || c.session_id || "",
+          waba_id: cfg.wabaId || "",
+          phone_number_id: cfg.phoneNumberId || "",
+          config_json: c.config_json,
+          is_official: true,
+        };
       });
+      return Response.json({
+        success: true,
+        connections: out,
+        message: out.length > 0 ? "Conexões da API Oficial atualizadas." : "Nenhuma sessão Cloud API foi encontrada na conta da D-API.",
+      });
+    }
+
+    // ----------------------------------------------------------------
+    // debug_dapi_session — diagnóstico: retorna o payload bruto da sessão
+    // ----------------------------------------------------------------
+    if (action === "debug_dapi_session") {
+      const apiKey = dapiKey();
+      const listRes = await fetch(`${DAPI_BASE_URL}/api/v1/sessions`, { headers: { Authorization: apiKey } });
+      const listJson = await listRes.json().catch(() => ({}));
+      const list = listJson?.data || listJson?.sessions || listJson || [];
+      const arr = Array.isArray(list) ? list : [];
+      const out: any[] = [];
+      for (const s of arr) {
+        const sid = s?.id || s?.sessionId;
+        if (!sid) continue;
+        const r = await fetch(`${DAPI_BASE_URL}/api/v1/sessions/${encodeURIComponent(sid)}`, { headers: { Authorization: apiKey } });
+        const j = await r.json().catch(() => ({}));
+        const raw = j?.session || j;
+        out.push({ sid, status: r.status, keys: Object.keys(raw || {}), phone: raw?.phoneNumber || raw?.phone_number || raw?.displayPhoneNumber || null, waba: raw?.wabaId || raw?.waba_id || null, meta: raw?.meta || null, business: raw?.business || raw?.businessId || null });
+      }
+      return Response.json({ details: out });
+    }
+
+    // ----------------------------------------------------------------
+    // test_dapi — valida que a D-API responde e a API Key é válida.
+    // ----------------------------------------------------------------
+    if (action === "test_dapi") {
+      try {
+        const sessions = await fetchDapiSessions();
+        return Response.json({ success: true, message: "D-API conectada com sucesso.", sessions: sessions.length });
+      } catch (e: any) {
+        if (e?.message === "AUTH_DAPI_INVALID") {
+          return Response.json({ success: false, message: "API Key da D-API inválida ou sem permissão." }, { status: 401 });
+        }
+        return Response.json({ success: false, message: e?.message || "A D-API apresentou uma falha temporária." }, { status: 502 });
+      }
     }
 
     // ----------------------------------------------------------------
