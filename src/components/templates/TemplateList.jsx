@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'react-hot-toast';
-import { Eye, Copy, Trash2, RefreshCw, Loader2, Pencil } from 'lucide-react';
+import { Eye, Copy, Trash2, RefreshCw, Loader2, Pencil, RotateCcw } from 'lucide-react';
 import { STATUS_META, IDIOMAS, TIPOS, CATEGORIAS } from './templateHelpers';
 
 const FILTROS = [
@@ -18,6 +18,7 @@ export default function TemplateList({ templates, loading, onEdit, onRefresh, on
   const [dupId, setDupId] = useState(null);
   const [delId, setDelId] = useState(null);
   const [importingMeta, setImportingMeta] = useState(false);
+  const [retryId, setRetryId] = useState(null);
 
   const filtrados = filtro === 'todos'
     ? templates
@@ -40,6 +41,36 @@ export default function TemplateList({ templates, loading, onEdit, onRefresh, on
       toast.error('Erro ao sincronizar: ' + (e.message || ''));
     } finally {
       setSyncingId(null);
+    }
+  };
+
+  const mostrarErroRetry = (d) => {
+    const diag = d?.diagnostico;
+    if (diag?.checks) {
+      const linhas = diag.checks.map((c) => `${c.ok ? '✓' : '✗'} ${c.label}${c.ok ? '' : ' — ' + c.valor}`);
+      toast.error(`${d?.meta_message || 'Falha ao reenviar.'}\n${linhas.join('\n')}${diag.sugestao ? '\n' + diag.sugestao : ''}`, { duration: 12000 });
+    } else {
+      toast.error(d?.meta_message || d?.error || 'Erro ao reenviar.');
+    }
+  };
+
+  const handleRetry = async (t) => {
+    setRetryId(t.id);
+    try {
+      const res = await base44.functions.invoke('gerenciarTemplateMetaOficial', {
+        action: 'tentar_enviar_novamente',
+        template_id: t.id,
+      });
+      if (res?.data?.success) {
+        toast.success('Template reenviado para análise da Meta.');
+        onRefresh();
+      } else {
+        mostrarErroRetry(res?.data);
+      }
+    } catch (e) {
+      mostrarErroRetry(e?.response?.data);
+    } finally {
+      setRetryId(null);
     }
   };
 
@@ -193,6 +224,20 @@ export default function TemplateList({ templates, loading, onEdit, onRefresh, on
                             className="p-1.5 rounded hover:bg-slate-100 text-blue-600"
                           >
                             <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        {t.status === 'erro_envio' && (
+                          <button
+                            onClick={() => handleRetry(t)}
+                            disabled={retryId === t.id}
+                            title="Tentar enviar novamente"
+                            className="p-1.5 rounded hover:bg-slate-100 text-amber-600 disabled:opacity-50"
+                          >
+                            {retryId === t.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <RotateCcw className="w-4 h-4" />
+                            )}
                           </button>
                         )}
                         {t.meta_template_id && (

@@ -677,9 +677,21 @@ Deno.serve(async (req) => {
       let waba_id = (template.waba_id || "").trim();
       let phone_number_id = (template.phone_number_id || "").trim();
 
-      // Tentativa 2: dados no config_json da conexão
-      if (!waba_id && cfg?.wabaId) waba_id = String(cfg.wabaId).trim();
-      if (!phone_number_id && cfg?.phoneNumberId) phone_number_id = String(cfg.phoneNumberId).trim();
+      // Tentativa 2: múltiplas variações de nome (config + conexão)
+      const lookupWaba = (src: any): string =>
+        String(
+          src?.wabaId ?? src?.waba_id ?? src?.whatsappBusinessAccountId ??
+          src?.whatsapp_business_account_id ?? src?.metadata?.wabaId ??
+          src?.metadata?.waba_id ?? src?.cloudApi?.wabaId ?? src?.cloudApi?.waba_id ?? ""
+        ).trim();
+      const lookupPhone = (src: any): string =>
+        String(
+          src?.phoneNumberId ?? src?.phone_number_id ?? src?.whatsappPhoneNumberId ??
+          src?.whatsapp_phone_number_id ?? src?.metadata?.phoneNumberId ??
+          src?.metadata?.phone_number_id ?? src?.cloudApi?.phoneNumberId ?? src?.cloudApi?.phone_number_id ?? ""
+        ).trim();
+      if (!waba_id) waba_id = lookupWaba(cfg) || lookupWaba(conn);
+      if (!phone_number_id) phone_number_id = lookupPhone(cfg) || lookupPhone(conn);
 
       // Tentativa 3: empresa (Meta Embedded Signup)
       let empresa_waba = "";
@@ -694,6 +706,10 @@ Deno.serve(async (req) => {
           if (!phone_number_id && empresa_phone) phone_number_id = empresa_phone;
         } catch {}
       }
+      // Tentativa 4: env fallback (META_WABA_ID / META_PHONE_NUMBER_ID) — usado quando
+      // não há vínculo manual nem Embedded Signup.
+      if (!waba_id) waba_id = Deno.env.get("META_WABA_ID") || "";
+      if (!phone_number_id) phone_number_id = Deno.env.get("META_PHONE_NUMBER_ID") || "";
 
       const checks: { label: string; ok: boolean; valor: string }[] = [
         { label: "Sessão Cloud API", ok: !!session_id, valor: session_id || "não localizado" },
@@ -712,7 +728,7 @@ Deno.serve(async (req) => {
     // template → config da conexão → empresa (Meta Embedded Signup).
     // Se ainda assim faltar WABA, devolve diagnóstico granular.
     // ----------------------------------------------------------------
-    if (action === "send_to_meta") {
+    if (action === "send_to_meta" || action === "tentar_enviar_novamente") {
       const { template_id } = body;
       const template = await base44.entities.WhatsappTemplate.get(template_id);
       if (!template) return Response.json({ error: "Template não encontrado" }, { status: 404 });
@@ -782,10 +798,10 @@ Deno.serve(async (req) => {
         components,
       };
 
-      const token = await getToken(template.empresa_id, base44);
+      // token já declarado acima (preferência: token da conexão)
       try {
-        const url = `${META_BASE_URL}/${META_API_VERSION}/${wabaId}/message_templates`;
-        const res = await fetch(url, {
+        const urlCriacao = `${META_BASE_URL}/${META_API_VERSION}/${wabaId}/message_templates`;
+        const res = await fetch(urlCriacao, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -794,6 +810,23 @@ Deno.serve(async (req) => {
           body: JSON.stringify(payload),
         });
         const data = await res.json();
+
+        // Log completo da requisição (sem expor Authorization/Token)
+        await base44.entities.WhatsappConnectionLog.create({
+          empresa_id: template.empresa_id,
+          connection_id: template.connection_id || null,
+          event_type: "message.sent",
+          direction: "outbound",
+          payload_json: JSON.stringify({
+            templateProvider, url: urlCriacao, method: "POST",
+            waba_id: wabaId, http_status: res.status,
+            template_id, template_name: template.name,
+            user_id: user.id, user_name: user.full_name,
+          }),
+          response_json: JSON.stringify(data),
+          error_message: res.ok ? null : (data?.error?.message || `HTTP ${res.status}`),
+          created_at: new Date().toISOString(),
+        }).catch(() => {});
 
         // --- Ramo de ERRO ---
         if (!res.ok) {
@@ -928,6 +961,115 @@ Deno.serve(async (req) => {
         phone_number_id: diag.phone_number_id,
         fonte_waba: diag.empresa_waba ? "empresa (Embedded Signup)" : "",
       });
+    }
+
+    // ----------------------------------------------------------------
+    // vincular_dados_meta — admin insere WABA ID, Phone Number ID e Token
+    // da Meta manualmente por conexão. Token salvo em token_encrypted,
+    // nunca devolvido na resposta.
+    // ----------------------------------------------------------------
+    if (action === "vincular_dados_meta") {
+      if (!["super_admin", "master", "admin"].includes(perfil)) {
+        return Response.json({ error: "Sem permissão" }, { status: 403 });
+      }
+      const { connection_id, waba_id, phone_number_id, meta_token } = body;
+      if (!connection_id) return Response.json({ error: "connection_id obrigatório" }, { status: 400 });
+      const wabaIdClean = String(waba_id || "").trim();
+      const phoneNumberIdClean = String(phone_number_id || "").trim();
+      const tokenClean = String(meta_token || "").trim();
+      if (!/^\d+$/.test(wabaIdClean)) return Response.json({ error: "WABA ID deve conter somente números." }, { status: 400 });
+      if (!tokenClean) return Response.json({ error: "Token da Meta é obrigatório." }, { status: 400 });
+
+      const conn = await base44.entities.WhatsappConnection.get(connection_id);
+      if (!conn || (conn.empresa_id !== user.empresa_id && perfil !== "super_admin" && perfil !== "master")) {
+        return Response.json({ error: "Sem permissão para a conexão" }, { status: 403 });
+      }
+
+      // Valida o token consultando a Meta antes de salvar.
+      let wabaFound = false;
+      let canManage = false;
+      let httpStatus = 0;
+      let testError: string | null = null;
+      try {
+        const r = await fetch(`${META_BASE_URL}/${META_API_VERSION}/${wabaIdClean}?fields=name,id`, { headers: { Authorization: `Bearer ${tokenClean}` } });
+        httpStatus = r.status;
+        if (r.ok) {
+          const j = await r.json().catch(() => ({}));
+          if (j?.id && String(j.id) === String(wabaIdClean)) wabaFound = true;
+          const r2 = await fetch(`${META_BASE_URL}/${META_API_VERSION}/${wabaIdClean}/message_templates?limit=1`, { headers: { Authorization: `Bearer ${tokenClean}` } });
+          if (r2.ok) canManage = true;
+          else testError = `WABA encontrado, mas sem permissão para gerenciar templates (HTTP ${r2.status}).`;
+        } else {
+          const j = await r.json().catch(() => ({}));
+          testError = j?.error?.message || `HTTP ${r.status}`;
+        }
+      } catch (e: any) { testError = e?.message || "Erro de rede ao validar token."; }
+
+      if (!wabaFound || !canManage) {
+        return Response.json({ success: false, http_status: httpStatus || 400, meta_message: testError || "WABA não acessível pelo token. Verifique WABA ID e Token." }, { status: 400 });
+      }
+
+      let cfg: any = {};
+      try { cfg = JSON.parse(conn.config_json || "{}"); } catch {}
+      cfg.wabaId = wabaIdClean;
+      if (phoneNumberIdClean) cfg.phoneNumberId = phoneNumberIdClean;
+      cfg.linkedManuallyAt = new Date().toISOString();
+
+      const updates: any = { config_json: JSON.stringify(cfg), token_encrypted: tokenClean };
+      await base44.entities.WhatsappConnection.update(connection_id, updates);
+
+      await base44.entities.WhatsappConnectionLog.create({
+        empresa_id: conn.empresa_id, connection_id, event_type: "api.call", direction: "outbound",
+        payload_json: JSON.stringify({ action: "vincular_dados_meta", waba_id: wabaIdClean, phone_number_id: phoneNumberIdClean || null }),
+        response_json: JSON.stringify({ success: true, wabaFound, canManage, httpStatus }),
+        created_at: new Date().toISOString(),
+      }).catch(() => {});
+
+      return Response.json({ success: true, wabaFound, canManageTemplates: canManage, message: "Dados da Meta vinculados à conexão." });
+    }
+
+    // ----------------------------------------------------------------
+    // test_template_access — valida WABA ID + Token salvos na conexão.
+    // Retorna diagnóstico seguro (sem expor o token).
+    // ----------------------------------------------------------------
+    if (action === "test_template_access") {
+      const { connection_id } = body;
+      if (!connection_id) return Response.json({ error: "connection_id obrigatório" }, { status: 400 });
+      const conn = await base44.entities.WhatsappConnection.get(connection_id);
+      if (!conn || (conn.empresa_id !== user.empresa_id && perfil !== "super_admin" && perfil !== "master")) {
+        return Response.json({ error: "Sem permissão" }, { status: 403 });
+      }
+      let cfg: any = {};
+      try { cfg = JSON.parse(conn.config_json || "{}"); } catch {}
+      const waba_id = String(cfg.wabaId || cfg.waba_id || "").trim();
+      const tokenLocal = (conn.token_encrypted || "").trim();
+      let token: string = tokenLocal;
+      if (!token) { try { token = await getToken(conn.empresa_id, base44); } catch { token = ""; } }
+      if (!token) token = Deno.env.get("META_WHATSAPP_ACCESS_TOKEN") || "";
+      let wabaFound = false, canManage = false, httpStatus = 0;
+      let errorMsg: string | null = null;
+      const urlBase = `${META_BASE_URL}/${META_API_VERSION}/${waba_id}`;
+      try {
+        const r = await fetch(`${urlBase}?fields=name,id`, { headers: { Authorization: `Bearer ${token}` } });
+        httpStatus = r.status;
+        if (r.ok) {
+          const j = await r.json().catch(() => ({}));
+          if (j?.id && String(j.id) === String(waba_id)) wabaFound = true;
+          const r2 = await fetch(`${META_BASE_URL}/${META_API_VERSION}/${waba_id}/message_templates?limit=1`, { headers: { Authorization: `Bearer ${token}` } });
+          if (r2.ok) canManage = true;
+          else errorMsg = `Sem permissão para gerenciar templates (HTTP ${r2.status}).`;
+        } else {
+          const j = await r.json().catch(() => ({}));
+          errorMsg = j?.error?.message || `HTTP ${r.status}`;
+        }
+      } catch (e: any) { errorMsg = e?.message || "Erro de rede"; }
+      await base44.entities.WhatsappConnectionLog.create({
+        empresa_id: conn.empresa_id, connection_id, event_type: "health.check", direction: "outbound",
+        payload_json: JSON.stringify({ action: "test_template_access", waba_id, url: urlBase, has_token: !!token, local_token: !!tokenLocal }),
+        response_json: JSON.stringify({ wabaFound, canManage, httpStatus }),
+        error_message: errorMsg, created_at: new Date().toISOString(),
+      }).catch(() => {});
+      return Response.json({ success: wabaFound && canManage, wabaFound, canManageTemplates: canManage, httpStatus, error: errorMsg, waba_id });
     }
 
     // ----------------------------------------------------------------

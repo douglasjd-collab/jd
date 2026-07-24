@@ -3,10 +3,11 @@ import { base44 } from '@/api/base44Client';
 import { toast } from 'react-hot-toast';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, Edit3, Send } from 'lucide-react';
+import { Loader2, Plus, Edit3, Send, Link2 } from 'lucide-react';
 import TemplateForm from './TemplateForm';
 import TemplatePreview from './TemplatePreview';
 import TemplateList from './TemplateList';
+import VincularMetaModal from './VincularMetaModal';
 import { normalizeTemplateName } from './templateHelpers';
 import ConectarMetaOficialDialog from './ConectarMetaOficialDialog';
 
@@ -44,6 +45,7 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
   const [isSaving, setIsSaving] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [conectarOpen, setConectarOpen] = useState(false);
+  const [vincularOpen, setVincularOpen] = useState(false);
   const [syncingConnections, setSyncingConnections] = useState(false);
 
   const isSuperAdmin = user?.perfil === 'super_admin' || user?.perfil === 'master';
@@ -425,6 +427,15 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
             >
               Meus templates ({templates.length})
             </button>
+            {canCreate && (
+              <button
+                onClick={() => setVincularOpen(true)}
+                className="text-xs px-3 py-1.5 rounded-full border bg-white border-slate-200 hover:bg-slate-50 text-[#10353C]"
+                title="Vincular WABA ID e Token da Meta à conexão"
+              >
+                <Link2 className="w-3 h-3 inline mr-1" /> Vincular Meta
+              </button>
+            )}
           </div>
         </SheetHeader>
 
@@ -478,6 +489,12 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
             )}
           </div>
         </div>
+
+        <VincularMetaModal
+          open={vincularOpen}
+          onOpenChange={setVincularOpen}
+          onSuccess={loadConnections}
+        />
 
         <ConectarMetaOficialDialog
           open={conectarOpen}
