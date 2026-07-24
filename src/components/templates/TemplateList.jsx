@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'react-hot-toast';
-import { Eye, Copy, Trash2, RefreshCw, Loader2 } from 'lucide-react';
+import { Eye, Copy, Trash2, RefreshCw, Loader2, Pencil } from 'lucide-react';
 import { STATUS_META, IDIOMAS, TIPOS, CATEGORIAS } from './templateHelpers';
 
 const FILTROS = [
@@ -181,11 +181,20 @@ export default function TemplateList({ templates, loading, onEdit, onRefresh, on
                       <div className="flex items-center gap-1 justify-end">
                         <button
                           onClick={() => onEdit(t)}
-                          title="Visualizar / Editar"
+                          title="Visualizar"
                           className="p-1.5 rounded hover:bg-slate-100 text-slate-600"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
+                        {['rascunho', 'erro_envio', 'rejeitado'].includes(t.status) && (
+                          <button
+                            onClick={() => onEdit(t)}
+                            title="Editar"
+                            className="p-1.5 rounded hover:bg-slate-100 text-blue-600"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
                         {t.meta_template_id && (
                           <button
                             onClick={() => handleSync(t)}
