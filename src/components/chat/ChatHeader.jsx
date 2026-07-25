@@ -254,7 +254,7 @@ export default function ChatHeader({
                       className={`inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 ${ehDapiOficial ? 'bg-green-500' : 'bg-cyan-600'}`}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
-                      D-API - {conexaoAtivaConversa?.nome || conexaoAtivaConversa?.session_id || 'D-API'}{ehDapiOficial ? ' (Oficial)' : ''}
+                      {ehDapiOficial ? 'API Oficial' : `D-API - ${conexaoAtivaConversa?.nome || conexaoAtivaConversa?.session_id || 'D-API'}`}
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" side="bottom" className="z-[200]">
