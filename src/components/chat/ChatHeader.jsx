@@ -139,7 +139,7 @@ export default function ChatHeader({
       
       setCanalOverride(updateData.tipo_conexao);
       
-      toast.success(`Canal alterado para ${conexao.provider_type === 'dapi' ? `D-API - ${conexao.nome || conexao.session_id}` : conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' : `Evolution - ${conexao.nome || conexao.session_id}`}`);
+      toast.success(`Alterado para ${conexao.provider_type === 'dapi' ? '(API OFICIAL)' : conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' : `Evolution - ${conexao.nome || conexao.session_id}`}`);
       
       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
     } catch (e) {
