@@ -133,9 +133,12 @@ Deno.serve(async (req) => {
     const providerSalvo = conversaDoBanco?.provider || null;
     const canalOrigem = conversaDoBanco?.canal_origem || null;
 
-    // ── D-API: Buscar conexão WhatsAppConnection ─────────────────────────────
-    // Priorizar a conexão específica selecionada na conversa (connection_id) — nunca pegar
-    // qualquer conexão D-API ativa por padrão quando o usuário travou um canal manualmente.
+    // ── D-API: Buscar conexão amarrada à conversa (NUNCA fallback automático) ──
+    // Regra: a conexão usada no envio DEVE ser exatamente a conexão ativa salva na
+    // conversa (connection_id) — ou a conexão amarrada pela instancia (session_id)
+    // que a última mensagem recebida definiu. NÃO há fallback para "qualquer D-API
+    // ativa da empresa". Se a conversa é D-API mas nenhuma conexão casar, o envio
+    // é bloqueado e o usuário é solicitado a escolher a API manualmente.
     let conexaoDapi = null;
     if (empresaId) {
       try {
@@ -147,41 +150,43 @@ Deno.serve(async (req) => {
             }
           } catch (_) {}
         }
-        if (!conexaoDapi) {
-          // Tenta a conexão amarrada à conversa via instancia (session_id).
-          // Mantém "última conexão que recebeu = conexão que envia" — multi-D-API.
-          if (instanciaConversa) {
-            try {
-              const matches = await base44.asServiceRole.entities.WhatsappConnection.filter({
-                empresa_id: empresaId,
-                provider_type: 'dapi',
-                session_id: instanciaConversa,
-                is_active: true
-              }, '-created_date', 1);
-              conexaoDapi = matches[0] || null;
-              if (conexaoDapi) {
-                console.log('✅ D-API conexão amarrada pela instancia:', conexaoDapi.id, conexaoDapi.session_id);
-              }
-            } catch (e) {
-              console.warn('⚠️ Erro ao buscar D-API por session_id:', e.message);
+        if (!conexaoDapi && instanciaConversa) {
+          // Casar pela instancia (session_id) que o webhook gravou no inbound.
+          try {
+            const matches = await base44.asServiceRole.entities.WhatsappConnection.filter({
+              empresa_id: empresaId,
+              provider_type: 'dapi',
+              session_id: instanciaConversa,
+              is_active: true
+            }, '-created_date', 1);
+            conexaoDapi = matches[0] || null;
+            if (conexaoDapi) {
+              console.log('✅ D-API conexão amarrada pela instancia:', conexaoDapi.id, conexaoDapi.session_id);
             }
+          } catch (e) {
+            console.warn('⚠️ Erro ao buscar D-API por session_id:', e.message);
           }
         }
-        if (!conexaoDapi) {
-          // Último fallback: qualquer D-API ativo da empresa (comportamento anterior).
-          const conexoes = await base44.asServiceRole.entities.WhatsappConnection.filter({
-            empresa_id: empresaId,
-            provider_type: 'dapi',
-            is_active: true
-          }, '-created_date', 1);
-          conexaoDapi = conexoes[0] || null;
-        }
         if (conexaoDapi) {
-          console.log('✅ D-API conexão encontrada:', conexaoDapi.id, conexaoDapi.session_id);
+          console.log('✅ D-API conexão amarrada à conversa:', conexaoDapi.id, conexaoDapi.session_id);
         }
       } catch (e) {
         console.warn('⚠️ Erro ao buscar conexão D-API:', e.message);
       }
+    }
+
+    // Se o canal da conversa é D-API mas nenhuma conexão casou, BLOQUEAR o envio
+    // (não usar fallback automático — o usuário precisa escolher a API manualmente).
+    const conversaExigeDapi =
+      canalAtendimento === 'dapi' ||
+      providerSalvo === 'dapi' ||
+      canalOrigem === 'dapi' ||
+      tipoConexaoConversa === 'dapi';
+    if (conversaExigeDapi && !conexaoDapi) {
+      return Response.json({
+        error: 'Selecione a API no seletor do bate-papo antes de enviar. A conversa exige D-API mas nenhuma conexão está vinculada.',
+        success: false,
+      }, { status: 400 });
     }
 
     // ── FONTE DE VERDADE DO CANAL ────────────────────────────────────────────
@@ -458,8 +463,9 @@ Deno.serve(async (req) => {
     }
 
     // ── ENVIO VIA D-API ──────────────────────────────────────────────────────
-    // Só usar D-API se a conversa NÃO for da API Oficial Meta — nunca sequestrar conversas Meta.
-    if (conexaoDapi && !conversaEhMetaOficial) {
+    // Só usar D-API quando o canal salvo na conversa for D-API EXATAMENTE. Nunca
+    // sequestrar conversas Evolution/Meta/Instagram mesmo que exista conexão D-API.
+    if (conexaoDapi && canalAtendimento === 'dapi') {
       console.log('🟦 Provedor automático: D-API (session_id:', conexaoDapi.session_id, ')');
       
       // Normalizar número para D-API: apenas números, com DDI
