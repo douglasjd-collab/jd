@@ -254,7 +254,7 @@ export default function ChatHeader({
                       className={`inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 ${ehDapiOficial ? 'bg-green-500' : 'bg-cyan-600'}`}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
-                      {ehDapiOficial ? 'API Oficial' : `D-API - ${conexaoAtivaConversa?.nome || conexaoAtivaConversa?.session_id || 'D-API'}`}
+                      {ehDapiOficial ? 'API Oficial' : `API - ${conexaoAtivaConversa?.nome || conexaoAtivaConversa?.session_id || 'D-API'}`}
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" side="bottom" className="z-[200]">
@@ -270,7 +270,7 @@ export default function ChatHeader({
                           {conexao.provider_type === 'meta_oficial' && '🟢'}
                           {conexao.provider_type === 'evolution' && '🟣'}
                           {' '}
-                          {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? 'API - Oficial' : `D-API - ${conexao.nome || conexao.session_id}`) :
+                          {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? 'API - Oficial' : `API - ${conexao.nome || conexao.session_id}`) :
                            conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' :
                            `${conexao.provider_type.toUpperCase()} - ${conexao.nome || conexao.session_id}`}
                           {conexao.id === conversaSelecionada.connection_id && ' ✓'}
@@ -302,7 +302,7 @@ export default function ChatHeader({
                           {conexao.provider_type === 'meta_oficial' && '🟢'}
                           {conexao.provider_type === 'evolution' && '🟣'}
                           {' '}
-                          {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? 'API - Oficial' : `D-API - ${conexao.nome || conexao.session_id}`) :
+                          {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? 'API - Oficial' : `API - ${conexao.nome || conexao.session_id}`) :
                            conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' :
                            `${conexao.provider_type.toUpperCase()} - ${conexao.nome || conexao.session_id}`}
                           {conexao.id === conversaSelecionada.connection_id && ' ✓'}
@@ -334,7 +334,7 @@ export default function ChatHeader({
                           {conexao.provider_type === 'meta_oficial' && '🟢'}
                           {conexao.provider_type === 'evolution' && '🟣'}
                           {' '}
-                          {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? 'API - Oficial' : `D-API - ${conexao.nome || conexao.session_id}`) :
+                          {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? 'API - Oficial' : `API - ${conexao.nome || conexao.session_id}`) :
                            conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' :
                            `${conexao.provider_type.toUpperCase()} - ${conexao.nome || conexao.session_id}`}
                           {conexao.id === conversaSelecionada.connection_id && ' ✓'}
