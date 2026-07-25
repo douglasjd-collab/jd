@@ -270,7 +270,7 @@ export default function ChatHeader({
                           {conexao.provider_type === 'meta_oficial' && '🟢'}
                           {conexao.provider_type === 'evolution' && '🟣'}
                           {' '}
-                          {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? '(API - Oficial)' : `D-API - ${conexao.nome || conexao.session_id}`) :
+                          {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? 'API - Oficial' : `D-API - ${conexao.nome || conexao.session_id}`) :
                            conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' :
                            `${conexao.provider_type.toUpperCase()} - ${conexao.nome || conexao.session_id}`}
                           {conexao.id === conversaSelecionada.connection_id && ' ✓'}
@@ -302,7 +302,7 @@ export default function ChatHeader({
                           {conexao.provider_type === 'meta_oficial' && '🟢'}
                           {conexao.provider_type === 'evolution' && '🟣'}
                           {' '}
-                          {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? '(API - Oficial)' : `D-API - ${conexao.nome || conexao.session_id}`) :
+                          {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? 'API - Oficial' : `D-API - ${conexao.nome || conexao.session_id}`) :
                            conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' :
                            `${conexao.provider_type.toUpperCase()} - ${conexao.nome || conexao.session_id}`}
                           {conexao.id === conversaSelecionada.connection_id && ' ✓'}
@@ -334,7 +334,7 @@ export default function ChatHeader({
                           {conexao.provider_type === 'meta_oficial' && '🟢'}
                           {conexao.provider_type === 'evolution' && '🟣'}
                           {' '}
-                          {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? '(API - Oficial)' : `D-API - ${conexao.nome || conexao.session_id}`) :
+                          {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? 'API - Oficial' : `D-API - ${conexao.nome || conexao.session_id}`) :
                            conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' :
                            `${conexao.provider_type.toUpperCase()} - ${conexao.nome || conexao.session_id}`}
                           {conexao.id === conversaSelecionada.connection_id && ' ✓'}
