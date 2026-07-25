@@ -342,6 +342,194 @@ async function syncTemplatesFromMeta(
   };
 }
 
+// ----------------------------------------------------------------
+// sendToDapiCloudApi — envia o template via endpoint próprio da D-API
+// Cloud API (POST /api/v1/connections/cloud-api/{sessionId}/templates),
+// conforme a doc D-API (criar-template). Usado quando a conexão
+// vinculada é provider_type === "dapi". Não exige token da Meta Graph;
+// autentica com a API Key da D-API (DAPI_USER_API_KEY).
+// ----------------------------------------------------------------
+async function sendToDapiCloudApi(
+  template: any,
+  conn: any,
+  b44: any,
+  user: any,
+): Promise<Response> {
+  const apiKey = dapiKey();
+  const sessionId = (template.session_id || conn?.session_id || "").trim();
+  if (!sessionId) {
+    const motivo = "Conexão D-API Cloud API sem session_id. Sincronize a conexão novamente.";
+    await b44.entities.WhatsappTemplate.update(template.id, {
+      status: "erro_envio",
+      rejection_reason: motivo,
+    });
+    await b44.entities.WhatsappTemplateLog.create({
+      empresa_id: template.empresa_id,
+      template_id: template.id,
+      action: "enviar_aprovacao",
+      previous_status: "rascunho",
+      new_status: "erro_envio",
+      error_message: motivo,
+      user_id: user.id,
+      user_name: user.full_name,
+    }).catch(() => {});
+    return Response.json(
+      { error: motivo, http_status: 400, meta_message: motivo, diagnostico: { checks: [{ label: "Sessão D-API", ok: false, valor: "sem session_id" }] } },
+      { status: 400 },
+    );
+  }
+
+  // bodyExample: lista de exemplos do corpo, na ordem das variáveis {{1}}, {{2}}…
+  let examples: any[] = [];
+  try { examples = JSON.parse(template.variables_json || "[]"); } catch {}
+  const bodyExample = examples
+    .filter((v: any) => (v.component || "BODY") === "BODY")
+    .sort((a: any, b: any) => (a.position || 0) - (b.position || 0))
+    .map((v: any) => v.example_value || "")
+    .filter((s: string) => s !== "");
+
+  // Botões no formato D-API
+  let buttonsArr: any[] = [];
+  try { buttonsArr = JSON.parse(template.buttons_json || "[]"); } catch {}
+  const dapiButtons = buttonsArr.map((b: any) => {
+    if (b.type === "QUICK_REPLY") return { type: "QUICK_REPLY", text: b.text || "" };
+    if (b.type === "URL") return { type: "URL", text: b.text || "", url: b.url || "" };
+    if (b.type === "PHONE_NUMBER")
+      return { type: "PHONE_NUMBER", text: b.text || "", phoneNumber: b.phone_number || b.phoneNumber || "" };
+    return null;
+  }).filter(Boolean);
+
+  // Header
+  const isImage = template.type === "IMAGE" || template.header_type === "IMAGE";
+  const isVideo = template.type === "VIDEO" || template.header_type === "VIDEO";
+  const headerFormat = isImage ? "IMAGE" : isVideo ? "VIDEO" : template.header_text ? "TEXT" : "";
+
+  const payload: any = {
+    name: template.name,
+    category: String(template.category || "UTILITY").toUpperCase(),
+    language: template.language || "pt_BR",
+    bodyText: template.body_text || "",
+  };
+  if (headerFormat) payload.headerFormat = headerFormat;
+  if (headerFormat === "TEXT" && template.header_text) payload.headerText = template.header_text;
+  if ((headerFormat === "IMAGE" || headerFormat === "VIDEO") && template.header_media_url) {
+    payload.headerMediaUrl = template.header_media_url;
+    if (template.header_media_mime) payload.headerMediaMime = template.header_media_mime;
+  }
+  if (template.footer_text) payload.footerText = template.footer_text;
+  if (bodyExample.length > 0) payload.bodyExample = bodyExample;
+  if (dapiButtons.length > 0) payload.buttons = dapiButtons;
+
+  const url = `${DAPI_BASE_URL}/api/v1/connections/cloud-api/${encodeURIComponent(sessionId)}/templates`;
+
+  let data: any = null;
+  let httpStatus = 0;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: apiKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    httpStatus = res.status;
+    data = await res.json().catch(() => ({}));
+
+    await b44.entities.WhatsappConnectionLog.create({
+      empresa_id: template.empresa_id,
+      connection_id: conn?.id || template.connection_id || null,
+      event_type: "message.sent",
+      direction: "outbound",
+      payload_json: JSON.stringify({
+        templateProvider: "dapi_cloud_api",
+        url,
+        method: "POST",
+        http_status: res.status,
+        template_id: template.id,
+        template_name: template.name,
+        user_id: user.id,
+        user_name: user.full_name,
+      }),
+      response_json: JSON.stringify(data),
+      error_message: res.ok ? null : (data?.error || `HTTP ${res.status}`),
+      created_at: new Date().toISOString(),
+    }).catch(() => {});
+
+    if (!res.ok || data?.success === false) {
+      const errMsg = data?.error || data?.message || `HTTP ${res.status} D-API`;
+      const motivo = `HTTP ${httpStatus} | D-API: ${errMsg}`;
+      await b44.entities.WhatsappTemplate.update(template.id, {
+        status: "erro_envio",
+        rejection_reason: motivo,
+      });
+      await b44.entities.WhatsappTemplateLog.create({
+        empresa_id: template.empresa_id,
+        template_id: template.id,
+        action: "enviar_aprovacao",
+        previous_status: "rascunho",
+        new_status: "erro_envio",
+        request_json: JSON.stringify(payload),
+        response_json: JSON.stringify(data),
+        error_message: motivo,
+        user_id: user.id,
+        user_name: user.full_name,
+      }).catch(() => {});
+      return Response.json(
+        { error: errMsg, http_status: httpStatus || 502, meta_message: motivo, details: JSON.stringify(data) },
+        { status: httpStatus || 502 },
+      );
+    }
+
+    const metaId: string = String(data?.data?.id || data?.data || data?.id || data?.templateId || "");
+    await b44.entities.WhatsappTemplate.update(template.id, {
+      meta_template_id: metaId || null,
+      status: "em_analise",
+      components_json: JSON.stringify(payload),
+    });
+    await b44.entities.WhatsappTemplateLog.create({
+      empresa_id: template.empresa_id,
+      template_id: template.id,
+      action: "enviar_aprovacao",
+      previous_status: "rascunho",
+      new_status: "em_analise",
+      request_json: JSON.stringify(payload),
+      response_json: JSON.stringify(data),
+      user_id: user.id,
+      user_name: user.full_name,
+    }).catch(() => {});
+
+    return Response.json({
+      success: true,
+      meta_id: metaId,
+      status: "em_analise",
+      message: "Template enviado para análise da Meta via D-API Cloud API.",
+    });
+  } catch (err: any) {
+    const motivo = err?.message || "Erro de rede ao contatar a D-API.";
+    await b44.entities.WhatsappTemplate.update(template.id, {
+      status: "erro_envio",
+      rejection_reason: motivo,
+    });
+    await b44.entities.WhatsappTemplateLog.create({
+      empresa_id: template.empresa_id,
+      template_id: template.id,
+      action: "enviar_aprovacao",
+      previous_status: "rascunho",
+      new_status: "erro_envio",
+      request_json: JSON.stringify(payload),
+      error_message: motivo,
+      user_id: user.id,
+      user_name: user.full_name,
+    }).catch(() => {});
+    return Response.json(
+      { error: "Erro ao contatar a D-API (rede).", http_status: 502, meta_message: motivo, details: motivo },
+      { status: 502 },
+    );
+  }
+}
+
 const tokenCache: Record<string, string> = {};
 
 async function getToken(empresaId?: string | null, b44?: any): Promise<string> {
@@ -741,6 +929,17 @@ Deno.serve(async (req) => {
         submitted_at: new Date().toISOString(),
         rejection_reason: null,
       });
+
+      // Resolve a conexão para decidir a rota de envio:
+      // - D-API Cloud API (provider_type==="dapi") → endpoint próprio da D-API
+      // - Meta Oficial (Embedded Signup) → Graph API da Meta (fluxo legado)
+      let connEnvio: any = null;
+      if (template.connection_id) {
+        try { connEnvio = await base44.entities.WhatsappConnection.get(template.connection_id); } catch {}
+      }
+      if (connEnvio && connEnvio.provider_type === "dapi") {
+        return await sendToDapiCloudApi(template, connEnvio, base44, user);
+      }
 
       // Passo 1: diagnóstico + resolução completa dos campos da conexão.
       const diag = await diagnosticarConexao(template, base44);
