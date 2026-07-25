@@ -123,7 +123,7 @@ export default function TemplateForm({ value, onChange, connections, loadingConn
                   <div className="flex flex-col">
                     <span className="font-medium">{c.nome || c.session_id}</span>
                     <span className="text-[10px] text-slate-500">
-                      {c.phone_number ? `${c.phone_number} · ` : ''}API Oficial · Conectada
+                      {c.phone_number ? `${c.phone_number} · ` : ''}API Não Oficial · Conectada
                     </span>
                   </div>
                 </SelectItem>
