@@ -798,7 +798,10 @@ Deno.serve(async (req) => {
         components,
       };
 
-      // token já declarado acima (preferência: token da conexão)
+      // Resolve o token de acesso à Meta (preferência: token da empresa
+      // via Embedded Signup; fallback META_WHATSAPP_ACCESS_TOKEN global).
+      const token = await getToken(template.empresa_id, base44);
+
       try {
         const urlCriacao = `${META_BASE_URL}/${META_API_VERSION}/${wabaId}/message_templates`;
         const res = await fetch(urlCriacao, {
@@ -818,7 +821,7 @@ Deno.serve(async (req) => {
           event_type: "message.sent",
           direction: "outbound",
           payload_json: JSON.stringify({
-            templateProvider, url: urlCriacao, method: "POST",
+            templateProvider: "meta_graph_api", url: urlCriacao, method: "POST",
             waba_id: wabaId, http_status: res.status,
             template_id, template_name: template.name,
             user_id: user.id, user_name: user.full_name,
