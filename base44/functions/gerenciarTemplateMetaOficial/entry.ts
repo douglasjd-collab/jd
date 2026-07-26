@@ -235,8 +235,9 @@ async function syncTemplatesFromMeta(
     null,
     500,
   );
+  const normLang = (l?: string) => (String(l || "pt_BR").toLowerCase().replace("-", "_"));
   const crmIndex = new Set(
-    crmTemplates.map((t) => `${(t.name || "").toLowerCase()}|${(t.language || "pt_BR").toLowerCase()}`),
+    crmTemplates.map((t) => `${(t.name || "").toLowerCase()}|${normLang(t.language)}`),
   );
 
   // Coleta todos os templates de cada WABA (Meta Graph API direta — quando há
@@ -282,7 +283,7 @@ async function syncTemplatesFromMeta(
   for (const m of allMetaTemplates) {
     const name = (m.name || "").toLowerCase();
     if (!name) continue;
-    const language = m.language || "pt_BR";
+    const language = normLang(m.language);
     const key = `${name}|${language}`;
     if (crmIndex.has(key)) {
       // Template já existe no CRM — atualiza status, categoria, idioma,
@@ -290,7 +291,7 @@ async function syncTemplatesFromMeta(
       // Preserva dados do CRM que não vêm da Meta (variables_json, mídia
       // enviada pelo usuário, connection_id, etc.).
       const existing = crmTemplates.find(
-        (t) => (t.name || "").toLowerCase() === name && (t.language || "") === language,
+        (t) => (t.name || "").toLowerCase() === name && normLang(t.language) === language,
       );
       if (existing) {
         const newStatus = mapMetaStatusToCrm(m.status);
