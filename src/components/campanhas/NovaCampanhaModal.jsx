@@ -298,7 +298,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
 
         <Stepper step={step} />
 
-        <div className="min-h-[260px]">
+        <div className="min-h-[260px] max-h-[60vh] overflow-y-auto pr-1 -mr-1">
           {step === 1 && (
             <Step1
               form={form}
