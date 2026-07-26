@@ -562,18 +562,18 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
 
       case 'imagem':
         return (
-          <div>
-            <div className="max-w-xs">
+          <div className="w-full">
+            <div className="w-full">
               {loadingMedia ? (
-                <div className="flex items-center gap-2 bg-white/10 rounded-lg p-4 w-32 h-32 justify-center">
+                <div className="flex items-center gap-2 bg-white/10 rounded-lg p-4 w-full h-32 justify-center">
                   <Loader2 className="w-5 h-5 animate-spin" />
                 </div>
               ) : mediaUrl ? (
-                <div className="relative group/img">
+                <div className="relative group/img w-full">
                   <img
                     src={mediaUrl}
                     alt="Imagem"
-                    className="rounded-lg max-w-full h-auto cursor-pointer hover:opacity-90 transition-opacity"
+                    className="rounded-lg w-full h-auto cursor-pointer hover:opacity-90 transition-opacity object-cover"
                     onError={(e) => { e.target.onerror = null; urlFalhouRef.current = mediaUrl; setMediaUrl(null); }}
                     onClick={() => setImagemAberta(true)}
                   />
