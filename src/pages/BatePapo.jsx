@@ -75,7 +75,6 @@ import useDapiCall from '@/components/chat/useDapiCall';
 import ChamadaAtivaBar from '@/components/chat/ChamadaAtivaBar.jsx';
 import DapiCallBar from '@/components/chat/DapiCallBar.jsx';
 import DashboardProdutividade from '@/components/chat/DashboardProdutividade';
-import TemplateManagerModal from '@/components/templates/TemplateManagerModal';
 import CoachIAPanel from '@/components/chat/CoachIAPanel';
 import MobileBottomNav from '@/components/chat/MobileBottomNav';
 import MobileConversationActions from '@/components/chat/MobileConversationActions';
@@ -322,7 +321,6 @@ export default function BatePapo() {
   const [mobileViewChat, setMobileViewChat] = useState(false); // mobile: false=lista, true=chat
   const [nvoipConfig, setNvoipConfig] = useState(null);
   const [produtividadeOpen, setProdutividadeOpen] = useState(false);
-  const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
   const [coachIAOpen, setCoachIAOpen] = useState(false);
   const [coachIATab, setCoachIATab] = useState('agora');
   const abrirCadastroIA = useCallback(() => {
@@ -1486,12 +1484,6 @@ export default function BatePapo() {
           }}
         />
       )}
-      <TemplateManagerModal
-        open={templateManagerOpen}
-        onOpenChange={setTemplateManagerOpen}
-        empresaId={empresaId}
-        user={user}
-      />
       <div id="batepapo-root" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 30, display: 'flex', flexDirection: 'column', padding: '8px', boxSizing: 'border-box', backgroundColor: '#F0EBE0' }}>
         <style>{`
           @media (min-width: 1024px) { #batepapo-root { left: 18rem !important; } }
@@ -1895,11 +1887,11 @@ export default function BatePapo() {
                 {['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil) && (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button size="sm" variant="outline" className="h-8 border-[#10353C] text-[#10353C] hover:bg-[#10353C] hover:text-white" onClick={() => setTemplateManagerOpen(true)}>
+                      <a href="/Campanhas" target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-8 text-xs px-3 border rounded-md border-[#10353C] text-[#10353C] hover:bg-[#10353C] hover:text-white gap-1">
                         <Plus className="w-3.5 h-3.5 mr-1" /> Criar template
-                      </Button>
+                      </a>
                     </TooltipTrigger>
-                    <TooltipContent>Criar template da API Oficial da Meta</TooltipContent>
+                    <TooltipContent>Criar template da API Oficial da Meta (módulo Campanhas)</TooltipContent>
                   </Tooltip>
                 )}
                 <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setNovaConversaOpen(true)}>

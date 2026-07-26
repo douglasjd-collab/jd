@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 import CampanhasDashboard from '@/components/campanhas/CampanhasDashboard';
 import CampanhasLista from '@/components/campanhas/CampanhasLista';
+import CampanhasTemplates from '@/components/campanhas/CampanhasTemplates';
 import NovaCampanhaModal from '@/components/campanhas/NovaCampanhaModal';
 
 export default function Campanhas() {
@@ -96,7 +97,11 @@ export default function Campanhas() {
           <CampanhasLista empresaId={empresaId} user={user} onNova={() => setNovaCampanhaOpen(true)} />
         </TabsContent>
 
-        {['templates', 'listas', 'segmentacoes', 'agendamentos', 'relatorios', 'configuracoes'].map(
+        <TabsContent value="templates" className="mt-4">
+          <CampanhasTemplates empresaId={empresaId} user={user} />
+        </TabsContent>
+
+        {['listas', 'segmentacoes', 'agendamentos', 'relatorios', 'configuracoes'].map(
           (t) => (
             <TabsContent key={t} value={t} className="mt-4">
               <Placeholder name={t} />
