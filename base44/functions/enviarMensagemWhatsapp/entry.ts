@@ -177,8 +177,11 @@ Deno.serve(async (req) => {
 
     // Se o canal da conversa é D-API mas nenhuma conexão casou, BLOQUEAR o envio
     // (não usar fallback automático — o usuário precisa escolher a API manualmente).
+    // NOTA: não usar `canalAtendimento === 'dapi'` aqui — essa variável é declarada
+    // MAIS ABAIXO e dispararia um ReferenceError de TDZ, derrubando todos os envios
+    // com HTTP 500. providerSalvo/canalOrigem/tipoConexaoConversa cobrem os mesmos casos
+    // (alteração de canal pelo seletor do header grava os três simultaneamente).
     const conversaExigeDapi =
-      canalAtendimento === 'dapi' ||
       providerSalvo === 'dapi' ||
       canalOrigem === 'dapi' ||
       tipoConexaoConversa === 'dapi';
