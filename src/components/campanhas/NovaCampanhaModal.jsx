@@ -24,6 +24,7 @@ import {
   ListChecks,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import PublicoBuilder from './PublicoBuilder';
 
 const STEPS = [
   { id: 1, label: 'Template', icon: FileText },
@@ -32,14 +33,6 @@ const STEPS = [
   { id: 4, label: 'Prévia', icon: Eye },
   { id: 5, label: 'Agendamento', icon: CalendarClock },
   { id: 6, label: 'Confirmar', icon: ListChecks },
-];
-
-const PUBLICOS_CLIENTES = [
-  { id: 'todos', label: 'Todos' },
-  { id: 'ativos', label: 'Ativos' },
-  { id: 'inativos', label: 'Inativos' },
-  { id: 'sem_proposta', label: 'Sem proposta' },
-  { id: 'com_proposta', label: 'Com proposta' },
 ];
 
 const normalizeTel = (s = '') => s.replace(/\D/g, '');
@@ -55,9 +48,13 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     nome: '',
     descricao: '',
     template_id: '',
-    publico_tipo: 'clientes',
-    publico_sub: 'todos',
-    origens: ['clientes'],
+    origens: [],
+    clientes_sub: 'todos',
+    funis_selecionados: [],
+    tags_selecionadas: [],
+    listas_selecionadas: [],
+    parceiros_selecionados: [],
+    personalizado_regras: [],
     filtro_cidade: '',
     filtro_uf: '',
     filtro_sem_atendimento_dias: '',
@@ -77,9 +74,13 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         nome: '',
         descricao: '',
         template_id: '',
-        publico_tipo: 'clientes',
-        publico_sub: 'todos',
-        origens: ['clientes'],
+        origens: [],
+        clientes_sub: 'todos',
+        funis_selecionados: [],
+        tags_selecionadas: [],
+        listas_selecionadas: [],
+        parceiros_selecionados: [],
+        personalizado_regras: [],
         filtro_cidade: '',
         filtro_uf: '',
         filtro_sem_atendimento_dias: '',
@@ -118,11 +119,14 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     setLoadingPreview(true);
     setPreview(null);
     try {
+      const sub = form.clientes_sub || 'todos';
       const filtro = { empresa_id: empresaId };
-      if (form.publico_sub === 'ativos') filtro.status = 'ativo';
-      if (form.publico_sub === 'inativos') filtro.status = 'inativo';
+      if (sub === 'ativos') filtro.status = 'ativo';
+      if (sub === 'inativos') filtro.status = 'inativo';
       const clientes = await base44.entities.Cliente.filter(filtro, null, 2000);
       let filtrados = clientes;
+      if (sub === 'sem_whatsapp') filtrados = filtrados.filter((c) => normalizeTel(c.celular || '').length < 10);
+      if (sub === 'com_whatsapp') filtrados = filtrados.filter((c) => normalizeTel(c.celular || '').length >= 10);
       if (form.filtro_cidade) {
         filtrados = filtrados.filter((c) =>
           (c.res_cidade || '').toLowerCase().includes(form.filtro_cidade.toLowerCase())
@@ -153,7 +157,19 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
 
   const podeAvancar = useMemo(() => {
     if (step === 1) return !!form.template_id && !!form.nome;
-    if (step === 2) return form.origens.length > 0;
+    if (step === 2) {
+      if (!form.origens || form.origens.length === 0) return false;
+      // Cada fonte selecionada precisa de ao menos 1 seleção interna
+      if (form.origens.includes('funis') && (form.funis_selecionados || []).length === 0) return false;
+      if (form.origens.includes('tags') && (form.tags_selecionadas || []).length === 0) return false;
+      if (form.origens.includes('listas') && (form.listas_selecionadas || []).length === 0) return false;
+      if (form.origens.includes('parceiros') && (form.parceiros_selecionados || []).length === 0) return false;
+      if (
+        form.origens.includes('personalizados') &&
+        (form.personalizado_regras || []).filter((r) => r.field && r.op && r.value !== '' && r.value != null).length === 0
+      ) return false;
+      return true;
+    }
     if (step === 4) return preview !== null && preview.prontos_envio > 0;
     if (step === 5) return form.agendamento === 'agora' || (form.agendada_para_data && form.agendada_para_hora);
     return true;
@@ -171,11 +187,14 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
   const submit = async () => {
     setSaving(true);
     try {
+      const sub = form.clientes_sub || 'todos';
       const filtro = { empresa_id: empresaId };
-      if (form.publico_sub === 'ativos') filtro.status = 'ativo';
-      if (form.publico_sub === 'inativos') filtro.status = 'inativo';
+      if (sub === 'ativos') filtro.status = 'ativo';
+      if (sub === 'inativos') filtro.status = 'inativo';
       const clientes = await base44.entities.Cliente.filter(filtro, null, 2000);
       let filtrados = clientes;
+      if (sub === 'sem_whatsapp') filtrados = filtrados.filter((c) => normalizeTel(c.celular || '').length < 10);
+      if (sub === 'com_whatsapp') filtrados = filtrados.filter((c) => normalizeTel(c.celular || '').length >= 10);
       if (form.filtro_cidade) {
         filtrados = filtrados.filter((c) =>
           (c.res_cidade || '').toLowerCase().includes(form.filtro_cidade.toLowerCase())
@@ -206,7 +225,15 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         agendadaPara = new Date(`${form.agendada_para_data}T${form.agendada_para_hora}:00`).toISOString();
       }
       const configJson = JSON.stringify({
-        publico: { tipo: form.publico_tipo, sub: form.publico_sub, origens: form.origens },
+        publico: {
+          origens: form.origens,
+          clientes_sub: form.clientes_sub,
+          funis: form.funis_selecionados,
+          tags: form.tags_selecionadas,
+          listas: form.listas_selecionadas,
+          parceiros: form.parceiros_selecionados,
+          personalizado_regras: form.personalizado_regras,
+        },
         filtros: {
           cidade: form.filtro_cidade,
           uf: form.filtro_uf,
@@ -280,7 +307,9 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
               loading={loadingTemplates}
             />
           )}
-          {step === 2 && <Step2 form={form} setForm={setForm} />}
+          {step === 2 && (
+            <PublicoBuilder form={form} setForm={setForm} empresaId={empresaId} user={user} />
+          )}
           {step === 3 && <Step3 form={form} setForm={setForm} />}
           {step === 4 && <Step4 preview={preview} loading={loadingPreview} onRecalc={calcularPrevia} />}
           {step === 5 && <Step5 form={form} setForm={setForm} />}
@@ -377,61 +406,6 @@ function Step1({ form, setForm, templates, loading }) {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function Step2({ form, setForm }) {
-  const origens = [
-    { id: 'clientes', label: 'Clientes' },
-    { id: 'funis', label: 'Funis' },
-    { id: 'tags', label: 'Tags' },
-    { id: 'listas', label: 'Listas importadas' },
-    { id: 'parceiros', label: 'Parceiros' },
-    { id: 'personalizados', label: 'Personalizados' },
-  ];
-  const toggle = (id) => {
-    const tem = form.origens.includes(id);
-    setForm({ ...form, origens: tem ? form.origens.filter((o) => o !== id) : [...form.origens, id] });
-  };
-  return (
-    <div className="space-y-4">
-      <Label className="block">Origens do público (selecione uma ou várias)</Label>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-        {origens.map((o) => (
-          <button
-            key={o.id}
-            onClick={() => toggle(o.id)}
-            className={`p-3 rounded-lg border text-sm text-left transition ${
-              form.origens.includes(o.id) ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 hover:border-slate-300'
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-
-      {form.origens.includes('clientes') && (
-        <div className="border-t pt-4">
-          <Label className="block mb-2">Filtro de clientes</Label>
-          <div className="flex flex-wrap gap-2">
-            {PUBLICOS_CLIENTES.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setForm({ ...form, publico_sub: p.id })}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                  form.publico_sub === p.id ? 'bg-emerald-600 text-white border-emerald-600' : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-      <p className="text-xs text-slate-400">
-        Demais origens (tags, listas, funis, parceiros) serão liberadas na próxima iteração.
-      </p>
     </div>
   );
 }
@@ -563,7 +537,7 @@ function Step6({ form, template, preview, user }) {
           <Row label="Nome" value={form.nome || '-'} />
           <Row label="Template" value={template?.display_name || template?.name || '-'} />
           <Row label="Canal" value="WhatsApp API Oficial" />
-          <Row label="Público" value={`${form.publico_tipo} (${form.publico_sub})`} />
+          <Row label="Público (fontes)" value={resumoPublico(form)} />
           <Row label="Filtros" value={[form.filtro_cidade, form.filtro_uf, form.filtro_sem_atendimento_dias ? `> ${form.filtro_sem_atendimento_dias} dias` : ''].filter(Boolean).join(' · ') || 'Nenhum'} />
           <Row label="Prontos p/ envio" value={preview?.prontos_envio ?? '-'} />
           <Row label="Agendamento" value={form.agendamento === 'agora' ? 'Imediato' : `${form.agendada_para_data} ${form.agendada_para_hora}`} />
@@ -599,4 +573,37 @@ function Row({ label, value }) {
 function empresaIdShort(user) {
   const id = user?.empresa_id || '-';
   return typeof id === 'string' && id.length > 8 ? id.slice(0, 8) + '…' : id;
+}
+
+function resumoPublico(form) {
+  const partes = [];
+  if (form.origens?.includes('clientes')) {
+    const subMap = {
+      todos: 'Todos os clientes',
+      ativos: 'Ativos',
+      inativos: 'Inativos',
+      com_whatsapp: 'Com WhatsApp',
+      sem_whatsapp: 'Sem WhatsApp',
+      sem_atendimento: 'Sem atendimento',
+      com_propostas: 'Com propostas',
+      sem_propostas: 'Sem propostas',
+    };
+    partes.push(`Clientes: ${subMap[form.clientes_sub] || 'Todos'}`);
+  }
+  if (form.origens?.includes('funis') && form.funis_selecionados?.length) {
+    partes.push(`${form.funis_selecionados.length} funil(is)`);
+  }
+  if (form.origens?.includes('tags') && form.tags_selecionadas?.length) {
+    partes.push(`${form.tags_selecionadas.length} tag(s)`);
+  }
+  if (form.origens?.includes('listas') && form.listas_selecionadas?.length) {
+    partes.push(`${form.listas_selecionadas.length} lista(s)`);
+  }
+  if (form.origens?.includes('parceiros') && form.parceiros_selecionados?.length) {
+    partes.push(`${form.parceiros_selecionados.length} parceiro(s)`);
+  }
+  if (form.origens?.includes('personalizados') && form.personalizado_regras?.length) {
+    partes.push(`${form.personalizado_regras.length} regra(s)`);
+  }
+  return partes.length ? partes.join(' · ') : '—';
 }
