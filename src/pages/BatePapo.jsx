@@ -1884,16 +1884,6 @@ export default function BatePapo() {
                     <TooltipContent>Painel de Produtividade</TooltipContent>
                   </Tooltip>
                 )}
-                {['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil) && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <a href="/Campanhas" target="_blank" rel="noreferrer" className="inline-flex items-center justify-center h-8 text-xs px-3 border rounded-md border-[#10353C] text-[#10353C] hover:bg-[#10353C] hover:text-white gap-1">
-                        <Plus className="w-3.5 h-3.5 mr-1" /> Criar template
-                      </a>
-                    </TooltipTrigger>
-                    <TooltipContent>Criar template da API Oficial da Meta (módulo Campanhas)</TooltipContent>
-                  </Tooltip>
-                )}
                 <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setNovaConversaOpen(true)}>
                   <Plus className="h-5 w-5" />
                 </Button>
