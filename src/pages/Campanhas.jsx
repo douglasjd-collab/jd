@@ -9,10 +9,7 @@ import {
   List,
   FileText,
   Users,
-  Filter,
   CalendarClock,
-  BarChart3,
-  Settings as SettingsIcon,
   Plus,
   Clock,
 } from 'lucide-react';
@@ -75,17 +72,8 @@ export default function Campanhas() {
           <TabsTrigger value="listas" className="gap-1.5">
             <Users className="w-4 h-4" /> Listas
           </TabsTrigger>
-          <TabsTrigger value="segmentacoes" className="gap-1.5">
-            <Filter className="w-4 h-4" /> Segmentações
-          </TabsTrigger>
           <TabsTrigger value="agendamentos" className="gap-1.5">
             <CalendarClock className="w-4 h-4" /> Agendamentos
-          </TabsTrigger>
-          <TabsTrigger value="relatorios" className="gap-1.5">
-            <BarChart3 className="w-4 h-4" /> Relatórios
-          </TabsTrigger>
-          <TabsTrigger value="configuracoes" className="gap-1.5">
-            <SettingsIcon className="w-4 h-4" /> Configurações
           </TabsTrigger>
         </TabsList>
 
@@ -101,7 +89,7 @@ export default function Campanhas() {
           <CampanhasTemplates empresaId={empresaId} user={user} />
         </TabsContent>
 
-        {['listas', 'segmentacoes', 'agendamentos', 'relatorios', 'configuracoes'].map(
+        {['listas', 'agendamentos'].map(
           (t) => (
             <TabsContent key={t} value={t} className="mt-4">
               <Placeholder name={t} />
@@ -122,12 +110,8 @@ export default function Campanhas() {
 
 function Placeholder({ name }) {
   const labels = {
-    templates: 'Templates',
     listas: 'Listas de Contatos',
-    segmentacoes: 'Segmentações',
     agendamentos: 'Agendamentos',
-    relatorios: 'Relatórios',
-    configuracoes: 'Configurações',
   };
   return (
     <div className="border border-dashed border-slate-300 bg-slate-50 rounded-2xl py-16 px-6 text-center">
