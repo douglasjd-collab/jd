@@ -50,6 +50,7 @@ import CentrosCusto from './pages/CentrosCusto';
 import MeuFinanceiro from './pages/MeuFinanceiro';
 import ImportacaoComissao from './pages/ImportacaoComissao';
 import RobosIntegracoes from './pages/RobosIntegracoes';
+import Campanhas from './pages/Campanhas';
 import MonitoramentoInstancias from './pages/MonitoramentoInstancias';
 import ConfiguracaoWhatsAppConexoes from './components/configuracoes/ConfiguracaoWhatsAppConexoes';
 import LogsWebhookDapi from './pages/LogsWebhookDapi';
@@ -154,6 +155,7 @@ const AuthenticatedApp = () => {
       <Route path="/MonitoramentoInstancias" element={<LayoutWrapper currentPageName="MonitoramentoInstancias"><MonitoramentoInstancias /></LayoutWrapper>} />
       <Route path="/ConfiguracaoWhatsAppConexoes" element={<LayoutWrapper currentPageName="ConfiguracaoWhatsAppConexoes"><ConfiguracaoWhatsAppConexoes /></LayoutWrapper>} />
       <Route path="/LogsWebhookDapi" element={<LayoutWrapper currentPageName="LogsWebhookDapi"><LogsWebhookDapi /></LayoutWrapper>} />
+      <Route path="/Campanhas" element={<LayoutWrapper currentPageName="Campanhas"><Campanhas /></LayoutWrapper>} />
       <Route path="/GruposConsorcio" element={<LayoutWrapper currentPageName="GruposConsorcio"><GruposConsorcio /></LayoutWrapper>} />
       <Route path="/GrupoConsorcioDetalhes" element={<LayoutWrapper currentPageName="GrupoConsorcioDetalhes"><GrupoConsorcioDetalhes /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />

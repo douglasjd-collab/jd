@@ -1,0 +1,101 @@
+{
+  "name": "CampanhaDestinatario",
+  "type": "object",
+  "description": "Status individual de cada destinat\u00e1rio de uma campanha (1 registro por contato por campanha).",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "campanha_id": {
+      "type": "string",
+      "description": "ID da Campanha"
+    },
+    "cliente_id": {
+      "type": "string",
+      "description": "ID do Cliente (opcional se n\u00famero sem cliente vinculado)"
+    },
+    "cliente_nome": {
+      "type": "string",
+      "description": "Nome do cliente (denormalizado)"
+    },
+    "telefone": {
+      "type": "string",
+      "description": "Telefone\u683c\u5f0fado (com DDD)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "na_fila",
+        "enviando",
+        "enviada",
+        "entregue",
+        "lida",
+        "respondida",
+        "falhou",
+        "numero_invalido",
+        "sem_whatsapp",
+        "bloqueado",
+        "cancelado"
+      ],
+      "default": "na_fila",
+      "description": "Status atual do envio para este destinat\u00e1rio"
+    },
+    "whatsapp_message_id": {
+      "type": "string",
+      "description": "ID da mensagem na Meta API"
+    },
+    "conversa_id": {
+      "type": "string",
+      "description": "ID da ConversaWhatsapp criada/atribu\u00edda quando cliente responde"
+    },
+    "data_envio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora do envio"
+    },
+    "data_entrega": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora da entrega"
+    },
+    "data_leitura": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora da leitura"
+    },
+    "data_resposta": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora da resposta do cliente"
+    },
+    "erro_mensagem": {
+      "type": "string",
+      "description": "Mensagem de erro (se falhou)"
+    },
+    "origem": {
+      "type": "string",
+      "description": "Origem do contato (clientes_filtro, lista, segmentacao, manual)"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "campanha_id",
+    "telefone",
+    "status"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

@@ -23,6 +23,7 @@ import {
         Calculator,
         Calendar,
         MessageSquare,
+        Megaphone,
         Moon,
         Sun,
         Loader2,
@@ -301,6 +302,7 @@ export default function Layout({ children, currentPageName }) {
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', roles: [...ALL_ROLES, 'parceiro'] },
     { name: 'Bate - Papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
+    { name: 'Campanhas', icon: Megaphone, page: 'Campanhas', roles: ALL_ROLES },
     { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: [...ALL_ROLES, 'parceiro'] },
     { name: 'Call Center', icon: Phone, page: 'CallCenter', roles: ALL_ROLES },
     { 

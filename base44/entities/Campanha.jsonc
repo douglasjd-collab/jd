@@ -1,0 +1,189 @@
+{
+  "name": "Campanha",
+  "type": "object",
+  "description": "Campanha de marketing/mensagem em massa (multi-canal). Esta primeira vers\u00e3o suporta apenas WhatsApp API Oficial, mas o campo canal \u00e9 gen\u00e9rico para futuros canais.",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "criador_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que criou a campanha"
+    },
+    "criador_nome": {
+      "type": "string",
+      "description": "Nome do criador"
+    },
+    "nome": {
+      "type": "string",
+      "description": "Nome da campanha"
+    },
+    "descricao": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o/observa\u00e7\u00e3o da campanha"
+    },
+    "canal": {
+      "type": "string",
+      "enum": [
+        "whatsapp_meta_oficial",
+        "instagram",
+        "facebook_messenger",
+        "sms",
+        "email",
+        "rcs"
+      ],
+      "default": "whatsapp_meta_oficial",
+      "description": "Canal utilizado. Gen\u00e9rico para suporte a m\u00faltiplos canais no futuro."
+    },
+    "template_id": {
+      "type": "string",
+      "description": "ID do WhatsappTemplate vinculado"
+    },
+    "template_nome": {
+      "type": "string",
+      "description": "Nome do template (denormalizado)"
+    },
+    "template_category": {
+      "type": "string",
+      "description": "Categoria do template (MARKETING, UTILITY, AUTHENTICATION)"
+    },
+    "template_language": {
+      "type": "string",
+      "description": "Idioma do template (pt_BR, en_US, etc)"
+    },
+    "template_components_json": {
+      "type": "string",
+      "description": "JSON com os components do template (header, body, footer, buttons)"
+    },
+    "template_variables_json": {
+      "type": "string",
+      "description": "JSON mapeando vari\u00e1veis {{n}} -> valor fixo ou crmField"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "rascunho",
+        "agendada",
+        "executando",
+        "concluida",
+        "cancelada",
+        "pausada",
+        "erro"
+      ],
+      "default": "rascunho",
+      "description": "Status da campanha"
+    },
+    "total_destinatarios": {
+      "type": "number",
+      "default": 0,
+      "description": "Total de destinat\u00e1rios na campanha"
+    },
+    "enviados": {
+      "type": "number",
+      "default": 0,
+      "description": "Mensagens enviadas com sucesso"
+    },
+    "entregues": {
+      "type": "number",
+      "default": 0,
+      "description": "Mensagens entregues"
+    },
+    "lidos": {
+      "type": "number",
+      "default": 0,
+      "description": "Mensagens lidas"
+    },
+    "respondidos": {
+      "type": "number",
+      "default": 0,
+      "description": "Mensagens respondidas (cliente respondeu)"
+    },
+    "propostas_geradas": {
+      "type": "number",
+      "default": 0,
+      "description": "N\u00famero de propostas originadas da campanha"
+    },
+    "vendas_realizadas": {
+      "type": "number",
+      "default": 0,
+      "description": "N\u00famero de vendas originadas da campanha"
+    },
+    "valor_vendido": {
+      "type": "number",
+      "default": 0,
+      "description": "Valor vendido originado da campanha"
+    },
+    "comissao_gerada": {
+      "type": "number",
+      "default": 0,
+      "description": "Comiss\u00e3o gerada pelas vendas da campanha"
+    },
+    "falhas": {
+      "type": "number",
+      "default": 0,
+      "description": "Mensagens com falha de envio"
+    },
+    "bloqueados": {
+      "type": "number",
+      "default": 0,
+      "description": "Mensagens bloqueadas"
+    },
+    "invalidos": {
+      "type": "number",
+      "default": 0,
+      "description": "N\u00fameros inv\u00e1lidos ou sem WhatsApp"
+    },
+    "agendada_para": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora agendada para in\u00edcio do envio"
+    },
+    "inicio_execucao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "In\u00edcio efetivo da execu\u00e7\u00e3o do disparo"
+    },
+    "fim_execucao": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fim efetivo da execu\u00e7\u00e3o do disparo"
+    },
+    "velocidade_envio": {
+      "type": "number",
+      "default": 60,
+      "description": "Mensagens por minuto"
+    },
+    "pausa_apos": {
+      "type": "number",
+      "description": "Pausar automaticamente ap\u00f3s N envios (0 = sem pausa)"
+    },
+    "duracao_pausa_min": {
+      "type": "number",
+      "description": "Dura\u00e7\u00e3o da pausa autom\u00e1tica em minutos"
+    },
+    "config_json": {
+      "type": "string",
+      "description": "JSON completo com origens do p\u00fablico, filtros, segmentos e configura\u00e7\u00f5es do disparo"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "nome",
+    "status"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
+    }
+  }
+}
