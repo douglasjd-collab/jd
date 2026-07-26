@@ -45,6 +45,7 @@ const COLUNAS = {
   nome: ['nome', 'nome completo', 'nome do cliente', 'nome completo do cliente', 'nome do contato', 'cliente'],
   cpf: ['cpf', 'c.p.f'],
   telefone: ['telefone', 'tel', 'celular', 'cel', 'whatsapp', 'whats', 'fone', 'numero', 'número', 'phone'],
+  email: ['email', 'e-mail', 'mail'],
 };
 
 function detectarColuna(headers, keys) {
@@ -114,6 +115,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
       const idxNome = detectarColuna(headers, COLUNAS.nome);
       const idxCpf = detectarColuna(headers, COLUNAS.cpf);
       const idxTel = detectarColuna(headers, COLUNAS.telefone);
+      const idxEmail = detectarColuna(headers, COLUNAS.email); // opcional
       if (idxNome < 0 || idxCpf < 0 || idxTel < 0) {
         setErro(ERRO_COLUNAS_MSG);
         setArquivo(null);
@@ -126,6 +128,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
           const nomeRaw = String(row[idxNome] || '').trim();
           const cpfRaw = String(row[idxCpf] || '').trim();
           const telRaw = String(row[idxTel] || '').trim();
+          const emailRaw = idxEmail >= 0 ? String(row[idxEmail] || '').trim() : '';
           const nomeFormatado = titleCaseName(nomeRaw);
           return {
             nome: nomeFormatado,
@@ -134,6 +137,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
             cpf_norm: normCpf(cpfRaw),
             telefone: telRaw,
             telefone_norm: normTel(telRaw),
+            email: emailRaw,
           };
         })
         .filter((r) => r.nome || r.cpf_norm || r.telefone_norm);
@@ -155,7 +159,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
       }
 
       setLinhas(parsed);
-      setColunas({ nome: headers[idxNome], cpf: headers[idxCpf], telefone: headers[idxTel] });
+      setColunas({ nome: headers[idxNome], cpf: headers[idxCpf], telefone: headers[idxTel], email: idxEmail >= 0 ? headers[idxEmail] : null });
       setEtapa('revisao');
     } catch (err) {
       console.error(err);
@@ -223,6 +227,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
           if (!existente.primeiro_nome && l.primeiro_nome) patch.primeiro_nome = l.primeiro_nome;
           if (!existente.cpf && l.cpf) patch.cpf = l.cpf;
           if (!normTel(existente.celular || '') && l.telefone) patch.celular = l.telefone;
+          if (!existente.email && l.email) patch.email = l.email;
           if (!existente.tipo_pessoa) patch.tipo_pessoa = 'Física';
           if (Object.keys(patch).length > 0) {
             atualizacoes.push({ id: existente.id, patch });
@@ -233,6 +238,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
             primeiro_nome: existente.primeiro_nome || l.primeiro_nome,
             cpf: existente.cpf || l.cpf,
             telefone: normTel(existente.celular || l.telefone),
+            email: existente.email || l.email || '',
           });
           if (l.cpf_norm && !porCpf.has(l.cpf_norm)) porCpf.set(l.cpf_norm, existente);
           if (l.telefone_norm && !porTel.has(l.telefone_norm)) porTel.set(l.telefone_norm, existente);
@@ -247,6 +253,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
               primeiro_nome: l.primeiro_nome,
               cpf: l.cpf,
               celular: l.telefone,
+              email: l.email || '',
               status: 'ativo',
             },
             linha: l,
@@ -284,6 +291,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
           primeiro_nome: c.primeiro_nome || x.linha.primeiro_nome,
           cpf: c.cpf || x.linha.cpf,
           telefone: normTel(c.celular || x.linha.telefone),
+          email: c.email || x.linha.email || '',
         });
       });
 
@@ -343,10 +351,11 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
                 <p className="text-xs text-slate-500 mt-1">
                   A planilha deve conter obrigatoriamente as colunas:
                 </p>
-                <div className="flex items-center justify-center gap-2 mt-2">
+                <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
                   <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs font-semibold">NOME</span>
                   <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs font-semibold">CPF</span>
                   <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs font-semibold">TELEFONE</span>
+                  <span className="px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs font-semibold">EMAIL (opcional)</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-2">
                   Listas contendo apenas telefone não são aceitas.
@@ -404,6 +413,12 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
                 <span className="text-slate-500">Coluna Telefone</span>
                 <span className="font-medium">{colunas.telefone}</span>
               </div>
+              {colunas.email && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Coluna Email</span>
+                  <span className="font-medium">{colunas.email}</span>
+                </div>
+              )}
             </div>
             <div>
               <Label>Nome da lista *</Label>

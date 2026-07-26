@@ -18,6 +18,7 @@ import CampanhasDashboard from '@/components/campanhas/CampanhasDashboard';
 import CampanhasLista from '@/components/campanhas/CampanhasLista';
 import CampanhasTemplates from '@/components/campanhas/CampanhasTemplates';
 import NovaCampanhaModal from '@/components/campanhas/NovaCampanhaModal';
+import CampanhasListas from '@/components/campanhas/CampanhasListas';
 
 export default function Campanhas() {
   const [user, setUser] = useState(null);
@@ -89,13 +90,13 @@ export default function Campanhas() {
           <CampanhasTemplates empresaId={empresaId} user={user} />
         </TabsContent>
 
-        {['listas', 'agendamentos'].map(
-          (t) => (
-            <TabsContent key={t} value={t} className="mt-4">
-              <Placeholder name={t} />
-            </TabsContent>
-          )
-        )}
+        <TabsContent value="listas" className="mt-4">
+          <CampanhasListas empresaId={empresaId} user={user} />
+        </TabsContent>
+
+        <TabsContent value="agendamentos" className="mt-4">
+          <Placeholder name="agendamentos" />
+        </TabsContent>
       </Tabs>
 
       <NovaCampanhaModal
