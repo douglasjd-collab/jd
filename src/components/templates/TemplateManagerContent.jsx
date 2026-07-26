@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
-import { Loader2, Plus, Edit3, Send, Link2, X, RefreshCw } from 'lucide-react';
+import { Loader2, Plus, Edit3, Send, X } from 'lucide-react';
 import TemplateForm from './TemplateForm';
 import TemplatePreview from './TemplatePreview';
 import TemplateList from './TemplateList';
@@ -416,29 +416,6 @@ export default function TemplateManagerContent({
             className={`text-xs px-3 py-1.5 rounded-full border ${tab === 'meus' ? 'bg-[#10353C] text-white border-[#10353C]' : 'bg-white border-slate-200 hover:bg-slate-50'}`}
           >
             {loadingTemplates ? 'Carregando…' : `Meus templates (${templates.length})`}
-          </button>
-          {canCreate && (
-            <button
-              onClick={() => setVincularOpen(true)}
-              className="text-xs px-3 py-1.5 rounded-full border bg-white border-slate-200 hover:bg-slate-50 text-[#10353C]"
-              title="Vincular WABA ID e Token da Meta à conexão"
-            >
-              <Link2 className="w-3 h-3 inline mr-1" /> Vincular Meta
-            </button>
-          )}
-          <button
-            onClick={async () => {
-              setRefreshing(true);
-              try { await syncTemplatesFromMeta(); } catch {}
-              await loadTemplates();
-              setRefreshing(false);
-            }}
-            className="text-xs px-3 py-1.5 rounded-full border bg-white border-slate-200 hover:bg-slate-50 text-slate-600"
-            title="Sincronizar com a Meta"
-            disabled={refreshing}
-          >
-            {refreshing ? <Loader2 className="w-3 h-3 inline mr-1 animate-spin" /> : <RefreshCw className="w-3 h-3 inline mr-1" />}
-            Atualizar
           </button>
           {onRequestClose && (
             <button
