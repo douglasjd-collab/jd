@@ -15,12 +15,14 @@ Deno.serve(async (req) => {
     if (!empresas.length) return Response.json({ error: 'Empresa não encontrada' }, { status: 404 });
 
     const empresa = empresas[0];
-    const accessToken = empresa.whatsapp_access_token;
-    const wabaId = empresa.whatsapp_business_account_id;
-    const phoneNumberId = empresa.whatsapp_phone_number_id;
+    // 1) Credenciais da própria empresa (multi-tenant) — entidade Empresa
+    // 2) Fallback: app secrets — single-tenant
+    const accessToken = empresa.whatsapp_access_token || Deno.env.get('META_WHATSAPP_ACCESS_TOKEN') || '';
+    const wabaId = empresa.whatsapp_business_account_id || Deno.env.get('META_WABA_ID') || '';
+    const phoneNumberId = empresa.whatsapp_phone_number_id || Deno.env.get('META_PHONE_NUMBER_ID') || '';
 
     if (!accessToken || !wabaId) {
-      return Response.json({ error: 'Credenciais Meta não configuradas. Configure o Access Token e Business Account ID nas configurações do WhatsApp.' }, { status: 400 });
+      return Response.json({ error: 'Credenciais Meta não configuradas. Configure o Access Token e Business Account ID na empresa ou nos secrets do app (META_WHATSAPP_ACCESS_TOKEN, META_WABA_ID).' }, { status: 400 });
     }
 
     // Versão dinâmica da API Meta

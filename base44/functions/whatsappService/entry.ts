@@ -475,6 +475,25 @@ Deno.serve(async (req) => {
         };
         return await this.request('/api/v1/messages/send/reaction', 'POST', messagePayload);
       },
+
+      // Enviar template aprovado (Cloud API / Meta Oficial) — POST /api/v1/messages/send/template
+      async sendTemplate(phoneNumber, template) {
+        const normalizedPhone = phoneNumber.replace(/\D/g, '');
+        const tpl = template || {};
+        const messagePayload = {
+          sessionId: this.sessionId,
+          to: normalizedPhone,
+          template: {
+            name: tpl.name,
+            language: tpl.language || 'pt_BR',
+            bodyVariables: Array.isArray(tpl.bodyVariables) ? tpl.bodyVariables : [],
+            ...(tpl.headerVariable ? { headerVariable: tpl.headerVariable } : {}),
+            ...(tpl.headerMedia ? { headerMedia: tpl.headerMedia } : {}),
+            ...(Array.isArray(tpl.components) && tpl.components.length > 0 ? { components: tpl.components } : {}),
+          }
+        };
+        return await this.request('/api/v1/messages/send/template', 'POST', messagePayload);
+      },
       
       // Marcar mensagens como lidas - POST /api/v1/chats/read
       async markAsRead(phoneNumber, messageIds) {
@@ -769,6 +788,14 @@ Deno.serve(async (req) => {
         }
         result = await adapter.sendReaction(phoneNumber, messageId, emoji);
         break;
+
+      case 'sendTemplate': {
+        if (!phoneNumber || !payload.template?.name) {
+          return Response.json({ error: 'phoneNumber and template.name required' }, { status: 400 });
+        }
+        result = await adapter.sendTemplate(phoneNumber, payload.template);
+        break;
+      }
         
       case 'markAsRead':
         if (!phoneNumber || !messageIds || !messageIds.length) {

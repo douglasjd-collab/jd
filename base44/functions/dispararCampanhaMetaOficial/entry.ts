@@ -15,11 +15,13 @@ Deno.serve(async (req) => {
     const empresa = await base44.asServiceRole.entities.Empresa.get(empresa_id);
     if (!empresa) return Response.json({ error: 'Empresa não encontrada' }, { status: 404 });
 
-    const accessToken = empresa.whatsapp_access_token;
-    const phoneNumberId = empresa.whatsapp_phone_number_id;
+    // 1) Credenciais da própria empresa (multi-tenant) — entidade Empresa
+    // 2) Fallback: app secrets (META_WHATSAPP_ACCESS_TOKEN / META_PHONE_NUMBER_ID) — single-tenant
+    const accessToken = empresa.whatsapp_access_token || Deno.env.get('META_WHATSAPP_ACCESS_TOKEN') || '';
+    const phoneNumberId = empresa.whatsapp_phone_number_id || Deno.env.get('META_PHONE_NUMBER_ID') || '';
 
     if (!accessToken || !phoneNumberId) {
-      return Response.json({ error: 'Credenciais Meta (access_token e phone_number_id) não configuradas na empresa' }, { status: 400 });
+      return Response.json({ error: 'Credenciais Meta (access_token e phone_number_id) não configuradas. Defina na empresa ou nos secrets do app (META_WHATSAPP_ACCESS_TOKEN, META_PHONE_NUMBER_ID).' }, { status: 400 });
     }
 
     // Versão dinâmica da API Meta
@@ -40,9 +42,30 @@ Deno.serve(async (req) => {
     let erros = 0;
     const resultados = [];
 
+    // ── Detectar conexão D-API Cloud (API Oficial) ativa da empresa ──
+    // Quando a empresa usa a D-API Cloud (provisionamento via embedded signup), os
+    // disparos de template Meta são roteados automaticamente por aqui — em vez de
+    // chamar a Graph API direto com token/phone_number_id.
+    let conexaoDapi: any = null;
+    try {
+      const conns = await base44.asServiceRole.entities.WhatsappConnection.filter(
+        { empresa_id, provider_type: 'dapi', is_active: true },
+        '-created_date', 50,
+      );
+      // Preferir conexão Cloud API (sessionId começando com 'cloud-')
+      conexaoDapi = conns.find(c => /^cloud-/i.test(c.session_id || '')) || conns[0] || null;
+      if (conexaoDapi) {
+        console.log('🟦 [D-API] Conexão ativa encontrada:', conexaoDapi.session_id);
+      }
+    } catch (e) {
+      console.warn('⚠️ Erro ao buscar conexão D-API:', e.message);
+    }
+
     // Buscar definição do template para obter header type e URL da mídia
     let templateHeaderType = template_header_type || null;
     let templateHeaderUrl = template_header_url || null;
+    let templateHeaderText = '';
+    let templateBotoes: any[] = Array.isArray(template_botoes) ? template_botoes : [];
     try {
       const defs = await base44.asServiceRole.entities.CampanhaLog.filter({
         empresa_id,
@@ -56,6 +79,8 @@ Deno.serve(async (req) => {
         // Chaves salvas pelo sincronizarTemplatesMeta: tipo_cabecalho e cabecalho_midia_url
         if (!templateHeaderType) templateHeaderType = parsed.tipo_cabecalho || parsed.header_type || null;
         if (!templateHeaderUrl) templateHeaderUrl = parsed.cabecalho_midia_url || parsed.header_url || null;
+        templateHeaderText = parsed.cabecalho || '';
+        if (Array.isArray(parsed.botoes) && parsed.botoes.length > 0) templateBotoes = parsed.botoes;
         console.log('📋 Template def encontrado — tipo_cabecalho:', templateHeaderType, '| cabecalho_midia_url:', templateHeaderUrl?.substring(0, 80));
       }
     } catch (e) {
@@ -71,6 +96,128 @@ Deno.serve(async (req) => {
       }
 
       const components = [];
+
+      // ── ENVIO VIA D-API (conexão Cloud API ativa da empresa) ──
+      if (conexaoDapi) {
+        const headerTypeDapi = (templateHeaderType || '').toUpperCase();
+        const urlMidiaDapi = String(templateHeaderUrl || '').trim();
+        const isNumericHandleDapi = /^\d{10,}$/.test(urlMidiaDapi);
+        const isMetaCdnDapi = /fbcdn\.net|fbsbx\.com|facebook\.com/.test(urlMidiaDapi);
+        const urlPublicaDapi = urlMidiaDapi.startsWith('http') && !isNumericHandleDapi && !isMetaCdnDapi;
+
+        const templatePayload: any = {
+          name: template_name,
+          language: template_language || 'pt_BR',
+          bodyVariables: Object.values(variaveis || {}),
+        };
+
+        // Header de mídia (URL pública) — D-API monta os components da Graph API
+        if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerTypeDapi) && urlPublicaDapi) {
+          templatePayload.headerMedia = { url: urlMidiaDapi };
+        } else if (headerTypeDapi === 'TEXT' && templateHeaderText) {
+          templatePayload.headerVariable = templateHeaderText;
+        }
+
+        try {
+          console.log(`🟦 [D-API] Enviando template "${template_name}" para ${numeroLimpo} via session ${conexaoDapi.session_id}`);
+          const srResp = await base44.functions.invoke('whatsappService', {
+            connectionId: conexaoDapi.id,
+            action: 'sendTemplate',
+            phoneNumber: numeroLimpo,
+            template: templatePayload,
+          });
+          const sr = srResp?.data;
+          if (!sr?.success) {
+            const msg = sr?.error || sr?.data?.error || 'Erro D-API';
+            throw new Error(msg);
+          }
+          const wamid = sr?.data?.data?.messageId || sr?.data?.messageId || sr?.data?.data?.id || `dapi_${Date.now()}`;
+
+          // Registrar log
+          await base44.asServiceRole.entities.CampanhaLog.create({
+            empresa_id,
+            tipo_campanha: 'meta_oficial',
+            cliente_telefone: numeroLimpo,
+            cliente_nome: numeroLimpo,
+            nome_campanha: nome_campanha || template_name,
+            status: 'enviada',
+            numero_sequencia: 1,
+          }).catch(() => {});
+
+          // Resolver/criar conversa + salvar mensagem (igual ao fluxo Meta direto)
+          let convId = conversa_id;
+          if (!convId) {
+            const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
+              { empresa_id, cliente_telefone: numeroLimpo }, '-data_ultima_mensagem', 1,
+            );
+            if (conversas.length > 0) {
+              convId = conversas[0].id;
+              await base44.asServiceRole.entities.ConversaWhatsapp.update(convId, {
+                status: 'campanha', origem: 'campanha', tipo_conexao: 'meta_oficial',
+                canal_origem: 'meta', provider: 'whatsapp_meta',
+                phone_number_id_meta: phoneNumberId,
+              }).catch(() => {});
+            } else {
+              const nova = await base44.asServiceRole.entities.ConversaWhatsapp.create({
+                empresa_id, cliente_telefone: numeroLimpo, cliente_nome: numeroLimpo,
+                status: 'campanha', origem: 'campanha', tipo_conexao: 'meta_oficial',
+                canal_origem: 'meta', provider: 'whatsapp_meta', phone_number_id_meta: phoneNumberId,
+                data_ultima_mensagem: new Date().toISOString(),
+                ultima_mensagem: `📋 ${template_name}`, ultimo_remetente: 'vendedor',
+              });
+              convId = nova?.id;
+            }
+          }
+
+          if (convId) {
+            const templateJsonDapi = JSON.stringify({
+              __template: true, template_name,
+              header_type: (templateHeaderType || '').toUpperCase(),
+              header_url: templateHeaderUrl || null,
+              corpo: texto_preview || `📋 Template: ${template_name}`,
+              botoes: templateBotoes,
+            });
+            await base44.asServiceRole.entities.MensagemWhatsapp.create({
+              conversa_id: convId, empresa_id,
+              remetente: 'vendedor', usuario_id: user.id, usuario_nome: user.full_name || '',
+              tipo_conteudo: 'texto', texto: templateJsonDapi,
+              whatsapp_message_id: wamid,
+              data_envio: new Date().toISOString(), status: 'enviada',
+              provider: 'whatsapp_meta',
+            }).catch(() => {});
+            await base44.asServiceRole.entities.ConversaWhatsapp.update(convId, {
+              ultima_mensagem: `📋 ${template_name}`,
+              data_ultima_mensagem: new Date().toISOString(),
+              ultimo_remetente: 'vendedor',
+              status: 'campanha', origem: 'campanha',
+            }).catch(() => {});
+          }
+
+          enviados++;
+          resultados.push({ telefone: numeroLimpo, status: 'enviada', message_id: wamid, via: 'dapi' });
+
+          if (job_id) {
+            await base44.asServiceRole.entities.CampanhaDisparoJob.update(job_id, { enviados, erros }).catch(() => {});
+          }
+        } catch (e: any) {
+          erros++;
+          console.error(`❌ [D-API] Erro ao enviar template para ${numeroLimpo}:`, e.message);
+          await base44.asServiceRole.entities.CampanhaLog.create({
+            empresa_id, tipo_campanha: 'meta_oficial', cliente_telefone: numeroLimpo,
+            cliente_nome: numeroLimpo, status: 'erro', motivo_erro: e.message,
+          }).catch(() => {});
+          resultados.push({ telefone: numeroLimpo, status: 'erro', motivo: e.message, via: 'dapi' });
+        }
+
+        // Delay e pausa (mesmo do fluxo Meta)
+        const delayMsDapi = Math.max(1000, (Number(delay_segundos) || 5) * 1000);
+        await new Promise(r => setTimeout(r, delayMsDapi));
+        if (pausar_apos > 0 && (enviados + erros) % pausar_apos === 0 && (enviados + erros) > 0) {
+          const pausaMsDapi = Math.max(10000, (Number(duracao_pausa) || 60) * 1000);
+          await new Promise(r => setTimeout(r, pausaMsDapi));
+        }
+        continue; // próximo contato (não cai no fluxo Meta Graph direto)
+      }
 
       // Header com mídia — enviar quando template tem IMAGE/VIDEO/DOCUMENT
       const headerType = (templateHeaderType || '').toUpperCase();
@@ -134,7 +281,7 @@ Deno.serve(async (req) => {
 
       // Botões QUICK_REPLY — usar botões do template definition (já buscados acima)
       // A Meta exige um componente button por botão QUICK_REPLY com índice correto
-      const botoesParaEnviar = template_botoes?.length > 0 ? template_botoes : [];
+      const botoesParaEnviar = templateBotoes;
       botoesParaEnviar.forEach((btn, idx) => {
         if (btn.tipo === 'QUICK_REPLY') {
           components.push({
@@ -197,7 +344,7 @@ Deno.serve(async (req) => {
           header_type: (templateHeaderType || '').toUpperCase(),
           header_url: templateHeaderUrl || null,
           corpo: textoMensagem,
-          botoes: botoesParaEnviar,
+          botoes: templateBotoes,
         });
 
         // Buscar ou usar conversa_id fornecida
