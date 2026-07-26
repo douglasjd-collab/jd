@@ -229,16 +229,6 @@ async function syncTemplatesFromMeta(
     if (cfg?.wabaId) wabaSet.add(cfg.wabaId);
   }
 
-  if (wabaSet.size === 0 || !token) {
-    // Sem WABA ou sem token — não há o que sincronizar.
-    const existing = await b44.entities.WhatsappTemplate.filter(
-      empresaId ? { empresa_id: empresaId } : {},
-      null,
-      500,
-    );
-    return { imported: 0, totalInMeta: 0, totalInCrm: existing.length };
-  }
-
   // Templates já cadastrados no CRM (empresa)
   const crmTemplates = await b44.entities.WhatsappTemplate.filter(
     empresaId ? { empresa_id: empresaId } : {},
@@ -249,13 +239,39 @@ async function syncTemplatesFromMeta(
     crmTemplates.map((t) => `${(t.name || "").toLowerCase()}|${(t.language || "pt_BR").toLowerCase()}`),
   );
 
-  // Coleta todos os templates de cada WABA
+  // Coleta todos os templates de cada WABA (Meta Graph API direta — quando há
+  // waba_id resolvido e token válido para a WABA).
   const allMetaTemplates: any[] = [];
-  for (const wabaId of wabaSet) {
-    try {
-      const items = await listWabaTemplates(wabaId, token!);
-      allMetaTemplates.push(...items);
-    } catch {}
+  if (wabaSet.size > 0 && token) {
+    for (const wabaId of wabaSet) {
+      try {
+        const items = await listWabaTemplates(wabaId, token!);
+        allMetaTemplates.push(...items);
+      } catch {}
+    }
+  }
+
+  // Fallback: conexões D-API cujo waba_id não foi resolvido no config_json
+  // (caso comum quando a WABA é inscrita pelo app da D-API via Embedded Signup
+  // — o token global da Meta não tem escopo sobre essa WABA, então a chamada
+  // Graph API acima retorna vazio). Usamos o endpoint D-API Cloud API próprio
+  // que retorna os templates com status real da Meta.
+  if (allMetaTemplates.length === 0) {
+    const dapiConns = (connections || []).filter((c) => c.provider_type === "dapi" && c.session_id);
+    if (dapiConns.length > 0) {
+      const apiKey = dapiKey();
+      for (const dc of dapiConns) {
+        try {
+          const items = await listDapiCloudApiTemplates(dc.session_id!, apiKey);
+          allMetaTemplates.push(...items);
+        } catch {}
+      }
+    }
+  }
+
+  if (allMetaTemplates.length === 0) {
+    // Sem templates na Meta/D-API — nada a sincronizar.
+    return { imported: 0, updated: 0, totalInMeta: 0, totalInCrm: crmTemplates.length };
   }
 
   const toCreate: any[] = [];
@@ -553,6 +569,88 @@ async function sendToDapiCloudApi(
       { error: "Erro ao contatar a D-API (rede).", http_status: 502, meta_message: motivo, details: motivo },
       { status: 502 },
     );
+  }
+}
+
+// Lista os templates de uma conexão D-API Cloud API via endpoint próprio
+// (GET /api/v1/connections/cloud-api/{sessionId}/templates). A D-API retorna
+// um formato ligeiramente diferente da Meta; convertemos para compatível com
+// o fluxo de sync. Necessário porque o token global da Meta Graph não enxerga
+// WABAs inscritas pelo app da D-API (Embedded Signup controlado por eles).
+async function listDapiCloudApiTemplates(sessionId: string, apiKey: string): Promise<any[]> {
+  const url = `${DAPI_BASE_URL}/api/v1/connections/cloud-api/${encodeURIComponent(sessionId)}/templates?limit=250`;
+  const res = await fetch(url, {
+    headers: { Authorization: apiKey, Accept: "application/json" },
+  });
+  if (!res.ok) return [];
+  const json = await res.json().catch(() => ({}));
+  const list = Array.isArray(json?.data) ? json.data : Array.isArray(json?.templates) ? json.templates : [];
+  return (list as any[]).map((d: any) => {
+    const components: any[] = [];
+    if (d.header) {
+      if (typeof d.header === "string") {
+        components.push({ type: "HEADER", format: "TEXT", text: d.header });
+      } else if (typeof d.header === "object") {
+        components.push({
+          type: "HEADER",
+          format: d.header.format || "TEXT",
+          text: d.header.text,
+          example: d.header.example,
+        });
+      }
+    }
+    if (d.body) {
+      components.push({
+        type: "BODY",
+        text: d.body,
+        example: d.bodyExample ? { body_text: [d.bodyExample] } : undefined,
+      });
+    }
+    if (d.footer) {
+      components.push({ type: "FOOTER", text: d.footer });
+    }
+    if (Array.isArray(d.buttons) && d.buttons.length > 0) {
+      components.push({ type: "BUTTONS", buttons: d.buttons });
+    }
+    return {
+      id: d.id || d.templateId || d.meta_template_id || null,
+      name: d.name,
+      language: d.language || "pt_BR",
+      status: d.status,
+      category: d.category,
+      quality_rating: d.quality_rating || null,
+      rejected_reason: d.rejected_reason || null,
+      components,
+    };
+  });
+}
+
+// Sincroniza status de UM template do CRM buscando na D-API Cloud API.
+// Retorna { status, updates } se encontrou, ou null caso contrário.
+async function syncStatusViaDapi(template: any, conn: any): Promise<{ status: string; updates: any; via: string } | null> {
+  if (!conn || conn.provider_type !== "dapi") return null;
+  const sid = (template.session_id || conn?.session_id || "").trim();
+  if (!sid) return null;
+  try {
+    const apiKey = dapiKey();
+    const list = await listDapiCloudApiTemplates(sid, apiKey);
+    const found = list.find(
+      (d: any) =>
+        (d.name || "").toLowerCase() === (template.name || "").toLowerCase() &&
+        (d.language || "pt_BR").toLowerCase() === (template.language || "pt_BR").toLowerCase(),
+    );
+    if (!found) return null;
+    const newStatus = mapMetaStatusToCrm(found.status);
+    const updates: any = { status: newStatus, last_synced_at: new Date().toISOString() };
+    if (found.quality_rating) updates.quality_rating = found.quality_rating;
+    if (newStatus === "aprovado") updates.approved_at = new Date().toISOString();
+    if (newStatus === "rejeitado") {
+      updates.rejected_at = new Date().toISOString();
+      if (found.rejected_reason) updates.rejection_reason = found.rejected_reason;
+    }
+    return { status: newStatus, updates, via: "dapi" };
+  } catch {
+    return null;
   }
 }
 
@@ -1313,6 +1411,39 @@ Deno.serve(async (req) => {
       if (!template.meta_template_id) {
         return Response.json({ error: "Template ainda não enviado à Meta" }, { status: 400 });
       }
+
+      // Para conexões D-API, o token global da Meta não enxerga a WABA
+      // (inscrita pelo app da D-API). Usamos o endpoint D-API Cloud API que
+      // retorna o status real da Meta.
+      if (template.connection_id) {
+        try {
+          const conn = await base44.entities.WhatsappConnection.get(template.connection_id);
+          if (conn && conn.provider_type === "dapi") {
+            const viaDapi = await syncStatusViaDapi(template, conn);
+            if (viaDapi) {
+              await base44.entities.WhatsappTemplate.update(template_id, viaDapi.updates);
+              await base44.entities.WhatsappTemplateLog.create({
+                empresa_id: template.empresa_id,
+                template_id,
+                action: "sincronizar_status",
+                previous_status: template.status,
+                new_status: viaDapi.status,
+                request_json: JSON.stringify({ via: "dapi_cloud_api" }),
+                user_id: user.id,
+                user_name: user.full_name,
+              }).catch(() => {});
+              return Response.json({
+                success: true,
+                status: viaDapi.status,
+                via: "dapi",
+                updates: viaDapi.updates,
+              });
+            }
+          }
+        } catch {}
+      }
+
+      // Fallback: Meta Graph API direta (token da empresa ou global).
       const token = await getToken(template.empresa_id, base44);
       const res = await fetch(
         `${META_BASE_URL}/${META_API_VERSION}/${template.meta_template_id}`,
@@ -1365,32 +1496,61 @@ Deno.serve(async (req) => {
         null,
         300,
       );
-      const pendentes = all.filter((t) => ["em_analise", "enviando"].includes(t.status) && t.meta_template_id);
+      // Sincroniza TODOS os templates, não só pendentes — conexões D-API
+      // frequentemente têm WABA não resolvida, então `em_analise` pode nunca
+      // sair sem a sincronização D-API Cloud API.
+      const pendentes = all.filter((t) =>
+        ["em_analise", "enviando", "rascunho"].includes(t.status) || (t.connection_id && !t.ultima_verificacao_dapi),
+      );
       let processados = 0;
       let aprovados = 0;
       let rejeitados = 0;
-      for (const t of pendentes) {
+      // Cacheia a conexão D-API por connection_id para evitar fetch por template.
+      const dapiConnCache: Record<string, any> = {};
+      for (const t of all) {
         try {
-          const token = await getToken(t.empresa_id, base44);
-          const res = await fetch(
-            `${META_BASE_URL}/${META_API_VERSION}/${t.meta_template_id}`,
-            { headers: { Authorization: `Bearer ${token}` } },
-          );
-          const data = await res.json();
-          const mapping: Record<string, string> = {
-            APPROVED: "aprovado", REJECTED: "rejeitado", PENDING: "em_analise",
-            IN_APPEAL: "em_analise", PAUSED: "pausado", DISABLED: "desativado",
-          };
-          const newStatus = mapping[(data.status || "").toUpperCase()] || "em_analise";
-          const updates: any = { status: newStatus, last_synced_at: new Date().toISOString() };
-          if (newStatus === "aprovado") { updates.approved_at = new Date().toISOString(); aprovados++; }
-          if (newStatus === "rejeitado") {
-            updates.rejected_at = new Date().toISOString();
-            updates.rejection_reason = (data.rejected_reason || "") + (data.rejections ? " | " + JSON.stringify(data.rejections) : "");
-            rejeitados++;
+          let newStatus: string | null = null;
+          let updates: any = null;
+          // 1) D-API Cloud API se conexão for D-API.
+          if (t.connection_id) {
+            let conn = dapiConnCache[t.connection_id];
+            if (conn === undefined) {
+              try {
+                conn = await base44.entities.WhatsappConnection.get(t.connection_id);
+              } catch { conn = null; }
+              dapiConnCache[t.connection_id] = conn;
+            }
+            if (conn && conn.provider_type === "dapi") {
+              const via = await syncStatusViaDapi(t, conn);
+              if (via) { newStatus = via.status; updates = via.updates; }
+            }
           }
-          await base44.entities.WhatsappTemplate.update(t.id, updates);
-          processados++;
+          // 2) Fallback Meta Graph API (token da empresa ou global).
+          if (!updates && t.meta_template_id) {
+            const token = await getToken(t.empresa_id, base44);
+            const res = await fetch(
+              `${META_BASE_URL}/${META_API_VERSION}/${t.meta_template_id}`,
+              { headers: { Authorization: `Bearer ${token}` } },
+            );
+            const data = await res.json();
+            const mapping: Record<string, string> = {
+              APPROVED: "aprovado", REJECTED: "rejeitado", PENDING: "em_analise",
+              IN_APPEAL: "em_analise", PAUSED: "pausado", DISABLED: "desativado",
+            };
+            newStatus = mapping[(data.status || "").toUpperCase()] || "em_analise";
+            updates = { status: newStatus, last_synced_at: new Date().toISOString() };
+            if (newStatus === "aprovado") { updates.approved_at = new Date().toISOString(); }
+            if (newStatus === "rejeitado") {
+              updates.rejected_at = new Date().toISOString();
+              updates.rejection_reason = (data.rejected_reason || "") + (data.rejections ? " | " + JSON.stringify(data.rejections) : "");
+            }
+          }
+          if (updates && newStatus) {
+            await base44.entities.WhatsappTemplate.update(t.id, updates);
+            processados++;
+            if (newStatus === "aprovado") aprovados++;
+            if (newStatus === "rejeitado") rejeitados++;
+          }
         } catch {}
       }
       return Response.json({ success: true, processados, aprovados, rejeitados });
