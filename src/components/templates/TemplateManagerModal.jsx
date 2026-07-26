@@ -131,10 +131,14 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
       const res = await base44.functions.invoke('gerenciarTemplateMetaOficial', {
         action: 'sync_templates_from_meta',
       });
-      return res?.data?.imported || 0;
+      // Retorna objeto com contadores de importados e atualizados.
+      return {
+        imported: res?.data?.imported || 0,
+        updated: res?.data?.updated || 0,
+      };
     } catch (e) {
       console.error('sync_templates_from_meta', e);
-      return 0;
+      return { imported: 0, updated: 0 };
     }
   }, []);
 
@@ -180,22 +184,22 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
     let mounted = true;
     if (open) {
       loadConnections();
-      loadTemplates().then(async (items) => {
-        if (!mounted) return;
-        // Requisito: a tela "Templates" nunca deve ficar vazia se existirem
-        // templates na conta da Meta. Se o CRM estiver vazio, sincroniza.
-        if (!items || items.length === 0) {
-          const imported = await syncTemplatesFromMeta();
-          if (imported > 0) {
-            await loadTemplates();
-          }
-        }
-      });
+      // Carrega a lista imediatamente (mostra o que já temos no banco) e, em
+      // paralelo, sincroniza com a Meta em background. Ao término, refaz o
+      // fetch para refletir status/categoria/componentes atualizados — nunca
+      // fica cache desatualizado.
+      loadTemplates();
+      syncTemplatesFromMeta()
+        .then(() => {
+          if (mounted) loadTemplates();
+        })
+        .catch(() => {});
     } else {
       setForm(EMPTY_FORM);
       setTab('criar');
     }
     return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const handleEdit = (t) => {
@@ -477,12 +481,17 @@ export default function TemplateManagerModal({ open, onOpenChange, empresaId, us
                 onEdit={handleEdit}
                 onRefresh={loadTemplates}
                 onSyncFromMeta={async () => {
-                  const imported = await syncTemplatesFromMeta();
-                  if (imported > 0) {
-                    toast.success(`${imported} template(s) importado(s) da Meta.`);
+                  const r = await syncTemplatesFromMeta();
+                  const msgs = [];
+                  if (r.imported > 0) msgs.push(`${r.imported} importado(s)`);
+                  if (r.updated > 0) msgs.push(`${r.updated} atualizado(s)`);
+                  if (msgs.length > 0) {
+                    toast.success(`Sincronizado com a Meta: ${msgs.join(' · ')}`);
                     await loadTemplates();
+                  } else if (r.totalInMeta !== undefined && r.totalInMeta > 0) {
+                    toast('Sincronizado com a Meta — nenhum template novo.', { icon: 'ℹ️' });
                   } else {
-                    toast('Nenhum template novo encontrado na Meta.', { icon: 'ℹ️' });
+                    toast('Nenhum template encontrado na Meta.', { icon: 'ℹ️' });
                   }
                 }}
               />

@@ -261,6 +261,7 @@ async function syncTemplatesFromMeta(
   const toCreate: any[] = [];
   const defaultConn = fallbackConnectionId || connections?.[0]?.id || null;
   const defaultConnName = fallbackConnName || connections?.[0]?.nome || "";
+  let updated = 0;
 
   for (const m of allMetaTemplates) {
     const name = (m.name || "").toLowerCase();
@@ -268,17 +269,41 @@ async function syncTemplatesFromMeta(
     const language = m.language || "pt_BR";
     const key = `${name}|${language}`;
     if (crmIndex.has(key)) {
-      // Atualiza meta_template_id / status se faltarem (preserva dados do CRM)
+      // Template já existe no CRM — atualiza status, categoria, idioma,
+      // componentes, datas de aprovação/rejeição e last_synced_at.
+      // Preserva dados do CRM que não vêm da Meta (variables_json, mídia
+      // enviada pelo usuário, connection_id, etc.).
       const existing = crmTemplates.find(
         (t) => (t.name || "").toLowerCase() === name && (t.language || "") === language,
       );
-      if (existing && !existing.meta_template_id && m.id) {
+      if (existing) {
+        const newStatus = mapMetaStatusToCrm(m.status);
+        const components = Array.isArray(m.components) ? m.components : [];
+        const { type, header_type } = deriveTypeFromComponents(components);
+        const texts = extractTextsFromComponents(components);
+        const updates: any = { last_synced_at: new Date().toISOString() };
+        if (!existing.meta_template_id && m.id) updates.meta_template_id = m.id;
+        if (newStatus !== existing.status) updates.status = newStatus;
+        if (m.category && m.category !== existing.category) updates.category = m.category;
+        if (m.language && m.language !== existing.language) updates.language = m.language;
+        updates.type = type;
+        updates.header_type = header_type;
+        updates.components_json = JSON.stringify(components);
+        if (texts.body_text) updates.body_text = texts.body_text;
+        if (texts.footer_text) updates.footer_text = texts.footer_text;
+        if (type === "TEXT" && texts.header_text) updates.header_text = texts.header_text;
+        if (m.quality_rating) updates.quality_rating = m.quality_rating;
+        if (newStatus === "aprovado" && !existing.approved_at) updates.approved_at = new Date().toISOString();
+        if (newStatus === "rejeitado") {
+          if (!existing.rejected_at) updates.rejected_at = new Date().toISOString();
+          const reasonParts: string[] = [];
+          if (m.rejected_reason) reasonParts.push(m.rejected_reason);
+          if (m.rejections) reasonParts.push(JSON.stringify(m.rejections));
+          if (reasonParts.length > 0) updates.rejection_reason = reasonParts.join(" | ");
+        }
         try {
-          await b44.entities.WhatsappTemplate.update(existing.id, {
-            meta_template_id: m.id,
-            status: mapMetaStatusToCrm(m.status),
-            last_synced_at: new Date().toISOString(),
-          });
+          await b44.entities.WhatsappTemplate.update(existing.id, updates);
+          updated++;
         } catch {}
       }
       continue;
@@ -337,6 +362,7 @@ async function syncTemplatesFromMeta(
 
   return {
     imported: toCreate.length,
+    updated,
     totalInMeta: allMetaTemplates.length,
     totalInCrm: crmTemplates.length + toCreate.length,
   };

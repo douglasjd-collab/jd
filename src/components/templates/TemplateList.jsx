@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'react-hot-toast';
 import { Eye, Copy, Trash2, RefreshCw, Loader2, Pencil, RotateCcw } from 'lucide-react';
@@ -19,6 +19,41 @@ export default function TemplateList({ templates, loading, onEdit, onRefresh, on
   const [delId, setDelId] = useState(null);
   const [importingMeta, setImportingMeta] = useState(false);
   const [retryId, setRetryId] = useState(null);
+  const [autoSyncing, setAutoSyncing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Sincroniza com a Meta em background ao montar — busca o status
+  // aprovado/rejeitado da Meta e atualiza o banco antes de mostrar a lista.
+  useEffect(() => {
+    if (!onSyncFromMeta) return;
+    let mounted = true;
+    (async () => {
+      setAutoSyncing(true);
+      try {
+        await onSyncFromMeta();
+        if (mounted) onRefresh?.();
+      } catch (e) {
+        // Silencioso: a sincronização em background não deve travar a tela.
+        console.warn('sync automático falhou', e?.message);
+      } finally {
+        if (mounted) setAutoSyncing(false);
+      }
+    })();
+    return () => { mounted = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleAtualizar = async () => {
+    setRefreshing(true);
+    try {
+      if (onSyncFromMeta) {
+        try { await onSyncFromMeta(); } catch {}
+      }
+      await onRefresh?.();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const filtrados = filtro === 'todos'
     ? templates
@@ -137,14 +172,21 @@ export default function TemplateList({ templates, loading, onEdit, onRefresh, on
           ))}
         </div>
         <button
-          onClick={onRefresh}
-          className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50"
+          onClick={handleAtualizar}
+          disabled={refreshing || autoSyncing}
+          className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50 disabled:opacity-50"
+          title="Sincronizar com a Meta e atualizar a lista"
         >
-          <RefreshCw className="w-3 h-3" /> Atualizar
+          {refreshing || autoSyncing ? (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          ) : (
+            <RefreshCw className="w-3 h-3" />
+          )}
+          {refreshing ? 'Sincronizando...' : autoSyncing ? 'Atualizando...' : 'Atualizar'}
         </button>
       </div>
 
-      {loading ? (
+      {loading || autoSyncing ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
         </div>
