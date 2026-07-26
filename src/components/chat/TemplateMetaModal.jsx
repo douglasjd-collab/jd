@@ -98,7 +98,9 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
         onEnviado?.();
       }
     } catch (e) {
-      toast.error('Erro: ' + e.message);
+      const detalhe = e?.response?.data?.error || e?.response?.data?.message || e?.data?.error || e?.message || 'Erro desconhecido';
+      toast.error('Erro: ' + detalhe);
+      console.error('Erro dispararCampanhaMetaOficial:', e?.response?.data || e);
     } finally {
       setEnviando(null);
     }
