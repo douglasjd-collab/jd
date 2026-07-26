@@ -18,6 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import ImportarListaModal from './ImportarListaModal';
 
 const FONTES = [
   { id: 'clientes', label: 'Clientes', icon: Users, desc: 'Base de clientes do CRM' },
@@ -104,8 +105,13 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
   const [buscaFunil, setBuscaFunil] = useState('');
   const [buscaTag, setBuscaTag] = useState('');
   const [buscaLista, setBuscaLista] = useState('');
+  const [importarOpen, setImportarOpen] = useState(false);
 
   const isSuperAdmin = user?.perfil === 'super_admin' || user?.perfil === 'master';
+
+  const onListaImportada = (lista) => {
+    setListas((prev) => [lista, ...prev]);
+  };
 
   // Carrega dados das fontes selecionadas
   useEffect(() => {
@@ -376,7 +382,16 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
 
         {origens.includes('listas') && (
           <PainelFonte titulo="Listas importadas" icon={ListChecks}>
-            <SearchBox value={buscaLista} onChange={setBuscaLista} placeholder="Pesquisar lista..." />
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <SearchBox value={buscaLista} onChange={setBuscaLista} placeholder="Pesquisar lista..." />
+              <button
+                type="button"
+                onClick={() => setImportarOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition whitespace-nowrap"
+              >
+                <Plus className="w-3.5 h-3.5" /> Importar nova lista
+              </button>
+            </div>
             <div className="max-h-64 overflow-auto mt-2 space-y-1.5 pr-1">
               {loadingData && listas.length === 0 ? (
                 <div className="flex items-center gap-2 py-3 text-slate-500 text-sm">
@@ -536,6 +551,15 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
           </PainelFonte>
         )}
       </div>
+
+      {/* Modal de importação de lista */}
+      <ImportarListaModal
+        open={importarOpen}
+        onOpenChange={setImportarOpen}
+        empresaId={empresaId}
+        user={user}
+        onImported={onListaImportada}
+      />
 
       {/* Aviso de deduplicação */}
       {temOrigem && (

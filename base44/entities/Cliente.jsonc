@@ -30,6 +30,10 @@
       "type": "string",
       "description": "Nome completo do cliente (PF)"
     },
+    "primeiro_nome": {
+      "type": "string",
+      "description": "Primeiro nome do cliente (extra\u00eddo automaticamente, usado em templates de mensagem)"
+    },
     "cpf": {
       "type": "string",
       "description": "CPF do cliente (PF)"
