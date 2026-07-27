@@ -17,12 +17,11 @@ Deno.serve(async (req) => {
 
     // 1) Credenciais da própria empresa (multi-tenant) — entidade Empresa
     // 2) Fallback: app secrets (META_WHATSAPP_ACCESS_TOKEN / META_PHONE_NUMBER_ID) — single-tenant
+    // Estas credenciais só são obrigatórias quando a empresa NÃO usa a
+    // D-API Cloud (sem conexão dapi com session_id começando em 'cloud-').
+    // A validação é feita mais abaixo, após a detecção da conexão D-API.
     const accessToken = empresa.whatsapp_access_token || Deno.env.get('META_WHATSAPP_ACCESS_TOKEN') || '';
     const phoneNumberId = empresa.whatsapp_phone_number_id || Deno.env.get('META_PHONE_NUMBER_ID') || '';
-
-    if (!accessToken || !phoneNumberId) {
-      return Response.json({ error: 'Credenciais Meta (access_token e phone_number_id) não configuradas. Defina na empresa ou nos secrets do app (META_WHATSAPP_ACCESS_TOKEN, META_PHONE_NUMBER_ID).' }, { status: 400 });
-    }
 
     // Versão dinâmica da API Meta
     let metaApiVersion = 'v23.0';
@@ -59,6 +58,14 @@ Deno.serve(async (req) => {
       }
     } catch (e) {
       console.warn('⚠️ Erro ao buscar conexão D-API:', e.message);
+    }
+
+    // Sem D-API Cloud ativa? Então os disparos vão pela Graph API direta —
+    // access_token e phone_number_id se tornam obrigatórios.
+    if (!conexaoDapi && (!accessToken || !phoneNumberId)) {
+      return Response.json({
+        error: 'Credenciais Meta (access_token e phone_number_id) não configuradas na empresa. Conecte uma conta via D-API Cloud (RobosIntegracoes) ou defina nas configurações da empresa / secrets META_WHATSAPP_ACCESS_TOKEN e META_PHONE_NUMBER_ID.',
+      }, { status: 400 });
     }
 
     // Buscar definição do template para obter header type e URL da mídia

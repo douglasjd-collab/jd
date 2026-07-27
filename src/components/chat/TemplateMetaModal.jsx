@@ -15,6 +15,7 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
   const [sincronizando, setSincronizando] = useState(false);
   const [deletando, setDeletando] = useState(null);
   const [previewTemplate, setPreviewTemplate] = useState(null); // template em prévia
+  const [variaveisDialog, setVariaveisDialog] = useState(null); // formulário de variáveis {{n}}
   const queryClient = useQueryClient();
 
   const { data: templates = [], refetch } = useQuery({
@@ -62,7 +63,18 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
     }
   };
 
-  const enviarTemplate = async (d, tId) => {
+  // Detecta variáveis {{n}} no corpo do template; se houver, abre um
+  // formulário para o usuário preencher ANTES de disparar. Sem isso, a Meta
+  // recusa o envio com #132000 (Number of parameters does not match).
+  const clicarEnviar = (d, tId) => {
+    const matches = String(d.corpo || '').match(/\{\{(\d+)\}\}/g) || [];
+    const vars = [...new Set(matches.map(m => m.replace(/\D/g, '')))]
+      .sort((a, b) => Number(a) - Number(b));
+    if (vars.length === 0) return enviarTemplate(d, tId, {});
+    setVariaveisDialog({ d, tId, vars, values: {} });
+  };
+
+  const enviarTemplate = async (d, tId, variaveisVals) => {
     const numLimpo = (telefoneDestino || '').replace(/\D/g, '');
     if (!numLimpo) { toast.error('Número inválido'); return; }
 
@@ -72,7 +84,7 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
         empresa_id: empresaId,
         template_name: d.nome,
         template_language: d.idioma || 'pt_BR',
-        variaveis: {},
+        variaveis: variaveisVals || {},
         contatos: [numLimpo],
         conversa_id: conversaId || null,
         texto_preview: d.corpo || `📋 Template: ${d.nome}`,
@@ -88,6 +100,7 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
       } else {
         toast.success(`✅ Template "${d.nome}" enviado!`);
         setPreviewTemplate(null);
+        setVariaveisDialog(null);
         onOpenChange(false);
         if (conversaId) {
           setTimeout(() => {
@@ -216,11 +229,69 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
             </Button>
             <Button
               className="flex-1 bg-green-600 hover:bg-green-700 gap-1.5"
-              onClick={() => enviarTemplate(d, tId)}
+              onClick={() => clicarEnviar(d, tId)}
               disabled={isEnviando}
             >
               {isEnviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Usar no Disparo
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  // Formulário para preencher variáveis {{n}} detectadas no corpo do template
+  const renderVariaveisForm = () => {
+    if (!variaveisDialog) return null;
+    const { d, tId, vars, values } = variaveisDialog;
+    const isEnviando = enviando === tId;
+    const podeEnviar = vars.every(v => (values[v] || '').trim().length > 0);
+    return (
+      <Dialog open={true} onOpenChange={() => !isEnviando && setVariaveisDialog(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base flex items-center gap-2">
+              <FileText className="w-4 h-4 text-green-600" />
+              Preencher Variáveis
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-slate-500">
+            O template <span className="font-semibold">{d.nome}</span> contém
+            {' '}{vars.length} variável(is) que precisam ser preenchidas antes do envio.
+          </p>
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+            {vars.map(v => (
+              <div key={v}>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Variável {'{{' + v + '}}'}
+                </label>
+                <Input
+                  value={values[v] || ''}
+                  onChange={e => setVariaveisDialog(prev => ({ ...prev, values: { ...prev.values, [v]: e.target.value } }))}
+                  placeholder={`Valor para {{${v}}}`}
+                  className="h-9 text-sm"
+                  disabled={isEnviando}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setVariaveisDialog(null)}
+              disabled={isEnviando}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="flex-1 bg-green-600 hover:bg-green-700 gap-1.5"
+              onClick={() => enviarTemplate(d, tId, values)}
+              disabled={isEnviando || !podeEnviar}
+            >
+              {isEnviando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Enviar
             </Button>
           </div>
         </DialogContent>
@@ -306,7 +377,7 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
                           <Button
                             size="sm"
                             className="gap-1.5 bg-green-600 hover:bg-green-700 text-xs h-7 px-2"
-                            onClick={() => enviarTemplate(d, t.id)}
+                            onClick={() => clicarEnviar(d, t.id)}
                             disabled={isEnviando}
                           >
                             {isEnviando
@@ -338,6 +409,9 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
 
       {/* Modal de prévia do template */}
       {previewTemplate && renderPreview()}
+
+      {/* Formulário de variáveis {{n}} */}
+      {variaveisDialog && renderVariaveisForm()}
     </>
   );
 }
