@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 const MENU_ESTRUTURA = [
   { key: 'dashboard',    label: 'Dashboard',    descricao: 'Painel principal com resumos e indicadores' },
   { key: 'bate_papo',   label: 'Bate - Papo',  descricao: 'Chat via WhatsApp/Instagram com clientes' },
+  { key: 'campanhas',    label: 'Campanhas',     descricao: 'Campanhas de marketing e mensagens em massa' },
   { key: 'funil_vendas', label: 'Funil de Vendas', descricao: 'Acompanhar oportunidades no funil' },
   { key: 'call_center',  label: 'Call Center',  descricao: 'Central de chamadas e ramal SIP' },
   {
@@ -61,7 +62,6 @@ const MENU_ESTRUTURA = [
   { key: 'clientes',     label: 'Clientes',         descricao: 'Cadastro e gerenciamento de clientes' },
   { key: 'agenda',       label: 'Agenda',           descricao: 'Compromissos e lembretes' },
   { key: 'contatos_crm', label: 'Contatos CRM',     descricao: 'Contatos e leads do CRM' },
-  { key: 'campanhas',    label: 'Campanhas',        descricao: 'Campanhas de marketing e mensagens em massa' },
   { key: 'meu_financeiro', label: 'Meu Financeiro',  descricao: 'Gestão financeira exclusiva do parceiro' },
   { key: 'saques',       label: 'Minhas Comissões', descricao: 'Solicitação e gerenciamento de saques' },
   { key: 'relatorios',   label: 'Relatórios',       descricao: 'Relatórios de vendas e comissões' },
