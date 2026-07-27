@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -16,7 +16,50 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
   const [deletando, setDeletando] = useState(null);
   const [previewTemplate, setPreviewTemplate] = useState(null); // template em prévia
   const [variaveisDialog, setVariaveisDialog] = useState(null); // formulário de variáveis {{n}}
+  const [nomeCliente, setNomeCliente] = useState(''); // primeiro nome usado para auto-preencher {{1}}
   const queryClient = useQueryClient();
+
+  // Busca o cliente vinculado à conversa/telefone para auto-preencher a
+  // variável {{1}} (primeiro nome) — evita abrir o formulário quando o
+  // template htmlFor só {{1}} e já há nome cadastrado.
+  useEffect(() => {
+    if (!open) { setNomeCliente(''); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        let conversa = null;
+        if (conversaId) {
+          const cs = await base44.entities.ConversaWhatsapp.filter(
+            { id: conversaId }, '-data_ultima_mensagem', 1,
+          );
+          conversa = cs?.[0];
+        } else if (telefoneDestino) {
+          const num = telefoneDestino.replace(/\D/g, '');
+          const cs = await base44.entities.ConversaWhatsapp.filter(
+            { empresa_id: empresaId, cliente_telefone: num },
+            '-data_ultima_mensagem', 3,
+          );
+          conversa = cs?.find(c => (c.cliente_nome || '').trim().length > 0) || cs?.[0];
+        }
+        if (!conversa) return;
+        let primeiroNome = conversa.cliente_nome
+          ? conversa.cliente_nome.split(' ')[0]
+          : '';
+        if (conversa.cliente_id) {
+          try {
+            const cli = await base44.entities.Cliente.get(conversa.cliente_id);
+            if (cli?.primeiro_nome) primeiroNome = cli.primeiro_nome;
+            else if (cli?.nome_completo) primeiroNome = cli.nome_completo.split(' ')[0];
+          } catch {}
+        }
+        if (cancelled) return;
+        if (primeiroNome) setNomeCliente(primeiroNome);
+      } catch (e) {
+        console.warn('Não foi possível buscar o nome do cliente:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, conversaId, telefoneDestino, empresaId]);
 
   const { data: templates = [], refetch } = useQuery({
     queryKey: ['meta-templates', empresaId],
@@ -71,7 +114,15 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
     const vars = [...new Set(matches.map(m => m.replace(/\D/g, '')))]
       .sort((a, b) => Number(a) - Number(b));
     if (vars.length === 0) return enviarTemplate(d, tId, {});
-    setVariaveisDialog({ d, tId, vars, values: {} });
+
+    // Pré-preencher {{1}} com o primeiro nome do cliente da conversa.
+    // Se todas as variáveis ficarem preenchidas, dispara direto sem abrir o form.
+    const initial = {};
+    if (vars.includes('1') && nomeCliente) initial['1'] = nomeCliente;
+    if (vars.every(v => (initial[v] || '').trim().length > 0)) {
+      return enviarTemplate(d, tId, { ...initial });
+    }
+    setVariaveisDialog({ d, tId, vars, values: initial });
   };
 
   const enviarTemplate = async (d, tId, variaveisVals) => {
