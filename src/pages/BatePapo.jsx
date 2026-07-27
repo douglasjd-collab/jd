@@ -26,7 +26,7 @@ import {
   Search, Plus, MoreVertical, PhoneCall, PhoneOff, Tag, ArrowRightLeft,
   BellOff, Pin, Check, Clock, Loader2, MessageCircle, AlignJustify,
   X, Trash2, RefreshCw, Contact, Pencil, Lock, Unlock, TrendingUp, BarChart2,
-  User, ClipboardList, Phone, Users,
+  User, ClipboardList, Phone, Users, ChevronDown,
 } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -2356,6 +2356,18 @@ export default function BatePapo() {
                       </button>
                     )}
 
+                    {/* Seta para rolar a conversa até o final (abaixo do Coach IA) */}
+                    {conversaSelecionada && mensagens?.length > 0 && (
+                      <button
+                        onClick={() => mensagensEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })}
+                        className="scroll-bottom-btn"
+                        title="Ir para o final"
+                        aria-label="Ir para o final"
+                      >
+                        <ChevronDown className="w-5 h-5" />
+                      </button>
+                    )}
+
                     <style>{`
                       .coach-float-btn {
                         position: absolute;
@@ -2388,6 +2400,22 @@ export default function BatePapo() {
                         border-radius: 50%;
                         border: 2px solid #09090b;
                       }
+                      .scroll-bottom-btn {
+                        position: absolute;
+                        bottom: 78px;
+                        right: 18px;
+                        width: 36px; height: 36px;
+                        border-radius: 50%;
+                        background: #ffffff;
+                        color: #54656F;
+                        border: none;
+                        cursor: pointer;
+                        display: flex; align-items: center; justify-content: center;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+                        transition: transform 0.18s, box-shadow 0.18s;
+                        z-index: 5;
+                      }
+                      .scroll-bottom-btn:hover { transform: scale(1.08); box-shadow: 0 4px 12px rgba(0,0,0,0.22); }
                     `}</style>
                   </div>
 
