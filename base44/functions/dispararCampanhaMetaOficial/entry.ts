@@ -12,16 +12,33 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'empresa_id, template_name e contatos são obrigatórios' }, { status: 400 });
     }
 
+    // ── Carregar conversa quando enviada do BatePapo (template por conversa) ──
+    // A conversa é a fonte de verdade: phone_number_id_meta (número que recebeu),
+    // connection_id (qual conexão usar no disparo), instancia (session_id D-API).
+    let conversaAlvo: any = null;
+    if (conversa_id) {
+      try {
+        conversaAlvo = await base44.asServiceRole.entities.ConversaWhatsapp.get(conversa_id);
+        console.log('💬 Conversa carregada — phone_number_id_meta:', conversaAlvo?.phone_number_id_meta, '| connection_id:', conversaAlvo?.connection_id, '| instancia:', conversaAlvo?.instancia);
+      } catch (e) {
+        console.warn('⚠️ Não foi possível carregar a conversa:', e.message);
+      }
+    }
+
     const empresa = await base44.asServiceRole.entities.Empresa.get(empresa_id);
     if (!empresa) return Response.json({ error: 'Empresa não encontrada' }, { status: 404 });
 
-    // 1) Credenciais da própria empresa (multi-tenant) — entidade Empresa
-    // 2) Fallback: app secrets (META_WHATSAPP_ACCESS_TOKEN / META_PHONE_NUMBER_ID) — single-tenant
-    // Estas credenciais só são obrigatórias quando a empresa NÃO usa a
-    // D-API Cloud (sem conexão dapi com session_id começando em 'cloud-').
+    // 1) phone_number_id da conversa (número específico que recebeu a msg — cada
+    //    conversa conhece a conexção/phone_number_id que a_originou no webhook).
+    // 2) Credenciais da empresa (multi-tenant) — entidade Empresa (fallback).
+    // 3) Fallback: app secrets (META_WHATSAPP_ACCESS_TOKEN / META_PHONE_NUMBER_ID).
+    // Estas credenciais só são obrigatórias quando a conversa NÃO usa D-API Cloud.
     // A validação é feita mais abaixo, após a detecção da conexão D-API.
     const accessToken = empresa.whatsapp_access_token || Deno.env.get('META_WHATSAPP_ACCESS_TOKEN') || '';
-    const phoneNumberId = empresa.whatsapp_phone_number_id || Deno.env.get('META_PHONE_NUMBER_ID') || '';
+    const phoneNumberId =
+      conversaAlvo?.phone_number_id_meta ||
+      empresa.whatsapp_phone_number_id ||
+      Deno.env.get('META_PHONE_NUMBER_ID') || '';
 
     // Versão dinâmica da API Meta
     let metaApiVersion = 'v23.0';
@@ -41,31 +58,61 @@ Deno.serve(async (req) => {
     let erros = 0;
     const resultados = [];
 
-    // ── Detectar conexão D-API Cloud (API Oficial) ativa da empresa ──
-    // Quando a empresa usa a D-API Cloud (provisionamento via embedded signup), os
-    // disparos de template Meta são roteados automaticamente por aqui — em vez de
-    // chamar a Graph API direto com token/phone_number_id.
+    // ── Detectar conexão D-API Cloud ativa ──
+    // Ordem de prioridade (fonte de verdade = a conversa):
+    //   1) connection_id salvo na conversa — cada conversa sabe qual conexão
+    //      recebeu a mensagem; nunca cair para uma conexão "aleatória" da empresa.
+    //   2) instancia (session_id) gravado no inbound da conversa.
+    //   3) Fallback apenas para campanhas em massa (sem conversa): qualquer D-API
+    //      ativa da empresa, preferindo Cloud API (session_id 'cloud-').
     let conexaoDapi: any = null;
     try {
-      const conns = await base44.asServiceRole.entities.WhatsappConnection.filter(
-        { empresa_id, provider_type: 'dapi', is_active: true },
-        '-created_date', 50,
-      );
-      // Preferir conexão Cloud API (sessionId começando com 'cloud-')
-      conexaoDapi = conns.find(c => /^cloud-/i.test(c.session_id || '')) || conns[0] || null;
-      if (conexaoDapi) {
-        console.log('🟦 [D-API] Conexão ativa encontrada:', conexaoDapi.session_id);
+      if (conversaAlvo?.connection_id) {
+        try {
+          const conexaoEspecifica = await base44.asServiceRole.entities.WhatsappConnection.get(conversaAlvo.connection_id);
+          if (conexaoEspecifica?.is_active && conexaoEspecifica?.provider_type === 'dapi') {
+            conexaoDapi = conexaoEspecifica;
+            console.log('🟦 [D-API] Conexão da conversa (connection_id):', conexaoDapi.id, conexaoDapi.session_id);
+          }
+        } catch (_) {}
+      }
+      if (!conexaoDapi && conversaAlvo?.instancia) {
+        const matches = await base44.asServiceRole.entities.WhatsappConnection.filter(
+          { empresa_id, provider_type: 'dapi', session_id: conversaAlvo.instancia, is_active: true },
+          '-created_date', 1,
+        );
+        if (matches?.[0]) {
+          conexaoDapi = matches[0];
+          console.log('🟦 [D-API] Conexão casada pela instancia:', conexaoDapi.id, conexaoDapi.session_id);
+        }
+      }
+      if (!conexaoDapi && !conversaAlvo) {
+        // Campanha em massa (sem conversa): qualquer D-API Cloud ativa da empresa.
+        const conns = await base44.asServiceRole.entities.WhatsappConnection.filter(
+          { empresa_id, provider_type: 'dapi', is_active: true },
+          '-created_date', 50,
+        );
+        conexaoDapi = conns.find(c => /^cloud-/i.test(c.session_id || '')) || conns[0] || null;
+        if (conexaoDapi) {
+          console.log('🟦 [D-API] Conexão ativa da empresa:', conexaoDapi.session_id);
+        }
       }
     } catch (e) {
       console.warn('⚠️ Erro ao buscar conexão D-API:', e.message);
     }
 
     // Sem D-API Cloud ativa? Então os disparos vão pela Graph API direta —
-    // access_token e phone_number_id se tornam obrigatórios.
-    if (!conexaoDapi && (!accessToken || !phoneNumberId)) {
-      return Response.json({
-        error: 'Credenciais Meta (access_token e phone_number_id) não configuradas na empresa. Conecte uma conta via D-API Cloud (RobosIntegracoes) ou defina nas configurações da empresa / secrets META_WHATSAPP_ACCESS_TOKEN e META_PHONE_NUMBER_ID.',
-      }, { status: 400 });
+    // access_token e phone_number_id se tornam obrigatórios. Informamos
+    // EXATAMENTE quais campos estão faltando (não uma mensagem genérica).
+    if (!conexaoDapi) {
+      const faltantes = [];
+      if (!accessToken) faltantes.push('access_token (empresa.whatsapp_access_token ou secret META_WHATSAPP_ACCESS_TOKEN)');
+      if (!phoneNumberId) faltantes.push('phone_number_id (conversa.phone_number_id_meta, empresa.whatsapp_phone_number_id ou secret META_PHONE_NUMBER_ID)');
+      if (faltantes.length > 0) {
+        return Response.json({
+          error: `Credenciais Meta ausentes — campos faltando: ${faltantes.join(' | ')}.`,
+        }, { status: 400 });
+      }
     }
 
     // Buscar definição do template para obter header type e URL da mídia
