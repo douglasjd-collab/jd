@@ -37,20 +37,105 @@ Deno.serve(async (req) => {
       }
     } catch (_) {}
 
-    // Buscar templates da Meta
-    const url = `https://graph.facebook.com/${metaApiVersion}/${wabaId}/message_templates?fields=id,name,status,language,category,components&limit=100&access_token=${accessToken}`;
-    const resp = await fetch(url);
-    const data = await resp.json();
+    // Detectar conexão D-API Cloud API ativa (provider_type=dapi, session_id
+    // começando em "cloud-"). Quando existe, o envio do template pelo
+    // whatsappService/dispararCampanhaMetaOficial roteia pela WABA gerenciada
+    // pela D-API — que geralmente NÃO coincide com a WABA configurada na
+    // empresa (Embedded Signup separado) nem com os secrets globais do app.
+    // Para a lista de templates refletir os que realmente funcionarão no
+    // envio, usamos o endpoint próprio da D-API Cloud API:
+    //   GET /api/v1/connections/cloud-api/{sessionId}/templates
+    // (documentado em https://docs.d-api.cloud/api-reference/cloud-api/list-approved-waba-templates)
+    const connFilter = empresa_id ? { empresa_id, provider_type: 'dapi' } : { provider_type: 'dapi' };
+    const conns = await base44.asServiceRole.entities.WhatsappConnection.filter(
+      connFilter, '-created_date', 100
+    );
+    const conexaoCloudApi = (conns || []).find(c =>
+      c.is_active !== false &&
+      c.status === 'conectado' &&
+      typeof c.session_id === 'string' && c.session_id.startsWith('cloud-')
+    );
 
-    if (data.error) {
-      return Response.json({ error: `Erro Meta API: ${data.error.message}` }, { status: 400 });
+    let metaTemplates: any[] = [];
+
+    if (conexaoCloudApi && conexaoCloudApi.session_id) {
+      // Rota 1 — D-API Cloud API: lista templates APROVADOS da WABA Cloud que
+      // a D-API usa no envio. Resposta é um array de objetos Meta-compatíveis
+      // (name, language, category, status, components).
+      const apiKey = Deno.env.get('DAPI_USER_API_KEY');
+      if (!apiKey) {
+        return Response.json({ error: 'DAPI_USER_API_KEY não configurado no backend para sincronizar a conexão Cloud API.' }, { status: 400 });
+      }
+      const dapiUrl = `https://api.d-api.cloud/api/v1/connections/cloud-api/${encodeURIComponent(conexaoCloudApi.session_id)}/templates?limit=250`;
+      const dapiResp = await fetch(dapiUrl, { headers: { 'Authorization': apiKey, 'Accept': 'application/json' } });
+      const dapiData = await dapiResp.json().catch(() => ({}));
+      if (!dapiResp.ok) {
+        return Response.json({ error: `Erro D-API Cloud API: ${dapiData?.error || dapiData?.message || 'HTTP ' + dapiResp.status}` }, { status: 400 });
+      }
+      const rawList = Array.isArray(dapiData?.data) ? dapiData.data : (Array.isArray(dapiData?.templates) ? dapiData.templates : []);
+      // Normaliza para o mesmo formato que o loop abaixo já conhece
+      // (tmpl.name, tmpl.language, tmpl.status, tmpl.category, tmpl.components).
+      // A D-API pode devolver tanto o formato {components:[...]} (igual Meta)
+      // quanto {header, body, footer, buttons} (formato simplificado) — cobrimos ambos.
+      metaTemplates = (rawList as any[]).map((d: any) => {
+        const componentes: any[] = Array.isArray(d.components) ? d.components : [];
+        if (componentes.length === 0) {
+          // Formato simplificado D-API: monta components a partir de header/body/footer/buttons
+          if (d.header) {
+            if (typeof d.header === 'string') componentes.push({ type: 'HEADER', format: 'TEXT', text: d.header });
+            else if (typeof d.header === 'object') {
+              const h: any = { type: 'HEADER', format: d.header.format || 'TEXT' };
+              if (typeof d.header.text === 'string') h.text = d.header.text;
+              if (d.header.example) h.example = d.header.example;
+              componentes.push(h);
+            }
+          }
+          if (d.body) {
+            const b: any = { type: 'BODY', text: d.body };
+            if (d.bodyExample) b.example = { body_text: [d.bodyExample] };
+            componentes.push(b);
+          }
+          if (d.footer) componentes.push({ type: 'FOOTER', text: d.footer });
+          if (Array.isArray(d.buttons) && d.buttons.length > 0) componentes.push({ type: 'BUTTONS', buttons: d.buttons });
+        }
+        return {
+          id: d.id || d.templateId || d.meta_template_id || null,
+          name: d.name,
+          language: d.language || 'pt_BR',
+          status: d.status || 'APPROVED',
+          category: d.category || 'MARKETING',
+          quality_rating: d.quality_rating || null,
+          rejected_reason: d.rejected_reason || d.rejection_reason || null,
+          components: componentes,
+        };
+      });
+    } else {
+      // Rota 2 — Fallback: Meta Graph API direta (WABA configurada na empresa).
+      // Usada quando não há conexão D-API Cloud ativa (multi-tenant com token próprio).
+      if (!accessToken || !wabaId) {
+        return Response.json({ error: 'Nenhuma conexão D-API Cloud ativa nem credenciais Meta configuradas. Conecte a WhatsApp API Oficial (Meta) via D-API Cloud primeiro.' }, { status: 400 });
+      }
+      const url = `https://graph.facebook.com/${metaApiVersion}/${wabaId}/message_templates?fields=id,name,status,language,category,components&limit=100&access_token=${accessToken}`;
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data.error) {
+        return Response.json({ error: `Erro Meta API: ${data.error.message}` }, { status: 400 });
+      }
+      metaTemplates = data.data || [];
     }
 
-    const metaTemplates = data.data || [];
+    const viaDapi = !!(conexaoCloudApi && conexaoCloudApi.session_id);
     let salvos = 0;
     let atualizados = 0;
+    // Conjunto de (nome|idioma) retornados nesta sincronização — usado no
+    // final para marcar como "removido_meta" qualquer entrada antiga do
+    // CampanhaLog que não veio mais da D-API/Meta (template foi pausado,
+    // rejeitado ou excluído). Esconde do modal "Enviar Template Meta".
+    const nomesThisSync = new Set<string>();
 
     for (const tmpl of metaTemplates) {
+      const idiomaNorm = String(tmpl.language || 'pt_BR').toLowerCase().replace('-', '_');
+      nomesThisSync.add(`${(tmpl.name || '').toLowerCase()}|${idiomaNorm}`);
       // Extrair componentes
       const header = tmpl.components?.find(c => c.type === 'HEADER');
       const body = tmpl.components?.find(c => c.type === 'BODY');
@@ -202,12 +287,45 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Limpeza: entradas de CampanhaLog (meta_template_definition) cujos
+    // (nome|idioma) não voltaram nesta sincronização são marcadas como
+    // removidas da Meta — seus `status_meta` viram 'removido_meta' para que o
+    // modal "Enviar Template Meta" pare de mostrá-las como Aprovado, evitando
+    // disparos que falham com #132001 (Template name does not exist in the
+    // translation) pq o template na verdade foi excluído/pausado na WABA.
+    let removidos = 0;
+    try {
+      const todos = await base44.asServiceRole.entities.CampanhaLog.filter({
+        empresa_id,
+        tipo_campanha: 'meta_template_definition',
+      }, '-created_date', 300);
+      for (const entry of todos) {
+        let d: any = {};
+        try { d = JSON.parse(entry.motivo_erro || '{}'); } catch {}
+        const idioma = String(d.idioma || 'pt_BR').toLowerCase().replace('-', '_');
+        const key = `${(d.nome || entry.cliente_nome || '').toLowerCase()}|${idioma}`;
+        if (nomesThisSync.has(key)) continue;
+        if (d.status_meta === 'removido_meta') continue; // já marcado
+        d.status_meta = 'removido_meta';
+        d.removido_em = new Date().toISOString();
+        await base44.asServiceRole.entities.CampanhaLog.update(entry.id, {
+          motivo_erro: JSON.stringify(d),
+          status: 'pendente',
+        });
+        removidos++;
+      }
+    } catch (e) {
+      console.warn('⚠️ Falha ao limpar templates obsoletos:', e?.message);
+    }
+
     return Response.json({
       ok: true,
       total: metaTemplates.length,
       novos: salvos,
       atualizados,
-      message: `${metaTemplates.length} templates sincronizados (${salvos} novos, ${atualizados} atualizados)`,
+      removidos,
+      via: viaDapi ? 'dapi_cloud_api' : 'meta_graph_api',
+      message: `${metaTemplates.length} templates sincronizados (${salvos} novos, ${atualizados} atualizados, ${removidos} removidos) via ${viaDapi ? 'D-API Cloud' : 'Meta Graph'}.`,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
