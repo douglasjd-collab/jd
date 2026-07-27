@@ -14,6 +14,7 @@ import {
   Trash2,
   Loader2,
   ChevronDown,
+  Phone,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -276,6 +277,9 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
           ))}
         </div>
       )}
+
+      {/* Destino dos telefones */}
+      {temOrigem && <DestinoTelefonesSelector form={form} setForm={setForm} />}
 
       {/* Painéis inline por fonte selecionada */}
       <div className="space-y-3">
@@ -571,6 +575,43 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+function DestinoTelefonesSelector({ form, setForm }) {
+  const modos = [
+    { id: 'principal', label: 'Apenas telefone principal', desc: '1 disparo por cliente (padrão recomendado)' },
+    { id: 'todos', label: 'Todos os telefones válidos', desc: '1 disparo por telefone do cliente' },
+    { id: 'whatsapp', label: 'Apenas telefones WhatsApp', desc: 'Só celular/WhatsApp do cadastro' },
+  ];
+  return (
+    <div className="rounded-xl border border-slate-200 p-3 bg-white">
+      <div className="flex items-center gap-2 mb-2.5">
+        <Phone className="w-4 h-4 text-emerald-600" />
+        <span className="text-sm font-semibold text-slate-700">Destino dos telefones</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {modos.map((m) => {
+          const sel = (form.destino_telefones || 'principal') === m.id;
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setForm({ ...form, destino_telefones: m.id })}
+              className={cn('text-left p-2.5 rounded-lg border', sel ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300')}
+            >
+              <div className="flex items-center gap-2">
+                <span className={cn('w-4 h-4 rounded-full border-2 flex items-center justify-center', sel ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300')}>
+                  {sel && <span className="w-1.5 h-1.5 bg-white rounded-full" />}
+                </span>
+                <span className={cn('text-sm font-medium', sel ? 'text-emerald-700' : 'text-slate-700')}>{m.label}</span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1 leading-tight">{m.desc}</p>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

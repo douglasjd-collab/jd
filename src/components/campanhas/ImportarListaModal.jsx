@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
   Dialog,
@@ -17,19 +17,26 @@ import {
   CheckCircle2,
   AlertTriangle,
   ArrowRight,
+  MapPin,
+  Phone,
+  Info,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import {
+  normalizarTelefone,
+  detectarColunasTelefone,
+  detectarColunaCidade,
+  mapearColunasParaCampos,
+} from './telefonesCliente';
 
-const normTel = (s = '') => String(s || '').replace(/\D/g, '');
 const normCpf = (s = '') => String(s || '').replace(/\D/g, '');
 
 const titleCaseName = (name = '') => {
   const n = String(name || '').trim();
   if (!n) return '';
   const subs = ['de', 'da', 'do', 'das', 'dos', 'e'];
-  return n
-    .toLowerCase()
+  return n.toLowerCase()
     .split(/\s+/)
     .map((w, i) => (i > 0 && subs.includes(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
     .join(' ');
@@ -44,7 +51,6 @@ const extractPrimeiroNome = (nomeCompleto = '') => {
 const COLUNAS = {
   nome: ['nome', 'nome completo', 'nome do cliente', 'nome completo do cliente', 'nome do contato', 'cliente'],
   cpf: ['cpf', 'c.p.f'],
-  telefone: ['telefone', 'tel', 'celular', 'cel', 'whatsapp', 'whats', 'fone', 'numero', 'número', 'phone'],
   email: ['email', 'e-mail', 'mail'],
 };
 
@@ -62,40 +68,35 @@ function detectarColuna(headers, keys) {
 }
 
 const ERRO_COLUNAS_MSG =
-  'Não foi possível importar a lista.\n\nA planilha deve conter obrigatoriamente:\nNome, CPF e Telefone.';
+  'Não foi possível importar a lista.\n\nA planilha deve conter:\nNome (ou CPF) e ao menos uma coluna de Telefone (Telefone, Celular, WhatsApp, Comercial, Recado, etc.).';
 
 export default function ImportarListaModal({ open, onOpenChange, empresaId, user, onImported }) {
-  const [etapa, setEtapa] = useState('upload'); // upload | revisao | processando | done
+  const [etapa, setEtapa] = useState('upload');
   const [arquivo, setArquivo] = useState(null);
-  const [linhas, setLinhas] = useState([]);
+  const [linhasTudo, setLinhasTudo] = useState([]);
   const [colunas, setColunas] = useState(null);
+  const [cidades, setCidades] = useState([]);
+  const [cidadesSel, setCidadesSel] = useState(new Set());
   const [erro, setErro] = useState('');
   const [nomeLista, setNomeLista] = useState('');
   const [progresso, setProgresso] = useState({ total: 0, atual: 0, criados: 0, atualizados: 0, pulados: 0 });
   const inputRef = useRef(null);
 
   const reset = () => {
-    setEtapa('upload');
-    setArquivo(null);
-    setLinhas([]);
-    setColunas(null);
-    setErro('');
-    setNomeLista('');
+    setEtapa('upload'); setArquivo(null); setLinhasTudo([]);
+    setColunas(null); setCidades([]); setCidadesSel(new Set());
+    setErro(''); setNomeLista('');
     setProgresso({ total: 0, atual: 0, criados: 0, atualizados: 0, pulados: 0 });
   };
 
-  const handleClose = (v) => {
-    onOpenChange(v);
-    if (!v) setTimeout(reset, 250);
-  };
+  const handleClose = (v) => { onOpenChange(v); if (!v) setTimeout(reset, 250); };
 
   const onFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!/\.xlsx$/i.test(file.name)) {
       setErro('Formato inválido. Selecione um arquivo Excel (.xlsx).');
-      setArquivo(null);
-      if (inputRef.current) inputRef.current.value = '';
+      setArquivo(null); if (inputRef.current) inputRef.current.value = '';
       return;
     }
     setErro('');
@@ -107,59 +108,89 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
       const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
       if (json.length === 0) {
         setErro('A planilha está vazia.');
-        setArquivo(null);
-        if (inputRef.current) inputRef.current.value = '';
+        setArquivo(null); if (inputRef.current) inputRef.current.value = '';
         return;
       }
       const headers = Object.keys(json[0]);
       const idxNome = detectarColuna(headers, COLUNAS.nome);
       const idxCpf = detectarColuna(headers, COLUNAS.cpf);
-      const idxTel = detectarColuna(headers, COLUNAS.telefone);
-      const idxEmail = detectarColuna(headers, COLUNAS.email); // opcional
-      if (idxNome < 0 || idxCpf < 0 || idxTel < 0) {
+      const idxEmail = detectarColuna(headers, COLUNAS.email);
+      const colTelefones = detectarColunasTelefone(headers);
+      const idxCidade = detectarColunaCidade(headers);
+
+      if (colTelefones.length === 0 || (idxNome < 0 && idxCpf < 0)) {
         setErro(ERRO_COLUNAS_MSG);
-        setArquivo(null);
-        if (inputRef.current) inputRef.current.value = '';
+        setArquivo(null); if (inputRef.current) inputRef.current.value = '';
         return;
       }
-      const parsed = json
-        .map((r) => {
-          const row = Object.values(r);
-          const nomeRaw = String(row[idxNome] || '').trim();
-          const cpfRaw = String(row[idxCpf] || '').trim();
-          const telRaw = String(row[idxTel] || '').trim();
-          const emailRaw = idxEmail >= 0 ? String(row[idxEmail] || '').trim() : '';
-          const nomeFormatado = titleCaseName(nomeRaw);
-          return {
-            nome: nomeFormatado,
-            primeiro_nome: extractPrimeiroNome(nomeRaw),
-            cpf: cpfRaw,
-            cpf_norm: normCpf(cpfRaw),
-            telefone: telRaw,
-            telefone_norm: normTel(telRaw),
-            email: emailRaw,
-          };
-        })
-        .filter((r) => r.nome || r.cpf_norm || r.telefone_norm);
+
+      const { map: mapaColCampo, nao_mapeadas } = mapearColunasParaCampos(colTelefones);
+
+      const parsed = json.map((r) => {
+        const row = Object.values(r);
+        const nomeRaw = idxNome >= 0 ? String(row[idxNome] || '').trim() : '';
+        const cpfRaw = idxCpf >= 0 ? String(row[idxCpf] || '').trim() : '';
+        const emailRaw = idxEmail >= 0 ? String(row[idxEmail] || '').trim() : '';
+        const cidadeRaw = idxCidade >= 0 ? String(row[idxCidade] || '').trim() : '';
+        const telefones = [];
+        for (const c of colTelefones) {
+          const raw = String(row[c.idx] || '').trim();
+          const num = normalizarTelefone(raw);
+          if (num.length < 8) continue;
+          if (telefones.some((t) => t.numero === num)) continue;
+          telefones.push({
+            numero: num,
+            tipo: c.tipo,
+            is_whatsapp: !!c.is_whatsapp,
+            is_principal: !!c.is_principal,
+            header: c.header,
+            campo_destino: mapaColCampo[c.header] || null,
+          });
+        }
+        if (telefones.length && !telefones.some((t) => t.is_principal)) telefones[0].is_principal = true;
+        const nomeFormatado = titleCaseName(nomeRaw);
+        const inconsist = !nomeFormatado || !normCpf(cpfRaw) || telefones.length === 0;
+        return {
+          nome: nomeFormatado,
+          primeiro_nome: extractPrimeiroNome(nomeRaw),
+          cpf: cpfRaw,
+          cpf_norm: normCpf(cpfRaw),
+          email: emailRaw,
+          cidade: cidadeRaw,
+          telefones,
+          inconsistente: inconsist,
+        };
+      }).filter((r) => r.nome || r.cpf_norm || r.telefones.length);
 
       if (parsed.length === 0) {
         setErro('Nenhuma linha com dados válidos foi encontrada.');
-        setArquivo(null);
-        if (inputRef.current) inputRef.current.value = '';
-        return;
-      }
-      if (parsed.every((r) => !r.cpf_norm && !r.nome)) {
-        // "Não aceitar lista contendo apenas telefone"
-        setErro(
-          'Não foi possível importar a lista.\n\nA planilha deve conter obrigatoriamente:\nNome, CPF e Telefone.\nListas com apenas telefone não são aceitas.'
-        );
-        setArquivo(null);
-        if (inputRef.current) inputRef.current.value = '';
+        setArquivo(null); if (inputRef.current) inputRef.current.value = '';
         return;
       }
 
-      setLinhas(parsed);
-      setColunas({ nome: headers[idxNome], cpf: headers[idxCpf], telefone: headers[idxTel], email: idxEmail >= 0 ? headers[idxEmail] : null });
+      // Mapa de cidades + contagem
+      const cityMap = new Map();
+      for (const r of parsed) {
+        const c = (r.cidade || '').trim();
+        if (!c) continue;
+        cityMap.set(c, (cityMap.get(c) || 0) + 1);
+      }
+      const cityArr = Array.from(cityMap.entries())
+        .map(([cidade, count]) => ({ cidade, count }))
+        .sort((a, b) => b.count - a.count);
+
+      setLinhasTudo(parsed);
+      setColunas({
+        nome: idxNome >= 0 ? headers[idxNome] : null,
+        cpf: idxCpf >= 0 ? headers[idxCpf] : null,
+        email: idxEmail >= 0 ? headers[idxEmail] : null,
+        cidade: idxCidade >= 0 ? headers[idxCidade] : null,
+        telefones: colTelefones,
+        mapaColCampo,
+        nao_mapeadas,
+      });
+      setCidades(cityArr);
+      setCidadesSel(new Set());
       setEtapa('revisao');
     } catch (err) {
       console.error(err);
@@ -170,101 +201,128 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
     }
   };
 
-  const podeConfirmar = etapa === 'revisao' && linhas.length > 0 && nomeLista.trim().length > 0 && !!empresaId;
+  const linhasFiltradas = useMemo(() => {
+    if (cidadesSel.size === 0) return linhasTudo;
+    return linhasTudo.filter((r) => r.cidade && cidadesSel.has(r.cidade));
+  }, [linhasTudo, cidadesSel]);
 
+  const stats = useMemo(() => {
+    let totalTel = 0, validos = 0, inconsist = 0;
+    for (const r of linhasFiltradas) {
+      const unicos = new Set(r.telefones.map((t) => t.numero));
+      totalTel += unicos.size;
+      if (r.inconsistente) inconsist++; else validos++;
+    }
+    return { totalRegistros: linhasFiltradas.length, validos, inconsist, totalTel, totalCidades: cidades.length };
+  }, [linhasFiltradas, cidades]);
+
+  const toggleCidade = (nome) => {
+    setCidadesSel((prev) => {
+      const n = new Set(prev);
+      if (n.has(nome)) n.delete(nome); else n.add(nome);
+      return n;
+    });
+  };
+
+  const podeConfirmar = etapa === 'revisao' && linhasFiltradas.length > 0 && nomeLista.trim().length > 0 && !!empresaId;
   const MAX_SNAPSHOT = 2000;
 
   const processar = async () => {
     if (!podeConfirmar) return;
     setEtapa('processando');
-    setProgresso({ total: linhas.length, atual: 0, criados: 0, atualizados: 0, pulados: 0 });
+    setProgresso({ total: linhasFiltradas.length, atual: 0, criados: 0, atualizados: 0, pulados: 0 });
     try {
-      // Buscar clientes existentes para deduplicação por CPF ou Telefone
       let existentes = [];
       try {
         existentes = await base44.entities.Cliente.filter({ empresa_id: empresaId }, null, 5000);
-      } catch (e) {
-        console.warn('Erro ao buscar clientes existentes:', e.message);
-      }
+      } catch (e) { console.warn('Erro ao buscar clientes existentes:', e.message); }
       const porCpf = new Map();
       const porTel = new Map();
       for (const c of existentes) {
         const cpf = normCpf(c.cpf);
         if (cpf) porCpf.set(cpf, c);
-        const tel = normTel(c.celular || c.telefone_fixo || '');
+        const tel = normalizarTelefone(c.celular || c.telefone_fixo || '');
         if (tel && !porTel.has(tel)) porTel.set(tel, c);
       }
 
       const snapshot = [];
       const novosPayloads = [];
       const atualizacoes = [];
-      let criados = 0;
-      let atualizados = 0;
-      let pulados = 0;
-      const vistosTelefone = new Set();
+      let criados = 0, atualizados = 0, pulados = 0;
+      const vistosCpf = new Set();
 
-      for (let i = 0; i < linhas.length; i++) {
-        const l = linhas[i];
-        if (!l.nome && !l.cpf_norm && !l.telefone_norm) {
-          pulados++;
-          setProgresso((p) => ({ ...p, atual: i + 1, criados, atualizados, pulados }));
-          continue;
+      for (let i = 0; i < linhasFiltradas.length; i++) {
+        const l = linhasFiltradas[i];
+        if (!l.nome && !l.cpf_norm && l.telefones.length === 0) {
+          pulados++; setProgresso((p) => ({ ...p, atual: i + 1, criados, atualizados, pulados })); continue;
         }
-        // chave de dedupicação local por telefone (evita duplicar dentro da própria planilha)
-        if (l.telefone_norm && vistosTelefone.has(l.telefone_norm)) {
-          pulados++;
-          setProgresso((p) => ({ ...p, atual: i + 1, criados, atualizados, pulados }));
-          continue;
+        if (l.cpf_norm && vistosCpf.has(l.cpf_norm)) {
+          pulados++; setProgresso((p) => ({ ...p, atual: i + 1, criados, atualizados, pulados })); continue;
         }
-        const existente =
-          (l.cpf_norm && porCpf.get(l.cpf_norm)) ||
-          (l.telefone_norm && porTel.get(l.telefone_norm)) ||
-          null;
+        if (l.cpf_norm) vistosCpf.add(l.cpf_norm);
+
+        const principal = l.telefones.find((t) => t.is_principal) || l.telefones[0];
+        const telPrincipal = principal?.numero || '';
+
+        const existente = (l.cpf_norm && porCpf.get(l.cpf_norm)) || (telPrincipal && porTel.get(telPrincipal)) || null;
+
+        // Payload de telefones (campos celulares): celular/telefone_fixo/pj_celular/pj_telefone_fixo
+        const telefonesPatch = {};
+        for (const t of l.telefones) {
+          if (!t.campo_destino) continue;
+          // Só preenche o campo se ainda estiver vazio (não sobrescreve dado existente)
+          if (existente) {
+            const atual = normalizarTelefone(existente[t.campo_destino] || '');
+            if (atual.length >= 8) continue;
+          }
+          telefonesPatch[t.campo_destino] = t.numero;
+        }
 
         if (existente) {
           const patch = {};
           if (!existente.nome_completo && l.nome) patch.nome_completo = l.nome;
           if (!existente.primeiro_nome && l.primeiro_nome) patch.primeiro_nome = l.primeiro_nome;
           if (!existente.cpf && l.cpf) patch.cpf = l.cpf;
-          if (!normTel(existente.celular || '') && l.telefone) patch.celular = l.telefone;
           if (!existente.email && l.email) patch.email = l.email;
+          if (l.cidade && !existente.res_cidade) patch.res_cidade = l.cidade;
           if (!existente.tipo_pessoa) patch.tipo_pessoa = 'Física';
-          if (Object.keys(patch).length > 0) {
-            atualizacoes.push({ id: existente.id, patch });
+          if (!normalizarTelefone(existente.celular || '') && telPrincipal && !telefonesPatch.celular) {
+            patch.celular = telPrincipal;
           }
+          Object.assign(patch, telefonesPatch);
+          if (Object.keys(patch).length > 0) atualizacoes.push({ id: existente.id, patch });
           snapshot.push({
             cliente_id: existente.id,
             nome: existente.nome_completo || l.nome,
             primeiro_nome: existente.primeiro_nome || l.primeiro_nome,
             cpf: existente.cpf || l.cpf,
-            telefone: normTel(existente.celular || l.telefone),
+            cidade: l.cidade,
+            telefone: telPrincipal,
+            telefones: l.telefones.map((t) => ({ numero: t.numero, tipo: t.tipo })),
             email: existente.email || l.email || '',
           });
           if (l.cpf_norm && !porCpf.has(l.cpf_norm)) porCpf.set(l.cpf_norm, existente);
-          if (l.telefone_norm && !porTel.has(l.telefone_norm)) porTel.set(l.telefone_norm, existente);
-          if (l.telefone_norm) vistosTelefone.add(l.telefone_norm);
           atualizados++;
         } else {
-          novosPayloads.push({
-            payload: {
-              empresa_id: empresaId,
-              tipo_pessoa: 'Física',
-              nome_completo: l.nome,
-              primeiro_nome: l.primeiro_nome,
-              cpf: l.cpf,
-              celular: l.telefone,
-              email: l.email || '',
-              status: 'ativo',
-            },
-            linha: l,
-          });
-          if (l.telefone_norm) vistosTelefone.add(l.telefone_norm);
+          const payload = {
+            empresa_id: empresaId,
+            tipo_pessoa: 'Física',
+            nome_completo: l.nome,
+            primeiro_nome: l.primeiro_nome,
+            cpf: l.cpf,
+            email: l.email || '',
+            res_cidade: l.cidade || '',
+            status: 'ativo',
+            ...telefonesPatch,
+          };
+          // Garante celular com principal se não foi mapeado
+          if (!payload.celular && telPrincipal) payload.celular = telPrincipal;
+          novosPayloads.push({ payload, linha: l });
           criados++;
         }
         setProgresso((p) => ({ ...p, atual: i + 1, criados, atualizados, pulados }));
       }
 
-      // Criar novos clientes (em lote)
       let clientesCriados = [];
       if (novosPayloads.length > 0) {
         try {
@@ -272,12 +330,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
         } catch (e) {
           console.warn('bulkCreate falhou, tentando um a um:', e.message);
           for (const x of novosPayloads) {
-            try {
-              const r = await base44.entities.Cliente.create(x.payload);
-              clientesCriados.push(r);
-            } catch (err) {
-              console.warn('erro criar cliente:', err.message);
-            }
+            try { clientesCriados.push(await base44.entities.Cliente.create(x.payload)); } catch (err) { console.warn('erro criar cliente:', err.message); }
           }
         }
       }
@@ -290,28 +343,23 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
           nome: c.nome_completo || x.linha.nome,
           primeiro_nome: c.primeiro_nome || x.linha.primeiro_nome,
           cpf: c.cpf || x.linha.cpf,
-          telefone: normTel(c.celular || x.linha.telefone),
+          cidade: x.linha.cidade,
+          telefone: normalizarTelefone(c.celular || (x.linha.telefones[0] && x.linha.telefones[0].numero) || ''),
+          telefones: x.linha.telefones.map((t) => ({ numero: t.numero, tipo: t.tipo })),
           email: c.email || x.linha.email || '',
         });
       });
 
-      // Aplicar atualizações dos clientes existentes
       for (const u of atualizacoes) {
-        try {
-          await base44.entities.Cliente.update(u.id, u.patch);
-        } catch (e) {
-          console.warn('update falhou:', e.message);
-        }
+        try { await base44.entities.Cliente.update(u.id, u.patch); } catch (e) { console.warn('update falhou:', e.message); }
       }
 
       const snapshotTruncado = snapshot.slice(0, MAX_SNAPSHOT);
-      const descricaoExtra =
-        snapshot.length > MAX_SNAPSHOT ? ` (snapshot exibe ${MAX_SNAPSHOT} de ${snapshot.length})` : '';
-
+      const descricaoExtra = snapshot.length > MAX_SNAPSHOT ? ` (snapshot exibe ${MAX_SNAPSHOT} de ${snapshot.length})` : '';
       const lista = await base44.entities.ListaContatosImportada.create({
         empresa_id: empresaId,
         nome: nomeLista.trim(),
-        descricao: descricaoExtra || '',
+        descricao: `${stats.totalRegistros} registros · ${stats.totalTel} telefones · Cidades: ${cidadesSel.size === 0 ? 'todas' : Array.from(cidadesSel).join(', ')}.${descricaoExtra}`,
         total_contatos: snapshot.length,
         contatos_json: JSON.stringify(snapshotTruncado),
         arquivo_nome: arquivo?.name || '',
@@ -323,7 +371,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
 
       setProgresso((p) => ({ ...p, total: snapshot.length }));
       setEtapa('done');
-      toast.success(`Lista "${lista.nome}" importada com ${snapshot.length} contatos.`);
+      toast.success(`Lista "${lista.nome}" importada com ${snapshot.length} contatos e ${stats.totalTel} telefones.`);
       if (onImported) onImported(lista);
     } catch (e) {
       console.error(e);
@@ -334,7 +382,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
@@ -348,17 +396,16 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
               <Upload className="w-8 h-8 text-slate-400 mx-auto" />
               <div>
                 <p className="text-sm font-medium text-slate-700">Envie uma planilha Excel (.xlsx)</p>
-                <p className="text-xs text-slate-500 mt-1">
-                  A planilha deve conter obrigatoriamente as colunas:
-                </p>
+                <p className="text-xs text-slate-500 mt-1">A planilha deve conter:</p>
                 <div className="flex items-center justify-center gap-2 mt-2 flex-wrap">
                   <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs font-semibold">NOME</span>
                   <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs font-semibold">CPF</span>
-                  <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs font-semibold">TELEFONE</span>
+                  <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-semibold">TELEFONES (1 ou mais colunas)</span>
+                  <span className="px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs font-semibold">CIDADE (opcional)</span>
                   <span className="px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs font-semibold">EMAIL (opcional)</span>
                 </div>
                 <p className="text-[11px] text-slate-400 mt-2">
-                  Listas contendo apenas telefone não são aceitas.
+                  Detectamos automaticamente todas as colunas de telefone (Telefone, Celular, WhatsApp, Comercial, Recado, etc.).
                 </p>
               </div>
               <input
@@ -369,12 +416,8 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
                 className="hidden"
                 id="import-lista-file"
               />
-              <Button
-                variant="outline"
-                className="cursor-pointer"
-                type="button"
-                onClick={() => document.getElementById('import-lista-file').click()}
-              >
+              <Button variant="outline" className="cursor-pointer" type="button"
+                onClick={() => document.getElementById('import-lista-file').click()}>
                 <Upload className="w-4 h-4 mr-1.5" /> Selecionar arquivo .xlsx
               </Button>
               {arquivo && (
@@ -394,48 +437,140 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
           <div className="space-y-4">
             <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
               <CheckCircle2 className="w-4 h-4" />
-              <span>Planilha válida — {linhas.length} contatos detectados.</span>
+              <span>Planilha válida — {linhasTudo.length} registros, {cidades.length} cidade(s) detectada(s).</span>
             </div>
+
+            {/* Colunas detectadas */}
             <div className="rounded-lg border border-slate-200 p-3 space-y-1 text-xs text-slate-600">
               <div className="flex justify-between">
                 <span className="text-slate-500">Arquivo</span>
                 <span className="font-medium truncate max-w-[280px]">{arquivo?.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Coluna Nome</span>
-                <span className="font-medium">{colunas.nome}</span>
+                <span className="text-slate-500">Nome</span>
+                <span className="font-medium">{colunas?.nome || '(não detectado)'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Coluna CPF</span>
-                <span className="font-medium">{colunas.cpf}</span>
+                <span className="text-slate-500">CPF</span>
+                <span className="font-medium">{colunas?.cpf || '(não detectado)'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Coluna Telefone</span>
-                <span className="font-medium">{colunas.telefone}</span>
-              </div>
-              {colunas.email && (
+              {colunas?.email && (
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Coluna Email</span>
+                  <span className="text-slate-500">Email</span>
                   <span className="font-medium">{colunas.email}</span>
                 </div>
               )}
+              {colunas?.cidade ? (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Cidade</span>
+                  <span className="font-medium">{colunas.cidade}</span>
+                </div>
+              ) : (
+                <div className="flex justify-between text-amber-600">
+                  <span>Cidade (não detectada)</span>
+                  <span className="text-[11px]">Filtro indisponível</span>
+                </div>
+              )}
+              <div className="flex items-start justify-between gap-2 pt-1 border-t border-slate-100 mt-1">
+                <span className="text-slate-500 flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-blue-600" /> Colunas de telefone ({colunas?.telefones?.length || 0})</span>
+                <div className="font-medium text-right flex flex-wrap gap-1 justify-end max-w-[320px]">
+                  {colunas?.telefones?.map((c, i) => (
+                    <span key={i} className={`px-1.5 py-0.5 rounded text-[10px] ${c.is_principal ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`} title={`→ ${colunas.mapaColCampo[c.header] || 'ignorado'}`}>
+                      {c.header}{c.is_principal ? ' ⭐' : ''}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              {colunas?.nao_mapeadas?.length > 0 && (
+                <div className="flex items-start gap-2 text-amber-600 text-[11px] pt-1">
+                  <Info className="w-3.5 h-3.5 mt-px flex-shrink-0" />
+                  <span>
+                    Excedente: {colunas.nao_mapeadas.join(', ')} não será importado (limite de 4 telefones por cadastro).
+                  </span>
+                </div>
+              )}
             </div>
+
+            {/* Estatísticas resumo */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <Stat label="Total de registros" value={stats.totalRegistros} color="text-slate-800" />
+              <Stat label="Contatos válidos" value={stats.validos} color="text-emerald-600" />
+              <Stat label="Com inconsistências" value={stats.inconsist} color="text-amber-600" />
+              <Stat label="Total de telefones" value={stats.totalTel} color="text-blue-600" />
+            </div>
+
+            {/* Amostra das primeiras linhas */}
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-700">
+                Prévia — primeiras {Math.min(5, linhasFiltradas.length)} linhas
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-[11px]">
+                  <thead className="bg-slate-100 text-slate-600">
+                    <tr>
+                      <th className="text-left px-2 py-1.5 font-medium">Nome</th>
+                      <th className="text-left px-2 py-1.5 font-medium">CPF</th>
+                      <th className="text-left px-2 py-1.5 font-medium">Cidade</th>
+                      <th className="text-right px-2 py-1.5 font-medium">Telefones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {linhasFiltradas.slice(0, 5).map((r, i) => (
+                      <tr key={i} className="border-t border-slate-100">
+                        <td className="px-2 py-1.5 text-slate-700">{r.nome || <span className="text-red-500">(sem nome)</span>}</td>
+                        <td className="px-2 py-1.5 text-slate-600">{r.cpf || '—'}</td>
+                        <td className="px-2 py-1.5 text-slate-600">{r.cidade || '—'}</td>
+                        <td className="px-2 py-1.5 text-right text-slate-700">{r.telefones.length}</td>
+                      </tr>
+                    ))}
+                    {linhasFiltradas.length === 0 && (
+                      <tr><td colSpan={4} className="px-2 py-4 text-center text-slate-400">Nenhum registro após o filtro</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Filtro por cidade */}
+            {cidades.length > 0 && (
+              <div className="border border-slate-200 rounded-lg p-3 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                  <MapPin className="w-4 h-4 text-emerald-600" />
+                  Filtrar cidades ({cidadesSel.size === 0 ? 'todas' : `${cidadesSel.size} selecionada(s)`})
+                </div>
+                <div className="flex items-start gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCidadesSel(new Set())}
+                    className={`px-3 py-1.5 rounded text-xs border ${cidadesSel.size === 0 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 hover:bg-slate-50'}`}>
+                    Todas ({linhasTudo.length})
+                  </button>
+                </div>
+                <div className="max-h-44 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1 pr-1">
+                  {cidades.map((c) => {
+                    const sel = cidadesSel.has(c.cidade);
+                    return (
+                      <label key={c.cidade} className={`flex items-center gap-2 p-2 rounded border text-xs cursor-pointer ${sel ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:bg-slate-50'}`}>
+                        <input type="checkbox" checked={sel} onChange={() => toggleCidade(c.cidade)} className="accent-emerald-600" />
+                        <span className="font-medium text-slate-700">{c.cidade}</span>
+                        <span className="ml-auto text-slate-400">{c.count}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {cidadesSel.size > 0 && (
+                  <div className="rounded bg-blue-50 border border-blue-100 text-blue-700 text-xs px-3 py-2">
+                    Registros que serão importados: <strong>{stats.totalRegistros}</strong> contatos · <strong>{stats.totalTel}</strong> telefones
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <Label>Nome da lista *</Label>
-              <Input
-                value={nomeLista}
-                onChange={(e) => setNomeLista(e.target.value)}
-                placeholder="Ex: Clientes Credisol Julho"
-              />
-              <p className="text-[11px] text-slate-400 mt-1">
-                A lista ficará salva para reutilização em outras campanhas.
-              </p>
+              <Input value={nomeLista} onChange={(e) => setNomeLista(e.target.value)} placeholder="Ex: Clientes Credisol Julho" />
             </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-xs text-slate-600 space-y-1">
-              <p>• Contatos serão criados no cadastro geral do CRM.</p>
-              <p>• Clientes já existentes (mesmo CPF ou telefone) não serão duplicados — apenas terão dados faltantes preenchidos.</p>
-              <p>• O primeiro nome será extraído automaticamente para uso nos templates.</p>
-            </div>
+
             {erro && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs">
                 <AlertTriangle className="w-4 h-4 mt-px flex-shrink-0" />
@@ -449,29 +584,16 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
           <div className="space-y-4 py-6">
             <div className="flex items-center justify-center gap-2 text-slate-600">
               <Loader2 className="w-5 h-5 animate-spin" />
-              <span className="text-sm font-medium">
-                Processando {progresso.atual}/{progresso.total}...
-              </span>
+              <span className="text-sm font-medium">Processando {progresso.atual}/{progresso.total}...</span>
             </div>
             <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-emerald-500 transition-all"
-                style={{ width: `${progresso.total ? (progresso.atual / progresso.total) * 100 : 0}%` }}
-              />
+              <div className="h-full bg-emerald-500 transition-all"
+                style={{ width: `${progresso.total ? (progresso.atual / progresso.total) * 100 : 0}%` }} />
             </div>
             <div className="grid grid-cols-3 gap-2 text-center text-xs">
-              <div className="rounded-lg border border-slate-200 p-2">
-                <p className="text-slate-500">Novos</p>
-                <p className="font-bold text-emerald-700 text-lg">{progresso.criados}</p>
-              </div>
-              <div className="rounded-lg border border-slate-200 p-2">
-                <p className="text-slate-500">Atualizados</p>
-                <p className="font-bold text-blue-600 text-lg">{progresso.atualizados}</p>
-              </div>
-              <div className="rounded-lg border border-slate-200 p-2">
-                <p className="text-slate-500">Pulados</p>
-                <p className="font-bold text-slate-400 text-lg">{progresso.pulados}</p>
-              </div>
+              <div className="rounded-lg border border-slate-200 p-2"><p className="text-slate-500">Novos</p><p className="font-bold text-emerald-700 text-lg">{progresso.criados}</p></div>
+              <div className="rounded-lg border border-slate-200 p-2"><p className="text-slate-500">Atualizados</p><p className="font-bold text-blue-600 text-lg">{progresso.atualizados}</p></div>
+              <div className="rounded-lg border border-slate-200 p-2"><p className="text-slate-500">Pulados</p><p className="font-bold text-slate-400 text-lg">{progresso.pulados}</p></div>
             </div>
           </div>
         )}
@@ -481,53 +603,41 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
             <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
             <div>
               <p className="text-lg font-semibold text-slate-800">Importação concluída!</p>
-              <p className="text-sm text-slate-500 mt-1">
-                {progresso.total} contatos salvos na lista "{nomeLista}".
-              </p>
+              <p className="text-sm text-slate-500 mt-1">{progresso.total} contatos salvos na lista "{nomeLista}".</p>
             </div>
             <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto text-xs">
-              <div className="rounded-lg border border-slate-200 p-2">
-                <p className="text-slate-500">Novos</p>
-                <p className="font-bold text-emerald-700">{progresso.criados}</p>
-              </div>
-              <div className="rounded-lg border border-slate-200 p-2">
-                <p className="text-slate-500">Atualizados</p>
-                <p className="font-bold text-blue-600">{progresso.atualizados}</p>
-              </div>
-              <div className="rounded-lg border border-slate-200 p-2">
-                <p className="text-slate-500">Pulados</p>
-                <p className="font-bold text-slate-400">{progresso.pulados}</p>
-              </div>
+              <div className="rounded-lg border border-slate-200 p-2"><p className="text-slate-500">Novos</p><p className="font-bold text-emerald-700">{progresso.criados}</p></div>
+              <div className="rounded-lg border border-slate-200 p-2"><p className="text-slate-500">Atualizados</p><p className="font-bold text-blue-600">{progresso.atualizados}</p></div>
+              <div className="rounded-lg border border-slate-200 p-2"><p className="text-slate-500">Pulados</p><p className="font-bold text-slate-400">{progresso.pulados}</p></div>
             </div>
-            <p className="text-[11px] text-slate-400">
-              A lista já está disponível para seleção no Público → Listas importadas.
-            </p>
+            <p className="text-[11px] text-slate-400">A lista já está disponível para seleção no Público → Listas importadas.</p>
           </div>
         )}
 
         <DialogFooter>
-          {etapa === 'upload' && (
-            <Button variant="outline" onClick={() => handleClose(false)}>
-              Fechar
-            </Button>
-          )}
+          {etapa === 'upload' && <Button variant="outline" onClick={() => handleClose(false)}>Fechar</Button>}
           {etapa === 'revisao' && (
             <>
-              <Button variant="outline" onClick={() => { setEtapa('upload'); setArquivo(null); setLinhas([]); setColunas(null); setErro(''); }}>
-                Voltar
-              </Button>
+              <Button variant="outline" onClick={() => { setEtapa('upload'); setArquivo(null); setLinhasTudo([]); setColunas(null); setCidades([]); setCidadesSel(new Set()); setErro(''); }}>Voltar</Button>
               <Button onClick={processar} disabled={!podeConfirmar}>
-                Importar {linhas.length} contatos <ArrowRight className="w-4 h-4 ml-1.5" />
+                Importar {stats.totalRegistros} contatos <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
             </>
           )}
           {etapa === 'done' && (
-            <Button onClick={() => handleClose(false)}>
-              <CheckCircle2 className="w-4 h-4 mr-1.5" /> Concluir
-            </Button>
+            <Button onClick={() => handleClose(false)}><CheckCircle2 className="w-4 h-4 mr-1.5" /> Concluir</Button>
           )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function Stat({ label, value, color }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-2 text-center">
+      <p className="text-[10px] text-slate-500 uppercase tracking-wide">{label}</p>
+      <p className={`text-lg font-bold ${color}`}>{value}</p>
+    </div>
   );
 }

@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import PublicoBuilder from './PublicoBuilder';
+import { selecionarTelefonesParaCampanha } from './telefonesCliente';
 
 const STEPS = [
   { id: 1, label: 'Template', icon: FileText },
@@ -50,6 +51,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     template_id: '',
     origens: [],
     clientes_sub: 'todos',
+    destino_telefones: 'principal',
     funis_selecionados: [],
     tags_selecionadas: [],
     listas_selecionadas: [],
@@ -76,6 +78,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         template_id: '',
         origens: [],
         clientes_sub: 'todos',
+        destino_telefones: 'principal',
         funis_selecionados: [],
         tags_selecionadas: [],
         listas_selecionadas: [],
@@ -137,14 +140,19 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
           (c.res_uf || '').toLowerCase() === form.filtro_uf.toLowerCase()
         );
       }
-      const comTelefone = filtrados.filter((c) => normalizeTel(c.celular || '').length >= 10);
-      const telefones = comTelefone.map((c) => normalizeTel(c.celular));
-      const unicos = new Set(telefones);
-      const duplicados = telefones.length - unicos.size;
+      const comTelefone = filtrados.filter((c) =>
+        selecionarTelefonesParaCampanha(c, form.destino_telefones).length > 0
+      );
+      const telsPorCliente = comTelefone.map((c) => selecionarTelefonesParaCampanha(c, form.destino_telefones));
+      const totalTelefones = telsPorCliente.reduce((s, arr) => s + arr.length, 0);
+      const telefonesUnicosSet = new Set();
+      telsPorCliente.forEach((arr) => arr.forEach((t) => telefonesUnicosSet.add(t)));
+      const duplicados = totalTelefones - telefonesUnicosSet.size;
       setPreview({
         total_encontrados: filtrados.length,
         com_telefone: comTelefone.length,
-        prontos_envio: unicos.size,
+        clientes_prontos: comTelefone.length,
+        prontos_envio: telefonesUnicosSet.size,
         duplicados,
         sem_telefone: filtrados.length - comTelefone.length,
       });
@@ -205,16 +213,20 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
           (c.res_uf || '').toLowerCase() === form.filtro_uf.toLowerCase()
         );
       }
-      const comTelefone = filtrados.filter((c) => normalizeTel(c.celular || '').length >= 10);
+      const comTelefone = filtrados.filter((c) =>
+        selecionarTelefonesParaCampanha(c, form.destino_telefones).length > 0
+      );
       const vistos = new Set();
-      const unicos = [];
+      const destinatariosExpandidos = [];
       for (const c of comTelefone) {
-        const tel = normalizeTel(c.celular);
-        if (vistos.has(tel)) continue;
-        vistos.add(tel);
-        unicos.push({ c, tel });
+        const tels = selecionarTelefonesParaCampanha(c, form.destino_telefones);
+        for (const tel of tels) {
+          if (vistos.has(tel)) continue;
+          vistos.add(tel);
+          destinatariosExpandidos.push({ c, tel });
+        }
       }
-      if (unicos.length === 0) {
+      if (destinatariosExpandidos.length === 0) {
         toast.error('Nenhum destinatário válido encontrado');
         setSaving(false);
         return;
@@ -253,7 +265,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         template_language: t?.language,
         template_components_json: t?.components_json,
         status: form.agendamento === 'agendar' ? 'agendada' : 'rascunho',
-        total_destinatarios: unicos.length,
+        total_destinatarios: vistos.size,
         velocidade_envio: Number(form.velocidade_envio) || 60,
         pausa_apos: form.pausa_apos ? Number(form.pausa_apos) : null,
         duracao_pausa_min: form.duracao_pausa_min ? Number(form.duracao_pausa_min) : null,
@@ -261,7 +273,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         config_json: configJson,
       });
 
-      const destinatarios = unicos.map(({ c, tel }) => ({
+      const destinatarios = destinatariosExpandidos.map(({ c, tel }) => ({
         empresa_id: empresaId,
         campanha_id: campanha.id,
         cliente_id: c.id,
@@ -277,7 +289,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       toast.success(
         form.agendamento === 'agendar'
           ? `Campanha agendada para ${form.agendada_para_data} ${form.agendada_para_hora}`
-          : `Campanha criada com ${unicos.length} destinatários na fila`
+          : `Campanha criada com ${vistos.size} telefone(s) na fila (${comTelefone.length} clientes)`
       );
       qc.invalidateQueries(['campanhas-lista', empresaId]);
       qc.invalidateQueries(['campanhas-dashboard', empresaId]);
@@ -451,11 +463,10 @@ function Step4({ preview, loading, onRecalc }) {
       {preview && !loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Stat label="Total encontrados" value={preview.total_encontrados} color="text-slate-700" />
-          <Stat label="Com telefone válido" value={preview.com_telefone} color="text-emerald-600" />
-          <Stat label="Prontos para envio" value={preview.prontos_envio} color="text-emerald-700 highlight" />
-          <Stat label="Duplicados" value={preview.duplicados} color="text-amber-600" />
-          <Stat label="Sem telefone" value={preview.sem_telefone} color="text-slate-500" />
-          <Stat label="Sem WhatsApp (estimado)" value="—" color="text-slate-400" />
+          <Stat label="Clientes c/ telefone" value={preview.clientes_prontos ?? preview.com_telefone} color="text-blue-600" />
+          <Stat label="Telefones prontos p/ envio" value={preview.prontos_envio} color="text-emerald-700 highlight" />
+          <Stat label="Telefones duplicados" value={preview.duplicados} color="text-amber-600" />
+          <Stat label="Clientes sem telefone" value={preview.sem_telefone} color="text-slate-500" />
         </div>
       ) : loading ? (
         <div className="flex items-center justify-center py-10 text-slate-500">
