@@ -389,7 +389,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl flex flex-col max-h-[85vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-emerald-600" />
@@ -397,6 +397,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
           </DialogTitle>
         </DialogHeader>
 
+        <div className="flex-1 overflow-y-auto pr-1 -mr-1">
         {etapa === 'upload' && (
           <div className="space-y-4">
             <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center space-y-3">
@@ -626,6 +627,8 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
             <p className="text-[11px] text-slate-400">A lista já está disponível para seleção no Público → Listas importadas.</p>
           </div>
         )}
+
+        </div>
 
         <DialogFooter>
           {etapa === 'upload' && <Button variant="outline" onClick={() => handleClose(false)}>Fechar</Button>}
