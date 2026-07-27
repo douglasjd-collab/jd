@@ -243,6 +243,12 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
       try {
         existentes = await base44.entities.Cliente.filter({ empresa_id: empresaId }, null, 5000);
       } catch (e) { console.warn('Erro ao buscar clientes existentes:', e.message); }
+      let existentesTel = [];
+      let telExistenteKey = new Set();
+      try {
+        existentesTel = await base44.entities.ClienteTelefone.filter({ empresa_id: empresaId }, null, 5000);
+        telExistenteKey = new Set(existentesTel.map((t) => `${t.cliente_id}:${t.telefone}`));
+      } catch (e) { console.warn('Erro ao buscar ClienteTelefone existentes:', e.message); }
       const porCpf = new Map();
       const porTel = new Map();
       for (const c of existentes) {
@@ -255,6 +261,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
       const snapshot = [];
       const novosPayloads = [];
       const atualizacoes = [];
+      const telefonesParaCriar = [];
       let criados = 0, atualizados = 0, pulados = 0;
       const vistosCpf = new Set();
 
@@ -273,16 +280,35 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
 
         const existente = (l.cpf_norm && porCpf.get(l.cpf_norm)) || (telPrincipal && porTel.get(telPrincipal)) || null;
 
-        // Payload de telefones (campos celulares): celular/telefone_fixo/pj_celular/pj_telefone_fixo
+        // Mantém celular (legado) preenchido com o telefone principal, se não existir
         const telefonesPatch = {};
-        for (const t of l.telefones) {
-          if (!t.campo_destino) continue;
-          // Só preenche o campo se ainda estiver vazio (não sobrescreve dado existente)
-          if (existente) {
-            const atual = normalizarTelefone(existente[t.campo_destino] || '');
-            if (atual.length >= 8) continue;
+        if (telPrincipal) {
+          const atualCel = existente ? normalizarTelefone(existente.celular || '') : '';
+          if (!atualCel || atualCel.length < 8) telefonesPatch.celular = telPrincipal;
+        }
+
+        // Lista de telefones detectados na linha para criar em ClienteTelefone
+        const telefonesDaLinha = l.telefones.map((t) => ({
+          numero: t.numero,
+          tipo: t.tipo,
+          is_whatsapp: !!t.is_whatsapp,
+          is_principal: !!t.is_principal,
+          header: t.header || '',
+        }));
+        if (existente) {
+          for (const t of telefonesDaLinha) {
+            telefonesParaCriar.push({
+              empresa_id: empresaId,
+              cliente_id: existente.id,
+              telefone: t.numero,
+              tipo: t.tipo,
+              is_whatsapp: t.is_whatsapp,
+              is_principal: t.is_principal,
+              header_origem: t.header,
+              origem: 'importacao_lista',
+              status: 'ativo',
+            });
           }
-          telefonesPatch[t.campo_destino] = t.numero;
         }
 
         if (existente) {
@@ -324,7 +350,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
           };
           // Garante celular com principal se não foi mapeado
           if (!payload.celular && telPrincipal) payload.celular = telPrincipal;
-          novosPayloads.push({ payload, linha: l });
+          novosPayloads.push({ payload, linha: l, telefonesDaLinha });
           criados++;
         }
         setProgresso((p) => ({ ...p, atual: i + 1, criados, atualizados, pulados }));
@@ -355,10 +381,42 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
           telefones: x.linha.telefones.map((t) => ({ numero: t.numero, tipo: t.tipo })),
           email: c.email || x.linha.email || '',
         });
+        for (const t of x.telefonesDaLinha || []) {
+          telefonesParaCriar.push({
+            empresa_id: empresaId,
+            cliente_id: c.id,
+            telefone: t.numero,
+            tipo: t.tipo,
+            is_whatsapp: t.is_whatsapp,
+            is_principal: t.is_principal,
+            header_origem: t.header,
+            origem: 'importacao_lista',
+            status: 'ativo',
+          });
+        }
       });
 
       for (const u of atualizacoes) {
         try { await base44.entities.Cliente.update(u.id, u.patch); } catch (e) { console.warn('update falhou:', e.message); }
+      }
+
+      // BulkCreate em ClienteTelefone (um registro por telefone, dedupe por cliente_id+telefone e contra existentes)
+      if (telefonesParaCriar.length > 0) {
+        const tpVistos = new Set();
+        const telefonesUnicos = telefonesParaCriar.filter((t) => {
+          const k = `${t.cliente_id}:${t.telefone}`;
+          if (tpVistos.has(k)) return false;
+          if (telExistenteKey.has(k)) return false;
+          tpVistos.add(k);
+          return true;
+        });
+        if (telefonesUnicos.length > 0) {
+          try {
+            await base44.entities.ClienteTelefone.bulkCreate(telefonesUnicos);
+          } catch (e) {
+            console.warn('ClienteTelefone bulkCreate falhou:', e.message);
+          }
+        }
       }
 
       const snapshotTruncado = snapshot.slice(0, MAX_SNAPSHOT);
@@ -489,14 +547,12 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
                   ))}
                 </div>
               </div>
-              {colunas?.nao_mapeadas?.length > 0 && (
-                <div className="flex items-start gap-2 text-amber-600 text-[11px] pt-1">
-                  <Info className="w-3.5 h-3.5 mt-px flex-shrink-0" />
-                  <span>
-                    Excedente: {colunas.nao_mapeadas.join(', ')} não será importado (limite de 4 telefones por cadastro).
-                  </span>
-                </div>
-              )}
+              <div className="flex items-start gap-2 text-emerald-700 text-[11px] pt-1">
+                <Info className="w-3.5 h-3.5 mt-px flex-shrink-0" />
+                <span>
+                  Todos os {colunas?.telefones?.length || 0} tipo(s) de telefone detectados serão salvos como registros individuais em ClienteTelefone (sem limite por cliente).
+                </span>
+              </div>
             </div>
 
             {/* Estatísticas resumo */}

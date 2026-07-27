@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, Pencil, Trash2, Eye, GitMerge, Loader2 } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, Trash2, Eye, GitMerge, Loader2, Phone, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
@@ -28,6 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function Clientes() {
   const navigate = useNavigate();
@@ -328,32 +329,61 @@ export default function Clientes() {
     return false;
   });
 
+  // Telefones vinculados (entidade ClienteTelefone)
+  const { data: todosTelefones = [] } = useQuery({
+    queryKey: ['cliente-telefones', currentUser?.empresa_id, currentUser?.perfil],
+    enabled: !!currentUser,
+    queryFn: async () => {
+      if (['super_admin', 'master'].includes(currentUser?.perfil)) {
+        return base44.entities.ClienteTelefone.list('-created_date', 5000);
+      }
+      if (currentUser?.empresa_id) {
+        return base44.entities.ClienteTelefone.filter({ empresa_id: currentUser.empresa_id }, '-created_date', 5000);
+      }
+      return [];
+    },
+  });
+
+  const telefonesPorCliente = useMemo(() => {
+    const map = {};
+    for (const t of todosTelefones) {
+      if (!t.cliente_id) continue;
+      if (!map[t.cliente_id]) map[t.cliente_id] = [];
+      if (!map[t.cliente_id].some((x) => x.telefone === t.telefone)) map[t.cliente_id].push(t);
+    }
+    return map;
+  }, [todosTelefones]);
+
   const columns = [
     {
       header: 'Nome',
       accessor: 'nome',
       cell: (row) => (
-        <div>
-          <p className="font-medium text-slate-900">
-            {row.tipo_pessoa === 'Jurídica' ? row.pj_razao_social : (row.nome_completo || row.nome)}
-          </p>
-          <p className="text-sm text-slate-500">
-            {row.tipo_pessoa === 'Jurídica' ? row.pj_cnpj : row.cpf}
-          </p>
-        </div>
+        <p className="font-medium text-slate-900">
+          {row.tipo_pessoa === 'Jurídica' ? row.pj_razao_social : (row.nome_completo || row.nome)}
+        </p>
       )
     },
     {
-      header: 'Contato',
+      header: 'CPF/CNPJ',
       cell: (row) => (
-        <div>
-          <p className="text-slate-900">
-            {row.tipo_pessoa === 'Jurídica' ? (row.pj_celular || row.pj_telefone_fixo || '-') : (row.celular || row.telefone || '-')}
-          </p>
-          <p className="text-sm text-slate-500">
-            {row.tipo_pessoa === 'Jurídica' ? (row.pj_email || '-') : (row.email || '-')}
-          </p>
-        </div>
+        <span className="text-sm text-slate-600">{row.tipo_pessoa === 'Jurídica' ? row.pj_cnpj : row.cpf}</span>
+      )
+    },
+    {
+      header: 'Cidade',
+      cell: (row) => (
+        <span className="text-sm text-slate-600">{row.res_cidade || row.com_cidade || '-'}</span>
+      )
+    },
+    {
+      header: 'Telefones',
+      cell: (row) => <TelefonesBadge telefones={telefonesPorCliente[row.id] || []} />
+    },
+    {
+      header: 'Email',
+      cell: (row) => (
+        <span className="text-sm text-slate-600">{row.tipo_pessoa === 'Jurídica' ? (row.pj_email || row.email || '-') : (row.email || '-')}</span>
       )
     },
     {
@@ -492,5 +522,34 @@ export default function Clientes() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function TelefonesBadge({ telefones }) {
+  const count = telefones.length;
+  if (count === 0) return <span className="text-slate-400">—</span>;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium hover:bg-emerald-100">
+          <Phone className="w-3 h-3" />
+          {count} {count > 1 ? 'telefones' : 'telefone'}
+          <ChevronDown className="w-3 h-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-2" align="start">
+        <div className="space-y-1.5">
+          {telefones.map((t, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-800">{t.telefone}</p>
+                <p className="text-[10px] text-slate-500 capitalize">{t.tipo}{t.is_whatsapp ? ' · WhatsApp' : ''}</p>
+              </div>
+              {t.is_principal && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">Principal</span>}
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
