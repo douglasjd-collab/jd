@@ -480,6 +480,20 @@ Deno.serve(async (req) => {
       async sendTemplate(phoneNumber, template) {
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
         const tpl = template || {};
+
+        // ── Normaliza headerMedia para o schema da D-API ──
+        // D-API exige headerMedia.type ('video'|'image'|'document') + url.
+        // Se o caller só enviar { url }, inferimos o type pela extensão da URL.
+        let headerMedia = tpl.headerMedia;
+        if (headerMedia && headerMedia.url && !headerMedia.type) {
+          const u = String(headerMedia.url).toLowerCase().split('?')[0];
+          let type = 'document';
+          if (/\.(mp4|mov|mkv|webm|avi|m4v)$/.test(u)) type = 'video';
+          else if (/\.(jpg|jpeg|png|webp|gif|bmp)$/.test(u)) type = 'image';
+          else if (/\.(pdf|docx?|xlsx?|pptx?|txt|csv)$/.test(u)) type = 'document';
+          headerMedia = { type, url: headerMedia.url };
+        }
+
         const messagePayload = {
           sessionId: this.sessionId,
           to: normalizedPhone,
@@ -488,7 +502,7 @@ Deno.serve(async (req) => {
             language: tpl.language || 'pt_BR',
             bodyVariables: Array.isArray(tpl.bodyVariables) ? tpl.bodyVariables : [],
             ...(tpl.headerVariable ? { headerVariable: tpl.headerVariable } : {}),
-            ...(tpl.headerMedia ? { headerMedia: tpl.headerMedia } : {}),
+            ...(headerMedia ? { headerMedia } : {}),
             ...(Array.isArray(tpl.components) && tpl.components.length > 0 ? { components: tpl.components } : {}),
           }
         };

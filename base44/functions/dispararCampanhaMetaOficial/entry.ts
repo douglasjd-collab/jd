@@ -127,11 +127,20 @@ Deno.serve(async (req) => {
             template: templatePayload,
           });
           const sr = srResp?.data;
-          if (!sr?.success) {
-            const msg = sr?.error || sr?.data?.error || 'Erro D-API';
+          // O wrapper do whatsappService sempre retorna { success: true, data: result };
+          // o sucesso real está dentro de result. Validamos ambos.
+          const resultObj = sr?.data || sr;
+          if (!resultObj?.success) {
+            const msg = resultObj?.error || sr?.error || 'Erro D-API';
             throw new Error(msg);
           }
-          const wamid = sr?.data?.data?.messageId || sr?.data?.messageId || sr?.data?.data?.id || `dapi_${Date.now()}`;
+          const wamid = resultObj?.data?.messageId ||
+                        resultObj?.messageId ||
+                        resultObj?.data?.id ||
+                        resultObj?.data?.message_id ||
+                        resultObj?.data?.messages?.[0]?.id ||
+                        resultObj?.id ||
+                        `dapi_${Date.now()}`;
 
           // Registrar log
           await base44.asServiceRole.entities.CampanhaLog.create({
