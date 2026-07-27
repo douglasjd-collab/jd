@@ -77,6 +77,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
   const [colunas, setColunas] = useState(null);
   const [cidades, setCidades] = useState([]);
   const [cidadesSel, setCidadesSel] = useState(new Set());
+  const [buscaCidade, setBuscaCidade] = useState('');
   const [erro, setErro] = useState('');
   const [nomeLista, setNomeLista] = useState('');
   const [progresso, setProgresso] = useState({ total: 0, atual: 0, criados: 0, atualizados: 0, pulados: 0 });
@@ -205,6 +206,12 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
     if (cidadesSel.size === 0) return linhasTudo;
     return linhasTudo.filter((r) => r.cidade && cidadesSel.has(r.cidade));
   }, [linhasTudo, cidadesSel]);
+
+  const cidadesFiltradas = useMemo(() => {
+    const termo = buscaCidade.trim().toLowerCase();
+    if (!termo) return cidades;
+    return cidades.filter((c) => c.cidade.toLowerCase().includes(termo));
+  }, [cidades, buscaCidade]);
 
   const stats = useMemo(() => {
     let totalTel = 0, validos = 0, inconsist = 0;
@@ -545,9 +552,15 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
                     className={`px-3 py-1.5 rounded text-xs border ${cidadesSel.size === 0 ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 hover:bg-slate-50'}`}>
                     Todas ({linhasTudo.length})
                   </button>
+                  <Input
+                    value={buscaCidade}
+                    onChange={(e) => setBuscaCidade(e.target.value)}
+                    placeholder="Buscar cidade..."
+                    className="h-7 text-xs flex-1"
+                  />
                 </div>
                 <div className="max-h-44 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1 pr-1">
-                  {cidades.map((c) => {
+                  {cidadesFiltradas.map((c) => {
                     const sel = cidadesSel.has(c.cidade);
                     return (
                       <label key={c.cidade} className={`flex items-center gap-2 p-2 rounded border text-xs cursor-pointer ${sel ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:bg-slate-50'}`}>
