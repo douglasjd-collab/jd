@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import PublicoBuilder from './PublicoBuilder';
-import { selecionarTelefonesParaCampanha } from './telefonesCliente';
+import { selecionarTelefonesParaCampanha, carregarTelefonesPorCliente } from './telefonesCliente';
 
 const STEPS = [
   { id: 1, label: 'Template', icon: FileText },
@@ -127,6 +127,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       if (sub === 'ativos') filtro.status = 'ativo';
       if (sub === 'inativos') filtro.status = 'inativo';
       const clientes = await base44.entities.Cliente.filter(filtro, null, 2000);
+      const telsMap = await carregarTelefonesPorCliente(empresaId);
       let filtrados = clientes;
       if (sub === 'sem_whatsapp') filtrados = filtrados.filter((c) => normalizeTel(c.celular || '').length < 10);
       if (sub === 'com_whatsapp') filtrados = filtrados.filter((c) => normalizeTel(c.celular || '').length >= 10);
@@ -141,9 +142,9 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         );
       }
       const comTelefone = filtrados.filter((c) =>
-        selecionarTelefonesParaCampanha(c, form.destino_telefones).length > 0
+        selecionarTelefonesParaCampanha(c, form.destino_telefones, telsMap.get(c.id) || []).length > 0
       );
-      const telsPorCliente = comTelefone.map((c) => selecionarTelefonesParaCampanha(c, form.destino_telefones));
+      const telsPorCliente = comTelefone.map((c) => selecionarTelefonesParaCampanha(c, form.destino_telefones, telsMap.get(c.id) || []));
       const totalTelefones = telsPorCliente.reduce((s, arr) => s + arr.length, 0);
       const telefonesUnicosSet = new Set();
       telsPorCliente.forEach((arr) => arr.forEach((t) => telefonesUnicosSet.add(t)));
@@ -200,6 +201,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       if (sub === 'ativos') filtro.status = 'ativo';
       if (sub === 'inativos') filtro.status = 'inativo';
       const clientes = await base44.entities.Cliente.filter(filtro, null, 2000);
+      const telsMap = await carregarTelefonesPorCliente(empresaId);
       let filtrados = clientes;
       if (sub === 'sem_whatsapp') filtrados = filtrados.filter((c) => normalizeTel(c.celular || '').length < 10);
       if (sub === 'com_whatsapp') filtrados = filtrados.filter((c) => normalizeTel(c.celular || '').length >= 10);
@@ -214,12 +216,12 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         );
       }
       const comTelefone = filtrados.filter((c) =>
-        selecionarTelefonesParaCampanha(c, form.destino_telefones).length > 0
+        selecionarTelefonesParaCampanha(c, form.destino_telefones, telsMap.get(c.id) || []).length > 0
       );
       const vistos = new Set();
       const destinatariosExpandidos = [];
       for (const c of comTelefone) {
-        const tels = selecionarTelefonesParaCampanha(c, form.destino_telefones);
+        const tels = selecionarTelefonesParaCampanha(c, form.destino_telefones, telsMap.get(c.id) || []);
         for (const tel of tels) {
           if (vistos.has(tel)) continue;
           vistos.add(tel);

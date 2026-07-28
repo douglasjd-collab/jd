@@ -1,5 +1,7 @@
 // Helpers compartilhados de deteção/classificação/seleção de múltiplos telefones por cliente.
-// v1 usa os 4 campos de telefone já existentes em Cliente: celular, telefone_fixo, pj_celular, pj_telefone_fixo.
+//acente: campos legados do Cliente + registros individuais em ClienteTelefone.
+
+import { base44 } from '@/api/base44Client';
 
 export const normalizarTelefone = (s = '') => String(s || '').replace(/\D/g, '');
 
@@ -97,25 +99,45 @@ export function mapearColunasParaCampos(colTelefones) {
 
 // ----- Leitura dos telefones a partir de um Cliente existente -----
 
-export function telefonesDoCliente(cliente) {
+//telefonesExtra = lista de registros de ClienteTelefone (ou objetos {numero, tipo, is_whatsapp, is_principal})
+export function telefonesDoCliente(cliente, telefonesExtra = []) {
   if (!cliente) return [];
+  const vistos = new Set();
   const out = [];
-  const cel = normalizarTelefone(cliente.celular || '');
-  if (cel.length >= 10) out.push({ numero: cel, tipo: 'celular', is_whatsapp: true, is_principal: true });
-  const fixo = normalizarTelefone(cliente.telefone_fixo || '');
-  if (fixo.length >= 10) out.push({ numero: fixo, tipo: 'residencial', is_whatsapp: false, is_principal: out.length === 0 });
-  const pjCel = normalizarTelefone(cliente.pj_celular || '');
-  if (pjCel.length >= 10) out.push({ numero: pjCel, tipo: 'celular', is_whatsapp: true, is_principal: out.length === 0 });
-  const pjFixo = normalizarTelefone(cliente.pj_telefone_fixo || '');
-  if (pjFixo.length >= 10) out.push({ numero: pjFixo, tipo: 'comercial', is_whatsapp: false, is_principal: out.length === 0 });
-  if (out.length && !out.some((t) => t.is_principal)) out[0].is_principal = true;
+  const push = (num, tipo, is_whatsapp, is_principal) => {
+    const n = normalizarTelefone(num);
+    if (n.length < 10) return;
+    if (vistos.has(n)) return;
+    vistos.add(n);
+    out.push({ numero: n, tipo: tipo || 'celular', is_whatsapp: !!is_whatsapp, is_principal: !!is_principal });
+  };
+  // Campos legados do Cliente
+  push(cliente.celular, 'celular', true, true);
+  push(cliente.telefone_fixo, 'residencial', false, false);
+  push(cliente.pj_celular, 'celular', true, false);
+  push(cliente.pj_telefone_fixo, 'comercial', false, false);
+  // Extras de ClienteTelefone (sem limite por cliente)
+  let extraPrincipal = null;
+  for (const t of (telefonesExtra || [])) {
+    const n = normalizarTelefone(t.telefone || t.numero || '');
+    if (n.length < 10) continue;
+    const tipo = t.tipo || 'celular';
+    const isWhats = t.is_whatsapp != null ? !!t.is_whatsapp : (tipo === 'celular' || tipo === 'whatsapp');
+    if (t.is_principal && !extraPrincipal) extraPrincipal = n;
+    push(n, tipo, isWhats, false);
+  }
+  // Resolve principal: extra explícito > primeiro whatsapp/celular > primeiro
+  out.forEach((t) => { t.is_principal = false; });
+  let prin = extraPrincipal ? out.find((t) => t.numero === extraPrincipal) : null;
+  if (!prin) prin = out.find((t) => t.is_whatsapp) || out[0];
+  if (prin) prin.is_principal = true;
   return out;
 }
 
 // ----- Seleção de telefones para envio na campanha conforme o modo -----
 
-export function selecionarTelefonesParaCampanha(cliente, modo) {
-  const todos = telefonesDoCliente(cliente);
+export function selecionarTelefonesParaCampanha(cliente, modo, telefonesExtra = []) {
+  const todos = telefonesDoCliente(cliente, telefonesExtra);
   if (todos.length === 0) return [];
   const m = modo || 'principal';
   if (m === 'todos') {
@@ -147,4 +169,23 @@ export function selecionarTelefonesParaCampanha(cliente, modo) {
   // principal (padrão)
   const prin = todos.find((t) => t.is_principal && t.numero.length >= 10) || todos.find((t) => t.numero.length >= 10);
   return prin ? [prin.numero] : [];
+}
+
+// ----- Carrega todos os ClienteTelefone da empresa agrupados por cliente_id -----
+// Usado pela prévia/envio da campanha para expandir múltiplos números por cliente.
+export async function carregarTelefonesPorCliente(empresaId) {
+  if (!empresaId) return new Map();
+  try {
+    const r = await base44.entities.ClienteTelefone.filter({ empresa_id: empresaId }, null, 10000);
+    const m = new Map();
+    for (const t of r || []) {
+      if (!t.cliente_id || t.status === 'inativo') continue;
+      if (!m.has(t.cliente_id)) m.set(t.cliente_id, []);
+      m.get(t.cliente_id).push(t);
+    }
+    return m;
+  } catch (e) {
+    console.warn('Erro ao buscar ClienteTelefone:', e?.message || e);
+    return new Map();
+  }
 }

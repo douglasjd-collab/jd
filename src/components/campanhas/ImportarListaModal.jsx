@@ -426,6 +426,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
         nome: nomeLista.trim(),
         descricao: `${stats.totalRegistros} registros · ${stats.totalTel} telefones · Cidades: ${cidadesSel.size === 0 ? 'todas' : Array.from(cidadesSel).join(', ')}.${descricaoExtra}`,
         total_contatos: snapshot.length,
+        total_telefones: stats.totalTel,
         contatos_json: JSON.stringify(snapshotTruncado),
         arquivo_nome: arquivo?.name || '',
         data_importacao: new Date().toISOString(),

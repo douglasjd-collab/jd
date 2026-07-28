@@ -22,7 +22,13 @@ export default function CampanhasListas({ empresaId, user }) {
   const [open, setOpen] = useState(false);
   const [aberta, setAberta] = useState(null); // id da lista expandida
   const [deletandoId, setDeletandoId] = useState(null);
+  const [expandidos, setExpandidos] = useState({}); // chave `listaId:clienteId` -> boolean
   const queryClient = useQueryClient();
+
+  const toggleContato = (listaId, chave) => {
+    const k = `${listaId}:${chave}`;
+    setExpandidos((prev) => ({ ...prev, [k]: !prev[k] }));
+  };
 
   const { data: listas = [], isLoading } = useQuery({
     queryKey: ['listas-contatos-importada', empresaId],
@@ -118,6 +124,7 @@ export default function CampanhasListas({ empresaId, user }) {
                       <p className="font-semibold text-slate-800 truncate">{l.nome}</p>
                       <p className="text-xs text-slate-500 truncate">
                         {totalReais} contato{totalReais !== 1 ? 's' : ''}
+                        {l.total_telefones ? ` • ${l.total_telefones} telefone${l.total_telefones !== 1 ? 's' : ''}` : ''}
                         {l.arquivo_nome ? ` • ${l.arquivo_nome}` : ''}
                         {l.criado_por_nome ? ` • por ${l.criado_por_nome}` : ''}
                         {l.data_importacao
@@ -157,19 +164,59 @@ export default function CampanhasListas({ empresaId, user }) {
                             <tr>
                               <th className="text-left font-medium px-4 py-2">Nome</th>
                               <th className="text-left font-medium px-4 py-2">CPF</th>
-                              <th className="text-left font-medium px-4 py-2">Telefone</th>
+                              <th className="text-left font-medium px-4 py-2">Telefones</th>
                               <th className="text-left font-medium px-4 py-2">Email</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
-                            {contatos.map((c, i) => (
-                              <tr key={c.cliente_id || i} className="hover:bg-white">
-                                <td className="px-4 py-2 text-slate-800">{c.nome || '-'}</td>
-                                <td className="px-4 py-2 text-slate-600">{c.cpf || '-'}</td>
-                                <td className="px-4 py-2 text-slate-600">{c.telefone || '-'}</td>
-                                <td className="px-4 py-2 text-slate-600">{c.email || '-'}</td>
-                              </tr>
-                            ))}
+                            {contatos.map((c, i) => {
+                              const tels = Array.isArray(c.telefones) && c.telefones.length > 0
+                                ? c.telefones
+                                : (c.telefone ? [{ numero: c.telefone, is_principal: true }] : []);
+                              const expandido = expandidos[`${l.id}:${c.cliente_id || i}`];
+                              return (
+                                <React.Fragment key={c.cliente_id || i}>
+                                  <tr
+                                    className={`hover:bg-white cursor-pointer ${tels.length > 1 ? '' : 'cursor-default'}`}
+                                    onClick={() => tels.length > 1 && toggleContato(l.id, c.cliente_id || i)}
+                                  >
+                                    <td className="px-4 py-2 text-slate-800">
+                                      <div className="flex items-center gap-1.5">
+                                        {tels.length > 1 && (
+                                          expandido ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                                                     : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                        )}
+                                        {c.nome || '-'}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-2 text-slate-600">{c.cpf || '-'}</td>
+                                    <td className="px-4 py-2 text-slate-600">
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <span className="font-medium text-slate-700">{tels.length}</span>
+                                        <span className="text-xs text-slate-400">telefone{tels.length !== 1 ? 's' : ''}</span>
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-2 text-slate-600">{c.email || '-'}</td>
+                                  </tr>
+                                  {expandido && tels.length > 1 && (
+                                    <tr className="bg-slate-50/70">
+                                      <td colSpan={4} className="px-8 py-2">
+                                        <div className="flex flex-col gap-1.5 text-xs">
+                                          <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">Telefones</p>
+                                          {tels.map((t, ti) => (
+                                            <div key={ti} className="flex items-center gap-2">
+                                              <span className="font-mono text-slate-700">{t.numero}</span>
+                                              {t.tipo && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">{t.tipo}</span>}
+                                              {t.is_principal && <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-semibold">principal</span>}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  )}
+                                </React.Fragment>
+                              );
+                            })}
                           </tbody>
                         </table>
                         {totalReais > contatos.length && (

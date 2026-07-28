@@ -426,6 +426,9 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
                           <p className="font-medium text-slate-700 truncate">{l.nome}</p>
                           <div className="flex items-center gap-2 flex-wrap text-[11px] text-slate-400 mt-0.5">
                             <span className="font-semibold text-slate-500">{l.total_contatos || 0} contatos</span>
+                            {l.total_telefones ? (
+                              <span className="font-semibold text-blue-500">· {l.total_telefones} telefones</span>
+                            ) : null}
                             {l.data_importacao && (
                               <span>· {new Date(l.data_importacao).toLocaleDateString('pt-BR')}</span>
                             )}
