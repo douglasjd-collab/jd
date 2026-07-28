@@ -1663,6 +1663,34 @@ Deno.serve(async (req) => {
       return Response.json({ success: true });
     }
 
+    // ----------------------------------------------------------------
+    // delete_local — remove o template do CRM em QUALQUER status. Usado
+    // quando o template já foi excluído na Meta (ou nunca mais existe lá)
+    // e o usuário precisa limpar a entrada local. Não toca na Meta.
+    // ----------------------------------------------------------------
+    if (action === "delete_local") {
+      const { template_id } = body;
+      const t = await base44.entities.WhatsappTemplate.get(template_id);
+      if (!t || (t.empresa_id !== user.empresa_id && perfil !== "super_admin" && perfil !== "master")) {
+        return Response.json({ error: "Sem permissão" }, { status: 403 });
+      }
+      const vars = await base44.entities.WhatsappTemplateVariable.filter({ template_id, empresa_id: t.empresa_id }, null, 100);
+      for (const v of vars) {
+        try { await base44.entities.WhatsappTemplateVariable.delete(v.id); } catch {}
+      }
+      await base44.entities.WhatsappTemplate.delete(template_id);
+      await base44.entities.WhatsappTemplateLog.create({
+        empresa_id: t.empresa_id,
+        template_id,
+        action: "excluir_local",
+        previous_status: t.status,
+        new_status: "excluido",
+        user_id: user.id,
+        user_name: user.full_name,
+      });
+      return Response.json({ success: true });
+    }
+
     return Response.json({ error: "Ação inválida: " + action }, { status: 400 });
   } catch (error) {
     return Response.json({ error: error.message || "Erro inesperado" }, { status: 500 });

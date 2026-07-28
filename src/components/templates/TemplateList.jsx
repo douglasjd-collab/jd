@@ -133,15 +133,20 @@ export default function TemplateList({ templates, loading, onEdit, onRefresh, on
   };
 
   const handleDelete = async (t) => {
-    if (!confirm(`Excluir o rascunho "${t.name}"? Esta ação não pode ser desfeita.`)) return;
+    const isRascunho = ["rascunho", "erro_envio"].includes(t.status);
+    const action = isRascunho ? "delete_draft" : "delete_local";
+    const msg = isRascunho
+      ? `Excluir o rascunho "${t.name}"? Esta ação não pode ser desfeita.`
+      : `O template "${t.name}" será removido do CRM (status atual: ${STATUS_META[t.status]?.label || t.status}).\n\nComo já foi excluído da Meta, ele só some daqui. Confirmar exclusão local?`;
+    if (!confirm(msg)) return;
     setDelId(t.id);
     try {
       const res = await base44.functions.invoke('gerenciarTemplateMetaOficial', {
-        action: 'delete_draft',
+        action,
         template_id: t.id,
       });
       if (res?.data?.success) {
-        toast.success('Rascunho excluído');
+        toast.success(isRascunho ? 'Rascunho excluído' : 'Template removido do CRM');
         onRefresh();
       } else {
         toast.error(res?.data?.error || 'Erro ao excluir');
@@ -308,20 +313,18 @@ export default function TemplateList({ templates, loading, onEdit, onRefresh, on
                             <Copy className="w-4 h-4" />
                           )}
                         </button>
-                        {(t.status === 'rascunho' || t.status === 'erro_envio') && (
-                          <button
-                            onClick={() => handleDelete(t)}
-                            disabled={delId === t.id}
-                            title="Excluir rascunho"
-                            className="p-1.5 rounded hover:bg-slate-100 text-red-600 disabled:opacity-50"
-                          >
-                            {delId === t.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDelete(t)}
+                          disabled={delId === t.id}
+                          title={["rascunho", "erro_envio"].includes(t.status) ? "Excluir rascunho" : "Remover do CRM (já excluído na Meta)"}
+                          className="p-1.5 rounded hover:bg-slate-100 text-red-600 disabled:opacity-50"
+                        >
+                          {delId === t.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
                       </div>
                     </td>
                   </tr>
