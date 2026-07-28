@@ -67,12 +67,19 @@ Deno.serve(async (req) => {
     //      ativa da empresa, preferindo Cloud API (session_id 'cloud-').
     let conexaoDapi: any = null;
     try {
+      // Templates (sendTemplate) só funcionam em sessões Cloud API (session_id começa com 'cloud-').
+      // Conexões D-API Padrão/QR (ex: "CRM JD") são IGNORADAS aqui — assim o disparo cai para a
+      // Graph API direta da Meta (credenciais da empresa / app secrets) e evita o erro NOT_CLOUD_API.
+      const isCloudSession = (sid: any) => /^cloud-/i.test(String(sid || '').trim());
+
       if (conversaAlvo?.connection_id) {
         try {
           const conexaoEspecifica = await base44.asServiceRole.entities.WhatsappConnection.get(conversaAlvo.connection_id);
-          if (conexaoEspecifica?.is_active && conexaoEspecifica?.provider_type === 'dapi') {
+          if (conexaoEspecifica?.is_active && conexaoEspecifica?.provider_type === 'dapi' && isCloudSession(conexaoEspecifica?.session_id)) {
             conexaoDapi = conexaoEspecifica;
-            console.log('🟦 [D-API] Conexão da conversa (connection_id):', conexaoDapi.id, conexaoDapi.session_id);
+            console.log('🟦 [D-API] Conexão Cloud da conversa (connection_id):', conexaoDapi.id, conexaoDapi.session_id);
+          } else if (conexaoEspecifica?.is_active && conexaoEspecifica?.provider_type === 'dapi') {
+            console.log('⚠️ [D-API] Conexão da conversa NÃO é Cloud API (session_id:', conexaoEspecifica?.session_id, ') — templates exigem Cloud. Cairá para Graph API direta.');
           }
         } catch (_) {}
       }
@@ -81,20 +88,24 @@ Deno.serve(async (req) => {
           { empresa_id, provider_type: 'dapi', session_id: conversaAlvo.instancia, is_active: true },
           '-created_date', 1,
         );
-        if (matches?.[0]) {
+        if (matches?.[0] && isCloudSession(matches[0].session_id)) {
           conexaoDapi = matches[0];
-          console.log('🟦 [D-API] Conexão casada pela instancia:', conexaoDapi.id, conexaoDapi.session_id);
+          console.log('🟦 [D-API] Conexão Cloud casada pela instancia:', conexaoDapi.id, conexaoDapi.session_id);
+        } else if (matches?.[0]) {
+          console.log('⚠️ [D-API] instancia casada NÃO é Cloud (session_id:', matches[0].session_id, ') — templates exigem Cloud.');
         }
       }
       if (!conexaoDapi && !conversaAlvo) {
-        // Campanha em massa (sem conversa): qualquer D-API Cloud ativa da empresa.
+        // Campanha em massa (sem conversa): APENAS conexões Cloud API ativas da empresa.
         const conns = await base44.asServiceRole.entities.WhatsappConnection.filter(
           { empresa_id, provider_type: 'dapi', is_active: true },
           '-created_date', 50,
         );
-        conexaoDapi = conns.find(c => /^cloud-/i.test(c.session_id || '')) || conns[0] || null;
+        conexaoDapi = conns.find(c => isCloudSession(c.session_id)) || null;
         if (conexaoDapi) {
-          console.log('🟦 [D-API] Conexão ativa da empresa:', conexaoDapi.session_id);
+          console.log('🟦 [D-API] Conexão Cloud ativa da empresa:', conexaoDapi.session_id);
+        } else if (conns.length > 0) {
+          console.log('⚠️ [D-API] Empresa só tem conexões Padrão/QR — templates precisam de Cloud API. Usando Graph API direta.');
         }
       }
     } catch (e) {
