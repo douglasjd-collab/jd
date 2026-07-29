@@ -17,6 +17,7 @@ const CAMPOS = [
   { id: 'data_emissao', label: 'Data de emissão', grupo: 'pessoais' },
   { id: 'orgao_emissor', label: 'Órgão emissor', grupo: 'pessoais' },
   { id: 'uf_emissor', label: 'UF emissor', grupo: 'pessoais' },
+  { id: 'registro_cnh', label: 'Nº Registro CNH', grupo: 'pessoais' },
   { id: 'sexo', label: 'Sexo', grupo: 'pessoais' },
   { id: 'naturalidade', label: 'Naturalidade', grupo: 'pessoais' },
   { id: 'nacionalidade', label: 'Nacionalidade', grupo: 'pessoais' },

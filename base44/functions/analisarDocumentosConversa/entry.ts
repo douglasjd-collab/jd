@@ -251,17 +251,34 @@ REGRAS OBRIGATÓRIAS:
 4. Para RG/CIN: o número de registro está geralmente no verso — procure campos como "REGISTRO CIVIL", "MATRÍCULA", ou o número longo com pontos. O CPF pode estar parcialmente mascarado (ex: 112.1**.***-**) — extraia o que estiver visível.
 
 CNH (CARTEIRA NACIONAL DE HABILITAÇÃO) — leitura minuciosa obrigatória:
-A CNH é UM ÚNICO documento que concentra TODOS os dados pessoais. Apresenta fundo verde/branco com padrão guiloche (ranhuras finas) — IGNORE o padrão de fundo, foque nos CARACTERES impressos.
-Os rótulos que aparecem sempre na CNH:
-  - "NOME": nome completo em CAIXA ALTA. Jamais truncar o último caractere (última letra). Se duvidar entre "SANTOS" e "SANTO", confirme o último caractere — conte as letras e nunca descarte um "S" final.
-  - "DOC IDENTIDADE / ORG EMISSOR / UF": contém 3 sub-valores lado a lado — o NÚMERO do RG, o ORGÃO EMISSOR (ex: "SSP") e a UF (ex: "AL"). Devolva rg = número, orgao_emissor = SSP (ou equivalente), uf_emissor = sigla UF.
-  - "CPF": formato XXX.XXX.XXX-XX. Leia DÍGITO POR DÍGITO sem pular. Caracteres parecidos (5 e 7, 0 e 6, 1 e 7) devem ser diferenciados com cuidado redobrado. Antes de devolver o CPF, confirme mentalmente os dois verificadores (regra oficial CPF). Se o DV não bater, RELEIA o número — o erro está num dígito intermediário.
-  - "DATA NASCIMENTO": formato DD/MM/AAAA. Preencher data_nascimento — jamais deixar como nao_identificado quando estiver visível.
-  - "FILIAÇÃO": bloco com DOIS nomes — primeiro o PAI (rótulo "Pai"/"FILIAÇÃO PAI"), depois a MÃE (rótulo "Mãe"/"FILIAÇÃO MÃE"). Devolva ambos em nome_pai e nome_mae. Mesmo se vierem abreviados, retorne o texto exato — NUNCA retorne "nao_identificado" quando o bloco FILIAÇÃO estiver visível.
-  - "Nº REGISTRO", "VALIDADE", "1ª HABILITAÇÃO", "PERMISSÃO / ACC / CAT. HAB": campos auxiliares — capture quando visíveis.
-  - "LOCAL": cidade de emissão (ex: "SANTANA DO IPANEMA, AL") — útil para naturalidade.
-  - "DATA EMISSÃO": formato DD/MM/AAAA. Preencher data_emissao.
-Sempre que a CNH estiver entre as imagens, ELA É A FONTE PRIMÁRIA para dados pessoais (nome, CPF, RG, nascimento, filiação, emissão) — classifique estes campos com confiança "alta" (leitura direta e clara).
+A CNH é UM ÚNICO documento que concentra TODOS os dados pessoais. Existem DOIS modelos em circulação:
+- MODELO ATUAL: cartão padronizado, campos pequenos com rótulos "NOME", "DOC. IDENTIDADE/ÓRG. EMISSOR/UF", "CPF", "DATA NASCIMENTO", "FILIAÇÃO" (com rótulos individuais "Pai:" e "Mãe:"), "Nº REGISTRO", "VALIDADE", "LOCAL", "DATA EMISSÃO".
+- MODELO ANTIGO: cartão plastificado maior, layout em colunas. Rótulos abreviados. A FILIAÇÃO costuma vir como BLOCO com DOIS nomes um embaixo do outro, SEM rótulos "Pai:"/"Mãe:" — por convenção, o PRIMEIRO nome = PAI, o SEGUNDO nome = MÃE.
+
+LEITURA POR ÂNCORA (rótulo primeiro, NUNCA por posição fixa):
+Modelos antigo e atual têm layouts DIFERENTES. Para cada campo, LOCALIZE PRIMEIRO O RÓTULO do campo no documento, depois leia o valor logo a seguir. Não assuma linha/coluna fixa.
+
+REGRAS POR CAMPO (obrigatórias para a CNH):
+1. nome_completo — localize "NOME". Caixa alta. NUNCA truncate o último caractere: um "S" final de "SANTOS" não pode virar "SANTO". Quando duvidar, conte as letras do nome antes de devolver.
+2. cpf — localize PRIMEIRO o rótulo "CPF". Em seguida leia a SEQUÊNCIA COMPLETA de 11 dígitos. Nunca remova zeros à esquerda. Ignore pontos, traços e espaços. Devolva formatado 000.000.000-00. Caracteres parecidos (5 e 7, 0 e 6, 1 e 7) exigem verificação dupla. Antes de devolver, valide mentalmente os dois dígitos verificadores. Se NÃO conseguir ler todos os 11 dígitos, devolva valor "" e confiança "baixa" — NUNCA devolva um CPF parcial (ex: só "417534").
+3. data_nascimento — localize "DATA NASCIMENTO" ou "DATA DE NASCIMENTO". Formato DD/MM/AAAA. Nunca devolva "nao_identificado" quando estiver visível.
+4. FILIAÇÃO — localize o bloco "FILIAÇÃO".
+   - Se houver rótulos "Pai:" e "Mãe:": leia cada um para o respectivo nome_pai / nome_mae.
+   - Se houver apenas DOIS nomes em linhas sem rótulos (modelo antigo): PRIMEIRO nome = nome_pai, SEGUNDO nome = nome_mae.
+   - Se um nome ocupar DUAS LINHAS, JUNTE-as em um único texto.
+   - NUNCA retorne "nao_identificado" para nome_pai ou nome_mae quando o bloco FILIAÇÃO estiver visível.
+5. rg, orgao_emissor, uf_emissor — Campo "DOC. IDENTIDADE / ÓRG. EMISSOR / UF" contém 3 sub-valores. Separe-os:
+   - rg = sequência numérica (ex: "2121249")
+   - orgao_emissor = texto alfabético subsequente (ex: "SSP", "SPTC", "PC", "DETRAN")
+   - uf_emissor = sigla UF com 2 letras maiúsculas (ex: "AL", "SP", "PE")
+   Exemplo: "2121249 SSP AL" → rg="2121249", orgao_emissor="SSP", uf_emissor="AL".
+6. registro_cnh — localize "Nº REGISTRO" (ou "NUM. REGISTRO"/"REGISTRO"). Devolva em registro_cnh. Número longo normalmente com 11 dígitos.
+7. data_emissao — rótulos aceitos: "DATA EMISSÃO", "DATA DE EMISSÃO" ou "DATA DE EXPEDIÇÃO" — TODOS mapeiam para data_emissao. NÃO confundir com "DATA NASCIMENTO", "VALIDADE", "1ª HABILITAÇÃO" ou "DATA PRIMEIRA HABILITAÇÃO". Formato DD/MM/AAAA.
+8. naturalidade — campo "LOCAL" (cidade de emissão, ex: "SANTANA DO IPANEMA, AL").
+
+Fundo da CNH tem padrão guiloche (ranhuras finas em verde/branco) — IGNORE o padrão de fundo, foque nos CARACTERES. Se a imagem estiver rotacionada/inclinada, alinhe a leitura pelo texto visível.
+
+Sempre que a CNH estiver entre as imagens, ELA É A FONTE PRIMÁRIA para dados pessoais (nome, CPF, RG, nascimento, filiação, emissão, registro) — classifique estes campos com confiança "alta" quando a leitura for direta e clara.
 
 
 FONTES POR TIPO DE DOCUMENTO (MUITO IMPORTANTE — não troque as fontes):
@@ -339,7 +356,8 @@ Todo texto contendo "@" seguido de domínio (ex: @gmail.com, @hotmail.com, @iclo
             naturalidade: campo(),
             nacionalidade: campo(),
             estado_civil: campo(),
-            profissao: campo()
+            profissao: campo(),
+            registro_cnh: campo()
           }
         },
         endereco: {
@@ -440,6 +458,67 @@ Todo texto contendo "@" seguido de domínio (ex: @gmail.com, @hotmail.com, @iclo
 
     // Marca arquivo_url em cada documento (associando ao URL recebido)
     lid.documentos = lid.documentos.map((d, i) => ({ ...d, arquivo_url: d.arquivo_url || arquivos[i] || '' }));
+
+    // ── SEGUNDA LEITURA FOCADA (CNH): se alguma imagem foi classificada como CNH
+    // E algum campo obrigatório ficou em "baixa"/"nao_identificado" ou o CPF tem
+    // menos de 11 dígitos, disparamos uma releitura focada nessas imagens com
+    // prompt reduzido (somente os campos faltantes) — simula o "zoom por região"
+    // da regra do usuário, sem precisão de crop. ──
+    const docCnhUrls = (lid.documentos || [])
+      .filter((d) => String(d.tipo || '').toUpperCase() === 'CNH' && d.arquivo_url)
+      .map((d) => d.arquivo_url);
+    const OBRIGATORIOS_CNH = [
+      'nome_completo', 'cpf', 'data_nascimento', 'nome_pai', 'nome_mae',
+      'rg', 'orgao_emissor', 'uf_emissor', 'data_emissao', 'registro_cnh'
+    ];
+    const camposFaltantes = OBRIGATORIOS_CNH.filter((k) => {
+      const v = lid.dados_pessoais[k];
+      if (!v || !v.valor || String(v.valor).trim() === '' || v.confianca === 'nao_identificado') return true;
+      if (v.confianca === 'baixa') return true;
+      if (k === 'cpf' && String(v.valor).replace(/\D/g, '').length !== 11) return true;
+      return false;
+    });
+    if (docCnhUrls.length > 0 && camposFaltantes.length > 0) {
+      const promptFoco = `Você é especialista em OCR de CNH brasileira (modelos antigos E atuais). RELEIA a imagem da CNH COM CUIDADO REDOBRADO, focando APENAS nestes campos, lendo direto do documento: ${camposFaltantes.join(', ')}.
+
+Localize cada campo pelo RÓTULO (não pela posição):
+- nome_completo: localize "NOME". Caixa alta. NUNCA truncar o último caractere (não descartar S final).
+- cpf: localize primeiro o rótulo "CPF". Leia TODOS os 11 dígitos ignore pontos/traços/espaços, preserve zeros à esquerda. Devolva no formato 000.000.000-00. Se não conseguir ler todos os 11 dígitos, devolva valor "" e confiança "baixa" — NUNCA parcial.
+- data_nascimento: localize "DATA NASCIMENTO". DD/MM/AAAA.
+- nome_pai e nome_mae: localize "FILIAÇÃO". Se houver rótulos "Pai:"/"Mãe:" use cada um. Se forem dois nomes sem rótulos em linhas (modelo antigo): PRIMEIRO=PAI, SEGUNDO=MÃE. Junte nomes em 2 linhas. Nunca "nao_identificado" se o bloco estiver visível.
+- rg, orgao_emissor, uf_emissor: do campo "DOC. IDENTIDADE / ÓRG. EMISSOR / UF" — número / sigla alfabética (SSP) / sigla UF 2 letras.
+- data_emissao: aceita "DATA EMISSÃO", "DATA DE EMISSÃO", "DATA DE EXPEDIÇÃO". Sem confundir com NASCIMENTO/VALIDADE/1ª HABILITAÇÃO. DD/MM/AAAA.
+- registro_cnh: localize "Nº REGISTRO" - número longo (geralmente 11 dígitos).
+
+Fundo guiloche deve ser ignorado. Se a imagem estiver rotacionada, leia pelo alinhamento do texto.
+
+Se não estiver visível, devolva valor "" e confiança "nao_identificado". Cada campo com sua própria confiança. Jamais inventar ou deduzir.`;
+      const schemaFoco = { type: 'object', properties: {} };
+      camposFaltantes.forEach((k) => {
+        schemaFoco.properties[k] = (k === 'cpf') ? campo({ valido: { type: 'boolean' } }) : campo();
+      });
+      try {
+        const releituras = await Promise.all(docCnhUrls.map((url) =>
+          base44.asServiceRole.integrations.Core.InvokeLLM({
+            prompt: promptFoco,
+            file_urls: [url],
+            response_json_schema: schemaFoco,
+            model: 'claude_sonnet_4_6'
+          }).catch((e) => { console.log('[analisarDocumentosConversa] re-read CNH falhou:', e?.message); return null; })
+        ));
+        for (const r of releituras) {
+          if (!r) continue;
+          const p = achaResponse(r);
+          if (!p || typeof p !== 'object') continue;
+          for (const [k, v] of Object.entries(p)) {
+            if (!v || typeof v !== 'object' || !camposFaltantes.includes(k)) continue;
+            lid.dados_pessoais[k] = melhorCampo(lid.dados_pessoais[k], v);
+          }
+        }
+      } catch (e) {
+        console.log('[analisarDocumentosConversa] segunda leitura CNH falhou:', e.message);
+      }
+    }
 
     // Infere sexo pelo primeiro nome se não foi extraído
     const sexoAtual = lid.dados_pessoais.sexo?.valor;
