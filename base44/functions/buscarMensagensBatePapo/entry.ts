@@ -176,6 +176,28 @@ export default async function(req: Request): Promise<Response> {
     const start = (pagina - 1) * lim;
     const pageResults = resultados.slice(start, start + lim);
 
+    // Resposta enxuta: enviamos só os campos usados pela UI da galeria/busca,
+    // descartando payloads pesados (historico_edicoes, texto_anterior, request_json...).
+    // Previne 500 quando a resposta com registros crus excederia o limite do runtime.
+    const enxuto = pageResults.map(m => ({
+      id: m.id,
+      tipo_conteudo: m.tipo_conteudo,
+      remetente: m.remetente,
+      texto: m.texto ? (m.texto.length > 1000 ? String(m.texto).slice(0, 1000) + '…' : m.texto) : '',
+      arquivo_url: m.arquivo_url,
+      arquivo_nome: m.arquivo_nome,
+      arquivo_tamanho: m.arquivo_tamanho,
+      mime_type: m.mime_type,
+      data_envio: m.data_envio,
+      created_date: m.created_date,
+      status: m.status,
+      editada: m.editada,
+      whatsapp_message_id: m.whatsapp_message_id,
+      resposta_para_texto: m.resposta_para_texto,
+      resposta_para_nome: m.resposta_para_nome,
+      resposta_para_whatsapp_id: m.resposta_para_whatsapp_id,
+    }));
+
     return Response.json({
       success: true,
       modo,
@@ -183,7 +205,7 @@ export default async function(req: Request): Promise<Response> {
       total,
       page: pagina,
       limit: lim,
-      resultados: pageResults,
+      resultados: enxuto,
     });
 
   } catch (error) {

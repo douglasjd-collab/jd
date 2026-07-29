@@ -53,7 +53,14 @@ export function useGaleriaMensagens({
       setHasMore(novoPage * limit < (data.total || 0));
       setPage(novoPage);
     } catch (e) {
-      toast.error('Erro ao carregar: ' + (e?.message || 'falha'));
+      // Erro silencioso: apenas exibe estado vazio na aba da galeria.
+      // Mostra toast só na primeira tentativa (evita cascata de toasts em re-fetches).
+      if (novoPage === 1) {
+        toast.error('Erro ao carregar: ' + (e?.message || 'falha'));
+      }
+      if (novoPage === 1) setResultados([]);
+      if (novoPage === 1) setTotal(0);
+      if (novoPage === 1) setHasMore(false);
     } finally {
       setLoading(false);
     }
