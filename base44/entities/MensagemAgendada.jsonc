@@ -38,7 +38,8 @@
       "enum": [
         "texto",
         "texto_imagem",
-        "texto_video"
+        "texto_video",
+        "template"
       ],
       "default": "texto"
     },
@@ -50,6 +51,29 @@
       ],
       "default": "dapi",
       "description": "API escolhida pelo usu\u00e1rio para o envio agendado"
+    },
+    "template_id": {
+      "type": "string",
+      "description": "ID do WhatsappTemplate selecionado (quando api_preferida=meta_oficial)"
+    },
+    "template_nome": {
+      "type": "string",
+      "description": "Nome do template (meta name) para envio via Graph API"
+    },
+    "template_language": {
+      "type": "string",
+      "description": "Idioma do template (pt_BR, en_US, etc)"
+    },
+    "template_category": {
+      "type": "string"
+    },
+    "template_variables_json": {
+      "type": "string",
+      "description": "JSON array com os valores preenchidos pelo usu\u00e1rio para cada {{n}} do template [{position, value}]"
+    },
+    "template_components_json": {
+      "type": "string",
+      "description": "Snapshot dos components enviados \u00e0 Meta (header, body com par\u00e2metros, bot\u00f5es)"
     },
     "arquivo_url": {
       "type": "string"

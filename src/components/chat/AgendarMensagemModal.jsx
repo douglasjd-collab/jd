@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { CalendarClock, Trash2, RefreshCw, Image as ImageIcon, Video, FileText, Upload, X } from 'lucide-react';
+import { CalendarClock, Trash2, RefreshCw, Image as ImageIcon, Video, FileText, Upload, X, FileCheck2, Layers } from 'lucide-react';
+import SelecionarTemplateMetaModal from './SelecionarTemplateMetaModal';
 
 export default function AgendarMensagemModal({ open, onOpenChange, conversa, currentUser }) {
   const [tab, setTab] = useState('novo');
@@ -28,19 +29,52 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
   const [uploadando, setUploadando] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Template Meta (api_preferida = meta_oficial)
+  const [popupTemplateOpen, setPopupTemplateOpen] = useState(false);
+  const [templateSelecionado, setTemplateSelecionado] = useState(null);
+  const [bodyTemplate, setBodyTemplate] = useState('');
+  const [valoresVarsArr, setValoresVarsArr] = useState([]);
+  const [componentsJson, setComponentsJson] = useState('');
+  const [cliente, setCliente] = useState(null);
+  const presetandoApiRef = useRef(false);
+
   useEffect(() => {
     if (open && conversa) {
       loadAgendados();
       setDataEnvio(format(new Date(), 'yyyy-MM-dd'));
-      // Pré-selecionar a API conforme canal fixo da conversa
+      // Pré-selecionar a API conforme canal fixo da conversa (sem abrir popup)
+      presetandoApiRef.current = true;
       const canalMeta =
         conversa.tipo_conexao === 'meta_oficial' ||
         conversa.canal_origem === 'meta' ||
         conversa.provider === 'whatsapp_meta';
       setApiPreferida(canalMeta ? 'meta_oficial' : 'dapi');
+      // Buscar dados do cliente para pré-preencher variáveis do template
+      if (conversa.cliente_id) {
+        base44.entities.Cliente.get(conversa.cliente_id).then(setCliente).catch(() => setCliente(null));
+      }
     }
     if (!open) resetForm();
   }, [open, conversa]);
+
+  // Quando usuário muda a API manualmente via dropdown
+  const handleApiPreferidaChange = (value) => {
+    setApiPreferida(value);
+    if (presetandoApiRef.current) {
+      presetandoApiRef.current = false;
+      return;
+    }
+    if (value === 'meta_oficial') {
+      setPopupTemplateOpen(true);
+    } else {
+      // Limpar template ao trocar para D-API
+      setTemplateSelecionado(null);
+      setBodyTemplate('');
+      setValoresVarsArr([]);
+      setComponentsJson('');
+      setTipoEnvio('texto');
+    }
+  };
 
   const resetForm = () => {
     setMensagem('');
@@ -49,6 +83,11 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
     setApiPreferida('dapi');
     setArquivo(null);
     setArquivoPreview(null);
+    setTemplateSelecionado(null);
+    setBodyTemplate('');
+    setValoresVarsArr([]);
+    setComponentsJson('');
+    setPopupTemplateOpen(false);
   };
 
   const loadAgendados = async () => {
@@ -108,10 +147,16 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
   };
 
   const handleSalvar = async () => {
-    if (!mensagem.trim()) { toast.error('Digite a mensagem'); return; }
+    // Meta Oficial exige template aprovado selecionado
+    if (apiPreferida === 'meta_oficial' && !templateSelecionado) {
+      toast.error('Selecione um template aprovado da Meta para envio via API Oficial.');
+      setPopupTemplateOpen(true);
+      return;
+    }
+    if (!templateSelecionado && !mensagem.trim()) { toast.error('Digite a mensagem'); return; }
     if (!dataEnvio) { toast.error('Selecione a data'); return; }
     if (!horaEnvio) { toast.error('Selecione o horário'); return; }
-    if (tipoEnvio !== 'texto' && !arquivo) {
+    if (!templateSelecionado && tipoEnvio !== 'texto' && !arquivo) {
       toast.error('Anexe o arquivo de mídia ou mude o tipo para "Somente texto".');
       return;
     }
@@ -124,8 +169,8 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
       let arquivoTipo = '';
       let arquivoNome = '';
 
-      // Upload da mídia se necessário
-      if (arquivo) {
+      // Upload da mídia (apenas para envios livres, não para template Meta)
+      if (!templateSelecionado && arquivo) {
         setUploadando(true);
         const { file_url } = await base44.integrations.Core.UploadFile({ file: arquivo });
         arquivoUrl = file_url;
@@ -134,20 +179,28 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
         setUploadando(false);
       }
 
+      const mensagemFinal = templateSelecionado ? bodyTemplate : mensagem.trim();
+
       await base44.entities.MensagemAgendada.create({
         empresa_id: currentUser?.empresa_id || '',
         conversa_id: conversa.id,
         cliente_id: conversa.cliente_id || '',
         telefone: conversa.cliente_telefone || '',
-        mensagem: mensagem.trim(),
+        mensagem: mensagemFinal,
         tipo,
         recorrencia: tipo === 'recorrente' ? 'mensal' : '',
-        tipo_envio: tipoEnvio,
+        tipo_envio: templateSelecionado ? 'template' : tipoEnvio,
         api_preferida: apiPreferida,
+        template_id: templateSelecionado?.id || '',
+        template_nome: templateSelecionado?.name || '',
+        template_language: templateSelecionado?.language || '',
+        template_category: templateSelecionado?.category || '',
+        template_variables_json: templateSelecionado ? JSON.stringify(valoresVarsArr) : '',
+        template_components_json: templateSelecionado ? componentsJson : '',
         arquivo_url: arquivoUrl,
         arquivo_tipo: arquivoTipo,
         arquivo_nome: arquivoNome,
-        legenda: tipoEnvio !== 'texto' ? mensagem.trim() : '',
+        legenda: !templateSelecionado && tipoEnvio !== 'texto' ? mensagem.trim() : '',
         data_envio: dataEnvio,
         hora_envio: horaEnvio,
         status: 'agendada',
@@ -225,7 +278,7 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
             {/* API de envio */}
             <div>
               <Label>Qual API deseja usar para enviar?</Label>
-              <Select value={apiPreferida} onValueChange={setApiPreferida}>
+              <Select value={apiPreferida} onValueChange={handleApiPreferidaChange}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -241,6 +294,56 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
               </p>
             </div>
 
+            {/* Template da Meta (apenas quando API Oficial) */}
+            {apiPreferida === 'meta_oficial' && (
+              <div>
+                <Label>Template da Meta</Label>
+                {templateSelecionado ? (
+                  <div className="mt-1 border border-emerald-200 bg-emerald-50/40 rounded-lg p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 min-w-0">
+                        <FileCheck2 className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-800 text-sm">
+                            {templateSelecionado.display_name || templateSelecionado.name}
+                          </p>
+                          <p className="text-[10px] text-slate-500 font-mono">
+                            {templateSelecionado.name} · {templateSelecionado.language} · {templateSelecionado.category}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPopupTemplateOpen(true)}
+                      >
+                        Trocar
+                      </Button>
+                    </div>
+                    <div className="bg-white rounded p-2 border border-slate-200">
+                      <p className="text-xs text-slate-700 whitespace-pre-wrap">{bodyTemplate}</p>
+                    </div>
+                    {valoresVarsArr.length > 0 && (
+                      <p className="text-[10px] text-slate-500">
+                        {valoresVarsArr.length} variável(is) preenchida(s).
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setPopupTemplateOpen(true)}
+                    className="mt-1 w-full border-2 border-dashed border-blue-300 rounded-lg p-4 flex flex-col items-center gap-1 text-blue-600 hover:bg-blue-50 transition-colors"
+                  >
+                    <Layers className="w-6 h-6" />
+                    <span className="text-sm font-medium">Selecionar template aprovado</span>
+                    <span className="text-xs">A Meta exige um template aprovado para envios fora da janela de 24h</span>
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Tipo de agendamento */}
             <div>
               <Label>Tipo de agendamento</Label>
@@ -255,37 +358,41 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
               </Select>
             </div>
 
-            {/* Tipo de envio */}
-            <div>
-              <Label>Tipo de envio</Label>
-              <Select value={tipoEnvio} onValueChange={handleTipoEnvioChange}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="texto">💬 Somente texto</SelectItem>
-                  <SelectItem value="texto_imagem">🖼️ Texto + imagem (JPG, PNG, WEBP)</SelectItem>
-                  <SelectItem value="texto_video">🎬 Texto + vídeo (MP4, MOV)</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-slate-500 mt-1">
-                {tipoEnvio === 'texto' && 'Envia apenas a mensagem digitada.'}
-                {tipoEnvio === 'texto_imagem' && 'Envia a imagem com a mensagem como legenda.'}
-                {tipoEnvio === 'texto_video' && 'Envia o vídeo com a mensagem como legenda.'}
-              </p>
-            </div>
+            {/* Tipo de envio (oculto quando template Meta selecionado) */}
+            {!templateSelecionado && (
+              <div>
+                <Label>Tipo de envio</Label>
+                <Select value={tipoEnvio} onValueChange={handleTipoEnvioChange}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="texto">💬 Somente texto</SelectItem>
+                    <SelectItem value="texto_imagem">🖼️ Texto + imagem (JPG, PNG, WEBP)</SelectItem>
+                    <SelectItem value="texto_video">🎬 Texto + vídeo (MP4, MOV)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-500 mt-1">
+                  {tipoEnvio === 'texto' && 'Envia apenas a mensagem digitada.'}
+                  {tipoEnvio === 'texto_imagem' && 'Envia a imagem com a mensagem como legenda.'}
+                  {tipoEnvio === 'texto_video' && 'Envia o vídeo com a mensagem como legenda.'}
+                </p>
+              </div>
+            )}
 
-            {/* Mensagem */}
-            <div>
-              <Label>{tipoEnvio === 'texto' ? 'Mensagem' : 'Mensagem (legenda)'}</Label>
-              <Textarea
-                className="mt-1"
-                rows={3}
-                placeholder="Digite a mensagem que será enviada ao cliente..."
-                value={mensagem}
-                onChange={(e) => setMensagem(e.target.value)}
-              />
-            </div>
+            {/* Mensagem (oculto quando template Meta selecionado) */}
+            {!templateSelecionado && (
+              <div>
+                <Label>{tipoEnvio === 'texto' ? 'Mensagem' : 'Mensagem (legenda)'}</Label>
+                <Textarea
+                  className="mt-1"
+                  rows={3}
+                  placeholder="Digite a mensagem que será enviada ao cliente..."
+                  value={mensagem}
+                  onChange={(e) => setMensagem(e.target.value)}
+                />
+              </div>
+            )}
 
             {/* Upload de mídia */}
             {tipoEnvio !== 'texto' && (
@@ -446,6 +553,20 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
           </div>
         )}
       </DialogContent>
+
+      {/* Popup de seleção de template da Meta */}
+      <SelecionarTemplateMetaModal
+        open={popupTemplateOpen}
+        onOpenChange={setPopupTemplateOpen}
+        conversa={conversa}
+        cliente={cliente}
+        onSelect={({ template, valoresArr, bodyFinal, componentsJson: cj }) => {
+          setTemplateSelecionado(template);
+          setValoresVarsArr(valoresArr);
+          setBodyTemplate(bodyFinal);
+          setComponentsJson(cj);
+        }}
+      />
     </Dialog>
   );
 }

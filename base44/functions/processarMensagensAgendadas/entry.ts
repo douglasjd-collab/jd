@@ -71,21 +71,66 @@ async function enviarViaMetaOficial(base44, empresa, conversa, msg, telefone: st
   let payload;
   let tipoConteudo = 'texto';
 
-  if (msg.tipo_envio === 'texto_imagem' && msg.arquivo_url) {
+  // ─────────────────────────────────────────────────────────
+  // Template Meta (envio fora da janela de 24h)
+  // ─────────────────────────────────────────────────────────
+  if (msg.template_id && msg.template_nome) {
+    let components = [];
+    try {
+      if (msg.template_components_json) components = JSON.parse(msg.template_components_json);
+    } catch (_) {
+      // Se não houver components pré-montados, monta body params a partir de variables_json
+      try {
+        const vars = msg.template_variables_json ? JSON.parse(msg.template_variables_json) : [];
+        if (Array.isArray(vars) && vars.length > 0) {
+          components.push({
+            type: 'body',
+            parameters: vars.map((v) => ({ type: 'text', text: v.value })),
+          });
+        }
+      } catch (e) {}
+    }
+
+    const templateObj: any = {
+      name: msg.template_nome,
+      language: { code: msg.template_language || 'pt_BR' },
+    };
+    if (components.length > 0) templateObj.components = components;
+
+    payload = {
+      messaging_product: 'whatsapp',
+      to: telefone,
+      type: 'template',
+      template: templateObj,
+    };
+    tipoConteudo = 'texto';
+  }
+  // ─────────────────────────────────────────────────────────
+  // Imagem livre
+  // ─────────────────────────────────────────────────────────
+  else if (msg.tipo_envio === 'texto_imagem' && msg.arquivo_url) {
     tipoConteudo = 'imagem';
     const media = await uploadMidiaMeta(metaApiVersion, phoneNumberId, accessToken, msg.arquivo_url, msg.arquivo_tipo || 'image/jpeg', msg.arquivo_nome || 'imagem.jpg');
     if (!media) throw new Error('Falha ao fazer upload da imagem para a Meta');
     const imgObj: any = { id: media.id };
     if (msg.mensagem?.trim()) imgObj.caption = msg.mensagem.trim();
     payload = { messaging_product: 'whatsapp', to: telefone, type: 'image', image: imgObj };
-  } else if (msg.tipo_envio === 'texto_video' && msg.arquivo_url) {
+  }
+  // ─────────────────────────────────────────────────────────
+  // Vídeo livre
+  // ─────────────────────────────────────────────────────────
+  else if (msg.tipo_envio === 'texto_video' && msg.arquivo_url) {
     tipoConteudo = 'video';
     const media = await uploadMidiaMeta(metaApiVersion, phoneNumberId, accessToken, msg.arquivo_url, msg.arquivo_tipo || 'video/mp4', msg.arquivo_nome || 'video.mp4');
     if (!media) throw new Error('Falha ao fazer upload do vídeo para a Meta');
     const vidObj: any = { id: media.id };
     if (msg.mensagem?.trim()) vidObj.caption = msg.mensagem.trim();
     payload = { messaging_product: 'whatsapp', to: telefone, type: 'video', video: vidObj };
-  } else {
+  }
+  // ─────────────────────────────────────────────────────────
+  // Texto livre
+  // ─────────────────────────────────────────────────────────
+  else {
     payload = {
       messaging_product: 'whatsapp',
       to: telefone,
