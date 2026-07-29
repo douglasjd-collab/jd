@@ -350,9 +350,18 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
                       <p className="text-xs text-slate-700 whitespace-pre-wrap">{bodyTemplate}</p>
                     </div>
                     {valoresVarsArr.length > 0 && (
-                      <p className="text-[10px] text-slate-500">
-                        {valoresVarsArr.length} variável(is) preenchida(s).
-                      </p>
+                      <div className="text-[10px] text-slate-500 space-y-0.5">
+                        {valoresVarsArr.map((vv) => (
+                          <div key={vv.position} className="flex items-center gap-1">
+                            <span className="font-mono">{`{{${vv.position}}}`}</span>
+                            {vv.value === '__AUTO_PRIMEIRO_NOME__' ? (
+                              <span className="text-emerald-700 font-medium">— Primeiro nome do cliente · preenchimento automático</span>
+                            ) : (
+                              <span>— {vv.value}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 ) : (

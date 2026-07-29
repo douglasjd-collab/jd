@@ -5,7 +5,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { Loader2, Search, FileText, Image as ImageIcon, Video, CheckCircle2 } from 'lucide-react';
+import { Loader2, Search, FileText, Image as ImageIcon, Video, CheckCircle2, UserCircle, Sparkles } from 'lucide-react';
+import {
+  AUTO_PRIMEIRO_NOME,
+  ehAutoPrimeiroNome,
+  preencherVariaveisPreview,
+  primeiroNomeOuAlternativa,
+} from '@/components/utils/primeiroNomeHelper';
 
 // Extrai variáveis {{n}} (e {{1}}, {{2}}...) presentes em uma string
 function extrairVariaveis(texto = '') {
@@ -14,9 +20,12 @@ function extrairVariaveis(texto = '') {
   return unicas.sort((a, b) => Number(a) - Number(b)).map((n) => `{{${n}}}`);
 }
 
-// Substitui {{n}} por valores preenchidos
+// Substitui {{n}} por valores preenchidos (mantém marcadores auto)
 function preencherVariaveis(texto = '', valores = {}) {
-  return (texto || '').replace(/\{\{(\d+)\}\}/g, (m, n) => valores[n] ?? m);
+  return (texto || '').replace(/\{\{(\d+)\}\}/g, (m, n) => {
+    const v = valores[n];
+    return v !== undefined ? v : m;
+  });
 }
 
 export default function SelecionarTemplateMetaModal({
@@ -65,25 +74,28 @@ export default function SelecionarTemplateMetaModal({
 
   const handleSelecionar = (t) => {
     setSelecionado(t);
-    // Pré-preencher variáveis (default: primeiro nome do cliente para {{1}}, exemplo_value se houver)
+    // {{1}} é resolvida automaticamente no envio (primeiro nome do cliente).
+    // Restantes variáveis precisam de preenchimento manual.
     const vars = extrairVariaveis(t.body_text);
     const preenchido = {};
-    vars.forEach((v, idx) => {
+    vars.forEach((v) => {
       const pos = v.match(/\d+/)[0];
-      // Tenta usar example_value se houver
-      if (idx === 0 && cliente?.primeiro_nome) preenchido[pos] = cliente.primeiro_nome;
-      else if (idx === 0 && cliente?.nome_completo) preenchido[pos] = cliente.nome_completo.split(' ')[0];
+      if (pos === '1') preenchido[pos] = AUTO_PRIMEIRO_NOME;
     });
     setValoresVars(preenchido);
   };
 
+  // Nome de exemplo para a prévia: usa o primeiro nome real do cliente (ou fallback).
+  const exemploPreview = primeiroNomeOuAlternativa(cliente);
+
   const handleConfirmar = () => {
     if (!selecionado) return;
 
-    // Validar que todas as variáveis foram preenchidas
+    // Validar: {{1}} é auto (sempre OK); demais variáveis precisam valor manual
     const vars = extrairVariaveis(selecionado.body_text);
     const faltando = vars.some((v) => {
       const pos = v.match(/\d+/)[0];
+      if (pos === '1') return false; // preenchimento automático
       return !valoresVars[pos] || !valoresVars[pos].trim();
     });
     if (faltando) {
@@ -93,28 +105,26 @@ export default function SelecionarTemplateMetaModal({
 
     setEnviando(true);
 
-    const bodyFinal = preencherVariaveis(selecionado.body_text, valoresVars);
+    // Body final para prévia da mensagem agendada (substitui {{1}} pelo exemplo)
+    const bodyFinal = preencherVariaveisPreview(selecionado.body_text, valoresVars, cliente);
+    // valoresArr mantém o marcador automático para {{1}} — backend resolve no envio
     const valoresArr = extrairVariaveis(selecionado.body_text).map((v) => ({
       position: Number(v.match(/\d+/)[0]),
       value: valoresVars[v.match(/\d+/)[0]],
     }));
 
-    // Construir components para a Graph API
+    // Components Graph API: {{1}} propagado com marcador (resolver no envio)
     const components = [];
-
-    // Header texto (se houver com variáveis, aplicar)
     if (selecionado.header_type === 'TEXT' && selecionado.header_text) {
       const headerVars = extrairVariaveis(selecionado.header_text);
       if (headerVars.length > 0) {
         const params = headerVars.map((v) => ({
           type: 'text',
-          text: preencherVariaveis(v, valoresVars),
+          text: valoresVars[v.match(/\d+/)[0]],
         }));
         components.push({ type: 'header', parameters: params });
       }
     }
-
-    // Body com parâmetros
     const bodyVars = extrairVariaveis(selecionado.body_text);
     if (bodyVars.length > 0) {
       components.push({
@@ -126,7 +136,6 @@ export default function SelecionarTemplateMetaModal({
       });
     }
 
-    // Botões (preservar os originais do template se houver)
     let buttonsJson = [];
     try {
       if (selecionado.buttons_json) buttonsJson = JSON.parse(selecionado.buttons_json);
@@ -255,7 +264,7 @@ export default function SelecionarTemplateMetaModal({
                     </p>
                   )}
                   <p className="text-sm text-slate-700 mt-1 whitespace-pre-wrap">
-                    {preencherVariaveis(selecionado.body_text, valoresVars)}
+                    {preencherVariaveisPreview(selecionado.body_text, valoresVars, cliente)}
                   </p>
                   {selecionado.footer_text && (
                     <p className="text-[10px] text-slate-400 mt-2">📎 {selecionado.footer_text}</p>
@@ -270,6 +279,31 @@ export default function SelecionarTemplateMetaModal({
                 <Label className="text-slate-700">Preencha as variáveis do template</Label>
                 {extrairVariaveis(selecionado.body_text).map((v) => {
                   const pos = v.match(/\d+/)[0];
+                  const ehPos1 = pos === '1';
+                  if (ehPos1) {
+                    const temNome = exemploPreview !== 'por aí';
+                    return (
+                      <div key={v} className="border border-emerald-200 bg-emerald-50/60 rounded-lg p-3 space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-mono text-emerald-800 bg-emerald-100 px-2 py-1 rounded">
+                            {v}
+                          </span>
+                          <div className="flex items-center gap-1.5 text-emerald-800 font-medium text-xs">
+                            <UserCircle className="w-3.5 h-3.5" />
+                            Primeiro nome do cliente
+                          </div>
+                          <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-emerald-600 text-white font-semibold inline-flex items-center gap-1">
+                            <Sparkles className="w-2.5 h-2.5" /> Preenchimento automático
+                          </span>
+                        </div>
+                        <p className="text-xs text-emerald-900/80">
+                          {temNome
+                            ? `${v} será preenchido automaticamente com: ${exemploPreview}`
+                            : `Cliente sem nome — será usado o texto alternativo: "${exemploPreview}"`}
+                        </p>
+                      </div>
+                    );
+                  }
                   return (
                     <div key={v} className="flex items-center gap-2">
                       <span className="text-xs font-mono text-amber-700 bg-amber-100 px-2 py-1 rounded">
@@ -287,7 +321,7 @@ export default function SelecionarTemplateMetaModal({
                   );
                 })}
                 <p className="text-xs text-slate-500">
-                  💡 Dica: a primeira variável costuma ser o nome do cliente.
+                  💡 {`{{1}}`} é o primeiro nome do cliente — preenchido automaticamente no envio, individualmente para cada destinatário.
                 </p>
               </div>
             )}

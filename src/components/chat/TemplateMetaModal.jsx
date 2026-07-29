@@ -5,9 +5,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Send, Loader2, RefreshCw, FileText, Eye, X, Trash2 } from 'lucide-react';
+import { Search, Send, Loader2, RefreshCw, FileText, Eye, X, Trash2, UserCircle, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { AUTO_PRIMEIRO_NOME } from '@/components/utils/primeiroNomeHelper';
 
 export default function TemplateMetaModal({ open, onOpenChange, empresaId, telefoneDestino, conversaId, onEnviado }) {
   const [search, setSearch] = useState('');
@@ -106,20 +107,23 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
     }
   };
 
-  // Detecta variáveis {{n}} no corpo do template; se houver, abre um
-  // formulário para o usuário preencher ANTES de disparar. Sem isso, a Meta
-  // recusa o envio com #132000 (Number of parameters does not match).
+  // Detecta variáveis {{n}} no corpo do template. {{1}} é sempre
+  // preenchida automaticamente com o primeiro nome do destinatário no
+  // disparo (backend). Demais variáveis precisam de valor manual.
   const clicarEnviar = (d, tId) => {
     const matches = String(d.corpo || '').match(/\{\{(\d+)\}\}/g) || [];
     const vars = [...new Set(matches.map(m => m.replace(/\D/g, '')))]
       .sort((a, b) => Number(a) - Number(b));
     if (vars.length === 0) return enviarTemplate(d, tId, {});
 
-    // Pré-preencher {{1}} com o primeiro nome do cliente da conversa.
-    // Se todas as variáveis ficarem preenchidas, dispara direto sem abrir o form.
+    // {{1}} sempre automático. Outras posições precisam ser preenchidas.
     const initial = {};
-    if (vars.includes('1') && nomeCliente) initial['1'] = nomeCliente;
-    if (vars.every(v => (initial[v] || '').trim().length > 0)) {
+    if (vars.includes('1')) initial['1'] = AUTO_PRIMEIRO_NOME;
+
+    // Demais variáveis além da {{1}}
+    const outras = vars.filter(v => v !== '1');
+    if (outras.length === 0) {
+      // Só existe {{1}} — dispara direto (auto-prenchido no backend)
       return enviarTemplate(d, tId, { ...initial });
     }
     setVariaveisDialog({ d, tId, vars, values: initial });
@@ -131,12 +135,27 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
 
     setEnviando(tId);
     try {
+      // Resolvemos conversa_id → cliente_id para que o backend personalize {{1}}.
+      let clienteId = null;
+      try {
+        if (conversaId) {
+          const cs = await base44.entities.ConversaWhatsapp.filter({ id: conversaId }, '-data_ultima_mensagem', 1);
+          clienteId = cs?.[0]?.cliente_id || null;
+        } else if (numLimpo) {
+          const cs = await base44.entities.ConversaWhatsapp.filter(
+            { empresa_id: empresaId, cliente_telefone: numLimpo },
+            '-data_ultima_mensagem', 1,
+          );
+          clienteId = cs?.[0]?.cliente_id || null;
+        }
+      } catch (_) {}
+
       const resp = await base44.functions.invoke('dispararCampanhaMetaOficial', {
         empresa_id: empresaId,
         template_name: d.nome,
         template_language: d.idioma || 'pt_BR',
         variaveis: variaveisVals || {},
-        contatos: [numLimpo],
+        contatos: [{ telefone: numLimpo, cliente_id: clienteId || undefined }],
         conversa_id: conversaId || null,
         texto_preview: d.corpo || `📋 Template: ${d.nome}`,
         template_header_type: d.tipo_cabecalho || '',
@@ -297,7 +316,9 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
     if (!variaveisDialog) return null;
     const { d, tId, vars, values } = variaveisDialog;
     const isEnviando = enviando === tId;
-    const podeEnviar = vars.every(v => (values[v] || '').trim().length > 0);
+    // {{1}} é automático; validamos apenas as demais posições
+    const varsManuais = vars.filter(v => v !== '1');
+    const podeEnviar = varsManuais.every(v => (values[v] || '').trim().length > 0);
     return (
       <Dialog open={true} onOpenChange={() => !isEnviando && setVariaveisDialog(null)}>
         <DialogContent className="max-w-sm">
@@ -309,23 +330,46 @@ export default function TemplateMetaModal({ open, onOpenChange, empresaId, telef
           </DialogHeader>
           <p className="text-xs text-slate-500">
             O template <span className="font-semibold">{d.nome}</span> contém
-            {' '}{vars.length} variável(is) que precisam ser preenchidas antes do envio.
+            {' '}{vars.length} variável(is). A variável {`{{1}}`} é preenchida automaticamente.
           </p>
           <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-            {vars.map(v => (
-              <div key={v}>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">
-                  Variável {'{{' + v + '}}'}
-                </label>
-                <Input
-                  value={values[v] || ''}
-                  onChange={e => setVariaveisDialog(prev => ({ ...prev, values: { ...prev.values, [v]: e.target.value } }))}
-                  placeholder={`Valor para {{${v}}}`}
-                  className="h-9 text-sm"
-                  disabled={isEnviando}
-                />
-              </div>
-            ))}
+            {vars.map(v => {
+              if (v === '1') {
+                return (
+                  <div key={v} className="border border-emerald-200 bg-emerald-50/60 rounded-lg p-2.5 space-y-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-mono text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded">{`{{${v}}}`}</span>
+                      <div className="flex items-center gap-1 text-emerald-800 font-medium text-[11px]">
+                        <UserCircle className="w-3 h-3" />
+                        Primeiro nome do cliente
+                      </div>
+                      <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-600 text-white font-semibold inline-flex items-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5" /> Automático
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-900/80">
+                      {nomeCliente
+                        ? `Será preenchido com: ${nomeCliente}`
+                        : 'Sem nome no cadastro — será usado: "por aí"'}
+                    </p>
+                  </div>
+                );
+              }
+              return (
+                <div key={v}>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Variável {`{{${v}}}`}
+                  </label>
+                  <Input
+                    value={values[v] || ''}
+                    onChange={e => setVariaveisDialog(prev => ({ ...prev, values: { ...prev.values, [v]: e.target.value } }))}
+                    placeholder={`Valor para {{${v}}}`}
+                    className="h-9 text-sm"
+                    disabled={isEnviando}
+                  />
+                </div>
+              );
+            })}
           </div>
           <div className="flex gap-2 pt-2">
             <Button
