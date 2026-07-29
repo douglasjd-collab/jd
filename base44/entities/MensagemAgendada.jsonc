@@ -42,6 +42,15 @@
       ],
       "default": "texto"
     },
+    "api_preferida": {
+      "type": "string",
+      "enum": [
+        "meta_oficial",
+        "dapi"
+      ],
+      "default": "dapi",
+      "description": "API escolhida pelo usu\u00e1rio para o envio agendado"
+    },
     "arquivo_url": {
       "type": "string"
     },

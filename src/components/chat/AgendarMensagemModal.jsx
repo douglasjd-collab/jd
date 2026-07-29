@@ -14,6 +14,7 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
   const [tab, setTab] = useState('novo');
   const [tipo, setTipo] = useState('unica');
   const [tipoEnvio, setTipoEnvio] = useState('texto');
+  const [apiPreferida, setApiPreferida] = useState('dapi');
   const [mensagem, setMensagem] = useState('');
   const [dataEnvio, setDataEnvio] = useState('');
   const [horaEnvio, setHoraEnvio] = useState('08:00');
@@ -31,6 +32,12 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
     if (open && conversa) {
       loadAgendados();
       setDataEnvio(format(new Date(), 'yyyy-MM-dd'));
+      // Pré-selecionar a API conforme canal fixo da conversa
+      const canalMeta =
+        conversa.tipo_conexao === 'meta_oficial' ||
+        conversa.canal_origem === 'meta' ||
+        conversa.provider === 'whatsapp_meta';
+      setApiPreferida(canalMeta ? 'meta_oficial' : 'dapi');
     }
     if (!open) resetForm();
   }, [open, conversa]);
@@ -39,6 +46,7 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
     setMensagem('');
     setTipo('unica');
     setTipoEnvio('texto');
+    setApiPreferida('dapi');
     setArquivo(null);
     setArquivoPreview(null);
   };
@@ -135,6 +143,7 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
         tipo,
         recorrencia: tipo === 'recorrente' ? 'mensal' : '',
         tipo_envio: tipoEnvio,
+        api_preferida: apiPreferida,
         arquivo_url: arquivoUrl,
         arquivo_tipo: arquivoTipo,
         arquivo_nome: arquivoNome,
@@ -213,6 +222,25 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
 
         {tab === 'novo' ? (
           <div className="space-y-4 mt-1">
+            {/* API de envio */}
+            <div>
+              <Label>Qual API deseja usar para enviar?</Label>
+              <Select value={apiPreferida} onValueChange={setApiPreferida}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="meta_oficial">🟢 API Oficial (Meta)</SelectItem>
+                  <SelectItem value="dapi">🟦 API - JD Promotora (D-API)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-500 mt-1">
+                {apiPreferida === 'meta_oficial'
+                  ? 'Usa o número oficial Meta cadastrado. Recomendado para disparos confiáveis.'
+                  : 'Usa a conexão D-API da empresa (multi-número).'}
+              </p>
+            </div>
+
             {/* Tipo de agendamento */}
             <div>
               <Label>Tipo de agendamento</Label>
@@ -395,6 +423,9 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[a.status]}`}>
                       {a.status}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-slate-100 text-slate-600" title="API de envio">
+                      {a.api_preferida === 'meta_oficial' ? '🟢 Meta Oficial' : '🟦 JD Promotora'}
                     </span>
                     {a.tipo === 'recorrente' && (
                       <span className="text-xs text-blue-600 flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Mensal</span>
