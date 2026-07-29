@@ -249,6 +249,12 @@ REGRAS OBRIGATÓRIAS:
 2. Se um campo não estiver visível, use valor "" e confiança "nao_identificado".
 3. Para PDFs de conta de energia/água/telefone, extraia o endereço completo constante na fatura.
 4. Para RG/CIN: o número de registro está geralmente no verso — procure campos como "REGISTRO CIVIL", "MATRÍCULA", ou o número longo com pontos. O CPF pode estar parcialmente mascarado (ex: 112.1**.***-**) — extraia o que estiver visível.
+
+FONTES POR TIPO DE DOCUMENTO (MUITO IMPORTANTE — não troque as fontes):
+- ENDEREÇO (cep, logradouro, numero, complemento, bairro, cidade, estado) deve ser extraído SOMENTE do comprovante de residência (conta de água/energia/gás/telefone/boleta) e de faturas bancárias. NUNCA preencha endereço a partir de RG ou CNH — esse dado costuma ser antigo ou do pai/mãe e gera cadastro errado.
+- DADOS PESSOAIS (nome_completo, cpf, rg, data_nascimento, nome_mae, nome_pai, sexo, naturalidade, nacionalidade, estado_civil, profissao) devem vir do RG/CIN/CNH. Se o mesmo campo aparecer em mais de um documento, mantenha o de maior confiança.
+- CONTATO (telefone, e-mail) deve ser extraído de QUALQUER texto visível — tamplate de e-mail/telefone em rodapés, faturas, formulários digitalizados, anotações e mensagens. NÃO retorne "nao_identificado" para telefone ou e-mail quando houver um número ou e-mail textual legível em qualquer arquivo.
+
 5. SEXO: Se não estiver explícito no documento, INFIRA pelo primeiro nome:
    - Nomes tipicamente femininos (Ana, Maria, Débora/Debora, Fernanda, Juliana, Carla, etc.) → "Feminino"
    - Nomes tipicamente masculinos → "Masculino"
@@ -348,7 +354,7 @@ Todo texto contendo "@" seguido de domínio (ex: @gmail.com, @hotmail.com, @iclo
 
     // ── LLM em lotes (máx 4 arquivos por chamada, em paralelo) — mantém cada
     // requisição abaixo do timeout do gateway HTTP e junta os resultados ──
-    const LOTE_AN = 4;
+    const LOTE_AN = 6;
     const lotesAn = [];
     for (let i = 0; i < arquivos.length; i += LOTE_AN) {
       lotesAn.push(arquivos.slice(i, i + LOTE_AN));

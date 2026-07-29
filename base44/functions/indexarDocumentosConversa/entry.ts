@@ -175,7 +175,7 @@ CRÍTICO: NUNCA inventar dados. Não agrupar documentos de pessoas diferentes. C
 
     // ── 3.1 Dividir em lotes de no máximo 4 arquivos por chamada, em paralelo,
     // para manter cada requisição abaixo do timeout do gateway ──
-    const LOTE_IDX = 4;
+    const LOTE_IDX = 6;
     const lotesIdx = [];
     for (let i = 0; i < arquivos.length; i += LOTE_IDX) {
       lotesIdx.push(arquivos.slice(i, i + LOTE_IDX));
@@ -270,6 +270,96 @@ CRÍTICO: NUNCA inventar dados. Não agrupar documentos de pessoas diferentes. C
   }
 });
 
+// ── Helpers para unificar o mesmo cliente quando o nome variou por acentos/case
+// ou por conectivos ("de", "do", "da", "dos", "das"). Mantém CPF como critério
+// prioritário: se um cluster tem CPF válido e outro sem CPF tem o mesmo nome
+// base, são unidos.
+const STOP_NOMES = new Set(['de', 'do', 'da', 'dos', 'das', 'e', 'di']);
+
+function normalizarNomeBase(s) {
+  if (!s) return '';
+  const n = normalizarNome(s);
+  return n.split(' ').filter((w) => w && !STOP_NOMES.has(w)).join(' ');
+}
+
+const ORD_CONF_IDX = { alta: 4, media: 3, baixa: 2, nao_identificado: 1 };
+
+function mergeListaGrupos(arr) {
+  if (!arr || arr.length === 0) return null;
+  if (arr.length === 1) return arr[0];
+
+  const comCpf = arr.find((g) => g.cpf && String(g.cpf).length === 11);
+  const comNome = arr.filter((g) => g.nome)
+    .sort((a, b) => (b.nome.length || 0) - (a.nome.length || 0))[0];
+  const base = comCpf || comNome || arr[0];
+
+  const docs = [];
+  const vistos = new Set();
+  for (const g of arr) {
+    for (const d of (g.documentos || [])) {
+      const k = d.arquivo_url || d.id;
+      if (k && !vistos.has(k)) { vistos.add(k); docs.push(d); }
+    }
+  }
+
+  const fill = (campo) => {
+    const c = arr.find((g) => g[campo] && String(g[campo]).trim() !== '');
+    return c ? c[campo] : (base[campo] || '');
+  };
+
+  const nivel = arr.reduce(
+    (m, g) => (ORD_CONF_IDX[g.nivel_confianca] > ORD_CONF_IDX[m] ? g.nivel_confianca : m),
+    base.nivel_confianca || 'nao_identificado'
+  );
+
+  return {
+    grupo_id: base.grupo_id,
+    nome: comNome?.nome || base.nome || '',
+    cpf: comCpf?.cpf || base.cpf || '',
+    rg: fill('rg'),
+    data_nascimento: fill('data_nascimento'),
+    nome_mae: fill('nome_mae'),
+    nome_pai: fill('nome_pai'),
+    municipio_endereco: fill('municipio_endereco'),
+    nivel_confianca: nivel,
+    documentos: docs
+  };
+}
+
+// Unifica clusters que representam a mesma pessoa. Cluster com CPF absorve
+// clusters sem CPF cujo nome-base (sem conectivos) coincide.
+function consolidarGrupos(grupos) {
+  if (!grupos || grupos.length <= 1) return grupos || [];
+  const porChave = {};
+  for (const g of grupos) {
+    let chave;
+    if (g.cpf && String(g.cpf).length === 11) chave = 'cpf_' + g.cpf;
+    else if (normalizarNomeBase(g.nome)) chave = 'nome_' + normalizarNomeBase(g.nome);
+    else chave = 'uniq_' + (g.grupo_id || Math.random().toString(36).slice(2));
+    if (!porChave[chave]) porChave[chave] = [];
+    porChave[chave].push(g);
+  }
+  let clusters = Object.entries(porChave).map(([chave, arrs]) => ({
+    chave,
+    temCpf: chave.startsWith('cpf_'),
+    baseNome: chave.startsWith('nome_') ? chave.slice(5) : null,
+    grupos: arrs
+  }));
+  for (const cCpf of clusters.filter((c) => c.temCpf)) {
+    const nomeRef = normalizarNomeBase(cCpf.grupos.find((g) => g.nome)?.nome || '');
+    if (!nomeRef) continue;
+    for (const c of clusters) {
+      if (c.temCpf || c === cCpf) continue;
+      if (c.baseNome && c.baseNome === nomeRef) {
+        cCpf.grupos.push(...c.grupos);
+        c.chave = 'MERGED';
+      }
+    }
+  }
+  clusters = clusters.filter((c) => c.chave !== 'MERGED');
+  return clusters.map((c) => mergeListaGrupos(c.grupos)).filter(Boolean);
+}
+
 // Agrupa registros por grupo_pessoa_id e resume para o cliente.
 function agrupar(registros) {
   const map = {};
@@ -318,5 +408,5 @@ function agrupar(registros) {
     });
   }
 
-  return Object.values(map);
+  return consolidarGrupos(Object.values(map));
 }
