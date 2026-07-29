@@ -250,6 +250,20 @@ REGRAS OBRIGATÓRIAS:
 3. Para PDFs de conta de energia/água/telefone, extraia o endereço completo constante na fatura.
 4. Para RG/CIN: o número de registro está geralmente no verso — procure campos como "REGISTRO CIVIL", "MATRÍCULA", ou o número longo com pontos. O CPF pode estar parcialmente mascarado (ex: 112.1**.***-**) — extraia o que estiver visível.
 
+CNH (CARTEIRA NACIONAL DE HABILITAÇÃO) — leitura minuciosa obrigatória:
+A CNH é UM ÚNICO documento que concentra TODOS os dados pessoais. Apresenta fundo verde/branco com padrão guiloche (ranhuras finas) — IGNORE o padrão de fundo, foque nos CARACTERES impressos.
+Os rótulos que aparecem sempre na CNH:
+  - "NOME": nome completo em CAIXA ALTA. Jamais truncar o último caractere (última letra). Se duvidar entre "SANTOS" e "SANTO", confirme o último caractere — conte as letras e nunca descarte um "S" final.
+  - "DOC IDENTIDADE / ORG EMISSOR / UF": contém 3 sub-valores lado a lado — o NÚMERO do RG, o ORGÃO EMISSOR (ex: "SSP") e a UF (ex: "AL"). Devolva rg = número, orgao_emissor = SSP (ou equivalente), uf_emissor = sigla UF.
+  - "CPF": formato XXX.XXX.XXX-XX. Leia DÍGITO POR DÍGITO sem pular. Caracteres parecidos (5 e 7, 0 e 6, 1 e 7) devem ser diferenciados com cuidado redobrado. Antes de devolver o CPF, confirme mentalmente os dois verificadores (regra oficial CPF). Se o DV não bater, RELEIA o número — o erro está num dígito intermediário.
+  - "DATA NASCIMENTO": formato DD/MM/AAAA. Preencher data_nascimento — jamais deixar como nao_identificado quando estiver visível.
+  - "FILIAÇÃO": bloco com DOIS nomes — primeiro o PAI (rótulo "Pai"/"FILIAÇÃO PAI"), depois a MÃE (rótulo "Mãe"/"FILIAÇÃO MÃE"). Devolva ambos em nome_pai e nome_mae. Mesmo se vierem abreviados, retorne o texto exato — NUNCA retorne "nao_identificado" quando o bloco FILIAÇÃO estiver visível.
+  - "Nº REGISTRO", "VALIDADE", "1ª HABILITAÇÃO", "PERMISSÃO / ACC / CAT. HAB": campos auxiliares — capture quando visíveis.
+  - "LOCAL": cidade de emissão (ex: "SANTANA DO IPANEMA, AL") — útil para naturalidade.
+  - "DATA EMISSÃO": formato DD/MM/AAAA. Preencher data_emissao.
+Sempre que a CNH estiver entre as imagens, ELA É A FONTE PRIMÁRIA para dados pessoais (nome, CPF, RG, nascimento, filiação, emissão) — classifique estes campos com confiança "alta" (leitura direta e clara).
+
+
 FONTES POR TIPO DE DOCUMENTO (MUITO IMPORTANTE — não troque as fontes):
 - ENDEREÇO (cep, logradouro, numero, complemento, bairro, cidade, estado) deve ser extraído SOMENTE do comprovante de residência (conta de água/energia/gás/telefone/boleta) e de faturas bancárias. NUNCA preencha endereço a partir de RG ou CNH — esse dado costuma ser antigo ou do pai/mãe e gera cadastro errado.
 - DADOS PESSOAIS (nome_completo, cpf, rg, data_nascimento, nome_mae, nome_pai, sexo, naturalidade, nacionalidade, estado_civil, profissao) devem vir do RG/CIN/CNH. Se o mesmo campo aparecer em mais de um documento, mantenha o de maior confiança.
@@ -353,8 +367,9 @@ Todo texto contendo "@" seguido de domínio (ex: @gmail.com, @hotmail.com, @iclo
     };
 
     // ── LLM em lotes (máx 4 arquivos por chamada, em paralelo) — mantém cada
-    // requisição abaixo do timeout do gateway HTTP e junta os resultados ──
-    const LOTE_AN = 6;
+    // requisição abaixo do timeout do gateway HTTP e junta os resultados.
+    // Lote menor = mais atenção por imagem (OCR de CNH exige isso).
+    const LOTE_AN = 4;
     const lotesAn = [];
     for (let i = 0; i < arquivos.length; i += LOTE_AN) {
       lotesAn.push(arquivos.slice(i, i + LOTE_AN));
@@ -458,6 +473,15 @@ Todo texto contendo "@" seguido de domínio (ex: @gmail.com, @hotmail.com, @iclo
       const digits = limparCpf(cpfExtraido);
       lid.dados_pessoais.cpf.valor = mascararCpf(digits);
       lid.dados_pessoais.cpf.valido = validarCpf(digits);
+      // CPF inválido NÃO pode manter confiança "alta" — o modelo leu um dígito
+      // errado (comum em CNH com fundo guiloche). Rebaixa e marca divergência.
+      if (!lid.dados_pessoais.cpf.valido) {
+        if (lid.dados_pessoais.cpf.confianca === 'alta') {
+          lid.dados_pessoais.cpf.confianca = 'baixa';
+        }
+        lid.divergencias = lid.divergencias || [];
+        lid.divergencias.push(`CPF extraído (${mascararCpf(digits)}) falhou na validação dos dígitos verificadores — revisar manualmente.`);
+      }
     } else if (lid.dados_pessoais.cpf) {
       lid.dados_pessoais.cpf.valido = false;
     }
