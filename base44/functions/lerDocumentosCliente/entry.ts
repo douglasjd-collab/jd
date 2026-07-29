@@ -38,6 +38,27 @@ function normalizarLado(raw: any): string {
   return 'nao_identificado';
 }
 
+// Converte datas em qualquer formato comum (pt-BR, ISO, dd/mm/aaaa, etc.)
+// para ISO YYYY-MM-DD aceito por inputs type="date". Retorna null se inválida.
+function normalizarDataISO(raw: any): string | null {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (!s || s.toLowerCase() === 'null' || s.toLowerCase() === 'none') return null;
+  // 1) Tenta ISO direto (YYYY-MM-DD ou YYYY/MM/DD)
+  let m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
+  if (m) return `${m[1].padStart(4, '0')}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+  // 2) Tenta pt-BR (dd/mm/aaaa ou d/m/aa) — pode ter hora após espaço
+  m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/);
+  if (m) {
+    const d = m[1].padStart(2, '0');
+    const mo = m[2].padStart(2, '0');
+    let y = m[3];
+    if (y.length === 2) y = (Number(y) > 30 ? '19' : '20') + y;
+    return `${y}-${mo}-${d}`;
+  }
+  return null;
+}
+
 const SCHEMA = {
   type: 'object',
   properties: {
@@ -90,7 +111,7 @@ REGRAS CRÍTICAS:
 5. data_nascimento no formato ISO YYYY-MM-DD.
 6. sexo: "Masculino", "Feminino" ou "Outro" (somente se claramente identificável).
 7. naturalidade = cidade/município de nascimento. nacionalidade = país (ex: Brasileira).
-8. COMPROVANTE DE RESIDÊNCIA: extrair cep, uf, cidade, bairro, logradouro, numero, complemento. Use apenas o endereço que aparece como destino/local de instalação no documento (geralmente o "instalado em" / "endereço de consumo"). NÃO use endereço da concessionária.
+8. COMPROVANTE DE RESIDÊNCIA: extrair cep, uf, cidade, bairro, logradouro, numero, complemento. Aceita como comprovante qualquer conta de serviço (água, luz, gás, telefonia fixa/móvel, internet/TV), fatura de cartão de crédito, extrato bancário, contrato de aluguel, IPTU, conta condominial, ou correspondência/boleto com CEP e endereço visíveis. Use apenas o endereço DESTINATÁRIO/CONSUMIDOR (geralmente "instalado em" / "endereço de cobrança" / "endereço de entrega"). NÃO use o endereço da empresa emissora/concessionária. Importante: retornar sempre pelo menos o CEP e o logradouro, mesmo que UF/cidade estiverem ilegíveis.
 9. Para cada campo, só retorne valor se estiver claramente visível. Se não estiver legível, retorne null (ausente).
 10. Atribua confianca_geral: "alta" se todos os campos foram lidos com clareza; "media" se alguns campos difíceis; "baixa" se a imagem estiver ruim, ilegível, cortada, ou houver risco de erro.
 11. Em campos_baixa_confianca, liste os nomes dos campos específicos cuja leitura você considerar incerta.
@@ -197,6 +218,10 @@ export default async function(req: Request): Promise<Response> {
           // Sanitiza CPF e CEP (garante somente dígitos)
           if (typeof dados.cpf === 'string') dados.cpf = dados.cpf.replace(/\D/g, '') || null;
           if (typeof dados.cep === 'string') dados.cep = dados.cep.replace(/\D/g, '') || null;
+
+          // Normaliza datas para ISO YYYY-MM-DD (inputs type="date" só aceitam esse formato)
+          dados.data_nascimento = normalizarDataISO(dados.data_nascimento);
+          dados.rg_data_emissao = normalizarDataISO(dados.rg_data_emissao);
 
           // Loga resposta bruta para diagnóstico (visível nos logs da função)
           try {
