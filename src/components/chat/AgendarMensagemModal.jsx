@@ -36,6 +36,7 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
   const [valoresVarsArr, setValoresVarsArr] = useState([]);
   const [componentsJson, setComponentsJson] = useState('');
   const [cliente, setCliente] = useState(null);
+  const [conexaoOficial, setConexaoOficial] = useState(null); // conexão da API Oficial ativa da empresa
   const presetandoApiRef = useRef(false);
   const [reenviandoId, setReenviandoId] = useState(null);
 
@@ -53,6 +54,17 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
       // Buscar dados do cliente para pré-preencher variáveis do template
       if (conversa.cliente_id) {
         base44.entities.Cliente.get(conversa.cliente_id).then(setCliente).catch(() => setCliente(null));
+      }
+      // Carregar a conexão oficial ativa da empresa (salva no agendamento)
+      const empresaId = currentUser?.empresa_id || conversa.empresa_id;
+      if (empresaId) {
+        base44.entities.WhatsappConnection.filter({ empresa_id: empresaId, is_active: true }, '-created_date', 50)
+          .then((conns) => {
+            const cloud = conns.find((c) => c.provider_type === 'dapi' && /^cloud-/i.test(String(c.session_id || '').trim()));
+            const meta = conns.find((c) => c.provider_type === 'meta_oficial');
+            setConexaoOficial(cloud || meta || null);
+          })
+          .catch(() => setConexaoOficial(null));
       }
     }
     if (!open) resetForm();
@@ -180,7 +192,12 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
         setUploadando(false);
       }
 
-      const mensagemFinal = templateSelecionado ? bodyTemplate : mensagem.trim();
+      // Para templates da Meta, salvar o body_text BRUTO (com {{1}}) — backend
+      // resolve a variável no disparo, preservando a referência dinâmica. O
+      // preview não vira texto fixo no agendamento.
+      const mensagemFinal = templateSelecionado
+        ? (templateSelecionado.body_text || bodyTemplate || mensagem.trim())
+        : mensagem.trim();
 
       await base44.entities.MensagemAgendada.create({
         empresa_id: currentUser?.empresa_id || '',
@@ -192,12 +209,18 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
         recorrencia: tipo === 'recorrente' ? 'mensal' : '',
         tipo_envio: templateSelecionado ? 'template' : tipoEnvio,
         api_preferida: apiPreferida,
+        canal: apiPreferida === 'meta_oficial' ? 'META_OFFICIAL' : 'DAPI',
         template_id: templateSelecionado?.id || '',
         template_nome: templateSelecionado?.name || '',
         template_language: templateSelecionado?.language || '',
         template_category: templateSelecionado?.category || '',
         template_variables_json: templateSelecionado ? JSON.stringify(valoresVarsArr) : '',
         template_components_json: templateSelecionado ? componentsJson : '',
+        // Conexão oficial fixa no agendamento: garante disparo pela mesma
+        // conexão no horário agendado, independentemente do canal selecionado
+        // na conversa no momento.
+        official_connection_id: templateSelecionado ? (conexaoOficial?.id || '') : '',
+        session_id: templateSelecionado ? (conexaoOficial?.session_id || '') : '',
         arquivo_url: arquivoUrl,
         arquivo_tipo: arquivoTipo,
         arquivo_nome: arquivoNome,
@@ -255,6 +278,7 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
 
   const statusColor = {
     agendada: 'bg-blue-100 text-blue-700',
+    processando: 'bg-amber-100 text-amber-700',
     enviada: 'bg-green-100 text-green-700',
     falha: 'bg-red-100 text-red-700',
     cancelada: 'bg-gray-100 text-gray-500',

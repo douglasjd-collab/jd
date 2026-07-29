@@ -9,8 +9,32 @@ import {
 // ─────────────────────────────────────────────────────────────────────────
 // Processa UMA mensagem agendada (envia + registra + atualiza status).
 // Reutilizado pela automação agendada e pela função de reenvio manual.
+//
+// Garante:
+//  - Lock contra processamento duplicado (status → 'processando' antes do envio);
+//  - Canal fixo: usa api_preferida/official_connection_id salvos no agendamento,
+//    independentemente do canal atualmente selecionado na conversa;
+//  - Texto final resolvido ({{1}} → primeiro nome atual do cliente) no histórico.
 // ─────────────────────────────────────────────────────────────────────────
 export async function processarMensagemIndividual(base44, msg): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  // 1) Lock atômico: só processa se status === 'agendada'. Troca para
+  //    'processando' para impedir disparo duplicado caso a automação rode
+  //    duas vezes no mesmo horário. Se já está em 'processando', pula.
+  try {
+    const atual = await base44.asServiceRole.entities.MensagemAgendada.get(msg.id);
+    if (atual && atual.status !== 'agendada') {
+      return { success: false, error: `Status atual ${atual.status} — não é 'agendada'` };
+    }
+  } catch (e) {
+    // Se não conseguir fazer o get, segue com o objeto recebido.
+  }
+  try {
+    await base44.asServiceRole.entities.MensagemAgendada.update(msg.id, {
+      status: 'processando',
+      erro_detalhe: '',
+    });
+  } catch (_) {}
+
   try {
     const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: msg.empresa_id });
     const empresa = empresas[0];
@@ -18,7 +42,9 @@ export async function processarMensagemIndividual(base44, msg): Promise<{ succes
 
     let conversa = null;
     const apiPreferida = msg.api_preferida || 'dapi';
-    if (apiPreferida === 'meta_oficial' && msg.conversa_id) {
+    // Sempre carregamos a conversa (mesmo D-API) para atualizar canal/última
+    // mensagem e garantir exibição correta no Bate-papo, com ou sem tela aberta.
+    if (msg.conversa_id) {
       try {
         conversa = await base44.asServiceRole.entities.ConversaWhatsapp.get(msg.conversa_id);
       } catch (_) {}
@@ -34,8 +60,11 @@ export async function processarMensagemIndividual(base44, msg): Promise<{ succes
       resultado = await enviarViaDapi(base44, empresa, conversa, msg, telefone);
     }
 
-    const { messageId, tipoConteudo, provider } = resultado;
+    const { messageId, tipoConteudo, provider, textoResolvido, conexaoId, phoneNumberId } = resultado;
+    const textoParaHistorico = textoResolvido || msg.mensagem || '';
 
+    // 2) Histórico da conversa: usa o texto resolvido ({{1}} → primeiro nome)
+    //    para o usuário ver exatamente o que foi enviado, sem duplicar.
     if (msg.conversa_id) {
       await base44.asServiceRole.entities.MensagemWhatsapp.create({
         conversa_id: msg.conversa_id,
@@ -44,7 +73,7 @@ export async function processarMensagemIndividual(base44, msg): Promise<{ succes
         usuario_id: msg.responsavel_id || '',
         usuario_nome: msg.responsavel_nome || 'Agendamento automático',
         tipo_conteudo: tipoConteudo,
-        texto: msg.mensagem,
+        texto: textoParaHistorico,
         arquivo_url: msg.arquivo_url || '',
         arquivo_nome: msg.arquivo_nome || '',
         provider: provider,
@@ -53,11 +82,29 @@ export async function processarMensagemIndividual(base44, msg): Promise<{ succes
         status: 'enviada',
       }).catch((e) => console.warn('Aviso: erro ao salvar MensagemWhatsapp:', e.message));
 
-      await base44.asServiceRole.entities.ConversaWhatsapp.update(msg.conversa_id, {
-        ultima_mensagem: msg.mensagem,
+      // 3) Atualiza a conversa para refletir o canal efetivamente usado no
+      //    disparo (independente do canal que estava selecionado na tela).
+      //    Para Meta template, marca API Oficial; para D-API, mantém/dapi.
+      const atualizacaoConversa: any = {
+        ultima_mensagem: textoParaHistorico,
         data_ultima_mensagem: new Date().toISOString(),
         ultimo_remetente: 'vendedor',
-      }).catch((e) => console.warn('Aviso: erro ao atualizar conversa:', e.message));
+      };
+      if (apiPreferida === 'meta_oficial') {
+        atualizacaoConversa.tipo_conexao = 'meta_oficial';
+        atualizacaoConversa.canal_origem = 'meta';
+        atualizacaoConversa.provider = 'whatsapp_meta';
+        atualizacaoConversa.last_inbound_provider = 'whatsapp_meta';
+        if (phoneNumberId) atualizacaoConversa.phone_number_id_meta = phoneNumberId;
+        if (conexaoId) atualizacaoConversa.connection_id = conexaoId;
+      } else {
+        atualizacaoConversa.tipo_conexao = 'empresa';
+        atualizacaoConversa.canal_origem = 'dapi';
+        atualizacaoConversa.provider = 'dapi';
+        if (conexaoId) atualizacaoConversa.connection_id = conexaoId;
+      }
+      await base44.asServiceRole.entities.ConversaWhatsapp.update(msg.conversa_id, atualizacaoConversa)
+        .catch((e) => console.warn('Aviso: erro ao atualizar conversa:', e.message));
     }
 
     if (msg.tipo === 'recorrente' && msg.recorrencia === 'mensal') {

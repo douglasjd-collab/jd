@@ -7,8 +7,14 @@ import {
 } from '../../shared/mensagensAgendadasShared.ts';
 
 // Reenvio manual de uma mensagem agendada com falha.
-// Reexecuta o envio pela mesma integração oficial (Cloud API / Graph API direta)
-// SEM criar novo agendamento e SEM duplicar MensagemWhatsapp no histórico.
+// Reexecuta o envio pela mesma integração (API Oficial / D-API) SEM criar novo
+// agendamento e SEM duplicar MensagemWhatsapp no histórico.
+//
+// Garantias:
+//  - Usa api_preferida + official_connection_id salvos no agendamento, nunca
+//    o canal atualmente selecionado na conversa;
+//  - Marca 'processando' antes do disparo contra duplicidade;
+//  - Após envio, atualiza conversa para o canal efetivamente usado.
 //
 // Payload: { mensagem_id: "<id da MensagemAgendada>" }
 Deno.serve(async (req) => {
@@ -30,9 +36,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Agendamento não encontrado: ' + e.message }, { status: 404 });
     }
 
-    // Marca novamente como "agendada" para indicar que está em processamento
+    // Marca em processamento (anti-duplicidade) e limpa erro anterior.
     await base44.asServiceRole.entities.MensagemAgendada.update(mensagem_id, {
-      status: 'agendada',
+      status: 'processando',
       erro_detalhe: '',
     });
 
@@ -40,7 +46,7 @@ Deno.serve(async (req) => {
 
     try {
       let conversa = null;
-      if (apiPreferida === 'meta_oficial' && msg.conversa_id) {
+      if (msg.conversa_id) {
         try {
           conversa = await base44.asServiceRole.entities.ConversaWhatsapp.get(msg.conversa_id);
         } catch (_) {}
@@ -59,9 +65,11 @@ Deno.serve(async (req) => {
         resultado = await enviarViaDapi(base44, empresa, conversa, msg, telefone);
       }
 
-      const { messageId, tipoConteudo, provider } = resultado;
+      const { messageId, tipoConteudo, provider, textoResolvido, conexaoId, phoneNumberId } = resultado;
+      const textoParaHistorico = textoResolvido || msg.mensagem || '';
 
-      // Registra no histórico da conversa uma ÚNICA mensagem (envio efetivo).
+      // Registra no histórico da conversa uma ÚNICA mensagem (envio efetivo),
+      // já com as variáveis {{1}} resolvidas (primeiro nome atual do cliente).
       if (msg.conversa_id) {
         try {
           await base44.asServiceRole.entities.MensagemWhatsapp.create({
@@ -71,7 +79,7 @@ Deno.serve(async (req) => {
             usuario_id: user.id,
             usuario_nome: user.full_name || msg.responsavel_nome || '',
             tipo_conteudo: tipoConteudo,
-            texto: msg.mensagem,
+            texto: textoParaHistorico,
             arquivo_url: msg.arquivo_url || '',
             arquivo_nome: msg.arquivo_nome || '',
             provider: provider,
@@ -80,11 +88,25 @@ Deno.serve(async (req) => {
             status: 'enviada',
           });
 
-          await base44.asServiceRole.entities.ConversaWhatsapp.update(msg.conversa_id, {
-            ultima_mensagem: msg.mensagem,
+          const atualizacaoConversa: any = {
+            ultima_mensagem: textoParaHistorico,
             data_ultima_mensagem: new Date().toISOString(),
             ultimo_remetente: 'vendedor',
-          });
+          };
+          if (apiPreferida === 'meta_oficial') {
+            atualizacaoConversa.tipo_conexao = 'meta_oficial';
+            atualizacaoConversa.canal_origem = 'meta';
+            atualizacaoConversa.provider = 'whatsapp_meta';
+            atualizacaoConversa.last_inbound_provider = 'whatsapp_meta';
+            if (phoneNumberId) atualizacaoConversa.phone_number_id_meta = phoneNumberId;
+            if (conexaoId) atualizacaoConversa.connection_id = conexaoId;
+          } else {
+            atualizacaoConversa.tipo_conexao = 'empresa';
+            atualizacaoConversa.canal_origem = 'dapi';
+            atualizacaoConversa.provider = 'dapi';
+            if (conexaoId) atualizacaoConversa.connection_id = conexaoId;
+          }
+          await base44.asServiceRole.entities.ConversaWhatsapp.update(msg.conversa_id, atualizacaoConversa);
         } catch (dbErr) {
           console.warn('Aviso: erro ao salvar mensagem no histórico do reenvio:', dbErr.message);
         }

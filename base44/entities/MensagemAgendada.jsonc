@@ -15,7 +15,8 @@
       "type": "string"
     },
     "mensagem": {
-      "type": "string"
+      "type": "string",
+      "description": "Texto bruto do template (com {{1}}...) para templates Meta \u2014 o backend resolve a vari\u00e1vel no disparo. Para mensagens livres (texto/imagem/v\u00eddeo) \u00e9 o conte\u00fado efetivo enviado."
     },
     "tipo": {
       "type": "string",
@@ -52,6 +53,14 @@
       "default": "dapi",
       "description": "API escolhida pelo usu\u00e1rio para o envio agendado"
     },
+    "canal": {
+      "type": "string",
+      "enum": [
+        "META_OFFICIAL",
+        "DAPI"
+      ],
+      "description": "Canal fixo derivado de api_preferida. META_OFFICIAL garante envio pela API Oficial no hor\u00e1rio agendado, independentemente do canal atualmente selecionado na conversa."
+    },
     "template_id": {
       "type": "string",
       "description": "ID do WhatsappTemplate selecionado (quando api_preferida=meta_oficial)"
@@ -69,11 +78,19 @@
     },
     "template_variables_json": {
       "type": "string",
-      "description": "JSON array com os valores preenchidos pelo usu\u00e1rio para cada {{n}} do template [{position, value}]"
+      "description": "JSON array com os valores preenchidos pelo usu\u00e1rio para cada {{n}} do template [{position, value}]. Para {{1}} auto, o valor \u00e9 o marcador __AUTO_PRIMEIRO_NOME__ resolvido apenas no disparo."
     },
     "template_components_json": {
       "type": "string",
       "description": "Snapshot dos components enviados \u00e0 Meta (header, body com par\u00e2metros, bot\u00f5es)"
+    },
+    "official_connection_id": {
+      "type": "string",
+      "description": "ID da conex\u00e3o da API Oficial (WhatsappConnection) fixa no agendamento. Garante que o disparo no hor\u00e1rio agendado use exatamente esta conex\u00e3o, independentemente do canal atualmente selecionado na conversa."
+    },
+    "session_id": {
+      "type": "string",
+      "description": "session_id da conex\u00e3o oficial (D-API Cloud API / Meta) salvo no agendamento"
     },
     "arquivo_url": {
       "type": "string"
@@ -98,6 +115,7 @@
       "type": "string",
       "enum": [
         "agendada",
+        "processando",
         "enviada",
         "cancelada",
         "falha"

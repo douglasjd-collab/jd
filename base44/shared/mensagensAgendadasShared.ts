@@ -154,7 +154,37 @@ export async function enviarViaMetaOficial(
     variaveis_count: Object.keys(valuesByPos).length,
   };
 
-  const conexao = await encontrarConexaoMetaOficialAtiva(base44, msg.empresa_id);
+  // Resolve as variáveis restantes contra o body BRUTO do template para uso
+  // no histórico (MensagemWhatsapp.texto). Quando o agendamento antigo salvou
+  // um preview ("por aí"), ainda assim aqui reconstruímos a partir do
+  // template.body_text original → nunca guardamos "por aí" no histórico.
+  function montarTextoResolvido(bodyBruto: string, valores: Record<string, string>): string {
+    return (bodyBruto || '').replace(/\{\{(\d+)\}\}/g, (m, n) => valores[n] || m);
+  }
+  const bodyOrigem = (template && template.body_text) ? template.body_text : (msg.mensagem || '');
+  const textoResolvido = montarTextoResolvido(bodyOrigem, valuesByPos);
+
+  // Conexão: prioriza a conexão oficial fixa no agendamento (garante disparo
+  // pela mesma conexão escolhida na criação). Se não existir, cai para a
+  // conexão ativa padrão da empresa.
+  let conexao: any = null;
+  if (msg.official_connection_id) {
+    try {
+      const porId = await base44.asServiceRole.entities.WhatsappConnection.filter(
+        { id: msg.official_connection_id },
+        null,
+        1
+      );
+      conexao = porId?.[0] || null;
+      if (conexao && !conexao.is_active) {
+        console.warn('⚠️ [Agendamento] Conexão oficial salva está inativa; usando fallback.', {
+          official_connection_id: msg.official_connection_id,
+        });
+        conexao = null;
+      }
+    } catch (_) {}
+  }
+  if (!conexao) conexao = await encontrarConexaoMetaOficialAtiva(base44, msg.empresa_id);
 
   // ── Caso A: D-API Cloud API → whatsappService.sendTemplate ─────────────
   if (conexao?.provider_type === 'dapi' && /^cloud-/i.test(String(conexao.session_id || '').trim())) {
@@ -201,7 +231,7 @@ export async function enviarViaMetaOficial(
     const messageId = candidateId || `cloud_${Date.now()}`;
     logCtx.message_id = messageId;
     console.log('✅ [Agendamento] Template enviado via D-API Cloud:', logCtx);
-    return { messageId, tipoConteudo: 'texto', provider: 'whatsapp_meta', conexaoId: conexao.id, sessionId: conexao.session_id };
+    return { messageId, tipoConteudo: 'texto', provider: 'whatsapp_meta', conexaoId: conexao.id, sessionId: conexao.session_id, phoneNumberId: (conexao as any)?.session_id || '', textoResolvido };
   }
 
   // ── Caso B/C: Graph API direta (conexao meta_oficial OU app secrets) ────
@@ -333,7 +363,7 @@ export async function enviarViaMetaOficial(
   const messageId = messageIdResp || `meta_${Date.now()}`;
   logCtx.message_id = messageId;
   console.log('✅ [Agendamento] Template enviado via Graph API direta:', logCtx);
-  return { messageId, tipoConteudo: 'texto', provider: 'whatsapp_meta' };
+  return { messageId, tipoConteudo: 'texto', provider: 'whatsapp_meta', conexaoId: conexao?.id || '', sessionId: conexao?.session_id || '', phoneNumberId: phoneNumberId, textoResolvido };
 }
 
 // ─────────────────────────────────────────────────────────────────────────
