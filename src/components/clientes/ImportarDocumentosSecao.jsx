@@ -18,6 +18,7 @@ const MAX_SIZE = 8 * 1024 * 1024; // 8MB
 export default function ImportarDocumentosSecao({ onPreencher, onDocumentosAdicionados, desabilitado }) {
   const [arquivos, setArquivos] = useState([]); // [{file, url, nome, tamanho, uploading, erro}]
   const [lendo, setLendo] = useState(false);
+  const lendoRef = useRef(false);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
 
@@ -64,7 +65,13 @@ export default function ImportarDocumentosSecao({ onPreencher, onDocumentosAdici
       }
     }
     notificarAdicionados(atualizados);
+
+    // Dispara a leitura automaticamente quando TODOS os uploads terminarem
+    todosUploadsOk(atualizados) && lerDocumentos(atualizados);
   };
+
+  const todosUploadsOk = (lista) =>
+    Array.isArray(lista) && lista.length > 0 && lista.every(a => a.url && !a.uploading && !a.erro);
 
   const notificarAdicionados = (lista) => {
     const prontos = lista.filter(a => a.url).map(a => ({
@@ -81,14 +88,18 @@ export default function ImportarDocumentosSecao({ onPreencher, onDocumentosAdici
 
   const podeLer = arquivos.length > 0 && arquivos.every(a => a.url && !a.uploading);
 
-  const handlePreencher = async () => {
-    if (!podeLer || lendo) return;
-    const urls = arquivos.filter(a => a.url).map(a => a.url);
+  const camposPreenchidos = (d) =>
+    d && d.campos && Object.values(d.campos).some(v => v !== null && v !== undefined && String(v).trim() !== '');
+
+  const lerDocumentos = async (lista) => {
+    if (lendoRef.current) return;
+    const urls = (lista || []).filter(a => a.url).map(a => a.url);
     if (urls.length === 0) {
       toast.error('Nenhum arquivo enviado.');
       return;
     }
 
+    lendoRef.current = true;
     setLendo(true);
     try {
       const resp = await base44.functions.invoke('lerDocumentosCliente', { file_urls: urls });
@@ -96,9 +107,9 @@ export default function ImportarDocumentosSecao({ onPreencher, onDocumentosAdici
       if (dados?.error) throw new Error(dados.error);
       const documentos = (dados?.documentos || []).map((d, i) => ({
         ...d,
-        arquivo_url: arquivos[i]?.url || d.arquivo_url,
-        arquivo_nome: arquivos[i]?.nome || d.arquivo_nome || '',
-        arquivo_tamanho: arquivos[i]?.tamanho || null
+        arquivo_url: lista[i]?.url || d.arquivo_url,
+        arquivo_nome: lista[i]?.nome || d.arquivo_nome || '',
+        arquivo_tamanho: lista[i]?.tamanho || null
       }));
       const comErro = documentos.filter(d => d.erro);
       if (comErro.length > 0) {
@@ -108,16 +119,24 @@ export default function ImportarDocumentosSecao({ onPreencher, onDocumentosAdici
       if (lidos.length === 0 && documentos.length > 0) {
         toast.info('Documentos enviados, mas nenhum foi reconhecido como CNH/RG/Comprovante.');
       } else {
-        toast.success(`${lidos.length} documento(s) lido(s).`);
+        const comCampos = lidos.filter(camposPreenchidos);
+        if (comCampos.length === 0) {
+          toast.warning(`${lidos.length} documento(s) reconhecido(s), mas nenhum campo pôde ser extraído. Verifique a qualidade/legibilidade da foto.`);
+        } else {
+          toast.success(`${lidos.length} documento(s) lido(s) — preenchendo o cadastro.`);
+        }
       }
       onPreencher?.(documentos);
     } catch (e) {
       console.error(e);
       toast.error('Erro ao ler documentos: ' + (e?.message || 'desconhecido'));
     } finally {
+      lendoRef.current = false;
       setLendo(false);
     }
   };
+
+  const handlePreencher = () => lerDocumentos(arquivos);
 
   return (
     <Card className="border-emerald-200">
@@ -133,6 +152,7 @@ export default function ImportarDocumentosSecao({ onPreencher, onDocumentosAdici
           <p className="text-xs text-emerald-900">
             Envie a <strong>CNH</strong>, <strong>RG</strong> ou <strong>comprovante de residência</strong> para preencher o cadastro automaticamente.
             Formatos aceitos: PDF, JPG, JPEG e PNG. Você pode enviar mais de um documento.
+            <strong> A leitura começa automaticamente assim que o upload dos arquivos termina.</strong>
           </p>
         </div>
 
