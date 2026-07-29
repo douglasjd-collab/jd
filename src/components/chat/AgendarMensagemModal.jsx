@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { CalendarClock, Trash2, RefreshCw, Image as ImageIcon, Video, FileText, Upload, X, FileCheck2, Layers } from 'lucide-react';
+import { CalendarClock, Trash2, RefreshCw, Image as ImageIcon, Video, FileText, Upload, X, FileCheck2, Layers, RotateCw, Loader2 } from 'lucide-react';
 import SelecionarTemplateMetaModal from './SelecionarTemplateMetaModal';
 
 export default function AgendarMensagemModal({ open, onOpenChange, conversa, currentUser }) {
@@ -37,6 +37,7 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
   const [componentsJson, setComponentsJson] = useState('');
   const [cliente, setCliente] = useState(null);
   const presetandoApiRef = useRef(false);
+  const [reenviandoId, setReenviandoId] = useState(null);
 
   useEffect(() => {
     if (open && conversa) {
@@ -226,6 +227,30 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
     await base44.entities.MensagemAgendada.update(id, { status: 'cancelada' });
     toast.success('Agendamento cancelado');
     loadAgendados();
+  };
+
+  // Reenvio manual: reexecuta o envio usando a conexão oficial corrigida,
+  // sem criar novo agendamento nem duplicar a mensagem no histórico.
+  const handleTentarNovamente = async (id) => {
+    setReenviandoId(id);
+    try {
+      const resp = await base44.functions.invoke('reenviarMensagemAgendada', {
+        mensagem_id: id,
+      });
+      const data = resp?.data || {};
+      if (data.success) {
+        toast.success('Mensagem reenviada com sucesso!');
+        loadAgendados();
+      } else {
+        toast.error('Falha ao reenviar: ' + (data.error || 'erro desconhecido'));
+        loadAgendados();
+      }
+    } catch (e) {
+      toast.error('Erro ao reenviar: ' + (e.message || ''));
+      loadAgendados();
+    } finally {
+      setReenviandoId(null);
+    }
   };
 
   const statusColor = {
@@ -521,11 +546,27 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
                       )}
                       <p className="text-sm text-slate-800">{a.mensagem}</p>
                     </div>
-                    {a.status === 'agendada' && (
-                      <button onClick={() => handleCancelar(a.id)} className="text-red-500 hover:text-red-700 flex-shrink-0" title="Cancelar">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                    <div className="flex flex-col gap-1 flex-shrink-0">
+                      {a.status === 'agendada' && (
+                        <button onClick={() => handleCancelar(a.id)} className="text-red-500 hover:text-red-700" title="Cancelar">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                      {a.status === 'falha' && (
+                        <button
+                          onClick={() => handleTentarNovamente(a.id)}
+                          disabled={reenviandoId === a.id}
+                          className="text-blue-600 hover:text-blue-800 disabled:opacity-50 flex items-center gap-1 justify-end"
+                          title="Tentar enviar novamente pela conexão oficial ativa"
+                        >
+                          {reenviandoId === a.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RotateCw className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[a.status]}`}>
