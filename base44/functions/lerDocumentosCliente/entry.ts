@@ -10,11 +10,41 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
  * Retorna { documentos: [{ arquivo_url, arquivo_nome, tipo_documento, lado, campos: {...}, confianca_geral, campos_baixa_confianca, observacoes, erro }] }
  */
 
+// Normaliza a string de tipo retornada pelo modelo (aceita variações case-insensitive,
+// acentos, sinônimos). Retorna 'cnh' | 'rg' | 'comprovante_residencia' | 'outro'.
+function normalizarTipoDocumento(raw: any): string {
+  if (raw == null) return 'outro';
+  const s = String(raw).toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .replace(/[^a-z0-9_ ]/g, ' ')
+    .trim();
+  if (!s || s === 'outro' || s === 'none' || s === 'null' || s === 'nao_identificado') return 'outro';
+  if (s === 'cnh' || s.includes('habilitacao') || s.includes('motorista') || s.includes('permissao para dirigir') || s.includes('carteira de motorista')) return 'cnh';
+  if (s === 'rg' || s.includes('identidade') || s.includes('registro geral') || s.includes('cin') || s.includes('cipp') || s.includes('carteira de ident')) return 'rg';
+  if (s === 'comprovante_residencia' || s.includes('comprovante') || s.includes('residencia') || s.includes('moradia') || s.includes('endereco') || s.includes('conta de') || s.includes('fatura') || s.includes('extracto') || s.includes('extrato')) return 'comprovante_residencia';
+  return 'outro';
+}
+
+function normalizarLado(raw: any): string {
+  if (raw == null) return 'nao_identificado';
+  const s = String(raw).toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9_ ]/g, ' ')
+    .trim();
+  if (!s) return 'nao_identificado';
+  if (s.includes('frente') || s.includes('anverso') || s === 'front') return 'frente';
+  if (s.includes('verso') || s.includes('verso') || s === 'back' || s === 'reverse') return 'verso';
+  if (s.includes('completo') || s.includes('ambos') || s.includes('frente e verso')) return 'completo';
+  return 'nao_identificado';
+}
+
 const SCHEMA = {
   type: 'object',
   properties: {
-    tipo_documento: { type: 'string', enum: ['cnh', 'rg', 'comprovante_residencia', 'outro'] },
-    lado: { type: 'string', enum: ['frente', 'verso', 'completo', 'nao_identificado'] },
+    // Aceitamos string livre (não enum) porque diferentes modelos retornam
+    // variações (CNH, Carteira Nacional de Habilitação, etc). Normalizamos no código.
+    tipo_documento: { type: 'string', description: 'cnh | rg | comprovante_residencia | outro (case-insensitive, aceita variações como CNH, carteira de motorista, etc)' },
+    lado: { type: 'string', description: 'frente | verso | completo | nao_identificado (case-insensitive, aceita variações)' },
     // Identidade (CNH e RG)
     nome_completo: { type: 'string' },
     cpf: { type: 'string' },
@@ -51,7 +81,9 @@ const SCHEMA = {
 const PROMPT = `Você é um especialista em extração estruturada de dados de documentos brasileiros (OCR + IA). Analise o documento fornecido (imagem ou PDF) e extraia as informações visíveis com precisão.
 
 REGRAS CRÍTICAS:
-1. Identifique o TIPO do documento: "cnh" (Carteira Nacional de Habilitação), "rg" (Carteira de Identidade), "comprovante_residencia" (conta de água/luz/telefone/gás, cartão, contrato, etc.), ou "outro".
+1. Identifique o TIPO do documento em minúsculas e sem acentos: "cnh" (Carteira Nacional de Habilitação, permissão para dirigir, documento de motorista), "rg" (Carteira de Identidade, Registro Geral, identidade, CIN, CIPP), "comprovante_residencia" (conta de água/luz/telefone/gás/internet, fatura, cartão de crédito, extracto bancário, contrato de aluguel, comprovante de moradia), ou "outro" (qualquer coisa que não se encaixe acima).
+1a. Documentos impressos (PDF CNH-e — Carteira Nacional de Habilitação Digital) ou imagens de celular da CNH física devem ser classificados como "cnh".
+1b. Mesmo se a imagem estiver parcialmente cortada/ilegível, mas você identificar que trata-se de um desses tipos, use o tipo correspondente (não "outro"). Use "outro" APENAS quando o documento não for nenhum dos três.
 2. IDENTIDADE da pessoa (CNH e RG): extrair nome_completo, cpf, rg, rg_orgao_emissor, rg_uf, rg_data_emissao, data_nascimento, naturalidade, nacionalidade, sexo, nome_mae, nome_pai.
 3. NÃO CONFUNDA o ÓRGÃO EMISSOR DO RG (que aparece inclusive dentro da CNH como dado do motorista, ex: SSP, SPTC, etc.) com o ÓRGÃO RESPONSÁVEL PELA EMISSÃO DA CNH (que é o DETRAN). O campo rg_orgao_emissor deve conter sempre o órgão do RG, nunca "DETRAN".
 4. rg_data_emissao é a data de EXPEDIÇÃO do RG (não a validade da CNH). Formato ISO: YYYY-MM-DD.
@@ -87,34 +119,95 @@ export default async function(req: Request): Promise<Response> {
       fileUrls.map(async (url: string) => {
         // Tenta extrair o nome do arquivo da URL para referência
         let arquivo_nome = '';
+        let extensao = '';
         try {
           const u = new URL(url);
-          arquivo_nome = decodeURIComponent(u.pathname.split('/').pop() || '') || '';
+          const caminho = decodeURIComponent(u.pathname.split('/').pop() || '') || '';
+          arquivo_nome = caminho;
+          extensao = (caminho.split('.').pop() || '').toLowerCase();
         } catch {
           arquivo_nome = url.split('/').pop() || '';
+          extensao = (arquivo_nome.split('.').pop() || '').toLowerCase();
         }
+        const ehPdf = extensao === 'pdf' || /\.pdf(\?|$)/i.test(url) || /pdf/i.test(arquivo_nome);
 
         try {
-          const res: any = await base44.integrations.Core.InvokeLLM({
-            prompt: PROMPT,
-            file_urls: [url],
-            model: 'claude_sonnet_4_6',
-            response_json_schema: SCHEMA
-          });
+          // PDFs não são suportados por InvokeLLM com file_urls (somente imagens).
+          // Para PDFs extraímos via ExtractDataFromUploadedFile, que tem suporte nativo.
+          let dados: any;
+          if (ehPdf) {
+            console.log('[lerDocumentosCliente] PDF detectado, usando ExtractDataFromUploadedFile:', arquivo_nome);
+            const ext: any = await base44.integrations.Core.ExtractDataFromUploadedFile({
+              file_url: url,
+              json_schema: SCHEMA
+            });
+            if (!ext || ext.status !== 'success' || !ext.output) {
+              const detalhes = ext?.details || 'extração sem saída';
+              console.warn('[lerDocumentosCliente] ExtractDataFromUploadedFile falhou para', arquivo_nome, '→', detalhes);
+              throw new Error(`Não foi possível extrair dados do PDF: ${detalhes}`);
+            }
+            // output é dict quando schema root é object
+            dados = ext.output && typeof ext.output === 'object' && !Array.isArray(ext.output)
+              ? ext.output
+              : (Array.isArray(ext.output) && ext.output[0] ? ext.output[0] : {});
 
-          // InvokeLLM com response_json_schema retorna um dict (objeto)
-          const dados = res && typeof res === 'object' ? res : {};
+            // ExtractDataFromUploadedFile às vezes retorna o literal "null" como
+            // string. Convertemos para null real para não confundir o frontend.
+            for (const k of Object.keys(dados || {})) {
+              const v = dados[k];
+              if (typeof v === 'string' && v.trim().toLowerCase() === 'null') {
+                dados[k] = null;
+              }
+            }
+          } else {
+            const res: any = await base44.integrations.Core.InvokeLLM({
+              prompt: PROMPT,
+              file_urls: [url],
+              model: 'claude_sonnet_4_6',
+              response_json_schema: SCHEMA
+            });
+
+            // InvokeLLM com response_json_schema deve retornar um dict. Se vier string
+            // ou null, houve falha silenciosa — registramos como erro para o usuário
+            // ver, em vez de tratar como "não reconhecido".
+            if (!res || typeof res !== 'object' || Array.isArray(res)) {
+              const texto = typeof res === 'string' ? res.slice(0, 200) : 'resposta vazia';
+              console.warn('[lerDocumentosCliente] InvokeLLM não retornou JSON estruturado para', arquivo_nome || url, '→', texto);
+              throw new Error('Leitura indisponível: a IA não conseguiu processar o arquivo. Tente novamente com uma imagem (JPG/PNG) nítida.');
+            }
+            dados = res;
+          }
+
+          // Sanitiza strings: converte "" ou "null" para null real para não confundir
+          // o frontend que verifica campos preenchidos.
+          for (const k of Object.keys(dados || {})) {
+            const v = dados[k];
+            if (typeof v === 'string') {
+              const trim = v.trim();
+              if (trim === '' || trim.toLowerCase() === 'null' || trim.toLowerCase() === 'none') {
+                dados[k] = null;
+              }
+            }
+          }
+
+          // Normaliza tipo_documento (aceita variações do modelo)
+          const tipoNormalizado = normalizarTipoDocumento(dados.tipo_documento);
+          const ladoNormalizado = normalizarLado(dados.lado);
 
           // Sanitiza CPF e CEP (garante somente dígitos)
           if (typeof dados.cpf === 'string') dados.cpf = dados.cpf.replace(/\D/g, '') || null;
           if (typeof dados.cep === 'string') dados.cep = dados.cep.replace(/\D/g, '') || null;
-          if (typeof dados.rg === 'string' && dados.rg.trim() === '') dados.rg = null;
+
+          // Loga resposta bruta para diagnóstico (visível nos logs da função)
+          try {
+            console.log('[lerDocumentosCliente]', arquivo_nome || url, '→ tipo_bruto:', dados.tipo_documento, 'confianca:', dados.confianca_geral, 'campos:', Object.fromEntries(Object.entries(dados).filter(([k]) => !['tipo_documento', 'lado', 'confianca_geral', 'campos_baixa_confianca', 'observacoes'].includes(k))));
+          } catch {}
 
           return {
             arquivo_url: url,
             arquivo_nome,
-            tipo_documento: dados.tipo_documento || 'outro',
-            lado: dados.lado || 'nao_identificado',
+            tipo_documento: tipoNormalizado,
+            lado: ladoNormalizado,
             campos: {
               nome_completo: dados.nome_completo ?? null,
               cpf: dados.cpf ?? null,

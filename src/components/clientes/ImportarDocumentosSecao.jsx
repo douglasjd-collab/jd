@@ -113,11 +113,19 @@ export default function ImportarDocumentosSecao({ onPreencher, onDocumentosAdici
       }));
       const comErro = documentos.filter(d => d.erro);
       if (comErro.length > 0) {
-        toast.warning(`${comErro.length} documento(s) não puderam ser lidos.`);
+        const motivos = comErro.map(d => `${d.arquivo_nome || d.arquivo_url}: ${d.erro}`).join(' | ');
+        toast.warning(`${comErro.length} documento(s) não puderam ser lidos.`, { duration: 7000 });
+        console.warn('[lerDocumentos] erros:', motivos);
       }
+      const outroTipo = documentos.filter(d => !d.erro && d.tipo_documento === 'outro');
       const lidos = documentos.filter(d => !d.erro && d.tipo_documento !== 'outro');
       if (lidos.length === 0 && documentos.length > 0) {
-        toast.info('Documentos enviados, mas nenhum foi reconhecido como CNH/RG/Comprovante.');
+        const nomes = outroTipo.map(d => d.arquivo_nome || d.arquivo_url).join(', ');
+        toast.info(
+          `${documentos.length} documento(s) processado(s), mas nenhum reconhecido como CNH/RG/Comprovante. Verifique se a imagem está nítida e se é um documento válido. (${nomes})`,
+          { duration: 8000 }
+        );
+        console.warn('[lerDocumentos] retornados sem reconhecimento:', documentos.map(d => ({ nome: d.arquivo_nome, tipo: d.tipo_documento, confianca: d.confianca_geral, observacoes: d.observacoes, erro: d.erro })));
       } else {
         const comCampos = lidos.filter(camposPreenchidos);
         if (comCampos.length === 0) {
