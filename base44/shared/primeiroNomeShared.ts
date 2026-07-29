@@ -34,6 +34,14 @@ export function primeiroNomeDoCliente(cliente: any): string {
     const extraido = extrairPrimeiroNome(String(cliente.nome_completo));
     if (extraido) return extraido;
   }
+  if (cliente.nome) {
+    const extraido = extrairPrimeiroNome(String(cliente.nome));
+    if (extraido) return extraido;
+  }
+  if (cliente.pj_nome_fantasia) {
+    const extraido = extrairPrimeiroNome(String(cliente.pj_nome_fantasia));
+    if (extraido) return extraido;
+  }
   if (cliente.pj_razao_social) {
     const extraido = extrairPrimeiroNome(String(cliente.pj_razao_social));
     if (extraido) return extraido;

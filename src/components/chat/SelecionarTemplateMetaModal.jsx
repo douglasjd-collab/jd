@@ -86,7 +86,12 @@ export default function SelecionarTemplateMetaModal({
   };
 
   // Nome de exemplo para a prévia: usa o primeiro nome real do cliente (ou fallback).
-  const exemploPreview = primeiroNomeOuAlternativa(cliente);
+  // Se o cadastro do Cliente não trouxer nome, recorre ao nome denormalizado da conversa.
+  const fonteNome = {
+    ...(conversa || {}),
+    ...(cliente || {}),
+  };
+  const exemploPreview = primeiroNomeOuAlternativa(fonteNome);
 
   const handleConfirmar = () => {
     if (!selecionado) return;

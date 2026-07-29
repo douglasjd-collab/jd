@@ -35,6 +35,21 @@ export function primeiroNomeDoCliente(cliente) {
     const extraido = extrairPrimeiroNome(cliente.nome_completo);
     if (extraido) return extraido;
   }
+  // Nome denormalizado da conversa (ex.: "Eduarda (Duda)") — usado quando o
+  // cadastro do Cliente ainda não preencheu nome_completo.
+  if (cliente.cliente_nome) {
+    const extraido = extrairPrimeiroNome(cliente.cliente_nome);
+    if (extraido) return extraido;
+  }
+  // Campos alternativos comuns (nome curto, pj_nome_fantasia)
+  if (cliente.nome) {
+    const extraido = extrairPrimeiroNome(cliente.nome);
+    if (extraido) return extraido;
+  }
+  if (cliente.pj_nome_fantasia) {
+    const extraido = extrairPrimeiroNome(cliente.pj_nome_fantasia);
+    if (extraido) return extraido;
+  }
   // PJ: usa razao social (primeira palavra significativa)
   if (cliente.pj_razao_social) {
     const extraido = extrairPrimeiroNome(cliente.pj_razao_social);
