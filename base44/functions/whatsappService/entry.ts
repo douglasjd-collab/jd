@@ -26,21 +26,37 @@ Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
-    
-    if (!user) {
+
+    // Automações agendadas (ex: processarMensagensAgendadas) invocam whatsappService
+    // via asServiceRole.functions.invoke — nesse contexto auth.me() retorna um usuário
+    // sintético sem perfil regular (sem email e/ou perfil). Esses calls internos
+    // precisam passar pelo gate, senão todo envio agendado falha com HTTP 403.
+    const isServiceRoleCall =
+      !user ||
+      !user.email ||
+      user.perfil === undefined ||
+      user.perfil === null ||
+      user.perfil === '' ||
+      user.perfil === 'service' ||
+      user.perfil === 'service_role';
+    if (!user && !isServiceRoleCall) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     const isAdmin = ['master', 'super_admin', 'admin'].includes(user.perfil);
-    if (!isAdmin) {
+    if (!isAdmin && !isServiceRoleCall) {
       return Response.json({ error: 'Forbidden - Admin only' }, { status: 403 });
     }
+    // Para chamadas de service role, trocar para asServiceRole para que as
+    // entidades respeitem o bypass de RLS (igual ao caller agendado).
+    const entityClient = isServiceRoleCall ? base44.asServiceRole : base44;
     
     const payload = await req.json().catch(() => ({}));
     const { connectionId, action, webhookUrl, phoneNumber, text, imageUrl, audioUrl, documentUrl, videoUrl, caption, fileName, messageIds, messageId, emoji } = payload;
     
     // Buscar conexão (opcional p/ ação testConnection com dados do form ainda não salvos)
-    const connections = connectionId ? await base44.entities.WhatsappConnection.filter({ id: connectionId }) : [];
+    // Usa entityClient para respeitar RLS mesmo em chamadas de service role agendadas.
+    const connections = connectionId ? await entityClient.entities.WhatsappConnection.filter({ id: connectionId }) : [];
     const connection = connections[0];
     
     if (!connection && action !== 'testConnection') {
@@ -889,7 +905,7 @@ Deno.serve(async (req) => {
     // Log da operação (apenas quando há conexão persistida)
     if (connection) {
       try {
-        await base44.entities.WhatsappConnectionLog.create({
+        await entityClient.entities.WhatsappConnectionLog.create({
           empresa_id: connection.empresa_id,
           connection_id: connection.id,
           event_type: action === 'healthCheck' ? 'health.check' : 'api.call',
