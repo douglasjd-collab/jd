@@ -52,7 +52,11 @@ export default function BuscarMensagensBar({
 
   const debounceRef = useRef(null);
   const ultimoTermoRef = useRef('');
+  const termoRef = useRef('');
+  useEffect(() => { termoRef.current = termo; }, [termo]);
 
+  // dispararBusca NÃO depende de `termo` para sua identidade — evita disparo
+  // duplo a cada tecla (um imediato pelo effect de filtros + um debounced).
   const dispararBusca = useCallback(async () => {
     if (!conversaId) return;
     setLoading(true);
@@ -66,7 +70,7 @@ export default function BuscarMensagensBar({
         ordem,
         data_inicio: dataInicio ? new Date(dataInicio + 'T00:00:00').toISOString() : null,
         data_fim: dataFim ? new Date(dataFim + 'T23:59:59').toISOString() : null,
-        q: termo.trim(),
+        q: termoRef.current.trim(),
         page: 1,
         limit: MAX_RESULTADOS,
       };
@@ -75,22 +79,25 @@ export default function BuscarMensagensBar({
       setResultados(Array.isArray(data.resultados) ? data.resultados : []);
       setTotal(data.total || 0);
     } catch (e) {
-      toast.error('Erro ao buscar: ' + (e?.message || 'falha'));
+      // 429 = rate limit: não exibe toast (evita cascata), apenas zera resultados.
+      if (e?.status !== 429 && e?.statusCode !== 429) {
+        toast.error('Erro ao buscar: ' + (e?.message || 'falha'));
+      }
       setResultados([]);
       setTotal(0);
     } finally {
       setLoading(false);
     }
-  }, [conversaId, categoria, remetente, ordem, dataInicio, dataFim, termo]);
+  }, [conversaId, categoria, remetente, ordem, dataInicio, dataFim]);
 
   useEffect(() => {
     if (!conversaId) return;
-    // Dispara quando filtros mudam (exceto termo, que tem debounce)
+    // Dispara quando filtros mudam (não dispara por termo — dep变换 não inclui termo)
     dispararBusca();
   }, [dispararBusca, conversaId, categoria, remetente, ordem, dataInicio, dataFim]);
 
   useEffect(() => {
-    // Debounce apenas do termo
+    // Debounce apenas do termo (450ms)
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (ultimoTermoRef.current === termo) return;
     debounceRef.current = setTimeout(() => {
