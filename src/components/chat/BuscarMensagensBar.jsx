@@ -187,12 +187,21 @@ export default function BuscarMensagensBar({
 
       {/* Status: contador e preview */}
       <div className="flex items-center justify-between mt-1.5 gap-2">
-        <p className="text-[11px] text-slate-500 truncate flex-1">
+        <button
+          type="button"
+          disabled={!temResultados || loading || !atual}
+          onClick={() => {
+            if (!temResultados || !atual?.id) return;
+            onLocalizarMensagem?.(atual.id, termo.trim());
+          }}
+          className={`text-left text-[11px] truncate flex-1 rounded-md transition-colors ${(temResultados && !loading && atual) ? 'text-slate-700 px-2 py-1 -mx-2 hover:bg-emerald-50 hover:text-emerald-800 cursor-pointer' : 'text-slate-500 cursor-default'}`}
+          title={(temResultados && !loading && atual) ? 'Clique para ir até a mensagem' : ''}
+        >
           {loading ? 'Buscando...' :
            !termo.trim() && categoria === 'todas' && remetente === 'todas' ? 'Digite uma palavra ou use filtros' :
            temResultados ? (atual?.texto ? `"${String(atual.texto).slice(0, 60)}${atual.texto?.length > 60 ? '…' : ''}" · ${atual.remetente === 'vendedor' ? 'Enviado' : 'Recebido'} · ${formatarDataHora(atual.data_envio || atual.created_date)}` : `${atual?.arquivo_nome || 'Mídia'} · ${formatarDataHora(atual?.data_envio)}`) :
            'Nenhum resultado encontrado'}
-        </p>
+        </button>
         <div className="flex items-center gap-1 shrink-0">
           <Tooltip>
             <TooltipTrigger asChild>

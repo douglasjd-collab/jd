@@ -47,22 +47,11 @@ export default function ChatHeader({
   coachIAOpen,
   setCoachIAOpen,
   onAbrirCadastroIA,
+  localizarMensagem,
 }) {
   const [buscaAtiva, setBuscaAtiva] = useState(false);
   const [galeriaAberta, setGaleriaAberta] = useState(false);
 
-  const localizarMensagem = (idParam) => {
-    const id = typeof idParam === 'string' ? idParam : idParam?.id;
-    if (!id) return;
-    const el = document.getElementById(`msg-${id}`);
-    if (!el) {
-      toast.info('Mensagem não está carregada na tela. Continue rolando a conversa até encontrá-la.');
-      return;
-    }
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el.classList.add('msg-destacada');
-    setTimeout(() => el.classList.remove('msg-destacada'), 3500);
-  };
   const navigate = useNavigate();
   const [canalOverride, setCanalOverride] = useState(null);
   const [fotoModalOpen, setFotoModalOpen] = useState(false);

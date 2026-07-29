@@ -82,7 +82,7 @@ export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo
         if (item.type === 'grupo_imagens') {
           const isVendedor = item.msgs[0].remetente === 'vendedor';
           return (
-            <div key={item.msgs.map(m => m.id).join('-')}>
+            <div key={item.msgs.map(m => m.id).join('-')} id={`msg-${item.msgs[0].id}`}>
               {separador}
               <GrupoImagens
                 mensagens={item.msgs}
@@ -94,7 +94,7 @@ export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo
         }
 
         return (
-          <div key={item.msg.id}>
+          <div key={item.msg.id} id={`msg-${item.msg.id}`}>
             {separador}
             <MensagemItem
               mensagem={item.msg}

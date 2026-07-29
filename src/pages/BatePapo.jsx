@@ -80,6 +80,7 @@ import MobileBottomNav from '@/components/chat/MobileBottomNav';
 import MobileConversationActions from '@/components/chat/MobileConversationActions';
 import ImageEditorModal from '@/components/chat/image-editor/ImageEditorModal';
 import EditarMensagemModal from '@/components/chat/EditarMensagemModal';
+import { criarLocalizarMensagem } from '@/components/chat/localizarMensagemNoHistorico';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -1162,6 +1163,11 @@ export default function BatePapo() {
 
   const scrollAreaRef = React.useRef(null);
 
+  const localizarMensagem = React.useMemo(
+    () => criarLocalizarMensagem(queryClient, conversaSelecionadaId),
+    [queryClient, conversaSelecionadaId]
+  );
+
   // Scroll automático para última mensagem
   const fazerScrollParaFim = React.useCallback(() => {
     if (scrollAreaRef.current) {
@@ -2236,6 +2242,7 @@ export default function BatePapo() {
                 coachIAOpen={coachIAOpen}
                 setCoachIAOpen={setCoachIAOpen}
                 onAbrirCadastroIA={abrirCadastroIA}
+                localizarMensagem={localizarMensagem}
                 />
                 {dapiChamadaAtivaVisivel ? (
                   <DapiCallBar
