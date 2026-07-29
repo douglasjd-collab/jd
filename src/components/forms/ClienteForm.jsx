@@ -23,12 +23,61 @@ import {
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Loader2, User, Building2 } from 'lucide-react';
+import { Loader2, User, Building2, Info, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import DocUploadItem from './DocUploadItem';
+import ImportarDocumentosSecao from '@/components/clientes/ImportarDocumentosSecao';
+import DocumentosClienteSecao from '@/components/clientes/DocumentosClienteSecao';
+import ConfirmarAtualizacaoModal from '@/components/clientes/ConfirmarAtualizacaoModal';
 
-export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isLoading }) {
+// Mapeia campos extraídos dos documentos -> campos do CRM (Pessoa Física)
+const MAPA_CAMPOS_DOC = [
+  { extractKey: 'nome_completo', field: 'nome_completo', label: 'Nome Completo' },
+  { extractKey: 'cpf', field: 'cpf', label: 'CPF' },
+  { extractKey: 'rg', field: 'rg', label: 'RG' },
+  { extractKey: 'rg_orgao_emissor', field: 'rg_orgao_emissor', label: 'Órgão Emissor' },
+  { extractKey: 'rg_data_emissao', field: 'rg_data_emissao', label: 'Data de Emissão do RG' },
+  { extractKey: 'data_nascimento', field: 'data_nascimento', label: 'Data de Nascimento' },
+  { extractKey: 'naturalidade', field: 'local_nascimento', label: 'Local de Nascimento' },
+  { extractKey: 'nacionalidade', field: 'nacionalidade', label: 'Nacionalidade' },
+  { extractKey: 'nome_mae', field: 'nome_mae', label: 'Nome da Mãe' },
+  { extractKey: 'nome_pai', field: 'nome_pai', label: 'Nome do Pai' },
+  // Comprovante de residência -> Endereço Residencial
+  { extractKey: 'cep', field: 'res_cep', label: 'CEP' },
+  { extractKey: 'uf', field: 'res_uf', label: 'UF (Residencial)' },
+  { extractKey: 'cidade', field: 'res_cidade', label: 'Cidade (Residencial)' },
+  { extractKey: 'bairro', field: 'res_bairro', label: 'Bairro (Residencial)' },
+  { extractKey: 'logradouro', field: 'res_endereco', label: 'Endereço (Residencial)' },
+  { extractKey: 'numero', field: 'res_numero', label: 'Número (Residencial)' },
+  { extractKey: 'complemento', field: 'res_complemento', label: 'Complemento (Residencial)' },
+];
+
+const TIPO_DOC_LABEL = {
+  cnh: 'CNH', rg: 'RG', comprovante_residencia: 'Comprovante de Residência',
+  comprovante_renda: 'Comprovante de Renda', outro: 'Outro'
+};
+
+const normCpf = (v) => String(v || '').replace(/\D/g, '');
+
+const confiancaParaCampo = (doc, extractKey) => {
+  if (!doc) return null;
+  const g = doc.confianca_geral || 'nao_identificado';
+  if (Array.isArray(doc.campos_baixa_confianca) && doc.campos_baixa_confianca.includes(extractKey)) return 'baixa';
+  if (g === 'alta') return 'alta';
+  if (g === 'media') return 'media';
+  if (g === 'baixa') return 'baixa';
+  return g === 'nao_identificado' ? 'media' : g;
+};
+
+export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isLoading, clientes, currentUser, onClienteExistenteCarregado }) {
   const [uploadingDoc, setUploadingDoc] = useState(null);
+
+  // Estado do preenchimento automático via documentos
+  const [documentosPendentes, setDocumentosPendentes] = useState([]); // [{arquivo_url, arquivo_nome, arquivo_tamanho, arquivo_mime, tipo_documento, lado, campos_extraidos_json, nivel_confianca}]
+  const [camposAuto, setCamposAuto] = useState({}); // {field: {valor, confianca, origem}}
+  const [divergencias, setDivergencias] = useState({}); // {field: {valorAtual, valorNovo, origem, label}}
+  const [preencherPendente, setPreencherPendente] = useState(null); // documentos extraídos para aplicar após reset
+  const [modalAtualizacao, setModalAtualizacao] = useState(null); // {clienteExistente, camposPreencher}
   
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm({
     defaultValues: cliente || {
@@ -78,35 +127,253 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
       reset({
         tipo_pessoa: 'Física',
         status: 'ativo',
-        // Checkboxes PF
-        doc_documento_testemunhas: false,
-        doc_documento_testemunhas_urls: [],
-        doc_identidade: false,
-        doc_identidade_urls: [],
-        doc_comprovante_endereco: false,
-        doc_comprovante_endereco_urls: [],
-        doc_comprovante_renda: false,
-        doc_comprovante_renda_urls: [],
-        doc_proposta_assinada: false,
-        doc_proposta_assinada_urls: [],
-        banco_nao_deseja_informar: false,
-        banco_nao_possui_conta: false,
-        // Checkboxes PJ
-        pj_doc_contrato_ou_estatuto_social: false,
-        pj_doc_contrato_ou_estatuto_social_urls: [],
-        pj_doc_cartao_cnpj: false,
-        pj_doc_cartao_cnpj_urls: [],
-        pj_doc_documento_socios_ou_representante: false,
-        pj_doc_documento_socios_ou_representante_urls: [],
-        pj_doc_relacao_faturamento: false,
-        pj_doc_relacao_faturamento_urls: [],
-        pj_doc_proposta_assinada: false,
-        pj_doc_proposta_assinada_urls: [],
-        pj_banco_nao_deseja_informar: false,
-        pj_banco_nao_possui_conta: false,
+        doc_documento_testemunhas: false, doc_documento_testemunhas_urls: [],
+        doc_identidade: false, doc_identidade_urls: [],
+        doc_comprovante_endereco: false, doc_comprovante_endereco_urls: [],
+        doc_comprovante_renda: false, doc_comprovante_renda_urls: [],
+        doc_proposta_assinada: false, doc_proposta_assinada_urls: [],
+        banco_nao_deseja_informar: false, banco_nao_possui_conta: false,
+        pj_doc_contrato_ou_estatuto_social: false, pj_doc_contrato_ou_estatuto_social_urls: [],
+        pj_doc_cartao_cnpj: false, pj_doc_cartao_cnpj_urls: [],
+        pj_doc_documento_socios_ou_representante: false, pj_doc_documento_socios_ou_representante_urls: [],
+        pj_doc_relacao_faturamento: false, pj_doc_relacao_faturamento_urls: [],
+        pj_doc_proposta_assinada: false, pj_doc_proposta_assinada_urls: [],
+        pj_banco_nao_deseja_informar: false, pj_banco_nao_possui_conta: false,
       });
     }
+    // Aplica preenchimento automático pendente (após carregar cliente existente, se houver)
+    if (preencherPendente && preencherPendente.length > 0) {
+      const pendente = preencherPendente;
+      setPreencherPendente(null);
+      // Aplica após o reset síncrono para garantir valores atuais
+      setTimeout(() => aplicarPreenchimentoEmVazios(pendente), 0);
+    } else {
+      // Zera estados ao trocar contexto sem preenchimento
+      setCamposAuto({});
+      setDivergencias({});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cliente, setValue, reset]);
+
+  // Limpa estados ao fechar o formulário
+  useEffect(() => {
+    if (!open) {
+      setDocumentosPendentes([]);
+      setCamposAuto({});
+      setDivergencias({});
+      setPreencherPendente(null);
+      setModalAtualizacao(null);
+    }
+  }, [open]);
+
+  // Retorna o valor "atual" de um campo do form, considerando formatação. null/''/undefined = vazio.
+  const valorAtualCampo = (field) => {
+    const v = watch(field);
+    if (v === null || v === undefined || v === '') return null;
+    return String(v).trim() !== '' ? v : null;
+  };
+
+  // Aplica o preenchimento SOMENTE em campos vazios do formulário.
+  // Campos já preenchidos não são substituídos; divergências são registradas.
+  const aplicarPreenchimentoEmVazios = (documentosExtraidos) => {
+    const novosCamposAuto = {};
+    const novasDivergencias = {};
+
+    for (const doc of documentosExtraidos) {
+      if (!doc || doc.erro) continue;
+      const origem = `${TIPO_DOC_LABEL[doc.tipo_documento] || doc.tipo_documento || 'Documento'}${doc.lado && doc.lado !== 'nao_identificado' ? ` (${doc.lado})` : ''}`;
+      const campos = doc.campos || {};
+      for (const { extractKey, field, label } of MAPA_CAMPOS_DOC) {
+        const valorExtraido = campos[extractKey];
+        if (valorExtraido === null || valorExtraido === undefined || valorExtraido === '') continue;
+        const conf = confiancaParaCampo(doc, extractKey);
+        const atual = valorAtualCampo(field);
+        if (atual === null) {
+          // campo vazio -> preenche (não substitui nothing)
+          // evita sobrescrever se já preenchido por doc anterior com confiança maior
+          const prev = novosCamposAuto[field];
+          const prevConfRank = prev ? ({ alta: 3, media: 2, baixa: 1, nao_identificado: 0 }[prev.confianca] || 0) : -1;
+          const currConfRank = ({ alta: 3, media: 2, baixa: 1, nao_identificado: 0 }[conf] || 0);
+          if (!prev || currConfRank > prevConfRank) {
+            setValue(field, valorExtraido);
+            novosCamposAuto[field] = { valor: valorExtraido, confianca: conf, origem, label };
+          }
+        } else {
+          // campo já preenchido -> compara. Se diferente, registra divergência (sem alterar)
+          const atualStr = String(atual).replace(/\D/g, '').toLowerCase();
+          const extraStr = String(valorExtraido).replace(/\D/g, '').toLowerCase();
+          // para datas, normaliza
+          if (atualStr && extraStr && atualStr !== extraStr && !novasDivergencias[field]) {
+            novasDivergencias[field] = {
+              valorAtual: String(atual),
+              valorNovo: String(valorExtraido),
+              origem, label
+            };
+          }
+        }
+      }
+    }
+
+    setCamposAuto(prev => ({ ...prev, ...novosCamposAuto }));
+    setDivergencias(prev => ({ ...prev, ...novasDivergencias }));
+  };
+
+  // Callback do ImportarDocumentosSecao: recebe documentos extraídos pela IA
+  const handlePreencher = async (documentosExtraidos) => {
+    if (!documentosExtraidos || documentosExtraidos.length === 0) return;
+
+    // Merge dos dados extraídos de volta em documentosPendentes (por arquivo_url)
+    setDocumentosPendentes(prev => prev.map(p => {
+      const doc = documentosExtraidos.find(d => d.arquivo_url === p.arquivo_url);
+      if (!doc) return p;
+      return {
+        ...p,
+        tipo_documento: doc.tipo_documento || p.tipo_documento || 'outro',
+        lado: doc.lado || p.lado || 'nao_identificado',
+        campos_extraidos_json: JSON.stringify(doc.campos || {}),
+        nivel_confianca: doc.confianca_geral || p.nivel_confianca || 'nao_identificado'
+      };
+    }));
+
+    // Descobre CPF extraído (com maior confiança)
+    let cpfExtraido = null;
+    for (const doc of documentosExtraidos) {
+      if (doc?.campos?.cpf) {
+        const c = normCpf(doc.campos.cpf);
+        if (c && c.length === 11) { cpfExtraido = c; break; }
+      }
+    }
+
+    // Verifica se CPF já está cadastrado
+    let clienteExistente = null;
+    if (cpfExtraido && Array.isArray(clientes)) {
+      clienteExistente = clientes.find(c => c.tipo_pessoa === 'Física' && normCpf(c.cpf) === cpfExtraido);
+    }
+
+    if (clienteExistente && !cliente) {
+      // Novo fluxo, mas CPF já existe -> não duplicar; abrir modal de confirmação
+      const preview = [];
+      for (const doc of documentosExtraidos) {
+        if (!doc || doc.erro) continue;
+        const origem = `${TIPO_DOC_LABEL[doc.tipo_documento] || doc.tipo_documento}${doc.lado && doc.lado !== 'nao_identificado' ? ` (${doc.lado})` : ''}`;
+        const campos = doc.campos || {};
+        for (const { extractKey, field, label } of MAPA_CAMPOS_DOC) {
+          const v = campos[extractKey];
+          if (v === null || v === undefined || v === '') continue;
+          const valAtual = clienteExistente[field];
+          const estaVazio = valAtual === null || valAtual === undefined || String(valAtual).trim() === '';
+          if (estaVazio) {
+            preview.push({
+              campo: field, label,
+              valorNovo: String(v),
+              confianca: confiancaParaCampo(doc, extractKey),
+              origem
+            });
+          }
+        }
+      }
+      // Dedupe preview por campo
+      const seen = new Set();
+      const previewDedup = preview.filter(p => {
+        if (seen.has(p.campo)) return false; seen.add(p.campo); return true;
+      });
+      setModalAtualizacao({ clienteExistente, camposPreencher: previewDedup });
+      setPreencherPendente(documentosExtraidos);
+      return;
+    }
+
+    // Fluxo normal (novo cliente sem CPF conflitante, ou editando cliente existente)
+    aplicarPreenchimentoEmVazios(documentosExtraidos);
+  };
+
+  // Modal: confirmar atualização -> carrega cliente existente no form (vira update)
+  const confirmarAtualizacaoClienteExistente = () => {
+    const ce = modalAtualizacao?.clienteExistente;
+    setModalAtualizacao(null);
+    if (ce && onClienteExistenteCarregado) onClienteExistenteCarregado(ce);
+    // preencherPendente continua setado -> aplicado no useEffect quando `cliente` mudar
+  };
+
+  const revisarDadosClienteExistente = () => {
+    // Mesma ação: carrega o cliente; o usuário poderá revisar antes de salvar
+    confirmarAtualizacaoClienteExistente();
+  };
+
+  const cancelarAtualizacaoClienteExistente = () => {
+    setModalAtualizacao(null);
+    setPreencherPendente(null);
+    setDocumentosPendentes([]);
+    setCamposAuto({});
+    setDivergencias({});
+  };
+
+  // classe Tailwind para destacar campo preenchido com baixa confiança
+  const clsConfianca = (field) =>
+    camposAuto[field]?.confianca === 'baixa' ? 'bg-amber-50 border-amber-400 focus-visible:ring-amber-400' : '';
+
+  // Persistir documentos vinculados ao cliente (após salvar)
+  const persistirDocumentosCliente = async (clienteSalvo) => {
+    if (!clienteSalvo?.id) return;
+    if (documentosPendentes.length === 0) return;
+    const empresaId = clienteSalvo.empresa_id || currentUser?.empresa_id || null;
+    const usuarioId = currentUser?.id || currentUser?.auth_id || null;
+    const usuarioNome = currentUser?.nome_perfil || currentUser?.full_name || '';
+
+    // Evita duplicar arquivos já vinculados
+    let existentes = [];
+    try {
+      existentes = await base44.entities.ClienteDocumento.filter({ cliente_id: clienteSalvo.id }, null, 300);
+    } catch {}
+    const urlsExistentes = new Set(existentes.map(e => e.arquivo_url));
+
+    const novos = [];
+    for (const d of documentosPendentes) {
+      if (urlsExistentes.has(d.arquivo_url)) continue;
+      const camposPreenchidos = Object.entries(camposAuto)
+        .filter(([, v]) => v?.origem && documentosPendentes.find(dd => dd.arquivo_url === d.arquivo_url))
+        .map(([f, v]) => ({ campo_crm: f, valor: v.valor, confianca: v.confianca }))
+        .slice(0, 50);
+      novos.push({
+        empresa_id: empresaId,
+        cliente_id: clienteSalvo.id,
+        arquivo_url: d.arquivo_url,
+        arquivo_nome: d.arquivo_nome,
+        arquivo_tamanho: d.arquivo_tamanho || null,
+        arquivo_mime: d.arquivo_mime || null,
+        tipo_documento: d.tipo_documento || 'outro',
+        lado: d.lado || 'nao_identificado',
+        campos_extraidos_json: d.campos_extraidos_json || null,
+        campos_preenchidos_json: Object.keys(camposAuto).length > 0 ? JSON.stringify(camposPreenchidos) : null,
+        nivel_confianca: d.nivel_confianca || 'nao_identificado',
+        enviado_por_id: usuarioId,
+        enviado_por_nome: usuarioNome,
+        data_envio: new Date().toISOString()
+      });
+    }
+    if (novos.length === 0) return;
+
+    try {
+      await base44.entities.ClienteDocumento.bulkCreate(novos);
+      // Auditoria: campos preenchidos automaticamente
+      if (Object.keys(camposAuto).length > 0) {
+        const resumo = Object.entries(camposAuto).map(([f, v]) => `${v.label || f}=${v.valor} (${v.confianca}, fonte: ${v.origem})`).join('; ');
+        try {
+          await base44.entities.LogAuditoria.create({
+            usuario_id: usuarioId,
+            usuario_nome: usuarioNome,
+            acao: `Cadastro preenchido automaticamente via OCR. Documentos: ${novos.map(n => n.arquivo_nome).join(', ')}. Campos: ${resumo}.`,
+            entidade: 'Cliente',
+            entidade_id: clienteSalvo.id,
+            dados_novos: JSON.stringify({ documentos: novos.map(n => n.arquivo_nome), campos: camposAuto }),
+            tipo: cliente ? 'edicao' : 'criacao'
+          });
+        } catch {}
+      }
+    } catch (e) {
+      console.error('Erro ao persistir documentos do cliente:', e);
+      toast.error('Cliente salvo, mas houve erro ao vincular documentos.');
+    }
+  };
 
   // Converter valores de moeda para número
   const parseCurrencyToNumber = (value) => {
@@ -151,9 +418,15 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
     data.pj_faturamento_medio = data.pj_faturamento_medio ? parseCurrencyToNumber(data.pj_faturamento_medio) : null;
     
     console.log('🟢 Dados processados, chamando onSubmit...');
-    const clienteCriado = await onSubmit(data);
+    const clienteSalvo = await onSubmit(data);
     console.log('✅ onSubmit concluído');
-    return clienteCriado;
+    // Persiste documentos vinculados + auditoria (apenas se houver pendentes)
+    if (clienteSalvo) {
+      await persistirDocumentosCliente(clienteSalvo);
+      // Limpa pendentes após persistir
+      setDocumentosPendentes([]);
+    }
+    return clienteSalvo;
   };
 
   const formatCPF = (value) => {
@@ -275,6 +548,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -327,6 +601,72 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
             </CardContent>
           </Card>
 
+          {/* Seção de importação por documentos (somente Pessoa Física) */}
+          {tipoPessoa === 'Física' && (
+            <>
+              <ImportarDocumentosSecao
+                onPreencher={handlePreencher}
+                onDocumentosAdicionados={(lista) => setDocumentosPendentes(prev => {
+                  const map = new Map(prev.map(p => [p.arquivo_url, p]));
+                  for (const p of lista) map.set(p.arquivo_url, { ...map.get(p.arquivo_url), ...p });
+                  return Array.from(map.values());
+                })}
+              />
+
+              {/* Resumo: campos preenchidos automaticamente */}
+              {Object.keys(camposAuto).length > 0 && (
+                <Card className="border-slate-300">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Info className="w-4 h-4 text-slate-600" />
+                      Campos preenchidos automaticamente
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-1.5">
+                    <p className="text-xs text-slate-500">
+                      Os dados abaixo foram extraídos dos documentos. Confira antes de salvar. Campos em <span className="bg-amber-100 px-1 rounded">amarelo</span> exigem conferência manual.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.entries(camposAuto).map(([f, v]) => (
+                        <span key={f} className={`text-xs px-2 py-1 rounded-md border ${v.confianca === 'baixa' ? 'bg-amber-100 border-amber-400 text-amber-900' : v.confianca === 'media' ? 'bg-yellow-50 border-yellow-300 text-yellow-800' : 'bg-emerald-50 border-emerald-300 text-emerald-800'}`} title={`Origem: ${v.origem}`}>
+                          {v.label}: {v.valor} · {v.confianca} · {v.origem}
+                        </span>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Consolidado de divergências */}
+              {Object.keys(divergencias).length > 0 && (
+                <Card className="border-amber-300">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2 text-amber-900">
+                      <AlertTriangle className="w-4 h-4 text-amber-500" />
+                      Divergências encontradas para conferência
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-amber-800 mb-2">
+                      A informação encontrada no documento é diferente da informação cadastrada. Nenhuma alteração foi realizada.
+                    </p>
+                    <div className="space-y-1.5">
+                      {Object.entries(divergencias).map(([f, d]) => (
+                        <div key={f} className="border-l-2 border-amber-400 pl-2 py-1 text-xs">
+                          <p className="font-medium text-amber-900">{d.label}</p>
+                          <p>Atual: <span className="font-mono">{d.valorAtual || '—'}</span></p>
+                          <p>Documento: <span className="font-mono">{d.valorNovo || '—'}</span></p>
+                          <p className="text-amber-700">Origem: {d.origem}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-[11px] text-amber-700">Caso seja necessário alterar, faça manualmente.</p>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+
           {/* PESSOA FÍSICA */}
           {tipoPessoa === 'Física' && (
             <>
@@ -354,6 +694,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                           id="nome_completo"
                           {...register('nome_completo', { required: tipoPessoa === 'Física' && 'Nome é obrigatório' })}
                           placeholder="Nome completo do cliente"
+                          className={clsConfianca('nome_completo')}
                         />
                         {errors.nome_completo && <p className="text-sm text-red-500 mt-1">{errors.nome_completo.message}</p>}
                       </div>
@@ -365,6 +706,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                           {...register('cpf', { required: tipoPessoa === 'Física' && 'CPF é obrigatório' })}
                           placeholder="000.000.000-00"
                           onChange={(e) => setValue('cpf', formatCPF(e.target.value))}
+                          className={clsConfianca('cpf')}
                         />
                         {errors.cpf && <p className="text-sm text-red-500 mt-1">{errors.cpf.message}</p>}
                       </div>
@@ -375,22 +717,23 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                           id="data_nascimento"
                           type="date"
                           {...register('data_nascimento')}
+                          className={clsConfianca('data_nascimento')}
                         />
                       </div>
 
                       <div>
                         <Label htmlFor="rg">RG</Label>
-                        <Input id="rg" {...register('rg')} />
+                        <Input id="rg" {...register('rg')} className={clsConfianca('rg')} />
                       </div>
 
                       <div>
                         <Label htmlFor="rg_data_emissao">Data Emissão RG</Label>
-                        <Input type="date" id="rg_data_emissao" {...register('rg_data_emissao')} />
+                        <Input type="date" id="rg_data_emissao" {...register('rg_data_emissao')} className={clsConfianca('rg_data_emissao')} />
                       </div>
 
                       <div>
                         <Label htmlFor="rg_orgao_emissor">Órgão Emissor</Label>
-                        <Input id="rg_orgao_emissor" {...register('rg_orgao_emissor')} placeholder="Ex: SSP" />
+                        <Input id="rg_orgao_emissor" {...register('rg_orgao_emissor')} placeholder="Ex: SSP" className={clsConfianca('rg_orgao_emissor')} />
                       </div>
 
                       <div>
@@ -583,6 +926,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                            setValue('res_cep', v);
                            buscarCep(v, 'res');
                          }}
+                         className={clsConfianca('res_cep')}
                        />
                       </div>
 
@@ -613,29 +957,29 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                       </div>
 
                       <div className="col-span-2">
-                        <Label>Endereço</Label>
-                        <Input {...register('res_endereco')} placeholder="Nome da rua/avenida" />
-                      </div>
+                         <Label>Endereço</Label>
+                         <Input {...register('res_endereco')} placeholder="Nome da rua/avenida" className={clsConfianca('res_endereco')} />
+                       </div>
 
-                      <div>
-                        <Label>Número</Label>
-                        <Input {...register('res_numero')} />
-                      </div>
+                       <div>
+                         <Label>Número</Label>
+                         <Input {...register('res_numero')} className={clsConfianca('res_numero')} />
+                       </div>
 
-                      <div>
-                        <Label>Complemento</Label>
-                        <Input {...register('res_complemento')} />
-                      </div>
+                       <div>
+                         <Label>Complemento</Label>
+                         <Input {...register('res_complemento')} className={clsConfianca('res_complemento')} />
+                       </div>
 
-                      <div>
-                        <Label>Bairro</Label>
-                        <Input {...register('res_bairro')} />
-                      </div>
+                       <div>
+                         <Label>Bairro</Label>
+                         <Input {...register('res_bairro')} className={clsConfianca('res_bairro')} />
+                       </div>
 
-                      <div>
-                        <Label>Cidade</Label>
-                        <Input {...register('res_cidade')} />
-                      </div>
+                       <div>
+                         <Label>Cidade</Label>
+                         <Input {...register('res_cidade')} className={clsConfianca('res_cidade')} />
+                       </div>
 
                       <div>
                         <Label>UF</Label>
@@ -757,17 +1101,17 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label>Nome do Pai</Label>
-                        <Input {...register('nome_pai')} />
+                        <Input {...register('nome_pai')} className={clsConfianca('nome_pai')} />
                       </div>
 
                       <div>
                         <Label>Nome da Mãe</Label>
-                        <Input {...register('nome_mae')} />
+                        <Input {...register('nome_mae')} className={clsConfianca('nome_mae')} />
                       </div>
 
                       <div>
                         <Label>Nacionalidade</Label>
-                        <Input {...register('nacionalidade')} />
+                        <Input {...register('nacionalidade')} className={clsConfianca('nacionalidade')} />
                       </div>
 
                       <div>
@@ -789,7 +1133,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
 
                       <div className="col-span-2">
                         <Label>Local de Nascimento</Label>
-                        <Input {...register('local_nascimento')} placeholder="Cidade de nascimento" />
+                        <Input {...register('local_nascimento')} placeholder="Cidade de nascimento" className={clsConfianca('local_nascimento')} />
                       </div>
 
                       <div>
@@ -1480,6 +1824,17 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
             </>
           )}
           
+          {/* Seção Documentos do cliente (rodapé) */}
+          {currentUser && (
+            <DocumentosClienteSecao
+              clienteId={cliente?.id || null}
+              empresaId={cliente?.empresa_id || currentUser?.empresa_id || null}
+              user={currentUser}
+              documentosPendentes={documentosPendentes}
+              onDocumentosChange={setDocumentosPendentes}
+            />
+          )}
+
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button 
               type="button" 
@@ -1504,5 +1859,17 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
         </form>
       </DialogContent>
     </Dialog>
+    {modalAtualizacao && (
+      <ConfirmarAtualizacaoModal
+        open={!!modalAtualizacao}
+        onOpenChange={(v) => { if (!v) setModalAtualizacao(null); }}
+        clienteExistente={modalAtualizacao.clienteExistente}
+        camposPreencher={modalAtualizacao.camposPreencher}
+        onConfirmar={confirmarAtualizacaoClienteExistente}
+        onRevisar={revisarDadosClienteExistente}
+        onCancelar={cancelarAtualizacaoClienteExistente}
+      />
+    )}
+    </>
   );
 }

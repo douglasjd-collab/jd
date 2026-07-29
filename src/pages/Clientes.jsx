@@ -165,8 +165,11 @@ export default function Clientes() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Cliente.create(data),
-    onSuccess: () => {
+    mutationFn: async (data) => {
+      const criado = await base44.entities.Cliente.create(data);
+      return criado;
+    },
+    onSuccess: (criado) => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
       setOpenForm(false);
       setClienteParaEditar(null);
@@ -179,7 +182,10 @@ export default function Clientes() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Cliente.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      const atualizado = await base44.entities.Cliente.update(id, data);
+      return { ...atualizado, id };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clientes'] });
       setOpenForm(false);
@@ -282,15 +288,29 @@ export default function Clientes() {
         clienteData.empresa_id = empresa_id;
       }
 
+      let clienteSalvo = null;
       if (clienteParaEditar) {
-        updateMutation.mutate({ id: clienteParaEditar.id, data: clienteData });
+        clienteSalvo = await updateMutation.mutateAsync({ id: clienteParaEditar.id, data: clienteData });
+        // Garante o id (em caso do retorno do update não trazer)
+        if (!clienteSalvo?.id) clienteSalvo = { ...clienteSalvo, id: clienteParaEditar.id, empresa_id: clienteParaEditar.empresa_id };
       } else {
-        createMutation.mutate(clienteData);
+        clienteSalvo = await createMutation.mutateAsync(clienteData);
+        if (!clienteSalvo?.id) clienteSalvo = { ...clienteSalvo, empresa_id: empresa_id };
       }
+      return clienteSalvo;
     } catch (error) {
       console.error('Erro ao salvar cliente:', error);
       toast.error('Erro ao salvar cliente: ' + error.message);
+      return null;
     }
+  };
+
+  // Quando o usuário confirma atualização de cliente existente via OCR,
+  // trocamos o formulário para o modo de edição com aquele cliente.
+  const handleClienteExistenteCarregado = (clienteExistente) => {
+    setClienteParaEditar(clienteExistente);
+    // Garante que o form esteja aberto
+    if (!openForm) setOpenForm(true);
   };
 
   const isAdmin = ['admin', 'gerente', 'master', 'super_admin'].includes(currentUser?.perfil);
@@ -481,6 +501,9 @@ export default function Clientes() {
         cliente={clienteParaEditar}
         onSubmit={handleSubmit}
         isLoading={createMutation.isPending || updateMutation.isPending}
+        clientes={clientes}
+        currentUser={currentUser}
+        onClienteExistenteCarregado={handleClienteExistenteCarregado}
       />
 
       {/* Confirm Deduplicar */}
