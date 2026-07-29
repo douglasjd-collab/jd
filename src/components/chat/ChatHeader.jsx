@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import {
   Check, ArrowRightLeft, MoreVertical, RefreshCw, Tag, Clock,
   Contact, Pencil, BellOff, Pin, X, AlignJustify, CalendarClock, TrendingUp,
-  PhoneCall, PhoneOff, UserPlus,
+  PhoneCall, PhoneOff, UserPlus, Search, Paperclip,
 } from "lucide-react";
 import AvatarContato from './AvatarContato';
 import { toast } from 'sonner';
@@ -44,6 +44,8 @@ export default function ChatHeader({
   coachIAOpen,
   setCoachIAOpen,
   onAbrirCadastroIA,
+  onAbrirBusca,
+  onAbrirGaleria,
 }) {
   const navigate = useNavigate();
   const [canalOverride, setCanalOverride] = useState(null);
@@ -419,12 +421,21 @@ export default function ChatHeader({
             <span className="hidden sm:inline">Transferir</span>
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-8 w-8 rounded-md border-slate-300 hover:bg-slate-100">
-                <MoreVertical className="h-4 w-4 text-slate-900" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-md border-slate-200 hover:bg-slate-100"
+                onClick={() => onAbrirBusca?.()}
+              >
+                <Search className="h-4 w-4 text-slate-700" />
               </Button>
-            </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent>Buscar mensagens</TooltipContent>
+          </Tooltip>
+
+          <DropdownMenu>
             <DropdownMenuContent align="end" side="bottom" sideOffset={4} className="z-[200]">
               <DropdownMenuItem
                 onClick={async () => {
