@@ -27,6 +27,7 @@ export default function ChatHeader({
   user,
   infoLeadAberto,
   setInfoLeadAberto,
+  containerRef,
   setTransferirModal,
   abrirSalvarCrm,
   setContatoParaTags,
@@ -50,11 +51,10 @@ export default function ChatHeader({
   const [buscaAtiva, setBuscaAtiva] = useState(false);
   const [galeriaAberta, setGaleriaAberta] = useState(false);
 
-  const localizarMensagem = (msg) => {
-    setBuscaAtiva(false);
-    setGaleriaAberta(false);
-    if (!msg?.id) return;
-    const el = document.getElementById(`msg-${msg.id}`);
+  const localizarMensagem = (idParam) => {
+    const id = typeof idParam === 'string' ? idParam : idParam?.id;
+    if (!id) return;
+    const el = document.getElementById(`msg-${id}`);
     if (!el) {
       toast.info('Mensagem não está carregada na tela. Continue rolando a conversa até encontrá-la.');
       return;
@@ -212,6 +212,22 @@ export default function ChatHeader({
 
   return (
     <div className="flex flex-col border-b bg-white px-3 sm:px-5 py-2 sm:py-2.5 shrink-0">
+      <style>{`
+        @keyframes msgDestacadaAnim {
+          0% { background-color: rgba(16,185,129,.35); box-shadow: 0 0 0 4px rgba(16,185,129,.35); }
+          70% { background-color: rgba(16,185,129,.18); }
+          100% { background-color: transparent; box-shadow: none; }
+        }
+        .msg-destacada { animation: msgDestacadaAnim 3.5s ease-out forwards; border-radius: 8px; z-index: 5; position: relative; }
+        mark.msg-highlight { background: rgba(250, 204, 21, .65); color: inherit; border-radius: 3px; padding: 0 1px; }
+      `}</style>
+      {buscaAtiva && conversaSelecionada && (
+        <BuscarMensagensBar
+          conversaId={conversaSelecionada.id}
+          onFechar={() => setBuscaAtiva(false)}
+          onLocalizarMensagem={localizarMensagem}
+        />
+      )}
       {/* Linha 1: avatar + nome + botões */}
       <div className="flex flex-row items-center justify-between gap-2 sm:gap-4">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
@@ -619,14 +635,20 @@ export default function ChatHeader({
             </span>
           ))}
           <button
-            onClick={() => { setContatoParaTags(conversaSelecionada); setTagsModalOpen(true); }}
-            className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600 transition-colors"
+           onClick={() => { setContatoParaTags(conversaSelecionada); setTagsModalOpen(true); }}
+           className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600 transition-colors"
           >
-            <Tag className="w-3 h-3" />
-            {tagsDoContato.length === 0 ? 'Adicionar tag' : '+'}
+           <Tag className="w-3 h-3" />
+           {tagsDoContato.length === 0 ? 'Adicionar tag' : '+'}
           </button>
-        </div>
-      )}
-    </div>
-  );
-}
+          </div>
+          )}
+          <GaleriaMidiasPanel
+          open={galeriaAberta}
+          onOpenChange={setGaleriaAberta}
+          conversaId={conversaSelecionada?.id}
+          onLocalizarMensagem={localizarMensagem}
+          />
+          </div>
+          );
+          }
