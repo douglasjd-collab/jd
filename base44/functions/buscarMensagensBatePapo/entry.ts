@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
-const MAX_FETCH = 2000;
+const MAX_FETCH = 500;
 const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 
 export default async function(req: Request): Promise<Response> {
@@ -105,7 +105,19 @@ export default async function(req: Request): Promise<Response> {
     try {
       msgs = await base44.entities.MensagemWhatsapp.filter(filter, '-data_envio', MAX_FETCH);
     } catch (e) {
-      return Response.json({ success: false, error: 'Erro ao buscar mensagens: ' + e.message }, { status: 500 });
+      // Em vez de propagar 500 (causa toast vermelho e trava as abas da galeria),
+      // retorna vazio — o front exibe estado "sem resultados" para o usuário.
+      return Response.json({
+        success: true,
+        modo,
+        categoria: categoriasAtivas,
+        total: 0,
+        page: Number(page) || 1,
+        limit: Number(limit) || 30,
+        resultados: [],
+        parcial: true,
+        erro_interno: String(e?.message || e),
+      });
     }
 
     // Filtro de data (JS-side)
