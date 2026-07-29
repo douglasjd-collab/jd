@@ -64,13 +64,18 @@ export default function GaleriaMidiasPanel({ open, onOpenChange, conversaId, onL
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:w-[420px] md:w-[480px] p-0 flex flex-col gap-0">
+        <SheetContent side="right" hideDefaultClose className="w-full sm:w-[420px] md:w-[480px] p-0 flex flex-col gap-0">
           <div className="p-3 border-b border-slate-100 shrink-0">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-semibold">Mídias, links e documentos</h3>
-              <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => onOpenChange?.(false)}>
-                <X className="h-4 w-4 text-slate-500" />
-              </Button>
+              <button
+                type="button"
+                onClick={() => onOpenChange?.(false)}
+                className="h-7 w-7 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors"
+                title="Fechar"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
 
             <div className="flex items-center gap-1.5">

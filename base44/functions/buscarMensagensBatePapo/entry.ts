@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
-const MAX_FETCH = 5000;
+const MAX_FETCH = 2000;
 const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
 
 export default async function(req: Request): Promise<Response> {
@@ -83,6 +83,24 @@ export default async function(req: Request): Promise<Response> {
     if (remetente === 'enviada') filter.remetente = 'vendedor';
     if (remetente === 'recebida') filter.remetente = 'cliente';
 
+    const categoriasAtivas = Array.isArray(categoria) ? categoria : [categoria];
+
+    // Em modo galeria, restringe o tipo de conteúdo já no banco para evitar
+    // carregar milhares de mensagens de texto desnecessariamente.
+    if (modo === 'galeria') {
+      const tipos: string[] = [];
+      for (const cat of categoriasAtivas) {
+        if (cat === 'midias') tipos.push('imagem', 'video');
+        else if (cat === 'documentos') tipos.push('pdf', 'documento');
+        else if (cat === 'audios') tipos.push('audio');
+        else if (cat === 'imagem') tipos.push('imagem');
+        else if (cat === 'video') tipos.push('video');
+      }
+      const unicos = Array.from(new Set(tipos));
+      if (unicos.length === 1) filter.tipo_conteudo = unicos[0];
+      else if (unicos.length > 1) filter.tipo_conteudo = { $in: unicos };
+    }
+
     let msgs: any[] = [];
     try {
       msgs = await base44.entities.MensagemWhatsapp.filter(filter, '-data_envio', MAX_FETCH);
@@ -102,7 +120,6 @@ export default async function(req: Request): Promise<Response> {
     }
 
     // Filtro por categoria (midias/documentos/audios/links/texto)
-    const categoriasAtivas = Array.isArray(categoria) ? categoria : [categoria];
     const incluiTodas = categoriasAtivas.includes('todas');
     if (!incluiTodas || modo === 'galeria') {
       resultados = resultados.filter(m => {
