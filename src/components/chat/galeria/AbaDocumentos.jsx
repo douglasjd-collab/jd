@@ -43,13 +43,16 @@ export default function AbaDocumentos({ conversaId, filtros, onLocalizarMensagem
         {resultados.map((m) => {
           const remetenteLabel = m.remetente === 'vendedor' ? 'Enviado' : 'Recebido';
           const isPdf = ehPdf(m);
+          // Fallback: muitos PDFs/documentos recebidos chegam sem arquivo_nome —
+          // o nome real fica no caption (texto). Usamos whichever existir.
+          const nomeExibicao = m.arquivo_nome || (m.texto && m.texto.trim() ? m.texto.trim() : 'Documento');
           return (
             <div key={m.id} className="flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors">
               <div className="h-10 w-10 shrink-0 rounded-lg bg-slate-100 flex items-center justify-center text-xl">
-                {iconeArquivo(m.arquivo_nome)}
+                {iconeArquivo(nomeExibicao)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{m.arquivo_nome || 'Documento'}</p>
+                <p className="text-sm font-medium truncate" title={nomeExibicao}>{nomeExibicao}</p>
                 <div className="flex items-center gap-2 text-[11px] text-slate-500 flex-wrap">
                   <span className={`px-1.5 py-0.5 rounded-full font-medium ${m.remetente === 'vendedor' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'}`}>{remetenteLabel}</span>
                   <span>•</span>
@@ -64,7 +67,7 @@ export default function AbaDocumentos({ conversaId, filtros, onLocalizarMensagem
                     <Eye className="h-4 w-4 text-slate-600" />
                   </button>
                 )}
-                <a href={m.arquivo_url} download={m.arquivo_nome || 'documento'} target="_blank" rel="noreferrer" className="h-8 w-8 rounded-md hover:bg-slate-100 flex items-center justify-center" title="Baixar">
+                <a href={m.arquivo_url} download={nomeExibicao} target="_blank" rel="noreferrer" className="h-8 w-8 rounded-md hover:bg-slate-100 flex items-center justify-center" title="Baixar">
                   <Download className="h-4 w-4 text-slate-600" />
                 </a>
                 <button onClick={() => onLocalizarMensagem?.(m.id)} className="h-8 w-8 rounded-md hover:bg-slate-100 flex items-center justify-center" title="Localizar na conversa">

@@ -10,18 +10,21 @@ import { formatarDataHora, iconeArquivo, formatarBytes } from './helpers';
 export default function VisualizadorPdf({ mensagem, onFechar, onLocalizarMensagem }) {
   if (!mensagem?.arquivo_url) return null;
   const remetenteLabel = mensagem.remetente === 'vendedor' ? 'Enviado' : 'Recebido';
+  // Fallback: nome real chega via caption (texto) quando arquivo_nome está vazio
+  const nomeExibicao = mensagem.arquivo_nome
+    || (mensagem.texto && mensagem.texto.trim() ? mensagem.texto.trim() : 'Documento.pdf');
 
   return (
     <Dialog open onOpenChange={(v) => !v && onFechar()}>
       <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 flex flex-col overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2 bg-slate-800 text-white text-xs">
           <div className="flex items-center gap-2 min-w-0">
-            <span>{iconeArquivo(mensagem.arquivo_nome)}</span>
-            <span className="truncate font-medium">{mensagem.arquivo_nome || 'Documento.pdf'}</span>
+            <span>{iconeArquivo(nomeExibicao)}</span>
+            <span className="truncate font-medium" title={nomeExibicao}>{nomeExibicao}</span>
             <span className="text-white/60 hidden sm:inline">· {formatarBytes(mensagem.arquivo_tamanho)}</span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <a href={mensagem.arquivo_url} download={mensagem.arquivo_nome || 'documento.pdf'} target="_blank" rel="noreferrer">
+            <a href={mensagem.arquivo_url} download={nomeExibicao} target="_blank" rel="noreferrer">
               <Button size="sm" variant="ghost" className="text-white hover:bg-white/10 gap-1">
                 <Download className="h-4 w-4" /> Baixar
               </Button>
@@ -37,7 +40,7 @@ export default function VisualizadorPdf({ mensagem, onFechar, onLocalizarMensage
         <div className="flex-1 bg-slate-200 overflow-hidden">
           <iframe
             src={mensagem.arquivo_url}
-            title={mensagem.arquivo_nome || 'Documento'}
+            title={nomeExibicao}
             className="w-full h-full"
             style={{ minHeight: '70vh', border: 0 }}
           />
