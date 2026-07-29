@@ -2,6 +2,8 @@
 // Residem em base44/shared/ para que ambas as funções possam importá-los.
 // Todas as credenciais permanecem no backend; nenhum token é retornado.
 
+import { ehAutoPrimeiroNome, resolverPrimeiroNomeDestinatario } from './primeiroNomeShared.ts';
+
 // Normaliza número BR para E.164 sem "+" (formato Meta/D-API)
 export function normalizarTelefone(raw: string): string {
   let tel = (raw || '').replace(/\D/g, '').replace(/@.*$/, '');
@@ -125,6 +127,23 @@ export async function enviarViaMetaOficial(
       for (const v of arr) valuesByPos[String(v.position)] = String(v.value ?? '');
     }
   } catch (_) {}
+
+  // Resolve variáveis marcadas como automáticas ({{1}} = primeiro nome do
+  // destinatário). O front-end grava o marcador __AUTO_PRIMEIRO_NOME__; aqui
+  // substituímos pelo primeiro nome real do cliente, com fallback "por aí".
+  const posicoesAuto = Object.keys(valuesByPos).filter((p) => ehAutoPrimeiroNome(valuesByPos[p]));
+  if (posicoesAuto.length > 0) {
+    const { nome, usouFallback } = await resolverPrimeiroNomeDestinatario(
+      base44,
+      msg.empresa_id,
+      msg.cliente_id,
+      telefone,
+      (conversa as any)?.cliente_nome
+    );
+    for (const p of posicoesAuto) valuesByPos[p] = nome;
+    (msg as any).__auto_primeiro_nome_resolvido = nome;
+    (msg as any).__auto_primeiro_nome_usou_fallback = usouFallback;
+  }
 
   const logCtx: any = {
     agendamento_id: msg.id,

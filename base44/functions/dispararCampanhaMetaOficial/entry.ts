@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { ehAutoPrimeiroNome, resolverPrimeiroNomeDestinatario } from '../../shared/primeiroNomeShared.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -152,13 +153,40 @@ Deno.serve(async (req) => {
       console.warn('⚠️ Erro ao buscar definição do template:', e.message);
     }
 
-    for (const telefone of contatos) {
-      const numeroLimpo = String(telefone).replace(/\D/g, '');
+    for (const contatoItem of contatos) {
+      // Aceita string (telefone) OU objeto { telefone, cliente_id, cliente_nome }
+      const contatoObj = typeof contatoItem === 'string'
+        ? { telefone: contatoItem }
+        : (contatoItem || {});
+      const telefoneOriginal = contatoObj.telefone || contatoItem;
+      const numeroLimpo = String(telefoneOriginal).replace(/\D/g, '');
       if (numeroLimpo.length < 10) {
         erros++;
-        resultados.push({ telefone, status: 'erro', motivo: 'Número inválido' });
+        resultados.push({ telefone: telefoneOriginal, status: 'erro', motivo: 'Número inválido' });
         continue;
       }
+
+      // Resolve variáveis {{n}} para ESTE destinatário (clone do mapa global).
+      // {{1}} marcado como __AUTO_PRIMEIRO_NOME__ vira o primeiro nome real do cliente.
+      const variaveisResolvidas: Record<string, string> = { ...(variaveis || {}) };
+      const posicoesAuto = Object.keys(variaveisResolvidas).filter((k) =>
+        ehAutoPrimeiroNome(variaveisResolvidas[k])
+      );
+      if (posicoesAuto.length > 0) {
+        const { nome } = await resolverPrimeiroNomeDestinatario(
+          base44,
+          empresa_id,
+          contatoObj.cliente_id,
+          numeroLimpo,
+          contatoObj.cliente_nome
+        );
+        for (const p of posicoesAuto) variaveisResolvidas[p] = nome;
+      }
+
+      // Prévia do texto final já com as variáveis substituídas (ex.: "Bom dia! Tudo bem Eduarda ?")
+      const textoPreviewResolvido = texto_preview
+        ? String(texto_preview).replace(/\{\{(\d+)\}\}/g, (m, n) => variaveisResolvidas[n] || m)
+        : texto_preview;
 
       const components = [];
 
@@ -173,7 +201,7 @@ Deno.serve(async (req) => {
         const templatePayload: any = {
           name: template_name,
           language: template_language || 'pt_BR',
-          bodyVariables: Object.values(variaveis || {}),
+          bodyVariables: Object.values(variaveisResolvidas || {}),
         };
 
         // Header de mídia (URL pública) — D-API monta os components da Graph API
@@ -248,7 +276,7 @@ Deno.serve(async (req) => {
               __template: true, template_name,
               header_type: (templateHeaderType || '').toUpperCase(),
               header_url: templateHeaderUrl || null,
-              corpo: texto_preview || `📋 Template: ${template_name}`,
+              corpo: textoPreviewResolvido || `📋 Template: ${template_name}`,
               botoes: templateBotoes,
             });
             await base44.asServiceRole.entities.MensagemWhatsapp.create({
@@ -346,10 +374,10 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Body variables
-      const varsKeys = Object.keys(variaveis);
+      // Body variables (já resolvidas por destinatário — {{1}} vira o primeiro nome)
+      const varsKeys = Object.keys(variaveisResolvidas);
       if (varsKeys.length > 0) {
-        const parametros = varsKeys.map(k => ({ type: 'text', text: variaveis[k] || '' }));
+        const parametros = varsKeys.map(k => ({ type: 'text', text: variaveisResolvidas[k] || '' }));
         components.push({ type: 'body', parameters: parametros });
       }
 
@@ -409,7 +437,7 @@ Deno.serve(async (req) => {
 
         // Salvar como MensagemWhatsapp para aparecer no chat (Bate Papo)
         const whatsappMsgId = data?.messages?.[0]?.id;
-        const textoMensagem = texto_preview || `📋 Template enviado: ${template_name}`;
+        const textoMensagem = textoPreviewResolvido || `📋 Template enviado: ${template_name}`;
 
         // Montar JSON de template para renderização rica no chat (imagem + botões)
         const templateJson = JSON.stringify({
