@@ -371,7 +371,12 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
                       </Button>
                     </div>
                     <div className="bg-white rounded p-2 border border-slate-200">
-                      <p className="text-xs text-slate-700 whitespace-pre-wrap">{bodyTemplate}</p>
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-1">
+                        Texto aprovado pela Meta
+                      </p>
+                      <p className="text-xs text-slate-700 whitespace-pre-wrap">
+                        {templateSelecionado.body_text}
+                      </p>
                     </div>
                     {valoresVarsArr.length > 0 && (
                       <div className="text-[10px] text-slate-500 space-y-0.5">
@@ -387,6 +392,15 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
                         ))}
                       </div>
                     )}
+                    {/* PRÉVIA RESOLVIDA PARA ESTE CLIENTE — área separada.
+                        Mostra como a mensagem chegará ao destinatário. Nunca
+                        sobrescreve o texto original; é apenas visualização. */}
+                    <div className="bg-slate-50 rounded p-2 border border-slate-200">
+                      <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mb-1">
+                        Prévia para este cliente
+                      </p>
+                      <p className="text-xs text-slate-700 whitespace-pre-wrap">{bodyTemplate}</p>
+                    </div>
                   </div>
                 ) : (
                   <button

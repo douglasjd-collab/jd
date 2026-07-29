@@ -268,8 +268,13 @@ export default function SelecionarTemplateMetaModal({
                       📌 {selecionado.header_text}
                     </p>
                   )}
+                  {/* TEXTO ORIGINAL (aprovado pela Meta) — sempre exibe o
+                      corpo com {{1}} intacto. Nunca sobrescreve o original. */}
+                  <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide mt-2">
+                    Texto aprovado pela Meta
+                  </p>
                   <p className="text-sm text-slate-700 mt-1 whitespace-pre-wrap">
-                    {preencherVariaveisPreview(selecionado.body_text, valoresVars, cliente)}
+                    {selecionado.body_text}
                   </p>
                   {selecionado.footer_text && (
                     <p className="text-[10px] text-slate-400 mt-2">📎 {selecionado.footer_text}</p>
@@ -330,6 +335,23 @@ export default function SelecionarTemplateMetaModal({
                 </p>
               </div>
             )}
+
+            {/* PRÉVIA RESOLVIDA PARA ESTE CLIENTE — área separada, opcional.
+                Mostra como a mensagem chegará ao destinatário atual. Se o
+                cliente tem nome, mostra o nome; se não, usa o fallback. */}
+            <div className="border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-1">
+              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">
+                Prévia para este cliente
+              </p>
+              <p className="text-xs text-slate-700 whitespace-pre-wrap">
+                {preencherVariaveisPreview(selecionado.body_text, valoresVars, cliente)}
+              </p>
+              <p className="text-[10px] text-slate-400">
+                {exemploPreview !== 'por aí'
+                  ? `Personalizado com: ${exemploPreview}`
+                  : 'Cliente sem nome — será usado o texto alternativo "por aí".'}
+              </p>
+            </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => { setSelecionado(null); setValoresVars({}); }}>
