@@ -22,10 +22,18 @@ import {
   Eye,
   CalendarClock,
   ListChecks,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import PublicoBuilder from './PublicoBuilder';
 import { selecionarTelefonesParaCampanha, carregarTelefonesPorCliente } from './telefonesCliente';
+import TemplatePreview from '@/components/templates/TemplatePreview';
+
+// Aceita variações de status que meaning "aprovado": 'aprovado' (padrão CRM),
+// 'APPROVED' (retorno cru da Meta), 'approved' (D-API lowercased), 'Aprovado'.
+const STATUS_APROVADO_RE = /^(aprovado|approved)$/i;
+const isTemplateAprovado = (s = '') => STATUS_APROVADO_RE.test(String(s || ''));
 
 const STEPS = [
   { id: 1, label: 'Template', icon: FileText },
@@ -44,11 +52,14 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [syncingTemplates, setSyncingTemplates] = useState(false);
+  const [syncError, setSyncError] = useState(null);
 
   const [form, setForm] = useState({
     nome: '',
     descricao: '',
     template_id: '',
+    conn_selecionada: '',
     origens: [],
     clientes_sub: 'todos',
     destino_telefones: 'principal',
@@ -72,10 +83,12 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     if (open) {
       setStep(1);
       setPreview(null);
+      setSyncError(null);
       setForm({
         nome: '',
         descricao: '',
         template_id: '',
+        conn_selecionada: '',
         origens: [],
         clientes_sub: 'todos',
         destino_telefones: 'principal',
@@ -97,17 +110,72 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     }
   }, [open]);
 
-  // Templates aprovados da empresa
-  const { data: templates = [], isLoading: loadingTemplates } = useQuery({
-    queryKey: ['campanha-templates', empresaId],
-    queryFn: () =>
-      base44.entities.WhatsappTemplate.filter(
-        { empresa_id: empresaId, status: 'aprovado' },
-        '-created_date',
-        200
-      ),
+  // Conexões oficiais (D-API Cloud API ou Meta Embedded Signup) para
+  // sugerir o "Canal de envio" quando há mais de uma conectada.
+  const { data: connectionsList = [] } = useQuery({
+    queryKey: ['campanha-connections-oficiais', empresaId, open],
+    queryFn: async () => {
+      const res = await base44.functions.invoke('gerenciarTemplateMetaOficial', { action: 'list_connections' });
+      const arr = res?.data?.connections || [];
+      const oficial = arr.filter((c) => c.is_official !== false && c.status === 'conectado');
+      return oficial;
+    },
     enabled: !!empresaId && open,
+    staleTime: 60_000,
   });
+
+  const temMultiplasConexoes = (connectionsList || []).length > 1;
+
+  // Sincroniza com a Meta e em seguida busca templates aprovados da empresa.
+  // Antes de mostrar "Nenhum template aprovado encontrado", sempre tentamos
+  // sincronizar com a Meta para garantir que templates cujo status mudou
+  // (Em análise → Aprovado) reflitam no seletor da campanha.
+  const { data: templates = [], isLoading: loadingTemplates, refetch: refetchTemplates } = useQuery({
+    queryKey: ['campanha-templates-sync', empresaId],
+    queryFn: async () => {
+      setSyncingTemplates(true);
+      setSyncError(null);
+      let diagInfo = null;
+      try {
+        const synRes = await base44.functions.invoke('gerenciarTemplateMetaOficial', {
+          action: 'sync_templates_from_meta',
+        });
+        const d = synRes?.data;
+        if (d && d.success === false) {
+          throw new Error(d.error || 'Falha na sincronização com a Meta');
+        }
+        diagInfo = d || null;
+      } catch (e) {
+        const msg = e?.message || 'Falha desconhecida';
+        setSyncError(`Não foi possível sincronizar os templates da API Oficial. Tente novamente. Detalhe: ${msg}`);
+        // Não abortamos: ainda tentamos listar o que já temos no banco do CRM.
+      } finally {
+        setSyncingTemplates(false);
+      }
+      // Lista do CRM — usa filtro amplo (sem status) para tolerar variações
+      // de status e normaliza pelo lado do cliente.  Isso cobre: status em
+      // português, em inglês, com letra maiúscula etc.
+      const all = await base44.entities.WhatsappTemplate.filter(
+        { empresa_id: empresaId },
+        '-created_date',
+        500
+      );
+      const aprovados = (all || []).filter((t) => isTemplateAprovado(t.status));
+      void diagInfo;
+      return aprovados;
+    },
+    enabled: !!empresaId && open,
+    staleTime: 30_000,
+  });
+
+  // Pré-seleciona a conexão única automaticamente quando não há múltiplas.
+  useEffect(() => {
+    if (!open) return;
+    if (!connectionsList || connectionsList.length === 0) return;
+    if (!temMultiplasConexoes && !form.conn_selecionada && connectionsList[0]?.id) {
+      setForm((f) => ({ ...f, conn_selecionada: connectionsList[0].id }));
+    }
+  }, [connectionsList, temMultiplasConexoes, open, form.conn_selecionada]);
 
   const templateSelecionado = useMemo(
     () => templates.find((t) => t.id === form.template_id),
@@ -319,6 +387,11 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
               setForm={setForm}
               templates={templates}
               loading={loadingTemplates}
+              syncing={syncingTemplates}
+              syncError={syncError}
+              onSync={refetchTemplates}
+              connections={connectionsList || []}
+              multiplasConexoes={temMultiplasConexoes}
             />
           )}
           {step === 2 && (
@@ -372,7 +445,21 @@ function Stepper({ step }) {
   );
 }
 
-function Step1({ form, setForm, templates, loading }) {
+function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, connections, multiplasConexoes }) {
+  // Se há múltiplas conexões oficiais conectadas, lista apenas os templates
+  // da conexão escolhida. Caso contrário (1 só conexão), mostra todos os
+  // aprovados da empresa (já pré-filtrados pelo hook).
+  const templatesVisiveis = multiplasConexoes && form.conn_selecionada
+    ? (templates || []).filter((t) => t.connection_id === form.conn_selecionada)
+    : (templates || []);
+
+  const selecionado = templatesVisiveis.find((t) => t.id === form.template_id) || null;
+
+  let botoesSel = [];
+  try { botoesSel = selecionado ? JSON.parse(selecionado.buttons_json || '[]') : []; } catch {}
+  let variaveisSel = [];
+  try { variaveisSel = selecionado ? JSON.parse(selecionado.variables_json || '[]') : []; } catch {}
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -386,40 +473,123 @@ function Step1({ form, setForm, templates, loading }) {
         </div>
       </div>
 
-      <div>
-        <Label className="mb-2 block">Template aprovado *</Label>
-        {loading ? (
-          <div className="flex items-center gap-2 text-slate-500 py-4">
-            <Loader2 className="w-4 h-4 animate-spin" /> Carregando templates aprovados…
-          </div>
-        ) : templates.length === 0 ? (
-          <Card className="border-amber-200 bg-amber-50">
-            <CardContent className="py-4 text-sm text-amber-700">
-              Nenhum template aprovado encontrado. Crie e aprove templates na aba Templates antes de criar uma campanha.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-auto pr-1">
-            {templates.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setForm({ ...form, template_id: t.id })}
-                className={`text-left p-3 rounded-lg border transition ${
-                  form.template_id === t.id ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <p className="font-medium text-slate-800 text-sm truncate">{t.display_name || t.name}</p>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {t.category} · {t.language} · {(t.header_type || 'TEXT').toUpperCase()}
-                </p>
-                {t.body_text && (
-                  <p className="text-xs text-slate-400 mt-1 line-clamp-2">{t.body_text}</p>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <Label className="block">Template aprovado *</Label>
+        <button
+          type="button"
+          onClick={() => onSync()}
+          disabled={syncing}
+          className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+          title="Sincronizar templates da API Oficial (Meta/D-API) e atualizar a lista"
+        >
+          {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+          Sincronizar com a Meta
+        </button>
       </div>
+
+      {syncError && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="py-3 text-sm text-red-700 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+            <span>{syncError}</span>
+          </CardContent>
+        </Card>
+      )}
+
+      {multiplasConexoes && (
+        <div>
+          <Label>Canal de envio *</Label>
+          <select
+            value={form.conn_selecionada || ''}
+            onChange={(e) => setForm({ ...form, conn_selecionada: e.target.value, template_id: '' })}
+            className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
+          >
+            <option value="">Selecione a conexão oficial…</option>
+            {connections.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome || c.session_id} {c.phone_number ? `· ${c.phone_number}` : ''} · {c.provider_type === 'dapi' ? 'API Oficial (D-API)' : 'API Oficial (Meta)'}
+              </option>
+            ))}
+          </select>
+          <p className="text-[11px] text-slate-500 mt-1">Listaremos apenas os templates APROVADOS desta conexão.</p>
+        </div>
+      )}
+
+      {loading || syncing ? (
+        <div className="flex items-center gap-2 text-slate-500 py-4">
+          <Loader2 className="w-4 h-4 animate-spin" /> Sincronizando templates da API Oficial…
+        </div>
+      ) : (multiplasConexoes && !form.conn_selecionada) ? (
+        <Card className="border-slate-200 bg-slate-50">
+          <CardContent className="py-4 text-sm text-slate-600">
+            Selecione um canal de envio acima para listar os templates aprovados vinculados a essa conexão.
+          </CardContent>
+        </Card>
+      ) : templatesVisiveis.length === 0 ? (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="py-4 text-sm text-amber-700">
+            Nenhum template aprovado encontrado{multiplasConexoes ? ' para a conexão selecionada.' : '.'} Clique em <strong>"Sincronizar com a Meta"</strong> ou crie/aprove templates na aba <strong>Templates</strong> antes de criar uma campanha.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-72 overflow-auto pr-1">
+          {templatesVisiveis.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setForm({ ...form, template_id: t.id })}
+              className={`text-left p-3 rounded-lg border transition ${
+                form.template_id === t.id ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-medium text-slate-800 text-sm truncate">{t.display_name || t.name}</p>
+                {form.template_id === t.id && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {t.category} · {t.language} · {(t.type || t.header_type || 'TEXT').toUpperCase()}
+              </p>
+              {t.body_text && (
+                <p className="text-xs text-slate-400 mt-1 line-clamp-2">{t.body_text}</p>
+              )}
+              {t.connection_nome && (
+                <p className="text-[10px] text-slate-400 mt-1 truncate">🔗 {t.connection_nome}</p>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {selecionado && (
+        <div className="mt-2 grid grid-cols-1 lg:grid-cols-2 gap-4 border rounded-lg p-3 bg-slate-50">
+          <div>
+            <p className="text-xs text-slate-500 mb-1 font-semibold">Pré-visualização</p>
+            <TemplatePreview
+              headerText={selecionado.type === 'TEXT' ? (selecionado.header_text || '') : ''}
+              tipo={selecionado.type || selecionado.header_type || 'TEXT'}
+              headerMediaUrl={selecionado.header_media_url || ''}
+              bodyText={selecionado.body_text || ''}
+              footerText={selecionado.footer_text || ''}
+              buttons={botoesSel}
+              examples={variaveisSel}
+            />
+          </div>
+          <div className="text-xs text-slate-600 space-y-1">
+            <p><strong className="text-slate-700">Nome técnico:</strong> {selecionado.name}</p>
+            <p><strong className="text-slate-700">Categoria:</strong> {selecionado.category}</p>
+            <p><strong className="text-slate-700">Idioma:</strong> {selecionado.language}</p>
+            <p><strong className="text-slate-700">Tipo:</strong> {selecionado.type || selecionado.header_type || 'TEXT'}</p>
+            {selecionado.connection_nome && (
+              <p><strong className="text-slate-700">Conexão:</strong> {selecionado.connection_nome}</p>
+            )}
+            {selecionado.header_media_url && (
+              <p className="break-all">
+                <strong className="text-slate-700">Mídia do cabeçalho:</strong>{' '}
+                <a href={selecionado.header_media_url} target="_blank" rel="noopener noreferrer" className="text-emerald-700 underline">abrir arquivo</a>
+              </p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

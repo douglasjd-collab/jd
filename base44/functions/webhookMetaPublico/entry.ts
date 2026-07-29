@@ -74,6 +74,10 @@ async function processarMensagemMeta(body, base44) {
   for (const entry of body.entry) {
     for (const change of (entry.changes || [])) {
       const value = change.value;
+      // message_template_status_update (aprovação/rejeição de templates pela Meta)
+      if (value?.message_template_status_update) {
+        await atualizarStatusTemplateMeta(base44, value);
+      }
       for (const message of (value.messages || [])) {
         await salvarMensagemMeta(base44, value, message);
       }
@@ -81,6 +85,52 @@ async function processarMensagemMeta(body, base44) {
         await atualizarStatusMensagem(base44, status);
       }
     }
+  }
+}
+
+// Atualiza o status de um template no CRM (PENDING/APPROVED/REJECTED).
+async function atualizarStatusTemplateMeta(base44, value) {
+  try {
+    const update = value.message_template_status_update || {};
+    const eventName = String(update.event || '').toUpperCase().trim();
+    const templateName = update.message_template_name || '';
+    const templateLanguage = update.message_template_language || 'pt_BR';
+    if (!templateName) return;
+
+    const statusMap: Record<string, string> = { APPROVED: 'aprovado', REJECTED: 'rejeitado', PENDING: 'em_analise', IN_APPEAL: 'em_analise', PAUSED: 'pausado', DISABLED: 'desativado' };
+    const newStatus = statusMap[eventName] || 'em_analise';
+
+    // Usa asServiceRole para contornar RLS (webhook Meta não tem cookies de
+    // usuário autenticado).
+    const candidatos = await base44.asServiceRole.entities.WhatsappTemplate.filter({ name: templateName }, '-created_date', 200);
+    const normLang = (l = '') => String(l || '').toLowerCase().replace('-', '_');
+    const matched = candidatos.find((t) => normLang(t.language) === normLang(templateLanguage));
+    if (!matched) {
+      console.log('Webhook template status: nenhum template encontrado para', templateName, templateLanguage);
+      return;
+    }
+    const updates: any = { status: newStatus, last_synced_at: new Date().toISOString() };
+    if (newStatus === 'aprovado' && !matched.approved_at) updates.approved_at = new Date().toISOString();
+    if (newStatus === 'rejeitado') {
+      updates.rejected_at = new Date().toISOString();
+      if (update.reason) updates.rejection_reason = String(update.reason);
+    }
+    await base44.asServiceRole.entities.WhatsappTemplate.update(matched.id, updates);
+    try {
+      await base44.asServiceRole.entities.WhatsappTemplateLog.create({
+        empresa_id: matched.empresa_id,
+        template_id: matched.id,
+        action: 'sincronizar_status',
+        previous_status: matched.status,
+        new_status: newStatus,
+        request_json: JSON.stringify({ source: 'webhook_meta_publico', event: eventName, templateName, templateLanguage }),
+        user_id: 'meta_webhook',
+        user_name: 'Meta Webhook',
+      });
+    } catch {}
+    console.log(`Webhook template: ${templateName} ${templateLanguage} → ${newStatus}`);
+  } catch (e) {
+    console.error('Erro ao processar template status update:', e?.message);
   }
 }
 

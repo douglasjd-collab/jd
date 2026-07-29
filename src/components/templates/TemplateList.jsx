@@ -179,15 +179,15 @@ export default function TemplateList({ templates, loading, onEdit, onRefresh, on
         <button
           onClick={handleAtualizar}
           disabled={refreshing || autoSyncing}
-          className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-full border border-slate-200 hover:bg-slate-50 disabled:opacity-50"
-          title="Sincronizar com a Meta e atualizar a lista"
+          className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+          title="Sincronizar templates da API Oficial (Meta/D-API) — consulta a WABA e atualiza status, conteúdo, categoria, idioma e mídia no CRM"
         >
           {refreshing || autoSyncing ? (
             <Loader2 className="w-3 h-3 animate-spin" />
           ) : (
             <RefreshCw className="w-3 h-3" />
           )}
-          {refreshing ? 'Sincronizando...' : autoSyncing ? 'Atualizando...' : 'Atualizar'}
+          {refreshing ? 'Sincronizando...' : autoSyncing ? 'Atualizando...' : 'Sincronizar com a Meta'}
         </button>
       </div>
 

@@ -24,15 +24,17 @@ export default function TemplatePreview({
           <div className="bg-white rounded-lg shadow-sm p-2.5 mb-1.5 max-w-[95%] text-slate-800 text-xs relative">
             <div className="absolute -left-1.5 top-0 w-3 h-3 bg-white rounded-bl-none transform rotate-180" style={{ clipPath: 'polygon(100% 0, 100% 100%, 0 0)' }} />
             {(tipo === 'IMAGE' || tipo === 'VIDEO') && (
-              <div className="w-full h-24 rounded mb-2 flex items-center justify-center bg-slate-200 text-slate-500 text-[10px]">
+              <div className="w-full h-32 rounded mb-2 overflow-hidden bg-slate-200 text-slate-500 text-[10px]">
                 {headerMediaUrl ? (
                   tipo === 'VIDEO' ? (
-                    <span>🎬 vídeo de exemplo</span>
+                    <video src={headerMediaUrl} controls muted loop playsInline className="w-full h-full object-cover" />
                   ) : (
-                    <img src={headerMediaUrl} alt="header" className="w-full h-full object-cover rounded" />
+                    <img src={headerMediaUrl} alt="header" className="w-full h-full object-cover" />
                   )
                 ) : (
-                  <span>{tipo === 'VIDEO' ? '🎬 vídeo ainda não enviado' : '🖼️ imagem ainda não enviada'}</span>
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span>{tipo === 'VIDEO' ? '🎬 vídeo ainda não enviado' : '🖼️ imagem ainda não enviada'}</span>
+                  </div>
                 )}
               </div>
             )}

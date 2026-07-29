@@ -62,9 +62,69 @@ async function processarWebhook(body) {
     await processarStatusUpdates(base44, value.statuses, metadata);
   }
 
+  // === PROCESSAR MESSAGE TEMPLATE STATUS UPDATE ===
+  // Evento enviado pela Meta quando o status de um template muda
+  // (PENDING → APPROVED, APPROVED → REJECTED, etc). Atualizamos o CRM para
+  // disponibilizar o template imediatamente no seletor de campanhas.
+  if (value.message_template_status_update) {
+    await processarTemplateStatusUpdate(base44, value);
+  }
+
   // === PROCESSAR MENSAGENS RECEBIDAS ===
   if (value.messages && Array.isArray(value.messages) && value.messages.length > 0) {
     await processarMensagensRecebidas(base44, value);
+  }
+}
+
+// Atualiza o status de um template no CRM a partir do webhook da Meta.
+// Localiza o template pela combinação empresa + WABA + nome + idioma.
+async function processarTemplateStatusUpdate(base44, value) {
+  try {
+    const update = value.message_template_status_update || {};
+    const eventName = (update.event || '').toUpperCase().trim(); // APPROVED|REJECTED|PENDING|PAUSED|DISABLED|IN_APPEAL
+    const templateName = update.message_template_name || '';
+    const templateLanguage = update.message_template_language || 'pt_BR';
+    const wabaId = value.metadata?.whatsapp_business_account_id || update.waba_id || '';
+    if (!templateName) return;
+
+    const statusMap = { APPROVED: 'aprovado', REJECTED: 'rejeitado', PENDING: 'em_analise', IN_APPEAL: 'em_analise', PAUSED: 'pausado', DISABLED: 'desativado' };
+    const newStatus = statusMap[eventName] || 'em_analise';
+
+    // Filtra no banco sem precisar do empresa_id (RLS service role).
+    const candidatos = await base44.entities.WhatsappTemplate.filter(
+      { name: templateName },
+      '-created_date',
+      200
+    );
+    const normLang = (l = '') => String(l || '').toLowerCase().replace('-', '_');
+    const matched = candidatos.find((t) =>
+      normLang(t.language) === normLang(templateLanguage) &&
+      (t.waba_id === wabaId || !wabaId || !t.waba_id)
+    );
+    if (!matched) {
+      console.log('Webhook template status: nenhum template encontrado para', templateName, templateLanguage);
+      return;
+    }
+    const updates = { status: newStatus, last_synced_at: new Date().toISOString() };
+    if (newStatus === 'aprovado' && !matched.approved_at) updates.approved_at = new Date().toISOString();
+    if (newStatus === 'rejeitado') {
+      updates.rejected_at = new Date().toISOString();
+      if (update.reason) updates.rejection_reason = String(update.reason);
+    }
+    await base44.entities.WhatsappTemplate.update(matched.id, updates);
+    await base44.entities.WhatsappTemplateLog.create({
+      empresa_id: matched.empresa_id,
+      template_id: matched.id,
+      action: 'sincronizar_status',
+      previous_status: matched.status,
+      new_status: newStatus,
+      request_json: JSON.stringify({ source: 'webhook_meta', event: eventName, templateName, templateLanguage }),
+      user_id: 'meta_webhook',
+      user_name: 'Meta Webhook',
+    }).catch(() => {});
+    console.log(`Webhook template: ${templateName} ${templateLanguage} → ${newStatus}`);
+  } catch (e) {
+    console.error('Erro ao processar template status update:', e?.message);
   }
 }
 

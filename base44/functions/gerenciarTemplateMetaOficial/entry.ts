@@ -193,8 +193,14 @@ async function syncTemplatesFromMeta(
   b44: any,
 ): Promise<{
   imported: number;
+  updated: number;
   totalInMeta: number;
+  aprovados: number;
+  aprovadosNoCrm: number;
   totalInCrm: number;
+  via: string;
+  wabaConsultado: string;
+  sessionConsultada: string;
 }> {
   // Identifica wabas disponíveis (de empresa + conexões oficiais)
   const wabaSet = new Set<string>();
@@ -257,28 +263,39 @@ async function syncTemplatesFromMeta(
   // — o token global da Meta não tem escopo sobre essa WABA, então a chamada
   // Graph API acima retorna vazio). Usamos o endpoint D-API Cloud API próprio
   // que retorna os templates com status real da Meta.
-  if (allMetaTemplates.length === 0) {
-    const dapiConns = (connections || []).filter((c) => c.provider_type === "dapi" && c.session_id);
-    if (dapiConns.length > 0) {
-      const apiKey = dapiKey();
-      for (const dc of dapiConns) {
-        try {
-          const items = await listDapiCloudApiTemplates(dc.session_id!, apiKey);
-          allMetaTemplates.push(...items);
-        } catch {}
-      }
+  const dapiConns = (connections || []).filter((c) => c.provider_type === "dapi" && c.session_id);
+  let via = "meta_graph_api";
+  if (allMetaTemplates.length === 0 && dapiConns.length > 0) {
+    const apiKey = dapiKey();
+    for (const dc of dapiConns) {
+      try {
+        const items = await listDapiCloudApiTemplates(dc.session_id!, apiKey);
+        allMetaTemplates.push(...items);
+      } catch {}
     }
+    if (allMetaTemplates.length > 0) via = "dapi_cloud_api";
   }
+
+  let wabaConsultado = wabaSet.size > 0 ? Array.from(wabaSet).join(",") : "";
+  let sessionConsultada = dapiConns.length > 0 ? dapiConns.map((d) => d.session_id).join(",") : "";
+  let totalInMeta = 0;
+  let aprovadosNaMeta = 0;
 
   if (allMetaTemplates.length === 0) {
     // Sem templates na Meta/D-API — nada a sincronizar.
-    return { imported: 0, updated: 0, totalInMeta: 0, totalInCrm: crmTemplates.length };
+    return { imported: 0, updated: 0, totalInMeta: 0, aprovados: 0, totalInCrm: crmTemplates.length, via, wabaConsultado, sessionConsultada };
   }
+
+  // Conta quantos templates na Meta estão aprovados (qualquer variação de
+  // status: APPROVED / approved / Aprovado). Aproveita para diagnóstico.
+  aprovadosNaMeta = allMetaTemplates.filter((m) => mapMetaStatusToCrm(m.status) === "aprovado").length;
+  totalInMeta = allMetaTemplates.length;
 
   const toCreate: any[] = [];
   const defaultConn = fallbackConnectionId || connections?.[0]?.id || null;
   const defaultConnName = fallbackConnName || connections?.[0]?.nome || "";
   let updated = 0;
+  let aprovadosAtualizadosNoCrm = 0;
 
   for (const m of allMetaTemplates) {
     const name = (m.name || "").toLowerCase();
@@ -321,6 +338,7 @@ async function syncTemplatesFromMeta(
         try {
           await b44.entities.WhatsappTemplate.update(existing.id, updates);
           updated++;
+          if (newStatus === "aprovado") aprovadosAtualizadosNoCrm++;
         } catch {}
       }
       continue;
@@ -380,8 +398,13 @@ async function syncTemplatesFromMeta(
   return {
     imported: toCreate.length,
     updated,
-    totalInMeta: allMetaTemplates.length,
+    totalInMeta,
+    aprovados: aprovadosNaMeta,
+    aprovadosNoCrm: aprovadosAtualizadosNoCrm,
     totalInCrm: crmTemplates.length + toCreate.length,
+    via,
+    wabaConsultado,
+    sessionConsultada,
   };
 }
 
