@@ -17,6 +17,8 @@ import {
 import AvatarContato from './AvatarContato';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import BuscarMensagensBar from './BuscarMensagensBar';
+import GaleriaMidiasPanel from './galeria/GaleriaMidiasPanel';
 
 export default function ChatHeader({
   conversaSelecionada,
@@ -44,9 +46,23 @@ export default function ChatHeader({
   coachIAOpen,
   setCoachIAOpen,
   onAbrirCadastroIA,
-  onAbrirBusca,
-  onAbrirGaleria,
 }) {
+  const [buscaAtiva, setBuscaAtiva] = useState(false);
+  const [galeriaAberta, setGaleriaAberta] = useState(false);
+
+  const localizarMensagem = (msg) => {
+    setBuscaAtiva(false);
+    setGaleriaAberta(false);
+    if (!msg?.id) return;
+    const el = document.getElementById(`msg-${msg.id}`);
+    if (!el) {
+      toast.info('Mensagem não está carregada na tela. Continue rolando a conversa até encontrá-la.');
+      return;
+    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('msg-destacada');
+    setTimeout(() => el.classList.remove('msg-destacada'), 3500);
+  };
   const navigate = useNavigate();
   const [canalOverride, setCanalOverride] = useState(null);
   const [fotoModalOpen, setFotoModalOpen] = useState(false);
@@ -427,7 +443,7 @@ export default function ChatHeader({
                 variant="outline"
                 size="icon"
                 className="h-8 w-8 rounded-md border-slate-200 hover:bg-slate-100"
-                onClick={() => onAbrirBusca?.()}
+                onClick={() => setBuscaAtiva(true)}
               >
                 <Search className="h-4 w-4 text-slate-700" />
               </Button>
@@ -436,7 +452,17 @@ export default function ChatHeader({
           </Tooltip>
 
           <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-8 w-8 rounded-md border-slate-300 hover:bg-slate-100">
+                <MoreVertical className="h-4 w-4 text-slate-900" />
+              </Button>
+            </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="bottom" sideOffset={4} className="z-[200]">
+              <DropdownMenuItem onClick={() => setGaleriaAberta(true)}>
+                <Paperclip className="mr-2 h-3.5 w-3.5" />
+                Mídias, links e documentos
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={async () => {
                   try {
