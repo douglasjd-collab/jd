@@ -88,6 +88,21 @@ Deno.serve(async (req) => {
       console.log('[indexarDocumentosConversa] listar mensagens falhou:', e.message);
     }
 
+    // ── 1.5 Recência: quando houver documentos enviados nos últimos 7 dias,
+    // ignorar os mais antigos (regra do usuário) ──
+    const SETE_DIAS_MS = 7 * 24 * 60 * 60 * 1000;
+    const agoraIdx = Date.now();
+    const comTsIdx = mensagensComDoc.map((m) => ({
+      m,
+      ts: m.data_envio ? new Date(m.data_envio).getTime()
+        : (m.created_date ? new Date(m.created_date).getTime() : Date.now())
+    }));
+    const recentesIdx = comTsIdx.filter((x) => agoraIdx - x.ts <= SETE_DIAS_MS).map((x) => x.m);
+    if (recentesIdx.length > 0) {
+      const urlsRecentesIdx = new Set(recentesIdx.map((m) => m.arquivo_url));
+      mensagensComDoc = mensagensComDoc.filter((m) => urlsRecentesIdx.has(m.arquivo_url));
+    }
+
     if (!mensagensComDoc.length) {
       return Response.json({
         success: true,
@@ -158,17 +173,31 @@ CRÍTICO: NUNCA inventar dados. Não agrupar documentos de pessoas diferentes. C
       }
     };
 
-    const llmRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt,
-      file_urls: arquivos,
-      response_json_schema: schema,
-      model: 'claude_sonnet_4_6'
-    });
-
-    let docs = (llmRes && llmRes.documentos) || [];
-    // Alguns modelos embrulham em "response"
-    if ((!docs || !docs.length) && llmRes?.response?.documentos) {
-      docs = llmRes.response.documentos;
+    // ── 3.1 Dividir em lotes de no máximo 4 arquivos por chamada, em paralelo,
+    // para manter cada requisição abaixo do timeout do gateway ──
+    const LOTE_IDX = 4;
+    const lotesIdx = [];
+    for (let i = 0; i < arquivos.length; i += LOTE_IDX) {
+      lotesIdx.push(arquivos.slice(i, i + LOTE_IDX));
+    }
+    const leiturasIdx = await Promise.all(lotesIdx.map((lote) =>
+      base44.asServiceRole.integrations.Core.InvokeLLM({
+        prompt,
+        file_urls: lote,
+        response_json_schema: schema,
+        model: 'claude_sonnet_4_6'
+      }).catch((e) => {
+        console.log('[indexarDocumentosConversa] lote falhou:', e?.message);
+        return null;
+      })
+    ));
+    let docs = [];
+    for (const llmRes of leiturasIdx) {
+      if (!llmRes) continue;
+      const parteDocs = (llmRes && llmRes.documentos) || [];
+      // Alguns modelos embrulham em "response"
+      const unwrap = (parteDocs.length ? parteDocs : llmRes?.response?.documentos) || [];
+      docs = docs.concat(unwrap);
     }
 
     // Mantém order por arquivo_url para casar com mensagens

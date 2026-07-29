@@ -54,6 +54,15 @@ const confiancaDe = (lid, id) => {
   return lid.dados_pessoais?.[id]?.confianca || null;
 };
 
+const mascararCpfTab = (d) => {
+  const s = String(d || '').replace(/\D/g, '');
+  return s.length === 11 ? `${s.slice(0,3)}.${s.slice(3,6)}.${s.slice(6,9)}-${s.slice(9)}` : (d || '');
+};
+const fmtDataTab = (iso) => {
+  if (!iso) return '';
+  try { return new Date(iso).toLocaleDateString('pt-BR'); } catch { return iso; }
+};
+
 export default function CadastroIATab({ conversaId, mensagens, empresaId, telefoneConversa, onEnviarMensagem }) {
   const [status, setStatus] = useState('idle');
   const [resultado, setResultado] = useState(null);
@@ -62,12 +71,14 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
   // Cadastro Seletivo — guarda a seleção (cliente_alvo + documentos selecionados) para passar ao confirmar.
   const [clienteAlvo, setClienteAlvo] = useState('');
   const [ultimaSelecao, setUltimaSelecao] = useState(null);
+  // Múltiplas pessoas detectadas — usuário escolhe qual cadastrar.
+  const [gruposIndexados, setGruposIndexados] = useState(null);
 
   const documentos = useMemo(() => {
     if (!Array.isArray(mensagens)) return [];
     return mensagens
       .filter((m) => m.arquivo_url && ['imagem', 'pdf', 'documento'].includes(m.tipo_conteudo))
-      .map((m) => ({ url: m.arquivo_url, tipo: m.tipo_conteudo, nome: m.arquivo_nome || '' }))
+      .map((m) => ({ url: m.arquivo_url, tipo: m.tipo_conteudo, nome: m.arquivo_nome || '', data_envio: m.data_envio, created_date: m.created_date }))
       .slice(-10);
   }, [mensagens]);
 
@@ -92,6 +103,10 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
     });
   }, [resultado, status]);
 
+  // Fluxo novo: ao clicar "Analisar documentos" SEM ter buscado um nome,
+  // primeiro indexamos a conversa. Se houver mais de uma pessoa nos arquivos,
+  // perguntamos qual cadastrar antes de extrair os dados — evitando mistura de
+  // documentos de pessoas diferentes e reduzindo o tempo total do LLM.
   const analisar = async () => {
     if (!documentos.length) {
       toast.error('Nenhum documento encontrado nesta conversa.');
@@ -99,11 +114,51 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
     }
     setStatus('analyzing');
     try {
+      const idxResp = await base44.functions.invoke('indexarDocumentosConversa', {
+        conversa_id: conversaId,
+        empresa_id: empresaId,
+        forcar_reindexacao: true
+      });
+      const idxData = (idxResp && (idxResp.data || idxResp)) || {};
+      if (!idxData.success) {
+        toast.error(idxData.error || 'Falha ao indexar documentos.');
+        setStatus('idle');
+        return;
+      }
+      const grupos = Array.isArray(idxData.grupos) ? idxData.grupos : [];
+      if (grupos.length === 0) {
+        toast.info('Não localizei documentos pessoais nesta conversa. Solicite RG/CNH e comprovante.');
+        setStatus('idle');
+        return;
+      }
+      if (grupos.length > 1) {
+        // Mais de uma pessoa — exibe seletor para o atendente escolher.
+        setGruposIndexados(grupos);
+        setStatus('selecionar_pessoa');
+        return;
+      }
+      // Uma única pessoa — extrai dados direto.
+      const alvo = grupos[0].cpf || grupos[0].nome || '';
+      setClienteAlvo(alvo);
+      await analisarComAlvo(alvo);
+    } catch (e) {
+      toast.error('Erro: ' + (e.message || 'Falha na análise'));
+      setStatus('idle');
+    }
+  };
+
+  // Continua a análise apenas para os documentos da pessoa alvo — chamado
+  // pela análise automática (uma única pessoa) ou pela seleção manual de
+  // candidatos em conversas com múltiplas pessoas.
+  const analisarComAlvo = async (alvo) => {
+    setStatus('analyzing');
+    try {
       const resp = await base44.functions.invoke('analisarDocumentosConversa', {
         conversa_id: conversaId,
         empresa_id: empresaId,
         telefone_conversa: telefoneConversa,
-        documentos
+        documentos,
+        cliente_alvo: alvo
       });
       const data = resp.data || {};
       if (!data.success) {
@@ -115,12 +170,20 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
       CAMPOS.forEach((c) => { inicial[c.id] = valorDe(data.leitura, c.id); });
       setForm(inicial);
       setResultado(data);
+      setUltimaSelecao(data.selecao || null);
       setStatus('review');
       toast.success('Análise concluída. Revise os dados antes de cadastrar.');
     } catch (e) {
       toast.error('Erro: ' + (e.message || 'Falha na análise'));
       setStatus('idle');
     }
+  };
+
+  const escolherPessoa = (grupo) => {
+    const alvo = grupo.cpf || grupo.nome || '';
+    setGruposIndexados(null);
+    setClienteAlvo(alvo);
+    analisarComAlvo(alvo);
   };
 
   // Recebe o resultado da análise seletiva (somente documentos do cliente-alvo)
@@ -252,6 +315,44 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
       <div className="flex flex-col items-center justify-center py-12 gap-3">
         <div className="spinner" />
         <span className="text-[11px] text-zinc-500">Lendo documentos e extraindo dados…</span>
+      </div>
+    );
+  }
+
+  if (status === 'selecionar_pessoa' && gruposIndexados) {
+    return (
+      <div className="space-y-3">
+        <div className="cs-t">Qual cliente deseja cadastrar?</div>
+        <div className="text-[11px] text-zinc-400 leading-relaxed">
+          A IA identificou <strong className="text-zinc-100">{gruposIndexados.length} pessoa(s)</strong> nos
+          documentos desta conversa. Selecione o cliente correto para que sejam
+          extraídos apenas os documentos dele.
+        </div>
+        <ul className="space-y-1.5">
+          {gruposIndexados.map((g) => (
+            <li key={g.grupo_id}>
+              <button
+                onClick={() => escolherPessoa(g)}
+                className="w-full text-left px-2.5 py-2.5 rounded-md border border-zinc-700 bg-zinc-800/40 hover:bg-zinc-800 text-[11px] flex items-center justify-between gap-2"
+              >
+                <div className="min-w-0">
+                  <div className="text-zinc-100 font-medium truncate">
+                    {g.nome || 'Nome não identificado'}
+                  </div>
+                  <div className="text-[9px] text-zinc-500">
+                    {g.cpf ? `CPF ${mascararCpfTab(g.cpf)}` : 'Sem CPF identificado'}
+                    {g.data_nascimento ? ` · Nasc. ${fmtDataTab(g.data_nascimento)}` : ''}
+                    {` · ${g.documentos?.length || 0} doc(s)`}
+                  </div>
+                </div>
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 shrink-0">
+                  {g.documentos?.length || 0} doc(s)
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <button onClick={() => { setGruposIndexados(null); setStatus('idle'); }} className="sb"><X size={11} /> Voltar</button>
       </div>
     );
   }

@@ -48,18 +48,33 @@ Deno.serve(async (req) => {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
-    const { conversa_id, empresa_id, documentos, telefone_conversa, cliente_alvo } = body;
+    const { conversa_id, empresa_id, documentos: documentosOrig, telefone_conversa, cliente_alvo } = body;
 
     if (!conversa_id || !empresa_id) {
       return Response.json({ error: 'conversa_id e empresa_id são obrigatórios.' }, { status: 400 });
     }
-    if (!Array.isArray(documentos) || documentos.length === 0) {
+
+    // ── 0. Recência: se houver documentos enviados nos últimos 7 dias, ignora
+    // os mais antigos (regra do usuário) ──
+    let documentos = Array.isArray(documentosOrig) ? documentosOrig : [];
+    if (documentos.length) {
+      const SETE_DIAS_MS = 7 * 24 * 60 * 60 * 1000;
+      const agoraAn = Date.now();
+      const recentes = documentos.filter((d) => {
+        const ts = d.data_envio ? new Date(d.data_envio).getTime()
+          : (d.created_date ? new Date(d.created_date).getTime() : 0);
+        return agoraAn - ts <= SETE_DIAS_MS;
+      });
+      if (recentes.length > 0) documentos = recentes;
+    }
+
+    if (documentos.length === 0) {
       return Response.json({
         success: true,
         conversa_id,
         leitura: { documentos: [], dados_pessoais: {}, endereco: {}, contato: {} },
         sem_documentos: true,
-        mensagem: 'Nenhum documento pessoal foi localizado nesta conversa.'
+        mensagem: 'Nenhum documento recente foi localizado nesta conversa. Solicite RG/CNH e comprovante atualizados.'
       });
     }
 
@@ -331,17 +346,69 @@ Todo texto contendo "@" seguido de domínio (ex: @gmail.com, @hotmail.com, @iclo
       }
     };
 
-    const leitura = await base44.asServiceRole.integrations.Core.InvokeLLM({
-      prompt,
-      file_urls: arquivos,
-      response_json_schema: schema,
-      model: 'claude_sonnet_4_6'
-    });
-
-    // Alguns modelos (Claude) embrulham a resposta em uma chave "response" — desembrulha
-    const lid = (leitura && leitura.response && typeof leitura.response === 'object' && !Array.isArray(leitura.response))
-      ? leitura.response
-      : (leitura || {});
+    // ── LLM em lotes (máx 4 arquivos por chamada, em paralelo) — mantém cada
+    // requisição abaixo do timeout do gateway HTTP e junta os resultados ──
+    const LOTE_AN = 4;
+    const lotesAn = [];
+    for (let i = 0; i < arquivos.length; i += LOTE_AN) {
+      lotesAn.push(arquivos.slice(i, i + LOTE_AN));
+    }
+    const leiturasAn = await Promise.all(lotesAn.map((lote) =>
+      base44.asServiceRole.integrations.Core.InvokeLLM({
+        prompt,
+        file_urls: lote,
+        response_json_schema: schema,
+        model: 'claude_sonnet_4_6'
+      }).catch((e) => {
+        console.log('[analisarDocumentosConversa] lote falhou:', e?.message);
+        return null;
+      })
+    ));
+    const achaResponse = (r) => (r && r.response && typeof r.response === 'object' && !Array.isArray(r.response))
+      ? r.response
+      : (r || {});
+    const ordemConf = { alta: 4, media: 3, baixa: 2, nao_identificado: 1 };
+    const melhorCampo = (ex, cand) => {
+      if (!ex || !ex.valor || String(ex.valor).trim() === '' || ex.confianca === 'nao_identificado') return cand;
+      if (!cand || !cand.valor || String(cand.valor).trim() === '') return ex;
+      return (ordemConf[cand.confianca] || 0) > (ordemConf[ex.confianca] || 0) ? cand : ex;
+    };
+    const lid = {
+      documentos: [],
+      dados_pessoais: {},
+      endereco: {},
+      contato: {},
+      campos_pendentes: [],
+      divergencias: []
+    };
+    for (const r of leiturasAn) {
+      if (!r) continue;
+      const p = achaResponse(r);
+      if (Array.isArray(p.documentos)) lid.documentos.push(...p.documentos);
+      if (p.dados_pessoais) {
+        for (const [k, v] of Object.entries(p.dados_pessoais)) {
+          if (v && typeof v === 'object') {
+            lid.dados_pessoais[k] = melhorCampo(lid.dados_pessoais[k], v);
+          }
+        }
+      }
+      if (p.endereco) {
+        for (const [k, v] of Object.entries(p.endereco)) {
+          if (v != null && String(v).trim() !== '' && !String(lid.endereco[k] || '').trim()) {
+            lid.endereco[k] = v;
+          }
+        }
+      }
+      if (p.contato) {
+        for (const [k, v] of Object.entries(p.contato)) {
+          if (v && typeof v === 'object') {
+            lid.contato[k] = melhorCampo(lid.contato[k], v);
+          }
+        }
+      }
+      if (Array.isArray(p.campos_pendentes)) lid.campos_pendentes.push(...p.campos_pendentes);
+      if (Array.isArray(p.divergencias)) lid.divergencias.push(...p.divergencias);
+    }
 
     lid.documentos = Array.isArray(lid.documentos) ? lid.documentos : [];
     lid.dados_pessoais = lid.dados_pessoais || {};
