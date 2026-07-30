@@ -1965,26 +1965,25 @@ export default function BatePapo() {
                   </button>
                 </div>
 
-                {/* Linha 2: Transferidos | Grupos | Campanhas */}
-                <div className="grid grid-cols-3 gap-1.5">
-                  <button onClick={() => setFiltroStatus('transferida')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'transferida' ? 'bg-orange-500' : 'bg-slate-100'}`}>
+                {/* Linha 2: Transferidos | Grupos | Campanhas | Finalizados */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  <button onClick={() => setFiltroStatus('transferida')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'transferida' ? 'bg-orange-500' : 'bg-slate-100'}`}>
                     <span className={`text-sm font-bold ${filtroStatus === 'transferida' ? 'text-white' : 'text-orange-500'}`}>{contadores.transferida}</span>
                     <span className={`text-[9px] font-medium ${filtroStatus === 'transferida' ? 'text-white' : 'text-slate-600'}`}>Transferidos</span>
                   </button>
-                  <button onClick={() => setFiltroStatus('grupos')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'grupos' ? 'bg-emerald-600' : 'bg-slate-100'}`}>
+                  <button onClick={() => setFiltroStatus('grupos')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'grupos' ? 'bg-emerald-600' : 'bg-slate-100'}`}>
                     <span className={`text-sm font-bold ${filtroStatus === 'grupos' ? 'text-white' : 'text-emerald-500'}`}>{contadores.grupos}</span>
                     <span className={`text-[9px] font-medium ${filtroStatus === 'grupos' ? 'text-white' : 'text-slate-600'}`}>Grupos</span>
                   </button>
-                  <button onClick={() => setFiltroStatus('campanhas')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'campanhas' ? 'bg-cyan-600' : 'bg-slate-100'}`}>
+                  <button onClick={() => setFiltroStatus('campanhas')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'campanhas' ? 'bg-cyan-600' : 'bg-slate-100'}`}>
                     <span className={`text-sm font-bold ${filtroStatus === 'campanhas' ? 'text-white' : 'text-cyan-600'}`}>{contadores.campanhas}</span>
                     <span className={`text-[9px] font-medium ${filtroStatus === 'campanhas' ? 'text-white' : 'text-slate-600'}`}>{contadores.campanhas > 0 ? 'Campanhas*' : 'Campanhas'}</span>
                   </button>
+                  <button onClick={() => setFiltroStatus('encerrada')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'encerrada' ? 'bg-slate-600' : 'bg-slate-100'}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-400'}`}>{contadores.encerrada}</span>
+                    <span className={`text-[9px] font-medium ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-500'}`}>Finalizados</span>
+                  </button>
                 </div>
-                {/* Finalizados — separado, apenas consulta */}
-                <button onClick={() => setFiltroStatus('encerrada')} className={`w-full flex items-center justify-center gap-2 cursor-pointer rounded-lg px-3 py-1.5 ${filtroStatus==='encerrada'?'bg-slate-600':'bg-slate-50 border border-slate-200'}`}>
-                  <span className={`text-xs font-bold ${filtroStatus==='encerrada'?'text-white':'text-slate-400'}`}>⚫ {contadores.encerrada} Finalizados</span>
-                  <span className={`text-[10px] ${filtroStatus==='encerrada'?'text-white/60':'text-slate-400'}`}>(consulta)</span>
-                </button>
               </div>
 
               {filtroStatus === 'transferida' && contadores.transferida > 0 && (
