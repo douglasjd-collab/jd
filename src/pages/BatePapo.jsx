@@ -1412,7 +1412,7 @@ export default function BatePapo() {
   const ehTransferidaAtiva = (c) => !isGrupo(c) && c.status === 'encerrada' && !!c.responsavel_id && atendenteDentroDoTempo(c);
   const ehFinalizada = (c) => !isGrupo(c) && c.status === 'encerrada' && (!c.responsavel_id || !atendenteDentroDoTempo(c));
   const contadores = {
-    todas: conversas.filter(c => c.status !== 'campanha' && !ehFinalizada(c) && c.bloqueado !== true && c.bloqueado !== 'true').length,
+    todas: conversas.filter(c => c.status !== 'campanha' && c.bloqueado !== true && c.bloqueado !== 'true').length,
     espera: conversasValidas.filter(c => estaEmEsperaFiltro(c)).length,
     ativa: conversasValidas.filter(c => estaEmAtendimentoFiltro(c)).length,
     transferida: conversas.filter(ehTransferidaAtiva).length,
@@ -1456,7 +1456,7 @@ export default function BatePapo() {
       if (c.status === 'campanha' && filtroStatus !== 'campanhas') return false;
 
       // Conversas individuais (não-grupo, não-campanha)
-      if (filtroStatus === 'todas')      return !ehFinalizada(c);
+      if (filtroStatus === 'todas')      return true;
       if (filtroStatus === 'espera')     return estaEmEsperaFiltro(c);
       if (filtroStatus === 'ativa')      return estaEmAtendimentoFiltro(c);
       if (filtroStatus === 'encerrada')  return ehFinalizada(c);
