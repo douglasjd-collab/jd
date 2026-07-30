@@ -5,7 +5,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Search, TrendingDown, Calendar, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { Search, TrendingDown, Calendar, FileSpreadsheet, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export default function HistoricoResultadoAssembleia() {
@@ -15,6 +15,11 @@ export default function HistoricoResultadoAssembleia() {
   const [mesSelecionado, setMesSelecionado] = useState('');
   const [ordenarPorMenor, setOrdenarPorMenor] = useState(false);
   const [tipoBem, setTipoBem] = useState('');
+  const [gruposExpandidos, setGruposExpandidos] = useState({});
+
+  const toggleGrupo = (grupoId) => {
+    setGruposExpandidos(prev => ({ ...prev, [grupoId]: !prev[grupoId] }));
+  };
 
   // Classifica a descrição do bem em imóveis ou veículos
   const classificarTipoBem = (descricao) => {
@@ -335,13 +340,34 @@ export default function HistoricoResultadoAssembleia() {
               <Card key={grupo.grupo} className="border-2">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl flex items-center gap-2">
+                    <CardTitle
+                      className="text-xl flex items-center gap-2 cursor-pointer select-none"
+                      onClick={() => toggleGrupo(grupo.grupo)}
+                    >
                       <FileSpreadsheet className="w-5 h-5 text-[#23BE84]" />
                       Grupo {grupo.grupo}
+                      {gruposExpandidos[grupo.grupo] ? (
+                        <ChevronUp className="w-5 h-5 text-slate-500 ml-1" />
+                      ) : (
+                        <ChevronDown className="w-5 h-5 text-slate-500 ml-1" />
+                      )}
                     </CardTitle>
-                    <Badge variant="outline" className="text-base">
-                      {totalContemplacoes} contemplações
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-base">
+                        {totalContemplacoes} contemplações
+                      </Badge>
+                      <button
+                        onClick={() => toggleGrupo(grupo.grupo)}
+                        className="p-1 rounded-md hover:bg-slate-100 transition-colors"
+                        title={gruposExpandidos[grupo.grupo] ? 'Recolher' : 'Expandir'}
+                      >
+                        {gruposExpandidos[grupo.grupo] ? (
+                          <ChevronUp className="w-5 h-5 text-slate-600" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-slate-600" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
@@ -435,7 +461,8 @@ export default function HistoricoResultadoAssembleia() {
                     </div>
                   </div>
 
-                  {/* Tabela de Detalhes */}
+                  {/* Tabela de Detalhes (expandível) */}
+                  {gruposExpandidos[grupo.grupo] && (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
@@ -471,9 +498,10 @@ export default function HistoricoResultadoAssembleia() {
                             </tr>
                           ))}
                         </tbody>
-                    </table>
-                  </div>
-                </CardContent>
+                        </table>
+                        </div>
+                        )}
+                        </CardContent>
               </Card>
             );
           })}
