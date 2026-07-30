@@ -50,8 +50,8 @@ export default function ImageEditorThumbnails({
           onChange={(e) => setLegenda(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Digite uma mensagem (Enter envia, Shift+Enter quebra linha)"
-          rows={1}
-          className="flex-1 min-h-[40px] max-h-32 overflow-y-auto resize-none rounded-md bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          rows={2}
+          className="flex-1 min-h-[72px] max-h-40 overflow-y-auto resize-none rounded-md bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
       </div>
     </div>
