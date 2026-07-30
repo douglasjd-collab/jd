@@ -46,7 +46,7 @@ export default function VisualizadorMidia({ midias, indiceInicial, onFechar, onL
 
   return (
     <Dialog open onOpenChange={(v) => !v && onFechar()}>
-      <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-0 flex flex-col overflow-hidden">
+      <DialogContent className="w-[min(92vw,720px)] max-h-[86vh] p-0 bg-black/95 border-0 flex flex-col overflow-hidden rounded-lg">
         {/* Topbar */}
         <div className="flex items-center justify-between px-4 py-2 bg-black/50 text-white text-xs">
           <span>{indice + 1} de {midias.length}</span>
