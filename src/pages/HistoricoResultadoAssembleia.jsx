@@ -14,6 +14,28 @@ export default function HistoricoResultadoAssembleia() {
   const [buscaGrupo, setBuscaGrupo] = useState('');
   const [mesSelecionado, setMesSelecionado] = useState('');
   const [ordenarPorMenor, setOrdenarPorMenor] = useState(false);
+  const [tipoBem, setTipoBem] = useState('');
+
+  // Classifica a descrição do bem em imóveis ou veículos
+  const classificarTipoBem = (descricao) => {
+    if (!descricao) return '';
+    const d = descricao.toUpperCase();
+    if (/\b(IM[OÓ]VEL|IMOVEL|CASA|APARTAMENTO|CONSTRU[ÇC][ÃA]O|TERRENO|MUDA|REFORMA)\b/.test(d)) return 'imoveis';
+    if (/\b(AUTOM[OÓ]VEL|AUTOMOVEL|MOTO|MOTOCICLETA|VE[ÍI]CULO|VEICULO|CAMINH[ÃA]O|CAMINHAO|CARRO|ONIBUS|ÔNIBUS)\b/.test(d)) return 'veiculos';
+    return '';
+  };
+
+  // Determina o tipo do grupo a partir de todos os detalhes (maioria)
+  const tipoDoGrupo = (detalhes) => {
+    if (!detalhes || detalhes.length === 0) return '';
+    const tipos = detalhes.map(d => classificarTipoBem(d.descricao)).filter(Boolean);
+    if (tipos.length === 0) return '';
+    const imoveis = tipos.filter(t => t === 'imoveis').length;
+    const veiculos = tipos.filter(t => t === 'veiculos').length;
+    if (imoveis > veiculos) return 'imoveis';
+    if (veiculos > 0) return 'veiculos';
+    return '';
+  };
 
   useEffect(() => {
     loadUser();
@@ -149,6 +171,11 @@ export default function HistoricoResultadoAssembleia() {
       gruposFiltrados = gruposFiltrados.filter(g => g.grupo.includes(buscaGrupo));
     }
 
+    // Filtrar por tipo de bem (imóveis / veículos)
+    if (tipoBem) {
+      gruposFiltrados = gruposFiltrados.filter(g => tipoDoGrupo(g.detalhes) === tipoBem);
+    }
+
     // Ordenar por menor lance se ativado
     if (ordenarPorMenor) {
       gruposFiltrados.sort((a, b) => {
@@ -161,7 +188,7 @@ export default function HistoricoResultadoAssembleia() {
     }
 
     return gruposFiltrados;
-  }, [todosDetalhes, todosResumos, buscaGrupo, mesSelecionado, ordenarPorMenor, historicos]);
+  }, [todosDetalhes, todosResumos, buscaGrupo, mesSelecionado, ordenarPorMenor, tipoBem, historicos]);
 
   // Lista de meses disponíveis
   const mesesDisponiveis = React.useMemo(() => {
@@ -218,7 +245,7 @@ export default function HistoricoResultadoAssembleia() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <Label>Buscar por Grupo</Label>
               <div className="relative">
@@ -244,6 +271,19 @@ export default function HistoricoResultadoAssembleia() {
                 {mesesDisponiveis.map(mes => (
                   <option key={mes} value={mes}>{formatarMes(mes)}</option>
                 ))}
+              </select>
+            </div>
+
+            <div>
+              <Label>Tipo de Bem</Label>
+              <select
+                value={tipoBem}
+                onChange={(e) => setTipoBem(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">Todos os tipos</option>
+                <option value="veiculos">Veículos</option>
+                <option value="imoveis">Imóveis</option>
               </select>
             </div>
 
