@@ -10,9 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Eye, Copy, Ban, Download, BarChart3, Loader2 } from 'lucide-react';
+import { Plus, Search, Eye, Copy, Ban, Download, BarChart3, Loader2, RotateCw, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import EditarCampanhaModal from './EditarCampanhaModal';
 
 const STATUS_LIST = ['rascunho', 'agendada', 'executando', 'concluida', 'cancelada', 'pausada', 'erro'];
 
@@ -21,6 +22,8 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [detalhe, setDetalhe] = useState(null);
   const [copiando, setCopiando] = useState(false);
+  const [reenviando, setReenviando] = useState(null);
+  const [editando, setEditando] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: campanhas = [], isLoading } = useQuery({
@@ -79,6 +82,72 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
       queryClient.invalidateQueries(['campanhas-dashboard', empresaId]);
     } catch (e) {
       toast.error('Erro ao cancelar: ' + (e.message || 'desconhecido'));
+    }
+  };
+
+  const reenviar = async (c) => {
+    if (!c.template_nome) {
+      toast.error('Campanha não possui template vinculado');
+      return;
+    }
+    if (!confirm(`Reenviar a campanha "${c.nome}"? Apenas os destinatários que falharam serão reencaminhados.`)) return;
+    setReenviando(c.id);
+    try {
+      // 1) Resetar destinatários com falha para a fila
+      await base44.entities.CampanhaDestinatario.updateMany(
+        { campanha_id: c.id, status: 'falhou' },
+        { $set: { status: 'na_fila', erro_mensagem: '' } }
+      );
+      // 2) Buscar os destinatários na fila que ainda não foram enviados
+      const naFila = await base44.entities.CampanhaDestinatario.filter(
+        { campanha_id: c.id, status: 'na_fila' },
+        null, 500
+      );
+      if (naFila.length === 0) {
+        toast.info('Nenhum destinatário na fila para reenvio.');
+        setReenviando(null);
+        return;
+      }
+      // 3) Buscar dados do template (header/botoes) para o disparo
+      let headerType = '';
+      let headerUrl = '';
+      let botoes = [];
+      if (c.template_id) {
+        try {
+          const tpl = await base44.entities.WhatsappTemplate.get(c.template_id);
+          headerType = tpl?.header_type || '';
+          headerUrl = tpl?.header_media_url || '';
+          botoes = tpl?.buttons_json ? JSON.parse(tpl.buttons_json) : [];
+        } catch {}
+      }
+      // 4) Marcar campanha como executando
+      await base44.entities.Campanha.update(c.id, { status: 'executando' });
+      // 5) Disparar
+      const contatos = naFila.map((d) => ({
+        telefone: d.telefone,
+        cliente_id: d.cliente_id,
+        cliente_nome: d.cliente_nome,
+      }));
+      await base44.functions.invoke('dispararCampanhaMetaOficial', {
+        empresa_id: c.empresa_id,
+        template_name: c.template_nome,
+        template_language: c.template_language || 'pt_BR',
+        template_header_type: headerType,
+        template_header_url: headerUrl,
+        template_botoes: botoes,
+        contatos,
+        nome_campanha: c.nome,
+        delay_segundos: c.velocidade_envio ? Math.max(1, Math.round(60 / c.velocidade_envio)) : 5,
+        pausar_apos: c.pausa_apos || 0,
+        duracao_pausa: c.duracao_pausa_min || 60,
+      });
+      toast.success(`Reenvio iniciado para ${naFila.length} destinatário(s).`);
+      queryClient.invalidateQueries(['campanhas-lista', empresaId]);
+      queryClient.invalidateQueries(['campanhas-dashboard', empresaId]);
+    } catch (e) {
+      toast.error('Erro ao reenviar: ' + (e.message || 'desconhecido'));
+    } finally {
+      setReenviando(null);
     }
   };
 
@@ -151,6 +220,16 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                     <Td>
                       <div className="flex items-center justify-center gap-1">
                         <IconBtn title="Visualizar" onClick={() => setDetalhe(c)}><Eye className="w-4 h-4" /></IconBtn>
+                        <IconBtn title="Editar" onClick={() => setEditando(c)}><Pencil className="w-4 h-4" /></IconBtn>
+                        <IconBtn
+                          title="Reenviar campanha"
+                          onClick={() => reenviar(c)}
+                          disabled={reenviando === c.id || !c.template_nome}
+                        >
+                          {reenviando === c.id
+                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : <RotateCw className="w-4 h-4" />}
+                        </IconBtn>
                         <IconBtn title="Duplicar" onClick={() => duplicar(c)} disabled={copiando}><Copy className="w-4 h-4" /></IconBtn>
                         <IconBtn title="Cancelar" onClick={() => cancelar(c)} disabled={c.status === 'cancelada' || c.status === 'concluida'}><Ban className="w-4 h-4" /></IconBtn>
                         <IconBtn title="Exportar" onClick={() => toast.info('Exportação em breve')}><Download className="w-4 h-4" /></IconBtn>
@@ -206,6 +285,13 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
           )}
         </DialogContent>
       </Dialog>
+
+      <EditarCampanhaModal
+        open={!!editando}
+        onOpenChange={(o) => !o && setEditando(null)}
+        campanha={editando}
+        empresaId={empresaId}
+      />
     </div>
   );
 }
