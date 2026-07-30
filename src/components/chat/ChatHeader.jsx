@@ -49,6 +49,7 @@ export default function ChatHeader({
   setCoachIAOpen,
   onAbrirCadastroIA,
   localizarMensagem,
+  onEncaminharMensagem,
 }) {
   const [buscaAtiva, setBuscaAtiva] = useState(false);
   const [galeriaAberta, setGaleriaAberta] = useState(false);
@@ -648,6 +649,7 @@ export default function ChatHeader({
           onOpenChange={setGaleriaAberta}
           conversaId={conversaSelecionada?.id}
           onLocalizarMensagem={localizarMensagem}
+          onEncaminharMensagem={onEncaminharMensagem}
           />
           </div>
           );

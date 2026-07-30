@@ -1,13 +1,13 @@
 import React from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { X, Download, MapPin } from 'lucide-react';
+import { X, Download, MapPin, Forward } from 'lucide-react';
 import { formatarDataHora, iconeArquivo, formatarBytes } from './helpers';
 
 /**
  * Visualizador inline de PDF dentro do CRM, sem forçar download.
  */
-export default function VisualizadorPdf({ mensagem, onFechar, onLocalizarMensagem }) {
+export default function VisualizadorPdf({ mensagem, onFechar, onLocalizarMensagem, onEncaminhar }) {
   if (!mensagem?.arquivo_url) return null;
   const remetenteLabel = mensagem.remetente === 'vendedor' ? 'Enviado' : 'Recebido';
   // Fallback: nome real chega via caption (texto) quando arquivo_nome está vazio
@@ -29,6 +29,9 @@ export default function VisualizadorPdf({ mensagem, onFechar, onLocalizarMensage
                 <Download className="h-4 w-4" /> Baixar
               </Button>
             </a>
+            <Button size="sm" variant="ghost" className="text-white hover:bg-white/10 gap-1" onClick={() => { onEncaminhar?.(mensagem); onFechar(); }}>
+              <Forward className="h-4 w-4" /> Encaminhar
+            </Button>
             <Button size="sm" variant="ghost" className="text-white hover:bg-white/10 gap-1" onClick={() => onLocalizarMensagem?.(mensagem.id)}>
               <MapPin className="h-4 w-4" /> Localizar
             </Button>

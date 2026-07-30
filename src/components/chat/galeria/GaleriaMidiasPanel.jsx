@@ -25,7 +25,7 @@ const ABAS = [
  * Compartilha filtros entre abas, abre visualizador de mídia/PDF e
  * localiza a mensagem na conversa.
  */
-export default function GaleriaMidiasPanel({ open, onOpenChange, conversaId, onLocalizarMensagem }) {
+export default function GaleriaMidiasPanel({ open, onOpenChange, conversaId, onLocalizarMensagem, onEncaminharMensagem }) {
   const [aba, setAba] = useState('midias');
   const [q, setQ] = useState('');
   const [remetente, setRemetente] = useState('todas');
@@ -162,11 +162,12 @@ export default function GaleriaMidiasPanel({ open, onOpenChange, conversaId, onL
           indiceInicial={visualizadorMidia.indice}
           onFechar={() => setVisualizadorMidia(null)}
           onLocalizarMensagem={handleLocalizar}
+          onEncaminhar={onEncaminharMensagem}
         />
       )}
 
       {pdfAberto && (
-        <VisualizadorPdf mensagem={pdfAberto} onFechar={() => setPdfAberto(null)} onLocalizarMensagem={handleLocalizar} />
+        <VisualizadorPdf mensagem={pdfAberto} onFechar={() => setPdfAberto(null)} onLocalizarMensagem={handleLocalizar} onEncaminhar={onEncaminharMensagem} />
       )}
     </>
   );

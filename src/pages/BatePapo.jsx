@@ -1335,6 +1335,7 @@ export default function BatePapo() {
     if (!mensagem?.id) return;
     setIdsEncaminhar(new Set([mensagem.id]));
     setModoEncaminhar(true);
+    setEncaminharModalOpen(true);
   };
 
   const toggleSelecaoEncaminhar = (id) => {
@@ -2235,6 +2236,7 @@ export default function BatePapo() {
                 setCoachIAOpen={setCoachIAOpen}
                 onAbrirCadastroIA={abrirCadastroIA}
                 localizarMensagem={localizarMensagem}
+                onEncaminharMensagem={iniciarEncaminhar}
                 />
                 {dapiChamadaAtivaVisivel ? (
                   <DapiCallBar
