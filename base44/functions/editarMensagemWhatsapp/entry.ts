@@ -141,20 +141,18 @@ Deno.serve(async (req) => {
         } catch (_) { apiKeyDecrypted = apiKeyDecrypted.trim(); }
 
         const baseUrl = (conexaoDapi.base_url || 'https://api.d-api.cloud').replace(/\/$/, '');
-        // Endpoint documentado pela D-API para editar mensagens
-        const editUrl = `${baseUrl}/api/v1/messages/edit`;
+        // Endpoint oficial D-API: PUT /api/v1/messages/{messageId} com body { sessionId, to, text }
+        const editUrl = `${baseUrl}/api/v1/messages/${encodeURIComponent(whatsappId)}`;
 
         const editPayload = {
           sessionId: conexaoDapi.session_id,
           to: numeroEnvio,
-          messageId: whatsappId,
-          text: novoTextoTrim,
-          fromMe: true
+          text: novoTextoTrim
         };
 
-        console.log('📡 D-API edit attempt:', editUrl, JSON.stringify(editPayload).substring(0, 200));
+        console.log('📡 D-API edit attempt', editUrl, 'sessionId=', conexaoDapi.session_id, 'to=', numeroEnvio);
         const editResp = await fetch(editUrl, {
-          method: 'POST',
+          method: 'PUT',
           headers: { 'Authorization': apiKeyDecrypted, 'Content-Type': 'application/json' },
           body: JSON.stringify(editPayload)
         });
