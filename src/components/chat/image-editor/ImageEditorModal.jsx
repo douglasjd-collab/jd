@@ -569,6 +569,8 @@ export default function ImageEditorModal({
         legenda={legenda}
         setLegenda={setLegenda}
         fileInputRef={fileInputRef}
+        onEnviarEnter={handleEnviar}
+        enviando={enviando}
       />
     </div>
   );

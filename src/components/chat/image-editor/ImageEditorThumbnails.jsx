@@ -1,11 +1,19 @@
 import React from 'react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, X } from 'lucide-react';
 
 export default function ImageEditorThumbnails({
   paginas, indiceAtual, setIndiceAtual, onRemover, onAdicionarMais, legenda, setLegenda, fileInputRef,
+  onEnviarEnter, enviando,
 }) {
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (enviando) return;
+      if (onEnviarEnter) onEnviarEnter();
+    }
+  };
+
   return (
     <div className="bg-slate-900 border-t border-slate-800 px-3 py-2">
       {paginas.length > 1 && (
@@ -37,11 +45,13 @@ export default function ImageEditorThumbnails({
             <Plus className="w-4 h-4" />
           </Button>
         )}
-        <Input
+        <textarea
           value={legenda}
           onChange={(e) => setLegenda(e.target.value)}
-          placeholder="Digite uma mensagem"
-          className="bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 text-sm"
+          onKeyDown={handleKeyDown}
+          placeholder="Digite uma mensagem (Enter envia, Shift+Enter quebra linha)"
+          rows={1}
+          className="flex-1 min-h-[40px] max-h-32 overflow-y-auto resize-none rounded-md bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
       </div>
     </div>
