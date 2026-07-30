@@ -1337,6 +1337,7 @@ export default function BatePapo() {
     setModoEncaminhar(true);
     setEncaminharModalOpen(true);
   };
+  // (encaminhar também usado pela galeria de mídias via onEncaminharMensagem)
 
   const toggleSelecaoEncaminhar = (id) => {
     setIdsEncaminhar(prev => {
