@@ -256,7 +256,7 @@ export default function ChatHeader({
                   ✕
                 </button>
                 <p className="text-center text-white/80 text-sm mt-3 font-medium">
-                  {contatoAtual?.nome || conversaSelecionada.cliente_telefone}
+                  {contatoAtual?.nome || conversaSelecionada.cliente_nome || conversaSelecionada.cliente_telefone}
                 </p>
               </div>
             </div>
@@ -264,7 +264,7 @@ export default function ChatHeader({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <p className="text-sm font-semibold leading-tight truncate">
-                {contatoAtual?.nome || conversaSelecionada.cliente_telefone}
+                {contatoAtual?.nome || conversaSelecionada.cliente_nome || conversaSelecionada.cliente_telefone}
               </p>
               <EstrelaPrioridadeButton
                 conversa={conversaSelecionada}
