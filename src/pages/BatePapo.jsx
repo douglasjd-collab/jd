@@ -417,7 +417,7 @@ export default function BatePapo() {
       await base44.entities.ConversaWhatsapp.update(conversa.id, {
         responsavel_id: colaborador.id,
         responsavel_nome: colaborador.nome,
-        responsavel_expira_em: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24h
+        responsavel_expira_em: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 min — sem resposta volta para Esperando
         status: 'encerrada',
         ultimo_remetente: 'vendedor',
       });
@@ -1248,7 +1248,7 @@ export default function BatePapo() {
   // Quando atendente responde → marcar conversa com responsavel_id + responsavel_expira_em
   // Se expirar → conversa volta para "em_espera"
 
-  const TEMPO_ATENDIMENTO_MS = 10 * 60 * 1000; // 10 minutos
+  const TEMPO_ATENDIMENTO_MS = 15 * 60 * 1000; // 15 minutos — sem interação volta para Esperando
 
   // Verificar se a conversa tem atendente ativo (responsável não expirado)
   const temAtendente = (c) => {
@@ -1399,22 +1399,24 @@ export default function BatePapo() {
     return new Date(c.responsavel_expira_em) > new Date();
   };
 
-  // Conversa está em espera: cliente enviou mensagem E não há atendente ativo no tempo de 10 min
+  // Conversa está em espera: cliente enviou mensagem E não há atendente ativo (15 min)
   const estaEmEsperaFiltro = (c) => {
     if (c.status !== 'ativa') return false;
     if (atendenteDentroDoTempo(c)) return false; // ainda em atendimento, não vai para espera
     return (naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente');
   };
-  // Conversa está em atendimento: atendente respondeu nos últimos 10 min OU sem remetente definido
+  // Conversa está em atendimento: atendente respondeu nos últimos 15 min OU sem remetente definido
   const estaEmAtendimentoFiltro = (c) => c.status === 'ativa' && !estaEmEsperaFiltro(c);
 
-  // Contadores por aba — cada um reflete exatamente o que será exibido naquele filtro
+  // Contadores por aba — campanhas (sem resposta) não entram nos filtros principais
+  const ehTransferidaAtiva = (c) => !isGrupo(c) && c.status === 'encerrada' && !!c.responsavel_id && atendenteDentroDoTempo(c);
+  const ehFinalizada = (c) => !isGrupo(c) && c.status === 'encerrada' && (!c.responsavel_id || !atendenteDentroDoTempo(c));
   const contadores = {
-    todas: conversas.filter(c => !isGrupo(c)).length,
+    todas: conversas.filter(c => c.status !== 'encerrada' && c.status !== 'campanha' && c.bloqueado !== true && c.bloqueado !== 'true').length,
     espera: conversasValidas.filter(c => estaEmEsperaFiltro(c)).length,
     ativa: conversasValidas.filter(c => estaEmAtendimentoFiltro(c)).length,
-    encerrada: conversas.filter(c => !isGrupo(c) && c.status === 'encerrada' && !c.responsavel_id).length,
-    transferida: conversas.filter(c => !isGrupo(c) && c.status === 'encerrada' && !!c.responsavel_id).length,
+    transferida: conversas.filter(ehTransferidaAtiva).length,
+    encerrada: conversas.filter(ehFinalizada).length,
     meu: conversasValidas.filter(c => c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
     grupos: conversasGrupos.length,
     campanhas: conversas.filter(c => !isGrupo(c) && c.status === 'campanha').length,
@@ -1444,23 +1446,23 @@ export default function BatePapo() {
         if (!match) return false;
       }
 
-      // Grupos: só aparecem no filtro 'grupos'
+      // Grupos: aparecem em 'grupos' e 'todas'
       if (isGrupo(c)) {
-        if (filtroStatus === 'grupos') return c.bloqueado !== true && c.bloqueado !== 'true';
-        if (filtroStatus === 'todas') return false; // grupos ficam fora do "Todos"
-        return false;
+        const ativo = c.bloqueado !== true && c.bloqueado !== 'true';
+        return ativo && (filtroStatus === 'grupos' || filtroStatus === 'todas');
       }
 
-      // Conversas individuais (não-grupo)
-      if (filtroStatus === 'todas')      return true; // 100% das conversas individuais
+      // Campanhas (sem resposta) só aparecem em 'campanhas' — não entram em Todos/Esperando/Em Atendimento
+      if (c.status === 'campanha' && filtroStatus !== 'campanhas') return false;
+
+      // Conversas individuais (não-grupo, não-campanha)
+      if (filtroStatus === 'todas')      return c.status !== 'encerrada';
       if (filtroStatus === 'espera')     return estaEmEsperaFiltro(c);
       if (filtroStatus === 'ativa')      return estaEmAtendimentoFiltro(c);
-      if (filtroStatus === 'encerrada')  return c.status === 'encerrada' && !c.responsavel_id;
-      if (filtroStatus === 'transferida') return c.status === 'encerrada' && !!c.responsavel_id;
+      if (filtroStatus === 'encerrada')  return ehFinalizada(c);
+      if (filtroStatus === 'transferida') return ehTransferidaAtiva(c);
       if (filtroStatus === 'meu')        return c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id);
       if (filtroStatus === 'campanhas')  return c.status === 'campanha';
-      if (filtroStatus === 'grupos')     return false; // individuais fora de 'grupos'
-
       return false;
     })
     .sort((a, b) =>
@@ -1963,28 +1965,26 @@ export default function BatePapo() {
                   </button>
                 </div>
 
-                {/* Linha 2: Transferidos | Grupos | Finalizados | Campanhas */}
-                <div className="grid grid-cols-4 gap-1.5">
-                  <button onClick={() => setFiltroStatus('transferida')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'transferida' ? 'bg-purple-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'transferida' ? 'text-white' : 'text-purple-500'}`}>{contadores.transferida}</span>
-                    <span className={`text-[10px] font-medium ${filtroStatus === 'transferida' ? 'text-white' : 'text-slate-600'}`}>Transferidos</span>
+                {/* Linha 2: Transferidos | Grupos | Campanhas */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button onClick={() => setFiltroStatus('transferida')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'transferida' ? 'bg-orange-500' : 'bg-slate-100'}`}>
+                    <span className={`text-sm font-bold ${filtroStatus === 'transferida' ? 'text-white' : 'text-orange-500'}`}>{contadores.transferida}</span>
+                    <span className={`text-[9px] font-medium ${filtroStatus === 'transferida' ? 'text-white' : 'text-slate-600'}`}>Transferidos</span>
                   </button>
-
                   <button onClick={() => setFiltroStatus('grupos')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'grupos' ? 'bg-emerald-600' : 'bg-slate-100'}`}>
                     <span className={`text-sm font-bold ${filtroStatus === 'grupos' ? 'text-white' : 'text-emerald-500'}`}>{contadores.grupos}</span>
-                    <span className={`text-[10px] font-medium ${filtroStatus === 'grupos' ? 'text-white' : 'text-slate-600'}`}>Grupos</span>
+                    <span className={`text-[9px] font-medium ${filtroStatus === 'grupos' ? 'text-white' : 'text-slate-600'}`}>Grupos</span>
                   </button>
-
-                  <button onClick={() => setFiltroStatus('encerrada')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'encerrada' ? 'bg-slate-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-700'}`}>{contadores.encerrada}</span>
-                    <span className={`text-[10px] font-medium ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-600'}`}>Finalizados</span>
-                  </button>
-
                   <button onClick={() => setFiltroStatus('campanhas')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'campanhas' ? 'bg-cyan-600' : 'bg-slate-100'}`}>
                     <span className={`text-sm font-bold ${filtroStatus === 'campanhas' ? 'text-white' : 'text-cyan-600'}`}>{contadores.campanhas}</span>
-                    <span className={`text-[10px] font-medium ${filtroStatus === 'campanhas' ? 'text-white' : 'text-slate-600'}`}>Campanhas</span>
+                    <span className={`text-[9px] font-medium ${filtroStatus === 'campanhas' ? 'text-white' : 'text-slate-600'}`}>{contadores.campanhas > 0 ? 'Campanhas*' : 'Campanhas'}</span>
                   </button>
                 </div>
+                {/* Finalizados — separado, apenas consulta */}
+                <button onClick={() => setFiltroStatus('encerrada')} className={`w-full flex items-center justify-center gap-2 cursor-pointer rounded-lg px-3 py-1.5 ${filtroStatus==='encerrada'?'bg-slate-600':'bg-slate-50 border border-slate-200'}`}>
+                  <span className={`text-xs font-bold ${filtroStatus==='encerrada'?'text-white':'text-slate-400'}`}>⚫ {contadores.encerrada} Finalizados</span>
+                  <span className={`text-[10px] ${filtroStatus==='encerrada'?'text-white/60':'text-slate-400'}`}>(consulta)</span>
+                </button>
               </div>
 
               {filtroStatus === 'transferida' && contadores.transferida > 0 && (
