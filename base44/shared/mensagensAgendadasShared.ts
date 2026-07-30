@@ -58,30 +58,197 @@ export function descriptografarToken(tokenEncrypted: string): string {
   }
 }
 
-function montarTemplatePayloadDapi(template: any, valuesByPos: Record<string, string>): any {
-  const positions = Object.keys(valuesByPos).sort((a, b) => Number(a) - Number(b));
-  const bodyVariables = positions.map((p) => valuesByPos[p] || '');
+// Busca a definição complementar do template em CampanhaLog
+// (tipo 'meta_template_definition', populado pelo sincronizarTemplatesMeta).
+// Usada quando o WhatsappTemplate não tem header_type / header_media_url /
+// header_media_id preenchidos — caso típico de templates aprovados
+// externamente (Meta Business Manager) e importados via sincronização.
+// Sem esses campos, o envio para a Meta falha com #132012 ("Parameter
+// format does not match format in the created template") por ausência
+// do parâmetro de mídia do header aprovado.
+async function buscarDefinicaoComplementarTemplate(
+  base44,
+  empresaId: string,
+  templateName: string
+): Promise<{
+  header_type?: string;
+  header_url?: string;
+  header_id?: string;
+  header_text?: string;
+  botoes?: any[];
+}> {
+  if (!empresaId || !templateName) return {};
+  try {
+    const defs = await base44.asServiceRole.entities.CampanhaLog.filter({
+      empresa_id: empresaId,
+      tipo_campanha: 'meta_template_definition',
+      cliente_nome: templateName,
+    });
+    const def = defs?.[0];
+    if (def?.motivo_erro) {
+      const parsed = JSON.parse(def.motivo_erro || '{}');
+      return {
+        header_type: parsed.tipo_cabecalho || parsed.header_type || '',
+        header_url: parsed.cabecalho_midia_url || parsed.header_url || '',
+        header_id: parsed.cabecalho_media_id || '',
+        header_text: parsed.cabecalho || '',
+        botoes: Array.isArray(parsed.botoes) ? parsed.botoes : [],
+      };
+    }
+  } catch (_) {}
+  return {};
+}
 
-  const payload: any = {
-    name: template?.name,
-    language: template?.language || 'pt_BR',
-    bodyVariables,
+// Resolve o cabeçalho do template combinando:
+//   1) WhatsappTemplate (cadastro local no CRM) — principal
+//   2) CampanhaLog meta_template_definition (sincronizado com a Meta) — fallback
+// Garante headerType, headerUrl (URL pública/armazenada), headerId (media_id
+// permanente da Meta) e headerText (para headers TEXT com {{n}}).
+function resolverHeaderTemplate(template: any, defComplementar: any): {
+  headerType: string;
+  headerUrl: string;
+  headerId: string;
+  headerText: string;
+} {
+  return {
+    headerType: String(template?.header_type || defComplementar?.header_type || '').toUpperCase(),
+    headerUrl: String(template?.header_media_url || defComplementar?.header_url || '').trim(),
+    headerId: String(template?.header_media_id || defComplementar?.header_id || '').trim(),
+    headerText: template?.header_text || defComplementar?.header_text || '',
   };
+}
 
-  if (template) {
-    const headerType = (template.header_type || '').toUpperCase();
-    const headerUrl = template.header_media_url || '';
-    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && headerUrl) {
-      const mediaKey =
-        headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document';
-      payload.headerMedia = { type: mediaKey, url: headerUrl };
-    } else if (headerType === 'TEXT' && template.header_text) {
-      let txt = template.header_text;
-      for (const p of positions) txt = txt.split(`{{${p}}}`).join(valuesByPos[p] || '');
-      payload.headerVariable = txt;
+// Monta o array de components no formato Graph API da Meta (aceito também
+// pelo endpoint POST /api/v1/messages/send/template da D-API). Esse formato
+// espelha EXATAMENTE o template aprovado pela Meta, evitando o erro #132012.
+//
+// Regras:
+//  - HEADER (VIDEO/IMAGE/DOCUMENT): 1 parâmetro { type: '<tipo>', <tipo>: { link | id } }
+//    - Prioridade: media_id (permanente, mesmo WABA) > URL pública (link)
+//    - Nunca usar URL Meta CDN privado (exige Auth) sem re-upload
+//  - HEADER (TEXT): 1 parâmetro { type: 'text', text } por {{n}} no header
+//  - HEADER vazio/NONE: nada a enviar (template não tem header aprovado)
+//  - BODY: 1 parâmetro { type: 'text', text } por variável {{n}} (ordem crescente)
+//    Cada valor é uma string simples (resolvida antes da chamada — nunca
+//    {{1}} cru, null, objeto ou array).
+function montarComponentsTemplate(
+  template: any,
+  defComplementar: any,
+  valuesByPos: Record<string, string>
+): {
+  components: any[];
+  headerInfo: ReturnType<typeof resolverHeaderTemplate>;
+  mediaPresent: boolean;
+} {
+  const components: any[] = [];
+  const headerInfo = resolverHeaderTemplate(template, defComplementar);
+  let mediaPresent = false;
+
+  if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerInfo.headerType)) {
+    const mediaKey =
+      headerInfo.headerType === 'IMAGE'
+        ? 'image'
+        : headerInfo.headerType === 'VIDEO'
+        ? 'video'
+        : 'document';
+    let mediaValue: any = null;
+
+    // 1) media_id (handle permanente da Meta). Para Graph API direta funciona
+    //    nativamente; para D-API Cloud exige que pertença à WABA gerenciada.
+    if (headerInfo.headerId && /^\d{10,}$/.test(headerInfo.headerId)) {
+      mediaValue = { id: headerInfo.headerId };
+    } else if (headerInfo.headerUrl) {
+      const isNumericHandle = /^\d{10,}$/.test(headerInfo.headerUrl);
+      const isMetaCdn = /fbcdn\.net|fbsbx\.com|graph\.facebook\.com/.test(headerInfo.headerUrl);
+      if (isNumericHandle) {
+        mediaValue = { id: headerInfo.headerUrl };
+      } else if (headerInfo.headerUrl.startsWith('http') && !isMetaCdn) {
+        mediaValue = { link: headerInfo.headerUrl };
+      }
+    }
+
+    if (mediaValue) {
+      mediaPresent = true;
+      components.push({
+        type: 'header',
+        parameters: [{ type: mediaKey, [mediaKey]: mediaValue }],
+      });
+    }
+  } else if (headerInfo.headerType === 'TEXT' && headerInfo.headerText) {
+    const hdrVars = (headerInfo.headerText.match(/\{\{(\d+)\}\}/g) || []).map(
+      (v: string) => v.match(/\d+/)![0]
+    );
+    if (hdrVars.length > 0) {
+      components.push({
+        type: 'header',
+        parameters: hdrVars.map((p) => ({ type: 'text', text: String(valuesByPos[p] ?? '') })),
+      });
+    }
+    mediaPresent = true;
+  } else if (headerInfo.headerType === '' || headerInfo.headerType === 'NONE') {
+    mediaPresent = true;
+  }
+
+  // BODY — variáveis {{n}} em ordem crescente.
+  const positions = Object.keys(valuesByPos).sort((a, b) => Number(a) - Number(b));
+  if (positions.length > 0) {
+    components.push({
+      type: 'body',
+      parameters: positions.map((p) => ({ type: 'text', text: String(valuesByPos[p] ?? '') })),
+    });
+  }
+
+  return { components, headerInfo, mediaPresent };
+}
+
+// Validação pré-disparo do template (regra #132012). Retorna lista de violações
+// (vazia = OK). Aponta o campo específico que precisa ser corrigido em vez
+// de falhar com mensagem genérica.
+function validarPreDisparoTemplate(p: {
+  template: any;
+  valuesByPos: Record<string, string>;
+  headerInfo: ReturnType<typeof resolverHeaderTemplate>;
+  mediaPresent: boolean;
+  templateLanguage: string;
+}): string[] {
+  const v: string[] = [];
+
+  // 1) Cada variável {{n}} deve ser uma string simples e não-vazia.
+  for (const pos of Object.keys(p.valuesByPos)) {
+    const val = p.valuesByPos[pos];
+    if (val === undefined || val === null || typeof val !== 'string') {
+      v.push(`Variável {{${pos}}} não é uma string simples (recebido: ${typeof val})`);
+    } else if (val.trim() === '') {
+      v.push(`Variável {{${pos}}} está vazia`);
+    } else if (/\{\{(\d+)\}\}/.test(val)) {
+      v.push(`Variável {{${pos}}} ainda contém marcador cru "{{x}}" — não foi resolvida`);
     }
   }
-  return payload;
+
+  // 2) Header aprovado como mídia exige parâmetro de mídia presente.
+  if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(p.headerInfo.headerType) && !p.mediaPresent) {
+    v.push(
+      `Header aprovado como ${p.headerInfo.headerType} mas sem media_id nem URL pública validada — verifique header_media_id / header_media_url no template "${p.template?.name ?? ''}"`
+    );
+  }
+
+  // 3) Quantidade de variáveis no BODY do template aprovado deve bater com
+  //    as valuesByPos enviadas.
+  const bodyVarCountAprovado =
+    (p.template?.body_text?.match(/\{\{(\d+)\}\}/g) || []).length || 0;
+  const varsEnviadas = Object.keys(p.valuesByPos).length;
+  if (bodyVarCountAprovado > 0 && varsEnviadas !== bodyVarCountAprovado) {
+    v.push(
+      `BODY aprovado tem ${bodyVarCountAprovado} variável(is) mas ${varsEnviadas} valor(es) foi(ram) fornecido(s)`
+    );
+  }
+
+  // 4) Idioma deve ser uma string não-vazia.
+  if (!p.templateLanguage || String(p.templateLanguage).trim() === '') {
+    v.push('Idioma do template ausente — preencha template_language');
+  }
+
+  return v;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -191,7 +358,58 @@ export async function enviarViaMetaOficial(
     logCtx.conexao_id = conexao.id;
     logCtx.session_id = conexao.session_id;
 
-    const templatePayload = montarTemplatePayloadDapi(template, valuesByPos);
+    // Diagnóstico: consulta o esquema sincronizado do template aprobado
+    // (CampanhaLog meta_template_definition) e combina com o WhatsappTemplate
+    // — garante headerType/header_media_id preenchidos mesmo para templates
+    // importados via sincronizarTemplatesMeta, evitando #132012.
+    const defComplementar = await buscarDefinicaoComplementarTemplate(
+      base44,
+      msg.empresa_id,
+      templateName
+    );
+    const { components, headerInfo, mediaPresent } = montarComponentsTemplate(
+      template,
+      defComplementar,
+      valuesByPos
+    );
+
+    // Validação pré-disparo — falha com campo específico (sem credenciais).
+    const violacoesDapi = validarPreDisparoTemplate({
+      template,
+      valuesByPos,
+      headerInfo,
+      mediaPresent,
+      templateLanguage,
+    });
+    if (violacoesDapi.length > 0) {
+      const errMsg = `Validação pré-disparo falhou (${violacoesDapi.length}): ${violacoesDapi.join(' | ')}`;
+      logCtx.motivo_real = errMsg;
+      logCtx.violacoes = violacoesDapi;
+      console.error('❌ [Agendamento] D-API Cloud validação falhou:', logCtx);
+      throw new Error(errMsg);
+    }
+
+    // Log técnico (sem credenciais): schema aprovado + componentes enviados.
+    logCtx.template_schema = {
+      header_type: headerInfo.headerType,
+      header_media_id_present: !!headerInfo.headerId,
+      header_url_present: !!headerInfo.headerUrl,
+      body_var_count_aprovado:
+        (template?.body_text?.match(/\{\{(\d+)\}\}/g) || []).length || 0,
+    };
+    logCtx.components_enviados = components.map((c) => ({
+      type: c.type,
+      parameter_types: (c.parameters || []).map((p) => p.type),
+    }));
+    logCtx.variavel_1_resolvida = valuesByPos['1'] ?? null;
+
+    // Template payload no formato Graph API components — não usa o atalho
+    // bodyVariables/headerMedia (que pode divergir do aprovado pela Meta).
+    const templatePayload = {
+      name: templateName,
+      language: templateLanguage,
+      components,
+    };
 
     let sr: any;
     try {
@@ -211,6 +429,15 @@ export async function enviarViaMetaOficial(
     const resultObj = srData?.data || srData;
     const httpStatus = resultObj?.httpStatus || srData?.httpStatus || 0;
     logCtx.http_status = httpStatus;
+    // Resposta completa da D-API (sem credenciais/token) para diagnóstico #132012.
+    logCtx.dapi_response_full = {
+      success: resultObj?.success,
+      httpStatus: resultObj?.httpStatus,
+      error: resultObj?.error,
+      traceId: resultObj?.traceId,
+      endpoint: resultObj?.endpoint,
+      response_data: resultObj?.data,
+    };
     const candidateId =
       resultObj?.data?.messageId ||
       resultObj?.messageId ||
@@ -263,26 +490,51 @@ export async function enviarViaMetaOficial(
     throw err;
   }
 
+  // Diagnóstico: complementa header com CampanhaLog (sincronizarTemplatesMeta).
+  const defComplementarGraph = await buscarDefinicaoComplementarTemplate(
+    base44,
+    msg.empresa_id,
+    templateName
+  );
+  const headerInfo = resolverHeaderTemplate(template, defComplementarGraph);
+
   const components: any[] = [];
-  if (template) {
-    const headerType = (template.header_type || '').toUpperCase();
-    const headerUrl = String(template.header_media_url || '').trim();
-    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType) && headerUrl) {
-      const mediaKey =
-        headerType === 'IMAGE' ? 'image' : headerType === 'VIDEO' ? 'video' : 'document';
-      const isMediaId = /^\d{10,}$/.test(headerUrl);
-      let mediaValue: any = null;
-      if (isMediaId) {
-        mediaValue = { id: headerUrl };
-      } else if (headerUrl.startsWith('http')) {
+  let mediaPresentGraph = false;
+  let headerUploadErrorGraph: string | null = null;
+  let headerUploadedMediaId: string | null = null;
+
+  if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerInfo.headerType)) {
+    const mediaKey =
+      headerInfo.headerType === 'IMAGE'
+        ? 'image'
+        : headerInfo.headerType === 'VIDEO'
+        ? 'video'
+        : 'document';
+    let mediaValue: any = null;
+
+    // 1) media_id (handle permanente da Meta) — direto, sem re-upload.
+    if (headerInfo.headerId && /^\d{10,}$/.test(headerInfo.headerId)) {
+      mediaValue = { id: headerInfo.headerId };
+      mediaPresentGraph = true;
+      logCtx.header_media_source = 'media_id';
+    } else if (headerInfo.headerUrl) {
+      const isNumericHandle = /^\d{10,}$/.test(headerInfo.headerUrl);
+      if (isNumericHandle) {
+        mediaValue = { id: headerInfo.headerUrl };
+        mediaPresentGraph = true;
+        logCtx.header_media_source = 'numeric_handle_in_url';
+      } else if (headerInfo.headerUrl.startsWith('http')) {
         try {
-          const mr = await fetch(headerUrl);
+          const mr = await fetch(headerInfo.headerUrl);
           if (mr.ok) {
             const buf = await mr.arrayBuffer();
             const ct =
               mr.headers.get('content-type') ||
-              (headerType === 'VIDEO' ? 'video/mp4' : 'image/jpeg');
-            const ext = ct.includes('png') ? 'png' : ct.includes('webp') ? 'webp' : ct.includes('mp4') ? 'mp4' : 'jpg';
+              (headerInfo.headerType === 'VIDEO' ? 'video/mp4' : 'image/jpeg');
+            const ext =
+              ct.includes('png') ? 'png' :
+              ct.includes('webp') ? 'webp' :
+              ct.includes('mp4') ? 'mp4' : 'jpg';
             const fd = new FormData();
             fd.append('messaging_product', 'whatsapp');
             fd.append('file', new Blob([buf], { type: ct }), `header.${ext}`);
@@ -295,28 +547,43 @@ export async function enviarViaMetaOficial(
               }
             );
             const upData = await upResp.json().catch(() => ({}));
-            if (upData.id) mediaValue = { id: upData.id };
+            if (upData.id) {
+              mediaValue = { id: upData.id };
+              mediaPresentGraph = true;
+              logCtx.header_media_source = 'upload_url_to_media_id';
+              headerUploadedMediaId = upData.id;
+            }
+          } else {
+            headerUploadErrorGraph = `URL header retornou HTTP ${mr.status}`;
+            logCtx.header_fetch_error = headerUploadErrorGraph;
           }
         } catch (e) {
           console.warn('⚠️ Upload header Meta falhou:', e.message);
+          headerUploadErrorGraph = e.message;
+          logCtx.header_upload_error = e.message;
         }
       }
-      if (mediaValue) {
-        components.push({
-          type: 'header',
-          parameters: [{ type: mediaKey, [mediaKey]: mediaValue }],
-        });
-      }
-    } else if (headerType === 'TEXT' && template.header_text) {
-      const hdrVars = (template.header_text.match(/\{\{(\d+)\}\}/g) || []).map((v: string) => v.match(/\d+/)[0]);
-      if (hdrVars.length > 0) {
-        components.push({
-          type: 'header',
-          parameters: hdrVars.map((p) => ({ type: 'text', text: valuesByPos[p] || '' })),
-        });
-      }
     }
+    if (mediaValue) {
+      components.push({
+        type: 'header',
+        parameters: [{ type: mediaKey, [mediaKey]: mediaValue }],
+      });
+    }
+  } else if (headerInfo.headerType === 'TEXT' && headerInfo.headerText) {
+    const hdrVars = (headerInfo.headerText.match(/\{\{(\d+)\}\}/g) || []).map((v: string) => v.match(/\d+/)[0]);
+    if (hdrVars.length > 0) {
+      components.push({
+        type: 'header',
+        parameters: hdrVars.map((p) => ({ type: 'text', text: valuesByPos[p] || '' })),
+      });
+    }
+    mediaPresentGraph = true; // header TEXT sem mídia é OK
+  } else if (headerInfo.headerType === '' || headerInfo.headerType === 'NONE') {
+    mediaPresentGraph = true; // sem header aprovado
   }
+
+  // BODY variáveis em ordem crescente.
   const positions = Object.keys(valuesByPos).sort((a, b) => Number(a) - Number(b));
   if (positions.length > 0) {
     components.push({
@@ -324,6 +591,38 @@ export async function enviarViaMetaOficial(
       parameters: positions.map((p) => ({ type: 'text', text: valuesByPos[p] || '' })),
     });
   }
+
+  // Validação pré-disparo (Graph) — aponta campo específico que precisa corrigir.
+  const violacoesGraph = validarPreDisparoTemplate({
+    template,
+    valuesByPos,
+    headerInfo,
+    mediaPresent: mediaPresentGraph,
+    templateLanguage,
+  });
+  if (violacoesGraph.length > 0) {
+    const errMsg = `Validação pré-disparo (Graph) falhou (${violacoesGraph.length}): ${violacoesGraph.join(' | ')}`;
+    logCtx.motivo_real = errMsg;
+    logCtx.violacoes = violacoesGraph;
+    console.error('❌ [Agendamento] Graph API validação falhou:', logCtx);
+    throw new Error(errMsg);
+  }
+
+  // Log técnico (sem credenciais): schema aprovado + componentes enviados.
+  logCtx.template_schema = {
+    header_type: headerInfo.headerType,
+    header_media_id_present: !!headerInfo.headerId,
+    header_url_present: !!headerInfo.headerUrl,
+    header_uploaded_media_id: headerUploadedMediaId,
+    header_upload_error: headerUploadErrorGraph,
+    body_var_count_aprovado:
+      (template?.body_text?.match(/\{\{(\d+)\}\}/g) || []).length || 0,
+  };
+  logCtx.components_enviados = components.map((c) => ({
+    type: c.type,
+    parameter_types: (c.parameters || []).map((p) => p.type),
+  }));
+  logCtx.variavel_1_resolvida = valuesByPos['1'] ?? null;
 
   const payload = {
     messaging_product: 'whatsapp',
@@ -348,6 +647,8 @@ export async function enviarViaMetaOficial(
   try {
     respData = JSON.parse(respText);
   } catch (_) {}
+  // Resposta completa da Meta (sem credenciais/token) — diagnóstico #132012.
+  logCtx.meta_response_full = respData;
   const messageIdResp = respData?.messages?.[0]?.id || '';
   logCtx.api_response_id = messageIdResp;
 

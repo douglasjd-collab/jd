@@ -118,9 +118,29 @@ export default function SelecionarTemplateMetaModal({
       value: valoresVars[v.match(/\d+/)[0]],
     }));
 
-    // Components Graph API: {{1}} propagado com marcador (resolver no envio)
+    // Components Graph API: snapshot do	template aprovado no momento da
+    // seleção. O backend recompõe no disparo a partir do esquema sincronizado,
+    // mas guardamos a snapshot do header (mídia link/id) para o caso de o
+    // header_media_url/header_media_id do template vir a ser apagado depois
+    // do agendamento (race condition). Atende "salvar no agendamento:
+    // video_url ou media_id".
     const components = [];
-    if (selecionado.header_type === 'TEXT' && selecionado.header_text) {
+    const headerTypeSel = (selecionado.header_type || '').toUpperCase();
+    if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerTypeSel)) {
+      const mediaKey = headerTypeSel === 'IMAGE' ? 'image' : headerTypeSel === 'VIDEO' ? 'video' : 'document';
+      const headerUrlSel = String(selecionado.header_media_url || '').trim();
+      const headerIdSel = String(selecionado.header_media_id || '').trim();
+      let mediaValue = null;
+      if (headerIdSel && /^\d{10,}$/.test(headerIdSel)) mediaValue = { id: headerIdSel };
+      else if (headerUrlSel && headerUrlSel.startsWith('http')) mediaValue = { link: headerUrlSel };
+      else if (headerIdSel) mediaValue = { id: headerIdSel };
+      if (mediaValue) {
+        components.push({
+          type: 'header',
+          parameters: [{ type: mediaKey, [mediaKey]: mediaValue }],
+        });
+      }
+    } else if (headerTypeSel === 'TEXT' && selecionado.header_text) {
       const headerVars = extrairVariaveis(selecionado.header_text);
       if (headerVars.length > 0) {
         const params = headerVars.map((v) => ({

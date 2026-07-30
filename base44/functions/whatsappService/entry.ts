@@ -493,15 +493,25 @@ Deno.serve(async (req) => {
       },
 
       // Enviar template aprovado (Cloud API / Meta Oficial) — POST /api/v1/messages/send/template
+      //
+      // Dois modos:
+      //   1) "components-first" (recomendado): o caller passa o array `components`
+      //      no formato Graph API da Meta (header/body/buttons com parâmetros
+      //      tipados). Usamos diretamente — nenhum atalho (bodyVariables/
+      //      headerMedia/headerVariable) é enviado. Esse modo garante que os
+      //      parâmetros correspondam EXATAMENTE ao template aprovado, evitando
+      //      o erro Meta #132012 ("Parameter format does not match format in
+      //      the created template").
+      //   2) "atalho" (legado): o caller passa bodyVariables + headerMedia +
+      //      headerVariable, que a D-API monta internamente. Mantido para
+      //      compatibilidade com fluxos antigos (campanhas, envio direto).
       async sendTemplate(phoneNumber, template) {
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
         const tpl = template || {};
+        const hasComponents = Array.isArray(tpl.components) && tpl.components.length > 0;
 
-        // ── Normaliza headerMedia para o schema da D-API ──
-        // D-API exige headerMedia.type ('video'|'image'|'document') + url.
-        // Se o caller só enviar { url }, inferimos o type pela extensão da URL.
         let headerMedia = tpl.headerMedia;
-        if (headerMedia && headerMedia.url && !headerMedia.type) {
+        if (!hasComponents && headerMedia && headerMedia.url && !headerMedia.type) {
           const u = String(headerMedia.url).toLowerCase().split('?')[0];
           let type = 'document';
           if (/\.(mp4|mov|mkv|webm|avi|m4v)$/.test(u)) type = 'video';
@@ -510,17 +520,24 @@ Deno.serve(async (req) => {
           headerMedia = { type, url: headerMedia.url };
         }
 
+        const templateField: any = hasComponents
+          ? {
+              name: tpl.name,
+              language: tpl.language || 'pt_BR',
+              components: tpl.components,
+            }
+          : {
+              name: tpl.name,
+              language: tpl.language || 'pt_BR',
+              bodyVariables: Array.isArray(tpl.bodyVariables) ? tpl.bodyVariables : [],
+              ...(tpl.headerVariable ? { headerVariable: tpl.headerVariable } : {}),
+              ...(headerMedia ? { headerMedia } : {}),
+            };
+
         const messagePayload = {
           sessionId: this.sessionId,
           to: normalizedPhone,
-          template: {
-            name: tpl.name,
-            language: tpl.language || 'pt_BR',
-            bodyVariables: Array.isArray(tpl.bodyVariables) ? tpl.bodyVariables : [],
-            ...(tpl.headerVariable ? { headerVariable: tpl.headerVariable } : {}),
-            ...(headerMedia ? { headerMedia } : {}),
-            ...(Array.isArray(tpl.components) && tpl.components.length > 0 ? { components: tpl.components } : {}),
-          }
+          template: templateField,
         };
         return await this.request('/api/v1/messages/send/template', 'POST', messagePayload);
       },

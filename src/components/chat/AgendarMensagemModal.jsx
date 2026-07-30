@@ -11,6 +11,27 @@ import { format } from 'date-fns';
 import { CalendarClock, Trash2, RefreshCw, Image as ImageIcon, Video, FileText, Upload, X, FileCheck2, Layers, RotateCw, Loader2 } from 'lucide-react';
 import SelecionarTemplateMetaModal from './SelecionarTemplateMetaModal';
 
+// Calcula o primeiro nome resolvido do cliente (igual ao backend) para
+// exibir na lista de agendamentos template: "{{1}} será enviado como: Maria".
+// O backend resolve no disparo; aqui apenas mostramos a prévia ao usuário.
+function primeiroNomeResolvidoPreview(cliente) {
+  if (!cliente) return '';
+  const fonte = String(
+    cliente.primeiro_nome ||
+    cliente.nome_completo ||
+    cliente.nome ||
+    cliente.pj_nome_fantasia ||
+    cliente.pj_razao_social ||
+    cliente.cliente_nome ||
+    ''
+  ).trim();
+  if (!fonte || /^\d+$/.test(fonte)) return '';
+  const partes = fonte.split(/\s+/).filter(Boolean);
+  if (partes.length === 0) return '';
+  const nome = partes[0];
+  return nome.charAt(0).toUpperCase() + nome.slice(1).toLowerCase();
+}
+
 export default function AgendarMensagemModal({ open, onOpenChange, conversa, currentUser }) {
   const [tab, setTab] = useState('novo');
   const [tipo, setTipo] = useState('unica');
@@ -592,6 +613,15 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
                         <video src={a.arquivo_url} className="w-full max-h-24 rounded mb-1" />
                       )}
                       <p className="text-sm text-slate-800">{a.mensagem}</p>
+                      {/* Prévia da variável {{1}} resolvida — o backend usa o
+                          primeiro nome real do cliente no disparo, mas a UI
+                          mostra o texto aprovado (com {{1}}) + esta linha. */}
+                      {a.tipo_envio === 'template' && a.mensagem && /\{\{1\}\}/.test(a.mensagem) && (
+                        <p className="text-[11px] text-emerald-700 mt-0.5">
+                          <span className="font-mono">{`{{1}}`}</span> será enviado como:{' '}
+                          <strong>{primeiroNomeResolvidoPreview(cliente) || 'por aí'}</strong>
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-col gap-1 flex-shrink-0">
                       {a.status === 'agendada' && (
