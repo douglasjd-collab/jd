@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Forward, Copy, Pin, Pencil, Check } from 'lucide-react';
+import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Forward, Copy, Pin, Pencil, Check, ArrowUpRight } from 'lucide-react';
 import VideoMensagem from './VideoMensagem';
 import FilaEnvioBadge from './FilaEnvioBadge';
 import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
@@ -462,19 +462,21 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           <div className="px-3 py-2">
             <p className="text-xs break-words whitespace-pre-wrap">{formatarTexto(tmpl.corpo)}</p>
           </div>
-          {/* Botões — estilo oficial Meta ( QUICK_REPLY): texto azul sobre fundo branco */}
+          {/* Botões — pílula branca estilo WhatsApp/COVID oficial */}
           {botoes.length > 0 && (
-            <div className="bg-white border-t border-slate-100">
-              {botoes.map((btn, i) => (
-                <div
-                  key={i}
-                  className={`py-2.5 px-3 text-center text-[13px] font-semibold text-[#1FA1FF] ${
-                    i > 0 ? 'border-t border-slate-100' : ''
-                  }`}
-                >
-                  {btn.texto || btn.text}
-                </div>
-              ))}
+            <div className="mt-1 mb-2 mx-2 flex flex-col gap-1.5">
+              {botoes.map((btn, i) => {
+                const textoBotao = btn.texto || btn.text;
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center justify-center gap-2 bg-white rounded-lg border border-slate-300 py-2 px-3 text-[13px] font-medium text-[#075E54]"
+                  >
+                    <ArrowUpRight className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">{textoBotao}</span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
