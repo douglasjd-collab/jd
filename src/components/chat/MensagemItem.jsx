@@ -462,15 +462,15 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
           <div className="px-3 py-2">
             <p className="text-xs break-words whitespace-pre-wrap">{formatarTexto(tmpl.corpo)}</p>
           </div>
-          {/* Botões */}
+          {/* Botões — estilo oficial Meta ( QUICK_REPLY): texto azul sobre fundo branco */}
           {botoes.length > 0 && (
-            <div className={`border-t ${isVendedor ? 'border-white/20' : 'border-slate-100'}`}>
+            <div className="bg-white border-t border-slate-100">
               {botoes.map((btn, i) => (
                 <div
                   key={i}
-                  className={`py-2 px-3 text-center text-xs font-semibold ${
-                    isVendedor ? 'text-white/90 hover:bg-white/10' : 'text-blue-600 hover:bg-blue-50'
-                  } ${i > 0 ? (isVendedor ? 'border-t border-white/20' : 'border-t border-slate-100') : ''}`}
+                  className={`py-2.5 px-3 text-center text-[13px] font-semibold text-[#1FA1FF] ${
+                    i > 0 ? 'border-t border-slate-100' : ''
+                  }`}
                 >
                   {btn.texto || btn.text}
                 </div>
