@@ -141,6 +141,14 @@ Deno.serve(async (req) => {
         locked_provider: conversa.locked_provider || false,
         bloqueado: conversa.bloqueado || false,
         foto_url: conversa.foto_url || null,
+        // Prioridade (estrela) — preservar no cache para a UI não "desmarcar"
+        atendimento_prioritario: !!conversa.atendimento_prioritario,
+        prioritario_marcado_por_id: conversa.prioritario_marcado_por_id || null,
+        prioritario_marcado_por_nome: conversa.prioritario_marcado_por_nome || null,
+        prioritario_marcado_em: conversa.prioritario_marcado_em || null,
+        prioritario_removido_por_id: conversa.prioritario_removido_por_id || null,
+        prioritario_removido_por_nome: conversa.prioritario_removido_por_nome || null,
+        prioritario_removido_em: conversa.prioritario_removido_em || null,
         contato: contato ? {
           id: contato.id,
           nome: contato.nome,
