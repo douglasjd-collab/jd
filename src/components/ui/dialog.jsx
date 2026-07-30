@@ -12,7 +12,7 @@ const DialogTrigger = DialogPrimitive.Trigger
 
 const DialogClose = DialogPrimitive.Close
 
-const DialogPortal = ({ children }) => <>{children}</>;
+const DialogPortal = DialogPrimitive.Portal;
 
 const DialogOverlay = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
