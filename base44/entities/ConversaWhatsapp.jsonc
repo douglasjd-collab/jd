@@ -31,6 +31,37 @@
       "default": false,
       "description": "Se true, novas mensagens deste grupo/contato s\u00e3o ignoradas"
     },
+    "atendimento_prioritario": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se true, conversa marcada como atendimento priorit\u00e1rio (estrela). N\u00e3o volta para Esperando por inatividade."
+    },
+    "prioritario_marcado_por_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que marcou a prioridade (estrela)"
+    },
+    "prioritario_marcado_por_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio que marcou a prioridade"
+    },
+    "prioritario_marcado_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora em que a prioridade foi marcada"
+    },
+    "prioritario_removido_por_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que removeu a prioridade"
+    },
+    "prioritario_removido_por_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio que removeu a prioridade"
+    },
+    "prioritario_removido_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora em que a prioridade foi removida"
+    },
     "status": {
       "type": "string",
       "enum": [
@@ -149,7 +180,7 @@
     },
     "instancia": {
       "type": "string",
-      "description": "Nome da inst\u00e2ncia Evolution / session_id D-API"
+      "description": "Nome da inst\u00e2cia Evolution / session_id D-API"
     },
     "instance_id": {
       "type": "string",

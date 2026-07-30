@@ -19,10 +19,13 @@ Deno.serve(async (req) => {
 
     // Conversas (ativas ou encerradas) com responsavel expirado → volta para Esperando
     while (hasMore) {
+      // Conversas marcadas como atendimento prioritário (estrela) NÃO voltam
+      // para Esperando por inatividade — mantêm o atendente responsável.
       const resp = await base44.asServiceRole.entities.ConversaWhatsapp.updateMany(
         {
           responsavel_id: { $exists: true, $ne: null },
           responsavel_expira_em: { $lte: agora },
+          atendimento_prioritario: { $ne: true },
         },
         {
           $set: { status: 'ativa', ultimo_remetente: 'cliente' },

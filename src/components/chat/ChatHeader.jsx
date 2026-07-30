@@ -15,6 +15,7 @@ import {
   PhoneCall, PhoneOff, UserPlus, Search, Paperclip,
 } from "lucide-react";
 import AvatarContato from './AvatarContato';
+import EstrelaPrioridadeButton from './EstrelaPrioridadeButton';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import BuscarMensagensBar from './BuscarMensagensBar';
@@ -261,9 +262,19 @@ export default function ChatHeader({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold leading-tight truncate">
-              {contatoAtual?.nome || conversaSelecionada.cliente_telefone}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-semibold leading-tight truncate">
+                {contatoAtual?.nome || conversaSelecionada.cliente_telefone}
+              </p>
+              <EstrelaPrioridadeButton
+                conversa={conversaSelecionada}
+                user={user}
+                empresaId={empresaId}
+                queryClient={queryClient}
+                size="h-7 w-7"
+                starSize="h-4 w-4"
+              />
+            </div>
             <div className="flex items-center gap-1 sm:gap-2 mt-0.5 flex-wrap">
               {ehInstagram ? (
                 <span className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm bg-gradient-to-r from-purple-500 to-pink-500">

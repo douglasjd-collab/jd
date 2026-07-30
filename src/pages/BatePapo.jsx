@@ -81,6 +81,8 @@ import MobileConversationActions from '@/components/chat/MobileConversationActio
 import ImageEditorModal from '@/components/chat/image-editor/ImageEditorModal';
 import EditarMensagemModal from '@/components/chat/EditarMensagemModal';
 import { criarLocalizarMensagem } from '@/components/chat/localizarMensagemNoHistorico';
+import EstrelaPrioridadeButton from '@/components/chat/EstrelaPrioridadeButton';
+import BatePapoAbas from '@/components/chat/BatePapoAbas';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -239,6 +241,7 @@ export default function BatePapo() {
   };
   const [searchConversas, setSearchConversas] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('ativa');
+  const [filtroPrioridade, setFiltroPrioridade] = useState('todos'); // 'todos' | 'prioritarios' | 'sem'
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
   const [contatosWhatsapp, setContatosWhatsapp] = useState({});
   const [infoLeadAberto, setInfoLeadAberto] = useState(false);
@@ -1402,6 +1405,7 @@ export default function BatePapo() {
   // Conversa está em espera: cliente enviou mensagem E não há atendente ativo (15 min)
   const estaEmEsperaFiltro = (c) => {
     if (c.status !== 'ativa') return false;
+    if (c.atendimento_prioritario) return false; // prioritárias não vão para Esperando
     if (atendenteDentroDoTempo(c)) return false; // ainda em atendimento, não vai para espera
     return (naoLidasPorConversa[c.id] > 0 || c.ultimo_remetente === 'cliente');
   };
@@ -1420,6 +1424,7 @@ export default function BatePapo() {
     meu: conversasValidas.filter(c => c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id)).length,
     grupos: conversasGrupos.length,
     campanhas: conversas.filter(c => !isGrupo(c) && c.status === 'campanha').length,
+    prioritarios: conversasValidas.filter(c => c.atendimento_prioritario).length,
   };
 
 
@@ -1455,6 +1460,12 @@ export default function BatePapo() {
       // Campanhas (sem resposta) só aparecem em 'campanhas' — não entram em Todos/Esperando/Em Atendimento
       if (c.status === 'campanha' && filtroStatus !== 'campanhas') return false;
 
+      // Sub-filtro opcional de prioridade (não se aplica a grupos/campanhas)
+      if (!['grupos', 'campanhas'].includes(filtroStatus)) {
+        if (filtroPrioridade === 'prioritarios' && !c.atendimento_prioritario) return false;
+        if (filtroPrioridade === 'sem' && c.atendimento_prioritario) return false;
+      }
+
       // Conversas individuais (não-grupo, não-campanha)
       if (filtroStatus === 'todas')      return true;
       if (filtroStatus === 'espera')     return estaEmEsperaFiltro(c);
@@ -1465,9 +1476,14 @@ export default function BatePapo() {
       if (filtroStatus === 'campanhas')  return c.status === 'campanha';
       return false;
     })
-    .sort((a, b) =>
-      new Date(b.data_ultima_mensagem || 0) - new Date(a.data_ultima_mensagem || 0)
-    );
+    .sort((a, b) => {
+      // 1) Prioritárias primeiro (em Todas e Em Atendimento);
+      // 2) dentro de cada grupo, mais recente primeiro.
+      const ordemPrioritaria = (c) => (['todas', 'ativa'].includes(filtroStatus) && c.atendimento_prioritario) ? 1 : 0;
+      const pa = ordemPrioritaria(b) - ordemPrioritaria(a);
+      if (pa !== 0) return pa;
+      return new Date(b.data_ultima_mensagem || 0) - new Date(a.data_ultima_mensagem || 0);
+    });
 
   if (!user) {
     return (
@@ -1940,64 +1956,16 @@ export default function BatePapo() {
                 />
               </div>
 
-              {/* Status badges com abas — 2 linhas de 4 */}
-              <div className="space-y-1.5">
-                {/* Linha 1: Todos | Em Atend. | Esperando | Responsável */}
-                <div className="grid grid-cols-4 gap-1.5">
-                  <button onClick={() => setFiltroStatus('todas')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'todas' ? 'bg-slate-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'todas' ? 'text-white' : 'text-slate-700'}`}>{contadores.todas}</span>
-                    <span className={`text-[10px] font-medium ${filtroStatus === 'todas' ? 'text-white' : 'text-slate-600'}`}>Todos</span>
-                  </button>
-
-                  <button onClick={() => setFiltroStatus('ativa')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'ativa' ? 'bg-slate-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'ativa' ? 'text-white' : 'text-slate-700'}`}>{contadores.ativa}</span>
-                    <span className={`text-[10px] font-medium ${filtroStatus === 'ativa' ? 'text-white' : 'text-slate-600'}`}>Em Atend.</span>
-                  </button>
-
-                  <button onClick={() => setFiltroStatus('espera')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'espera' ? 'bg-red-500' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'espera' ? 'text-white' : 'text-red-500'}`}>{contadores.espera}</span>
-                    <span className={`text-[10px] font-medium ${filtroStatus === 'espera' ? 'text-white' : 'text-slate-600'}`}>Esperando</span>
-                  </button>
-
-                  <button onClick={() => setFiltroStatus('meu')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-2 py-1.5 ${filtroStatus === 'meu' ? 'bg-emerald-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'meu' ? 'text-white' : 'text-emerald-500'}`}>{contadores.meu}</span>
-                    <span className={`text-[10px] font-medium ${filtroStatus === 'meu' ? 'text-white' : 'text-slate-600'}`}>Responsável</span>
-                  </button>
-                </div>
-
-                {/* Linha 2: Transferidos | Grupos | Campanhas | Finalizados */}
-                <div className="grid grid-cols-4 gap-1.5">
-                  <button onClick={() => setFiltroStatus('transferida')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'transferida' ? 'bg-orange-500' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'transferida' ? 'text-white' : 'text-orange-500'}`}>{contadores.transferida}</span>
-                    <span className={`text-[9px] font-medium ${filtroStatus === 'transferida' ? 'text-white' : 'text-slate-600'}`}>Transferidos</span>
-                  </button>
-                  <button onClick={() => setFiltroStatus('grupos')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'grupos' ? 'bg-emerald-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'grupos' ? 'text-white' : 'text-emerald-500'}`}>{contadores.grupos}</span>
-                    <span className={`text-[9px] font-medium ${filtroStatus === 'grupos' ? 'text-white' : 'text-slate-600'}`}>Grupos</span>
-                  </button>
-                  <button onClick={() => setFiltroStatus('campanhas')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'campanhas' ? 'bg-cyan-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'campanhas' ? 'text-white' : 'text-cyan-600'}`}>{contadores.campanhas}</span>
-                    <span className={`text-[9px] font-medium ${filtroStatus === 'campanhas' ? 'text-white' : 'text-slate-600'}`}>{contadores.campanhas > 0 ? 'Campanhas*' : 'Campanhas'}</span>
-                  </button>
-                  <button onClick={() => setFiltroStatus('encerrada')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'encerrada' ? 'bg-slate-600' : 'bg-slate-100'}`}>
-                    <span className={`text-sm font-bold ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-400'}`}>{contadores.encerrada}</span>
-                    <span className={`text-[9px] font-medium ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-500'}`}>Finalizados</span>
-                  </button>
-                </div>
-              </div>
-
-              {filtroStatus === 'transferida' && contadores.transferida > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full text-xs gap-1.5 text-purple-700 border-purple-300 hover:bg-purple-50"
-                  onClick={encerrarTodosTransferidos}
-                  disabled={encerrandoTransferidos}
-                >
-                  {encerrandoTransferidos ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                  Encerrar todos os {contadores.transferida} transferidos
-                </Button>
-              )}
+              {/* Abas/contadores de filtro + indicador de prioritários */}
+              <BatePapoAbas
+                contadores={contadores}
+                filtroStatus={filtroStatus}
+                setFiltroStatus={setFiltroStatus}
+                filtroPrioridade={filtroPrioridade}
+                setFiltroPrioridade={setFiltroPrioridade}
+                encerrarTodosTransferidos={encerrarTodosTransferidos}
+                encerrandoTransferidos={encerrandoTransferidos}
+              />
 
               <div className="jd-conversation-list mt-1" style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', overflowX: 'hidden', width: '100%' }}>
                 <div className="jd-chat-list pb-4" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
@@ -2070,7 +2038,17 @@ export default function BatePapo() {
                           <div className="jd-chat-content">
                             <div className="jd-chat-top">
                               <span className="jd-chat-name">{nome}</span>
-                              <span className="jd-chat-time">{hora}</span>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <EstrelaPrioridadeButton
+                                  conversa={c}
+                                  user={user}
+                                  empresaId={empresaId}
+                                  queryClient={queryClient}
+                                  size="h-6 w-6"
+                                  starSize="h-3.5 w-3.5"
+                                />
+                                <span className="jd-chat-time">{hora}</span>
+                              </div>
                             </div>
                             {igUsername && <span style={{fontSize:'11px',color:'#9333ea',fontWeight:500}}>@{igUsername}</span>}
                             {(() => {
