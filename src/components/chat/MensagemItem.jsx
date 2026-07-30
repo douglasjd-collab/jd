@@ -12,7 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export default function MensagemItem({ mensagem, conversaId, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null, modoSelecao = false, selecionada = false, onToggleSelecao = null, onEncaminhar = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null }) {
+export default function MensagemItem({ mensagem, conversaId, conversa = null, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null, modoSelecao = false, selecionada = false, onToggleSelecao = null, onEncaminhar = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null }) {
   // Corrige URLs com espaços não codificados (ex: pastas "CRM JD"), que quebram <img>/<audio>/<video>
   const sanitizeUrl = (url) => (typeof url === 'string' ? url.replace(/ /g, '%20') : url);
 
@@ -640,7 +640,20 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
             ) : mediaUrl ? (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <FileAudio className="w-4 h-4 flex-shrink-0 opacity-70" />
+                  {(() => {
+                    const nomeRemetente = isVendedor
+                      ? (mensagem.atendente_nome || mensagem.usuario_nome || user?.nome_perfil || user?.full_name || 'Atendente')
+                      : (mensagem.remetente_nome || conversa?.cliente_nome || 'Cliente');
+                    const inicial = (nomeRemetente.trim().charAt(0) || '?').toUpperCase();
+                    const foto = isVendedor ? user?.foto_perfil : conversa?.foto_url;
+                    return (
+                      <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center bg-gradient-to-br from-blue-400 to-blue-600 text-white text-xs font-bold border border-black/10">
+                        {foto
+                          ? <img src={foto} alt="" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+                          : <span>{inicial}</span>}
+                      </div>
+                    );
+                  })()}
                   <audio 
                     ref={audioRef}
                     controls 

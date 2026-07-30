@@ -99,6 +99,7 @@ export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo
             <MensagemItem
               mensagem={item.msg}
               conversaId={conversaSelecionada?.id}
+              conversa={conversaSelecionada}
               isGrupo={isGrupo}
               onResponder={onResponder}
               user={user}
