@@ -104,14 +104,43 @@ async function buscarDefinicaoComplementarTemplate(
 //   2) CampanhaLog meta_template_definition (sincronizado com a Meta) — fallback
 // Garante headerType, headerUrl (URL pública/armazenada), headerId (media_id
 // permanente da Meta) e headerText (para headers TEXT com {{n}}).
+//
+// Correção importante: o CRM às vezes grava header_type='NONE' mesmo quando o
+// template na Meta foi aprovado com header de MÍDIA (header_media_id/url
+// preenchidos). Quando header_type estiver vazio/'NONE' mas houver
+// header_media_id/header_media_url/header_media_mime, inferimos o tipo real
+// — caso contrário o envio omite o parâmetro do header e a Meta devolve
+// #132012 ("Parameter format does not match format in the created template").
+function inferirTipoMidia(template: any, defComplementar: any): string {
+  const mime = String(template?.header_media_mime || '').toLowerCase();
+  if (mime.startsWith('video/')) return 'VIDEO';
+  if (mime.startsWith('image/')) return 'IMAGE';
+  if (mime.startsWith('application/pdf') || mime.startsWith('application/msword')
+      || mime.includes('document') || mime.includes('word') || mime.includes('sheet')) return 'DOCUMENT';
+  const url = String(template?.header_media_url || defComplementar?.header_url || '').toLowerCase();
+  const cleanUrl = url.split(/[?#]/)[0];
+  if (/\.(mp4|mov|mkv|webm|avi|m4v|3gp)(\/|$)/.test(cleanUrl)) return 'VIDEO';
+  if (/\.(jpe?g|png|webp|gif|bmp|tiff?)(\/|$)/.test(cleanUrl)) return 'IMAGE';
+  if (/\.(pdf|docx?|xlsx?|pptx?|txt|csv|rtf)(\/|$)/.test(cleanUrl)) return 'DOCUMENT';
+  return '';
+}
 function resolverHeaderTemplate(template: any, defComplementar: any): {
   headerType: string;
   headerUrl: string;
   headerId: string;
   headerText: string;
 } {
+  let headerType = String(template?.header_type || defComplementar?.header_type || '').toUpperCase();
+  const hasMediaId = !!(template?.header_media_id || defComplementar?.header_id);
+  const hasMediaUrl = !!(template?.header_media_url || defComplementar?.header_url);
+  // Se header_type é NONE/vazio mas há mídia preenchida, inferimos o tipo real
+  // a partir do mime/extensão para evitar omissão do parâmetro do header.
+  if ((!headerType || headerType === 'NONE') && (hasMediaId || hasMediaUrl)) {
+    const inferido = inferirTipoMidia(template, defComplementar);
+    if (inferido) headerType = inferido;
+  }
   return {
-    headerType: String(template?.header_type || defComplementar?.header_type || '').toUpperCase(),
+    headerType,
     headerUrl: String(template?.header_media_url || defComplementar?.header_url || '').trim(),
     headerId: String(template?.header_media_id || defComplementar?.header_id || '').trim(),
     headerText: template?.header_text || defComplementar?.header_text || '',
@@ -153,8 +182,11 @@ function montarComponentsTemplate(
         : 'document';
     let mediaValue: any = null;
 
-    // 1) media_id (handle permanente da Meta). Para Graph API direta funciona
-    //    nativamente; para D-API Cloud exige que pertença à WABA gerenciada.
+    // 1) media_id (handle permanente da Meta). D-API Cloud exige integer —
+    //    só usamos id se for numérico puro (Graph API legacy). Handle
+    //    alfanumérico de Cloud API ("4::dmlkZW...") é rejeitado pela D-API com
+    //    "JSON schema constraint 'type' for video.id: [integer, null]" — nesse
+    //    caso caímos na URL (link), que a D-API baixa e reenvia à Meta.
     if (headerInfo.headerId && /^\d{10,}$/.test(headerInfo.headerId)) {
       mediaValue = { id: headerInfo.headerId };
     } else if (headerInfo.headerUrl) {
