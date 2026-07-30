@@ -598,7 +598,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 </button>
               )}
               {mensagem.texto && !textoIsPadraoMidia(mensagem.texto) && (
-                <p className="text-xs mt-1 break-words whitespace-pre-wrap opacity-90">{mensagem.texto}</p>
+                <p className="mt-1 break-words whitespace-pre-wrap opacity-90">{formatarTexto(mensagem.texto)}</p>
               )}
             </div>
             {imagemAberta && mediaUrl && (
@@ -760,7 +760,7 @@ export default function MensagemItem({ mensagem, conversaId, isGrupo = false, on
                 )}
               </div>
               {mensagem.texto && mensagem.texto.trim() && (
-                <div className={`px-3 pb-2 text-xs break-words whitespace-pre-wrap ${isVendedor ? 'text-white/90' : 'text-slate-700'}`}>
+                <div className={`px-3 pb-2 break-words whitespace-pre-wrap ${isVendedor ? 'text-white/90' : 'text-slate-700'}`}>
                   {mensagem.texto}
                 </div>
               )}
