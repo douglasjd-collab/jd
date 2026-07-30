@@ -63,6 +63,17 @@ export async function processarMensagemIndividual(base44, msg): Promise<{ succes
     const { messageId, tipoConteudo, provider, textoResolvido, conexaoId, phoneNumberId } = resultado;
     const textoParaHistorico = textoResolvido || msg.mensagem || '';
 
+    // Quando o template tem header de MÍDIA (VIDEO/IMAGE/DOCUMENT) com URL
+    // pública, salvamos o histórico como JSON rico ({__template: true, ...})
+    // para o MensagemItem do Bate-papo renderizar o vídeo/imagem do cabeçalho
+    // EXATAMENTE como o cliente recebe no WhatsApp (vide parseTemplateMsg).
+    const ti = (resultado as any).templateInfo;
+    const ehTemplateRico =
+      !!ti &&
+      ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(ti.header_type) &&
+      !!ti.header_url;
+    const textoHistoricoFinal = ehTemplateRico ? JSON.stringify(ti) : textoParaHistorico;
+
     // 2) Histórico da conversa: usa o texto resolvido ({{1}} → primeiro nome)
     //    para o usuário ver exatamente o que foi enviado, sem duplicar.
     if (msg.conversa_id) {
@@ -72,11 +83,13 @@ export async function processarMensagemIndividual(base44, msg): Promise<{ succes
         remetente: 'vendedor',
         usuario_id: msg.responsavel_id || '',
         usuario_nome: msg.responsavel_nome || 'Agendamento automático',
-        tipo_conteudo: tipoConteudo,
-        texto: textoParaHistorico,
-        arquivo_url: msg.arquivo_url || '',
+        tipo_conteudo: ehTemplateRico ? 'texto' : tipoConteudo,
+        texto: textoHistoricoFinal,
+        arquivo_url: ehTemplateRico ? ti.header_url : (msg.arquivo_url || ''),
         arquivo_nome: msg.arquivo_nome || '',
+        arquivo_tamanho: 0,
         provider: provider,
+        download_status: 'nao_aplicavel',
         whatsapp_message_id: messageId,
         data_envio: new Date().toISOString(),
         status: 'enviada',
@@ -85,8 +98,10 @@ export async function processarMensagemIndividual(base44, msg): Promise<{ succes
       // 3) Atualiza a conversa para refletir o canal efetivamente usado no
       //    disparo (independente do canal que estava selecionado na tela).
       //    Para Meta template, marca API Oficial; para D-API, mantém/dapi.
+      //    A prévia da última mensagem usa o corpo (texto resolvido) — o
+      //    vídeo do header aparece na bolha do chat, não na listagem.
       const atualizacaoConversa: any = {
-        ultima_mensagem: textoParaHistorico,
+        ultima_mensagem: textoParaHistorico.substring(0, 200),
         data_ultima_mensagem: new Date().toISOString(),
         ultimo_remetente: 'vendedor',
       };

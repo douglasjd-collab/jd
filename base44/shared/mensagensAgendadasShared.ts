@@ -233,6 +233,41 @@ function montarComponentsTemplate(
   return { components, headerInfo, mediaPresent };
 }
 
+// Monta o JSON de preview rico para o histórico da conversa (MensagemWhatsapp.texto).
+// Permite que o MensagemItem (front) renderize o header de vídeo/imagem + corpo
+// + botões DO TEMPLATE no Bate-papo, igual ao que o cliente recebe no WhatsApp
+// (vide parseTemplateMsg no front-end). Somente inclui header_url quando há URL
+// pública http(s) — handles numéricos da Meta não têm mídia reproduzível no CRM.
+export function montarTemplatePreviewJson(
+  template: any,
+  headerInfo: ReturnType<typeof resolverHeaderTemplate>,
+  textoResolvido: string
+) {
+  let botoes: any[] = [];
+  try {
+    const bj = template?.buttons_json;
+    if (bj) botoes = typeof bj === 'string' ? JSON.parse(bj) : bj;
+    if (!Array.isArray(botoes)) botoes = [];
+  } catch (_) {
+    botoes = [];
+  }
+
+  const headerType = headerInfo?.headerType || 'NONE';
+  let headerUrl = '';
+  if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerType)) {
+    const url = String(headerInfo?.headerUrl || '').trim();
+    if (/^https?:\/\//i.test(url)) headerUrl = url;
+  }
+
+  return {
+    __template: true,
+    header_type: headerType,
+    header_url: headerUrl,
+    corpo: textoResolvido || '',
+    botoes,
+  };
+}
+
 // Validação pré-disparo do template (regra #132012). Retorna lista de violações
 // (vazia = OK). Aponta o campo específico que precisa ser corrigido em vez
 // de falhar com mensagem genérica.
@@ -521,9 +556,10 @@ export async function enviarViaMetaOficial(
 
     const messageId = candidateId || `cloud_${Date.now()}`;
     logCtx.message_id = messageId;
+    const templateInfo = montarTemplatePreviewJson(template, headerInfo, textoResolvido);
     console.log('✅ [Agendamento] Template enviado via D-API Cloud:', logCtx);
-    return { messageId, tipoConteudo: 'texto', provider: 'whatsapp_meta', conexaoId: conexao.id, sessionId: conexao.session_id, phoneNumberId: (conexao as any)?.session_id || '', textoResolvido };
-  }
+    return { messageId, tipoConteudo: 'texto', provider: 'whatsapp_meta', conexaoId: conexao.id, sessionId: conexao.session_id, phoneNumberId: (conexao as any)?.session_id || '', textoResolvido, templateInfo };
+    }
 
   // ── Caso B/C: Graph API direta (conexao meta_oficial OU app secrets) ────
   let accessToken = '';
@@ -727,8 +763,9 @@ export async function enviarViaMetaOficial(
   }
   const messageId = messageIdResp || `meta_${Date.now()}`;
   logCtx.message_id = messageId;
+  const templateInfoGraph = montarTemplatePreviewJson(template, headerInfo, textoResolvido);
   console.log('✅ [Agendamento] Template enviado via Graph API direta:', logCtx);
-  return { messageId, tipoConteudo: 'texto', provider: 'whatsapp_meta', conexaoId: conexao?.id || '', sessionId: conexao?.session_id || '', phoneNumberId: phoneNumberId, textoResolvido };
+  return { messageId, tipoConteudo: 'texto', provider: 'whatsapp_meta', conexaoId: conexao?.id || '', sessionId: conexao?.session_id || '', phoneNumberId: phoneNumberId, textoResolvido, templateInfo: templateInfoGraph };
 }
 
 // ─────────────────────────────────────────────────────────────────────────

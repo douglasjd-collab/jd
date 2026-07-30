@@ -65,8 +65,19 @@ Deno.serve(async (req) => {
         resultado = await enviarViaDapi(base44, empresa, conversa, msg, telefone);
       }
 
-      const { messageId, tipoConteudo, provider, textoResolvido, conexaoId, phoneNumberId } = resultado;
+      const { messageId, tipoConteudo, provider, textoResolvido, conexaoId, phoneNumberId, templateInfo } = resultado;
       const textoParaHistorico = textoResolvido || msg.mensagem || '';
+
+      // Quando o template tem header de MÍDIA (VIDEO/IMAGE/DOCUMENT) com URL
+      // pública, salvamos o histórico como JSON rico ({__template: true, ...})
+      // para o MensagemItem do Bate-papo renderizar o vídeo/imagem do cabeçalho
+      // EXATAMENTE como o cliente recebe no WhatsApp (vide parseTemplateMsg).
+      const ti = (resultado as any).templateInfo || templateInfo;
+      const ehTemplateRico =
+        !!ti &&
+        ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(ti.header_type) &&
+        !!ti.header_url;
+      const textoHistoricoFinal = ehTemplateRico ? JSON.stringify(ti) : textoParaHistorico;
 
       // Registra no histórico da conversa uma ÚNICA mensagem (envio efetivo),
       // já com as variáveis {{1}} resolvidas (primeiro nome atual do cliente).
@@ -78,11 +89,13 @@ Deno.serve(async (req) => {
             remetente: 'vendedor',
             usuario_id: user.id,
             usuario_nome: user.full_name || msg.responsavel_nome || '',
-            tipo_conteudo: tipoConteudo,
-            texto: textoParaHistorico,
-            arquivo_url: msg.arquivo_url || '',
+            tipo_conteudo: ehTemplateRico ? 'texto' : tipoConteudo,
+            texto: textoHistoricoFinal,
+            arquivo_url: ehTemplateRico ? ti.header_url : (msg.arquivo_url || ''),
             arquivo_nome: msg.arquivo_nome || '',
+            arquivo_tamanho: 0,
             provider: provider,
+            download_status: 'nao_aplicavel',
             whatsapp_message_id: messageId,
             data_envio: new Date().toISOString(),
             status: 'enviada',
@@ -106,6 +119,10 @@ Deno.serve(async (req) => {
             atualizacaoConversa.provider = 'dapi';
             if (conexaoId) atualizacaoConversa.connection_id = conexaoId;
           }
+          // Prévia da última mensagem: para templates ricos usa o corpo (texto);
+          // o vídeo do header aparece na bolha, mas a listagem de conversas
+          // mostra o texto do corpo.
+          atualizacaoConversa.ultima_mensagem = textoParaHistorico.substring(0, 200);
           await base44.asServiceRole.entities.ConversaWhatsapp.update(msg.conversa_id, atualizacaoConversa);
         } catch (dbErr) {
           console.warn('Aviso: erro ao salvar mensagem no histórico do reenvio:', dbErr.message);
