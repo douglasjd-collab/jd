@@ -425,23 +425,55 @@ export async function enviarViaMetaOficial(
     logCtx.template_schema = {
       header_type: headerInfo.headerType,
       header_media_id_present: !!headerInfo.headerId,
+      header_media_id_numeric: headerInfo.headerId ? /^\d{10,}$/.test(headerInfo.headerId) : false,
       header_url_present: !!headerInfo.headerUrl,
       body_var_count_aprovado:
         (template?.body_text?.match(/\{\{(\d+)\}\}/g) || []).length || 0,
     };
-    logCtx.components_enviados = components.map((c) => ({
-      type: c.type,
-      parameter_types: (c.parameters || []).map((p) => p.type),
-    }));
     logCtx.variavel_1_resolvida = valuesByPos['1'] ?? null;
 
-    // Template payload no formato Graph API components — não usa o atalho
-    // bodyVariables/headerMedia (que pode divergir do aprovado pela Meta).
-    const templatePayload = {
-      name: templateName,
-      language: templateLanguage,
-      components,
-    };
+    // Construção do payload — dois caminhos conforme o tipo do header:
+    //
+    //  1) Header de MÍDIA (VIDEO/IMAGE/DOCUMENT) E não temos media_id numérico
+    //     (D-API Cloud exige integer em video.id — handle alfanumérico Cloud
+    //     API "4::dmlkZW..." e a forma {link:...} via components é aceita mas
+    //     ignorada, levando a mensagem sem o vídeo): usamos o atalho legacy
+    //     bodyVariables + headerMedia — a D-API baixa a URL, upa para a Meta
+    //     e devolve o id inteiro correto. O vídeo é renderizado.
+    //
+    //  2) Demais casos (sem header, header TEXT, ou media_id numérico Graph
+    //     API legado): usamos components-first passando o array exato.
+    const headerTypeNorm = headerInfo.headerType;
+    const isMediaHeader = ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerTypeNorm);
+    const hasNumericMediaId = !!(headerInfo.headerId && /^\d{10,}$/.test(headerInfo.headerId));
+    const useShortcutMedia = isMediaHeader && !hasNumericMediaId && !!headerInfo.headerUrl;
+
+    let templatePayload: any;
+    if (useShortcutMedia) {
+      const positions = Object.keys(valuesByPos).sort((a, b) => Number(a) - Number(b));
+      const bodyVariables = positions.map((p) => valuesByPos[p]);
+      const mediaType = String(headerTypeNorm).toLowerCase(); // 'video' | 'image' | 'document'
+      const headerMedia = { type: mediaType, url: headerInfo.headerUrl };
+      templatePayload = {
+        name: templateName,
+        language: templateLanguage,
+        bodyVariables,
+        headerMedia,
+      };
+      logCtx.payload_mode = 'shortcut_headerMedia_url';
+      logCtx.header_media_url_used = headerInfo.headerUrl;
+    } else {
+      templatePayload = {
+        name: templateName,
+        language: templateLanguage,
+        components,
+      };
+      logCtx.payload_mode = 'components_first';
+      logCtx.components_enviados = components.map((c) => ({
+        type: c.type,
+        parameter_types: (c.parameters || []).map((p) => p.type),
+      }));
+    }
 
     let sr: any;
     try {
