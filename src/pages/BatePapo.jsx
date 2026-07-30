@@ -132,6 +132,21 @@ export default function BatePapo() {
     // Marcar conversa como lida (background)
     marcarConversaComoLida(conversa.id);
 
+    // Marca como "Em Atendimento" ao abrir quando há cliente esperando resposta
+    if (!isGrupo(conversa) && conversa.status === 'ativa') {
+      const meuId = user?.colaborador_id || user?.id;
+      const meuNome = user?.nome_perfil || user?.full_name || user?.email || 'Atendente';
+      const temAtendAtivo = conversa.responsavel_expira_em && new Date(conversa.responsavel_expira_em) > new Date();
+      const precisa = (conversa.ultimo_remetente === 'cliente' || (naoLidasPorConversa[conversa.id] || 0) > 0) && !temAtendAtivo;
+      if (meuId && precisa) {
+        const expira = new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
+        const dados = { responsavel_id: meuId, responsavel_nome: meuNome, responsavel_expira_em: expira };
+        queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
+          (Array.isArray(old) ? old : []).map(c => c.id === conversa.id ? { ...c, ...dados } : c));
+        base44.entities.ConversaWhatsapp.update(conversa.id, dados).then(refetchConversasComDebounce).catch(() => {});
+      }
+    }
+
     // Invalida cache e força refetch IMEDIATO
     queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
 
