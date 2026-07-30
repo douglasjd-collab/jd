@@ -24,10 +24,13 @@ import {
   ListChecks,
   RefreshCw,
   AlertTriangle,
+  ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import PublicoBuilder from './PublicoBuilder';
 import { selecionarTelefonesParaCampanha, carregarTelefonesPorCliente } from './telefonesCliente';
+import { aplicarFiltrosPublico, modoTelefoneParaCampanha, carregarTelefonesBloqueados, resumoFiltros } from './campanhaFiltros';
 import TemplatePreview from '@/components/templates/TemplatePreview';
 
 // Aceita variações de status que meaning "aprovado": 'aprovado' (padrão CRM),
@@ -70,7 +73,12 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     personalizado_regras: [],
     filtro_cidade: '',
     filtro_uf: '',
-    filtro_sem_atendimento_dias: '',
+    filtro_com_nome: false,
+    filtro_sem_nome: false,
+    filtro_telefone_valido: false,
+    filtro_apenas_whatsapp: false,
+    filtro_vendedor_id: '',
+    filtro_parceiro_id: '',
     agendamento: 'agora',
     agendada_para_data: '',
     agendada_para_hora: '',
@@ -99,7 +107,12 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         personalizado_regras: [],
         filtro_cidade: '',
         filtro_uf: '',
-        filtro_sem_atendimento_dias: '',
+        filtro_com_nome: false,
+        filtro_sem_nome: false,
+        filtro_telefone_valido: false,
+        filtro_apenas_whatsapp: false,
+        filtro_vendedor_id: '',
+        filtro_parceiro_id: '',
         agendamento: 'agora',
         agendada_para_data: '',
         agendada_para_hora: '',
@@ -196,34 +209,38 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       if (sub === 'inativos') filtro.status = 'inativo';
       const clientes = await base44.entities.Cliente.filter(filtro, null, 2000);
       const telsMap = await carregarTelefonesPorCliente(empresaId);
-      let filtrados = clientes;
-      if (sub === 'sem_whatsapp') filtrados = filtrados.filter((c) => normalizeTel(c.celular || '').length < 10);
-      if (sub === 'com_whatsapp') filtrados = filtrados.filter((c) => normalizeTel(c.celular || '').length >= 10);
-      if (form.filtro_cidade) {
-        filtrados = filtrados.filter((c) =>
-          (c.res_cidade || '').toLowerCase().includes(form.filtro_cidade.toLowerCase())
-        );
-      }
-      if (form.filtro_uf) {
-        filtrados = filtrados.filter((c) =>
-          (c.res_uf || '').toLowerCase() === form.filtro_uf.toLowerCase()
-        );
-      }
+      const bloqueados = await carregarTelefonesBloqueados(empresaId);
+      let baseClientes = clientes;
+      if (sub === 'sem_whatsapp') baseClientes = baseClientes.filter((c) => normalizeTel(c.celular || '').length < 10);
+      if (sub === 'com_whatsapp') baseClientes = baseClientes.filter((c) => normalizeTel(c.celular || '').length >= 10);
+      const filtrados = aplicarFiltrosPublico(baseClientes, form);
       const comTelefone = filtrados.filter((c) =>
-        selecionarTelefonesParaCampanha(c, form.destino_telefones, telsMap.get(c.id) || []).length > 0
+        selecionarTelefonesParaCampanha(c, modoTelefoneParaCampanha(form), telsMap.get(c.id) || []).length > 0
       );
-      const telsPorCliente = comTelefone.map((c) => selecionarTelefonesParaCampanha(c, form.destino_telefones, telsMap.get(c.id) || []));
+      const telsPorCliente = comTelefone.map((c) => selecionarTelefonesParaCampanha(c, modoTelefoneParaCampanha(form), telsMap.get(c.id) || []));
       const totalTelefones = telsPorCliente.reduce((s, arr) => s + arr.length, 0);
+      const antesFiltros = baseClientes.length;
+      const removidosFiltros = antesFiltros - filtrados.length;
       const telefonesUnicosSet = new Set();
-      telsPorCliente.forEach((arr) => arr.forEach((t) => telefonesUnicosSet.add(t)));
-      const duplicados = totalTelefones - telefonesUnicosSet.size;
+      let invalidos = 0;
+      let bloqueadosRemovidos = 0;
+      telsPorCliente.forEach((arr) => arr.forEach((t) => {
+        if (t.length < 10) { invalidos++; return; }
+        if (bloqueados.has(t)) { bloqueadosRemovidos++; return; }
+        telefonesUnicosSet.add(t);
+      }));
+      const duplicados = totalTelefones - invalidos - bloqueadosRemovidos - telefonesUnicosSet.size;
       setPreview({
-        total_encontrados: filtrados.length,
-        com_telefone: comTelefone.length,
-        clientes_prontos: comTelefone.length,
+        clientes_selecionados: filtrados.length,
+        clientes_removidos_filtros: removidosFiltros,
+        total_clientes: comTelefone.length,
+        telefones_invalidos: invalidos,
+        telefones_duplicados: duplicados,
+        bloqueados_removidos: bloqueadosRemovidos,
+        total_telefones: totalTelefones,
+        total_final_envios: telefonesUnicosSet.size,
+        // Compat com resumo final (Step6)
         prontos_envio: telefonesUnicosSet.size,
-        duplicados,
-        sem_telefone: filtrados.length - comTelefone.length,
       });
     } catch (e) {
       toast.error('Erro ao calcular prévia: ' + (e.message || 'desconhecido'));
@@ -270,27 +287,20 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       if (sub === 'inativos') filtro.status = 'inativo';
       const clientes = await base44.entities.Cliente.filter(filtro, null, 2000);
       const telsMap = await carregarTelefonesPorCliente(empresaId);
-      let filtrados = clientes;
-      if (sub === 'sem_whatsapp') filtrados = filtrados.filter((c) => normalizeTel(c.celular || '').length < 10);
-      if (sub === 'com_whatsapp') filtrados = filtrados.filter((c) => normalizeTel(c.celular || '').length >= 10);
-      if (form.filtro_cidade) {
-        filtrados = filtrados.filter((c) =>
-          (c.res_cidade || '').toLowerCase().includes(form.filtro_cidade.toLowerCase())
-        );
-      }
-      if (form.filtro_uf) {
-        filtrados = filtrados.filter((c) =>
-          (c.res_uf || '').toLowerCase() === form.filtro_uf.toLowerCase()
-        );
-      }
+      const bloqueados = await carregarTelefonesBloqueados(empresaId);
+      let baseClientes = clientes;
+      if (sub === 'sem_whatsapp') baseClientes = baseClientes.filter((c) => normalizeTel(c.celular || '').length < 10);
+      if (sub === 'com_whatsapp') baseClientes = baseClientes.filter((c) => normalizeTel(c.celular || '').length >= 10);
+      const filtrados = aplicarFiltrosPublico(baseClientes, form);
       const comTelefone = filtrados.filter((c) =>
-        selecionarTelefonesParaCampanha(c, form.destino_telefones, telsMap.get(c.id) || []).length > 0
+        selecionarTelefonesParaCampanha(c, modoTelefoneParaCampanha(form), telsMap.get(c.id) || []).length > 0
       );
       const vistos = new Set();
       const destinatariosExpandidos = [];
       for (const c of comTelefone) {
-        const tels = selecionarTelefonesParaCampanha(c, form.destino_telefones, telsMap.get(c.id) || []);
+        const tels = selecionarTelefonesParaCampanha(c, modoTelefoneParaCampanha(form), telsMap.get(c.id) || []);
         for (const tel of tels) {
+          if (bloqueados.has(tel)) continue;
           if (vistos.has(tel)) continue;
           vistos.add(tel);
           destinatariosExpandidos.push({ c, tel });
@@ -319,7 +329,12 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         filtros: {
           cidade: form.filtro_cidade,
           uf: form.filtro_uf,
-          sem_atendimento_dias: form.filtro_sem_atendimento_dias,
+          com_nome: form.filtro_com_nome,
+          sem_nome: form.filtro_sem_nome,
+          telefone_valido: form.filtro_telefone_valido,
+          apenas_whatsapp: form.filtro_apenas_whatsapp,
+          vendedor_id: form.filtro_vendedor_id,
+          parceiro_id: form.filtro_parceiro_id,
         },
       });
       const campanha = await base44.entities.Campanha.create({
@@ -397,7 +412,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
           {step === 2 && (
             <PublicoBuilder form={form} setForm={setForm} empresaId={empresaId} user={user} />
           )}
-          {step === 3 && <Step3 form={form} setForm={setForm} />}
+          {step === 3 && <Step3 form={form} setForm={setForm} empresaId={empresaId} />}
           {step === 4 && <Step4 preview={preview} loading={loadingPreview} onRecalc={calcularPrevia} />}
           {step === 5 && <Step5 form={form} setForm={setForm} />}
           {step === 6 && <Step6 form={form} template={templateSelecionado} preview={preview} user={user} />}
@@ -594,10 +609,54 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
   );
 }
 
-function Step3({ form, setForm }) {
+function Step3({ form, setForm, empresaId }) {
+  const [vendedores, setVendedores] = useState([]);
+  const [parceiros, setParceiros] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!empresaId) return;
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      base44.entities.Colaborador.filter(
+        { empresa_id: empresaId, status: 'ativo' },
+        'nome',
+        500
+      ),
+      base44.entities.Colaborador.filter(
+        { empresa_id: empresaId, perfil: 'parceiro', status: 'ativo' },
+        'nome',
+        500
+      ),
+    ])
+      .then(([all, pars]) => {
+        if (cancelled) return;
+        const vends = (all || []).filter((c) =>
+          ['vendedor', 'colaborador_vendedor'].includes(c.perfil)
+        );
+        setVendedores(vends);
+        setParceiros(pars || []);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setVendedores([]);
+          setParceiros([]);
+        }
+      })
+      .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; };
+  }, [empresaId]);
+
   return (
     <div className="space-y-4">
-      <Label className="block">Filtros</Label>
+      <div>
+        <Label className="block mb-1">Filtros</Label>
+        <p className="text-xs text-slate-500 mb-3">
+          Filtros opcionais para refinar o público de primeiro contato. Você pode avançar sem preencher nada.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <Label>Cidade</Label>
@@ -608,14 +667,94 @@ function Step3({ form, setForm }) {
           <Input value={form.filtro_uf} onChange={(e) => setForm({ ...form, filtro_uf: e.target.value.toUpperCase() })} placeholder="Ex: PE" maxLength={2} />
         </div>
         <div>
-          <Label>Sem atendimento há mais de (dias)</Label>
-          <Input type="number" value={form.filtro_sem_atendimento_dias} onChange={(e) => setForm({ ...form, filtro_sem_atendimento_dias: e.target.value })} placeholder="Ex: 30" />
+          <Label>Vendedor responsável</Label>
+          <select
+            value={form.filtro_vendedor_id || ''}
+            onChange={(e) => setForm({ ...form, filtro_vendedor_id: e.target.value })}
+            className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white"
+          >
+            <option value="">Todos os vendedores</option>
+            {vendedores.map((v) => (
+              <option key={v.id} value={v.id}>{v.nome}</option>
+            ))}
+          </select>
+        </div>
+        <div className="md:col-span-2">
+          <Label>Parceiro / origem do contato</Label>
+          <select
+            value={form.filtro_parceiro_id || ''}
+            onChange={(e) => setForm({ ...form, filtro_parceiro_id: e.target.value })}
+            className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white"
+          >
+            <option value="">Todos os parceiros</option>
+            {parceiros.map((p) => (
+              <option key={p.id} value={p.id}>{p.nome || p.email}</option>
+            ))}
+          </select>
         </div>
       </div>
-      <p className="text-xs text-slate-400">
-        Filtros adicionais (vendedor, tags, inadimplência etc) serão incluídos na próxima versão.
-      </p>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <ToggleCheck
+          checked={!!form.filtro_com_nome}
+          onChange={(v) => setForm({ ...form, filtro_com_nome: v, filtro_sem_nome: v ? false : form.filtro_sem_nome })}
+          label="Com nome cadastrado"
+        />
+        <ToggleCheck
+          checked={!!form.filtro_sem_nome}
+          onChange={(v) => setForm({ ...form, filtro_sem_nome: v, filtro_com_nome: v ? false : form.filtro_com_nome })}
+          label="Sem nome cadastrado"
+        />
+        <ToggleCheck
+          checked={!!form.filtro_telefone_valido}
+          onChange={(v) => setForm({ ...form, filtro_telefone_valido: v })}
+          label="Com telefone válido"
+        />
+        <ToggleCheck
+          checked={!!form.filtro_apenas_whatsapp}
+          onChange={(v) => setForm({ ...form, filtro_apenas_whatsapp: v })}
+          label="Apenas telefones WhatsApp"
+        />
+      </div>
+
+      {/* Regras automáticas (informativo — não são filtros) */}
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+        <p className="text-xs font-semibold text-slate-600 mb-2 flex items-center gap-1.5">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /> Regras automáticas (sempre aplicadas)
+        </p>
+        <ul className="text-xs text-slate-500 space-y-1 list-disc list-inside">
+          <li>Remover telefones duplicados</li>
+          <li>Excluir números inválidos (menos de 10 dígitos)</li>
+          <li>Excluir contatos bloqueados que solicitaram não receber mensagens</li>
+          <li>Impedir dois envios para o mesmo telefone nesta campanha</li>
+        </ul>
+      </div>
+
+      {loading && (
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando vendedores e parceiros…
+        </div>
+      )}
     </div>
+  );
+}
+
+function ToggleCheck({ checked, onChange, label }) {
+  return (
+    <label
+      className={cn(
+        'flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer text-sm transition',
+        checked ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 hover:bg-slate-50'
+      )}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="accent-emerald-600"
+      />
+      {label}
+    </label>
   );
 }
 
@@ -634,11 +773,14 @@ function Step4({ preview, loading, onRecalc }) {
       </div>
       {preview && !loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <Stat label="Total encontrados" value={preview.total_encontrados} color="text-slate-700" />
-          <Stat label="Clientes c/ telefone" value={preview.clientes_prontos ?? preview.com_telefone} color="text-blue-600" />
-          <Stat label="Telefones prontos p/ envio" value={preview.prontos_envio} color="text-emerald-700 highlight" />
-          <Stat label="Telefones duplicados" value={preview.duplicados} color="text-amber-600" />
-          <Stat label="Clientes sem telefone" value={preview.sem_telefone} color="text-slate-500" />
+          <Stat label="Clientes selecionados" value={preview.clientes_selecionados ?? 0} color="text-slate-700" />
+          <Stat label="Removidos pelos filtros" value={preview.clientes_removidos_filtros ?? 0} color="text-red-600" />
+          <Stat label="Total de clientes" value={preview.total_clientes ?? 0} color="text-blue-600" />
+          <Stat label="Telefones inválidos" value={preview.telefones_invalidos ?? 0} color="text-amber-600" />
+          <Stat label="Telefones duplicados" value={preview.telefones_duplicados ?? 0} color="text-amber-600" />
+          <Stat label="Contatos bloqueados" value={preview.bloqueados_removidos ?? 0} color="text-red-500" />
+          <Stat label="Total de telefones" value={preview.total_telefones ?? 0} color="text-slate-700" />
+          <Stat label="Total final de envios" value={preview.total_final_envios ?? 0} color="text-emerald-700" highlight />
         </div>
       ) : loading ? (
         <div className="flex items-center justify-center py-10 text-slate-500">
@@ -721,7 +863,7 @@ function Step6({ form, template, preview, user }) {
           <Row label="Template" value={template?.display_name || template?.name || '-'} />
           <Row label="Canal" value="WhatsApp API Oficial" />
           <Row label="Público (fontes)" value={resumoPublico(form)} />
-          <Row label="Filtros" value={[form.filtro_cidade, form.filtro_uf, form.filtro_sem_atendimento_dias ? `> ${form.filtro_sem_atendimento_dias} dias` : ''].filter(Boolean).join(' · ') || 'Nenhum'} />
+          <Row label="Filtros" value={resumoFiltros(form)} />
           <Row label="Prontos p/ envio" value={preview?.prontos_envio ?? '-'} />
           <Row label="Agendamento" value={form.agendamento === 'agora' ? 'Imediato' : `${form.agendada_para_data} ${form.agendada_para_hora}`} />
           <Row label="Velocidade" value={`${form.velocidade_envio || 60} msg/min`} />
