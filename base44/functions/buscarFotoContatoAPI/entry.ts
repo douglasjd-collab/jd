@@ -50,15 +50,16 @@ Deno.serve(async (req) => {
         provider_type: 'dapi',
         is_active: true
       }, '-created_date', 50);
-      // A API Oficial Cloud também usa provider_type='dapi', mas o endpoint
-      // de avatar abaixo pertence à sessão comum da JD Promotora. Priorizar a
-      // conexão da conversa e nunca trocar silenciosamente para cloud-*.
+      // REGRA GLOBAL: avatar sempre usa a API NÃO OFICIAL da JD Promotora,
+      // independentemente do canal/origem da conversa (antiga, nova ou Cloud API).
+      // Nunca usar connection_id/session_id recebidos da conversa para decidir.
       const conexoesNaoOficiais = (conexoesDapi || []).filter(
         (c) => !/^cloud-/i.test(String(c.session_id || '').trim())
       );
       const conexaoDapi =
-        (connection_id ? conexoesNaoOficiais.find((c) => c.id === connection_id) : null) ||
-        (session_id ? conexoesNaoOficiais.find((c) => String(c.session_id || '') === String(session_id)) : null) ||
+        conexoesNaoOficiais.find((c) => String(c.session_id || '').trim().toUpperCase() === 'CRM JD') ||
+        conexoesNaoOficiais.find((c) => /JD PROMOTORA|DOUGLAS/i.test(String(c.nome || ''))) ||
+        conexoesNaoOficiais.find((c) => c.status === 'conectado') ||
         conexoesNaoOficiais[0];
 
       if (conexaoDapi) {
@@ -78,39 +79,51 @@ Deno.serve(async (req) => {
         const baseUrl = (conexaoDapi.base_url || 'https://api.d-api.cloud').replace(/\/$/, '');
         const sessionId = conexaoDapi.session_id || 'CRM JD';
         const forceParam = force ? '&force=true' : '';
-        // async=false faz a rota aguardar a consulta ao WhatsApp e devolver a
-        // foto na própria resposta, em vez de apenas enfileirar o processamento.
-        const avatarUrl = `${baseUrl}/api/v1/contacts/${telLimpo}/avatar?sessionId=${encodeURIComponent(sessionId)}&async=false${forceParam}`;
-
-        console.log(`📡 D-API avatar: ${avatarUrl}`);
-
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 20000);
-        const resDapi = await fetch(avatarUrl, {
-          method: 'GET',
-          headers: { 'Authorization': apiKeyDecrypted },
-          signal: controller.signal
-        });
-        clearTimeout(timeout);
-
-        const rawText = await resDapi.text();
-        console.log(`📡 D-API avatar status: ${resDapi.status} | body: ${rawText?.slice(0, 500)}`);
-
-        if (resDapi.ok) {
-          let dataDapi = {};
-          try { dataDapi = JSON.parse(rawText); } catch (_) { dataDapi = {}; }
-
-          fotoUrl = encontrarUrlHttp(dataDapi) ||
-            (/^https?:\/\//i.test(rawText?.trim() || '') ? rawText.trim() : null);
-          console.log(`📸 Foto D-API encontrada: ${fotoUrl ? 'SIM' : 'NÃO'} | ${fotoUrl}`);
+        const numeros = new Set([telLimpo]);
+        if (telLimpo.startsWith('55')) numeros.add(telLimpo.slice(2));
+        if (telLimpo.startsWith('55') && telLimpo.length === 13) {
+          numeros.add(telLimpo.slice(0, 4) + telLimpo.slice(5));
+          numeros.add(telLimpo.slice(2, 4) + telLimpo.slice(5));
         }
+        if (telLimpo.startsWith('55') && telLimpo.length === 12) {
+          numeros.add(telLimpo.slice(0, 4) + '9' + telLimpo.slice(4));
+          numeros.add(telLimpo.slice(2, 4) + '9' + telLimpo.slice(4));
+        }
+
+        for (const numeroConsulta of numeros) {
+          if (fotoUrl) break;
+          const avatarUrl = `${baseUrl}/api/v1/contacts/${numeroConsulta}/avatar?sessionId=${encodeURIComponent(sessionId)}&async=false${forceParam}`;
+          console.log(`📡 D-API NÃO OFICIAL avatar: ${avatarUrl}`);
+
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 20000);
+          try {
+            const resDapi = await fetch(avatarUrl, {
+              method: 'GET',
+              headers: { 'Authorization': apiKeyDecrypted },
+              signal: controller.signal
+            });
+            const rawText = await resDapi.text();
+            console.log(`📡 D-API avatar status: ${resDapi.status} | telefone: ${numeroConsulta} | body: ${rawText?.slice(0, 500)}`);
+            if (resDapi.ok) {
+              let dataDapi = {};
+              try { dataDapi = JSON.parse(rawText); } catch (_) { dataDapi = {}; }
+              fotoUrl = encontrarUrlHttp(dataDapi) ||
+                (/^https?:\/\//i.test(rawText?.trim() || '') ? rawText.trim() : null);
+            }
+          } finally {
+            clearTimeout(timeout);
+          }
+        }
+        console.log(`📸 Foto D-API NÃO OFICIAL encontrada: ${fotoUrl ? 'SIM' : 'NÃO'}`);
       }
     } catch (e) {
       console.warn('⚠️ Erro ao buscar foto via D-API:', e.message);
     }
 
-    // ── Fallback: Evolution API ────────────────────────────────────────────
-    if (!fotoUrl) {
+    // Sem fallback para API Oficial/outro provedor: a regra de avatar é usar
+    // exclusivamente a D-API não oficial da JD Promotora.
+    if (false && !fotoUrl) {
       const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: empresa_id }, null, 1);
       const empresa = empresas[0];
       const evolutionUrl = (empresa?.evolution_url || Deno.env.get('EVOLUTION_API_URL') || '').replace(/\/$/, '');
