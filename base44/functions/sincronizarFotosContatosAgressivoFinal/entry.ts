@@ -38,8 +38,11 @@ Deno.serve(async (req) => {
       empresa_id: empresaId,
       provider_type: 'dapi',
       is_active: true
-    }, '-created_date', 1);
-    const conexaoDapi = conexoesDapi?.[0];
+    }, '-created_date', 50);
+    // Excluir conexões cloud-* (API Oficial) da consulta de avatar da sessão JD.
+    const conexaoDapi = (conexoesDapi || []).find(
+      (c) => !/^cloud-/i.test(String(c.session_id || '').trim())
+    );
 
     let dapiBaseUrl = null;
     let dapiApiKey = null;
@@ -80,7 +83,7 @@ Deno.serve(async (req) => {
           // Tentar D-API primeiro
           if (dapiApiKey && dapiBaseUrl) {
             try {
-              const avatarUrl = `${dapiBaseUrl}/api/v1/contacts/${tel}/avatar?sessionId=${encodeURIComponent(dapiSessionId)}`;
+              const avatarUrl = `${dapiBaseUrl}/api/v1/contacts/${tel}/avatar?sessionId=${encodeURIComponent(dapiSessionId)}&force=true`;
               const resDapi = await fetch(avatarUrl, {
                 method: 'GET',
                 headers: { 'Authorization': dapiApiKey }
