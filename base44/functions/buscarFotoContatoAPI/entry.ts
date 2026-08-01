@@ -1,5 +1,30 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+// A D-API não documenta o schema do corpo do avatar. Localizar a primeira URL
+// HTTP em qualquer envelope evita depender de nomes como avatarUrl/pictureUrl.
+function encontrarUrlHttp(valor: unknown, profundidade = 0): string | null {
+  if (profundidade > 6 || valor == null) return null;
+  if (typeof valor === 'string') {
+    const texto = valor.trim();
+    if (/^https?:\/\//i.test(texto)) return texto;
+    return null;
+  }
+  if (Array.isArray(valor)) {
+    for (const item of valor) {
+      const encontrada = encontrarUrlHttp(item, profundidade + 1);
+      if (encontrada) return encontrada;
+    }
+    return null;
+  }
+  if (typeof valor === 'object') {
+    for (const item of Object.values(valor as Record<string, unknown>)) {
+      const encontrada = encontrarUrlHttp(item, profundidade + 1);
+      if (encontrada) return encontrada;
+    }
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -60,7 +85,7 @@ Deno.serve(async (req) => {
         console.log(`📡 D-API avatar: ${avatarUrl}`);
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 8000);
+        const timeout = setTimeout(() => controller.abort(), 20000);
         const resDapi = await fetch(avatarUrl, {
           method: 'GET',
           headers: { 'Authorization': apiKeyDecrypted },
@@ -75,33 +100,8 @@ Deno.serve(async (req) => {
           let dataDapi = {};
           try { dataDapi = JSON.parse(rawText); } catch (_) { dataDapi = {}; }
 
-          // A resposta pode vir com diferentes formatos/envelopes — checar todas as variações conhecidas
-          const candidatos = [
-            dataDapi?.avatar,
-            dataDapi?.avatar?.url,
-            dataDapi?.avatar?.avatarUrl,
-            dataDapi?.avatarUrl,
-            dataDapi?.avatar_url,
-            dataDapi?.url,
-            dataDapi?.picture,
-            dataDapi?.pictureUrl,
-            dataDapi?.profilePictureUrl,
-            dataDapi?.data?.avatar,
-            dataDapi?.data?.avatar?.url,
-            dataDapi?.data?.avatarUrl,
-            dataDapi?.data?.avatar_url,
-            dataDapi?.data?.url,
-            dataDapi?.data?.picture,
-            dataDapi?.data?.pictureUrl,
-            dataDapi?.data?.profilePictureUrl,
-            dataDapi?.result?.avatar,
-            dataDapi?.result?.avatar?.url,
-            dataDapi?.result?.url,
-            dataDapi?.result?.pictureUrl,
-            typeof dataDapi === 'string' ? dataDapi : null,
-            /^https?:\/\//.test(rawText?.trim() || '') ? rawText.trim() : null,
-          ];
-          fotoUrl = candidatos.find(v => typeof v === 'string' && v.startsWith('http')) || null;
+          fotoUrl = encontrarUrlHttp(dataDapi) ||
+            (/^https?:\/\//i.test(rawText?.trim() || '') ? rawText.trim() : null);
           console.log(`📸 Foto D-API encontrada: ${fotoUrl ? 'SIM' : 'NÃO'} | ${fotoUrl}`);
         }
       }
