@@ -304,7 +304,6 @@ export default function Layout({ children, currentPageName }) {
     { name: 'Bate - Papo', icon: MessageSquare, page: 'BatePapo', roles: ALL_ROLES },
     { name: 'Campanhas', icon: Megaphone, page: 'Campanhas', roles: ALL_ROLES },
     { name: 'Funil de Vendas', icon: TrendingUp, page: 'FunilVendas', roles: [...ALL_ROLES, 'parceiro'] },
-    { name: 'Call Center', icon: Phone, page: 'CallCenter', roles: ALL_ROLES },
     { 
       name: 'Empréstimos', 
       icon: FileText, 
