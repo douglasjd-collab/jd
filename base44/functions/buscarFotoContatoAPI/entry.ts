@@ -3,7 +3,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { contato_id, empresa_id, force } = await req.json();
+    const { contato_id, empresa_id, force, connection_id, session_id } = await req.json();
 
     if (!empresa_id || !contato_id) {
       return Response.json({ error: 'empresa_id e contato_id obrigatórios' }, { status: 400 });
@@ -24,8 +24,17 @@ Deno.serve(async (req) => {
         empresa_id,
         provider_type: 'dapi',
         is_active: true
-      }, '-created_date', 1);
-      const conexaoDapi = conexoesDapi?.[0];
+      }, '-created_date', 50);
+      // A API Oficial Cloud também usa provider_type='dapi', mas o endpoint
+      // de avatar abaixo pertence à sessão comum da JD Promotora. Priorizar a
+      // conexão da conversa e nunca trocar silenciosamente para cloud-*.
+      const conexoesNaoOficiais = (conexoesDapi || []).filter(
+        (c) => !/^cloud-/i.test(String(c.session_id || '').trim())
+      );
+      const conexaoDapi =
+        (connection_id ? conexoesNaoOficiais.find((c) => c.id === connection_id) : null) ||
+        (session_id ? conexoesNaoOficiais.find((c) => String(c.session_id || '') === String(session_id)) : null) ||
+        conexoesNaoOficiais[0];
 
       if (conexaoDapi) {
         // Descriptografar API Key (mesma lógica do whatsappService)
