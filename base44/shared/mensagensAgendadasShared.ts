@@ -772,6 +772,9 @@ export async function enviarViaMetaOficial(
 // Envio via D-API (texto/imagem/vídeo livre) usando whatsappService
 // ─────────────────────────────────────────────────────────────────────────
 export async function enviarViaDapi(base44, empresa, conversa, msg, telefone: string) {
+  // A API Oficial via D-API Cloud também possui provider_type='dapi'.
+  // Por isso, nunca podemos simplesmente pegar a conexão D-API mais recente:
+  // o agendamento da JD Promotora deve permanecer na sessão não-oficial exata.
   const conexoesDapi = await base44.asServiceRole.entities.WhatsappConnection.filter(
     {
       empresa_id: msg.empresa_id,
@@ -779,10 +782,29 @@ export async function enviarViaDapi(base44, empresa, conversa, msg, telefone: st
       is_active: true,
     },
     '-created_date',
-    1
+    50
   );
-  const conexaoDapi = conexoesDapi[0];
-  if (!conexaoDapi) throw new Error('Nenhuma conexão D-API ativa encontrada para a empresa');
+  const sessaoFixada = String(msg.session_id || msg.instancia_whatsapp || '').trim();
+  const conexoesNaoOficiais = conexoesDapi.filter(
+    (c) => !/^cloud-/i.test(String(c.session_id || '').trim())
+  );
+  const conexaoDapi =
+    (sessaoFixada
+      ? conexoesNaoOficiais.find(
+          (c) => String(c.session_id || '').trim() === sessaoFixada
+        )
+      : null) ||
+    // Compatibilidade com agendamentos antigos: fallback somente entre
+    // conexões não-oficiais. É proibido mudar silenciosamente para a Oficial.
+    conexoesNaoOficiais[0];
+
+  if (!conexaoDapi) {
+    throw new Error(
+      sessaoFixada
+        ? `A conexão JD Promotora selecionada (${sessaoFixada}) não está ativa. O sistema não mudou para a API Oficial.`
+        : 'Nenhuma conexão não-oficial da JD Promotora está ativa. O sistema não mudou para a API Oficial.'
+    );
+  }
 
   let dapiAction = 'sendText';
   let dapiActionParams: any = {};
