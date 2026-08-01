@@ -643,15 +643,18 @@ export default function BatePapo() {
         return merged;
       });
       const filtradas = data.filter(c => c.id && c.cliente_telefone);
-      // Sincronizar fotos apenas 1x por sessão (não a cada 15s)
-      const fotosSyncKey = `fotos_sync_${empresaId}`;
+      // Sincronizar fotos em segundo plano. A chave v2 força uma nova execução
+      // após a correção do endpoint; ao concluir, recarrega a lista para exibir
+      // os avatares imediatamente sem exigir fechar e abrir o CRM.
+      const fotosSyncKey = `fotos_sync_v2_${empresaId}`;
       if (!sessionStorage.getItem(fotosSyncKey)) {
         sessionStorage.setItem(fotosSyncKey, '1');
         setTimeout(async () => {
           try {
             await base44.functions.invoke('sincronizarFotosContatosAgressivoFinal', { empresa_id: empresaId });
+            queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
           } catch (e) {}
-        }, 5000);
+        }, 3000);
       }
 
       return filtradas;
