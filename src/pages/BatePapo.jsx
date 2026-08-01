@@ -646,7 +646,7 @@ export default function BatePapo() {
       // Sincronizar fotos em segundo plano. A chave v2 força uma nova execução
       // após a correção do endpoint; ao concluir, recarrega a lista para exibir
       // os avatares imediatamente sem exigir fechar e abrir o CRM.
-      const fotosSyncKey = `fotos_sync_v3_${empresaId}`;
+      const fotosSyncKey = `fotos_sync_v4_${empresaId}`;
       if (!sessionStorage.getItem(fotosSyncKey)) {
         sessionStorage.setItem(fotosSyncKey, '1');
         setTimeout(async () => {
