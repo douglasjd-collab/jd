@@ -1,5 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function AvatarContato({ contato, className = "h-10 w-10" }) {
   const [imgError, setImgError] = useState(false);
@@ -13,6 +13,13 @@ export default function AvatarContato({ contato, className = "h-10 w-10" }) {
     .toUpperCase();
 
   const fotoUrl = contato?.foto_url;
+
+  // Uma URL nova deve ganhar uma nova tentativa. Sem isso, um erro antigo
+  // mantinha as iniciais mesmo depois de a D-API devolver a foto correta.
+  useEffect(() => {
+    setImgError(false);
+  }, [fotoUrl]);
+
   const hasPhoto = !imgError && fotoUrl && fotoUrl.trim().length > 0 && fotoUrl !== 'undefined' && fotoUrl !== 'null';
 
   return (
