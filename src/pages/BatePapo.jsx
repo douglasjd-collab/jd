@@ -70,9 +70,7 @@ import BatePapoMenu from '@/components/chat/BatePapoMenu';
 import AgendarMensagemModal from '@/components/chat/AgendarMensagemModal';
 import MensagensAgendadasModal from '@/components/chat/MensagensAgendadasModal';
 import AgendarReuniaoModal from '@/components/chat/AgendarReuniaoModal';
-import useSoftphone from '@/components/callcenter/useSoftphone';
 import useDapiCall from '@/components/chat/useDapiCall';
-import ChamadaAtivaBar from '@/components/chat/ChamadaAtivaBar.jsx';
 import DapiCallBar from '@/components/chat/DapiCallBar.jsx';
 import DashboardProdutividade from '@/components/chat/DashboardProdutividade';
 import CoachIAPanel from '@/components/chat/CoachIAPanel';
@@ -338,7 +336,6 @@ export default function BatePapo() {
   const [agendadasOpen, setAgendadasOpen] = useState(false);
   const [agendarReuniaoModal, setAgendarReuniaoModal] = useState(null); // conversa
   const [mobileViewChat, setMobileViewChat] = useState(false); // mobile: false=lista, true=chat
-  const [nvoipConfig, setNvoipConfig] = useState(null);
   const [produtividadeOpen, setProdutividadeOpen] = useState(false);
   const [coachIAOpen, setCoachIAOpen] = useState(false);
   const [coachIATab, setCoachIATab] = useState('agora');
@@ -355,24 +352,7 @@ export default function BatePapo() {
   const [idsEncaminhar, setIdsEncaminhar] = useState(() => new Set());
   const [encaminharModalOpen, setEncaminharModalOpen] = useState(false);
 
-  useEffect(() => {
-    if (!user?.id) return;
-    base44.entities.ConfiguracaoNvoipUsuario.filter({ user_id: user.id }, '-created_date', 1)
-      .then(configs => { if (configs?.length > 0) setNvoipConfig(configs[0]); })
-      .catch(() => {});
-  }, [user?.id]);
-
-  const { sipStatus, erroMsg: erroSip, chamadaAtiva, realizarChamada, encerrarChamada } = useSoftphone(nvoipConfig);
   const dapiCall = useDapiCall();
-
-  const ligarParaContato = async (telefone) => {
-    if (!nvoipConfig) { toast.error('Configure seu ramal em Call Center > Meu Ramal'); return; }
-    if (sipStatus !== 'registrado') { toast.error(`Ramal SIP não registrado (${sipStatus}). Aguarde a conexão ou acesse Call Center → Meu Ramal.`); return; }
-    const numLimpo = (telefone || '').replace(/\D/g, '');
-    if (!numLimpo) { toast.error('Número inválido'); return; }
-    const ok = await realizarChamada(numLimpo);
-    if (!ok && erroSip) toast.error(erroSip);
-  };
 
   // Botão "Ligar" do chat: sempre pergunta se é via WhatsApp ou via Operadora (ambas usam D-API)
   const dapiChamadaAtivaVisivel = ['calling', 'ringing', 'connected'].includes(dapiCall.status);
@@ -2232,14 +2212,13 @@ export default function BatePapo() {
                 }}
                 sipStatus="registrado"
                 chamadaAtiva={dapiChamadaAtivaVisivel ? { destino: conversaSelecionada?.cliente_telefone } : null}
-                erroSip={erroSip}
                 coachIAOpen={coachIAOpen}
                 setCoachIAOpen={setCoachIAOpen}
                 onAbrirCadastroIA={abrirCadastroIA}
                 localizarMensagem={localizarMensagem}
                 onEncaminharMensagem={iniciarEncaminhar}
                 />
-                {dapiChamadaAtivaVisivel ? (
+                {dapiChamadaAtivaVisivel && (
                   <DapiCallBar
                     status={dapiCall.status}
                     erro={dapiCall.erro}
@@ -2249,8 +2228,6 @@ export default function BatePapo() {
                     onEncerrar={dapiCall.encerrar}
                     onMutar={dapiCall.alternarMudo}
                   />
-                ) : (
-                  <ChamadaAtivaBar chamadaAtiva={chamadaAtiva} onEncerrar={encerrarChamada} />
                 )}
 
         {/* Mobile Bottom Navigation - apenas na lista de conversas (não quando conversa estiver aberta) */}
@@ -2428,9 +2405,6 @@ export default function BatePapo() {
                       contatosWhatsapp={contatosWhatsapp}
                       setContatosWhatsapp={setContatosWhatsapp}
                       tagsDB={tagsDB}
-                      chamadaAtiva={chamadaAtiva}
-                      encerrarChamada={encerrarChamada}
-                      ligarParaContato={ligarParaContato}
                       oportunidadeAtual={oportunidadeAtual}
                       setFunilModalOpen={setFunilModalOpen}
                       setTransferirModal={setTransferirModal}
