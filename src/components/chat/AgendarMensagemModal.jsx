@@ -241,7 +241,11 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
         // conexão no horário agendado, independentemente do canal selecionado
         // na conversa no momento.
         official_connection_id: templateSelecionado ? (conexaoOficial?.id || '') : '',
-        session_id: templateSelecionado ? (conexaoOficial?.session_id || '') : '',
+        // Fixar também a sessão da API JD Promotora. Sem isso, o backend
+        // poderia escolher outra conexão D-API ativa (inclusive a Cloud API Oficial).
+        session_id: templateSelecionado
+          ? (conexaoOficial?.session_id || '')
+          : (conversa.instancia || ''),
         arquivo_url: arquivoUrl,
         arquivo_tipo: arquivoTipo,
         arquivo_nome: arquivoNome,
