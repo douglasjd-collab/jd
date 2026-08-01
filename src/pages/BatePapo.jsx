@@ -217,36 +217,47 @@ export default function BatePapo() {
           variacoes.add('55' + '9' + telefoneLimpo.slice(4));  // Com 9 inserido
         }
 
-        let encontrou = false;
+        let contatoEncontrado = null;
         for (const tel of variacoes) {
-          if (encontrou) break;
+          if (contatoEncontrado) break;
           const contatos = await base44.entities.ContatoWhatsapp.filter({
             empresa_id: empresaId,
             telefone: tel
           }, '-created_date', 1);
 
           if (contatos?.length > 0) {
+            contatoEncontrado = contatos[0];
             setContatosWhatsapp(prev => ({ ...prev, [conversa.id]: contatos[0] }));
-            encontrou = true;
-            break;
           }
         }
 
-        // Se não encontrou no CRM, tentar buscar foto via API Evolution
-        if (!encontrou) {
-          try {
-            const resp = await base44.functions.invoke('buscarFotoContatoAPI', {
-              empresa_id: empresaId,
-              contato_id: conversa.cliente_telefone
-            });
-            if (resp?.data?.foto_url) {
-              setContatosWhatsapp(prev => ({
-                ...prev,
-                [conversa.id]: { nome: conversa.cliente_nome, telefone: conversa.cliente_telefone, foto_url: resp.data.foto_url }
-              }));
-            }
-          } catch (_) {}
-        }
+        // Mesmo que o contato já exista, consultar a API para obter a foto
+        // atual. Antes, a simples existência do contato impedia essa busca,
+        // deixando vários avatares permanentemente só com as iniciais.
+        try {
+          const resp = await base44.functions.invoke('buscarFotoContatoAPI', {
+            empresa_id: empresaId,
+            contato_id: conversa.cliente_telefone,
+            connection_id: conversa.connection_id || '',
+            session_id: conversa.instancia || '',
+            force: true
+          });
+          if (resp?.data?.foto_url) {
+            setContatosWhatsapp(prev => ({
+              ...prev,
+              [conversa.id]: {
+                ...(contatoEncontrado || prev[conversa.id] || {}),
+                nome: contatoEncontrado?.nome || conversa.cliente_nome,
+                telefone: conversa.cliente_telefone,
+                foto_url: resp.data.foto_url
+              }
+            }));
+            // Atualizar também a conversa para a lista manter a foto após recarregar.
+            await base44.entities.ConversaWhatsapp.update(conversa.id, {
+              foto_url: resp.data.foto_url
+            }).catch(() => {});
+          }
+        } catch (_) {}
       }
     } catch (e) {
       console.error('Erro ao carregar foto:', e);
