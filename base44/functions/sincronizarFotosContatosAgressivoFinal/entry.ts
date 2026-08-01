@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
           // Tentar D-API primeiro
           if (dapiApiKey && dapiBaseUrl) {
             try {
-              const avatarUrl = `${dapiBaseUrl}/api/v1/contacts/${tel}/avatar?sessionId=${encodeURIComponent(dapiSessionId)}&force=true`;
+              const avatarUrl = `${dapiBaseUrl}/api/v1/contacts/${tel}/avatar?sessionId=${encodeURIComponent(dapiSessionId)}&async=false&force=true`;
               const resDapi = await fetch(avatarUrl, {
                 method: 'GET',
                 headers: { 'Authorization': dapiApiKey }
@@ -93,8 +93,12 @@ Deno.serve(async (req) => {
                 let dataDapi = {};
                 try { dataDapi = JSON.parse(rawText); } catch (_) { dataDapi = {}; }
                 const candidatos = [
-                  dataDapi?.avatar, dataDapi?.avatarUrl, dataDapi?.avatar_url, dataDapi?.url, dataDapi?.picture,
-                  dataDapi?.data?.avatar, dataDapi?.data?.avatarUrl, dataDapi?.data?.avatar_url, dataDapi?.data?.url, dataDapi?.data?.picture,
+                  dataDapi?.avatar, dataDapi?.avatar?.url, dataDapi?.avatarUrl, dataDapi?.avatar_url,
+                  dataDapi?.url, dataDapi?.picture, dataDapi?.pictureUrl, dataDapi?.profilePictureUrl,
+                  dataDapi?.data?.avatar, dataDapi?.data?.avatar?.url, dataDapi?.data?.avatarUrl,
+                  dataDapi?.data?.avatar_url, dataDapi?.data?.url, dataDapi?.data?.picture,
+                  dataDapi?.data?.pictureUrl, dataDapi?.data?.profilePictureUrl,
+                  dataDapi?.result?.avatar, dataDapi?.result?.avatar?.url, dataDapi?.result?.url,
                 ];
                 fotoUrl = candidatos.find(v => typeof v === 'string' && v.startsWith('http')) || null;
                 if (fotoUrl) console.log(`✅ Foto encontrada via D-API para ${tel}`);
