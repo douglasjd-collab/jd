@@ -53,7 +53,9 @@ Deno.serve(async (req) => {
         const baseUrl = (conexaoDapi.base_url || 'https://api.d-api.cloud').replace(/\/$/, '');
         const sessionId = conexaoDapi.session_id || 'CRM JD';
         const forceParam = force ? '&force=true' : '';
-        const avatarUrl = `${baseUrl}/api/v1/contacts/${telLimpo}/avatar?sessionId=${encodeURIComponent(sessionId)}${forceParam}`;
+        // async=false faz a rota aguardar a consulta ao WhatsApp e devolver a
+        // foto na própria resposta, em vez de apenas enfileirar o processamento.
+        const avatarUrl = `${baseUrl}/api/v1/contacts/${telLimpo}/avatar?sessionId=${encodeURIComponent(sessionId)}&async=false${forceParam}`;
 
         console.log(`📡 D-API avatar: ${avatarUrl}`);
 
@@ -76,17 +78,26 @@ Deno.serve(async (req) => {
           // A resposta pode vir com diferentes formatos/envelopes — checar todas as variações conhecidas
           const candidatos = [
             dataDapi?.avatar,
+            dataDapi?.avatar?.url,
+            dataDapi?.avatar?.avatarUrl,
             dataDapi?.avatarUrl,
             dataDapi?.avatar_url,
             dataDapi?.url,
             dataDapi?.picture,
+            dataDapi?.pictureUrl,
+            dataDapi?.profilePictureUrl,
             dataDapi?.data?.avatar,
+            dataDapi?.data?.avatar?.url,
             dataDapi?.data?.avatarUrl,
             dataDapi?.data?.avatar_url,
             dataDapi?.data?.url,
             dataDapi?.data?.picture,
+            dataDapi?.data?.pictureUrl,
+            dataDapi?.data?.profilePictureUrl,
             dataDapi?.result?.avatar,
+            dataDapi?.result?.avatar?.url,
             dataDapi?.result?.url,
+            dataDapi?.result?.pictureUrl,
             typeof dataDapi === 'string' ? dataDapi : null,
             /^https?:\/\//.test(rawText?.trim() || '') ? rawText.trim() : null,
           ];
