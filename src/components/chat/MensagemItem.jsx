@@ -165,34 +165,21 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
     if (mensagem.id?.startsWith('temp_')) return;
     if (isPacoteFigurinha(mensagem.arquivo_url)) return; // pacote de figurinhas (.was) nunca é exibível
 
-    // Se já tem URL permanente válida no banco, usar direto
-    if (isUrlValida(mensagem.arquivo_url, mensagem.download_status) && mensagem.arquivo_url !== urlFalhouRef.current) {
-      setMediaUrl(sanitizeUrl(mensagem.arquivo_url));
+    // Áudio recebido deve ser copiado imediatamente para o storage do CRM.
+    // Uma URL pública/temporária da D-API pode tocar, mas demora para informar
+    // a duração e pode expirar. Só considerar pronto quando for permanente.
+    const urlRecebida = mensagem.arquivo_url || '';
+    const urlPermanente = urlRecebida.includes('base44') || urlRecebida.includes('supabase') || urlRecebida.includes('amazonaws');
+    if (isUrlValida(urlRecebida, mensagem.download_status) && mensagem.arquivo_url !== urlFalhouRef.current && (mensagem.tipo_conteudo !== 'audio' || urlPermanente)) {
+      setMediaUrl(sanitizeUrl(urlRecebida));
       return;
     }
 
-    // Se download está pendente (webhook ainda processando), aguardar 6s antes de tentar
-    // Isso evita corrida com o auto-download do webhook
-    if (mensagem.download_status === 'pendente') {
-      const timer = setTimeout(() => {
-        // Re-verificar — pode ter sido baixado pelo webhook nesse intervalo
-        // O useEffect de mensagem.arquivo_url já cuida de setar mediaUrl quando atualizar
-        // Só chamar backend se ainda não foi baixado
-        if (!mediaUrl) {
-          base44.functions.invoke('baixarMidiaWhatsApp', {
-            mensagem_id: mensagem.id,
-            arquivo_url: mensagem.arquivo_url || null,
-            conversa_id: conversaId || mensagem.conversa_id
-          }).then(res => {
-            const url = res?.data?.arquivo_url;
-            if (url && isUrlValida(url)) setMediaUrl(sanitizeUrl(url));
-          }).catch(() => {});
-        }
-      }, 6000);
-      return () => clearTimeout(timer);
-    }
+    // Não aguardar clique nem temporizador: iniciar o download assim que a
+    // mensagem entrar no bate-papo, inclusive quando o webhook marcar pendente.
+    // Assim o player já recebe uma URL permanente e consegue ler a duração.
 
-    // Sem URL válida e sem download pendente: tentar baixar imediatamente
+    // Sem URL permanente: tentar baixar imediatamente
     const urlAtual = mensagem.arquivo_url || '';
     if (!urlAtual && !mensagem.media_id) return;
 
@@ -659,7 +646,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                     controls 
                     className="flex-1 h-8" 
                     src={mediaUrl} 
-                    preload="metadata"
+                    preload="auto"
                     style={{ minWidth: '180px' }}
                     onError={(e) => {
                       // Não limpar a URL automaticamente para evitar loop
