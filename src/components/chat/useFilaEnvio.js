@@ -316,20 +316,39 @@ async function rodarPipeline(tempId, queryClient, pipelineRefs) {
 
     let arquivoPayload = envio0.arquivo || null;
 
-    // Se arquivo veio como File, ler base64 agora (com progresso real)
+    // Caminho rápido da D-API: o arquivo é enviado uma única vez ao storage e
+    // o backend recebe somente a URL. Evita File→Base64→HTTP→File→novo upload.
+    const convEnvio = envio0.conversa || null;
+    const canalDapiDireto = convEnvio?.canal_atendimento === 'dapi' ||
+      (String(convEnvio?.instancia || '').trim().toUpperCase() === 'CRM JD' && convEnvio?.tipo_conexao !== 'meta_oficial');
+
+    // Se arquivo veio como File, preparar conforme o canal
     if (envio0.arquivo && envio0.arquivo.file && !envio0.arquivo.base64) {
-      const { base64 } = await lerArquivoBase64ComProgresso(envio0.arquivo.file, (pct) => {
-        // 0..70% — fase de leitura do arquivo
-        const progressoFinal = Math.round(5 + pct * 65); // 5%..70%
-        fila.setProgresso(tempId, progressoFinal);
-      });
-      arquivoPayload = {
-        base64,
-        nome: envio0.arquivo.nome,
-        tipo: envio0.arquivo.tipo,
-        tamanho: envio0.arquivo.tamanho || envio0.arquivo.file.size || 0,
-      };
-      fila.setProgresso(tempId, 75, 'na_fila');
+      if (canalDapiDireto) {
+        fila.setProgresso(tempId, 20, 'carregando');
+        const upload = await base44.integrations.Core.UploadFile({ file: envio0.arquivo.file });
+        if (!upload?.file_url) throw new Error('Não foi possível preparar o arquivo');
+        arquivoPayload = {
+          url: upload.file_url,
+          preuploaded_dapi: true,
+          nome: envio0.arquivo.nome,
+          tipo: envio0.arquivo.tipo,
+          tamanho: envio0.arquivo.tamanho || envio0.arquivo.file.size || 0,
+        };
+        fila.setProgresso(tempId, 80, 'enviando');
+      } else {
+        const { base64 } = await lerArquivoBase64ComProgresso(envio0.arquivo.file, (pct) => {
+          const progressoFinal = Math.round(5 + pct * 65);
+          fila.setProgresso(tempId, progressoFinal);
+        });
+        arquivoPayload = {
+          base64,
+          nome: envio0.arquivo.nome,
+          tipo: envio0.arquivo.tipo,
+          tamanho: envio0.arquivo.tamanho || envio0.arquivo.file.size || 0,
+        };
+        fila.setProgresso(tempId, 75, 'na_fila');
+      }
     }
 
     // Stage 2: na_fila → enviando (chamada ao backend)
