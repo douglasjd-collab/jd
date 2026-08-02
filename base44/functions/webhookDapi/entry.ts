@@ -459,8 +459,27 @@ async function extrairRespostaCitada(base44, empresaId, data) {
     placeholder = '📄 Documento';
   }
 
+  const quotedMediaUrl =
+    quotedMsg?.media_url || quotedMsg?.mediaUrl || quotedMsg?.url ||
+    quotedMsg?.thumbnail_url || quotedMsg?.thumbnailUrl ||
+    quotedMsg?.image_url || quotedMsg?.imageUrl ||
+    ctx.quoted_media_url || ctx.quotedMediaUrl ||
+    ctx.thumbnail_url || ctx.thumbnailUrl || null;
+
+  // Quando a D-API fornecer a mídia/miniatura do Status, guardar os metadados
+  // no próprio campo da citação. Isso evita alterar o schema e permite ao front
+  // renderizar a prévia mantendo compatibilidade com citações antigas em texto.
+  const textoCitado = quotedMediaUrl
+    ? JSON.stringify({
+        kind: isStatusReply ? 'whatsapp_status' : 'quoted_media',
+        label: placeholder,
+        media_url: String(quotedMediaUrl),
+        media_type: quotedType.includes('video') ? 'video' : 'image'
+      })
+    : ((quotedId || quotedMsg) ? placeholder : null);
+
   return {
-    texto: (quotedId || quotedMsg) ? placeholder : null,
+    texto: textoCitado,
     nome: isStatusReply ? 'Seu Status' : null,
     whatsappId: quotedId ? String(quotedId) : null
   };
