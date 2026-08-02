@@ -202,6 +202,9 @@ export default function DashboardFinanciamento({ user }) {
   const chartVendedores = rankingVendedores.slice(0, 8).map(v => ({
     nome: v.nome.split(' ')[0], valor: v.valor, contratos: v.contratos,
   }));
+  const chartBancos = rankingBancos.slice(0, 8).map(b => ({
+    nome: b.name, valor: b.value, contratos: b.contratos,
+  }));
 
   // ─── Comparação mensal ────────────────────────────────────────────────────
   const getComparacao = (nome) => {
@@ -232,9 +235,9 @@ export default function DashboardFinanciamento({ user }) {
           <p className="text-sm text-slate-500">Visão consolidada da performance de financiamentos</p>
         </div>
         <div className="flex items-center gap-3">
-          <Select value={filtroPeriodo} onValueChange={setFiltroPeriodo}>
-            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-            <SelectContent>{PERIODOS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
+          <Select value={filtroMes} onValueChange={setFiltroMes}>
+            <SelectTrigger className="w-64"><SelectValue /></SelectTrigger>
+            <SelectContent>{opcoesMes.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
           </Select>
           <Button variant="outline" size="sm" onClick={carregar}><RefreshCw className="w-4 h-4 mr-1" />Atualizar</Button>
         </div>
@@ -242,8 +245,8 @@ export default function DashboardFinanciamento({ user }) {
 
       {/* KPIs Gerais */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KPICard icon={FileText} label="Total Financiado" value={fmt(totalFinanciado)}
-          sub={compTotal != null ? `${compTotal >= 0 ? '▲' : '▼'} ${Math.abs(compTotal)}% vs anterior` : null}
+        <KPICard icon={FileText} label="Produção do Mês" value={fmt(totalFinanciado)}
+          sub={compTotal != null ? `${periodoSelecionadoLabel} · ${compTotal >= 0 ? '▲' : '▼'} ${Math.abs(compTotal)}% vs mês anterior` : periodoSelecionadoLabel}
           color="text-blue-600" bgColor="bg-blue-50" />
         <KPICard icon={TrendingUp} label="Contratos" value={fmtNumber(totalContratos)}
           color="text-green-600" bgColor="bg-green-50" />
@@ -269,7 +272,9 @@ export default function DashboardFinanciamento({ user }) {
                   <XAxis type="number" fontSize={11} tickFormatter={v => `R$ ${(v/1000).toFixed(0)}k`} />
                   <YAxis type="category" dataKey="nome" fontSize={12} width={80} />
                   <Tooltip formatter={(value, name) => [fmt(value ?? 0), 'Valor Financiado']} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                  <Bar dataKey="valor" name="Valor" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={24} />
+                  <Bar dataKey="valor" name="Valor" fill="#3b82f6" radius={[0, 6, 6, 0]} barSize={24}>
+                    <LabelList dataKey="valor" position="right" formatter={fmtGrafico} className="fill-slate-700 text-xs font-semibold" />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -277,28 +282,24 @@ export default function DashboardFinanciamento({ user }) {
         </Card>
 
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><Building2 className="w-4 h-4 text-green-600" />Participação dos Bancos</CardTitle></CardHeader>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-green-600" />Produção por Bancos — {periodoSelecionadoLabel}
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            {rankingBancos.length === 0 ? <p className="text-sm text-slate-400 text-center py-8">Sem dados</p> : (
-              <div className="flex items-center gap-4">
-                <ResponsiveContainer width="55%" height={240}>
-                  <PieChart>
-                    <Pie data={rankingBancos} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={55}>
-                      {rankingBancos.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip formatter={v => fmt(v)} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-2 text-xs">
-                  {rankingBancos.slice(0, 6).map((b, i) => (
-                    <div key={b.name} className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: DONUT_COLORS[i % DONUT_COLORS.length] }} />
-                      <span className="text-slate-600 truncate max-w-24">{b.name}</span>
-                      <span className="font-semibold text-slate-700">{fmt(b.value)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+            {chartBancos.length === 0 ? <p className="text-sm text-slate-400 text-center py-8">Sem produção neste mês</p> : (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={chartBancos} layout="vertical" margin={{ left: 0, right: 80, top: 5, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                  <XAxis type="number" fontSize={11} tickFormatter={fmtGrafico} />
+                  <YAxis type="category" dataKey="nome" fontSize={12} width={80} />
+                  <Tooltip formatter={(value) => [fmt(value ?? 0), 'Produção']} contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                  <Bar dataKey="valor" name="Produção" fill="#10b981" radius={[0, 6, 6, 0]} barSize={24}>
+                    <LabelList dataKey="valor" position="right" formatter={fmtGrafico} className="fill-slate-700 text-xs font-semibold" />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             )}
           </CardContent>
         </Card>
