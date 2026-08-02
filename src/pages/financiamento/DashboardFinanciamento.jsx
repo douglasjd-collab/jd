@@ -4,7 +4,7 @@ import { Car, Bike, Truck, FileText, TrendingUp, TrendingDown, RefreshCw, Users,
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 
 const STATUS_LABELS = {
   em_analise: 'Em Análise', aguardando_documentacao: 'Aguard. Doc.', aprovado: 'Aprovado',
@@ -12,12 +12,15 @@ const STATUS_LABELS = {
   comissao_recebida: 'Comissão Recebida', cancelado: 'Cancelado',
 };
 
-const PERIODOS = [
-  { value: '7', label: 'Últimos 7 dias' }, { value: '30', label: 'Últimos 30 dias' },
-  { value: '90', label: 'Últimos 90 dias' }, { value: '365', label: 'Este ano' }, { value: 'all', label: 'Todos' },
-];
-
-const DONUT_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1'];
+const MESES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+const chaveMes = (data) => `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+const dataDaProposta = (proposta) => new Date(proposta.data_proposta || proposta.created_date);
+const fmtGrafico = val => {
+  const numero = Number(val || 0);
+  if (numero >= 1000000) return `R$ ${(numero / 1000000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mi`;
+  if (numero >= 1000) return `R$ ${(numero / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mil`;
+  return `R$ ${numero.toLocaleString('pt-BR')}`;
+};
 
 const fmt = val => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
 const fmtNumber = val => new Intl.NumberFormat('pt-BR').format(val || 0);
@@ -72,7 +75,7 @@ export default function DashboardFinanciamento({ user }) {
   const [propostas, setPropostas] = useState([]);
   const [propostasAnteriores, setPropostasAnteriores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filtroPeriodo, setFiltroPeriodo] = useState('30');
+  const [filtroMes, setFiltroMes] = useState(() => chaveMes(new Date()));
   const [filtroStatus, setFiltroStatus] = useState('all');
   const [filtroTipo, setFiltroTipo] = useState('all');
   const empresaId = user?.empresa_id;
@@ -88,32 +91,46 @@ export default function DashboardFinanciamento({ user }) {
 
   useEffect(() => { carregar(); }, [empresaId]);
 
-  const hoje = new Date();
+  // Meses disponíveis no relatório. Sempre exibe o mês atual e inclui todos os
+  // meses encontrados nos financiamentos, em ordem decrescente.
+  const opcoesMes = useMemo(() => {
+    const meses = new Set([chaveMes(new Date())]);
+    propostas.forEach(p => {
+      const data = dataDaProposta(p);
+      if (!Number.isNaN(data.getTime())) meses.add(chaveMes(data));
+    });
+    return Array.from(meses).sort((a, b) => b.localeCompare(a)).map((value, index) => {
+      const [ano, mes] = value.split('-').map(Number);
+      const nomeMes = `${MESES_PT[mes - 1]} de ${ano}`;
+      return { value, label: index === 0 && value === chaveMes(new Date()) ? `Mês atual — ${nomeMes}` : nomeMes };
+    });
+  }, [propostas]);
 
-  // Filtro principal
+  const periodoSelecionadoLabel = useMemo(() => {
+    const [ano, mes] = filtroMes.split('-').map(Number);
+    return `${MESES_PT[mes - 1]} de ${ano}`;
+  }, [filtroMes]);
+
+  // Filtro principal por mês-calendário
   const filtradas = useMemo(() => propostas.filter(p => {
     if (filtroStatus !== 'all' && p.status !== filtroStatus) return false;
     if (filtroTipo !== 'all' && p.tipo_veiculo !== filtroTipo) return false;
-    if (filtroPeriodo !== 'all') {
-      const dias = parseInt(filtroPeriodo);
-      const limite = new Date(); limite.setDate(hoje.getDate() - dias);
-      const dp = p.data_proposta ? new Date(p.data_proposta) : new Date(p.created_date);
-      if (dp < limite) return false;
-    }
+    const dp = dataDaProposta(p);
+    if (Number.isNaN(dp.getTime()) || chaveMes(dp) !== filtroMes) return false;
     return true;
-  }), [propostas, filtroStatus, filtroTipo, filtroPeriodo]);
+  }), [propostas, filtroStatus, filtroTipo, filtroMes]);
 
-  // Período anterior (para comparação)
+  // Mês anterior para comparação
   const anteriores = useMemo(() => {
-    if (filtroPeriodo === 'all') return [];
-    const dias = parseInt(filtroPeriodo) || 30;
-    const fim = new Date(); fim.setDate(hoje.getDate() - dias);
-    const inicio = new Date(fim); inicio.setDate(fim.getDate() - dias);
+    const [ano, mes] = filtroMes.split('-').map(Number);
+    const mesAnterior = chaveMes(new Date(ano, mes - 2, 1));
     return propostasAnteriores.filter(p => {
-      const dp = p.data_proposta ? new Date(p.data_proposta) : new Date(p.created_date);
-      return dp >= inicio && dp < fim;
+      if (filtroStatus !== 'all' && p.status !== filtroStatus) return false;
+      if (filtroTipo !== 'all' && p.tipo_veiculo !== filtroTipo) return false;
+      const dp = dataDaProposta(p);
+      return !Number.isNaN(dp.getTime()) && chaveMes(dp) === mesAnterior;
     });
-  }, [propostasAnteriores, filtroPeriodo]);
+  }, [propostasAnteriores, filtroMes, filtroStatus, filtroTipo]);
 
   // ─── KPIs Gerais ──────────────────────────────────────────────────────────
   const totalContratos = filtradas.length;
