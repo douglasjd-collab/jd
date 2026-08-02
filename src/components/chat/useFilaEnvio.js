@@ -334,7 +334,22 @@ async function rodarPipeline(tempId, queryClient, pipelineRefs) {
 
     // Se arquivo veio como File, preparar conforme o canal
     if (envio0.arquivo && envio0.arquivo.file && !envio0.arquivo.base64) {
-      if (canalDapiDireto) {
+      if (canalDapiDireto && String(envio0.arquivo.tipo || '').startsWith('audio/')) {
+        // Áudio D-API não usa Core.UploadFile: esse serviço tem cota mensal.
+        // O MP3 é convertido para base64 e o backend o encaminha diretamente.
+        const { base64 } = await lerArquivoBase64ComProgresso(envio0.arquivo.file, (pct) => {
+          const progressoFinal = Math.round(5 + pct * 70);
+          fila.setProgresso(tempId, progressoFinal);
+        });
+        arquivoPayload = {
+          base64,
+          nome: envio0.arquivo.nome,
+          tipo: envio0.arquivo.tipo || 'audio/mpeg',
+          tamanho: envio0.arquivo.tamanho || envio0.arquivo.file.size || 0,
+          dapi_audio_direto: true,
+        };
+        fila.setProgresso(tempId, 80, 'enviando');
+      } else if (canalDapiDireto) {
         fila.setProgresso(tempId, 20, 'carregando');
         const upload = await base44.integrations.Core.UploadFile({ file: envio0.arquivo.file });
         if (!upload?.file_url) throw new Error('Não foi possível preparar o arquivo');
