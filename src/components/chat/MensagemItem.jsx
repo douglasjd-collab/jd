@@ -662,7 +662,26 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                     className="flex-1 h-8" 
                     src={mediaUrl} 
                     preload="auto"
+                    data-chat-audio="true"
+                    data-conversa-id={String(conversaId || '')}
+                    data-mensagem-id={String(mensagem.id || '')}
                     style={{ minWidth: '180px' }}
+                    onEnded={(event) => {
+                      const atual = event.currentTarget;
+                      const audiosDaConversa = Array.from(
+                        document.querySelectorAll('audio[data-chat-audio="true"]')
+                      ).filter(audio => audio.dataset.conversaId === String(conversaId || ''));
+                      const indiceAtual = audiosDaConversa.indexOf(atual);
+                      const proximoAudio = indiceAtual >= 0 ? audiosDaConversa[indiceAtual + 1] : null;
+                      if (!proximoAudio) return;
+
+                      // Preservar a velocidade escolhida e iniciar o áudio seguinte.
+                      proximoAudio.playbackRate = atual.playbackRate || 1;
+                      proximoAudio.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                      proximoAudio.play().catch(error => {
+                        console.warn('Navegador bloqueou o início automático do próximo áudio:', error?.message);
+                      });
+                    }}
                     onError={(e) => {
                       // Não limpar a URL automaticamente para evitar loop
                       // Apenas logar o erro — o usuário pode clicar no botão de baixar
