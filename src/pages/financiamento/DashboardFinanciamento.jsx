@@ -150,7 +150,10 @@ export default function DashboardFinanciamento({ user }) {
   const rankingBancos = useMemo(() => {
     const map = {};
     filtradas.forEach(p => {
-      const banco = p.banco || 'Outros';
+      const bancoInformado = String(p.banco || 'Outros').trim();
+      const chaveBanco = bancoInformado.toLocaleLowerCase('pt-BR');
+      // BV, bv e Banco BV representam a mesma instituição.
+      const banco = ['bv', 'banco bv'].includes(chaveBanco) ? 'BV' : bancoInformado;
       if (!map[banco]) map[banco] = { name: banco, value: 0, contratos: 0 };
       map[banco].value += p.valor_financiado || 0;
       map[banco].contratos += 1;
