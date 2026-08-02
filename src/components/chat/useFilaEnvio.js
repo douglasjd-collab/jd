@@ -319,8 +319,18 @@ async function rodarPipeline(tempId, queryClient, pipelineRefs) {
     // Caminho rápido da D-API: o arquivo é enviado uma única vez ao storage e
     // o backend recebe somente a URL. Evita File→Base64→HTTP→File→novo upload.
     const convEnvio = envio0.conversa || null;
-    const canalDapiDireto = convEnvio?.canal_atendimento === 'dapi' ||
-      (String(convEnvio?.instancia || '').trim().toUpperCase() === 'CRM JD' && convEnvio?.tipo_conexao !== 'meta_oficial');
+    // A conversa pode ser identificada como D-API por diferentes campos,
+    // dependendo se foi criada pelo CRM, recebida pelo webhook ou alterada
+    // manualmente no seletor de canal. Todos precisam usar o upload por URL:
+    // mídia em base64 pode ultrapassar o limite da chamada antes de chegar ao backend.
+    const canalDapiDireto =
+      convEnvio?.canal_atendimento === 'dapi' ||
+      convEnvio?.canal_preferencial === 'dapi' ||
+      convEnvio?.canal_origem === 'dapi' ||
+      convEnvio?.provider === 'dapi' ||
+      convEnvio?.tipo_conexao === 'dapi' ||
+      (String(convEnvio?.instancia || '').trim().toUpperCase() === 'CRM JD' &&
+        convEnvio?.tipo_conexao !== 'meta_oficial');
 
     // Se arquivo veio como File, preparar conforme o canal
     if (envio0.arquivo && envio0.arquivo.file && !envio0.arquivo.base64) {
