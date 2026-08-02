@@ -225,9 +225,12 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     pcmChunksRef.current = [];
 
     try {
-      const { blob: mp3Blob, base64 } = await encodeFloat32ToMp3(samples, sampleRate);
-      const url = URL.createObjectURL(mp3Blob);
-      setAudioPreview({ url, base64, mimeType: 'audio/mpeg', ext: 'mp3' });
+      const { blob: mp3Blob } = await encodeFloat32ToMp3(samples, sampleRate);
+      const audioFile = new File([mp3Blob], `audio_${Date.now()}.mp3`, { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(audioFile);
+      // Manter o File real para a fila fazer upload direto e enviar somente a URL
+      // à D-API. Evita transportar o áudio inteiro em base64 na função.
+      setAudioPreview({ url, file: audioFile, mimeType: 'audio/mpeg', ext: 'mp3' });
     } catch (err) {
       console.error('Erro ao converter áudio para mp3:', err);
       setErro('Erro ao processar o áudio gravado: ' + (err.message || 'tente novamente.'));
@@ -247,11 +250,20 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     const preview = { ...audioPreview };
     setAudioPreview(null);
     URL.revokeObjectURL(url);
-    const { base64, mimeType = 'audio/webm', ext = 'webm' } = preview;
-    // Não awaited — o envio ocorre em background, liberando o microfone/botão.
+    const { file, mimeType = 'audio/mpeg', ext = 'mp3' } = preview;
+    if (!file) {
+      setErro('Não foi possível preparar o áudio. Grave novamente.');
+      return;
+    }
+    // Não awaited — a fila envia o File ao storage e encaminha só a URL à D-API.
     onEnviar({
       texto: '',
-      arquivo: { base64, nome: `audio.${ext}`, tipo: mimeType, tamanho: 0 }
+      arquivo: {
+        file,
+        nome: file.name || `audio.${ext}`,
+        tipo: mimeType,
+        tamanho: file.size || 0,
+      }
     });
   };
 
