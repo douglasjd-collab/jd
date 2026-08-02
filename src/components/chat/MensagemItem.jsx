@@ -135,6 +135,21 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
   const queryClient = useQueryClient();
   const isVendedor = mensagem.remetente === 'vendedor';
 
+  // Metadados opcionais da mídia citada (ex.: foto/vídeo de um Status).
+  // Citações antigas continuam sendo texto simples.
+  const respostaCitadaMidia = (() => {
+    try {
+      const parsed = JSON.parse(mensagem.resposta_para_texto || '');
+      if (
+        (parsed?.kind === 'whatsapp_status' || parsed?.kind === 'quoted_media') &&
+        typeof parsed?.media_url === 'string' &&
+        parsed.media_url.startsWith('http')
+      ) return parsed;
+    } catch {}
+    return null;
+  })();
+  const respostaCitadaTexto = respostaCitadaMidia?.label || mensagem.resposta_para_texto;
+
   // Ao clicar na citação, rolar até a mensagem original referenciada (se estiver carregada na tela)
   const irParaMensagemCitada = () => {
     const alvoId = mensagem.resposta_para_whatsapp_id;
@@ -1046,13 +1061,32 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
             onClick={mensagem.resposta_para_whatsapp_id ? irParaMensagemCitada : undefined}
             className={`mb-2 rounded-lg overflow-hidden border-l-4 ${mensagem.resposta_para_whatsapp_id ? 'cursor-pointer hover:brightness-95' : ''} ${isVendedor ? 'border-green-600/60 bg-black/5' : 'border-blue-500 bg-slate-100'}`}
           >
-            <div className={`px-2 pt-1.5 pb-1`}>
-              <p className={`text-[11px] font-semibold truncate ${isVendedor ? 'text-green-800' : 'text-blue-600'}`}>
-                {mensagem.resposta_para_nome || 'Mensagem'}
-              </p>
-              <p className={`text-xs truncate mt-0.5 ${isVendedor ? 'text-slate-600' : 'text-slate-500'}`}>
-                {mensagem.resposta_para_texto}
-              </p>
+            <div className={`px-2 pt-1.5 pb-1 ${respostaCitadaMidia ? 'flex items-center gap-2' : ''}`}>
+              {respostaCitadaMidia && (
+                respostaCitadaMidia.media_type === 'video' ? (
+                  <video
+                    src={sanitizeUrl(respostaCitadaMidia.media_url)}
+                    className="w-12 h-12 rounded object-cover flex-shrink-0 bg-slate-200"
+                    muted
+                    preload="metadata"
+                  />
+                ) : (
+                  <img
+                    src={sanitizeUrl(respostaCitadaMidia.media_url)}
+                    alt="Status citado"
+                    className="w-12 h-12 rounded object-cover flex-shrink-0 bg-slate-200"
+                    loading="lazy"
+                  />
+                )
+              )}
+              <div className="min-w-0">
+                <p className={`text-[11px] font-semibold truncate ${isVendedor ? 'text-green-800' : 'text-blue-600'}`}>
+                  {mensagem.resposta_para_nome || (respostaCitadaMidia?.kind === 'whatsapp_status' ? 'Seu Status' : 'Mensagem')}
+                </p>
+                <p className={`text-xs truncate mt-0.5 ${isVendedor ? 'text-slate-600' : 'text-slate-500'}`}>
+                  {respostaCitadaTexto}
+                </p>
+              </div>
             </div>
           </div>
         )}
