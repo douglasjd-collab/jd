@@ -491,9 +491,18 @@ Deno.serve(async (req) => {
       if (arquivo && (arquivo.base64 || (arquivo.preuploaded_dapi && arquivo.url))) {
         // Caminho rápido: arquivo já foi enviado uma vez pelo navegador.
         const nomeUploadDapi = arquivo.nome || `arquivo_${Date.now()}`;
+        const tipoArq = arquivo.tipo || '';
         if (arquivo.preuploaded_dapi && arquivo.url) {
           arquivoUrlDapi = arquivo.url;
           console.log('⚡ D-API mídia pré-enviada: usando URL direta do storage');
+        } else if (tipoArq.startsWith('audio/') && arquivo.base64) {
+          // Enviar MP3 diretamente à D-API como data URI. Não usar Core.UploadFile:
+          // a integração possui cota mensal e não é necessária para o campo audio.
+          const base64Limpo = String(arquivo.base64).includes(',')
+            ? String(arquivo.base64).split(',').pop()
+            : String(arquivo.base64);
+          arquivoUrlDapi = `data:${tipoArq || 'audio/mpeg'};base64,${base64Limpo}`;
+          console.log('🎵 D-API áudio direto em base64, sem Core.UploadFile');
         } else try {
           const base64Limpo = String(arquivo.base64).includes(',') ? String(arquivo.base64).split(',').pop() : String(arquivo.base64);
           const binaryStrDapi = atob(base64Limpo);
@@ -512,7 +521,6 @@ Deno.serve(async (req) => {
           return Response.json({ error: 'Falha ao gerar URL do arquivo para envio via D-API', success: false }, { status: 500 });
         }
 
-        const tipoArq = arquivo.tipo || '';
         if (tipoArq === 'image/webp' || tipoArq.startsWith('image')) {
           tipoConteudoDapi = tipoArq === 'image/webp' ? 'figurinha' : 'imagem';
           dapiAction = 'sendImage';
