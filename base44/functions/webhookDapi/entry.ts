@@ -426,7 +426,44 @@ async function extrairRespostaCitada(base44, empresaId, data) {
   }
 
   const texto = quotedMsg?.body || quotedMsg?.conversation || quotedMsg?.extendedTextMessage?.text || quotedMsg?.text || null;
-  return { texto: texto ? String(texto).substring(0, 200) : null, nome: null, whatsappId: quotedId ? String(quotedId) : null };
+  if (texto) {
+    return { texto: String(texto).substring(0, 200), nome: null, whatsappId: quotedId ? String(quotedId) : null };
+  }
+
+  // Status não é uma mensagem comum do chat: ele vive em status@broadcast e a
+  // D-API pode enviar apenas o ID/tipo, sem body. Ainda assim, preservar a citação.
+  const contextoSerializado = [
+    ctx.participant, ctx.remote_jid, ctx.remoteJid, ctx.chat_id, ctx.chatId,
+    ctx.source, data?.type, data?.messageType
+  ].filter(Boolean).join(' ').toLowerCase();
+  const isStatusReply =
+    contextoSerializado.includes('status@broadcast') ||
+    contextoSerializado.includes('status_reply') ||
+    contextoSerializado.includes('statusreply') ||
+    ctx.is_status === true || ctx.isStatus === true ||
+    quotedMsg?.is_status === true || quotedMsg?.isStatus === true;
+
+  const quotedType = String(
+    quotedMsg?.type || quotedMsg?.message_type || quotedMsg?.messageType ||
+    ctx.quoted_message_type || ''
+  ).toLowerCase();
+
+  let placeholder = isStatusReply ? '💬 Status do WhatsApp' : 'Mensagem citada';
+  if (quotedType.includes('image') || quotedType.includes('sticker')) {
+    placeholder = isStatusReply ? '📷 Status do WhatsApp' : '📷 Imagem';
+  } else if (quotedType.includes('video')) {
+    placeholder = isStatusReply ? '🎬 Status do WhatsApp' : '🎬 Vídeo';
+  } else if (quotedType.includes('audio') || quotedType.includes('ptt')) {
+    placeholder = isStatusReply ? '🎵 Status do WhatsApp' : '🎵 Áudio';
+  } else if (quotedType.includes('document')) {
+    placeholder = '📄 Documento';
+  }
+
+  return {
+    texto: (quotedId || quotedMsg) ? placeholder : null,
+    nome: isStatusReply ? 'Seu Status' : null,
+    whatsappId: quotedId ? String(quotedId) : null
+  };
 }
 
 async function processMessageReceived(base44, body, connection, empresaId) {
