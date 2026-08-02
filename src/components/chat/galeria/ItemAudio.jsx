@@ -140,7 +140,7 @@ export default function ItemAudio({ mensagem, onLocalizarMensagem }) {
         <p className="text-[11px] text-slate-500 mt-0.5 italic truncate">"{mensagem.texto}"</p>
       )}
 
-      <audio ref={audioRef} src={mensagem.arquivo_url} preload="metadata" className="hidden" />
+      <audio ref={audioRef} src={mensagem.arquivo_url} preload="auto" className="hidden" />
     </div>
   );
 }
