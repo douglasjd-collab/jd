@@ -260,14 +260,14 @@ export default function DashboardFinanciamento({ user }) {
           sub={melhorParceiro ? fmt(melhorParceiro.valor) : ''} color="text-orange-600" bgColor="bg-orange-50" />
       </div>
 
-      {/* Gráficos: Vendedores (colunas) + Bancos (donut) */}
+      {/* Gráficos: produção por vendedores e por bancos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><TrendingUp className="w-4 h-4 text-blue-600" />Valor Financiado por Vendedor</CardTitle></CardHeader>
           <CardContent>
             {chartVendedores.length === 0 ? <p className="text-sm text-slate-400 text-center py-8">Sem dados</p> : (
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={chartVendedores} layout="vertical" margin={{ left: 0, right: 30, top: 5, bottom: 5 }}>
+                <BarChart data={chartVendedores} layout="vertical" margin={{ left: 0, right: 80, top: 5, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
                   <XAxis type="number" fontSize={11} tickFormatter={v => `R$ ${(v/1000).toFixed(0)}k`} />
                   <YAxis type="category" dataKey="nome" fontSize={12} width={80} />
