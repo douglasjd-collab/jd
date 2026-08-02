@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
     // ── Encaminhar mídia: aceitar arquivo.url como alternativa ao base64 ──
     // Permite que o frontend encaminhe mídias já no storage sem baixá-las no browser
     // (evita problemas de CORS ebytes desnecessários no client).
-    if (arquivo && arquivo.url && !arquivo.base64) {
+    if (arquivo && arquivo.url && !arquivo.base64 && !arquivo.preuploaded_dapi) {
       try {
         console.log('🔗 Baixando mídia do URL para reenvio:', arquivo.url);
         const mediaResp = await fetch(arquivo.url);
@@ -488,15 +488,18 @@ Deno.serve(async (req) => {
       let dapiAction = 'sendText';
       let dapiActionParams = {};
 
-      if (arquivo && arquivo.base64) {
-        // D-API exige URL pública — fazer upload do arquivo antes de enviar
-        try {
+      if (arquivo && (arquivo.base64 || (arquivo.preuploaded_dapi && arquivo.url))) {
+        // Caminho rápido: arquivo já foi enviado uma vez pelo navegador.
+        const nomeUploadDapi = arquivo.nome || `arquivo_${Date.now()}`;
+        if (arquivo.preuploaded_dapi && arquivo.url) {
+          arquivoUrlDapi = arquivo.url;
+          console.log('⚡ D-API mídia pré-enviada: usando URL direta do storage');
+        } else try {
           const base64Limpo = String(arquivo.base64).includes(',') ? String(arquivo.base64).split(',').pop() : String(arquivo.base64);
           const binaryStrDapi = atob(base64Limpo);
           const bytesDapi = new Uint8Array(binaryStrDapi.length);
           for (let i = 0; i < binaryStrDapi.length; i++) bytesDapi[i] = binaryStrDapi.charCodeAt(i);
           const mimeUploadDapi = arquivo.tipo || 'application/octet-stream';
-          const nomeUploadDapi = arquivo.nome || `arquivo_${Date.now()}`;
           const fileUploadDapi = new File([bytesDapi], nomeUploadDapi, { type: mimeUploadDapi });
           const uploadResDapi = await base44.integrations.Core.UploadFile({ file: fileUploadDapi });
           arquivoUrlDapi = uploadResDapi?.file_url || null;
