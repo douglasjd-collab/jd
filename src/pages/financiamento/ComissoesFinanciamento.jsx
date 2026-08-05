@@ -175,6 +175,12 @@ export default function FinanceiroFinanciamento({ user }) {
       const valorVendedor = parseFloat(formReceber.valor_comissao_vendedor) || 0;
       const f = receberModal;
 
+      if (!f.vendedor_id) {
+        toast.error('Selecione o vendedor responsável na proposta antes de receber a comissão.');
+        setSalvando(false);
+        return;
+      }
+
       // 1. Criar Receita Financeira
       const receita = await base44.entities.Receita.create({
         empresa_id: user.empresa_id,
@@ -237,16 +243,17 @@ export default function FinanceiroFinanciamento({ user }) {
         comissao_financiamento_id: comissaoExistente?.id || '',
       });
 
-      // 4. Criar comissão a pagar ao vendedor
-      if (valorVendedor > 0 && f.vendedor_id) {
-        await base44.entities.ComissaoAPagar.create({
+      // 4. Criar comissão a pagar ao vendedor somente após o recebimento
+      if (valorVendedor > 0) {
+        const existentesAPagar = await base44.entities.ComissaoAPagar.filter({ proposta_id: f.id, tipo: 'financiamento' });
+        if (existentesAPagar.length === 0) await base44.entities.ComissaoAPagar.create({
           empresa_id: user.empresa_id,
           vendedor_id: f.vendedor_id,
           vendedor_nome: f.vendedor_nome || '',
           proposta_id: f.id,
           tipo: 'financiamento',
           valor: valorVendedor,
-          status_pagamento: 'pendente',
+          status_pagamento: 'a_pagar',
           descricao: `Comissão Financiamento - ${f.cliente_nome}`,
           data_prevista: formReceber.data_recebimento,
         });
