@@ -30,6 +30,10 @@ const TARIFA = {
 };
 
 const TIPO = { carro: 'Carro', moto: 'Moto', caminhao: 'Caminhão' };
+const cpf = valor => {
+  const digitos = String(valor || '').replace(/\D/g, '');
+  return digitos.length === 11 ? digitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '—';
+};
 const dinheiro = valor => valor === null || valor === undefined || valor === ''
   ? '—'
   : Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -80,7 +84,7 @@ export default function PropostaFinanciamentoDetalhes({ proposta, open, onOpenCh
         <div className="space-y-5">
           <Secao titulo="Cliente e responsáveis">
             <Item label="Cliente" value={texto(proposta.cliente_nome)} destaque />
-            <Item label="CPF" value={texto(proposta.cliente_cpf)} />
+            <Item label="CPF" value={cpf(proposta.cliente_cpf)} />
             <Item label="Telefone" value={texto(proposta.cliente_telefone)} />
             <Item label="Vendedor" value={texto(proposta.vendedor_nome)} />
             <Item label="Loja parceira" value={texto(proposta.empresa_parceira_nome)} />
