@@ -3,8 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Eye } from 'lucide-react';
 import PropostaFinanciamentoModal from '@/components/financiamento/PropostaFinanciamentoModal';
+import PropostaFinanciamentoDetalhes from '@/components/financiamento/PropostaFinanciamentoDetalhes';
 import { toast } from 'sonner';
 
 const STATUS_LABELS = {
@@ -88,6 +89,7 @@ export default function PropostasFinanciamento({ user }) {
   const [filtroTipo, setFiltroTipo] = useState('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [propostaSelecionada, setPropostaSelecionada] = useState(null);
+  const [propostaVisualizada, setPropostaVisualizada] = useState(null);
 
   const carregarPropostas = useCallback(async () => {
     setLoading(true);
@@ -252,7 +254,12 @@ export default function PropostasFinanciamento({ user }) {
                 <tr><td colSpan={10} className="text-center py-10 text-slate-400">Nenhuma proposta encontrada</td></tr>
               ) : propostasFiltradas.map(p => (
                 <tr key={p.id} className="border-b last:border-0 hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-700">{p.numero_proposta || '—'}</td>
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-slate-700">{p.numero_proposta || '—'}</p>
+                    <p className="text-xs text-slate-400">
+                      Cadastro: {p.data_proposta ? new Date(`${p.data_proposta}T12:00:00`).toLocaleDateString('pt-BR') : p.created_date ? new Date(p.created_date).toLocaleDateString('pt-BR') : '—'}
+                    </p>
+                  </td>
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-700">{p.cliente_nome}</p>
                     <p className="text-xs text-slate-400">{p.cliente_cpf}</p>
@@ -273,6 +280,9 @@ export default function PropostasFinanciamento({ user }) {
                   <td className="px-4 py-3 text-slate-600">{p.empresa_parceira_nome || '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => setPropostaVisualizada(p)} className="p-1.5 hover:bg-blue-50 rounded-lg" title="Visualizar proposta">
+                        <Eye className="w-4 h-4 text-blue-600" />
+                      </button>
                       <button onClick={() => { setPropostaSelecionada(p); setModalOpen(true); }} className="p-1.5 hover:bg-slate-100 rounded-lg" title="Editar">
                         <Pencil className="w-4 h-4 text-slate-500" />
                       </button>
@@ -287,6 +297,17 @@ export default function PropostasFinanciamento({ user }) {
           </table>
         </div>
       </div>
+
+      <PropostaFinanciamentoDetalhes
+        proposta={propostaVisualizada}
+        open={!!propostaVisualizada}
+        onOpenChange={open => { if (!open) setPropostaVisualizada(null); }}
+        onEditar={() => {
+          setPropostaSelecionada(propostaVisualizada);
+          setPropostaVisualizada(null);
+          setModalOpen(true);
+        }}
+      />
 
       <PropostaFinanciamentoModal
         open={modalOpen}
