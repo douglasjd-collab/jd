@@ -680,7 +680,7 @@ export default function Dashboard() {
               </div>
             </div>
             <DashboardEmprestimos
-              propostasEmprestimo={propostasEmprestimo}
+              propostasEmprestimo={propostasEmprestimoFiltradas}
               statusPropostaList={statusPropostaList}
               filtroInicio={periodo.inicio}
               filtroFim={periodo.fim}
