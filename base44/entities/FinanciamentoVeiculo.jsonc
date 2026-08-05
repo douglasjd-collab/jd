@@ -155,6 +155,37 @@
       "type": "string",
       "description": "ID da Despesa gerada pelos custos operacionais"
     },
+    "valor_comissao": {
+      "type": "number",
+      "default": 0,
+      "description": "Valor previsto da comiss\u00e3o da JD Promotora"
+    },
+    "percentual_comissao": {
+      "type": "number",
+      "default": 0,
+      "description": "Percentual da comiss\u00e3o sobre o valor financiado"
+    },
+    "comissao_status": {
+      "type": "string",
+      "enum": [
+        "prevista",
+        "pendente",
+        "recebida",
+        "cancelada"
+      ],
+      "default": "prevista",
+      "description": "Situa\u00e7\u00e3o da comiss\u00e3o"
+    },
+    "comissao_data_prevista": {
+      "type": "string",
+      "format": "date",
+      "description": "Previs\u00e3o de recebimento da comiss\u00e3o"
+    },
+    "comissao_data_recebimento": {
+      "type": "string",
+      "format": "date",
+      "description": "Data de recebimento da comiss\u00e3o"
+    },
     "vendedor_id": {
       "type": "string",
       "description": "ID do vendedor"
