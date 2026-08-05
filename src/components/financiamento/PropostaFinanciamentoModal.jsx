@@ -30,6 +30,7 @@ tarifa_cadastral: '', tarifa_cadastral_status: 'aguardando_pagamento',
 custos_operacionais: '',
 valor_comissao: '',
 percentual_comissao: '',
+comissao_status: 'prevista', comissao_data_prevista: '', comissao_data_recebimento: '',
 vendedor_id: '', vendedor_nome: '',
 empresa_id: '', empresa_nome: '',
 filial_id: '', filial_nome: '',
@@ -672,6 +673,23 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">%</span>
                 </div>
                 <p className="text-xs text-slate-400">Calculado automaticamente pelo valor da comissão</p>
+              </F>
+              <F label="Situação da Comissão">
+                <Select value={form.comissao_status} onValueChange={v => set('comissao_status', v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="prevista">Prevista</SelectItem>
+                    <SelectItem value="pendente">Pendente</SelectItem>
+                    <SelectItem value="recebida">Recebida</SelectItem>
+                    <SelectItem value="cancelada">Cancelada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </F>
+              <F label="Previsão de recebimento">
+                <Input type="date" value={form.comissao_data_prevista} onChange={e => set('comissao_data_prevista', e.target.value)} />
+              </F>
+              <F label="Data de recebimento">
+                <Input type="date" value={form.comissao_data_recebimento} onChange={e => set('comissao_data_recebimento', e.target.value)} />
               </F>
             </div>
           </div>
