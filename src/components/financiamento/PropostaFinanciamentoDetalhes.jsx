@@ -14,6 +14,14 @@ const STATUS = {
   cancelado: 'Cancelado',
 };
 
+const RETORNO = {
+  manual: 'Sem retorno / Comissão manual',
+  retorno_3: 'Retorno 3',
+  retorno_2: 'Retorno 2',
+  retorno_1: 'Retorno 1',
+  parceiro: 'Parceiro',
+};
+
 const TARIFA = {
   aguardando_pagamento: 'Aguardando pagamento',
   recebida: 'Recebida',
@@ -113,6 +121,7 @@ export default function PropostaFinanciamentoDetalhes({ proposta, open, onOpenCh
             <Item label="Tarifa cadastral" value={dinheiro(proposta.tarifa_cadastral)} />
             <Item label="Situação da tarifa" value={TARIFA[proposta.tarifa_cadastral_status] || texto(proposta.tarifa_cadastral_status)} />
             <Item label="Recebimento da tarifa" value={data(proposta.tarifa_cadastral_data_recebimento)} />
+            <Item label="Retorno do lojista" value={RETORNO[proposta.retorno_lojista] || '—'} />
             <Item label="Comissão prevista" value={dinheiro(proposta.valor_comissao)} />
             <Item label="Percentual da comissão" value={proposta.percentual_comissao !== null && proposta.percentual_comissao !== undefined && proposta.percentual_comissao !== '' ? `${proposta.percentual_comissao}%` : '—'} />
             <Item label="Situação da comissão" value={texto(proposta.comissao_status)} />
