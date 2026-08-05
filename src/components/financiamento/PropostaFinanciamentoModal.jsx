@@ -24,7 +24,8 @@ const EMPTY = {
 cliente_id: '', cliente_nome: '', cliente_cpf: '', cliente_telefone: '', cliente_renda: '', cliente_profissao: '',
 tipo_veiculo: 'carro', veiculo_marca: '', veiculo_modelo: '', veiculo_ano: '', veiculo_placa: '',
 valor_veiculo: '', valor_entrada: '', valor_financiado: '', banco: '', prazo_meses: '',
-valor_parcela: '', taxa_juros: '',
+valor_parcela: '', taxa_juros: '', cet_anual: '', numero_proposta_banco: '', validade_aprovacao: '',
+pendencias_documentais: '', motivo_recusa_cancelamento: '',
 tarifa_cadastral: '', tarifa_cadastral_status: 'aguardando_pagamento',
 custos_operacionais: '',
 valor_comissao: '',
@@ -599,6 +600,23 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
               <F label="Taxa de juros (% a.m.)">
                 <Input type="number" step="0.01" value={form.taxa_juros} onChange={e => set('taxa_juros', e.target.value)} />
               </F>
+              <F label="CET (% a.a.)">
+                <Input type="number" step="0.01" value={form.cet_anual} onChange={e => set('cet_anual', e.target.value)} />
+              </F>
+              <F label="Nº da proposta no banco">
+                <Input value={form.numero_proposta_banco} onChange={e => set('numero_proposta_banco', e.target.value)} />
+              </F>
+              <F label="Validade da aprovação">
+                <Input type="date" value={form.validade_aprovacao} onChange={e => set('validade_aprovacao', e.target.value)} />
+              </F>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <F label="Pendências documentais">
+                <Textarea value={form.pendencias_documentais} onChange={e => set('pendencias_documentais', e.target.value)} rows={2} placeholder="Informe documentos ou providências pendentes" />
+              </F>
+              <F label="Motivo da recusa ou cancelamento">
+                <Textarea value={form.motivo_recusa_cancelamento} onChange={e => set('motivo_recusa_cancelamento', e.target.value)} rows={2} placeholder="Preencher quando a proposta for recusada ou cancelada" />
+              </F>
             </div>
           </div>
 
@@ -616,6 +634,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                   <SelectContent>
                     <SelectItem value="aguardando_pagamento">Aguardando Pagamento</SelectItem>
                     <SelectItem value="recebida">Recebida</SelectItem>
+                    <SelectItem value="isenta">Isenta</SelectItem>
                     <SelectItem value="cancelada">Cancelada</SelectItem>
                   </SelectContent>
                 </Select>
@@ -667,7 +686,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
               <F label="Data da aprovação">
                 <Input type="date" value={form.data_aprovacao} onChange={e => set('data_aprovacao', e.target.value)} />
               </F>
-              <F label="Data de pagamento pelo banco">
+              <F label="Data de pagamento ao lojista">
                 <Input type="date" value={form.data_pagamento} onChange={e => set('data_pagamento', e.target.value)} />
               </F>
             </div>
