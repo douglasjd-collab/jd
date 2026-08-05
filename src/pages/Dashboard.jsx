@@ -62,10 +62,6 @@ export default function Dashboard() {
   const [cipModalOpen, setCipModalOpen] = useState(false);
   const [gruposModalOpen, setGruposModalOpen] = useState(false);
   const [grupoSelecionado, setGrupoSelecionado] = useState('');
-  const [empPeriodo, setEmpPeriodo] = useState(() => ({
-    inicio: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
-    fim: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
-  }));
 
   useEffect(() => {
     base44.auth.me().then(me => {
