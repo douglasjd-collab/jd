@@ -31,6 +31,9 @@ const percentualPorRetorno = (retorno, tipoVeiculo) => {
 
 const calcularComissaoRetorno = (retorno, tipoVeiculo, valorFinanciado) => {
   const percentual = percentualPorRetorno(retorno, tipoVeiculo);
+  if (retorno === 'parceiro' && percentual === null) {
+    return { percentual_comissao: '', valor_comissao: '' };
+  }
   if (percentual === null) return {};
   const valor = parseFloat(String(valorFinanciado).replace(',', '.')) || 0;
   return {
@@ -690,7 +693,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                     <SelectItem value="retorno_3">Retorno 3 — Comissão 2,622287%</SelectItem>
                     <SelectItem value="retorno_2" disabled>Retorno 2 — Em breve</SelectItem>
                     <SelectItem value="retorno_1" disabled>Retorno 1 — Em breve</SelectItem>
-                    <SelectItem value="parceiro">Parceiro — Moto 1,5% / Carro 2,2%</SelectItem>
+                    <SelectItem value="parceiro" disabled={!['moto', 'carro'].includes(form.tipo_veiculo)}>Parceiro — Moto 1,5% / Carro 2,2%</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-slate-400">
