@@ -12,13 +12,21 @@ Deno.serve(async (req) => {
         const payload = await req.json();
         const { email, perfil, nome, cpf_cnpj, telefone, codigo_vendedor, gerente_id, empresa_id, status } = payload;
 
+        // Para usuários de empresa, o vínculo vem sempre de quem enviou o convite.
+        // Master/super_admin ainda podem selecionar explicitamente outra empresa.
+        const solicitanteColabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id });
+        const solicitanteColab = solicitanteColabs?.find(c => c.empresa_id) || solicitanteColabs?.[0] || null;
+        const userPerfil = solicitanteColab?.perfil || user.perfil || user.role;
+        const empresaVinculadaId = ['master', 'super_admin'].includes(userPerfil)
+            ? (empresa_id || solicitanteColab?.empresa_id || null)
+            : (solicitanteColab?.empresa_id || null);
+
         if (!email || !perfil || !nome) {
             return Response.json({ error: 'email, perfil e nome são obrigatórios' }, { status: 400 });
         }
 
         // Determinar role para convite
         const requestedRole = ['admin', 'super_admin', 'master'].includes(perfil) ? 'admin' : 'user';
-        const userPerfil = user.perfil || user.role;
         const userCanInviteAdmin = ['admin', 'super_admin', 'master'].includes(userPerfil);
 
         if (requestedRole === 'admin' && !userCanInviteAdmin) {
@@ -34,7 +42,7 @@ Deno.serve(async (req) => {
             await base44.users.inviteUser(email, requestedRole);
 
             // Aguardar e buscar usuário criado com retry
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 15; i++) {
                 await new Promise(r => setTimeout(r, 1000));
                 const createdUsers = await base44.asServiceRole.entities.User.filter({ email });
                 if (createdUsers?.length) {
@@ -111,10 +119,10 @@ Deno.serve(async (req) => {
 
         // Adicionar empresa 
         // IMPORTANTE: admin de subconta (admin role) DEVE estar vinculado à sua empresa isolada
-        if (empresa_id) {
-            colaboradorData.empresa_id = empresa_id;
+        if (empresaVinculadaId) {
+            colaboradorData.empresa_id = empresaVinculadaId;
             try {
-                const empresa = await base44.asServiceRole.entities.Empresa.get(empresa_id);
+                const empresa = await base44.asServiceRole.entities.Empresa.get(empresaVinculadaId);
                 if (empresa) colaboradorData.empresa_nome = empresa.nome;
             } catch (e) {}
         }
