@@ -46,7 +46,7 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
     return base;
   }, [propostasEmprestimo, filtroInicio, filtroFim, isVendedor, user, statusPagoIds, statusCanceladoIds]);
 
-  // Propostas em andamento
+  // Propostas em andamento (total, independentemente do período)
   const propostasEmAndamento = React.useMemo(() => {
     const base = propostasEmprestimo.filter(p => {
       if (isCanceladaProposta(p)) return false;
@@ -59,16 +59,22 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
     return base;
   }, [propostasEmprestimo, isVendedor, user, statusPagoIds, statusCanceladoIds]);
 
+  // Em andamento cadastradas dentro do período selecionado
+  const propostasEmAndamentoPeriodo = React.useMemo(() => propostasEmAndamento.filter(p => {
+    const dataReferencia = p.data_venda || p.created_date || p.data_status_atual;
+    if (!dataReferencia) return false;
+    const data = String(dataReferencia).slice(0, 10);
+    return data >= filtroInicio && data <= filtroFim;
+  }), [propostasEmAndamento, filtroInicio, filtroFim]);
+
   const valorBrutoPagoMes = propostasPagasMes.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
   // valor_liquido com fallback para valor_credito quando não preenchido
   const valorLiquidoPagoMes = propostasPagasMes.reduce((acc, p) => acc + (p.valor_liquido || p.valor_credito || 0), 0);
   const valorBrutoAndamento = propostasEmAndamento.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
   const valorLiquidoAndamento = propostasEmAndamento.reduce((acc, p) => acc + (p.valor_liquido || p.valor_credito || 0), 0);
 
-  // Base Comissão: usa comissao_banco_base_comissao se disponível, senão valor_liquido, senão valor_credito
-  const baseComissaoPagoMes = propostasPagasMes.reduce((acc, p) => {
-    return acc + (p.comissao_banco_base_comissao || p.valor_liquido || p.valor_credito || 0);
-  }, 0);
+  const valorBrutoAndamentoPeriodo = propostasEmAndamentoPeriodo.reduce((acc, p) => acc + (p.valor_credito || 0), 0);
+  const valorLiquidoAndamentoPeriodo = propostasEmAndamentoPeriodo.reduce((acc, p) => acc + (p.valor_liquido || p.valor_credito || 0), 0);
 
   const rankingEmprestimos = React.useMemo(() => {
     const vendedorStats = {};
@@ -138,14 +144,14 @@ export default function DashboardEmprestimos({ propostasEmprestimo, statusPropos
               <Calculator className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-slate-500">Base Comissão (Período)</p>
-              <p className="text-2xl font-bold text-blue-700">{formatCurrency(baseComissaoPagoMes)}</p>
-              <p className="text-xs text-slate-400 mt-0.5">Valor base p/ cálculo da comissão</p>
+              <p className="text-sm text-slate-500">Empréstimos em Andamento no Período</p>
+              <p className="text-2xl font-bold text-blue-700">{formatCurrency(valorLiquidoAndamentoPeriodo)}</p>
+              <p className="text-xs text-slate-400 mt-0.5">Valor liberado no período selecionado</p>
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">{propostasPagasMes.length} proposta(s) paga(s)</p>
-            <p className="text-sm text-slate-500 text-xs italic">Líq. ou Base Banco</p>
+            <p className="text-sm text-slate-500">{propostasEmAndamentoPeriodo.length} proposta(s) em andamento</p>
+            <p className="text-sm text-slate-500">Bruto: <span className="font-medium text-slate-700">{formatCurrency(valorBrutoAndamentoPeriodo)}</span></p>
           </div>
         </div>
 
