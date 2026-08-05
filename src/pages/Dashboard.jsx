@@ -308,6 +308,15 @@ export default function Dashboard() {
     return true;
   }), [oportunidades, isVendedor, user, filtroVendedor]);
 
+  const propostasEmprestimoFiltradas = useMemo(() => propostasEmprestimo.filter(p => {
+    if ((isVendedor || isParceiro) && user?.colaborador_id && p.vendedor_id !== user.colaborador_id) return false;
+    if (isGerente && user?.colaborador_id && p.gerente_id !== user.colaborador_id && p.vendedor_id !== user.colaborador_id) return false;
+    if (filtroVendedor !== 'todos' && p.vendedor_nome !== filtroVendedor) return false;
+    const filialProposta = p.filial_nome || mapaColaboradorFilial[p.vendedor_id] || '';
+    if (filtroFilial !== 'todos' && filialProposta !== filtroFilial) return false;
+    return true;
+  }), [propostasEmprestimo, isVendedor, isParceiro, isGerente, user, filtroVendedor, filtroFilial, mapaColaboradorFilial]);
+
   // Aniversariantes
   const clientesFiltrados = useMemo(() => (isVendedor || isParceiro) && user?.colaborador_id ? clientes.filter(c => c.vendedor_id === user.colaborador_id) : clientes, [clientes, isVendedor, isParceiro, user]);
   const hoje = new Date();
