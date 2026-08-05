@@ -21,6 +21,7 @@ export default function CadastroMenorLanceModal({ open, onOpenChange, empresaId,
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [registros, setRegistros] = useState([]);
+  const [administradoras, setAdministradoras] = useState([]);
   const [form, setForm] = useState({
     administradora: '',
     grupo: '',
@@ -38,12 +39,20 @@ export default function CadastroMenorLanceModal({ open, onOpenChange, empresaId,
   const carregarRegistros = async () => {
     setLoading(true);
     try {
-      const data = await base44.entities.MenorLanceAssembleia.filter(
-        { empresa_id: empresaId },
-        '-data_assembleia',
-        50
-      );
+      const [data, administradorasData] = await Promise.all([
+        base44.entities.MenorLanceAssembleia.filter(
+          { empresa_id: empresaId },
+          '-data_assembleia',
+          50
+        ),
+        base44.entities.Administradora.filter(
+          { empresa_id: empresaId, status: 'ativa' },
+          'nome_fantasia',
+          100
+        ),
+      ]);
       setRegistros(data);
+      setAdministradoras(administradorasData);
     } catch {
       toast.error('Erro ao carregar registros');
     } finally {
@@ -98,7 +107,18 @@ export default function CadastroMenorLanceModal({ open, onOpenChange, empresaId,
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Administradora *</Label>
-                <Input value={form.administradora} onChange={e => setForm(f => ({ ...f, administradora: e.target.value }))} placeholder="Ex: Canopus" className="h-9 mt-1" />
+                <Select value={form.administradora} onValueChange={v => setForm(f => ({ ...f, administradora: v }))}>
+                  <SelectTrigger className="mt-1 h-9"><SelectValue placeholder="Selecione a administradora" /></SelectTrigger>
+                  <SelectContent>
+                    {administradoras.map(a => {
+                      const nome = a.nome_fantasia || a.razao_social;
+                      return <SelectItem key={a.id} value={nome}>{nome}</SelectItem>;
+                    })}
+                  </SelectContent>
+                </Select>
+                {!loading && administradoras.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">Nenhuma administradora ativa cadastrada para esta empresa.</p>
+                )}
               </div>
               <div>
                 <Label className="text-xs">Grupo *</Label>
