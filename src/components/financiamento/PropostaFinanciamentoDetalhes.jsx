@@ -115,6 +115,9 @@ export default function PropostaFinanciamentoDetalhes({ proposta, open, onOpenCh
             <Item label="Recebimento da tarifa" value={data(proposta.tarifa_cadastral_data_recebimento)} />
             <Item label="Comissão prevista" value={dinheiro(proposta.valor_comissao)} />
             <Item label="Percentual da comissão" value={proposta.percentual_comissao !== null && proposta.percentual_comissao !== undefined && proposta.percentual_comissao !== '' ? `${proposta.percentual_comissao}%` : '—'} />
+            <Item label="Situação da comissão" value={texto(proposta.comissao_status)} />
+            <Item label="Previsão de recebimento" value={data(proposta.comissao_data_prevista)} />
+            <Item label="Recebimento da comissão" value={data(proposta.comissao_data_recebimento)} />
             <Item label="Custos operacionais" value={dinheiro(proposta.custos_operacionais)} />
           </Secao>
 
