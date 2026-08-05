@@ -773,8 +773,8 @@ export default function ComissoesEmprestimos() {
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Comissões a Pagar — Empréstimos</h1>
-        <p className="text-slate-500 text-sm mt-1">Gerencie pagamentos de comissões das propostas de empréstimos pagas.</p>
+        <h1 className="text-2xl font-bold text-slate-900">Comissões a Pagar</h1>
+        <p className="text-slate-500 text-sm mt-1">Gerencie pagamentos de comissões de empréstimos e financiamentos aos vendedores.</p>
       </div>
 
       {/* ===== DASHBOARD FINANCEIRO ===== */}
