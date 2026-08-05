@@ -389,11 +389,18 @@ export default function OfertaLance() {
     setEditOferta(null);
   };
 
-  const handleOfertar = (venda) => {
-    setSelectedVenda(venda);
+  const handleOfertar = async (venda) => {
+    let vendaAtualizada = venda;
+    try {
+      const registros = await base44.entities.Venda.filter({ id: venda.id });
+      vendaAtualizada = registros?.[0] || venda;
+    } catch (error) {
+      console.warn('Não foi possível atualizar os dados da proposta antes da oferta:', error);
+    }
+    setSelectedVenda(vendaAtualizada);
     setPercentual('');
     setTipoLance('livre');
-    setObservacao(venda.observacao_lance || '');
+    setObservacao(vendaAtualizada.observacao_lance || '');
     setFormOpen(true);
   };
 
