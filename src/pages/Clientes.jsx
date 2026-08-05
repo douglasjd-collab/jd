@@ -366,13 +366,30 @@ export default function Clientes() {
 
   const telefonesPorCliente = useMemo(() => {
     const map = {};
+    const adicionar = (clienteId, telefone, tipo, isWhatsapp = false, isPrincipal = false) => {
+      if (!clienteId || !telefone) return;
+      if (!map[clienteId]) map[clienteId] = [];
+      const numeroNormalizado = String(telefone).replace(/\D/g, '');
+      if (!numeroNormalizado || map[clienteId].some((x) => String(x.telefone).replace(/\D/g, '') === numeroNormalizado)) return;
+      map[clienteId].push({ telefone, tipo, is_whatsapp: isWhatsapp, is_principal: isPrincipal });
+    };
+
     for (const t of todosTelefones) {
-      if (!t.cliente_id) continue;
-      if (!map[t.cliente_id]) map[t.cliente_id] = [];
-      if (!map[t.cliente_id].some((x) => x.telefone === t.telefone)) map[t.cliente_id].push(t);
+      adicionar(t.cliente_id, t.telefone, t.tipo || 'contato', t.is_whatsapp, t.is_principal);
+    }
+
+    // Compatibilidade com cadastros que armazenam os telefones diretamente no Cliente.
+    for (const cliente of clientes) {
+      if (cliente.tipo_pessoa === 'Jurídica') {
+        adicionar(cliente.id, cliente.pj_celular, 'celular', true, true);
+        adicionar(cliente.id, cliente.pj_telefone_fixo, 'fixo');
+      } else {
+        adicionar(cliente.id, cliente.celular, 'celular', true, true);
+        adicionar(cliente.id, cliente.telefone_fixo, 'fixo');
+      }
     }
     return map;
-  }, [todosTelefones]);
+  }, [todosTelefones, clientes]);
 
   const columns = [
     {
