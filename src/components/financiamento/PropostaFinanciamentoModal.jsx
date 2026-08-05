@@ -20,6 +20,12 @@ const STATUS_OPTIONS = [
   { value: 'cancelado', label: 'Cancelado' },
 ];
 
+const formatarCpf = valor => {
+  const digitos = String(valor || '').replace(/\D/g, '');
+  if (digitos.length !== 11) return '';
+  return digitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+};
+
 const percentualPorRetorno = (retorno, tipoVeiculo) => {
   if (retorno === 'retorno_3') return 2.622287;
   if (retorno === 'parceiro') {
@@ -213,7 +219,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
       ...f,
       cliente_id: c.id,
       cliente_nome: c.nome_completo,
-      cliente_cpf: c.cpf || '',
+      cliente_cpf: formatarCpf(c.cpf),
       cliente_telefone: c.celular || c.telefone_fixo || '',
     }));
     setBuscaCliente(c.nome_completo);
@@ -248,7 +254,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
         tipo_pessoa: 'Física',
         nome_completo: novoCliente.nome_completo.trim(),
         apelido: novoCliente.apelido || '',
-        cpf: novoCliente.cpf || '',
+        cpf: formatarCpf(novoCliente.cpf),
         rg: novoCliente.rg || '',
         data_nascimento: novoCliente.data_nascimento || '',
         estado_civil: novoCliente.estado_civil || '',
@@ -316,7 +322,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
             empresa_id: user.empresa_id,
             tipo_pessoa: 'Física',
             nome_completo: nomeCliente.trim(),
-            cpf: form.cliente_cpf || '',
+            cpf: formatarCpf(form.cliente_cpf),
             celular: form.cliente_telefone || '',
           });
           clienteId = clienteCriado.id;
@@ -324,7 +330,7 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
         } catch { /* silencioso: salva a proposta mesmo sem criar o cliente */ }
       }
 
-      const dados = { ...form, cliente_id: clienteId, cliente_nome: clienteNome };
+      const dados = { ...form, cliente_id: clienteId, cliente_nome: clienteNome, cliente_cpf: formatarCpf(form.cliente_cpf) };
       ['cliente_renda', 'valor_veiculo', 'valor_entrada', 'valor_financiado', 'prazo_meses',
         'valor_parcela', 'taxa_juros', 'tarifa_cadastral', 'custos_operacionais', 'valor_comissao', 'percentual_comissao']
         .forEach(k => { if (dados[k] !== '' && dados[k] !== undefined) dados[k] = parseFloat(String(dados[k]).replace(',', '.')) || 0; });
