@@ -304,7 +304,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
         <input type="hidden" {...register('cliente_nome')} />
         <input type="hidden" {...register('cliente_cpf')} />
         
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit((data) => onSubmit({ ...data, observacao_lance: watch('observacao_lance') || '' }))} className="space-y-4">
           {/* Card Empresa (apenas para Master) */}
           {isMaster && (
             <div className="border rounded-lg p-4 bg-white shadow-sm">
@@ -670,7 +670,8 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                 <Label htmlFor="observacao_lance">Observação de Lance</Label>
                 <Textarea
                   id="observacao_lance"
-                  {...register('observacao_lance')}
+                  value={watch('observacao_lance') || ''}
+                  onChange={(e) => setValue('observacao_lance', e.target.value, { shouldDirty: true })}
                   placeholder="Ex.: Cliente deseja ofertar lance fixo de 30%, fixo de 50%, lance livre ou outra orientação."
                   rows={3}
                 />
