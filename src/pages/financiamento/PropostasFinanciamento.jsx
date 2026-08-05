@@ -22,6 +22,11 @@ const STATUS_LABELS = {
 const TIPO_LABELS = { carro: 'Carro', moto: 'Moto', caminhao: 'Caminhão' };
 
 const fmt = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const formatarCpf = valor => {
+  const digitos = String(valor || '').replace(/\D/g, '');
+  if (digitos.length !== 11) return '';
+  return digitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+};
 
 async function criarReceitaTarifa(dados, empresaId) {
   if (!dados.tarifa_cadastral || parseFloat(dados.tarifa_cadastral) <= 0) return null;
@@ -262,7 +267,7 @@ export default function PropostasFinanciamento({ user }) {
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-700">{p.cliente_nome}</p>
-                    <p className="text-xs text-slate-400">{p.cliente_cpf}</p>
+                    {formatarCpf(p.cliente_cpf) && <p className="text-xs text-slate-400">{formatarCpf(p.cliente_cpf)}</p>}
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-slate-700">{p.veiculo_marca} {p.veiculo_modelo}</p>
