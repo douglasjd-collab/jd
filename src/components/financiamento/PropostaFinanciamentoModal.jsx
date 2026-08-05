@@ -20,6 +20,25 @@ const STATUS_OPTIONS = [
   { value: 'cancelado', label: 'Cancelado' },
 ];
 
+const percentualPorRetorno = (retorno, tipoVeiculo) => {
+  if (retorno === 'retorno_3') return 2.622287;
+  if (retorno === 'parceiro') {
+    if (tipoVeiculo === 'moto') return 1.5;
+    if (tipoVeiculo === 'carro') return 2.2;
+  }
+  return null;
+};
+
+const calcularComissaoRetorno = (retorno, tipoVeiculo, valorFinanciado) => {
+  const percentual = percentualPorRetorno(retorno, tipoVeiculo);
+  if (percentual === null) return {};
+  const valor = parseFloat(String(valorFinanciado).replace(',', '.')) || 0;
+  return {
+    percentual_comissao: percentual,
+    valor_comissao: valor > 0 ? (valor * percentual) / 100 : '',
+  };
+};
+
 const EMPTY = {
 cliente_id: '', cliente_nome: '', cliente_cpf: '', cliente_telefone: '', cliente_renda: '', cliente_profissao: '',
 tipo_veiculo: 'carro', veiculo_marca: '', veiculo_modelo: '', veiculo_ano: '', veiculo_placa: '',
@@ -30,6 +49,7 @@ tarifa_cadastral: '', tarifa_cadastral_status: 'aguardando_pagamento',
 custos_operacionais: '',
 valor_comissao: '',
 percentual_comissao: '',
+retorno_lojista: 'manual',
 comissao_status: 'prevista', comissao_data_prevista: '', comissao_data_recebimento: '',
 vendedor_id: '', vendedor_nome: '',
 empresa_id: '', empresa_nome: '',
@@ -541,7 +561,13 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
             <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">🚗 Dados do Veículo</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <F label="Tipo de veículo *">
-                <Select value={form.tipo_veiculo} onValueChange={v => set('tipo_veiculo', v)}>
+                <Select value={form.tipo_veiculo} onValueChange={v => {
+                  setForm(f => ({
+                    ...f,
+                    tipo_veiculo: v,
+                    ...(f.retorno_lojista === 'parceiro' ? calcularComissaoRetorno('parceiro', v, f.valor_financiado) : {}),
+                  }));
+                }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="carro">Carro</SelectItem>
@@ -584,9 +610,15 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
               <F label="Valor financiado (R$)">
                 <MoneyInput value={form.valor_financiado} onChange={v => {
                   const valFinanciado = parseFloat(v) || 0;
-                  const pct = parseFloat(form.percentual_comissao) || 0;
+                  const percentualAutomatico = percentualPorRetorno(form.retorno_lojista, form.tipo_veiculo);
+                  const pct = percentualAutomatico ?? (parseFloat(form.percentual_comissao) || 0);
                   const valComissao = pct > 0 && valFinanciado > 0 ? (pct / 100) * valFinanciado : form.valor_comissao;
-                  setForm(f => ({ ...f, valor_financiado: v, valor_comissao: valComissao || '' }));
+                  setForm(f => ({
+                    ...f,
+                    valor_financiado: v,
+                    percentual_comissao: percentualAutomatico ?? f.percentual_comissao,
+                    valor_comissao: valComissao || '',
+                  }));
                 }} />
               </F>
               <F label="Banco">
@@ -644,9 +676,33 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
                 <MoneyInput value={form.custos_operacionais} onChange={v => set('custos_operacionais', v)} />
                 <p className="text-xs text-slate-400">Gera Despesa automaticamente</p>
               </F>
+              <F label="Retorno do lojista">
+                <Select value={form.retorno_lojista || 'manual'} onValueChange={v => {
+                  setForm(f => ({
+                    ...f,
+                    retorno_lojista: v,
+                    ...calcularComissaoRetorno(v, f.tipo_veiculo, f.valor_financiado),
+                  }));
+                }}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="manual">Sem retorno / Comissão manual</SelectItem>
+                    <SelectItem value="retorno_3">Retorno 3 — Comissão 2,622287%</SelectItem>
+                    <SelectItem value="retorno_2" disabled>Retorno 2 — Em breve</SelectItem>
+                    <SelectItem value="retorno_1" disabled>Retorno 1 — Em breve</SelectItem>
+                    <SelectItem value="parceiro">Parceiro — Moto 1,5% / Carro 2,2%</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-slate-400">
+                  {form.retorno_lojista === 'parceiro'
+                    ? (form.tipo_veiculo === 'moto' ? 'Aplicado automaticamente: 1,5%' : form.tipo_veiculo === 'carro' ? 'Aplicado automaticamente: 2,2%' : 'Disponível apenas para moto ou carro')
+                    : form.retorno_lojista === 'retorno_3' ? 'Aplicado automaticamente: 2,622287%' : 'Informe a comissão manualmente'}
+                </p>
+              </F>
               <F label="Valor da Comissão (R$)">
                 <MoneyInput
                   value={form.valor_comissao}
+                  disabled={form.retorno_lojista && form.retorno_lojista !== 'manual'}
                   onChange={v => {
                     const valComissao = v || 0;
                     const valFinanciado = parseFloat(String(form.valor_financiado).replace(',', '.')) || 0;
@@ -659,7 +715,8 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
               <F label="Percentual de Comissão (%)">
                 <div className="relative">
                   <Input
-                    type="number" step="0.0001"
+                    type="number" step="0.000001"
+                    disabled={form.retorno_lojista && form.retorno_lojista !== 'manual'}
                     value={form.percentual_comissao}
                     onChange={e => {
                       const pct = e.target.value;
