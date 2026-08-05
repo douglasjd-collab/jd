@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -45,7 +46,8 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
       vendedor_id: oportunidade?.vendedor_id || currentUser?.id || '',
       gerente_id: currentUser?.gerente_id || '',
       data_venda: format(new Date(), 'yyyy-MM-dd'),
-      status: 'ativa'
+      status: 'ativa',
+      observacao_lance: ''
     }
   });
 
@@ -169,7 +171,8 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
         vendedor_id: oportunidade?.vendedor_id || currentUser?.id || '',
         gerente_id: currentUser?.gerente_id || '',
         data_venda: format(new Date(), 'yyyy-MM-dd'),
-        status: 'ativa'
+        status: 'ativa',
+        observacao_lance: ''
       });
       
       // Se oportunidade tem cliente, carregar
@@ -661,6 +664,17 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                     <SelectItem value="contemplada">Contemplada</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="col-span-2">
+                <Label htmlFor="observacao_lance">Observação de Lance</Label>
+                <Textarea
+                  id="observacao_lance"
+                  {...register('observacao_lance')}
+                  placeholder="Ex.: Cliente deseja ofertar lance fixo de 30%, fixo de 50%, lance livre ou outra orientação."
+                  rows={3}
+                />
+                <p className="text-xs text-slate-500 mt-1">Esta orientação ficará fixa e somente poderá ser alterada ao editar a proposta.</p>
               </div>
             </div>
           </div>
