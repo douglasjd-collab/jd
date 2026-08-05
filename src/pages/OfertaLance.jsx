@@ -53,15 +53,6 @@ export default function OfertaLance() {
   const [comprovante, setComprovante] = useState(null); // comprovante gerado após ofertar
   const queryClient = useQueryClient();
 
-  // Auto-preencher observação ao selecionar lance fixo 30% ou 50%
-  useEffect(() => {
-    if (tipoLance === 'fixo_30') {
-      setObservacao('Lance embutido de 30% ofertado, suas chances de contemplação aumentaram.');
-    } else if (tipoLance === 'fixo_50') {
-      setObservacao('Lance embutido de 50% ofertado, suas chances de contemplação aumentaram.');
-    }
-  }, [tipoLance]);
-
   // Texto do comprovante para envio via WhatsApp
   const gerarTextoComprovante = (c) => {
     const linhas = [
@@ -402,7 +393,7 @@ export default function OfertaLance() {
     setSelectedVenda(venda);
     setPercentual('');
     setTipoLance('livre');
-    setObservacao('');
+    setObservacao(venda.observacao_lance || '');
     setFormOpen(true);
   };
 
@@ -771,8 +762,9 @@ export default function OfertaLance() {
               </div>
 
               <div>
-                <Label htmlFor="edit-obs">Observação</Label>
-                <Textarea id="edit-obs" value={editObservacao} onChange={(e) => setEditObservacao(e.target.value)} rows={2} />
+                <Label htmlFor="edit-obs">Observação da Proposta</Label>
+                <Textarea id="edit-obs" value={editObservacao} readOnly rows={2} className="bg-slate-100 cursor-not-allowed" placeholder="Sem orientação de lance cadastrada na proposta" />
+                <p className="text-xs text-slate-500 mt-1">Para alterar, edite a proposta de consórcio.</p>
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
@@ -906,14 +898,16 @@ export default function OfertaLance() {
               </div>
 
               <div>
-                <Label htmlFor="observacao">Observação</Label>
+                <Label htmlFor="observacao">Observação da Proposta</Label>
                 <Textarea
                   id="observacao"
                   value={observacao}
-                  onChange={(e) => setObservacao(e.target.value)}
-                  placeholder="Informações adicionais..."
+                  readOnly
+                  placeholder="Sem orientação de lance cadastrada na proposta"
                   rows={3}
+                  className="bg-slate-100 cursor-not-allowed"
                 />
+                <p className="text-xs text-slate-500 mt-1">Esta informação é fixa. Para alterar, edite a proposta de consórcio.</p>
               </div>
 
               {percentual && (
