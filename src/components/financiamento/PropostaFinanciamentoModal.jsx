@@ -330,7 +330,16 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
         } catch { /* silencioso: salva a proposta mesmo sem criar o cliente */ }
       }
 
-      const dados = { ...form, cliente_id: clienteId, cliente_nome: clienteNome, cliente_cpf: formatarCpf(form.cliente_cpf) };
+      const dados = {
+        ...form,
+        cliente_id: clienteId,
+        cliente_nome: clienteNome,
+        cliente_cpf: formatarCpf(form.cliente_cpf),
+        vendedor_id: form.vendedor_id || proposta?.vendedor_id || '',
+        vendedor_nome: form.vendedor_nome || proposta?.vendedor_nome || '',
+        filial_id: form.filial_id || proposta?.filial_id || '',
+        filial_nome: form.filial_nome || proposta?.filial_nome || '',
+      };
       ['cliente_renda', 'valor_veiculo', 'valor_entrada', 'valor_financiado', 'prazo_meses',
         'valor_parcela', 'taxa_juros', 'tarifa_cadastral', 'custos_operacionais', 'valor_comissao', 'percentual_comissao']
         .forEach(k => { if (dados[k] !== '' && dados[k] !== undefined) dados[k] = parseFloat(String(dados[k]).replace(',', '.')) || 0; });
@@ -341,6 +350,13 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
       setSaving(false);
     }
   };
+
+  const vendedorIdExibido = form.vendedor_id || proposta?.vendedor_id || '';
+  const vendedorNomeExibido = form.vendedor_nome || proposta?.vendedor_nome || '';
+  const filialIdExibida = form.filial_id || proposta?.filial_id || '';
+  const filialNomeExibida = form.filial_nome || proposta?.filial_nome || '';
+  const vendedorForaDaLista = vendedorIdExibido && !vendedores.some(v => v.id === vendedorIdExibido);
+  const filialForaDaLista = filialIdExibida && !filiais.some(f => f.id === filialIdExibida);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -482,35 +498,37 @@ export default function PropostaFinanciamentoModal({ open, onOpenChange, propost
             <h3 className="text-sm font-semibold text-slate-700 mb-3 pb-1 border-b">🏢 Responsáveis</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <F label="Vendedor responsável">
-                <Select value={form.vendedor_id || '__none__'} onValueChange={v => {
+                <Select value={vendedorIdExibido || '__none__'} onValueChange={v => {
                   if (v === '__none__') { set('vendedor_id', ''); set('vendedor_nome', ''); return; }
                   const vend = vendedores.find(x => x.id === v);
                   set('vendedor_id', v); set('vendedor_nome', vend?.nome || '');
                 }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecionar vendedor">
-                      {form.vendedor_id ? vendedores.find(v => v.id === form.vendedor_id)?.nome || form.vendedor_nome : 'Nenhum'}
+                      {vendedorIdExibido ? vendedores.find(v => v.id === vendedorIdExibido)?.nome || vendedorNomeExibido : 'Nenhum'}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Nenhum</SelectItem>
+                    {vendedorForaDaLista && <SelectItem value={vendedorIdExibido}>{vendedorNomeExibido || 'Vendedor já informado'}</SelectItem>}
                     {vendedores.map(v => <SelectItem key={v.id} value={v.id}>{v.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </F>
               <F label="Filial">
-                <Select value={form.filial_id || '__none__'} onValueChange={v => {
+                <Select value={filialIdExibida || '__none__'} onValueChange={v => {
                   if (v === '__none__') { set('filial_id', ''); set('filial_nome', ''); return; }
                   const fil = filiais.find(x => x.id === v);
                   set('filial_id', v); set('filial_nome', fil?.nome || '');
                 }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecionar filial">
-                      {form.filial_id ? filiais.find(f => f.id === form.filial_id)?.nome || form.filial_nome : 'Nenhuma'}
+                      {filialIdExibida ? filiais.find(f => f.id === filialIdExibida)?.nome || filialNomeExibida : 'Nenhuma'}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">Nenhuma</SelectItem>
+                    {filialForaDaLista && <SelectItem value={filialIdExibida}>{filialNomeExibida || 'Filial já informada'}</SelectItem>}
                     {filiais.map(f => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
