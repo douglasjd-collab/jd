@@ -663,8 +663,8 @@ export default function Dashboard() {
               <p className="text-sm font-semibold text-slate-700 mb-2">📅 Período de Produção (Empréstimos)</p>
               <div className="flex flex-wrap gap-2 items-center">
                 {PERIODOS_RAPIDOS.map(({ label, getRange }) => (
-                  <button key={label} onClick={() => setEmpPeriodo(getRange())}
-                    className={`px-3 py-1.5 text-xs rounded-lg font-medium border transition-colors ${JSON.stringify(empPeriodo) === JSON.stringify(getRange()) ? 'bg-[#23BE84] text-white border-[#23BE84]' : 'bg-white text-slate-600 border-slate-200 hover:border-[#23BE84]'}`}>
+                  <button key={label} onClick={() => aplicarRapido(label, getRange())}
+                    className={`px-3 py-1.5 text-xs rounded-lg font-medium border transition-colors ${rapidoAtivo === label ? 'bg-[#23BE84] text-white border-[#23BE84]' : 'bg-white text-slate-600 border-slate-200 hover:border-[#23BE84]'}`}>
                     {label}
                   </button>
                 ))}
