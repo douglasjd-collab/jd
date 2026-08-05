@@ -100,6 +100,27 @@
       "type": "number",
       "description": "Taxa de juros (% ao m\u00eas)"
     },
+    "cet_anual": {
+      "type": "number",
+      "description": "Custo Efetivo Total (% ao ano)"
+    },
+    "numero_proposta_banco": {
+      "type": "string",
+      "description": "N\u00famero da proposta informado pelo banco"
+    },
+    "validade_aprovacao": {
+      "type": "string",
+      "format": "date",
+      "description": "Data limite de validade da aprova\u00e7\u00e3o"
+    },
+    "pendencias_documentais": {
+      "type": "string",
+      "description": "Documentos ou provid\u00eancias pendentes"
+    },
+    "motivo_recusa_cancelamento": {
+      "type": "string",
+      "description": "Motivo da recusa ou do cancelamento"
+    },
     "tarifa_cadastral": {
       "type": "number",
       "default": 0,
@@ -110,6 +131,7 @@
       "enum": [
         "aguardando_pagamento",
         "recebida",
+        "isenta",
         "cancelada"
       ],
       "default": "aguardando_pagamento",
