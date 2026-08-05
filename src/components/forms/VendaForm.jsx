@@ -84,7 +84,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
     },
   });
 
-  // React Query - Vendedores
+  // React Query - Vendedores e parceiros
   const { data: vendedores = [] } = useQuery({
     queryKey: ['vendedores-venda-form', empresaId],
     enabled: open,
@@ -93,16 +93,16 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
         const result = await base44.entities.Colaborador.filter({ status: 'ativo' });
         
         if (isMaster) {
-          // Master vê todos os vendedores
-          return result.filter(u => ['vendedor', 'gerente', 'admin'].includes(u.perfil));
+          // Master vê todos os responsáveis comerciais
+          return result.filter(u => ['vendedor', 'parceiro', 'gerente', 'admin'].includes(u.perfil));
         } else if (empresaId) {
           // Filtrar por empresa
           return result.filter(u => 
-            ['vendedor', 'gerente', 'admin'].includes(u.perfil) &&
+            ['vendedor', 'parceiro', 'gerente', 'admin'].includes(u.perfil) &&
             u.empresa_id === empresaId
           );
         }
-        return result.filter(u => ['vendedor', 'gerente', 'admin'].includes(u.perfil));
+        return result.filter(u => ['vendedor', 'parceiro', 'gerente', 'admin'].includes(u.perfil));
       } catch (err) {
         console.error('Erro ao carregar vendedores:', err);
         return [];
@@ -596,7 +596,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
             <h3 className="font-semibold text-slate-900 mb-3">Informações Adicionais</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Vendedor *</Label>
+                <Label>Vendedor / Parceiro *</Label>
                 <Select
                   value={watch('vendedor_id') || ''}
                   onValueChange={(value) => {
@@ -615,7 +615,7 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione o vendedor" />
+                    <SelectValue placeholder="Selecione o vendedor ou parceiro" />
                   </SelectTrigger>
                   <SelectContent>
                     {vendedores.length > 0 ? (
@@ -626,12 +626,12 @@ export default function VendaForm({ open, onOpenChange, venda, onSubmit, isLoadi
                       ))
                     ) : (
                       <div className="p-4 text-center text-sm text-slate-500">
-                        Carregando vendedores...
+                        Carregando vendedores e parceiros...
                       </div>
                     )}
                   </SelectContent>
                 </Select>
-                {errors.vendedor_id && <p className="text-sm text-red-500 mt-1">Vendedor é obrigatório</p>}
+                {errors.vendedor_id && <p className="text-sm text-red-500 mt-1">Vendedor ou parceiro é obrigatório</p>}
               </div>
               
               <div>
