@@ -231,6 +231,9 @@ export default function FinanceiroFinanciamento({ user }) {
       await base44.entities.FinanciamentoVeiculo.update(f.id, {
         status: 'pago_pelo_banco',
         data_pagamento: formReceber.data_recebimento,
+        comissao_status: 'recebida',
+        comissao_data_recebimento: formReceber.data_recebimento,
+        valor_comissao: valorComissao,
         comissao_financiamento_id: comissaoExistente?.id || '',
       });
 
