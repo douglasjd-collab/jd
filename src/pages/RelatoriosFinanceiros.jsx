@@ -47,6 +47,25 @@ export default function RelatoriosFinanceiros() {
     enabled: !!user,
   });
 
+  // Comissões de financiamento registradas diretamente na proposta
+  const { data: propostasFinanciamento = [] } = useQuery({
+    queryKey: ['propostas-financiamento-financeiro', user?.empresa_id],
+    queryFn: async () => {
+      const filtro = user?.perfil === 'super_admin' || user?.perfil === 'master' ? {} : { empresa_id: user?.empresa_id };
+      return await base44.entities.FinanciamentoVeiculo.filter(filtro);
+    },
+    enabled: !!user,
+  });
+
+  const { data: comissoesFinanciamento = [] } = useQuery({
+    queryKey: ['comissoes-financiamento-financeiro', user?.empresa_id],
+    queryFn: async () => {
+      const filtro = user?.perfil === 'super_admin' || user?.perfil === 'master' ? {} : { empresa_id: user?.empresa_id };
+      return await base44.entities.ComissaoFinanciamento.filter(filtro);
+    },
+    enabled: !!user,
+  });
+
   // Buscar Receitas Recebidas (para somar com comissões recebidas)
   const { data: receitasRecebidas = [] } = useQuery({
     queryKey: ['receitas-recebidas-relatorio', user?.empresa_id],
@@ -135,7 +154,18 @@ export default function RelatoriosFinanceiros() {
     return m.isValid() ? m.format('YYYY-MM-DD') : null;
   };
 
-  // Combinar RecebimentoComissao + Receitas (mesma lógica que ComissoesRecebidas)
+  const financiamentosJaContabilizados = new Set(
+    comissoesFinanciamento
+      .filter(c => c.status === 'recebida' || c.receita_id)
+      .map(c => c.financiamento_id)
+  );
+  const comissoesFinanciamentoDiretas = propostasFinanciamento.filter(f =>
+    f.comissao_status === 'recebida' &&
+    f.comissao_data_recebimento &&
+    !financiamentosJaContabilizados.has(f.id)
+  );
+
+  // Combinar todas as origens, sem duplicar comissões que já geraram Receita
   const todosRecebimentos = [
     ...recebimentosComissao.map(r => ({ 
       ...r, 
@@ -148,6 +178,12 @@ export default function RelatoriosFinanceiros() {
       tipo: 'receita',
       data_recebimento: r.data_recebimento || r.data,
       valor_recebido: r.valor 
+    })),
+    ...comissoesFinanciamentoDiretas.map(f => ({
+      ...f,
+      tipo: 'comissao_financiamento',
+      data_recebimento: f.comissao_data_recebimento,
+      valor_recebido: f.valor_comissao,
     }))
   ];
 
