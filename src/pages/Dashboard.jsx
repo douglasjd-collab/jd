@@ -677,8 +677,8 @@ export default function Dashboard() {
             <DashboardEmprestimos
               propostasEmprestimo={propostasEmprestimo}
               statusPropostaList={statusPropostaList}
-              filtroInicio={empPeriodo.inicio}
-              filtroFim={empPeriodo.fim}
+              filtroInicio={periodo.inicio}
+              filtroFim={periodo.fim}
               isVendedor={isVendedor}
               user={user}
               formatCurrency={BRL}
