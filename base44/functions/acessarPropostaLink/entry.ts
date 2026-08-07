@@ -14,6 +14,31 @@ function getIp(req) {
   );
 }
 
+async function registrarAcessoNoHistorico(base44, simulacao, link, numeroAcesso, dataAcesso) {
+  const oportunidadeId = simulacao?.oportunidade_id;
+  if (!oportunidadeId) return;
+  try {
+    const oportunidade = await base44.asServiceRole.entities.Oportunidade.get(oportunidadeId);
+    if (!oportunidade) return;
+    const primeiro = numeroAcesso === 1;
+    await base44.asServiceRole.entities.MovimentacaoFunil.create({
+      oportunidade_id: oportunidadeId,
+      etapa_origem_id: oportunidade.etapa_id || '',
+      etapa_origem_nome: oportunidade.etapa_nome || '',
+      etapa_destino_id: oportunidade.etapa_id || 'simulacao',
+      etapa_destino_nome: oportunidade.etapa_nome || 'Simulação',
+      usuario_id: link.vendedor_id || 'sistema',
+      usuario_nome: 'Sistema',
+      observacao: '[ACESSO_SIMULACAO] ' + (primeiro
+        ? 'Cliente abriu o link da simulação pela primeira vez'
+        : 'Cliente abriu novamente o link da simulação — ' + numeroAcesso + 'º acesso') +
+        ' | ' + dataAcesso
+    });
+  } catch (e) {
+    console.warn('Erro ao registrar acesso no histórico do funil:', e.message);
+  }
+}
+
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -38,6 +63,12 @@ export default async function(req) {
       simulacao = {};
     }
 
+    const numeroAcesso = link.aberta ? (link.total_aberturas || 1) + 1 : 1;
+    const dataAcesso = new Date().toISOString();
+
+    // Cada abertura é registrada no histórico da oportunidade, inclusive reaberturas.
+    await registrarAcessoNoHistorico(base44, simulacao, link, numeroAcesso, dataAcesso);
+
     // Primeira abertura: marcar e notificar vendedor
     if (!link.aberta) {
       const ip = getIp(req);
@@ -45,7 +76,7 @@ export default async function(req) {
       try {
         await base44.asServiceRole.entities.PropostaLinkSimulacao.update(link.id, {
           aberta: true,
-          data_abertura: new Date().toISOString(),
+          data_abertura: dataAcesso,
           abertura_ip: ip,
           abertura_user_agent: ua,
           total_aberturas: 1,
@@ -73,7 +104,7 @@ export default async function(req) {
       // Aberturas subsequentes: apenas incrementa contador (best-effort)
       try {
         await base44.asServiceRole.entities.PropostaLinkSimulacao.update(link.id, {
-          total_aberturas: (link.total_aberturas || 1) + 1,
+          total_aberturas: numeroAcesso,
         });
       } catch {}
     }
