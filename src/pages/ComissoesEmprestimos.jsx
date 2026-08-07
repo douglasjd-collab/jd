@@ -171,7 +171,7 @@ export default function ComissoesEmprestimos() {
     if (comissaoBancoFilter === 'nao_recebida' && p.comissao_banco_recebida) return false;
 
     // Filtro: status da comissão ao vendedor
-    if (statusFilter === 'a_pagar' && p.comissao_vendedor_paga) return false;
+    if (statusFilter === 'a_pagar' && (p.comissao_vendedor_paga || p.comissao_vendedor_agendada)) return false;
     if (statusFilter === 'paga' && !p.comissao_vendedor_paga) return false;
 
     // Filtro: mês (usa data_liberacao ou data_venda)
@@ -684,7 +684,7 @@ export default function ComissoesEmprestimos() {
     setIsPaying(true);
     try {
       const ids = Array.from(modalSelecionados);
-      const paraAgendar = propostas.filter(p => ids.includes(p.id) && p.comissao_banco_recebida && !p.comissao_vendedor_paga);
+      const paraAgendar = propostas.filter(p => ids.includes(p.id) && p.comissao_banco_recebida && !p.comissao_vendedor_paga && !p.comissao_vendedor_agendada);
       if (paraAgendar.length === 0) { toast.error('Nenhum contrato válido para agendar'); return; }
 
       const loteCode = `EMPC${String(Date.now()).slice(-6)}`;
@@ -698,7 +698,7 @@ export default function ComissoesEmprestimos() {
       const acrescimoVal = parseFloat(acrescimoValor) || 0;
       const valorTotal = Math.max(0, valorTotalBruto - totalAdiantamentosDesc + acrescimoVal);
 
-      await base44.entities.LotePagamentoComissaoEmprestimo.create({
+      const lote = await base44.entities.LotePagamentoComissaoEmprestimo.create({
         empresa_id: vendedorModal.propostas[0]?.empresa_id || user?.empresa_id,
         vendedor_id: vendedorModal.vendedor_id,
         vendedor_nome: vendedorModal.vendedor_nome,
@@ -719,6 +719,42 @@ export default function ComissoesEmprestimos() {
         pix_titular_documento: pixVendedor?.titularDocumento || null,
         pix_instituicao: pixVendedor?.instituicao || null,
       });
+
+      // Congela os clientes/valores no lote e reserva as propostas.
+      // Assim o relatório agendado fica completo e os itens saem de "A pagar".
+      for (const { p, percVendedor, valVendedor } of itensComValores) {
+        await base44.entities.ComissaoEmprestimoPaga.create({
+          empresa_id: p.empresa_id,
+          lote_pagamento_id: lote.id,
+          lote_codigo: loteCode,
+          proposta_id: p.id,
+          vendedor_id: p.vendedor_id,
+          vendedor_nome: p.vendedor_nome,
+          cliente_nome: p.cliente_nome,
+          cliente_cpf: p.cliente_cpf || null,
+          contrato: p.contrato,
+          banco: p.administradora_nome,
+          emprestimo_tipo: p.emprestimo_tipo || null,
+          data_liberacao: p.emprestimo_data_liberacao || p.data_venda,
+          valor_credito: p.valor_credito || 0,
+          valor_liquido: p.valor_liquido || null,
+          valor_parcela: p.emprestimo_valor_parcela || null,
+          percentual_empresa_original: getPercentualEmpresa(p),
+          valor_comissao_empresa_original: p.valor_comissao || 0,
+          percentual_vendedor_pago: percVendedor,
+          valor_vendedor_pago: valVendedor,
+          percentual_vendedor_editado_manual: percentuaisCustom[p.id] !== undefined,
+          data_pagamento: dataAgendamento,
+          forma_pagamento: formaPagamento,
+          observacao: (observacao ? observacao + ' ' : '') + '[Agendado]',
+        });
+        await base44.entities.Proposta.update(p.id, {
+          comissao_vendedor_agendada: true,
+          comissao_vendedor_lote_agendado_id: lote.id,
+          comissao_vendedor_lote_agendado_codigo: loteCode,
+          comissao_vendedor_data_agendamento: dataAgendamento,
+        });
+      }
 
       queryClient.invalidateQueries(['propostas-emp-cons-comissoes']);
       toast.success(`Pagamento agendado para ${moment(dataAgendamento).format('DD/MM/YYYY')}! Lote ${loteCode}.`);
@@ -747,7 +783,7 @@ export default function ComissoesEmprestimos() {
     .filter(Boolean)
     .reduce((acc, p) => acc + getValorAPagar(p), 0);
 
-  const aptos = propostasModal.filter(p => p.comissao_banco_recebida && !p.comissao_vendedor_paga);
+  const aptos = propostasModal.filter(p => p.comissao_banco_recebida && !p.comissao_vendedor_paga && !p.comissao_vendedor_agendada);
   const todosSelecionados = aptos.length > 0 && aptos.every(p => modalSelecionados.has(p.id));
 
   const toggleModalItem = (id) => {
