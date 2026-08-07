@@ -547,6 +547,18 @@ export default function Saques() {
       };
       if (tipo === 'emp') {
         await base44.entities.LotePagamentoComissaoEmprestimo.update(id, payload);
+        const itensLote = await base44.entities.ComissaoEmprestimoPaga.filter({ lote_pagamento_id: id }, null, 500);
+        for (const item of itensLote) {
+          if (!item.proposta_id) continue;
+          await base44.entities.Proposta.update(item.proposta_id, {
+            comissao_vendedor_paga: true,
+            comissao_vendedor_agendada: false,
+            comissao_vendedor_data_pagamento: dataQuitacao,
+            comissao_vendedor_forma_pagamento: item.forma_pagamento || null,
+            percentual_comissao_vendedor: item.percentual_vendedor_pago || 0,
+            valor_comissao_vendedor_pago: item.valor_vendedor_pago || 0,
+          });
+        }
       } else {
         await base44.entities.PagamentoComissaoLote.update(id, payload);
       }
