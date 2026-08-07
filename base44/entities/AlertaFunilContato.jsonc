@@ -47,6 +47,23 @@
       "type": "number",
       "default": 0
     },
+    "tipo_alerta": {
+      "type": "string",
+      "enum": [
+        "proximo_contato",
+        "sem_data_fechamento"
+      ],
+      "default": "proximo_contato",
+      "description": "Origem do alerta"
+    },
+    "whatsapp_enviado": {
+      "type": "boolean",
+      "default": false
+    },
+    "whatsapp_enviado_em": {
+      "type": "string",
+      "format": "date-time"
+    },
     "lido": {
       "type": "boolean",
       "default": false
