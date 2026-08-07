@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   ArrowRightLeft, MessageSquare, Plus, Paperclip, CheckSquare,
-  User, DollarSign, Tag, Clock
+  User, DollarSign, Tag, Clock, Eye
 } from 'lucide-react';
 
 function getIconeEvento(tipo) {
@@ -15,6 +15,7 @@ function getIconeEvento(tipo) {
     checklist: { icon: CheckSquare, bg: 'bg-orange-100', color: 'text-orange-600' },
     responsavel: { icon: User, bg: 'bg-pink-100', color: 'text-pink-600' },
     valor: { icon: DollarSign, bg: 'bg-emerald-100', color: 'text-emerald-600' },
+    simulacao: { icon: Eye, bg: 'bg-cyan-100', color: 'text-cyan-700' },
   };
   return mapa[tipo] || mapa.comentario;
 }
@@ -31,14 +32,18 @@ export default function OportunidadeAbaHistorico({ oportunidade, movimentacoes =
       created_date: oportunidade.created_date,
     },
     // Movimentações de etapa
-    ...movimentacoes.map(m => ({
-      id: `mov_${m.id}`,
-      tipo: 'movimentacao',
-      descricao: `Moveu de "${m.etapa_origem_nome || 'Início'}" para "${m.etapa_destino_nome}"`,
-      usuario_nome: m.usuario_nome,
-      observacao: m.observacao,
-      created_date: m.created_date,
-    })),
+    ...movimentacoes.map(m => {
+      const acessoSimulacao = (m.observacao || '').startsWith('[ACESSO_SIMULACAO]');
+      const partes = acessoSimulacao ? m.observacao.replace('[ACESSO_SIMULACAO]', '').split(' | ') : [];
+      return {
+        id: `mov_${m.id}`,
+        tipo: acessoSimulacao ? 'simulacao' : 'movimentacao',
+        descricao: acessoSimulacao ? partes[0].trim() : `Moveu de "${m.etapa_origem_nome || 'Início'}" para "${m.etapa_destino_nome}"`,
+        usuario_nome: acessoSimulacao ? 'Acesso pelo link enviado' : m.usuario_nome,
+        observacao: acessoSimulacao ? null : m.observacao,
+        created_date: m.created_date,
+      };
+    }),
     // Comentários
     ...comentarios.map(c => {
       const isAnexo = /\[([^\]]+)\]\(https?:\/\/[^)]+\)/.test(c.mensagem || '');
