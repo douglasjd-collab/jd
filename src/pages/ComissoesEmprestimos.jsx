@@ -1590,12 +1590,13 @@ export default function ComissoesEmprestimos() {
           {/* Anexar comprovante bancário e/ou informar identificador da transação PIX */}
           <div className="border-t pt-3 space-y-2">
             <div>
-              <Label className="text-xs text-slate-500 font-semibold">Comprovante bancário (PDF, JPG ou PNG) — opcional</Label>
+              <Label className="text-xs text-slate-700 font-semibold">Anexar comprovante bancário (opcional)</Label>
+              <p className="text-[11px] text-slate-500 mt-0.5">Formatos aceitos: PDF, JPG ou PNG.</p>
               <input
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
                 onChange={e => setComprovanteFile(e.target.files?.[0] || null)}
-                className="text-xs mt-1 w-full file:mr-2 file:px-2 file:py-1 file:rounded file:border-0 file:bg-slate-100 file:text-slate-700 file:cursor-pointer"
+                className="text-xs mt-2 w-full rounded-md border border-blue-300 bg-blue-50 p-1.5 text-slate-700 file:mr-3 file:px-3 file:py-1.5 file:rounded-md file:border-0 file:bg-blue-600 file:text-white file:font-semibold file:cursor-pointer hover:file:bg-blue-700"
               />
               {comprovanteFile && (
                 <p className="text-xs text-emerald-700 mt-1 flex items-center gap-1">
@@ -1615,8 +1616,19 @@ export default function ComissoesEmprestimos() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 flex flex-col sm:flex-row">
             <Button variant="outline" onClick={() => setConfirmarModal(false)} disabled={isPaying}>Voltar</Button>
+            <Button
+              variant="outline"
+              disabled={isPaying}
+              onClick={() => {
+                setConfirmarModal(false);
+                setDataAgendamento(moment().format('YYYY-MM-DD'));
+                setAgendarModal(true);
+              }}
+              className="border-amber-500 text-amber-700 hover:bg-amber-50">
+              <Calendar className="w-4 h-4 mr-2" />Agendar
+            </Button>
             <Button
               disabled={isPaying}
               onClick={handleConfirmarPagamento}
@@ -1639,7 +1651,7 @@ export default function ComissoesEmprestimos() {
               <Calendar className="w-5 h-5 text-amber-600" />
               Agendar Pagamento
             </DialogTitle>
-            <p className="text-xs text-slate-500">Escolha a data do pagamento futuro. O lote será criado como "programado" e as comissões permanecerão a pagar até a quitação.</p>
+            <p className="text-xs text-slate-500">Escolha a data do pagamento futuro. O lote será criado como "programado" e os clientes sairão de "Comissões a pagar".</p>
           </DialogHeader>
 
           <div className="space-y-3">
