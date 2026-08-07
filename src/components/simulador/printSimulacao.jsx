@@ -203,9 +203,7 @@ export function imprimirSimulacao(simulacao) {
         </div>
       </div>
       <div class="header-right">
-        <p>${esc(dataStr)}</p>
         <p>Vendedor: <strong>${esc(simulacao.usuario_nome || '')}</strong></p>
-        <p>Validade: 30 dias</p>
       </div>
     </div>
     <div class="header-sub">
