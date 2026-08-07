@@ -388,6 +388,23 @@ export default function BatePapo() {
     await dapiCall.iniciar('operadora', null, conversaSelecionada.cliente_telefone);
   };
 
+  // Ligar via WhatsApp para uma conversa específica (usado nas ações mobile,
+  // onde a conversa alvo pode não ser a conversaSelecionada).
+  const ligarParaContato = async (conversa) => {
+    if (!conversa?.cliente_telefone) return;
+    let connectionId = conversa.connection_id;
+    if (!connectionId) {
+      try {
+        const conexoes = await base44.entities.WhatsappConnection.filter(
+          { empresa_id: empresaId, provider_type: 'dapi', is_active: true }, '-created_date', 1
+        );
+        connectionId = conexoes?.[0]?.id;
+      } catch (_) {}
+    }
+    if (!connectionId) { toast.error('Nenhuma conexão D-API ativa encontrada'); return; }
+    await dapiCall.iniciar('whatsapp', connectionId, conversa.cliente_telefone);
+  };
+
   const abrirGruposBloqueados = async () => {
     setGruposBloqueadosOpen(true);
     setLoadingGruposBloqueados(true);
@@ -2264,7 +2281,7 @@ export default function BatePapo() {
             { id: 'tags', label: 'Tags', icon: Tag, color: 'purple', action: (c) => { setContatoParaTags(contatosWhatsapp[c.id] || c); setTagsModalOpen(true); } },
             { id: 'tarefa', label: 'Criar Tarefa', icon: ClipboardList, color: 'emerald', action: (c) => { setConversaTarefa(c); setCriarTarefaOpen(true); } },
             { id: 'funil', label: 'Funil', icon: TrendingUp, color: 'emerald', action: () => setFunilModalOpen(true) },
-            { id: 'ligar', label: 'Ligar', icon: Phone, color: 'emerald', action: (c) => ligarParaContato(c.cliente_telefone) },
+            { id: 'ligar', label: 'Ligar', icon: Phone, color: 'emerald', action: (c) => ligarParaContato(c) },
             { id: 'transferir', label: 'Transferir', icon: Users, color: 'slate', action: (c) => setTransferirModal(c) },
             { id: 'bloquear', label: 'Bloquear/Desbloquear', icon: Lock, color: 'slate', action: async (c) => { await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: !c.bloqueado }); toast.success('Status de bloqueio atualizado'); refetchConversas(); } },
             { id: 'excluir', label: 'Excluir', icon: Trash2, color: 'slate', danger: true, action: async (c) => { if (confirm('Excluir conversa?')) { const msgs = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id }); for (const m of msgs) await base44.entities.MensagemWhatsapp.delete(m.id); await base44.entities.ConversaWhatsapp.delete(c.id); queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] }); if (conversaSelecionada?.id === c.id) setConversaSelecionada(null); toast.success('Conversa excluída'); } } },
@@ -2469,7 +2486,7 @@ export default function BatePapo() {
             { id: 'tags', label: 'Tags', icon: Tag, color: 'purple', action: (c) => { setContatoParaTags(contatosWhatsapp[c.id] || c); setTagsModalOpen(true); } },
             { id: 'tarefa', label: 'Tarefa', icon: ClipboardList, color: 'emerald', action: (c) => { setConversaTarefa(c); setCriarTarefaOpen(true); } },
             { id: 'funil', label: 'Funil', icon: TrendingUp, color: 'emerald', action: () => setFunilModalOpen(true) },
-            { id: 'ligar', label: 'Ligar', icon: Phone, color: 'emerald', action: (c) => ligarParaContato(c.cliente_telefone) },
+            { id: 'ligar', label: 'Ligar', icon: Phone, color: 'emerald', action: (c) => ligarParaContato(c) },
             { id: 'transferir', label: 'Transferir', icon: Users, color: 'slate', action: (c) => setTransferirModal(c) },
             { id: 'bloquear', label: 'Bloquear/Desbloquear', icon: Lock, color: 'slate', action: async (c) => { await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: !c.bloqueado }); toast.success('Status de bloqueio atualizado'); refetchConversas(); } },
             { id: 'excluir', label: 'Excluir', icon: Trash2, color: 'slate', danger: true, action: async (c) => { if (confirm('Excluir conversa?')) { const msgs = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id }); for (const m of msgs) await base44.entities.MensagemWhatsapp.delete(m.id); await base44.entities.ConversaWhatsapp.delete(c.id); queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] }); if (conversaSelecionada?.id === c.id) setConversaSelecionada(null); toast.success('Conversa excluída'); } } },

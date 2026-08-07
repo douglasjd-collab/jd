@@ -1,0 +1,109 @@
+{
+  "name": "PropostaLinkSimulacao",
+  "type": "object",
+  "description": "Links p\u00fablicos de propostas de simula\u00e7\u00e3o de cons\u00f3rcio enviados aos clientes. Guarda um snapshot da simula\u00e7\u00e3o (para renderizar o mesmo conte\u00fado do PDF), dados do vendedor (para alertas no WhatsApp) e rastreia abertura pelo cliente.",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa (denormalizado para RLS)"
+    },
+    "token": {
+      "type": "string",
+      "description": "Token \u00fanico do link p\u00fablico (UUID)"
+    },
+    "simulacao_id": {
+      "type": "string",
+      "description": "ID da Simulacao original"
+    },
+    "simulacao_snapshot_json": {
+      "type": "string",
+      "description": "Snapshot JSON completo da Simulacao no momento da gera\u00e7\u00e3o do link (garante que o link mostre exatamente o mesmo conte\u00fado do PDF, mesmo se a simula\u00e7\u00e3o for editada depois)"
+    },
+    "link_url": {
+      "type": "string",
+      "description": "URL p\u00fablica completa do link (/proposta/{token})"
+    },
+    "vendedor_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio (User) que gerou o link"
+    },
+    "vendedor_nome": {
+      "type": "string",
+      "description": "Nome do vendedor (denormalizado)"
+    },
+    "vendedor_telefone": {
+      "type": "string",
+      "description": "Telefone do vendedor para receber os alertas de abertura/n\u00e3o abertura no WhatsApp"
+    },
+    "colaborador_id": {
+      "type": "string",
+      "description": "ID do Colaborador vinculado ao vendedor"
+    },
+    "cliente_nome": {
+      "type": "string",
+      "description": "Nome do cliente (denormalizado da simula\u00e7\u00e3o)"
+    },
+    "cliente_telefone": {
+      "type": "string",
+      "description": "Telefone do cliente (denormalizado da simula\u00e7\u00e3o)"
+    },
+    "aberta": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se o cliente j\u00e1 abriu o link pelo menos uma vez"
+    },
+    "data_abertura": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora da primeira abertura pelo cliente"
+    },
+    "abertura_ip": {
+      "type": "string",
+      "description": "IP da primeira abertura"
+    },
+    "abertura_user_agent": {
+      "type": "string",
+      "description": "User-Agent da primeira abertura"
+    },
+    "total_aberturas": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantas vezes o link foi aberto"
+    },
+    "alerta_abertura_enviado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se o alerta de 'cliente abriu' j\u00e1 foi enviado ao vendedor"
+    },
+    "alerta_nao_abriu_enviado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se o alerta de 'cliente n\u00e3o abriu em 3h' j\u00e1 foi enviado ao vendedor"
+    },
+    "data_alerta_nao_abriu": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora em que o alerta de n\u00e3o abertura foi enviado"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "token",
+    "simulacao_id",
+    "vendedor_id"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return true;"
+    },
+    "delete": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    }
+  }
+}

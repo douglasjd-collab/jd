@@ -57,6 +57,7 @@ import GrupoConsorcioDetalhes from './pages/GrupoConsorcioDetalhes';
 import AssinarDocumento from './pages/AssinarDocumento';
 import ValidarDocumento from './pages/ValidarDocumento';
 import MetaLogin from './pages/MetaLogin';
+import PropostaSimulacao from './pages/PropostaSimulacao';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -166,6 +167,7 @@ function App() {
   const isRotaAssinaturaPublica = window.location.pathname.startsWith('/assinar/');
   const isRotaValidacaoPublica = window.location.pathname.startsWith('/validar/');
   const isRotaMetaLoginPublica = window.location.pathname.startsWith('/meta-login');
+  const isRotaPropostaPublica = window.location.pathname.startsWith('/proposta/');
 
   return (
     <QueryClientProvider client={queryClientInstance}>
@@ -181,6 +183,10 @@ function App() {
         ) : isRotaMetaLoginPublica ? (
           <Routes>
             <Route path="/meta-login" element={<MetaLogin />} />
+          </Routes>
+        ) : isRotaPropostaPublica ? (
+          <Routes>
+            <Route path="/proposta/:token" element={<PropostaSimulacao />} />
           </Routes>
         ) : (
           <AuthProvider>
