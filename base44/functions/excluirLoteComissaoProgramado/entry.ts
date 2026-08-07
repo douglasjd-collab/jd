@@ -26,6 +26,10 @@ Deno.serve(async (req) => {
       for (const pid of propostaIds) {
         await base44.asServiceRole.entities.Proposta.update(pid, {
           comissao_vendedor_paga: false,
+          comissao_vendedor_agendada: false,
+          comissao_vendedor_data_agendamento: null,
+          comissao_vendedor_lote_agendado_id: null,
+          comissao_vendedor_lote_agendado_codigo: null,
           comissao_vendedor_data_pagamento: null,
           lote_pagamento_id: null,
         });
