@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, User, ShieldCheck, DollarSign } from 'lucide-react';
+import { User, DollarSign } from 'lucide-react';
 
 // Componente compartilhado de renderização da proposta de simulação de consórcio.
 // Usado tanto pela tela de impressão (ImprimirSimulacao) quanto pelo link público
@@ -92,29 +92,14 @@ export default function PropostaSimulacaoConteudo({ simulacao }) {
             </div>
           </div>
           <div className="w-px bg-slate-200 my-1" />
-          <div className="flex items-center gap-2.5">
-            <Calendar className="w-5 h-5 text-[#0047bb] shrink-0" />
-            <div>
-              <p className="text-sm font-bold text-[#001529] leading-tight">{new Date(simulacao.created_date || Date.now()).toLocaleDateString('pt-BR')}</p>
-              <p className="text-xs text-slate-500">Data</p>
-            </div>
-          </div>
-          <div className="w-px bg-slate-200 my-1" />
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 ml-auto">
             <User className="w-5 h-5 text-[#0047bb] shrink-0" />
             <div>
               <p className="text-xs text-slate-500 leading-tight">Vendedor</p>
               <p className="text-sm font-bold text-[#001529] leading-tight">{simulacao.usuario_nome || '-'}</p>
             </div>
           </div>
-          <div className="w-px bg-slate-200 my-1" />
-          <div className="flex items-center gap-2.5">
-            <ShieldCheck className="w-5 h-5 text-[#0047bb] shrink-0" />
-            <div>
-              <p className="text-xs text-slate-500 leading-tight">Validade</p>
-              <p className="text-sm font-bold text-[#001529] leading-tight">30 dias</p>
-            </div>
-          </div>
+
         </div>
         <div className="h-1 w-full bg-gradient-to-r from-cyan-400 to-blue-500" />
       </div>
