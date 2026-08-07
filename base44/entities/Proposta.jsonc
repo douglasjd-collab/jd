@@ -224,6 +224,24 @@
       "default": false,
       "description": "[EMPR\u00c9STIMO] Se a comiss\u00e3o foi paga ao vendedor"
     },
+    "comissao_vendedor_agendada": {
+      "type": "boolean",
+      "default": false,
+      "description": "[EMPRESTIMO] Se a comissao ja esta reservada em lote programado"
+    },
+    "comissao_vendedor_lote_agendado_id": {
+      "type": "string",
+      "description": "[EMPRESTIMO] ID do lote de pagamento programado"
+    },
+    "comissao_vendedor_lote_agendado_codigo": {
+      "type": "string",
+      "description": "[EMPRESTIMO] Codigo do lote de pagamento programado"
+    },
+    "comissao_vendedor_data_agendamento": {
+      "type": "string",
+      "format": "date",
+      "description": "[EMPRESTIMO] Data prevista para pagamento ao vendedor"
+    },
     "comissao_vendedor_data_pagamento": {
       "type": "string",
       "format": "date",
