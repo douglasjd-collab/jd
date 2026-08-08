@@ -81,6 +81,7 @@ import EditarMensagemModal from '@/components/chat/EditarMensagemModal';
 import { criarLocalizarMensagem } from '@/components/chat/localizarMensagemNoHistorico';
 import EstrelaPrioridadeButton from '@/components/chat/EstrelaPrioridadeButton';
 import BatePapoAbas from '@/components/chat/BatePapoAbas';
+import MicrotarefasConversa from '@/components/chat/MicrotarefasConversa';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -1412,6 +1413,100 @@ export default function BatePapo() {
     }
   };
 
+  const [salvandoMicrotarefa, setSalvandoMicrotarefa] = useState(false);
+  const { data: microtarefas = [], refetch: refetchMicrotarefas } = useQuery({
+    queryKey: ['microtarefas-chat', empresaId],
+    enabled: !!empresaId,
+    queryFn: async () => {
+      const itens = await base44.entities.Tarefa.filter({ empresa_id: empresaId, microtarefa: true }, '-created_date', 500);
+      return (itens || []).filter(t => !['concluida', 'cancelada'].includes(t.status));
+    },
+    refetchInterval: 30000,
+  });
+
+  const microtarefasPorConversa = useMemo(() => {
+    const mapa = {};
+    microtarefas.forEach(t => {
+      const chave = t.conversa_id || '';
+      if (!chave) return;
+      if (!mapa[chave]) mapa[chave] = [];
+      mapa[chave].push(t);
+    });
+    return mapa;
+  }, [microtarefas]);
+
+  const criarMicrotarefa = async (dados) => {
+    if (!conversaSelecionada) return;
+    setSalvandoMicrotarefa(true);
+    try {
+      const nomeCliente = contatosWhatsapp[conversaSelecionada.id]?.nome || conversaSelecionada.cliente_nome || conversaSelecionada.cliente_telefone;
+      const hoje = new Date().toISOString().slice(0, 10);
+      await base44.entities.Tarefa.create({
+        empresa_id: empresaId,
+        titulo: dados.titulo,
+        descricao: dados.descricao || '',
+        microtarefa: true,
+        conversa_id: conversaSelecionada.id,
+        vencimento_em: dados.vencimento_em,
+        data_cadastro: hoje,
+        data_conclusao_prevista: dados.vencimento_em.slice(0, 10),
+        status: 'a_fazer',
+        prioridade: dados.prioridade || 'media',
+        origem: 'whatsapp',
+        cliente_id: conversaSelecionada.cliente_id || '',
+        cliente_nome: nomeCliente,
+        cliente_telefone: conversaSelecionada.cliente_telefone || '',
+        responsavel_principal_id: user?.colaborador_id || user?.id || '',
+        responsavel_principal_nome: user?.nome_perfil || user?.full_name || user?.email || '',
+        criado_por_id: user?.colaborador_id || user?.id || '',
+        criado_por_nome: user?.nome_perfil || user?.full_name || user?.email || '',
+      });
+      await refetchMicrotarefas();
+      toast.success('Microtarefa criada!');
+    } catch (e) {
+      toast.error('Erro ao criar microtarefa: ' + e.message);
+      throw e;
+    } finally {
+      setSalvandoMicrotarefa(false);
+    }
+  };
+
+  const concluirMicrotarefa = async (tarefa) => {
+    setSalvandoMicrotarefa(true);
+    try {
+      await base44.entities.Tarefa.update(tarefa.id, {
+        status: 'concluida',
+        data_conclusao_real: new Date().toISOString().slice(0, 10),
+        concluida_por_id: user?.colaborador_id || user?.id || '',
+        concluida_por_nome: user?.nome_perfil || user?.full_name || user?.email || '',
+      });
+      await refetchMicrotarefas();
+      toast.success('Microtarefa concluída!');
+    } catch (e) {
+      toast.error('Erro ao concluir: ' + e.message);
+    } finally {
+      setSalvandoMicrotarefa(false);
+    }
+  };
+
+  const adiarMicrotarefa = async (tarefa) => {
+    setSalvandoMicrotarefa(true);
+    try {
+      const novaData = new Date(tarefa.vencimento_em || Date.now());
+      novaData.setDate(novaData.getDate() + 1);
+      await base44.entities.Tarefa.update(tarefa.id, {
+        vencimento_em: novaData.toISOString(),
+        data_conclusao_prevista: novaData.toISOString().slice(0, 10),
+      });
+      await refetchMicrotarefas();
+      toast.success('Microtarefa adiada para amanhã');
+    } catch (e) {
+      toast.error('Erro ao adiar: ' + e.message);
+    } finally {
+      setSalvandoMicrotarefa(false);
+    }
+  };
+
   // Conversas válidas — exclui grupos, broadcast e LID (apenas contatos individuais)
   const conversasValidas = React.useMemo(() => conversas.filter(c => {
     if (!c || !c.id || !c.cliente_telefone) return false;
@@ -1453,6 +1548,7 @@ export default function BatePapo() {
     grupos: conversasGrupos.length,
     campanhas: conversas.filter(c => !isGrupo(c) && c.status === 'campanha').length,
     prioritarios: conversasValidas.filter(c => c.atendimento_prioritario).length,
+    microtarefas: Object.keys(microtarefasPorConversa).length,
   };
 
 
@@ -1502,11 +1598,17 @@ export default function BatePapo() {
       if (filtroStatus === 'transferida') return ehTransferidaAtiva(c);
       if (filtroStatus === 'meu')        return c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id);
       if (filtroStatus === 'campanhas')  return c.status === 'campanha';
+      if (filtroStatus === 'microtarefas') return !!microtarefasPorConversa[c.id]?.length;
       return false;
     })
     .sort((a, b) => {
       // 1) Prioritárias primeiro (em Todas e Em Atendimento);
       // 2) dentro de cada grupo, mais recente primeiro.
+      if (filtroStatus === 'microtarefas') {
+        const ta = microtarefasPorConversa[a.id]?.[0]?.vencimento_em || '9999';
+        const tb = microtarefasPorConversa[b.id]?.[0]?.vencimento_em || '9999';
+        return new Date(ta) - new Date(tb);
+      }
       const ordemPrioritaria = (c) => (['todas', 'ativa'].includes(filtroStatus) && c.atendimento_prioritario) ? 1 : 0;
       const pa = ordemPrioritaria(b) - ordemPrioritaria(a);
       if (pa !== 0) return pa;
@@ -2249,6 +2351,15 @@ export default function BatePapo() {
                 localizarMensagem={localizarMensagem}
                 onEncaminharMensagem={iniciarEncaminhar}
                 />
+                {!isGrupo(conversaSelecionada) && (
+                  <MicrotarefasConversa
+                    tarefas={microtarefasPorConversa[conversaSelecionada.id] || []}
+                    onCriar={criarMicrotarefa}
+                    onConcluir={concluirMicrotarefa}
+                    onAdiar={adiarMicrotarefa}
+                    salvando={salvandoMicrotarefa}
+                  />
+                )}
                 {dapiChamadaAtivaVisivel && (
                   <DapiCallBar
                     status={dapiCall.status}
