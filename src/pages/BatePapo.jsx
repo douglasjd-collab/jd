@@ -2227,7 +2227,7 @@ export default function BatePapo() {
                               const tarefa = microtarefasPorConversa[c.id][0];
                               const atrasada = tarefa.vencimento_em && new Date(tarefa.vencimento_em) < new Date();
                               return (
-                                <div className={`mb-1 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${atrasada ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'}`}>
+                                <div className={`mb-1 inline-flex max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${atrasada ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'}`}>
                                   <ClipboardList className="h-3 w-3 shrink-0" />
                                   <span className="truncate">{tarefa.titulo}</span>
                                   {atrasada && <span className="shrink-0">· Vencida</span>}
