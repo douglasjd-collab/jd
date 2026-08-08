@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import heic2any from 'heic2any';
 import { encodeFloat32ToMp3 } from '@/utils/converterAudioParaMp3';
+import { iniciarGravador } from '@/utils/audioRecorder';
 import { Button } from '@/components/ui/button';
 import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Plus, Camera } from 'lucide-react';
 import MensagensRapidasModal from './MensagensRapidasModal';
@@ -117,17 +118,12 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   }, [scriptExterno]);
 
   const timerRef = useRef(null);
-  const streamRef = useRef(null);
-  const audioCtxRef = useRef(null);
-  const sourceRef = useRef(null);
-  const processorRef = useRef(null);
-  const silentGainRef = useRef(null);
-  const pcmChunksRef = useRef([]);
+  const recorderRef = useRef(null);
 
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
-      pararCapturaAudio();
+      try { recorderRef.current?.cancelar(); } catch (_) {}
     };
   }, []);
 
@@ -146,54 +142,13 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   // Lista de emojis nativos para o picker
   const EMOJIS = ['😀','😁','😂','🤣','😊','😍','😘','😉','😎','🤔','🙃','😅','😢','😭','😡','👍','👎','🙏','👏','💪','❤️','🧡','💛','💚','💙','💜','🖤','✅','❌','⭐','🎉','🔥','💯','🙏','👀','🤝','🤙','✌️','🤞','🙏🏽'];
 
-  // Captura amostras PCM diretamente do microfone (evita decodeAudioData sobre
-  // blob webm do MediaRecorder, que falha em vários navegadores).
+  // Captura amostras PCM via AudioWorklet (thread de áudio dedicada) — elimina
+  // os glitches/cliques do ScriptProcessorNode (deprecated) quando a UI trava.
   const iniciarGravacao = async () => {
     setErro(null);
     try {
-      // Solicita voz mono e desativa o ganho automático. Em alguns microfones o
-      // AGC do navegador elevava o sinal até saturar, amplificando ruído e deixando
-      // o áudio distorcido depois da codificação para MP3.
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: { ideal: 1 },
-          echoCancellation: { ideal: true },
-          noiseSuppression: { ideal: true },
-          autoGainControl: { ideal: false },
-        },
-      });
-      streamRef.current = stream;
-
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      const audioCtx = new AudioContextClass({ latencyHint: 'interactive' });
-      if (audioCtx.state === 'suspended') await audioCtx.resume();
-      audioCtxRef.current = audioCtx;
-
-      const source = audioCtx.createMediaStreamSource(stream);
-      // Remove vibrações/ronco de baixa frequência antes da captura sem alterar
-      // a faixa principal da voz.
-      const voiceFilter = audioCtx.createBiquadFilter();
-      voiceFilter.type = 'highpass';
-      voiceFilter.frequency.value = 70;
-      voiceFilter.Q.value = 0.7;
-      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-      const silentGain = audioCtx.createGain();
-      silentGain.gain.value = 0; // evita eco: processor precisa chegar ao destino para disparar, mas sem volume
-
-      pcmChunksRef.current = [];
-      processor.onaudioprocess = (e) => {
-        pcmChunksRef.current.push(new Float32Array(e.inputBuffer.getChannelData(0)));
-      };
-
-      source.connect(voiceFilter);
-      voiceFilter.connect(processor);
-      processor.connect(silentGain);
-      silentGain.connect(audioCtx.destination);
-
-      sourceRef.current = source;
-      processorRef.current = processor;
-      silentGainRef.current = silentGain;
-
+      const recorder = await iniciarGravador();
+      recorderRef.current = recorder;
       setGravando(true);
       setTempoGravacao(0);
       timerRef.current = setInterval(() => setTempoGravacao(t => t + 1), 1000);
@@ -202,26 +157,10 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     }
   };
 
-  // Desliga o grafo de áudio e o microfone; retorna a sampleRate usada na captura
-  const pararCapturaAudio = () => {
-    if (processorRef.current) processorRef.current.disconnect();
-    if (sourceRef.current) sourceRef.current.disconnect();
-    if (silentGainRef.current) silentGainRef.current.disconnect();
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    const sampleRate = audioCtxRef.current?.sampleRate;
-    audioCtxRef.current?.close();
-    processorRef.current = null;
-    sourceRef.current = null;
-    silentGainRef.current = null;
-    audioCtxRef.current = null;
-    streamRef.current = null;
-    return sampleRate;
-  };
-
   const cancelarGravacao = () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    pararCapturaAudio();
-    pcmChunksRef.current = [];
+    try { recorderRef.current?.cancelar(); } catch (_) {}
+    recorderRef.current = null;
     setGravando(false);
     setTempoGravacao(0);
   };
@@ -229,20 +168,14 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   // Parar gravação e entrar no modo preview (sem enviar ainda)
   const pararGravacaoParaPreview = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    const sampleRate = pararCapturaAudio();
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
     setGravando(false);
     setTempoGravacao(0);
-
-    const totalLength = pcmChunksRef.current.reduce((acc, c) => acc + c.length, 0);
-    const samples = new Float32Array(totalLength);
-    let offset = 0;
-    for (const chunk of pcmChunksRef.current) {
-      samples.set(chunk, offset);
-      offset += chunk.length;
-    }
-    pcmChunksRef.current = [];
+    if (!recorder) return;
 
     try {
+      const { samples, sampleRate } = await recorder.parar();
       const { blob: mp3Blob } = await encodeFloat32ToMp3(samples, sampleRate);
       const audioFile = new File([mp3Blob], `audio_${Date.now()}.mp3`, { type: 'audio/mpeg' });
       const url = URL.createObjectURL(audioFile);
@@ -258,7 +191,6 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const cancelarPreviewAudio = () => {
     if (audioPreview?.url) URL.revokeObjectURL(audioPreview.url);
     setAudioPreview(null);
-    pcmChunksRef.current = [];
   };
 
   const confirmarEnvioAudio = async () => {
