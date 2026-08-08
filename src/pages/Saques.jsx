@@ -46,7 +46,21 @@ function exportarPDF(titulo, lotes, colunas, mostrarQuitacao) {
   doc.save(`${titulo.replace(/\s+/g, '_')}.pdf`);
 }
 
+const pdfDownloadsEmAndamento = new Set();
+
 async function exportarLinhaPDF(lote) {
+  const chaveDownload = lote.id || lote._protocolo;
+  if (pdfDownloadsEmAndamento.has(chaveDownload)) return;
+
+  pdfDownloadsEmAndamento.add(chaveDownload);
+  try {
+    await exportarLinhaPDFUnico(lote);
+  } finally {
+    pdfDownloadsEmAndamento.delete(chaveDownload);
+  }
+}
+
+async function exportarLinhaPDFUnico(lote) {
   // Lotes legado: sem backend, usa PDF simples
   if (lote.isLegado) {
     exportarLinhaPDFSimples(lote);
@@ -75,7 +89,9 @@ async function exportarLinhaPDF(lote) {
         const a = document.createElement('a');
         a.href = res.data.pdf_base64;
         a.download = res.data.filename || `comprovante_${lote._protocolo}.pdf`;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         return;
       }
 
@@ -444,7 +460,14 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
                       <button title="Baixar Excel" onClick={() => exportarLinhaCSV(l, mostrarQuitacao)} className="p-1 rounded hover:bg-green-100 text-green-700 transition-colors">
                         <FileSpreadsheet className="w-3.5 h-3.5" />
                       </button>
-                      <button title="Baixar PDF" onClick={() => exportarLinhaPDF(l)} className="p-1 rounded hover:bg-red-100 text-red-700 transition-colors">
+                      <button
+                        title="Baixar PDF"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          exportarLinhaPDF(l);
+                        }}
+                        className="p-1 rounded hover:bg-red-100 text-red-700 transition-colors">
                         <FileText className="w-3.5 h-3.5" />
                       </button>
                       {onExcluir && l.status !== 'quitado' && !l.isLegado && (
