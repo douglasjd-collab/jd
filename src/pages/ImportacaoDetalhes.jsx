@@ -1,9 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import {
   Table,
   TableBody,
@@ -19,7 +21,9 @@ import {
   FileSpreadsheet,
   Calendar,
   User,
-  Building2
+  Building2,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -27,6 +31,8 @@ export default function ImportacaoDetalhes() {
   const urlParams = new URLSearchParams(window.location.search);
   const importacaoId = urlParams.get('id');
   const produtoParam = urlParams.get('produto') || 'consorcio';
+  const queryClient = useQueryClient();
+  const [reprocessando, setReprocessando] = useState(false);
 
   const { data: importacao, isLoading: loadingImportacao } = useQuery({
     queryKey: ['importacao', importacaoId],
@@ -126,6 +132,38 @@ export default function ImportacaoDetalhes() {
       style: 'currency',
       currency: 'BRL'
     }).format(value || 0);
+  };
+
+  const reprocessarDivergencias = async () => {
+    const quantidade = itens.filter(i => i.status === 'divergencia').length;
+    if (!quantidade || reprocessando) return;
+    if (!window.confirm(`Reprocessar ${quantidade} registro(s) divergente(s)? O sistema tentará localizar os contratos novamente e não duplicará recebimentos já lançados.`)) return;
+
+    setReprocessando(true);
+    try {
+      const resposta = await base44.functions.invoke('reprocessarDivergenciasImportacao', {
+        importacao_id: importacaoId
+      });
+      const resultado = resposta?.data || {};
+      if (!resultado.success) throw new Error(resultado.error || 'Não foi possível reprocessar');
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['importacao', importacaoId] }),
+        queryClient.invalidateQueries({ queryKey: ['importacao-itens', importacaoId] }),
+        queryClient.invalidateQueries({ queryKey: ['importacoes'] }),
+      ]);
+
+      const convertidos = Number(resultado.processados || 0) + Number(resultado.recuperados || 0);
+      if (convertidos > 0) {
+        toast.success(`Reprocessamento concluído: ${convertidos} divergência(s) processada(s). ${resultado.permanecem_divergentes || 0} ainda pendente(s).`);
+      } else {
+        toast.info(`Nenhum novo contrato foi processado. ${resultado.permanecem_divergentes || quantidade} divergência(s) permanecem para conferência.`);
+      }
+    } catch (e) {
+      toast.error('Erro ao reprocessar divergências: ' + (e?.response?.data?.error || e.message));
+    } finally {
+      setReprocessando(false);
+    }
   };
 
   if (loadingImportacao || !importacao) {
@@ -230,7 +268,21 @@ export default function ImportacaoDetalhes() {
         <Tabs defaultValue="todos">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Registros</CardTitle>
+              <div className="flex items-center gap-3">
+                <CardTitle>Registros</CardTitle>
+                {produto === 'consorcio' && itensDivergencia.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={reprocessarDivergencias}
+                    disabled={reprocessando}
+                    className="border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                  >
+                    {reprocessando ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                    {reprocessando ? 'Reprocessando...' : `Reprocessar divergências (${itensDivergencia.length})`}
+                  </Button>
+                )}
+              </div>
               <TabsList>
                 <TabsTrigger value="todos">Todos ({itens.length})</TabsTrigger>
                 <TabsTrigger value="processados">Processados ({itensProcessados.length})</TabsTrigger>
