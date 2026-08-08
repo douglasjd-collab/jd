@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Bot, X, CheckCheck, TrendingUp, PlusCircle } from 'lucide-react';
+import { Bell, X, CheckCheck, TrendingUp, PlusCircle, CalendarClock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
@@ -67,9 +67,9 @@ export default function NotificacoesIABell({ empresaId }) {
       <button
         onClick={() => { setOpen(!open); if (!open) carregar(); }}
         className="relative flex items-center justify-center w-9 h-9 rounded-full border border-slate-200 bg-white hover:bg-slate-50 transition-colors shadow-sm"
-        title="Ações da IA no Funil"
+        title="Notificações do Funil"
       >
-        <Bot className="w-4 h-4 text-purple-600" />
+        <Bell className="w-4 h-4 text-purple-600" />
         {naoLidas > 0 && (
           <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
             {naoLidas > 9 ? '9+' : naoLidas}
@@ -83,8 +83,8 @@ export default function NotificacoesIABell({ empresaId }) {
           <div className="absolute right-0 top-11 z-50 w-[380px] bg-white rounded-xl shadow-2xl border border-slate-200 max-h-[520px] flex flex-col">
             <div className="flex items-center justify-between px-4 py-3 border-b bg-purple-50 rounded-t-xl">
               <div className="flex items-center gap-2">
-                <Bot className="w-4 h-4 text-purple-600" />
-                <span className="font-semibold text-sm text-slate-800">Ações da Coach IA</span>
+                <Bell className="w-4 h-4 text-purple-600" />
+                <span className="font-semibold text-sm text-slate-800">Notificações do Funil</span>
                 {naoLidas > 0 && <Badge className="bg-purple-600 text-white text-xs px-1.5">{naoLidas}</Badge>}
               </div>
               <div className="flex items-center gap-1">
@@ -104,9 +104,9 @@ export default function NotificacoesIABell({ empresaId }) {
 
               {!loading && notificacoes.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-10 text-slate-400">
-                  <Bot className="w-8 h-8 mb-2 text-slate-300" />
-                  <p className="text-sm font-medium">Nenhuma ação recente</p>
-                  <p className="text-xs mt-1">A IA ainda não criou ou movimentou leads.</p>
+                  <Bell className="w-8 h-8 mb-2 text-slate-300" />
+                  <p className="text-sm font-medium">Nenhuma notificação recente</p>
+                  <p className="text-xs mt-1">Os alertas do funil aparecerão aqui.</p>
                 </div>
               )}
 
@@ -117,6 +117,8 @@ export default function NotificacoesIABell({ empresaId }) {
                       <div className="flex items-center gap-1.5 mb-1.5">
                         {notificacao.tipo === 'lead_criado' ? (
                           <span className="text-xs font-semibold text-green-600 flex items-center gap-1"><PlusCircle className="w-3.5 h-3.5" /> Lead adicionado ao funil</span>
+                        ) : notificacao.tipo === 'fechamento_hoje' ? (
+                          <span className="text-xs font-semibold text-amber-600 flex items-center gap-1"><CalendarClock className="w-3.5 h-3.5" /> Fechamento previsto para hoje</span>
                         ) : (
                           <span className="text-xs font-semibold text-blue-600 flex items-center gap-1"><TrendingUp className="w-3.5 h-3.5" /> Card movimentado</span>
                         )}
