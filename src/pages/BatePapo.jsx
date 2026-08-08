@@ -1432,6 +1432,9 @@ export default function BatePapo() {
       if (!mapa[chave]) mapa[chave] = [];
       mapa[chave].push(t);
     });
+    Object.values(mapa).forEach(lista => lista.sort((a, b) =>
+      new Date(a.vencimento_em || a.data_conclusao_prevista || 0) - new Date(b.vencimento_em || b.data_conclusao_prevista || 0)
+    ));
     return mapa;
   }, [microtarefas]);
 
@@ -2219,6 +2222,17 @@ export default function BatePapo() {
                                 </span>
                               );
                               return null;
+                            })()}
+                            {microtarefasPorConversa[c.id]?.[0] && (() => {
+                              const tarefa = microtarefasPorConversa[c.id][0];
+                              const atrasada = tarefa.vencimento_em && new Date(tarefa.vencimento_em) < new Date();
+                              return (
+                                <div className={`mb-1 flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold ${atrasada ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'}`}>
+                                  <ClipboardList className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">{tarefa.titulo}</span>
+                                  {atrasada && <span className="shrink-0">· Vencida</span>}
+                                </div>
+                              );
                             })()}
                             <div className="jd-chat-bottom">
                               <span className="jd-chat-message">{ultimaMsg}</span>
