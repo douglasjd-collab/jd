@@ -14,6 +14,26 @@
       "type": "string",
       "description": "Descri\u00e7\u00e3o da tarefa"
     },
+    "microtarefa": {
+      "type": "boolean",
+      "default": false,
+      "description": "Identifica uma a\u00e7\u00e3o r\u00e1pida criada no Bate-papo"
+    },
+    "conversa_id": {
+      "type": "string",
+      "description": "ID da conversa do WhatsApp vinculada"
+    },
+    "vencimento_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora limite da microtarefa"
+    },
+    "concluida_por_id": {
+      "type": "string"
+    },
+    "concluida_por_nome": {
+      "type": "string"
+    },
     "cliente_id": {
       "type": "string",
       "description": "ID do cliente"
