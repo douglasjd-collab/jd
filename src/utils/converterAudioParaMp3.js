@@ -12,13 +12,31 @@ export async function encodeFloat32ToMp3(samples, sampleRate) {
     throw new Error('lamejs.Mp3Encoder não disponível');
   }
 
-  const int16Samples = new Int16Array(samples.length);
-  for (let i = 0; i < samples.length; i++) {
-    const s = Math.max(-1, Math.min(1, samples[i]));
-    int16Samples[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  if (!samples?.length) throw new Error('A gravação não contém áudio');
+  if (!Number.isFinite(sampleRate) || sampleRate < 8000) {
+    throw new Error('Taxa de amostragem inválida');
   }
 
-  const encoder = new Mp3Encoder(1, sampleRate, 96);
+  // Remove o pequeno deslocamento DC de alguns microfones e reduz somente os
+  // picos que ultrapassariam o limite do MP3. Isso evita estalos e saturação sem
+  // aumentar artificialmente o ruído de fundo.
+  let sum = 0;
+  for (let i = 0; i < samples.length; i++) sum += samples[i];
+  const dcOffset = sum / samples.length;
+  let peak = 0;
+  for (let i = 0; i < samples.length; i++) {
+    peak = Math.max(peak, Math.abs(samples[i] - dcOffset));
+  }
+  const safeGain = peak > 0.98 ? 0.95 / peak : 1;
+
+  const int16Samples = new Int16Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, (samples[i] - dcOffset) * safeGain));
+    int16Samples[i] = Math.round(s < 0 ? s * 0x8000 : s * 0x7fff);
+  }
+
+  // 128 kbps preserva melhor a voz após o WhatsApp fazer sua própria compressão.
+  const encoder = new Mp3Encoder(1, Math.round(sampleRate), 128);
   const chunks = [];
   const blockSize = 1152;
   for (let i = 0; i < int16Samples.length; i += blockSize) {
