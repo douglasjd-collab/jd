@@ -2209,13 +2209,13 @@ export default function BatePapo() {
                                 !c.responsavel_expira_em || atendenteDentroDoTempo(c)
                               );
                               if (c.status === 'encerrada') return (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5" style={{ background: '#f1f5f9', fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
+                                <span className="inline-flex w-fit max-w-full self-start items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5" style={{ background: '#f1f5f9', fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
                                   <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                                   Finalizada
                                 </span>
                               );
                               if (atendenteAtivo) return (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5 w-fit" style={{ background: '#dcfce7', fontSize: '10px' }}>
+                                <span className="inline-flex w-fit max-w-full self-start items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5" style={{ background: '#dcfce7', fontSize: '10px' }}>
                                   <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                   <span style={{ color: '#16a34a', fontWeight: 600 }}>{nomeAtendente}</span>
                                   <span style={{ color: '#4ade80' }}>atendendo</span>
