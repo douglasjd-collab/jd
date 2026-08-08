@@ -13,7 +13,12 @@ Deno.serve(async (req) => {
       }, { status: 400 });
     }
 
-    const hoje = new Date().toISOString().split('T')[0];
+    const hoje = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Recife',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date());
     const notificacoes = [];
 
     // 1. Verificar despesas vencendo hoje
@@ -34,7 +39,83 @@ Deno.serve(async (req) => {
       notificacoes.push(msgDespesas);
     }
 
-    // 2. Verificar cards atrasados no funil (oportunidades sem movimentação há mais de 7 dias)
+    // 2. Verificar oportunidades com previsão de fechamento para hoje
+    const alertasFechamentoParaMarcar = [];
+    let indiceMensagemFechamento = -1;
+    const fechamentosHoje = oportunidades.filter(op =>
+      op.status === 'aberta' &&
+      (op.data_fechamento_prevista === hoje || op.data_pre_fechamento === hoje)
+    );
+
+    if (fechamentosHoje.length > 0) {
+      for (const op of fechamentosHoje) {
+        const clienteNome = op.cliente_nome || op.titulo || 'Cliente';
+        const valor = Number(op.valor_estimado || 0);
+        const responsavelNome = op.vendedor_nome || 'Não informado';
+
+        let alertas = await base44.asServiceRole.entities.AlertePreFechamento.filter({
+          oportunidade_id: op.id,
+          data_alerta: hoje
+        }, '-created_date', 1);
+
+        let alerta = alertas?.[0];
+        if (!alerta) {
+          alerta = await base44.asServiceRole.entities.AlertePreFechamento.create({
+            empresa_id: op.empresa_id,
+            oportunidade_id: op.id,
+            oportunidade_titulo: op.titulo || clienteNome,
+            cliente_nome: clienteNome,
+            cliente_telefone: op.telefone_lead || op.cliente_telefone || '',
+            valor_estimado: valor,
+            data_pre_fechamento: op.data_fechamento_prevista || op.data_pre_fechamento,
+            responsavel_id: op.vendedor_id || '',
+            responsavel_nome: responsavelNome,
+            data_alerta: hoje,
+            dias_atraso: 0,
+            lido: false,
+            telegram_enviado: false,
+            status: 'ativo'
+          });
+        }
+        if (!alerta.telegram_enviado) alertasFechamentoParaMarcar.push(alerta);
+
+        const notificacoesExistentes = await base44.asServiceRole.entities.NotificacaoIA.filter({
+          oportunidade_id: op.id,
+          tipo: 'fechamento_hoje'
+        }, '-created_date', 20);
+        const jaNotificadoHoje = (notificacoesExistentes || []).some(n =>
+          n.created_date && new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'America/Recife',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }).format(new Date(n.created_date)) === hoje
+        );
+
+        if (!jaNotificadoHoje) {
+          await base44.asServiceRole.entities.NotificacaoIA.create({
+            empresa_id: op.empresa_id,
+            tipo: 'fechamento_hoje',
+            oportunidade_id: op.id,
+            oportunidade_titulo: op.titulo || clienteNome,
+            cliente_nome: clienteNome,
+            etapa_nome: op.etapa_nome || 'Pré-Fechamento',
+            responsavel_id: op.vendedor_id || '',
+            mensagem: `Fechamento previsto para hoje. Entre em contato com ${clienteNome} e acompanhe a negociação.`,
+            lido: false
+          });
+        }
+      }
+
+      indiceMensagemFechamento = notificacoes.length;
+      notificacoes.push(
+        `🎯 <b>LEMBRETE DE FECHAMENTO</b>\n\nVocê tem <b>${fechamentosHoje.length}</b> ` +
+        `fechamento${fechamentosHoje.length > 1 ? 's' : ''} previsto${fechamentosHoje.length > 1 ? 's' : ''} para hoje.\n` +
+        'Acesse o Funil de Vendas no CRM para consultar e acompanhar.'
+      );
+    }
+
+    // 3. Verificar cards atrasados no funil (oportunidades sem movimentação há mais de 7 dias)
     const seteDiasAtras = new Date();
     seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
     const dataLimite = seteDiasAtras.toISOString();
@@ -89,6 +170,19 @@ Deno.serve(async (req) => {
 
       const result = await response.json();
       resultados.push({ sucesso: result.ok, detalhes: result });
+    }
+
+    if (
+      indiceMensagemFechamento >= 0 &&
+      resultados[indiceMensagemFechamento]?.sucesso &&
+      alertasFechamentoParaMarcar.length > 0
+    ) {
+      for (const alerta of alertasFechamentoParaMarcar) {
+        await base44.asServiceRole.entities.AlertePreFechamento.update(alerta.id, {
+          telegram_enviado: true,
+          telegram_enviado_em: new Date().toISOString()
+        });
+      }
     }
 
     return Response.json({ 
