@@ -7,11 +7,7 @@ Deno.serve(async (req) => {
     const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
     const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
 
-    if (!botToken || !chatId) {
-      return Response.json({ 
-        error: 'Telegram não configurado' 
-      }, { status: 400 });
-    }
+    const telegramConfigurado = !!(botToken && chatId);
 
     const hoje = new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Recife',
@@ -38,6 +34,8 @@ Deno.serve(async (req) => {
       msgDespesas += `<b>Total: R$ ${totalDespesas.toFixed(2)}</b>`;
       notificacoes.push(msgDespesas);
     }
+
+    const oportunidades = await base44.asServiceRole.entities.Oportunidade.filter({});
 
     // 2. Verificar oportunidades com previsão de fechamento para hoje
     const alertasFechamentoParaMarcar = [];
@@ -120,7 +118,6 @@ Deno.serve(async (req) => {
     seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
     const dataLimite = seteDiasAtras.toISOString();
 
-    const oportunidades = await base44.asServiceRole.entities.Oportunidade.filter({});
     const oportunidadesAtrasadas = oportunidades.filter(op => {
       if (op.status === 'ganha' || op.status === 'perdida') return false;
       const dataAtualizacao = new Date(op.updated_date);
@@ -151,6 +148,15 @@ Deno.serve(async (req) => {
       return Response.json({ 
         success: true, 
         message: 'Nenhuma notificação pendente hoje' 
+      });
+    }
+
+    if (!telegramConfigurado) {
+      return Response.json({
+        success: true,
+        notificacoes_crm_criadas: fechamentosHoje.length,
+        telegram_enviado: false,
+        aviso: 'Telegram não configurado'
       });
     }
 
