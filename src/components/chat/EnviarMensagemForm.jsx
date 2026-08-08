@@ -151,14 +151,31 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const iniciarGravacao = async () => {
     setErro(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Solicita voz mono e desativa o ganho automático. Em alguns microfones o
+      // AGC do navegador elevava o sinal até saturar, amplificando ruído e deixando
+      // o áudio distorcido depois da codificação para MP3.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          channelCount: { ideal: 1 },
+          echoCancellation: { ideal: true },
+          noiseSuppression: { ideal: true },
+          autoGainControl: { ideal: false },
+        },
+      });
       streamRef.current = stream;
 
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      const audioCtx = new AudioContextClass();
+      const audioCtx = new AudioContextClass({ latencyHint: 'interactive' });
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
       audioCtxRef.current = audioCtx;
 
       const source = audioCtx.createMediaStreamSource(stream);
+      // Remove vibrações/ronco de baixa frequência antes da captura sem alterar
+      // a faixa principal da voz.
+      const voiceFilter = audioCtx.createBiquadFilter();
+      voiceFilter.type = 'highpass';
+      voiceFilter.frequency.value = 70;
+      voiceFilter.Q.value = 0.7;
       const processor = audioCtx.createScriptProcessor(4096, 1, 1);
       const silentGain = audioCtx.createGain();
       silentGain.gain.value = 0; // evita eco: processor precisa chegar ao destino para disparar, mas sem volume
@@ -168,7 +185,8 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
         pcmChunksRef.current.push(new Float32Array(e.inputBuffer.getChannelData(0)));
       };
 
-      source.connect(processor);
+      source.connect(voiceFilter);
+      voiceFilter.connect(processor);
       processor.connect(silentGain);
       silentGain.connect(audioCtx.destination);
 
