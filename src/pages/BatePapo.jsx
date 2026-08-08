@@ -2491,8 +2491,8 @@ export default function BatePapo() {
                       </button>
                     )}
 
-                    {/* Seta para rolar a conversa até o final (abaixo do Coach IA) */}
-                    {conversaSelecionada && mensagens?.length > 0 && (
+                    {/* Seta p/ final — oculta quando "Respondendo a:" está visível (sobreporia o X) */}
+                    {conversaSelecionada && mensagens?.length > 0 && !mensagemParaResponder && (
                       <button
                         onClick={() => mensagensEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })}
                         className="scroll-bottom-btn"
