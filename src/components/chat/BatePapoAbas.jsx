@@ -15,7 +15,7 @@ export default function BatePapoAbas({
   encerrarTodosTransferidos,
   encerrandoTransferidos,
 }) {
-  const mostrarPrioridade = !['grupos', 'campanhas'].includes(filtroStatus);
+  const mostrarPrioridade = !['grupos', 'campanhas', 'microtarefas'].includes(filtroStatus);
 
   return (
     <div className="space-y-1.5">
@@ -52,9 +52,9 @@ export default function BatePapoAbas({
           <span className={`text-sm font-bold ${filtroStatus === 'grupos' ? 'text-white' : 'text-emerald-500'}`}>{contadores.grupos}</span>
           <span className={`text-[9px] font-medium ${filtroStatus === 'grupos' ? 'text-white' : 'text-slate-600'}`}>Grupos</span>
         </button>
-        <button onClick={() => setFiltroStatus('campanhas')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'campanhas' ? 'bg-cyan-600' : 'bg-slate-100'}`}>
-          <span className={`text-sm font-bold ${filtroStatus === 'campanhas' ? 'text-white' : 'text-cyan-600'}`}>{contadores.campanhas}</span>
-          <span className={`text-[9px] font-medium ${filtroStatus === 'campanhas' ? 'text-white' : 'text-slate-600'}`}>{contadores.campanhas > 0 ? 'Campanhas*' : 'Campanhas'}</span>
+        <button onClick={() => setFiltroStatus('microtarefas')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'microtarefas' ? 'bg-amber-500' : 'bg-slate-100'}`}>
+          <span className={`text-sm font-bold ${filtroStatus === 'microtarefas' ? 'text-white' : 'text-amber-600'}`}>{contadores.microtarefas || 0}</span>
+          <span className={`text-[9px] font-medium ${filtroStatus === 'microtarefas' ? 'text-white' : 'text-slate-600'}`}>Microtarefas</span>
         </button>
         <button onClick={() => setFiltroStatus('encerrada')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'encerrada' ? 'bg-slate-600' : 'bg-slate-100'}`}>
           <span className={`text-sm font-bold ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-400'}`}>{contadores.encerrada}</span>
