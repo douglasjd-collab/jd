@@ -33,7 +33,12 @@ const normalizaCarta = (item: any, origem: "contemplados" | "desagios") => ({
   administradora_img: texto(item.administradora_img),
   valor_credito: num(item.valor_credito),
   valor_credito_original: num(item.valor_credito_original),
-  entrada: num(item.entrada),
+  entrada_api: num(item.entrada),
+  entrada_sem_comissao: num(item.entrada_sem_comissao),
+  percentual_comissao_entrada: 5,
+  entrada: num(item.entrada_sem_comissao) > 0
+    ? Math.round((num(item.entrada_sem_comissao) + num(item.valor_credito) * 0.05) * 100) / 100
+    : num(item.entrada),
   parcelas: Math.max(0, Math.trunc(num(item.parcelas))),
   valor_parcela: num(item.valor_parcela),
   saldo_devedor: num(item.saldo_devedor),
