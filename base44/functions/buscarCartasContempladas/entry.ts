@@ -117,6 +117,7 @@ function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: numbe
       valor_credito: credito,
       entrada: itens.reduce((s, c) => s + c.entrada, 0),
       valor_parcela: itens.reduce((s, c) => s + c.valor_parcela, 0),
+      saldo_devedor: itens.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
       parcelas: Math.max(...itens.map((c) => c.parcelas || 0)),
       taxa: taxaValores.length === itens.length && taxaValores.length > 0
         ? taxaValores.reduce((s, v) => s + Number(v), 0) / taxaValores.length
@@ -199,8 +200,11 @@ Deno.serve(async (req) => {
     const porProximidade = [...combinacoes].sort((a, b) => a.diferenca_alvo - b.diferenca_alvo || a.entrada - b.entrada);
     const porEntrada = [...combinacoes].sort((a, b) => a.entrada - b.entrada || a.diferenca_alvo - b.diferenca_alvo);
     const porParcela = [...combinacoes].sort((a, b) => a.valor_parcela - b.valor_parcela || a.diferenca_alvo - b.diferenca_alvo);
-    const comTaxa = combinacoes.filter((r) => Number.isFinite(Number(r.taxa)));
-    const porTaxa = [...comTaxa].sort((a, b) => a.taxa - b.taxa || a.diferenca_alvo - b.diferenca_alvo);
+    const porMenorSaldoEntrada = [...combinacoes].sort((a, b) =>
+      a.saldo_devedor - b.saldo_devedor ||
+      a.entrada - b.entrada ||
+      a.diferenca_alvo - b.diferenca_alvo
+    );
 
     return Response.json({
       ok: true,
@@ -214,7 +218,7 @@ Deno.serve(async (req) => {
       recomendacoes: {
         menor_entrada: porEntrada[0] || null,
         menor_parcela: porParcela[0] || null,
-        menor_taxa: porTaxa[0] || null,
+        menor_taxa: porMenorSaldoEntrada[0] || null,
         mais_proxima: porProximidade[0] || null,
       },
       resultados: porProximidade.slice(0, 150),
