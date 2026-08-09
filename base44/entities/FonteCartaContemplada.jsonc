@@ -1,0 +1,37 @@
+{
+  "name": "FonteCartaContemplada",
+  "type": "object",
+  "properties": {
+    "nome": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string"
+    },
+    "tipo_integracao": {
+      "type": "string",
+      "enum": [
+        "json",
+        "site",
+        "login",
+        "manual"
+      ]
+    },
+    "url": {
+      "type": "string"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": true
+    },
+    "observacoes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "nome",
+    "slug",
+    "tipo_integracao",
+    "url"
+  ]
+}

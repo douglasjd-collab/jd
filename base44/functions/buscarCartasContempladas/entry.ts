@@ -4,10 +4,6 @@ const FONTES = {
     contemplados: "https://fragaebitelloconsorcios.com.br/api/json/contemplados",
     desagios: "https://fragaebitelloconsorcios.com.br/api/json/desagios",
   },
-  play_consorcios: {
-    nome: "Play Consórcios",
-    catalogo: "https://playconsorcios.com.br/api/public/catalog.json",
-  },
 };
 
 const num = (v: unknown) => {
@@ -62,46 +58,6 @@ async function carregarFragaBitello(tipo: "contemplados" | "desagios") {
   const data = await response.json();
   if (!Array.isArray(data)) throw new Error("Resposta inválida da Fraga & Bitello");
   return data.map((item) => normalizaCarta(item, tipo));
-}
-
-const normalizaCartaPlay = (item: any) => ({
-  id: `play_consorcios:contemplados:${item.id || item.codigo}`,
-  codigo: texto(item.codigo || item.id),
-  fornecedor: "play_consorcios",
-  fornecedor_nome: "Play Consórcios",
-  origem: "contemplados",
-  categoria: texto(item.segmento) || "outros",
-  administradora: texto(item.administradora) || "Não informada",
-  administradora_img: "",
-  valor_credito: num(item.credito),
-  valor_credito_original: num(item.credito),
-  entrada: num(item.entrada),
-  parcelas: Math.max(0, Math.trunc(num(item.parcelas_qtd))),
-  valor_parcela: num(item.parcela_valor),
-  fundo: 0,
-  prox_reajuste: null,
-  status: normalizaStatus(item.status),
-  disponibilidade_original: texto(item.status),
-  saldo_devedor: item.saldo_devedor === null || item.saldo_devedor === undefined ? null : num(item.saldo_devedor),
-  taxa_transferencia: item.taxa_transferencia === null || item.taxa_transferencia === undefined ? null : num(item.taxa_transferencia),
-  taxa_analise: item.taxa_analise === null || item.taxa_analise === undefined ? null : num(item.taxa_analise),
-  proximo_vencimento: item.proximo_vencimento || null,
-  observacoes: texto(item.observacoes),
-  tipo_carta: texto(item.tipo_carta),
-  // A Play expõe taxas operacionais em valor quando disponíveis, não uma taxa percentual comparável.
-  taxa: null,
-});
-
-async function carregarPlay() {
-  const response = await fetch(FONTES.play_consorcios.catalogo, {
-    headers: { Accept: "application/json" },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!response.ok) throw new Error(`Play Consórcios respondeu HTTP ${response.status}`);
-  const data = await response.json();
-  const cartas = Array.isArray(data) ? data : data?.cartas;
-  if (!Array.isArray(cartas)) throw new Error("Resposta inválida da Play Consórcios");
-  return cartas.map(normalizaCartaPlay);
 }
 
 const normalizaTexto = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -209,17 +165,16 @@ Deno.serve(async (req) => {
       statusFontes.push({ fonte: "fraga_bitello", nome: "Fraga & Bitello", status: "erro", erro: error?.message || String(error), quantidade: 0 });
     }
 
-    if (tipo === "contemplados") {
-      try {
-        const play = await carregarPlay();
-        cartas.push(...play);
-        statusFontes.push({ fonte: "play_consorcios", nome: "Play Consórcios", status: "conectada", quantidade: play.length });
-      } catch (error) {
-        statusFontes.push({ fonte: "play_consorcios", nome: "Play Consórcios", status: "erro", erro: error?.message || String(error), quantidade: 0 });
-      }
-    } else {
-      statusFontes.push({ fonte: "play_consorcios", nome: "Play Consórcios", status: "nao_disponivel", quantidade: 0 });
-    }
+    // A Play Consórcios não disponibiliza API pública. Não tentamos um endpoint inexistente,
+    // evitando erro falso no CRM. A próxima etapa dessa fonte deve usar integração via site
+    // (ou importação estruturada), separada da integração JSON da F&B.
+    statusFontes.push({
+      fonte: "play_consorcios",
+      nome: "Play Consórcios",
+      status: "site_sem_api",
+      quantidade: 0,
+      detalhe: tipo === "contemplados" ? "Fonte via site — sem API pública" : "Deságios não disponíveis via API",
+    });
 
     statusFontes.push({ fonte: "jobs_consorcios", nome: "Consórcios Digital / Jobs", status: "pendente", quantidade: 0 });
 
