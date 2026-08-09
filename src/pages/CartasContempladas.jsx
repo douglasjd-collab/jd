@@ -110,7 +110,7 @@ function RecommendationCard({ icon: Icon, title, result, tone, onOpen }) {
 export default function CartasContempladas() {
   const [credito, setCredito] = useState(100000);
   const [categoria, setCategoria] = useState("todas");
-  const [maxCartas, setMaxCartas] = useState("3");
+  const [maxCartas, setMaxCartas] = useState("1");
   const [tolerancia, setTolerancia] = useState("10");
   const [tipo, setTipo] = useState("contemplados");
   const [data, setData] = useState(null);
@@ -169,7 +169,7 @@ export default function CartasContempladas() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
             <div className="md:col-span-2"><Label>Crédito desejado</Label><div className="relative"><span className="absolute left-3 top-2.5 text-sm text-slate-500">R$</span><Input className="pl-10" value={formatInputMoney(credito)} onChange={(e) => setCredito(parseMoney(e.target.value))} placeholder="100.000,00"/></div></div>
             <div><Label>Categoria</Label><Select value={categoria} onValueChange={setCategoria}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="todas">Todas</SelectItem><SelectItem value="veículo">Veículos</SelectItem><SelectItem value="imóvel">Imóveis</SelectItem><SelectItem value="moto">Motos</SelectItem><SelectItem value="serviço">Serviços</SelectItem></SelectContent></Select></div>
-            <div><Label>Máx. de cartas</Label><Select value={maxCartas} onValueChange={setMaxCartas}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="1">1 carta</SelectItem><SelectItem value="2">Até 2 cartas</SelectItem><SelectItem value="3">Até 3 cartas</SelectItem></SelectContent></Select></div>
+            <div><Label>Quantidade de cartas</Label><Select value={maxCartas} onValueChange={setMaxCartas}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="1">Somente 1 carta</SelectItem><SelectItem value="2">Até 2 cartas</SelectItem><SelectItem value="3">Até 3 cartas</SelectItem></SelectContent></Select></div>
             <Button className="bg-red-600 hover:bg-red-700" onClick={buscar} disabled={busca.isPending}>{busca.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Search className="w-4 h-4 mr-2"/>}Buscar melhores</Button>
           </div>
           <div className="flex flex-wrap gap-3 mt-4 items-center">
