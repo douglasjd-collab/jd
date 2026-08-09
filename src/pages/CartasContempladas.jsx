@@ -26,7 +26,9 @@ function FonteBadge({ fonte }) {
     ? { icon: CheckCircle2, cls: "bg-emerald-50 text-emerald-700 border-emerald-200", texto: `${fonte.quantidade || 0} cartas` }
     : fonte.status === "erro"
       ? { icon: AlertTriangle, cls: "bg-red-50 text-red-700 border-red-200", texto: "Erro na consulta" }
-      : { icon: Clock3, cls: "bg-amber-50 text-amber-700 border-amber-200", texto: "Integração pendente" };
+      : fonte.status === "site_sem_api"
+        ? { icon: ExternalLink, cls: "bg-blue-50 text-blue-700 border-blue-200", texto: "Via site • sem API" }
+        : { icon: Clock3, cls: "bg-amber-50 text-amber-700 border-amber-200", texto: "Integração pendente" };
   const Icon = cfg.icon;
   return (
     <div className={`rounded-xl border p-3 flex items-center justify-between gap-3 ${cfg.cls}`}>
@@ -114,7 +116,7 @@ export default function CartasContempladas() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {(data?.fontes || [
-          {nome:"Fraga & Bitello",status:"conectada",quantidade:0}, {nome:"Play Consórcios",status:"pendente"}, {nome:"Consórcios Digital / Jobs",status:"pendente"}
+          {nome:"Fraga & Bitello",status:"conectada",quantidade:0}, {nome:"Play Consórcios",status:"site_sem_api"}, {nome:"Consórcios Digital / Jobs",status:"pendente"}
         ]).map((f, i) => <FonteBadge key={f.fonte || i} fonte={f}/>)}
       </div>
 
