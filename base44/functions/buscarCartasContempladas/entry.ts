@@ -14,9 +14,9 @@ const num = (v: unknown) => {
 const texto = (v: unknown) => (v ?? "").toString().trim();
 
 const normalizaStatus = (v: unknown) => {
-  const s = texto(v).toLowerCase();
-  if (!s) return "disponivel";
-  if (s.includes("reserv")) return "reservada";
+  const s = normalizaTexto(texto(v));
+  if (!s || s === "reservar" || s.includes("dispon")) return "disponivel";
+  if (s.includes("reservad")) return "reservada";
   if (s.includes("vend")) return "vendida";
   if (s.includes("indisp")) return "indisponivel";
   return "disponivel";
