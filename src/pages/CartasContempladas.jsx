@@ -94,8 +94,8 @@ function RecommendationCard({ icon: Icon, title, result, tone, onOpen }) {
       <CardContent>
         {!result ? <p className="text-sm opacity-70">Nenhuma opção com esse critério disponível.</p> : <>
           <p className="text-xs opacity-70">{result.administradora} • {result.quantidade_cartas} {result.quantidade_cartas === 1 ? "carta" : "cartas"}</p>
-          <p className="text-xl font-bold mt-1">{moneyBR(tone === "entrada" ? result.entrada : tone === "parcela" ? result.valor_parcela : result.taxa)}</p>
-          {tone === "taxa" && <p className="text-xs opacity-70 -mt-1">Taxa média informada</p>}
+          <p className="text-xl font-bold mt-1">{moneyBR(tone === "entrada" ? result.entrada : tone === "parcela" ? result.valor_parcela : result.saldo_devedor)}</p>
+          {tone === "taxa" && <p className="text-xs opacity-70 -mt-1">Saldo devedor, priorizando também entrada baixa</p>}
           <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
             <span>Crédito <b>{moneyBR(result.valor_credito)}</b></span><span>Entrada <b>{moneyBR(result.entrada)}</b></span>
             <span>Parcela <b>{moneyBR(result.valor_parcela)}</b></span><span>Prazo <b>{result.parcelas || "—"} meses</b></span>
@@ -190,7 +190,7 @@ export default function CartasContempladas() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <RecommendationCard icon={Banknote} title="Menor entrada" result={data.recomendacoes?.menor_entrada} tone="entrada" onOpen={setSelected}/>
           <RecommendationCard icon={ReceiptText} title="Menor parcela" result={data.recomendacoes?.menor_parcela} tone="parcela" onOpen={setSelected}/>
-          <RecommendationCard icon={Percent} title="Menor taxa" result={data.recomendacoes?.menor_taxa} tone="taxa" onOpen={setSelected}/>
+          <RecommendationCard icon={Percent} title="Menor saldo + entrada" result={data.recomendacoes?.menor_taxa} tone="taxa" onOpen={setSelected}/>
         </div>
 
         <Card>
