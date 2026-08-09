@@ -105,7 +105,25 @@ async function carregarPlay() {
 }
 
 const normalizaTexto = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-const normalizeAdmin = normalizaTexto;
+const normalizeAdmin = (v: string) => {
+  const base = normalizaTexto(v)
+    .replace(/\b(consorcios?|administradora|administradora de consorcios|seguro)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const aliases: Record<string, string> = {
+    "hs": "hs",
+    "magalu": "magalu",
+    "magazine luiza": "magalu",
+    "itau": "itau",
+    "bradesco": "bradesco",
+    "porto": "porto",
+    "racon": "racon",
+    "canopus": "canopus",
+    "embracon": "embracon",
+  };
+  return aliases[base] || base;
+};
 
 function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: number, toleranciaPct: number) {
   const disponiveis = cartas.filter((c) => c.status === "disponivel" && c.valor_credito > 0);
