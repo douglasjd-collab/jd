@@ -14,7 +14,7 @@ const num = (v: unknown) => {
 const texto = (v: unknown) => (v ?? "").toString().trim();
 
 const normalizaStatus = (v: unknown) => {
-  const s = normalizaTexto(texto(v));
+  const s = texto(v).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   if (!s || s === "reservar" || s.includes("dispon")) return "disponivel";
   if (s.includes("reservad")) return "reservada";
   if (s.includes("vend")) return "vendida";
