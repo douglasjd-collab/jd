@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Loader2, WalletCards, Banknote, ReceiptText, Percent, RefreshCw, Layers3, ExternalLink, CheckCircle2, Clock3, AlertTriangle } from "lucide-react";
+import { Search, Loader2, WalletCards, Banknote, ReceiptText, Percent, RefreshCw, Layers3, ExternalLink, CheckCircle2, Clock3, AlertTriangle, Copy, Share2 } from "lucide-react";
 import { toast } from "sonner";
 
 const moneyBR = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -20,6 +20,50 @@ const parseMoney = (value) => {
   return digits ? Number(digits) / 100 : 0;
 };
 const formatInputMoney = (v) => v ? Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+
+const montarTextoProposta = (result) => {
+  const cartas = [...(result?.cartas || [])].sort((a, b) => Number(a.parcelas || 0) - Number(b.parcelas || 0));
+  const linhas = [
+    "💳 *CARTA CONTEMPLADA*",
+    "",
+    `Crédito total: ${moneyBR(result?.valor_credito)}`,
+    `Entrada total: ${moneyBR(result?.entrada)}`,
+    `Administradora: ${result?.administradora || "Não informada"}`,
+    "",
+  ];
+
+  cartas.forEach((c, index) => {
+    linhas.push(
+      `📄 *Carta ${index + 1}*`,
+      `Código: ${c.codigo || "—"}`,
+      `Crédito: ${moneyBR(c.valor_credito)}`,
+      `Entrada: ${moneyBR(c.entrada)}`,
+      `Prazo: ${c.parcelas || "—"}x de ${moneyBR(c.valor_parcela)}`,
+      `Administradora: ${c.administradora || "Não informada"}`
+    );
+    if (Number(c.saldo_devedor) > 0) linhas.push(`Saldo devedor: ${moneyBR(c.saldo_devedor)}`);
+    if (Number(c.taxa_transferencia) > 0) linhas.push(`Transferência: ${moneyBR(c.taxa_transferencia)}`);
+    if (Number(c.seguro) > 0) linhas.push(`Seguro de vida: ${moneyBR(c.seguro)}`);
+    linhas.push("");
+  });
+
+  if (cartas.length > 1) {
+    linhas.push("📊 *Evolução da parcela mensal*");
+    const prazos = [...new Set(cartas.map((c) => Number(c.parcelas || 0)).filter(Boolean))].sort((a, b) => a - b);
+    let inicio = 1;
+    prazos.forEach((fim) => {
+      const ativas = cartas.filter((c) => Number(c.parcelas || 0) >= fim);
+      const total = ativas.reduce((soma, c) => soma + Number(c.valor_parcela || 0), 0);
+      const periodo = inicio === fim ? `${inicio}ª parcela` : `Da ${inicio}ª à ${fim}ª parcela`;
+      linhas.push(`${periodo}: ${moneyBR(total)} por mês`);
+      inicio = fim + 1;
+    });
+    linhas.push("");
+  }
+
+  linhas.push("Consulte disponibilidade e condições atualizadas.");
+  return linhas.join("\n");
+};
 
 function FonteBadge({ fonte }) {
   const cfg = fonte.status === "conectada"
@@ -93,6 +137,28 @@ export default function CartasContempladas() {
     busca.mutate();
   };
 
+  const copiarProposta = async (result) => {
+    try {
+      await navigator.clipboard.writeText(montarTextoProposta(result));
+      toast.success("Proposta copiada. Agora é só colar no WhatsApp.");
+    } catch {
+      toast.error("Não foi possível copiar a proposta.");
+    }
+  };
+
+  const compartilharProposta = async (result) => {
+    const text = montarTextoProposta(result);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: "Carta contemplada", text });
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
+    }
+    await copiarProposta(result);
+  };
+
   return (
     <div className="space-y-5">
       <PageHeader title="Cartas Contempladas" subtitle="Busque e compare cartas em um só lugar. O CRM combina até 3 cartas da mesma administradora." />
@@ -139,7 +205,7 @@ export default function CartasContempladas() {
 
       {!data && <Card className="border-dashed"><CardContent className="py-12 text-center"><WalletCards className="w-10 h-10 text-slate-300 mx-auto mb-3"/><h3 className="font-semibold text-slate-700">Informe o crédito que o cliente precisa</h3><p className="text-sm text-slate-500 mt-1">Vamos comparar cartas individuais e combinações da mesma administradora.</p></CardContent></Card>}
 
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}><DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>Composição da opção</DialogTitle></DialogHeader>{selected && <div className="space-y-4"><div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 rounded-xl p-4"><div><p className="text-xs text-slate-500">Crédito</p><p className="font-bold">{moneyBR(selected.valor_credito)}</p></div><div><p className="text-xs text-slate-500">Entrada</p><p className="font-bold">{moneyBR(selected.entrada)}</p></div><div><p className="text-xs text-slate-500">Parcela total</p><p className="font-bold">{moneyBR(selected.valor_parcela)}</p></div><div><p className="text-xs text-slate-500">Administradora</p><p className="font-bold">{selected.administradora}</p></div></div>{selected.cartas.map((c, i) => <div key={c.id} className="border rounded-xl p-4"><div className="flex items-center justify-between gap-2 mb-3"><div><p className="font-bold">Carta {i + 1} • {c.administradora}</p><p className="text-xs text-slate-500">Código {c.codigo} • {c.fornecedor_nome}</p></div><Badge className={c.status === "disponivel" ? "bg-emerald-600" : "bg-amber-600"}>{c.status}</Badge></div><div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm"><div><span className="text-slate-500">Crédito</span><p className="font-semibold">{moneyBR(c.valor_credito)}</p></div><div><span className="text-slate-500">Entrada</span><p className="font-semibold">{moneyBR(c.entrada)}</p></div><div><span className="text-slate-500">Parcela</span><p className="font-semibold">{moneyBR(c.valor_parcela)}</p></div><div><span className="text-slate-500">Prazo</span><p className="font-semibold">{c.parcelas} meses</p></div></div></div>)}</div>}</DialogContent></Dialog>
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}><DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>Composição da opção</DialogTitle></DialogHeader>{selected && <div className="space-y-4"><div className="flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={() => copiarProposta(selected)}><Copy className="w-4 h-4 mr-2"/>Copiar proposta</Button><Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => compartilharProposta(selected)}><Share2 className="w-4 h-4 mr-2"/>Compartilhar</Button></div><div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 rounded-xl p-4"><div><p className="text-xs text-slate-500">Crédito</p><p className="font-bold">{moneyBR(selected.valor_credito)}</p></div><div><p className="text-xs text-slate-500">Entrada</p><p className="font-bold">{moneyBR(selected.entrada)}</p></div><div><p className="text-xs text-slate-500">Parcela total</p><p className="font-bold">{moneyBR(selected.valor_parcela)}</p></div><div><p className="text-xs text-slate-500">Administradora</p><p className="font-bold">{selected.administradora}</p></div></div>{selected.cartas.map((c, i) => <div key={c.id} className="border rounded-xl p-4"><div className="flex items-center justify-between gap-2 mb-3"><div><p className="font-bold">Carta {i + 1} • {c.administradora}</p><p className="text-xs text-slate-500">Código {c.codigo} • {c.fornecedor_nome}</p></div><Badge className={c.status === "disponivel" ? "bg-emerald-600" : "bg-amber-600"}>{c.status}</Badge></div><div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm"><div><span className="text-slate-500">Crédito</span><p className="font-semibold">{moneyBR(c.valor_credito)}</p></div><div><span className="text-slate-500">Entrada</span><p className="font-semibold">{moneyBR(c.entrada)}</p></div><div><span className="text-slate-500">Parcela</span><p className="font-semibold">{moneyBR(c.valor_parcela)}</p></div><div><span className="text-slate-500">Prazo</span><p className="font-semibold">{c.parcelas} meses</p></div></div></div>)}</div>}</DialogContent></Dialog>
     </div>
   );
 }
