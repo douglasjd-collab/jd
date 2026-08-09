@@ -148,6 +148,7 @@ export default function PlanosCanopusPage() {
           valor_bem: plano.valor_bem,
           produto_id: plano.produto_id,
           plano: plano.plano,
+          grupo: plano.grupo,
           tipo_venda: plano.tipo_venda,
           status: plano.status,
           variacoes: new Map() // Usar Map para evitar duplicatas por prazo
@@ -163,6 +164,7 @@ export default function PlanosCanopusPage() {
           parcela: plano.parcela,
           taxa_adm: plano.taxa_adm,
           plano: plano.plano,
+          grupo: plano.grupo,
           tipo_venda: plano.tipo_venda,
           nome_bem: plano.nome_bem
         });
@@ -202,7 +204,7 @@ export default function PlanosCanopusPage() {
       
       // Filtro de grupo
       if (filtroGrupo) {
-        const grupoPlano = g.plano?.split('|')[0]?.trim() || '';
+        const grupoPlano = g.grupo || '';
         if (!grupoPlano.toLowerCase().includes(filtroGrupo.toLowerCase())) return false;
       }
       
@@ -225,7 +227,7 @@ export default function PlanosCanopusPage() {
 
   const handleAbrirSimulador = (variacao) => {
     if (!selectedGroup) return;
-    const grupoNumero = selectedGroup.plano?.split('|')[0]?.trim() || '';
+    const grupoNumero = selectedGroup.grupo || '';
     // Usar nome_bem da variação se disponível (pode ter "50%" no nome), senão usa o do grupo
     const nomeBemFinal = variacao.nome_bem || selectedGroup.nome_bem || '';
     const dadosPlano = {
@@ -253,6 +255,7 @@ export default function PlanosCanopusPage() {
 ${variacao.taxa_adm ? `📊 Taxa ADM: ${variacao.taxa_adm}%` : ''}
 
 📑 Plano: ${selectedGroup?.plano || '-'}
+👥 Grupo: ${selectedGroup?.grupo || '-'}
 🔄 Tipo de Venda: ${selectedGroup?.tipo_venda || '-'}
 
 ---
@@ -280,6 +283,7 @@ ${idx + 1}. Plano de ${v.prazo_meses} meses
 🏷️ Bem: ${selectedGroup.nome_bem || '-'}
 💰 Valor do Crédito: ${formatCurrency(selectedGroup.valor_bem)}
 📑 Plano: ${selectedGroup.plano || '-'}
+👥 Grupo: ${selectedGroup.grupo || '-'}
 🔄 Tipo de Venda: ${selectedGroup.tipo_venda || '-'}
 
 ${textoVariacoes}
@@ -530,7 +534,7 @@ ${textoVariacoes}
                       {formatCurrency(group.variacoes[0]?.parcela)}
                     </TableCell>
                     <TableCell className="text-sm text-slate-600">
-                      {group.plano?.split('|')[1]?.trim() || group.plano}
+                      {group.plano}
                     </TableCell>
                     <TableCell className="text-sm text-slate-600">
                       {group.tipo_venda}
@@ -582,7 +586,8 @@ ${textoVariacoes}
                   <span className="text-lg font-semibold text-blue-600">
                     {formatCurrency(selectedGroup?.valor_bem)}
                   </span>
-                  <Badge>{selectedGroup?.plano?.split('|')[0]?.trim()}</Badge>
+                  <Badge>{selectedGroup?.plano}</Badge>
+                  <Badge variant="outline">Grupo: {selectedGroup?.grupo || '-'}</Badge>
                   <Badge variant="outline">{selectedGroup?.tipo_venda}</Badge>
                 </div>
               </div>
@@ -614,7 +619,7 @@ ${textoVariacoes}
                         Plano de {variacao.prazo_meses} meses / 1ª parcela de {formatCurrency(variacao.parcela)}
                       </p>
                       <p className="text-xs text-slate-500">
-                        Grupo: {selectedGroup.plano?.split('|')[0]?.trim()}
+                        Grupo: {selectedGroup.grupo || '-'}
                         {variacao.taxa_adm && ` • Taxa ADM: ${variacao.taxa_adm}%`}
                       </p>
                     </div>
@@ -684,7 +689,7 @@ ${textoVariacoes}
                             administradora_nome: 'Canopus',
                             tabela_id,
                             tipo_bem: selectedGroup.produto_id === '101' ? 'automovel' : selectedGroup.produto_id === '102' ? 'imovel' : 'motocicleta',
-                            grupo: selectedGroup.codigo || ''
+                            grupo: selectedGroup.grupo || ''
                           });
 
                           navigate(createPageUrl(`NovaVenda?${params.toString()}`));
