@@ -182,7 +182,9 @@ Deno.serve(async (req) => {
       const mediaHistorica = seqMinimos.length ? seqMinimos.reduce((s, x) => s + x, 0) / seqMinimos.length : null;
       const menor = seqMinimos.length ? Math.min(...seqMinimos) : null;
       const maior = seqMinimos.length ? Math.max(...seqMinimos) : null;
-      const menorAnterior = seqMinimos[0] ?? null;
+      // A sequência está ordenada da assembleia mais recente para a mais antiga.
+      // Portanto, o primeiro valor é o menor lance da assembleia atual.
+      const menorAtual = seqMinimos[0] ?? null;
 
       const tendencia = (() => {
         if (ultimas3.length < 3) return 'Dados insuficientes';
@@ -223,7 +225,7 @@ Deno.serve(async (req) => {
         prioridade_comercial: g.prioridade_comercial,
         modalidade_analisada: modal,
         qtd_assembleias_historico: assembleias.length,
-        menor_lance_anterior: menorAnterior,
+        menor_lance_assembleia_atual: menorAtual,
         media_3_meses: media3,
         media_historica: mediaHistorica,
         menor_lance_historico: menor,
@@ -266,7 +268,7 @@ ${JSON.stringify(gruposComHistorico, null, 2)}
 Estrutura de cada grupo:
 - assembleias: lista de {data, chamada, modalidades: {lance_livre, lance_limitado, lance_fixo_30, lance_fixo_50, sorteio: {menor, maior, media, qtd}}}
 - sequencia_ultimos_minimos: menores lances da modalidade "${tipo_lance}", do mais recente para o mais antigo
-- media_3_meses, media_historica, menor_lance_anterior, tendencia_calculada
+- media_3_meses, media_historica, menor_lance_assembleia_atual, tendencia_calculada
 - qtd_assembleias_historico: número de assembleias com histórico (0 = sem dados)
 - quantidade_cartas, credito_por_carta e credito_total_composicao: composição calculada pelo sistema para atingir o crédito desejado
 
@@ -286,7 +288,7 @@ RETORNE:
 - recomendacao_principal: o grupo e a composição mais compatíveis (use o campo "grupo_id" EXATO do JSON e copie quantidade_cartas, credito_por_carta e credito_total_composicao).
 - previsao: análise da tendência das próximas assembleias (faixa provável em %, confiança, fatores, qtd_assembleias_usadas, aviso).
 - comparacao: exatamente 2 composições alternativas, diferentes da recomendação principal, ordenadas por compatibilidade (posicao 2 e 3). Elas podem usar o mesmo grupo da principal quando a quantidade de cartas for diferente. Assim, o resultado terá 3 recomendações no total. Use grupo_id e dados da composição exatos.
-- mensagem_cliente: mensagem pronta para o cliente (saudação com {primeiro_nome} como espaço a preencher, citando número do grupo, quantidade de cartas, crédito por carta, crédito total, menor lance anterior e média recente, com aviso final).
+- mensagem_cliente: mensagem pronta para o cliente (saudação com {primeiro_nome} como espaço a preencher, citando número do grupo, quantidade de cartas, crédito por carta, crédito total, menor lance da assembleia atual e média recente, com aviso final).
 - aviso_obrigatorio: o aviso descrito abaixo.
 
 Classificações de compatibilidade: "Alta", "Média" ou "Baixa".
@@ -311,7 +313,7 @@ Aviso obrigatório a incluir em aviso_obrigatorio:
             prazo_maximo: { type: 'number' },
             prazo_restante: { type: 'number' },
             qtd_participantes: { type: 'number' },
-            menor_lance_anterior: { type: 'number' },
+            menor_lance_assembleia_atual: { type: 'number' },
             media_3_meses: { type: 'number' },
             contemplados_ultimo_mes: { type: 'number' },
             tipo_lance_analisado: { type: 'string' },
@@ -344,7 +346,7 @@ Aviso obrigatório a incluir em aviso_obrigatorio:
               quantidade_cartas: { type: 'number' },
               credito_por_carta: { type: 'number' },
               credito_total_composicao: { type: 'number' },
-              menor_lance_anterior: { type: 'number' },
+              menor_lance_assembleia_atual: { type: 'number' },
               media_historica: { type: 'number' },
               tendencia: { type: 'string' },
               compatibilidade: { type: 'string' }
@@ -368,8 +370,8 @@ Aviso obrigatório a incluir em aviso_obrigatorio:
       const aSemHistorico = a.qtd_assembleias_historico > 0 ? 0 : 1;
       const bSemHistorico = b.qtd_assembleias_historico > 0 ? 0 : 1;
       if (aSemHistorico !== bSemHistorico) return aSemHistorico - bSemHistorico;
-      const aLance = a.menor_lance_anterior == null ? Number.MAX_SAFE_INTEGER : Number(a.menor_lance_anterior);
-      const bLance = b.menor_lance_anterior == null ? Number.MAX_SAFE_INTEGER : Number(b.menor_lance_anterior);
+      const aLance = a.menor_lance_assembleia_atual == null ? Number.MAX_SAFE_INTEGER : Number(a.menor_lance_assembleia_atual);
+      const bLance = b.menor_lance_assembleia_atual == null ? Number.MAX_SAFE_INTEGER : Number(b.menor_lance_assembleia_atual);
       if (aLance !== bLance) return aLance - bLance;
       const aMedia = a.media_3_meses == null ? Number.MAX_SAFE_INTEGER : Number(a.media_3_meses);
       const bMedia = b.media_3_meses == null ? Number.MAX_SAFE_INTEGER : Number(b.media_3_meses);
@@ -393,7 +395,7 @@ Aviso obrigatório a incluir em aviso_obrigatorio:
         credito_total_composicao: fontePrincipal.credito_total_composicao,
         prazo_maximo: fontePrincipal.prazo_maximo,
         qtd_participantes: fontePrincipal.qtd_participantes,
-        menor_lance_anterior: fontePrincipal.menor_lance_anterior,
+        menor_lance_assembleia_atual: fontePrincipal.menor_lance_assembleia_atual,
         media_3_meses: fontePrincipal.media_3_meses,
         contemplados_ultimo_mes: fontePrincipal.contemplados_ultimo_mes
       };
@@ -421,7 +423,7 @@ Aviso obrigatório a incluir em aviso_obrigatorio:
         quantidade_cartas: fonte.quantidade_cartas,
         credito_por_carta: fonte.credito_por_carta,
         credito_total_composicao: fonte.credito_total_composicao,
-        menor_lance_anterior: fonte.menor_lance_anterior,
+        menor_lance_assembleia_atual: fonte.menor_lance_assembleia_atual,
         media_historica: fonte.media_historica,
         tendencia: fonte.tendencia_calculada,
         compatibilidade: fonte.qtd_assembleias_historico > 0 ? 'Alta' : 'Baixa'
