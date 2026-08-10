@@ -38,17 +38,35 @@ Deno.serve(async (req) => {
       categoria_bem: modalidade
     }, '-created_date', 500);
 
-    const gruposCompativeis = todosGrupos.filter((g) => {
-      const min = g.credito_minimo || 0;
-      const max = g.credito_maximo || Number.MAX_SAFE_INTEGER;
-      return valorCredito >= min && valorCredito <= max;
-    });
+    // Cada grupo pode atender o crédito com 1 a 5 cartas iguais.
+    // Ex.: crédito desejado de R$ 100 mil em um grupo de até R$ 50 mil
+    // gera a composição de 2 cartas de R$ 50 mil.
+    const MAX_CARTAS = 5;
+    const gruposCompativeis = todosGrupos
+      .map((g) => {
+        const min = Number(g.credito_minimo || 0);
+        const max = Number(g.credito_maximo || Number.MAX_SAFE_INTEGER);
+
+        for (let quantidade = 1; quantidade <= MAX_CARTAS; quantidade++) {
+          const creditoPorCarta = valorCredito / quantidade;
+          if (creditoPorCarta >= min && creditoPorCarta <= max) {
+            return {
+              ...g,
+              quantidade_cartas: quantidade,
+              credito_por_carta: creditoPorCarta,
+              credito_total_composicao: creditoPorCarta * quantidade
+            };
+          }
+        }
+        return null;
+      })
+      .filter(Boolean);
 
     if (gruposCompativeis.length === 0) {
       return Response.json({
         ok: true,
         sem_grupos: true,
-        mensagem: 'Nenhum grupo ativo compatível com a modalidade e o crédito informado.'
+        mensagem: 'Nenhum grupo ativo permite formar o crédito informado com até 5 cartas.'
       });
     }
 
@@ -196,6 +214,9 @@ Deno.serve(async (req) => {
         categoria_bem: g.categoria_bem,
         credito_minimo: g.credito_minimo,
         credito_maximo: g.credito_maximo,
+        quantidade_cartas: g.quantidade_cartas,
+        credito_por_carta: g.credito_por_carta,
+        credito_total_composicao: g.credito_total_composicao,
         prazo_maximo: g.prazo_maximo,
         qtd_participantes: g.qtd_participantes,
         prioridade_comercial: g.prioridade_comercial,
@@ -230,7 +251,8 @@ Deno.serve(async (req) => {
 
 PERFIL DO CLIENTE:
 - Modalidade: ${modalidade}
-- Valor do crédito desejado: R$ ${valorCredito}
+- Valor total do crédito desejado: R$ ${valorCredito}
+- Aceita composição com mais de uma carta: sim, até 5 cartas do mesmo grupo
 - Prazo desejado: ${prazo_desejado || 'não especificado'} meses
 - Tipo de lance pretendido: ${tipo_lance}
 - Percentual disponível para lance: ${percentual_lance != null ? percentual_lance + '%' : 'não informado'}
@@ -245,6 +267,7 @@ Estrutura de cada grupo:
 - sequencia_ultimos_minimos: menores lances da modalidade "${tipo_lance}", do mais recente para o mais antigo
 - media_3_meses, media_historica, menor_lance_anterior, tendencia_calculada
 - qtd_assembleias_historico: número de assembleias com histórico (0 = sem dados)
+- quantidade_cartas, credito_por_carta e credito_total_composicao: composição calculada pelo sistema para atingir o crédito desejado
 
 REGRAS DE ANÁLISE:
 1. NÃO considere apenas o menor lance de um único mês. Compare o histórico de pelo menos 3 assembleias para evitar recomendar um grupo com redução isolada/atípica.
@@ -253,13 +276,16 @@ REGRAS DE ANÁLISE:
 4. Considere prazo restante, participantes ativos e qtd de contemplados por assembleia.
 5. Priorize grupos com histórico mais longo (6 a 12 assembleias) quando disponíveis.
 6. NÃO invente dados. Se um grupo tiver qtd_assembleias_historico === 0, informe "Dados insuficientes" na tendência e na previsão, e use compatibilidade "Baixa".
-7. Use somente os percentuais e contagens presentes no JSON — não calcule valores não suportados pelos dados.
+7. Use somente os percentuais, valores e contagens presentes no JSON — não invente nem recalcule a composição.
+8. Considere tanto opções de uma carta quanto opções com várias cartas. A quantidade de cartas, o crédito por carta e o crédito total devem ser copiados EXATAMENTE do grupo escolhido.
+9. Se uma composição com várias cartas tiver histórico melhor e compatibilidade superior, recomende-a. Não favoreça automaticamente uma única carta.
+10. O histórico do grupo é aplicado a cada carta da composição, pois todas pertencem ao mesmo grupo.
 
 RETORNE:
-- recomendacao_principal: o grupo mais compatível (use o campo "grupo_id" EXATO do JSON).
+- recomendacao_principal: o grupo e a composição mais compatíveis (use o campo "grupo_id" EXATO do JSON e copie quantidade_cartas, credito_por_carta e credito_total_composicao).
 - previsao: análise da tendência das próximas assembleias (faixa provável em %, confiança, fatores, qtd_assembleias_usadas, aviso).
-- comparacao: até 3 grupos alternativos ordenados por compatibilidade (posicao 1, 2, 3) — use grupo_id exato.
-- mensagem_cliente: mensagem pronta para o cliente (saudação com {primeiro_nome} como espaço a preencher, citando número do grupo, valor do crédito, menor lance anterior e média recente, com aviso final).
+- comparacao: até 3 grupos/composições alternativos ordenados por compatibilidade (posicao 1, 2, 3) — use grupo_id e dados da composição exatos.
+- mensagem_cliente: mensagem pronta para o cliente (saudação com {primeiro_nome} como espaço a preencher, citando número do grupo, quantidade de cartas, crédito por carta, crédito total, menor lance anterior e média recente, com aviso final).
 - aviso_obrigatorio: o aviso descrito abaixo.
 
 Classificações de compatibilidade: "Alta", "Média" ou "Baixa".
@@ -278,6 +304,9 @@ Aviso obrigatório a incluir em aviso_obrigatorio:
             numero_grupo: { type: 'string' },
             modalidade: { type: 'string' },
             valor_credito: { type: 'number' },
+            quantidade_cartas: { type: 'number' },
+            credito_por_carta: { type: 'number' },
+            credito_total_composicao: { type: 'number' },
             prazo_maximo: { type: 'number' },
             prazo_restante: { type: 'number' },
             qtd_participantes: { type: 'number' },
@@ -311,6 +340,9 @@ Aviso obrigatório a incluir em aviso_obrigatorio:
               posicao: { type: 'number' },
               grupo_id: { type: 'string' },
               numero_grupo: { type: 'string' },
+              quantidade_cartas: { type: 'number' },
+              credito_por_carta: { type: 'number' },
+              credito_total_composicao: { type: 'number' },
               menor_lance_anterior: { type: 'number' },
               media_historica: { type: 'number' },
               tendencia: { type: 'string' },
