@@ -2364,6 +2364,13 @@ export default function BatePapo() {
                 onAbrirCadastroIA={abrirCadastroIA}
                 localizarMensagem={localizarMensagem}
                 onEncaminharMensagem={iniciarEncaminhar}
+                onEnviarMensagemFinalizacao={(texto) =>
+                  enviarMensagemMutation.mutateAsync({
+                    texto,
+                    arquivo: null,
+                    mensagemParaResponder: null,
+                  })
+                }
                 />
                 {!isGrupo(conversaSelecionada) && (
                   <MicrotarefasConversa
