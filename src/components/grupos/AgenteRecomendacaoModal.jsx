@@ -147,7 +147,9 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
   const a = resultado?.analise;
   const rec = a?.recomendacao_principal;
   const prev = a?.previsao;
-  const comp = a?.comparacao || [];
+  const comp = (a?.comparacao || [])
+    .filter((c) => c.grupo_id !== rec?.grupo_id)
+    .slice(0, 2);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
