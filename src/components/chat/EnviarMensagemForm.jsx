@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import heic2any from 'heic2any';
 import { encodeFloat32ToMp3 } from '@/utils/converterAudioParaMp3';
 import { iniciarGravador } from '@/utils/audioRecorder';
@@ -7,13 +7,13 @@ import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Pl
 import MensagensRapidasModal from './MensagensRapidasModal';
 import TemplateMetaModal from './TemplateMetaModal';
 import ImageEditorModal from './image-editor/ImageEditorModal';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
 
 const TIPOS_IMAGEM = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
 const MAX_HEIGHT = 256;
 const LINE_HEIGHT = 24;
-
-const quickReplies = ["/boasvindas", "/consorcio", "/financiamento", "/documentos"];
 
 export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUsuario = '', empresaId = null, telefoneDestino = null, nomeCliente = null, conversaId = null, onTemplateEnviado = null, scriptExterno = null, coachIAOpen = false, setCoachIAOpen = null }) {
   const [texto, setTexto] = useState('');
@@ -34,6 +34,58 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const [editorAberto, setEditorAberto] = useState(false);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+
+  const { data: mensagensRapidasAtalho = [] } = useQuery({
+    queryKey: ['mensagens-rapidas', empresaId],
+    enabled: !!empresaId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      try {
+        return await base44.entities.CampanhaLog.filter({
+          empresa_id: empresaId,
+          tipo_campanha: 'mensagem_rapida',
+        }, 'cliente_nome', 500);
+      } catch {
+        return [];
+      }
+    },
+  });
+
+  const quickReplies = useMemo(() => {
+    const aliasesUsados = new Set();
+    return mensagensRapidasAtalho.flatMap((mensagem) => {
+      let dados;
+      try {
+        dados = JSON.parse(mensagem.motivo_erro || '{}');
+      } catch {
+        return [];
+      }
+
+      if ((dados.tipo || 'texto') !== 'texto' || !dados.conteudo?.trim()) return [];
+
+      const baseAlias = String(dados.titulo || mensagem.cliente_nome || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+
+      if (!baseAlias) return [];
+
+      let alias = `/${baseAlias}`;
+      let sufixo = 2;
+      while (aliasesUsados.has(alias)) {
+        alias = `/${baseAlias}${sufixo++}`;
+      }
+      aliasesUsados.add(alias);
+
+      return [{
+        id: mensagem.id,
+        atalho: alias,
+        titulo: dados.titulo || mensagem.cliente_nome || alias,
+        conteudo: dados.conteudo,
+      }];
+    });
+  }, [mensagensRapidasAtalho]);
 
   const abrirEditorComArquivos = (files) => {
     setImagensParaEditor(files.map((file) => ({ file })));
@@ -308,9 +360,15 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   };
 
   const handleSelectQuickReply = (reply) => {
-    setTexto(reply + ' ');
+    const conteudoCompleto = substituirVariaveis(reply.conteudo || '');
+    setTexto(conteudoCompleto);
     setShowQuickReplies(false);
-    textareaRef.current?.focus();
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      autoResizeTextarea(textareaRef.current);
+      const fim = conteudoCompleto.length;
+      textareaRef.current?.setSelectionRange(fim, fim);
+    });
   };
 
   const autoResizeTextarea = (el) => {
@@ -377,7 +435,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
 
   const quickRepliesFiltered = texto === '/'
     ? quickReplies
-    : quickReplies.filter(r => r.toLowerCase().startsWith(texto.toLowerCase()));
+    : quickReplies.filter(r => r.atalho.startsWith(texto.toLowerCase()));
 
   const capitalizarNome = (nome) => {
     if (!nome) return '';
@@ -470,12 +528,14 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
         <div className="absolute bottom-full left-0 right-0 mb-1 mx-3 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-10">
           {quickRepliesFiltered.map((reply) => (
             <button
-              key={reply}
+              key={reply.id}
               type="button"
               onClick={() => handleSelectQuickReply(reply)}
               className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors border-b last:border-0 border-slate-100"
             >
-              <span className="font-medium text-blue-600">{reply}</span>
+              <span className="font-semibold text-blue-600">{reply.atalho}</span>
+              <span className="block text-xs text-slate-500 mt-0.5 truncate">{reply.titulo}</span>
+              <span className="block text-xs text-slate-400 mt-0.5 truncate">{substituirVariaveis(reply.conteudo)}</span>
             </button>
           ))}
         </div>
@@ -668,7 +728,15 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
+                  if (showQuickReplies && quickRepliesFiltered.length > 0) {
+                    handleSelectQuickReply(quickRepliesFiltered[0]);
+                    return;
+                  }
                   handleEnviar(e);
+                }
+                if (e.key === 'Escape' && showQuickReplies) {
+                  e.preventDefault();
+                  setShowQuickReplies(false);
                 }
               }}
               onPaste={(e) => {
