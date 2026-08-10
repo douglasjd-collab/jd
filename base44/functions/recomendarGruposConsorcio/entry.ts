@@ -21,7 +21,8 @@ Deno.serve(async (req) => {
       tipo_lance,
       percentual_lance,
       lance_embutido,
-      complementar_recurso
+      complementar_recurso,
+      quantidade_cartas_preferida
     } = body;
 
     if (!empresa_id || !modalidade || !valor_credito) {
@@ -49,6 +50,7 @@ Deno.serve(async (req) => {
 
       // Gerar todas as quantidades válidas, sem parar na primeira opção.
       for (let quantidade = 1; quantidade <= MAX_CARTAS; quantidade++) {
+        if (quantidade_cartas_preferida && quantidade !== Number(quantidade_cartas_preferida)) continue;
         const creditoPorCarta = valorCredito / quantidade;
         if (creditoPorCarta >= min && creditoPorCarta <= max) {
           composicoes.push({
@@ -256,6 +258,7 @@ PERFIL DO CLIENTE:
 - Modalidade: ${modalidade}
 - Valor total do crédito desejado: R$ ${valorCredito}
 - Aceita composição com mais de uma carta: sim, até 5 cartas do mesmo grupo
+- Composição escolhida no formulário: ${quantidade_cartas_preferida ? quantidade_cartas_preferida + ' carta(s)' : 'automática (comparar todas)'}
 - Prazo desejado: ${prazo_desejado || 'não especificado'} meses
 - Tipo de lance pretendido: ${tipo_lance}
 - Percentual disponível para lance: ${percentual_lance != null ? percentual_lance + '%' : 'não informado'}
