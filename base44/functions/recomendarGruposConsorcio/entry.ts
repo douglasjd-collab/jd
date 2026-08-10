@@ -42,25 +42,26 @@ Deno.serve(async (req) => {
     // Ex.: crédito desejado de R$ 100 mil em um grupo de até R$ 50 mil
     // gera a composição de 2 cartas de R$ 50 mil.
     const MAX_CARTAS = 5;
-    const gruposCompativeis = todosGrupos
-      .map((g) => {
-        const min = Number(g.credito_minimo || 0);
-        const max = Number(g.credito_maximo || Number.MAX_SAFE_INTEGER);
+    const gruposCompativeis = todosGrupos.flatMap((g) => {
+      const min = Number(g.credito_minimo || 0);
+      const max = Number(g.credito_maximo || Number.MAX_SAFE_INTEGER);
+      const composicoes = [];
 
-        for (let quantidade = 1; quantidade <= MAX_CARTAS; quantidade++) {
-          const creditoPorCarta = valorCredito / quantidade;
-          if (creditoPorCarta >= min && creditoPorCarta <= max) {
-            return {
-              ...g,
-              quantidade_cartas: quantidade,
-              credito_por_carta: creditoPorCarta,
-              credito_total_composicao: creditoPorCarta * quantidade
-            };
-          }
+      // Gerar todas as quantidades válidas, sem parar na primeira opção.
+      for (let quantidade = 1; quantidade <= MAX_CARTAS; quantidade++) {
+        const creditoPorCarta = valorCredito / quantidade;
+        if (creditoPorCarta >= min && creditoPorCarta <= max) {
+          composicoes.push({
+            ...g,
+            composicao_id: `${g.id}_${quantidade}`,
+            quantidade_cartas: quantidade,
+            credito_por_carta: creditoPorCarta,
+            credito_total_composicao: creditoPorCarta * quantidade
+          });
         }
-        return null;
-      })
-      .filter(Boolean);
+      }
+      return composicoes;
+    });
 
     if (gruposCompativeis.length === 0) {
       return Response.json({
@@ -284,7 +285,7 @@ REGRAS DE ANÁLISE:
 RETORNE:
 - recomendacao_principal: o grupo e a composição mais compatíveis (use o campo "grupo_id" EXATO do JSON e copie quantidade_cartas, credito_por_carta e credito_total_composicao).
 - previsao: análise da tendência das próximas assembleias (faixa provável em %, confiança, fatores, qtd_assembleias_usadas, aviso).
-- comparacao: exatamente 2 grupos/composições alternativos, diferentes da recomendação principal, ordenados por compatibilidade (posicao 2 e 3) — assim o resultado terá 3 recomendações no total. Use grupo_id e dados da composição exatos.
+- comparacao: exatamente 2 composições alternativas, diferentes da recomendação principal, ordenadas por compatibilidade (posicao 2 e 3). Elas podem usar o mesmo grupo da principal quando a quantidade de cartas for diferente. Assim, o resultado terá 3 recomendações no total. Use grupo_id e dados da composição exatos.
 - mensagem_cliente: mensagem pronta para o cliente (saudação com {primeiro_nome} como espaço a preencher, citando número do grupo, quantidade de cartas, crédito por carta, crédito total, menor lance anterior e média recente, com aviso final).
 - aviso_obrigatorio: o aviso descrito abaixo.
 
@@ -360,6 +361,74 @@ Aviso obrigatório a incluir em aviso_obrigatorio:
       response_json_schema: responseSchema,
       model: 'gpt_5_4'
     });
+
+    // Garantir três composições reais mesmo quando o LLM omitir alternativas.
+    const chave = (item) => `${item?.grupo_id || ''}_${Number(item?.quantidade_cartas || 1)}`;
+    const ordenados = [...gruposComHistorico].sort((a, b) => {
+      const aSemHistorico = a.qtd_assembleias_historico > 0 ? 0 : 1;
+      const bSemHistorico = b.qtd_assembleias_historico > 0 ? 0 : 1;
+      if (aSemHistorico !== bSemHistorico) return aSemHistorico - bSemHistorico;
+      const aLance = a.menor_lance_anterior == null ? Number.MAX_SAFE_INTEGER : Number(a.menor_lance_anterior);
+      const bLance = b.menor_lance_anterior == null ? Number.MAX_SAFE_INTEGER : Number(b.menor_lance_anterior);
+      if (aLance !== bLance) return aLance - bLance;
+      const aMedia = a.media_3_meses == null ? Number.MAX_SAFE_INTEGER : Number(a.media_3_meses);
+      const bMedia = b.media_3_meses == null ? Number.MAX_SAFE_INTEGER : Number(b.media_3_meses);
+      if (aMedia !== bMedia) return aMedia - bMedia;
+      return Number(b.qtd_assembleias_historico || 0) - Number(a.qtd_assembleias_historico || 0);
+    });
+
+    const principalSolicitado = analise?.recomendacao_principal;
+    const fontePrincipal = gruposComHistorico.find((g) => chave(g) === chave(principalSolicitado))
+      || gruposComHistorico.find((g) => g.grupo_id === principalSolicitado?.grupo_id)
+      || ordenados[0];
+
+    if (fontePrincipal) {
+      analise.recomendacao_principal = {
+        ...principalSolicitado,
+        grupo_id: fontePrincipal.grupo_id,
+        numero_grupo: fontePrincipal.numero_grupo,
+        valor_credito: fontePrincipal.credito_total_composicao,
+        quantidade_cartas: fontePrincipal.quantidade_cartas,
+        credito_por_carta: fontePrincipal.credito_por_carta,
+        credito_total_composicao: fontePrincipal.credito_total_composicao,
+        prazo_maximo: fontePrincipal.prazo_maximo,
+        qtd_participantes: fontePrincipal.qtd_participantes,
+        menor_lance_anterior: fontePrincipal.menor_lance_anterior,
+        media_3_meses: fontePrincipal.media_3_meses,
+        contemplados_ultimo_mes: fontePrincipal.contemplados_ultimo_mes
+      };
+    }
+
+    const usadas = new Set([chave(analise.recomendacao_principal)]);
+    const alternativas = [];
+    const candidatasLLM = Array.isArray(analise?.comparacao) ? analise.comparacao : [];
+    const candidatas = [
+      ...candidatasLLM.map((item) =>
+        gruposComHistorico.find((g) => chave(g) === chave(item))
+        || gruposComHistorico.find((g) => g.grupo_id === item?.grupo_id)
+      ).filter(Boolean),
+      ...ordenados
+    ];
+
+    for (const fonte of candidatas) {
+      const idComposicao = chave(fonte);
+      if (usadas.has(idComposicao)) continue;
+      usadas.add(idComposicao);
+      alternativas.push({
+        posicao: alternativas.length + 2,
+        grupo_id: fonte.grupo_id,
+        numero_grupo: fonte.numero_grupo,
+        quantidade_cartas: fonte.quantidade_cartas,
+        credito_por_carta: fonte.credito_por_carta,
+        credito_total_composicao: fonte.credito_total_composicao,
+        menor_lance_anterior: fonte.menor_lance_anterior,
+        media_historica: fonte.media_historica,
+        tendencia: fonte.tendencia_calculada,
+        compatibilidade: fonte.qtd_assembleias_historico > 0 ? 'Alta' : 'Baixa'
+      });
+      if (alternativas.length === 2) break;
+    }
+    analise.comparacao = alternativas;
 
     return Response.json({
       ok: true,
