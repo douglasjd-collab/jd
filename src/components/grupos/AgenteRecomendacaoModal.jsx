@@ -268,7 +268,7 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
                 <Info label="Prazo máx." value={`${rec.prazo_maximo || '—'} meses`} />
                 <Info label="Prazo restante" value={`${rec.prazo_restante || '—'} meses`} />
                 <Info label="Participantes" value={rec.qtd_participantes ?? '—'} />
-                <Info label="Menor lance anterior" value={pct(rec.menor_lance_anterior)} />
+                <Info label="Menor lance da assembleia atual" value={pct(rec.menor_lance_assembleia_atual)} />
                 <Info label="Média 3 meses" value={pct(rec.media_3_meses)} />
                 <Info label="Contemplados último mês" value={rec.contemplados_ultimo_mes ?? '—'} />
                 <Info label="Dif. lance do cliente" value={pct(rec.diferenca_lance)} />
@@ -310,7 +310,7 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
                       <th className="p-2">Posição</th>
                       <th className="p-2">Grupo</th>
                       <th className="p-2">Composição</th>
-                      <th className="p-2">Menor lance anterior</th>
+                      <th className="p-2">Menor lance da assembleia atual</th>
                       <th className="p-2">Média histórica</th>
                       <th className="p-2">Tendência</th>
                       <th className="p-2">Compatibilidade</th>
@@ -323,7 +323,7 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
                         <td className="p-2 font-medium">{c.posicao}º</td>
                         <td className="p-2 font-medium">{c.numero_grupo}</td>
                         <td className="p-2">{c.quantidade_cartas || 1}x {moeda(c.credito_por_carta)}</td>
-                        <td className="p-2">{pct(c.menor_lance_anterior)}</td>
+                        <td className="p-2">{pct(c.menor_lance_assembleia_atual)}</td>
                         <td className="p-2">{pct(c.media_historica)}</td>
                         <td className="p-2"><span className="inline-flex items-center gap-1"><TendenciaIcon tendencia={c.tendencia} /> {c.tendencia}</span></td>
                         <td className="p-2"><CompatibilidadeBadge nivel={c.compatibilidade} /></td>
@@ -428,7 +428,7 @@ function AnaliseCompleta({ resultado }) {
             </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mt-2">
-            <Info label="Menor lance anterior" value={pct(g.menor_lance_anterior)} />
+            <Info label="Menor lance da assembleia atual" value={pct(g.menor_lance_assembleia_atual)} />
             <Info label="Média 3 meses" value={pct(g.media_3_meses)} />
             <Info label="Média histórica" value={pct(g.media_historica)} />
             <Info label="Tendência calculada" value={g.tendencia_calculada} />
