@@ -136,7 +136,9 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
     const params = new URLSearchParams({
       grupo_id: rec?.grupo_id || '',
       valor: form.valor_credito || '',
-      modalidade: form.modalidade || ''
+      modalidade: form.modalidade || '',
+      quantidade_cartas: String(rec?.quantidade_cartas || 1),
+      credito_por_carta: String(rec?.credito_por_carta || form.valor_credito || '')
     });
     navigate(createPageUrl('SimuladorInteligente') + '?' + params.toString());
     onOpenChange(false);
@@ -156,7 +158,7 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
             Agente de IA — Recomendação de Grupos Ativos
           </DialogTitle>
           <DialogDescription>
-            Informe o perfil do cliente para o agente analisar os grupos ativos e recomendar o mais compatível.
+            Informe o perfil do cliente para analisar uma carta ou uma composição de até 5 cartas e recomendar o melhor histórico.
           </DialogDescription>
         </DialogHeader>
 
@@ -247,12 +249,18 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
                   <Award className="w-5 h-5 text-violet-600" />
-                  <h3 className="font-semibold text-violet-800">Grupo recomendado: {rec.numero_grupo}</h3>
+                  <h3 className="font-semibold text-violet-800">
+                    {rec.quantidade_cartas > 1
+                      ? `Composição recomendada: ${rec.quantidade_cartas} cartas no grupo ${rec.numero_grupo}`
+                      : `Grupo recomendado: ${rec.numero_grupo}`}
+                  </h3>
                 </div>
                 <CompatibilidadeBadge nivel={rec.compatibilidade} />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <Info label="Valor do crédito" value={`R$ ${(rec.valor_credito || 0).toLocaleString('pt-BR')}`} />
+                <Info label="Quantidade de cartas" value={`${rec.quantidade_cartas || 1} carta(s)`} />
+                <Info label="Crédito por carta" value={moeda(rec.credito_por_carta || rec.valor_credito)} />
+                <Info label="Crédito total" value={moeda(rec.credito_total_composicao || form.valor_credito)} />
                 <Info label="Prazo máx." value={`${rec.prazo_maximo || '—'} meses`} />
                 <Info label="Prazo restante" value={`${rec.prazo_restante || '—'} meses`} />
                 <Info label="Participantes" value={rec.qtd_participantes ?? '—'} />
@@ -274,7 +282,13 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={handleSimularLance}>
                   <ArrowRight className="w-3.5 h-3.5" /> Simular lance
                 </Button>
-                <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleSelecionarGrupo({ id: rec.grupo_id, numero_grupo: rec.numero_grupo })}>
+                <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700" onClick={() => handleSelecionarGrupo({
+                  id: rec.grupo_id,
+                  numero_grupo: rec.numero_grupo,
+                  quantidade_cartas: rec.quantidade_cartas || 1,
+                  credito_por_carta: rec.credito_por_carta,
+                  credito_total: rec.credito_total_composicao
+                })}>
                   <Check className="w-3.5 h-3.5" /> Selecionar este grupo
                 </Button>
               </div>
@@ -291,6 +305,7 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
                     <tr className="text-left">
                       <th className="p-2">Posição</th>
                       <th className="p-2">Grupo</th>
+                      <th className="p-2">Composição</th>
                       <th className="p-2">Menor lance anterior</th>
                       <th className="p-2">Média histórica</th>
                       <th className="p-2">Tendência</th>
@@ -303,12 +318,19 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
                       <tr key={i} className="border-t border-slate-100">
                         <td className="p-2 font-medium">{c.posicao}º</td>
                         <td className="p-2 font-medium">{c.numero_grupo}</td>
+                        <td className="p-2">{c.quantidade_cartas || 1}x {moeda(c.credito_por_carta)}</td>
                         <td className="p-2">{pct(c.menor_lance_anterior)}</td>
                         <td className="p-2">{pct(c.media_historica)}</td>
                         <td className="p-2"><span className="inline-flex items-center gap-1"><TendenciaIcon tendencia={c.tendencia} /> {c.tendencia}</span></td>
                         <td className="p-2"><CompatibilidadeBadge nivel={c.compatibilidade} /></td>
                         <td className="p-2">
-                          <Button size="sm" variant="ghost" onClick={() => handleSelecionarGrupo({ id: c.grupo_id, numero_grupo: c.numero_grupo })}>
+                          <Button size="sm" variant="ghost" onClick={() => handleSelecionarGrupo({
+                            id: c.grupo_id,
+                            numero_grupo: c.numero_grupo,
+                            quantidade_cartas: c.quantidade_cartas || 1,
+                            credito_por_carta: c.credito_por_carta,
+                            credito_total: c.credito_total_composicao
+                          })}>
                             Selecionar
                           </Button>
                         </td>
@@ -382,6 +404,11 @@ function pct(v) {
   return `${Number(v).toFixed(1)}%`;
 }
 
+function moeda(v) {
+  if (v == null || v === '' || isNaN(v)) return '—';
+  return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
 function AnaliseCompleta({ resultado }) {
   const grupos = resultado?.grupos_com_historico || [];
   return (
@@ -389,7 +416,9 @@ function AnaliseCompleta({ resultado }) {
       {grupos.map((g) => (
         <div key={g.grupo_id} className="border border-slate-200 rounded-lg p-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <h5 className="font-medium text-slate-800">Grupo {g.numero_grupo}</h5>
+            <h5 className="font-medium text-slate-800">
+              Grupo {g.numero_grupo} · {g.quantidade_cartas || 1} carta(s) de {moeda(g.credito_por_carta)}
+            </h5>
             <span className="text-xs text-slate-500">
               {g.qtd_assembleias_historico || 0} assembleia(s) · {g.qtd_participantes || '—'} participantes
             </span>
