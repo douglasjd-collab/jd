@@ -284,7 +284,7 @@ REGRAS DE ANÁLISE:
 RETORNE:
 - recomendacao_principal: o grupo e a composição mais compatíveis (use o campo "grupo_id" EXATO do JSON e copie quantidade_cartas, credito_por_carta e credito_total_composicao).
 - previsao: análise da tendência das próximas assembleias (faixa provável em %, confiança, fatores, qtd_assembleias_usadas, aviso).
-- comparacao: até 3 grupos/composições alternativos ordenados por compatibilidade (posicao 1, 2, 3) — use grupo_id e dados da composição exatos.
+- comparacao: exatamente 2 grupos/composições alternativos, diferentes da recomendação principal, ordenados por compatibilidade (posicao 2 e 3) — assim o resultado terá 3 recomendações no total. Use grupo_id e dados da composição exatos.
 - mensagem_cliente: mensagem pronta para o cliente (saudação com {primeiro_nome} como espaço a preencher, citando número do grupo, quantidade de cartas, crédito por carta, crédito total, menor lance anterior e média recente, com aviso final).
 - aviso_obrigatorio: o aviso descrito abaixo.
 
