@@ -1090,7 +1090,9 @@ export default function BatePapo() {
       toast.error(errorMsg);
     },
     onSuccess: async (data, variables) => {
-      if (conversaSelecionada) {
+      // No envio de encerramento, não reatribuir o atendente: a finalização
+      // seguinte precisa manter responsavel_id vazio para ir direto a "Finalizados".
+      if (conversaSelecionada && !variables.finalizarAposEnvio) {
         const msgExibicao = variables.texto || (variables.arquivo ? variables.arquivo.nome : '');
         const expira = new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
 
@@ -2369,6 +2371,7 @@ export default function BatePapo() {
                     texto,
                     arquivo: null,
                     mensagemParaResponder: null,
+                    finalizarAposEnvio: true,
                   })
                 }
                 />
