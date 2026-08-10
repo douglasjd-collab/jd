@@ -5,8 +5,10 @@ import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Search, TrendingDown, Calendar, FileSpreadsheet, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, TrendingDown, Calendar, FileSpreadsheet, Loader2, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import AgenteRecomendacaoModal from '@/components/grupos/AgenteRecomendacaoModal';
 
 export default function HistoricoResultadoAssembleia() {
   const [user, setUser] = useState(null);
@@ -16,6 +18,7 @@ export default function HistoricoResultadoAssembleia() {
   const [ordenarPorMenor, setOrdenarPorMenor] = useState(false);
   const [tipoBem, setTipoBem] = useState('');
   const [gruposExpandidos, setGruposExpandidos] = useState({});
+  const [agenteOpen, setAgenteOpen] = useState(false);
 
   const toggleGrupo = (grupoId) => {
     setGruposExpandidos(prev => ({ ...prev, [grupoId]: !prev[grupoId] }));
@@ -236,10 +239,19 @@ export default function HistoricoResultadoAssembleia() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Histórico de Resultado de Assembleia"
-        subtitle="Consulte lances e contemplações por grupo"
-      />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <PageHeader
+          title="Histórico de Resultado de Assembleia"
+          subtitle="Consulte lances e contemplações por grupo"
+        />
+        <Button
+          onClick={() => setAgenteOpen(true)}
+          className="gap-2 bg-violet-600 hover:bg-violet-700 self-start sm:self-auto"
+        >
+          <Sparkles className="w-4 h-4" />
+          Buscar melhor grupo
+        </Button>
+      </div>
 
       {/* Filtros */}
       <Card>
@@ -507,6 +519,18 @@ export default function HistoricoResultadoAssembleia() {
           })}
         </div>
       )}
+
+      <AgenteRecomendacaoModal
+        empresaId={empresaId}
+        open={agenteOpen}
+        onOpenChange={setAgenteOpen}
+        onSelectGrupo={(grupo) => {
+          if (grupo?.numero_grupo) {
+            setBuscaGrupo(String(grupo.numero_grupo));
+            setGruposExpandidos((prev) => ({ ...prev, [grupo.numero_grupo]: true }));
+          }
+        }}
+      />
     </div>
   );
 }
