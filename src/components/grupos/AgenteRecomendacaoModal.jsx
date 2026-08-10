@@ -103,7 +103,8 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
         setResultado({ sem_grupos: true, mensagem: data.mensagem });
       } else if (data.ok && data.analise) {
         setResultado(data);
-        toast.success(`${data.grupos_analisados} grupo(s) analisado(s).`);
+        setVerComparacao(true);
+        toast.success(`${Math.min(3, 1 + (data.analise.comparacao?.length || 0))} opção(ões) recomendada(s).`);
       } else {
         toast.error(data.error || 'Erro ao analisar grupos.');
       }
@@ -147,8 +148,9 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
   const a = resultado?.analise;
   const rec = a?.recomendacao_principal;
   const prev = a?.previsao;
+  const chavePrincipal = `${rec?.grupo_id || ''}_${rec?.quantidade_cartas || 1}`;
   const comp = (a?.comparacao || [])
-    .filter((c) => c.grupo_id !== rec?.grupo_id)
+    .filter((c) => `${c?.grupo_id || ''}_${c?.quantidade_cartas || 1}` !== chavePrincipal)
     .slice(0, 2);
 
   return (
@@ -279,7 +281,7 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
                   <History className="w-3.5 h-3.5" /> {verAnalise ? 'Ocultar' : 'Ver'} análise completa
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setVerComparacao((v) => !v)}>
-                  <FileBarChart className="w-3.5 h-3.5" /> {verComparacao ? 'Ocultar' : 'Comparar'} grupos
+                  <FileBarChart className="w-3.5 h-3.5" /> {verComparacao ? 'Ocultar opções' : 'Ver 3 opções'}
                 </Button>
                 <Button size="sm" variant="outline" className="gap-1.5" onClick={handleSimularLance}>
                   <ArrowRight className="w-3.5 h-3.5" /> Simular lance
@@ -416,7 +418,7 @@ function AnaliseCompleta({ resultado }) {
   return (
     <div className="space-y-3">
       {grupos.map((g) => (
-        <div key={g.grupo_id} className="border border-slate-200 rounded-lg p-3">
+        <div key={`${g.grupo_id}_${g.quantidade_cartas || 1}`} className="border border-slate-200 rounded-lg p-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <h5 className="font-medium text-slate-800">
               Grupo {g.numero_grupo} · {g.quantidade_cartas || 1} carta(s) de {moeda(g.credito_por_carta)}
