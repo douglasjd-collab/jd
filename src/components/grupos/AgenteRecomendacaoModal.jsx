@@ -61,6 +61,7 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
     prazo_desejado: '',
     tipo_lance: 'lance_livre',
     percentual_lance: '',
+    quantidade_cartas_preferida: 'automatico',
     lance_embutido: false,
     complementar_recurso: false
   });
@@ -94,6 +95,9 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
         prazo_desejado: form.prazo_desejado ? Number(form.prazo_desejado) : null,
         tipo_lance: form.tipo_lance,
         percentual_lance: form.percentual_lance ? Number(form.percentual_lance) : null,
+        quantidade_cartas_preferida: form.quantidade_cartas_preferida === 'automatico'
+          ? null
+          : Number(form.quantidade_cartas_preferida),
         lance_embutido: form.lance_embutido,
         complementar_recurso: form.complementar_recurso
       });
@@ -207,7 +211,19 @@ export default function AgenteRecomendacaoModal({ empresaId, open, onOpenChange,
             <Input type="number" min="0" max="100" placeholder="Ex: 55"
               value={form.percentual_lance} onChange={(e) => set('percentual_lance', e.target.value)} />
           </div>
-          <div className="flex items-center gap-6 pt-6">
+          <div className="space-y-1.5">
+            <Label>Composição desejada</Label>
+            <Select value={form.quantidade_cartas_preferida} onValueChange={(v) => set('quantidade_cartas_preferida', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="automatico">Automática — comparar 1, 2 e 3 cotas</SelectItem>
+                <SelectItem value="1">Somente 1 cota</SelectItem>
+                <SelectItem value="2">Junção de 2 cotas</SelectItem>
+                <SelectItem value="3">Junção de 3 cotas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-6 md:col-span-2">
             <div className="flex items-center gap-2">
               <Switch id="lance-embutido" checked={form.lance_embutido} onCheckedChange={(v) => set('lance_embutido', v)} />
               <Label htmlFor="lance-embutido" className="text-sm cursor-pointer">Lance embutido</Label>
