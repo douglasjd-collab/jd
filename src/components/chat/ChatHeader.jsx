@@ -10,6 +10,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import {
   Check, ArrowRightLeft, MoreVertical, RefreshCw, Tag, Clock,
   Contact, Pencil, BellOff, Pin, X, AlignJustify, CalendarClock, TrendingUp,
   PhoneCall, PhoneOff, UserPlus, Search, Paperclip,
@@ -50,9 +59,32 @@ export default function ChatHeader({
   onAbrirCadastroIA,
   localizarMensagem,
   onEncaminharMensagem,
+  onEnviarMensagemFinalizacao,
 }) {
   const [buscaAtiva, setBuscaAtiva] = useState(false);
   const [galeriaAberta, setGaleriaAberta] = useState(false);
+  const [finalizarModalOpen, setFinalizarModalOpen] = useState(false);
+  const [finalizando, setFinalizando] = useState(false);
+  const mensagemFinalizacaoPadrao = `✅ *Atendimento finalizado!*
+
+Agradecemos pelo seu contato com a *JD Promotora*.
+
+Caso deseje um novo atendimento, basta enviar uma nova mensagem. Nossa equipe estará à disposição para ajudar!
+
+🎁 *Você sabia?*
+Ao indicar um amigo ou familiar que contratar um dos nossos serviços, você poderá receber cashback.
+
+Trabalhamos com:
+• Seguros
+• Consórcios
+• Financiamentos
+• Empréstimos
+
+📲 Siga a JD Promotora no Instagram:
+https://www.instagram.com/jdpromotora?igsh=czJ1Z213ZGdpZGo5&utm_source=qr
+
+_Cashback sujeito às regras da campanha._`;
+  const [mensagemFinalizacao, setMensagemFinalizacao] = useState(mensagemFinalizacaoPadrao);
 
   const navigate = useNavigate();
   const [canalOverride, setCanalOverride] = useState(null);
@@ -104,6 +136,47 @@ export default function ChatHeader({
   useEffect(() => {
     setCanalOverride(null);
   }, [conversaSelecionada?.id]);
+
+  const concluirFinalizacao = async ({ enviarMensagem = false } = {}) => {
+    if (finalizando || !conversaSelecionada?.id) return;
+    if (enviarMensagem && !mensagemFinalizacao.trim()) {
+      toast.error('Digite a mensagem de finalização.');
+      return;
+    }
+
+    const conversaId = conversaSelecionada.id;
+    setFinalizando(true);
+    try {
+      if (enviarMensagem) {
+        if (!onEnviarMensagemFinalizacao) {
+          throw new Error('Envio de mensagem indisponível.');
+        }
+        await onEnviarMensagemFinalizacao(mensagemFinalizacao.trim());
+      }
+
+      await base44.entities.ConversaWhatsapp.update(conversaId, {
+        status: 'encerrada',
+        responsavel_id: null,
+        responsavel_nome: null,
+      });
+
+      queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
+        old.map(c => c.id === conversaId
+          ? { ...c, status: 'encerrada', responsavel_id: null, responsavel_nome: null }
+          : c)
+      );
+      setFinalizarModalOpen(false);
+      setConversaSelecionada(null);
+      toast.success(enviarMensagem
+        ? 'Mensagem enviada e conversa finalizada'
+        : 'Conversa finalizada sem enviar mensagem'
+      );
+    } catch (error) {
+      toast.error('Não foi possível finalizar: ' + (error?.message || 'erro desconhecido'));
+    } finally {
+      setFinalizando(false);
+    }
+  };
 
   // Alternar para uma conexão específica
   const alternarParaConexao = async (conexao) => {
@@ -430,14 +503,9 @@ export default function ChatHeader({
             variant="outline"
             size="sm"
             className="gap-1 sm:gap-1.5 rounded-md border-slate-200 text-xs font-medium text-red-600 hover:text-red-700 hover:border-red-300 px-2 sm:px-3"
-            onClick={async () => {
-              const idFinalizar = conversaSelecionada.id;
-              queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
-                old.map(c => c.id === idFinalizar ? { ...c, status: 'encerrada', responsavel_id: null, responsavel_nome: null } : c)
-              );
-              setConversaSelecionada(null);
-              toast.success('Conversa finalizada');
-              base44.entities.ConversaWhatsapp.update(idFinalizar, { status: 'encerrada', responsavel_id: null, responsavel_nome: null }).catch(() => {});
+            onClick={() => {
+              setMensagemFinalizacao(mensagemFinalizacaoPadrao);
+              setFinalizarModalOpen(true);
             }}
           >
             <Check className="h-3.5 w-3.5" />
@@ -644,6 +712,62 @@ export default function ChatHeader({
           </button>
           </div>
           )}
+          <Dialog open={finalizarModalOpen} onOpenChange={(open) => !finalizando && setFinalizarModalOpen(open)}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Finalizar atendimento</DialogTitle>
+                <DialogDescription>
+                  Finalize sem enviar mensagem ou revise a mensagem abaixo antes de enviar ao cliente.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-2">
+                <label htmlFor="mensagem-finalizacao" className="text-sm font-medium text-slate-700">
+                  Mensagem de finalização
+                </label>
+                <Textarea
+                  id="mensagem-finalizacao"
+                  value={mensagemFinalizacao}
+                  onChange={(e) => setMensagemFinalizacao(e.target.value)}
+                  rows={15}
+                  disabled={finalizando}
+                  className="resize-y text-sm"
+                />
+                <p className="text-xs text-slate-500">
+                  Você pode personalizar o texto antes do envio.
+                </p>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={finalizando}
+                  onClick={() => setFinalizarModalOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={finalizando}
+                  className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => concluirFinalizacao({ enviarMensagem: false })}
+                >
+                  Finalizar sem enviar
+                </Button>
+                <Button
+                  type="button"
+                  disabled={finalizando || !mensagemFinalizacao.trim()}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => concluirFinalizacao({ enviarMensagem: true })}
+                >
+                  {finalizando ? 'Finalizando...' : 'Enviar e finalizar'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           <GaleriaMidiasPanel
           open={galeriaAberta}
           onOpenChange={setGaleriaAberta}
