@@ -22,6 +22,7 @@ export default async function(req: Request): Promise<Response> {
       limit = 30,
       ordem = 'recente',
       mensagem_id,
+      whatsapp_message_id,
       contexto_antes = 30,
       contexto_depois = 30,
     } = body;
@@ -39,10 +40,23 @@ export default async function(req: Request): Promise<Response> {
     }
 
     // ─── MODO LOCALIZAR ─── carrega mensagem alvo + janela ao redor ───
-    if (modo === 'localizar' && mensagem_id) {
+    if (modo === 'localizar' && (mensagem_id || whatsapp_message_id)) {
       let mensagem = null;
-      try { mensagem = await base44.entities.MensagemWhatsapp.get(mensagem_id); } catch (_) {}
-      if (!mensagem) return Response.json({ success: false, error: 'Mensagem não encontrada' }, { status: 404 });
+      if (mensagem_id) {
+        try { mensagem = await base44.entities.MensagemWhatsapp.get(mensagem_id); } catch (_) {}
+      }
+      if (!mensagem && whatsapp_message_id) {
+        try {
+          const encontradas = await base44.entities.MensagemWhatsapp.filter({
+            conversa_id,
+            whatsapp_message_id: String(whatsapp_message_id),
+          }, '-data_envio', 1);
+          mensagem = encontradas?.[0] || null;
+        } catch (_) {}
+      }
+      if (!mensagem || mensagem.conversa_id !== conversa_id) {
+        return Response.json({ success: false, error: 'Mensagem original não encontrada no histórico' }, { status: 404 });
+      }
 
       const dataAlvo = new Date(mensagem.data_envio || mensagem.created_date).toISOString();
       let anteriores = [];
