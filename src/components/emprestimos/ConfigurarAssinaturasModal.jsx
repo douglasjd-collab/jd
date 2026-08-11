@@ -4,7 +4,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { AlertTriangle, Copy, MessageCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getTipoOperacaoLabel } from './gerarTermoAutorizacao';
@@ -19,7 +18,6 @@ export default function ConfigurarAssinaturasModal({ open, onOpenChange, propost
   const [testemunha1, setTestemunha1] = useState({ nome: '', cpf: '', telefone: '', email: '', relacao: '' });
   const [testemunha2, setTestemunha2] = useState({ nome: '', cpf: '', telefone: '', email: '', relacao: '' });
   const [representante, setRepresentante] = useState({ cargo: '', telefone: '', email: '' });
-  const [sequencial, setSequencial] = useState(true);
   const [saving, setSaving] = useState(false);
   const [solicitacaoCriada, setSolicitacaoCriada] = useState(null);
 
@@ -34,7 +32,6 @@ export default function ConfigurarAssinaturasModal({ open, onOpenChange, propost
         telefone: proposta.testemunha2_telefone || '', email: '', relacao: '',
       });
       setRepresentante({ cargo: '', telefone: empresa?.telefone || '', email: empresa?.email || '' });
-      setSequencial(true);
       setSolicitacaoCriada(null);
     }
   }, [open, proposta, empresa]);
@@ -62,8 +59,8 @@ export default function ConfigurarAssinaturasModal({ open, onOpenChange, propost
         valor_liquido_snapshot: proposta.valor_liquido || 0,
         valor_parcela_snapshot: proposta.emprestimo_valor_parcela || 0,
         prazo_snapshot: proposta.emprestimo_prazo || 0,
-        status: 'aguardando_cliente',
-        sequencial,
+        status: 'em_assinatura',
+        sequencial: false,
         ordem_json: JSON.stringify(ordem),
 
         cliente_nome: proposta.cliente_nome,
@@ -149,7 +146,7 @@ export default function ConfigurarAssinaturasModal({ open, onOpenChange, propost
               <p><span className="font-semibold text-slate-500">Cliente:</span> {proposta.cliente_nome}</p>
               <p><span className="font-semibold text-slate-500">Documento:</span> Termo de Autorização</p>
               <p><span className="font-semibold text-slate-500">Contrato:</span> {proposta.contrato}</p>
-              <p><span className="font-semibold text-slate-500">Status:</span> Aguardando assinatura do cliente</p>
+              <p><span className="font-semibold text-slate-500">Status:</span> Aguardando assinaturas — sem ordem obrigatória</p>
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Link do cliente</Label>
@@ -173,7 +170,7 @@ export default function ConfigurarAssinaturasModal({ open, onOpenChange, propost
                 </Button>
               </a>
             </div>
-            <p className="text-xs text-slate-400">Os demais links (testemunhas e representante) são liberados conforme cada assinatura anterior é concluída. Acompanhe o progresso na aba Termo de Autorização.</p>
+            <p className="text-xs text-slate-400">Todos os links ficam liberados imediatamente. Cliente, testemunhas e representante podem assinar em qualquer ordem.</p>
             <DialogFooter>
               <Button onClick={() => onOpenChange(false)}>Concluir</Button>
             </DialogFooter>
@@ -221,10 +218,9 @@ export default function ConfigurarAssinaturasModal({ open, onOpenChange, propost
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 text-sm cursor-pointer">
-                <Checkbox checked={sequencial} onCheckedChange={setSequencial} />
-                Liberar cada assinatura somente após a conclusão da anterior
-              </label>
+              <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                Assinaturas sem ordem obrigatória: todos os participantes podem assinar assim que receberem seus links.
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
