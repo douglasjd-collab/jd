@@ -6,6 +6,7 @@ const TIPO_EVENTO = {
   selfie: 'selfie_enviada',
   rg_frente: 'rg_frente_enviado',
   rg_verso: 'rg_verso_enviado',
+  cnh: 'cnh_enviada',
 };
 
 function findByToken(sol, token) {
@@ -145,6 +146,8 @@ Deno.serve(async (req) => {
           selfie: !!evidenciasRole.selfie_url,
           rg_frente: !!evidenciasRole.rg_frente_url,
           rg_verso: !!evidenciasRole.rg_verso_url,
+          cnh: !!evidenciasRole.cnh_url,
+          tipo_documento: evidenciasRole.tipo_documento || '',
         },
       });
     }
@@ -158,13 +161,14 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'enviar_evidencia') {
-      if (!['selfie', 'rg_frente', 'rg_verso'].includes(tipo)) {
+      if (!['selfie', 'rg_frente', 'rg_verso', 'cnh'].includes(tipo)) {
         return Response.json({ error: 'Tipo de evidência inválido' }, { status: 400 });
       }
       const { file_url, hash } = await uploadImagemBase64(base44, data_url, `${tipo}_${role}`);
       const evidenciasAtuais = parseEvidencias(sol, role);
       const novasEvidencias = {
         ...evidenciasAtuais,
+        tipo_documento: tipo === 'cnh' ? 'cnh' : (tipo.startsWith('rg_') ? 'rg' : evidenciasAtuais.tipo_documento),
         [`${tipo}_url`]: file_url,
         [`${tipo}_hash`]: hash,
         [`${tipo}_capturado_em`]: new Date().toISOString(),
@@ -197,7 +201,10 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Esta assinatura ainda não está liberada ou já foi concluída.' }, { status: 400 });
       }
       const evidenciasRole = parseEvidencias(sol, role);
-      if (!evidenciasRole.selfie_url || !evidenciasRole.rg_frente_url || !evidenciasRole.rg_verso_url) {
+      const documentoCompleto = evidenciasRole.tipo_documento === 'cnh'
+        ? !!evidenciasRole.cnh_url
+        : !!evidenciasRole.rg_frente_url && !!evidenciasRole.rg_verso_url;
+      if (!evidenciasRole.selfie_url || !documentoCompleto) {
         return Response.json({ error: 'Confirme sua identidade (selfie e documento) antes de assinar.' }, { status: 400 });
       }
 
