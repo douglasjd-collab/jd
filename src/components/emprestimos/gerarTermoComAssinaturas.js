@@ -163,8 +163,9 @@ export async function gerarTermoComAssinaturasPDF({ proposta, cliente, empresa, 
   doc.setFontSize(9.5);
   [
     ['Selfie', !!evidenciasCliente.selfie_url],
-    ['Frente do RG', !!evidenciasCliente.rg_frente_url],
-    ['Verso do RG', !!evidenciasCliente.rg_verso_url],
+    ...(evidenciasCliente.tipo_documento === 'cnh'
+      ? [['CNH aberta', !!evidenciasCliente.cnh_url]]
+      : [['Frente do RG', !!evidenciasCliente.rg_frente_url], ['Verso do RG', !!evidenciasCliente.rg_verso_url]]),
     ['Assinatura', !!solicitacao?.cliente_assinatura_url],
     ['Hash do PDF', !!hashFinal],
     ['QR Code', !!qrDataUrl],
@@ -184,8 +185,9 @@ export async function gerarTermoComAssinaturasPDF({ proposta, cliente, empresa, 
   [
     ['Hash PDF', hashFinal],
     ['Hash Selfie', evidenciasCliente.selfie_hash || '-'],
-    ['Hash Frente RG', evidenciasCliente.rg_frente_hash || '-'],
-    ['Hash Verso RG', evidenciasCliente.rg_verso_hash || '-'],
+    ...(evidenciasCliente.tipo_documento === 'cnh'
+      ? [['Hash CNH', evidenciasCliente.cnh_hash || '-']]
+      : [['Hash Frente RG', evidenciasCliente.rg_frente_hash || '-'], ['Hash Verso RG', evidenciasCliente.rg_verso_hash || '-']]),
     ['Hash Assinatura', hashAssinaturaCliente || '-'],
   ].forEach(([label, valor]) => {
     doc.text(`${label}: ${valor}`, marginX, cy, { maxWidth });
