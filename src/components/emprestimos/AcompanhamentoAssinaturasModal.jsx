@@ -73,7 +73,7 @@ export default function AcompanhamentoAssinaturasModal({ open, onOpenChange, pro
   };
 
   const nomeArquivo = () =>
-    `Termo_Assinado_${(proposta?.cliente_nome || 'cliente').replace(/\s+/g, '_')}_${(proposta?.contrato || '').replace(/\s+/g, '_')}.pdf`;
+    `Contrato_Assinado_${(proposta?.cliente_nome || 'cliente').replace(/\s+/g, '_')}_${(proposta?.contrato || '').replace(/\s+/g, '_')}.pdf`;
 
   const handleBaixarAssinado = async () => {
     if (termo?.pdf_assinado_url) {
@@ -128,7 +128,7 @@ export default function AcompanhamentoAssinaturasModal({ open, onOpenChange, pro
             disabled={baixando}
           >
             {baixando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Baixar Termo Assinado
+            Baixar Contrato com Assinaturas
           </Button>
         )}
 
