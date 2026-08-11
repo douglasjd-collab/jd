@@ -399,6 +399,7 @@ async function rodarPipeline(tempId, queryClient, pipelineRefs) {
             : (conv?.cliente_nome || 'Cliente'))
         : null,
       resposta_para_message_id: envio0.mensagemParaResponder?.whatsapp_message_id || null,
+      resposta_para_id: envio0.mensagemParaResponder?.id || null,
     };
 
     let resp;

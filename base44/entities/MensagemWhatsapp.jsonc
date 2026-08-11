@@ -138,6 +138,10 @@
       "type": "string",
       "description": "whatsapp_message_id da mensagem original citada \u2014 usado para localizar/rolar at\u00e9 ela no chat"
     },
+    "resposta_para_id": {
+      "type": "string",
+      "description": "ID interno (entity) da mensagem original citada \u2014 fallback confi\u00e1vel para localizar a mensagem no chat, independente do formato do whatsapp_message_id"
+    },
     "erro_envio": {
       "type": "string",
       "description": "Motivo do erro reportado pela Meta/Evolution quando o envio falha (status=erro)"
