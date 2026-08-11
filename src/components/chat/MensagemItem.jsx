@@ -150,15 +150,38 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
   })();
   const respostaCitadaTexto = respostaCitadaMidia?.label || mensagem.resposta_para_texto;
 
-  // Ao clicar na citação, rolar até a mensagem original referenciada (se estiver carregada na tela)
+  // Ao clicar na citação, localizar a mensagem original por qualquer ID disponível.
+  // Mensagens vindas de canais diferentes podem salvar a referência como ID do WhatsApp,
+  // ID interno ou message_id; por isso não devemos depender de um único atributo.
+  const idsMensagemCitada = [
+    mensagem.resposta_para_whatsapp_id,
+    mensagem.resposta_para_message_id,
+    mensagem.resposta_para_id
+  ].filter(Boolean).map(String);
+
   const irParaMensagemCitada = () => {
-    const alvoId = mensagem.resposta_para_whatsapp_id;
-    if (!alvoId) return;
-    const el = document.querySelector(`[data-msg-whatsapp-id="${window.CSS && CSS.escape ? CSS.escape(alvoId) : alvoId}"]`);
+    if (!idsMensagemCitada.length) return;
+
+    const normalizarId = (valor) => String(valor || '')
+      .trim()
+      .replace(/^wamid\./i, '')
+      .replace(/@(?:c\.us|s\.whatsapp\.net|g\.us)$/i, '');
+
+    const idsNormalizados = new Set(idsMensagemCitada.map(normalizarId));
+    const candidatos = document.querySelectorAll('[data-msg-whatsapp-id], [data-msg-id], [data-msg-message-id]');
+    const el = Array.from(candidatos).find((item) => {
+      const idsItem = [
+        item.dataset.msgWhatsappId,
+        item.dataset.msgId,
+        item.dataset.msgMessageId
+      ].filter(Boolean).map(normalizarId);
+      return idsItem.some((id) => idsNormalizados.has(id));
+    });
+
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     el.classList.add('ring-2', 'ring-blue-400');
-    setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400'), 1500);
+    setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400'), 1800);
   };
 
 
@@ -899,7 +922,12 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
   if (isImagemLimpa) {
     const stickerSize = 33;
     return (
-      <div data-msg-whatsapp-id={mensagem.whatsapp_message_id || undefined} className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-lg transition-shadow`}>
+      <div
+        data-msg-whatsapp-id={mensagem.whatsapp_message_id || undefined}
+        data-msg-id={mensagem.id || undefined}
+        data-msg-message-id={mensagem.message_id || mensagem.media_id || undefined}
+        className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-lg transition-shadow`}
+      >
         {modoSelecao && (
           <button type="button" onClick={() => onToggleSelecao?.(mensagem.id)} className="self-center flex-shrink-0 p-1" aria-label="Selecionar mensagem">
             {selecionada
@@ -1009,7 +1037,12 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
   }
 
   return (
-    <div data-msg-whatsapp-id={mensagem.whatsapp_message_id || undefined} className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-lg transition-shadow`}>
+    <div
+        data-msg-whatsapp-id={mensagem.whatsapp_message_id || undefined}
+        data-msg-id={mensagem.id || undefined}
+        data-msg-message-id={mensagem.message_id || mensagem.media_id || undefined}
+        className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-lg transition-shadow`}
+      >
       {modoSelecao && (
         <button
           type="button"
@@ -1077,8 +1110,8 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
         {/* Citação da mensagem respondida — estilo WhatsApp, clicável para ir até a mensagem original */}
         {mensagem.resposta_para_texto && (
           <div
-            onClick={mensagem.resposta_para_whatsapp_id ? irParaMensagemCitada : undefined}
-            className={`mb-2 rounded-lg overflow-hidden border-l-4 ${mensagem.resposta_para_whatsapp_id ? 'cursor-pointer hover:brightness-95' : ''} ${isVendedor ? 'border-green-600/60 bg-black/5' : 'border-blue-500 bg-slate-100'}`}
+            onClick={idsMensagemCitada.length ? irParaMensagemCitada : undefined}
+            className={`mb-2 rounded-lg overflow-hidden border-l-4 ${idsMensagemCitada.length ? 'cursor-pointer hover:brightness-95' : ''} ${isVendedor ? 'border-green-600/60 bg-black/5' : 'border-blue-500 bg-slate-100'}`}
           >
             <div className={`px-2 pt-1.5 pb-1 ${respostaCitadaMidia ? 'flex items-center gap-2' : ''}`}>
               {respostaCitadaMidia && (
