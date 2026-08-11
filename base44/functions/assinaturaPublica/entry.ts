@@ -23,24 +23,18 @@ function ordemAtiva(sol) {
   return ROLES.filter((r) => sol[`${r}_nome`]);
 }
 
-function proximoStatus(sol, roleAssinado) {
-  const ordem = ordemAtiva(sol);
-  const idx = ordem.indexOf(roleAssinado);
-  const proximo = ordem[idx + 1];
-  if (!proximo) return 'assinado';
-  return `aguardando_${proximo}`;
+function statusAposAssinatura(sol, roleAssinado) {
+  const todosAssinaram = ordemAtiva(sol).every((role) =>
+    role === roleAssinado ||
+    sol[`${role}_status`] === 'assinado' ||
+    sol[`${role}_status`] === 'nao_aplicavel'
+  );
+  return todosAssinaram ? 'assinado' : 'em_assinatura';
 }
 
 function podeAssinar(sol, role) {
   if (sol.status === 'assinado' || sol.status === 'recusado' || sol.status === 'cancelado') return false;
-  if (sol[`${role}_status`] === 'assinado') return false;
-  if (!sol.sequencial) return true;
-  const ordem = ordemAtiva(sol);
-  const idx = ordem.indexOf(role);
-  for (let i = 0; i < idx; i++) {
-    if (sol[`${ordem[i]}_status`] !== 'assinado') return false;
-  }
-  return true;
+  return sol[`${role}_status`] !== 'assinado' && sol[`${role}_status`] !== 'nao_aplicavel';
 }
 
 function getIp(req) {
@@ -208,7 +202,7 @@ Deno.serve(async (req) => {
       }
 
       const assinaturaUrl = await uploadAssinatura(base44, assinatura_data_url, role);
-      const novoStatusGeral = proximoStatus(sol, role);
+      const novoStatusGeral = statusAposAssinatura(sol, role);
       await base44.asServiceRole.entities.SolicitacaoAssinatura.update(sol.id, {
         [`${role}_status`]: 'assinado',
         [`${role}_data_assinatura`]: new Date().toISOString(),
