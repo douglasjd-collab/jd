@@ -159,7 +159,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
     mensagem.resposta_para_id
   ].filter(Boolean).map(String);
 
-  const irParaMensagemCitada = () => {
+  const irParaMensagemCitada = async () => {
     if (!idsMensagemCitada.length) return;
 
     const normalizarId = (valor) => String(valor || '')
@@ -168,20 +168,68 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
       .replace(/@(?:c\.us|s\.whatsapp\.net|g\.us)$/i, '');
 
     const idsNormalizados = new Set(idsMensagemCitada.map(normalizarId));
-    const candidatos = document.querySelectorAll('[data-msg-whatsapp-id], [data-msg-id], [data-msg-message-id]');
-    const el = Array.from(candidatos).find((item) => {
-      const idsItem = [
-        item.dataset.msgWhatsappId,
-        item.dataset.msgId,
-        item.dataset.msgMessageId
-      ].filter(Boolean).map(normalizarId);
-      return idsItem.some((id) => idsNormalizados.has(id));
-    });
+    const encontrarNoDom = () => {
+      const candidatos = document.querySelectorAll('[data-msg-whatsapp-id], [data-msg-id], [data-msg-message-id]');
+      return Array.from(candidatos).find((item) => {
+        const idsItem = [
+          item.dataset.msgWhatsappId,
+          item.dataset.msgId,
+          item.dataset.msgMessageId
+        ].filter(Boolean).map(normalizarId);
+        return idsItem.some((id) => idsNormalizados.has(id));
+      });
+    };
+    const destacar = (el) => {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-2', 'ring-blue-400', 'msg-destacada');
+      setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400', 'msg-destacada'), 3500);
+    };
 
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el.classList.add('ring-2', 'ring-blue-400');
-    setTimeout(() => el.classList.remove('ring-2', 'ring-blue-400'), 1800);
+    const existente = encontrarNoDom();
+    if (existente) {
+      destacar(existente);
+      return;
+    }
+
+    // A mensagem citada pode estar fora da página atualmente carregada.
+    // Busca pelo ID externo do WhatsApp, mescla o trecho no cache e tenta novamente.
+    try {
+      const resp = await base44.functions.invoke('buscarMensagensBatePapo', {
+        conversa_id: conversaId || mensagem.conversa_id,
+        modo: 'localizar',
+        whatsapp_message_id: mensagem.resposta_para_whatsapp_id || idsMensagemCitada[0],
+        contexto_antes: 40,
+        contexto_depois: 40,
+      });
+      const data = resp?.data;
+      if (!data?.success || !Array.isArray(data.resultados) || data.resultados.length === 0) {
+        toast.info('O áudio original não está disponível no histórico desta conversa.');
+        return;
+      }
+
+      const idConversa = conversaId || mensagem.conversa_id;
+      queryClient.setQueryData(['mensagens-whatsapp', idConversa], (old = []) => {
+        const map = new Map();
+        [...data.resultados, ...old].forEach((item) => map.set(item.id, item));
+        return Array.from(map.values()).sort((a, b) =>
+          new Date(a.data_envio || a.created_date).getTime() -
+          new Date(b.data_envio || b.created_date).getTime()
+        );
+      });
+
+      for (const espera of [80, 160, 300, 500, 800, 1200]) {
+        await new Promise((resolve) => setTimeout(resolve, espera));
+        const carregada = encontrarNoDom();
+        if (carregada) {
+          destacar(carregada);
+          return;
+        }
+      }
+      toast.info('A mensagem foi carregada, mas não pôde ser exibida nesta tela.');
+    } catch (erro) {
+      if (erro?.response?.status !== 404) console.warn('Erro ao localizar mensagem citada:', erro);
+      toast.info('O áudio original não está disponível no histórico desta conversa.');
+    }
   };
 
 
