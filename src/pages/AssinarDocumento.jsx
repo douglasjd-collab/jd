@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Loader2, ShieldCheck, FileText, CheckCircle2, XCircle } from 'lucide-react';
+import { Loader2, ShieldCheck, FileText, CheckCircle2, XCircle, ExternalLink } from 'lucide-react';
 import AssinaturaCanvas from '@/components/assinatura/AssinaturaCanvas';
 import CapturaCamera from '@/components/assinatura/CapturaCamera';
 
@@ -305,12 +305,31 @@ export default function AssinarDocumento() {
           <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
             <h2 className="font-semibold text-slate-700 flex items-center gap-1.5"><FileText className="w-4 h-4" /> Termo de Autorização</h2>
             {info.termo_pdf_url ? (
-              <iframe src={info.termo_pdf_url} title="Termo de Autorização" className="w-full h-80 rounded-lg border" />
+              <div className="space-y-2">
+                <p className="text-xs text-slate-500">
+                  Role dentro do contrato para ler todas as páginas antes de continuar.
+                </p>
+                <iframe
+                  src={`${info.termo_pdf_url}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+                  title="Contrato completo para leitura"
+                  className="w-full h-[70vh] min-h-[520px] rounded-lg border bg-slate-100"
+                />
+                <a
+                  href={info.termo_pdf_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <Button type="button" variant="outline" className="w-full gap-1.5">
+                    <ExternalLink className="w-4 h-4" /> Abrir contrato completo em tela cheia
+                  </Button>
+                </a>
+              </div>
             ) : (
               <p className="text-sm text-slate-500">Documento indisponível.</p>
             )}
             <Button className="w-full bg-[#23BE84] hover:bg-[#1da570]" onClick={() => setStep('aceites')}>
-              Já li o documento — Continuar
+              Li o contrato completo — Continuar
             </Button>
           </div>
         )}
