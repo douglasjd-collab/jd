@@ -38,8 +38,9 @@ export default function AssinarDocumento() {
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
   const [info, setInfo] = useState(null);
-  // identidade -> selfie -> rg_frente -> rg_verso -> resumo -> doc -> aceites -> frase -> assinatura -> concluido
+  // identidade -> selfie -> tipo_documento -> RG (frente/verso) ou CNH (foto única) -> resumo -> documento -> assinatura
   const [step, setStep] = useState('identidade');
+  const [tipoDocumento, setTipoDocumento] = useState('');
   const [enviandoEvidencia, setEnviandoEvidencia] = useState(false);
   const [aceites, setAceites] = useState([]);
   const [frase, setFrase] = useState('');
@@ -69,7 +70,9 @@ export default function AssinarDocumento() {
         setErro(res.data.error);
       } else {
         const ev = res.data.evidencias || {};
-        setStep(ev.selfie && ev.rg_frente && ev.rg_verso ? 'doc' : 'identidade');
+        setTipoDocumento(ev.tipo_documento || (ev.cnh ? 'cnh' : (ev.rg_frente || ev.rg_verso ? 'rg' : '')));
+        const documentoCompleto = ev.cnh || (ev.rg_frente && ev.rg_verso);
+        setStep(ev.selfie && documentoCompleto ? 'doc' : 'identidade');
       }
     } catch (e) {
       setErro('Não foi possível carregar este link.');
@@ -209,8 +212,33 @@ export default function AssinarDocumento() {
               instrucao="Capture uma selfie em tempo real. Posicione seu rosto dentro da câmera."
               facingModeInicial="user"
               confirmando={enviandoEvidencia}
-              onConfirmar={(dataUrl) => enviarEvidencia('selfie', dataUrl, 'rg_frente')}
+              onConfirmar={(dataUrl) => enviarEvidencia('selfie', dataUrl, 'tipo_documento')}
             />
+          </div>
+        )}
+
+        {step === 'tipo_documento' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+            <h2 className="font-semibold text-slate-800">Selecione o tipo de documento</h2>
+            <p className="text-sm text-slate-600">Escolha qual documento será usado para confirmar sua identidade.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex-col gap-1"
+                onClick={() => { setTipoDocumento('rg'); setStep('rg_frente'); }}
+              >
+                <span className="font-semibold">RG</span>
+                <span className="text-xs font-normal text-slate-500">Frente e verso</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-auto py-4 flex-col gap-1"
+                onClick={() => { setTipoDocumento('cnh'); setStep('cnh'); }}
+              >
+                <span className="font-semibold">CNH</span>
+                <span className="text-xs font-normal text-slate-500">Uma foto aberta</span>
+              </Button>
+            </div>
           </div>
         )}
 
@@ -240,13 +268,32 @@ export default function AssinarDocumento() {
           </div>
         )}
 
+        {step === 'cnh' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <CapturaCamera
+              titulo="CNH aberta"
+              instrucao="Abra a CNH por completo e tire uma única foto, deixando todos os dados visíveis. Você também pode escolher uma imagem da galeria."
+              facingModeInicial="environment"
+              confirmando={enviandoEvidencia}
+              permitirGaleria
+              onConfirmar={(dataUrl) => enviarEvidencia('cnh', dataUrl, 'resumo')}
+            />
+          </div>
+        )}
+
         {step === 'resumo' && (
           <div className="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
             <h2 className="font-semibold text-slate-700">Identidade confirmada</h2>
             <div className="space-y-1.5 text-sm text-green-700">
               <p className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Selfie</p>
-              <p className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Frente do RG</p>
-              <p className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Verso do RG</p>
+              {tipoDocumento === 'cnh' ? (
+                <p className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> CNH aberta</p>
+              ) : (
+                <>
+                  <p className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Frente do RG</p>
+                  <p className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Verso do RG</p>
+                </>
+              )}
             </div>
             <Button className="w-full bg-[#23BE84] hover:bg-[#1da570]" onClick={() => setStep('doc')}>
               Continuar para leitura do documento
