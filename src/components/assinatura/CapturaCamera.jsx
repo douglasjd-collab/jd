@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Camera, RotateCcw, Check, SwitchCamera, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Camera, RotateCcw, Check, SwitchCamera, Loader2, Upload } from 'lucide-react';
 
 // Captura de foto pela câmera do dispositivo. Quando permitirGaleria=true (usado apenas
 // para frente/verso do RG), também permite escolher uma imagem já existente da galeria.
@@ -80,8 +80,8 @@ export default function CapturaCamera({ titulo, instrucao, facingModeInicial = '
           </div>
           {permitirGaleria && (
             <>
-              <Button type="button" variant="outline" className="gap-1.5 w-full" onClick={() => galeriaInputRef.current?.click()}>
-                <ImageIcon className="w-4 h-4" /> Escolher da galeria
+              <Button type="button" variant="outline" className="gap-1.5 w-full border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100" onClick={() => galeriaInputRef.current?.click()}>
+                <Upload className="w-4 h-4" /> Anexar imagem do RG
               </Button>
               <input ref={galeriaInputRef} type="file" accept="image/*" className="hidden" onChange={escolherDaGaleria} />
             </>
