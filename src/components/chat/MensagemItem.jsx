@@ -1106,7 +1106,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
       {!isVendedor && atalhoEncaminhar}
       <div
         onClick={modoSelecao ? () => onToggleSelecao?.(mensagem.id) : undefined}
-        className={`max-w-md rounded-2xl shadow-sm ${
+        className={`relative max-w-md rounded-2xl shadow-sm ${mensagem.reaction ? 'mb-3 ' : ''}${
           isSticker
             ? 'bg-transparent border-0 shadow-none px-0 py-0'
             : isVendedor
@@ -1192,9 +1192,6 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
         )}
         <div className="flex flex-wrap items-end gap-x-1.5">
           <div className="flex-1 min-w-0">{renderConteudo()}</div>
-          {mensagem.reaction && (
-            <span className="text-base leading-none flex-shrink-0" title="Reação">{mensagem.reaction}</span>
-          )}
           {/* Hora + status inline, flutuando para direita como no WhatsApp */}
           <div className="flex items-center gap-0.5 flex-shrink-0 self-end ml-auto" style={{ marginBottom: '-2px' }}>
             <span className={`text-[11px] leading-none ${isVendedor ? 'text-slate-500' : 'text-slate-400'}`} title={format(new Date(mensagem.data_envio || mensagem.created_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}>
@@ -1219,6 +1216,15 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
             )}
           </div>
         </div>
+        {mensagem.reaction && (
+          <span
+            className={`absolute -bottom-3 ${isVendedor ? 'right-2' : 'left-2'} min-w-7 h-6 px-1.5 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white text-base leading-none shadow-sm z-10`}
+            title="Reação"
+            aria-label={`Reação: ${mensagem.reaction}`}
+          >
+            {mensagem.reaction}
+          </span>
+        )}
       </div>
 
       {isVendedor && (mensagem.fila_envio_estado || mensagem.id?.startsWith('tmp_')) && (
