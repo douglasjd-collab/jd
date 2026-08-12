@@ -1101,6 +1101,47 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
     });
   }
 
+  // Fallback necessário para a D-API: em alguns aparelhos uma reação chega como
+  // mensagem de texto contendo apenas o emoji, sem contextInfo nem target message id.
+  // Nesse formato, o único vínculo disponível é a proximidade temporal. Consideramos
+  // reação quando o emoji chega até 30s após a última mensagem real da conversa.
+  const conteudoTrim = String(content || '').trim();
+  const isEmojiUnicoSemContexto =
+    /^(?:\p{Extended_Pictographic}|\p{Regional_Indicator})[\p{Emoji_Modifier}\uFE0F\u200D\p{Extended_Pictographic}\p{Regional_Indicator}]*$/u.test(conteudoTrim);
+
+  if (isEmojiUnicoSemContexto) {
+    const anteriores = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+      conversa_id: conversa.id
+    }, '-data_envio', 10);
+
+    const instanteReacao = new Date(timestamp).getTime();
+    const original = anteriores.find((m) => {
+      const textoAnterior = String(m.texto || '').trim();
+      const anteriorEhEmoji =
+        /^(?:\p{Extended_Pictographic}|\p{Regional_Indicator})[\p{Emoji_Modifier}\uFE0F\u200D\p{Extended_Pictographic}\p{Regional_Indicator}]*$/u.test(textoAnterior);
+      const instanteAnterior = new Date(m.data_envio || m.created_date).getTime();
+      const diferenca = instanteReacao - instanteAnterior;
+      return !anteriorEhEmoji && diferenca >= 0 && diferenca <= 30000;
+    });
+
+    if (original) {
+      await base44.asServiceRole.entities.MensagemWhatsapp.update(original.id, {
+        reaction: conteudoTrim
+      });
+      console.log(`✅ [Webhook D-API] Reação sem target "${conteudoTrim}" vinculada por proximidade à mensagem ${original.id}`);
+      return {
+        handled: true,
+        conversaId: conversa.id,
+        messageId: original.id,
+        reaction: true,
+        updated: true,
+        inferredByTime: true,
+        emoji: conteudoTrim,
+        viaCelular: true
+      };
+    }
+  }
+
   await base44.asServiceRole.entities.MensagemWhatsapp.create({
     empresa_id: empresaId,
     conversa_id: conversa.id,
