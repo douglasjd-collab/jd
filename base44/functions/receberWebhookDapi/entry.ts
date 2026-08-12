@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@base44/sdk@0.8.31';
+import { processReactionDapi } from '../../shared/reactionDapiShared.ts';
 
 /**
  * Webhook D-API - Recebe eventos de conexão em tempo real
@@ -310,6 +311,16 @@ async function processarMensagemRecebida(base44, connection, data) {
     // Ignorar grupos por enquanto
     if (data?.is_group === true || String(data?.from?.jid || '').includes('@g.us')) {
       console.log('ℹ️ Ignorando mensagem de grupo');
+      return;
+    }
+
+    // Interceptar reações ANTES do fluxo fromMe. Reações não são mensagens de chat —
+    // apenas atualizam o campo `reaction` da mensagem original e nunca criam nova bolha.
+    // Aplicado antes do isFromMe pois a reação pode ser feita pelo celular conectado.
+    const empresaIdReacao = connection.empresa_id;
+    const reactionResult = await processReactionDapi(base44, data, empresaIdReacao);
+    if (reactionResult) {
+      console.log('✅ Reação processada:', reactionResult);
       return;
     }
 

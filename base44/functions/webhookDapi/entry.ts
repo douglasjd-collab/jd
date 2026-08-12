@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { processReactionDapi } from '../../shared/reactionDapiShared.ts';
 
 /**
  * Webhook Oficial D-API - Endpoint Público
@@ -482,105 +483,6 @@ async function extrairRespostaCitada(base44, empresaId, data) {
     texto: textoCitado,
     nome: isStatusReply ? 'Seu Status' : null,
     whatsappId: quotedId ? String(quotedId) : null
-  };
-}
-
-/**
- * Aplica uma reação recebida da D-API diretamente à mensagem original.
- * Reações não são mensagens de chat e, portanto, nunca devem criar uma nova bolha.
- * O payload da D-API variou entre versões; os fallbacks abaixo cobrem os formatos
- * conhecidos sem depender da direção (fromMe), pois a reação pode ser feita no celular.
- */
-async function processReactionDapi(base44, data, empresaId) {
-  const tipo = String(
-    data?.type || data?.messageType || data?.message_type ||
-    data?.data?.type || ''
-  ).toLowerCase();
-
-  const reactionData =
-    data?.reactionMessage ||
-    data?.reaction_message ||
-    data?.reaction ||
-    data?.data?.reactionMessage ||
-    data?.data?.reaction_message ||
-    data?.data?.reaction ||
-    data?.data ||
-    {};
-
-  const pareceReacao =
-    tipo === 'reaction' ||
-    tipo === 'reacao' ||
-    tipo === 'reação' ||
-    !!data?.reactionMessage ||
-    !!data?.reaction_message ||
-    !!data?.reaction ||
-    !!data?.data?.reactionMessage ||
-    !!data?.data?.reaction_message ||
-    typeof data?.data?.reaction_text === 'string';
-
-  if (!pareceReacao) return null;
-
-  const targetId =
-    reactionData?.key?.id ||
-    reactionData?.message_id ||
-    reactionData?.messageId ||
-    reactionData?.reaction_message_id ||
-    reactionData?.reactionMessageId ||
-    reactionData?.target_message_id ||
-    reactionData?.targetMessageId ||
-    data?.contextInfo?.stanza_id ||
-    data?.contextInfo?.stanzaId ||
-    data?.contextInfo?.quoted_message_id ||
-    data?.context_info?.stanza_id ||
-    data?.context_info?.quoted_message_id ||
-    '';
-
-  const emojiRaw =
-    reactionData?.text ??
-    reactionData?.emoji ??
-    reactionData?.reaction_text ??
-    data?.data?.reaction_text ??
-    data?.emoji ??
-    (typeof data?.text === 'string' ? data.text : '') ??
-    '';
-
-  const emoji = String(emojiRaw || '').trim();
-
-  if (!targetId) {
-    console.warn('⚠️ [Webhook D-API] Reação recebida sem ID da mensagem original');
-    return { handled: true, reaction: true, updated: false, reason: 'target message id ausente' };
-  }
-
-  const originais = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
-    empresa_id: empresaId,
-    whatsapp_message_id: String(targetId)
-  }, '-created_date', 1);
-
-  if (!originais?.length) {
-    console.warn(`⚠️ [Webhook D-API] Mensagem original da reação não encontrada: ${targetId}`);
-    return {
-      handled: true,
-      reaction: true,
-      updated: false,
-      targetId: String(targetId),
-      reason: 'mensagem original não encontrada'
-    };
-  }
-
-  const original = originais[0];
-  await base44.asServiceRole.entities.MensagemWhatsapp.update(original.id, {
-    // Emoji vazio significa que a reação foi removida no WhatsApp.
-    reaction: emoji || null
-  });
-
-  console.log(`✅ [Webhook D-API] Reação "${emoji}" aplicada à mensagem ${original.id}`);
-  return {
-    handled: true,
-    reaction: true,
-    updated: true,
-    messageId: original.id,
-    targetId: String(targetId),
-    emoji
   };
 }
 
