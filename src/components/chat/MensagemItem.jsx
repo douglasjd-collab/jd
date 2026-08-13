@@ -434,6 +434,10 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
     if (mensagem.texto.includes('contactMessage') || mensagem.texto.includes('BEGIN:VCARD')) return false;
     try {
       const obj = JSON.parse(mensagem.texto);
+      // CPF, códigos, valores e outros textos compostos apenas por números são
+      // JSON válido como valor primitivo, mas continuam sendo mensagens normais.
+      // Somente objetos estruturados podem representar mensagens internas.
+      if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
       if (obj.contactMessage) return false;
       if (obj.__template) return false; // mensagem de template rico — não bloquear
       if (obj.__lista) return false; // menu de lista interativa — não bloquear
