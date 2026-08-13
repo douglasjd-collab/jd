@@ -387,25 +387,43 @@ Todo texto contendo "@" seguido de domínio (ex: @gmail.com, @hotmail.com, @iclo
       }
     };
 
-    // ── LLM em lotes (máx 4 arquivos por chamada, em paralelo) — mantém cada
-    // requisição abaixo do timeout do gateway HTTP e junta os resultados.
-    // Lote menor = mais atenção por imagem (OCR de CNH exige isso).
+    // PDFs e imagens precisam de leitores diferentes. InvokeLLM aceita imagens,
+    // mas falha quando um PDF entra no mesmo lote; por isso PDFs são extraídos
+    // individualmente e as imagens continuam em lotes pequenos para OCR.
     const LOTE_AN = 4;
-    const lotesAn = [];
-    for (let i = 0; i < arquivos.length; i += LOTE_AN) {
-      lotesAn.push(arquivos.slice(i, i + LOTE_AN));
+    const lotesImagem = [];
+    for (let i = 0; i < arquivosImagem.length; i += LOTE_AN) {
+      lotesImagem.push(arquivosImagem.slice(i, i + LOTE_AN));
     }
-    const leiturasAn = await Promise.all(lotesAn.map((lote) =>
+    const leiturasImagem = lotesImagem.map((lote) =>
       base44.asServiceRole.integrations.Core.InvokeLLM({
         prompt,
         file_urls: lote,
         response_json_schema: schema,
         model: 'claude_sonnet_4_6'
       }).catch((e) => {
-        console.log('[analisarDocumentosConversa] lote falhou:', e?.message);
+        console.log('[analisarDocumentosConversa] lote de imagens falhou:', e?.message);
         return null;
       })
-    ));
+    );
+    const leiturasPdf = arquivosPdf.map(async (url) => {
+      try {
+        const ext = await base44.asServiceRole.integrations.Core.ExtractDataFromUploadedFile({
+          file_url: url,
+          json_schema: schema
+        });
+        if (!ext || ext.status !== 'success' || !ext.output) {
+          console.log('[analisarDocumentosConversa] PDF falhou:', ext?.details || 'sem saída');
+          return null;
+        }
+        const output = Array.isArray(ext.output) ? ext.output[0] : ext.output;
+        return output && typeof output === 'object' ? output : null;
+      } catch (e) {
+        console.log('[analisarDocumentosConversa] extração de PDF falhou:', e?.message);
+        return null;
+      }
+    });
+    const leiturasAn = await Promise.all([...leiturasPdf, ...leiturasImagem]);
     const achaResponse = (r) => (r && r.response && typeof r.response === 'object' && !Array.isArray(r.response))
       ? r.response
       : (r || {});
