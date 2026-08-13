@@ -214,9 +214,12 @@ Deno.serve(async (req) => {
     const docsFiltrados = selecao?.encontrado && selecao.documentos_selecionados?.length
       ? docsComUrl.filter((d) => selecao.documentos_selecionados.includes(d.url))
       : docsComUrl;
-    const pdfs = docsFiltrados.filter((d) => d.tipo === 'pdf' || /\.pdf($|\?)/i.test(d.url));
+    const pdfs = docsFiltrados.filter((d) => d.tipo === 'pdf' || d.tipo === 'documento' || /\.pdf($|\?)/i.test(d.url));
     const imagens = docsFiltrados.filter((d) => !pdfs.includes(d));
-    const arquivos = [...pdfs, ...imagens.slice(-Math.max(0, 15 - pdfs.length))].map((d) => d.url);
+    const arquivosDetalhados = [...pdfs, ...imagens.slice(-Math.max(0, 15 - pdfs.length))];
+    const arquivos = arquivosDetalhados.map((d) => d.url);
+    const arquivosPdf = arquivosDetalhados.filter((d) => pdfs.includes(d)).map((d) => d.url);
+    const arquivosImagem = arquivosDetalhados.filter((d) => !pdfs.includes(d)).map((d) => d.url);
     if (!arquivos.length) {
       return Response.json({
         success: true,
