@@ -161,7 +161,7 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
         documentos,
         cliente_alvo: alvo
       });
-      const data = resp.data || {};
+      const data = (resp && (resp.data || resp)) || {};
       if (!data.success) {
         toast.error(data.error || 'Erro na análise de documentos');
         setStatus('idle');
@@ -227,7 +227,7 @@ export default function CadastroIATab({ conversaId, mensagens, empresaId, telefo
         cliente_alvo: clienteAlvo || undefined,
         selecao: ultimaSelecao || undefined
       });
-      const data = resp.data || {};
+      const data = (resp && (resp.data || resp)) || {};
       if (!data.success) {
         if (data.cliente_existente_id) {
           setResultado((r) => ({
