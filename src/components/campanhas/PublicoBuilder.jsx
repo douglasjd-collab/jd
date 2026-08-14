@@ -344,20 +344,17 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
                 <Label>Responsáveis — vendedores, administradores e parceiros</Label>
                 <button
                   type="button"
-                  onClick={() => {
-                    const todosIds = vendedoresConsorcio.map((v) => v.id);
-                    const selecionados = form.consorcio_vendedores_ids || [];
-                    const todosMarcados = todosIds.length > 0 && todosIds.every((id) => selecionados.includes(id));
-                    setForm({
-                      ...form,
-                      consorcio_vendedores_ids: todosMarcados ? [] : todosIds,
-                    });
-                  }}
-                  className="text-xs text-emerald-700 hover:underline"
+                  onClick={() => setForm({
+                    ...form,
+                    consorcio_vendedores_ids: vendedoresConsorcio.map((v) => v.id),
+                  })}
+                  disabled={vendedoresConsorcio.length === 0 ||
+                    vendedoresConsorcio.every((v) => (form.consorcio_vendedores_ids || []).includes(v.id))}
+                  className="text-xs text-emerald-700 hover:underline disabled:text-slate-400 disabled:no-underline"
                 >
                   {vendedoresConsorcio.length > 0 &&
                    vendedoresConsorcio.every((v) => (form.consorcio_vendedores_ids || []).includes(v.id))
-                    ? 'Desmarcar todos'
+                    ? 'Todos selecionados'
                     : 'Selecionar todos'}
                 </button>
               </div>
