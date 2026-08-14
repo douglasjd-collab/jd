@@ -143,6 +143,7 @@ export default function Vendas() {
       const vendaData = {
         ...data,
         empresa_id: empresaId,
+        observacao_lance: String(data.observacao_lance || '').trim(),
         status: !data.cota || data.cota.trim() === '' ? 'pendente' : data.status
       };
       
@@ -254,7 +255,10 @@ export default function Vendas() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Venda.update(id, data),
+    mutationFn: ({ id, data }) => base44.entities.Venda.update(id, {
+      ...data,
+      observacao_lance: String(data.observacao_lance || '').trim(),
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendas'] });
       setFormOpen(false);
