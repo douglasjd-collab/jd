@@ -103,6 +103,7 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
   const [listas, setListas] = useState([]);
   const [parceiros, setParceiros] = useState([]);
   const [administradoras, setAdministradoras] = useState([]);
+  const [vendedoresConsorcio, setVendedoresConsorcio] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
 
   const [buscaFunil, setBuscaFunil] = useState('');
@@ -118,9 +119,20 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
 
   useEffect(() => {
     if (!empresaId) return;
-    base44.entities.Administradora.filter({ empresa_id: empresaId, status: 'ativa' }, 'nome_fantasia', 200)
-      .then(setAdministradoras)
-      .catch(() => setAdministradoras([]));
+    Promise.all([
+      base44.entities.Administradora.filter({ empresa_id: empresaId, status: 'ativa' }, 'nome_fantasia', 200),
+      base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome', 500),
+    ])
+      .then(([admins, colaboradores]) => {
+        setAdministradoras(admins || []);
+        setVendedoresConsorcio((colaboradores || []).filter((c) =>
+          ['vendedor', 'colaborador_vendedor'].includes(c.perfil)
+        ));
+      })
+      .catch(() => {
+        setAdministradoras([]);
+        setVendedoresConsorcio([]);
+      });
   }, [empresaId]);
 
   // Carrega dados das fontes selecionadas
@@ -251,6 +263,7 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
                 publico_consorcio_ativo: id === 'consorcio',
                 consorcio_situacao: id === 'consorcio' ? 'em_atraso' : form.consorcio_situacao,
                 administradora_id: id === 'consorcio' ? form.administradora_id : '',
+                consorcio_vendedores_ids: id === 'consorcio' ? (form.consorcio_vendedores_ids || []) : [],
               })}
               className={cn(
                 'rounded-lg border px-3 py-3 text-left transition',
@@ -286,6 +299,43 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
                   {administradoras.map((a) => <option key={a.id} value={a.id}>{a.nome_fantasia || a.razao_social}</option>)}
                 </select>
               </div>
+            </div>
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <Label>Vendedores</Label>
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, consorcio_vendedores_ids: [] })}
+                  className="text-xs text-emerald-700 hover:underline"
+                >
+                  Selecionar todos
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-auto rounded-lg border border-emerald-200 bg-white p-2">
+                {vendedoresConsorcio.map((v) => {
+                  const marcado = (form.consorcio_vendedores_ids || []).includes(v.id);
+                  return (
+                    <label key={v.id} className={cn(
+                      'flex items-center gap-2 rounded-md border px-3 py-2 cursor-pointer text-sm',
+                      marcado ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-200'
+                    )}>
+                      <input
+                        type="checkbox"
+                        checked={marcado}
+                        onChange={() => toggleArr('consorcio_vendedores_ids', v.id)}
+                        className="accent-emerald-600"
+                      />
+                      <span>{v.nome || v.email}</span>
+                    </label>
+                  );
+                })}
+                {vendedoresConsorcio.length === 0 && <p className="text-xs text-slate-500 p-2">Nenhum vendedor ativo encontrado.</p>}
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1">
+                {(form.consorcio_vendedores_ids || []).length === 0
+                  ? 'Todos os vendedores serão incluídos.'
+                  : `${form.consorcio_vendedores_ids.length} vendedor(es) selecionado(s).`}
+              </p>
             </div>
             <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
               <p className="text-xs font-medium text-emerald-800">Origem: Menu › Consórcio › Propostas</p>
