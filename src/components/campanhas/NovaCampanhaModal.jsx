@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -25,6 +26,10 @@ import {
   RefreshCw,
   AlertTriangle,
   ShieldCheck,
+  Image as ImageIcon,
+  Video,
+  Upload,
+  WalletCards,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -63,6 +68,13 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     descricao: '',
     template_id: '',
     conn_selecionada: '',
+    canal_tipo: 'oficial',
+    mensagem_tipo: 'texto',
+    mensagem_texto: '',
+    midia_url: '',
+    midia_nome: '',
+    publico_consorcio_ativo: false,
+    administradora_id: '',
     origens: [],
     clientes_sub: 'todos',
     destino_telefones: 'principal',
@@ -123,21 +135,32 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     }
   }, [open]);
 
-  // Conexões oficiais (D-API Cloud API ou Meta Embedded Signup) para
-  // sugerir o "Canal de envio" quando há mais de uma conectada.
+  const connectionIsOfficial = (connection) => {
+    if (!connection) return false;
+    try {
+      const cfg = JSON.parse(connection.config_json || '{}');
+      return cfg.isOfficial === true || cfg.is_official === true || cfg.mode === 'cloud_api';
+    } catch {
+      return connection.provider_type === 'meta_oficial';
+    }
+  };
+
+  // Lista os dois canais: Meta/Cloud API oficial e JD/D-API não oficial.
   const { data: connectionsList = [] } = useQuery({
-    queryKey: ['campanha-connections-oficiais', empresaId, open],
-    queryFn: async () => {
-      const res = await base44.functions.invoke('gerenciarTemplateMetaOficial', { action: 'list_connections' });
-      const arr = res?.data?.connections || [];
-      const oficial = arr.filter((c) => c.is_official !== false && c.status === 'conectado');
-      return oficial;
-    },
+    queryKey: ['campanha-connections', empresaId, open],
+    queryFn: () => base44.entities.WhatsappConnection.filter(
+      { empresa_id: empresaId, status: 'conectado', is_active: true },
+      'nome',
+      100
+    ),
     enabled: !!empresaId && open,
     staleTime: 60_000,
   });
 
-  const temMultiplasConexoes = (connectionsList || []).length > 1;
+  const conexoesOficiais = (connectionsList || []).filter(connectionIsOfficial);
+  const conexoesNaoOficiais = (connectionsList || []).filter((c) => !connectionIsOfficial(c));
+  const conexoesDoCanal = form.canal_tipo === 'nao_oficial' ? conexoesNaoOficiais : conexoesOficiais;
+  const temMultiplasConexoes = conexoesDoCanal.length > 1;
 
   // Sincroniza com a Meta e em seguida busca templates aprovados da empresa.
   // Antes de mostrar "Nenhum template aprovado encontrado", sempre tentamos
@@ -184,11 +207,11 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
   // Pré-seleciona a conexão única automaticamente quando não há múltiplas.
   useEffect(() => {
     if (!open) return;
-    if (!connectionsList || connectionsList.length === 0) return;
-    if (!temMultiplasConexoes && !form.conn_selecionada && connectionsList[0]?.id) {
-      setForm((f) => ({ ...f, conn_selecionada: connectionsList[0].id }));
+    if (!conexoesDoCanal.length) return;
+    if (!form.conn_selecionada || !conexoesDoCanal.some((c) => c.id === form.conn_selecionada)) {
+      setForm((f) => ({ ...f, conn_selecionada: conexoesDoCanal[0]?.id || '', template_id: '' }));
     }
-  }, [connectionsList, temMultiplasConexoes, open, form.conn_selecionada]);
+  }, [connectionsList, form.canal_tipo, open, form.conn_selecionada]);
 
   const templateSelecionado = useMemo(
     () => templates.find((t) => t.id === form.template_id),
