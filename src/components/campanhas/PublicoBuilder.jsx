@@ -15,6 +15,7 @@ import {
   Loader2,
   ChevronDown,
   Phone,
+  WalletCards,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -101,6 +102,7 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
   const [tags, setTags] = useState([]);
   const [listas, setListas] = useState([]);
   const [parceiros, setParceiros] = useState([]);
+  const [administradoras, setAdministradoras] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
 
   const [buscaFunil, setBuscaFunil] = useState('');
@@ -113,6 +115,13 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
   const onListaImportada = (lista) => {
     setListas((prev) => [lista, ...prev]);
   };
+
+  useEffect(() => {
+    if (!empresaId) return;
+    base44.entities.Administradora.filter({ empresa_id: empresaId, status: 'ativa' }, 'nome_fantasia', 200)
+      .then(setAdministradoras)
+      .catch(() => setAdministradoras([]));
+  }, [empresaId]);
 
   // Carrega dados das fontes selecionadas
   useEffect(() => {
@@ -213,7 +222,36 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
 
   return (
     <div className="space-y-4">
-      <div>
+      <div className={cn(
+        'rounded-xl border p-4',
+        form.publico_consorcio_ativo ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-white'
+      )}>
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!form.publico_consorcio_ativo}
+            onChange={(e) => setForm({ ...form, publico_consorcio_ativo: e.target.checked, administradora_id: e.target.checked ? form.administradora_id : '' })}
+            className="mt-1 accent-emerald-600"
+          />
+          <WalletCards className="w-5 h-5 text-emerald-700 mt-0.5" />
+          <div>
+            <p className="font-semibold text-sm text-slate-800">Clientes com cota ativa por administradora</p>
+            <p className="text-xs text-slate-500">Seleciona somente titulares de propostas de consórcio com status Ativa.</p>
+          </div>
+        </label>
+        {form.publico_consorcio_ativo && (
+          <div className="mt-3">
+            <Label>Administradora *</Label>
+            <select value={form.administradora_id || ''} onChange={(e) => setForm({ ...form, administradora_id: e.target.value })}
+              className="w-full border border-emerald-200 rounded-md px-3 py-2 text-sm bg-white">
+              <option value="">Selecione a administradora…</option>
+              {administradoras.map((a) => <option key={a.id} value={a.id}>{a.nome_fantasia || a.razao_social}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+
+      <div className={form.publico_consorcio_ativo ? 'opacity-40 pointer-events-none' : ''}>
         <Label className="block mb-2 text-sm font-semibold text-slate-700">
           Fontes de audiência (selecione uma ou várias)
         </Label>
