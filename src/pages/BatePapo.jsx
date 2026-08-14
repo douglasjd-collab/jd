@@ -441,6 +441,15 @@ export default function BatePapo() {
 
   const handleTransferir = async (conversa, colaborador) => {
     try {
+      const tarefasDaConversa = await base44.entities.Tarefa.filter({
+        empresa_id: empresaId,
+        conversa_id: conversa.id,
+        microtarefa: true,
+      }, '-created_date', 500);
+      const microtarefasPendentes = (tarefasDaConversa || []).filter(
+        tarefa => !['concluida', 'cancelada'].includes(tarefa.status)
+      );
+
       await base44.entities.ConversaWhatsapp.update(conversa.id, {
         responsavel_id: colaborador.id,
         responsavel_nome: colaborador.nome,
@@ -448,11 +457,28 @@ export default function BatePapo() {
         status: 'encerrada',
         ultimo_remetente: 'vendedor',
       });
+
+      if (microtarefasPendentes.length > 0) {
+        await Promise.all(microtarefasPendentes.map(tarefa =>
+          base44.entities.Tarefa.update(tarefa.id, {
+            responsavel_principal_id: colaborador.id,
+            responsavel_principal_nome: colaborador.nome,
+          })
+        ));
+      }
+
       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+      queryClient.invalidateQueries({ queryKey: ['microtarefas-chat', empresaId] });
       if (conversaSelecionada?.id === conversa.id) setConversaSelecionada(null);
-      toast.success(`✅ Atendimento transferido para ${colaborador.nome}`);
+
+      if (microtarefasPendentes.length > 0) {
+        toast.success(`✅ Atendimento transferido para ${colaborador.nome}. ${microtarefasPendentes.length} microtarefa${microtarefasPendentes.length === 1 ? '' : 's'} atribuída${microtarefasPendentes.length === 1 ? '' : 's'} ao novo responsável.`);
+      } else {
+        toast.success(`✅ Atendimento transferido para ${colaborador.nome}`);
+      }
     } catch (e) {
       toast.error('Erro ao transferir: ' + e.message);
+      throw e;
     }
   };
 
