@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Loader2, WalletCards, Banknote, ReceiptText, Percent, RefreshCw, Layers3, ExternalLink, CheckCircle2, Clock3, AlertTriangle, Copy, Share2 } from "lucide-react";
+import { Search, Loader2, WalletCards, Banknote, ReceiptText, Percent, RefreshCw, Layers3, ExternalLink, CheckCircle2, Clock3, AlertTriangle, Copy, Share2, Car, House, Bike, Wrench, Building2 } from "lucide-react";
 import { toast } from "sonner";
 
 const moneyBR = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -20,6 +20,45 @@ const parseMoney = (value) => {
   return digits ? Number(digits) / 100 : 0;
 };
 const formatInputMoney = (v) => v ? Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+
+const valorVisual = (obj, campos) => campos.map((campo) => obj?.[campo]).find((valor) => typeof valor === "string" && valor.trim());
+
+const getLogoUrl = (obj) => valorVisual(obj, [
+  "logo_url", "administradora_logo_url", "logo_administradora", "empresa_logo_url",
+  "fornecedor_logo_url", "logo", "brand_logo", "brandLogo",
+]);
+
+const getCategoria = (obj) => String(valorVisual(obj, [
+  "categoria", "segmento", "tipo_bem", "tipoBem", "bem", "produto", "modalidade",
+]) || "").toLocaleLowerCase("pt-BR");
+
+function CategoriaIcon({ carta, className = "w-5 h-5" }) {
+  const categoria = getCategoria(carta);
+  const Icon = categoria.includes("imó") || categoria.includes("imovel") || categoria.includes("casa")
+    ? House
+    : categoria.includes("moto")
+      ? Bike
+      : categoria.includes("servi")
+        ? Wrench
+        : categoria.includes("veí") || categoria.includes("veic") || categoria.includes("auto") || categoria.includes("carro")
+          ? Car
+          : WalletCards;
+  const titulo = categoria ? `Categoria: ${categoria}` : "Categoria não informada";
+  return <Icon className={className} aria-label={titulo} title={titulo} />;
+}
+
+function AdministradoraIdentidade({ nome, logoUrl, carta, compact = false }) {
+  const [logoFalhou, setLogoFalhou] = useState(false);
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      {logoUrl && !logoFalhou
+        ? <img src={logoUrl} alt={`Logo ${nome || "administradora"}`} className={compact ? "w-7 h-7 object-contain shrink-0" : "w-9 h-9 object-contain shrink-0"} onError={() => setLogoFalhou(true)} />
+        : <div className={`${compact ? "w-7 h-7" : "w-9 h-9"} rounded-md bg-slate-100 text-slate-600 flex items-center justify-center shrink-0`}><Building2 className={compact ? "w-4 h-4" : "w-5 h-5"} /></div>}
+      <CategoriaIcon carta={carta} className={compact ? "w-4 h-4 shrink-0 text-slate-700" : "w-5 h-5 shrink-0 text-slate-700"} />
+      <span className="truncate">{nome || "Administradora não informada"}</span>
+    </div>
+  );
+}
 
 const montarTextoProposta = (result) => {
   const cartas = [...(result?.cartas || [])].sort((a, b) => Number(a.parcelas || 0) - Number(b.parcelas || 0));
@@ -93,7 +132,7 @@ function RecommendationCard({ icon: Icon, title, result, tone, onOpen }) {
       <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Icon className="w-4 h-4"/>{title}</CardTitle></CardHeader>
       <CardContent>
         {!result ? <p className="text-sm opacity-70">Nenhuma opção com esse critério disponível.</p> : <>
-          <p className="text-xs opacity-70">{result.administradora} • {result.quantidade_cartas} {result.quantidade_cartas === 1 ? "carta" : "cartas"}</p>
+          <div className="text-xs opacity-80"><AdministradoraIdentidade compact nome={result.administradora} logoUrl={getLogoUrl(result) || getLogoUrl(result.cartas?.[0])} carta={result.cartas?.[0] || result} /></div>
           <p className="text-xl font-bold mt-1">{moneyBR(tone === "entrada" ? result.entrada : tone === "parcela" ? result.valor_parcela : result.saldo_devedor)}</p>
           {tone === "taxa" && <p className="text-xs opacity-70 -mt-1">Saldo devedor, priorizando também entrada baixa</p>}
           <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
@@ -197,7 +236,7 @@ export default function CartasContempladas() {
           <CardHeader className="pb-3"><div className="flex items-center justify-between gap-3"><CardTitle className="text-base flex items-center gap-2"><WalletCards className="w-5 h-5"/>Resultados encontrados</CardTitle><div className="flex items-center gap-2 text-xs text-slate-500"><Badge variant="outline">{data.total_combinacoes} combinações</Badge><Button variant="ghost" size="sm" onClick={buscar}><RefreshCw className="w-4 h-4 mr-1"/>Atualizar</Button></div></div></CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm"><thead className="bg-slate-50 border-y"><tr className="text-left text-slate-500"><th className="p-3">Administradora</th><th className="p-3">Composição</th><th className="p-3">Crédito</th><th className="p-3">Entrada</th><th className="p-3">Parcela</th><th className="p-3">Prazo</th><th className="p-3">Taxa</th><th className="p-3"></th></tr></thead><tbody>
-              {resultados.length === 0 ? <tr><td colSpan="8" className="p-8 text-center text-slate-500">Nenhuma combinação encontrada nessa faixa.</td></tr> : resultados.map((r) => <tr key={r.id} className="border-b hover:bg-slate-50"><td className="p-3 font-semibold">{r.administradora}</td><td className="p-3"><Badge variant="outline"><Layers3 className="w-3 h-3 mr-1"/>{r.quantidade_cartas} {r.quantidade_cartas === 1 ? "carta" : "cartas"}</Badge></td><td className="p-3 font-semibold">{moneyBR(r.valor_credito)}</td><td className="p-3">{moneyBR(r.entrada)}</td><td className="p-3">{moneyBR(r.valor_parcela)}</td><td className="p-3">{r.parcelas || "—"} meses</td><td className="p-3">{pctBR(r.taxa)}</td><td className="p-3"><Button size="sm" variant="outline" onClick={() => setSelected(r)}>Detalhes</Button></td></tr>)}
+              {resultados.length === 0 ? <tr><td colSpan="8" className="p-8 text-center text-slate-500">Nenhuma combinação encontrada nessa faixa.</td></tr> : resultados.map((r) => <tr key={r.id} className="border-b hover:bg-slate-50"><td className="p-3 font-semibold"><AdministradoraIdentidade compact nome={r.administradora} logoUrl={getLogoUrl(r) || getLogoUrl(r.cartas?.[0])} carta={r.cartas?.[0] || r} /></td><td className="p-3"><Badge variant="outline"><Layers3 className="w-3 h-3 mr-1"/>{r.quantidade_cartas} {r.quantidade_cartas === 1 ? "carta" : "cartas"}</Badge></td><td className="p-3 font-semibold">{moneyBR(r.valor_credito)}</td><td className="p-3">{moneyBR(r.entrada)}</td><td className="p-3">{moneyBR(r.valor_parcela)}</td><td className="p-3">{r.parcelas || "—"} meses</td><td className="p-3">{pctBR(r.taxa)}</td><td className="p-3"><Button size="sm" variant="outline" onClick={() => setSelected(r)}>Detalhes</Button></td></tr>)}
             </tbody></table>
           </CardContent>
         </Card>
@@ -205,7 +244,7 @@ export default function CartasContempladas() {
 
       {!data && <Card className="border-dashed"><CardContent className="py-12 text-center"><WalletCards className="w-10 h-10 text-slate-300 mx-auto mb-3"/><h3 className="font-semibold text-slate-700">Informe o crédito que o cliente precisa</h3><p className="text-sm text-slate-500 mt-1">Vamos comparar cartas individuais e combinações da mesma administradora.</p></CardContent></Card>}
 
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}><DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>Composição da opção</DialogTitle></DialogHeader>{selected && <div className="space-y-4"><div className="flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={() => copiarProposta(selected)}><Copy className="w-4 h-4 mr-2"/>Copiar proposta</Button><Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => compartilharProposta(selected)}><Share2 className="w-4 h-4 mr-2"/>Compartilhar</Button></div><div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 rounded-xl p-4"><div><p className="text-xs text-slate-500">Crédito</p><p className="font-bold">{moneyBR(selected.valor_credito)}</p></div><div><p className="text-xs text-slate-500">Entrada</p><p className="font-bold">{moneyBR(selected.entrada)}</p></div><div><p className="text-xs text-slate-500">Parcela total</p><p className="font-bold">{moneyBR(selected.valor_parcela)}</p></div><div><p className="text-xs text-slate-500">Saldo devedor total</p><p className="font-bold">{moneyBR(selected.cartas.reduce((soma, c) => soma + Number(c.saldo_devedor || 0), 0))}</p></div></div>{selected.cartas.map((c, i) => <div key={c.id} className="border rounded-xl p-4"><div className="flex items-center justify-between gap-2 mb-3"><div><p className="font-bold">Carta {i + 1} • {c.administradora}</p><p className="text-xs text-slate-500">Código {c.codigo} • {c.fornecedor_nome}</p></div><Badge className={c.status === "disponivel" ? "bg-emerald-600" : "bg-amber-600"}>{c.status}</Badge></div><div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm"><div><span className="text-slate-500">Crédito</span><p className="font-semibold">{moneyBR(c.valor_credito)}</p></div><div><span className="text-slate-500">Entrada</span><p className="font-semibold">{moneyBR(c.entrada)}</p></div><div><span className="text-slate-500">Parcela</span><p className="font-semibold">{moneyBR(c.valor_parcela)}</p></div><div><span className="text-slate-500">Prazo</span><p className="font-semibold">{c.parcelas} meses</p></div><div><span className="text-slate-500">Saldo devedor</span><p className="font-semibold">{moneyBR(c.saldo_devedor)}</p></div></div></div>)}</div>}</DialogContent></Dialog>
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}><DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto"><DialogHeader><DialogTitle>Composição da opção</DialogTitle></DialogHeader>{selected && <div className="space-y-4"><div className="flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={() => copiarProposta(selected)}><Copy className="w-4 h-4 mr-2"/>Copiar proposta</Button><Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => compartilharProposta(selected)}><Share2 className="w-4 h-4 mr-2"/>Compartilhar</Button></div><div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 rounded-xl p-4"><div><p className="text-xs text-slate-500">Crédito</p><p className="font-bold">{moneyBR(selected.valor_credito)}</p></div><div><p className="text-xs text-slate-500">Entrada</p><p className="font-bold">{moneyBR(selected.entrada)}</p></div><div><p className="text-xs text-slate-500">Parcela total</p><p className="font-bold">{moneyBR(selected.valor_parcela)}</p></div><div><p className="text-xs text-slate-500">Saldo devedor total</p><p className="font-bold">{moneyBR(selected.cartas.reduce((soma, c) => soma + Number(c.saldo_devedor || 0), 0))}</p></div></div>{selected.cartas.map((c, i) => <div key={c.id} className="border rounded-xl p-4"><div className="flex items-center justify-between gap-2 mb-3"><div className="min-w-0"><div className="font-bold"><AdministradoraIdentidade nome={c.administradora} logoUrl={getLogoUrl(c) || getLogoUrl(selected)} carta={c} /></div><p className="text-xs text-slate-500 mt-1 ml-[4.25rem]">Carta {i + 1} • Código {c.codigo} • {c.fornecedor_nome}</p></div><Badge className={c.status === "disponivel" ? "bg-emerald-600" : "bg-amber-600"}>{c.status}</Badge></div><div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm"><div><span className="text-slate-500">Crédito</span><p className="font-semibold">{moneyBR(c.valor_credito)}</p></div><div><span className="text-slate-500">Entrada</span><p className="font-semibold">{moneyBR(c.entrada)}</p></div><div><span className="text-slate-500">Parcela</span><p className="font-semibold">{moneyBR(c.valor_parcela)}</p></div><div><span className="text-slate-500">Prazo</span><p className="font-semibold">{c.parcelas} meses</p></div><div><span className="text-slate-500">Saldo devedor</span><p className="font-semibold">{moneyBR(c.saldo_devedor)}</p></div></div></div>)}</div>}</DialogContent></Dialog>
     </div>
   );
 }
