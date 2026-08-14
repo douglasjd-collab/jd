@@ -462,8 +462,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
               syncing={syncingTemplates}
               syncError={syncError}
               onSync={refetchTemplates}
-              connections={connectionsList || []}
-              multiplasConexoes={temMultiplasConexoes}
+              connections={conexoesDoCanal || []}
             />
           )}
           {step === 2 && (
