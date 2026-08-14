@@ -357,8 +357,10 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       }
       const configJson = JSON.stringify({
         publico: {
-          origens: form.origens,
+          origens: form.publico_consorcio_ativo ? ['consorcio_ativo'] : form.origens,
           clientes_sub: form.clientes_sub,
+          publico_consorcio_ativo: form.publico_consorcio_ativo,
+          administradora_id: form.administradora_id,
           funis: form.funis_selecionados,
           tags: form.tags_selecionadas,
           listas: form.listas_selecionadas,
@@ -376,13 +378,22 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
           parceiro_id: form.filtro_parceiro_id,
         },
       });
+      const administradoraSelecionada = form.publico_consorcio_ativo
+        ? await base44.entities.Administradora.get(form.administradora_id).catch(() => null)
+        : null;
       const campanha = await base44.entities.Campanha.create({
         empresa_id: empresaId,
         criador_id: user.id,
         criador_nome: user.full_name || user.email,
         nome: form.nome,
         descricao: form.descricao,
-        canal: 'whatsapp_meta_oficial',
+        canal: form.canal_tipo === 'nao_oficial' ? 'whatsapp_nao_oficial' : 'whatsapp_meta_oficial',
+        connection_id: form.conn_selecionada,
+        mensagem_tipo: form.canal_tipo === 'nao_oficial' ? form.mensagem_tipo : null,
+        mensagem_texto: form.canal_tipo === 'nao_oficial' ? form.mensagem_texto : null,
+        midia_url: form.canal_tipo === 'nao_oficial' ? form.midia_url : null,
+        administradora_id: form.publico_consorcio_ativo ? form.administradora_id : null,
+        administradora_nome: administradoraSelecionada?.nome_fantasia || administradoraSelecionada?.razao_social || '',
         template_id: t?.id,
         template_nome: t?.name,
         template_category: t?.category,
@@ -410,10 +421,17 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         await base44.entities.CampanhaDestinatario.bulkCreate(destinatarios);
       }
 
+      if (form.agendamento === 'agora' && form.canal_tipo === 'nao_oficial') {
+        await base44.entities.Campanha.update(campanha.id, { status: 'executando' });
+        await base44.functions.invoke('dispararCampanhaNaoOficial', { campanha_id: campanha.id });
+      }
+
       toast.success(
         form.agendamento === 'agendar'
           ? `Campanha agendada para ${form.agendada_para_data} ${form.agendada_para_hora}`
-          : `Campanha criada com ${vistos.size} telefone(s) na fila (${comTelefone.length} clientes)`
+          : form.canal_tipo === 'nao_oficial'
+            ? `Disparo iniciado para ${vistos.size} telefone(s) ativos da administradora selecionada`
+            : `Campanha criada com ${vistos.size} telefone(s) na fila (${comTelefone.length} clientes)`
       );
       qc.invalidateQueries(['campanhas-lista', empresaId]);
       qc.invalidateQueries(['campanhas-dashboard', empresaId]);
