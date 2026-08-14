@@ -77,7 +77,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     publico_produto: '',
     consorcio_situacao: 'em_atraso',
     consorcio_vendedores_ids: [],
-    administradora_id: ''
+    administradora_id: '',
     origens: [],
     clientes_sub: 'todos',
     destino_telefones: 'principal',
@@ -120,6 +120,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         publico_consorcio_ativo: false,
         publico_produto: '',
         consorcio_situacao: 'em_atraso',
+        consorcio_vendedores_ids: [],
         administradora_id: '',
         origens: [],
         clientes_sub: 'todos',
