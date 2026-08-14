@@ -903,8 +903,11 @@ function Step6({ form, template, preview, user }) {
       <Card className="border-slate-200">
         <CardContent className="p-4 space-y-2 text-sm">
           <Row label="Nome" value={form.nome || '-'} />
-          <Row label="Template" value={template?.display_name || template?.name || '-'} />
-          <Row label="Canal" value="WhatsApp API Oficial" />
+          {form.canal_tipo === 'oficial'
+            ? <Row label="Template" value={template?.display_name || template?.name || '-'} />
+            : <Row label="Formato" value={form.mensagem_tipo === 'texto' ? 'Apenas texto' : form.mensagem_tipo === 'imagem_texto' ? 'Imagem + texto' : 'Vídeo + texto'} />}
+          <Row label="Canal" value={form.canal_tipo === 'nao_oficial' ? 'WhatsApp API não oficial — JD/D-API' : 'WhatsApp API Oficial'} />
+          {form.publico_consorcio_ativo && <Row label="Público" value="Cotas ativas da administradora selecionada" />}
           <Row label="Público (fontes)" value={resumoPublico(form)} />
           <Row label="Filtros" value={resumoFiltros(form)} />
           <Row label="Prontos p/ envio" value={preview?.prontos_envio ?? '-'} />
