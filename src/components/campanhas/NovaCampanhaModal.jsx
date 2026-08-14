@@ -76,7 +76,8 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     publico_consorcio_ativo: false,
     publico_produto: '',
     consorcio_situacao: 'em_atraso',
-    administradora_id: '',
+    consorcio_vendedores_ids: [],
+    administradora_id: ''
     origens: [],
     clientes_sub: 'todos',
     destino_telefones: 'principal',
@@ -238,7 +239,11 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         status: form.consorcio_situacao || 'em_atraso',
         administradora_id: form.administradora_id,
       }, '-created_date', 5000);
-      const ids = [...new Set((vendasElegiveis || []).map((v) => v.cliente_id).filter(Boolean))];
+      const vendedoresSelecionados = new Set(form.consorcio_vendedores_ids || []);
+      const vendasDosVendedores = vendedoresSelecionados.size > 0
+        ? (vendasElegiveis || []).filter((v) => vendedoresSelecionados.has(v.vendedor_id))
+        : (vendasElegiveis || []);
+      const ids = [...new Set(vendasDosVendedores.map((v) => v.cliente_id).filter(Boolean))];
       if (!ids.length) return [];
       const todosClientes = await base44.entities.Cliente.filter({ empresa_id: empresaId }, null, 5000);
       const idsSet = new Set(ids);
@@ -375,6 +380,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
           publico_consorcio_ativo: form.publico_consorcio_ativo,
           publico_produto: form.publico_produto,
           consorcio_situacao: form.consorcio_situacao,
+          consorcio_vendedores_ids: form.consorcio_vendedores_ids || [],
           administradora_id: form.administradora_id,
           funis: form.funis_selecionados,
           tags: form.tags_selecionadas,
@@ -916,7 +922,7 @@ function Step6({ form, template, preview, user }) {
             ? <Row label="Template" value={template?.display_name || template?.name || '-'} />
             : <Row label="Formato" value={form.mensagem_tipo === 'texto' ? 'Apenas texto' : form.mensagem_tipo === 'imagem_texto' ? 'Imagem + texto' : 'Vídeo + texto'} />}
           <Row label="Canal" value={form.canal_tipo === 'nao_oficial' ? 'WhatsApp API não oficial — JD/D-API' : 'WhatsApp API Oficial'} />
-          {(form.publico_produto === 'consorcio' || form.publico_consorcio_ativo) && <Row label="Público" value={`Consórcio · ${form.consorcio_situacao === 'em_atraso' ? 'cotas vigentes em atraso' : 'cotas ativas'} · administradora selecionada`} />}
+          {(form.publico_produto === 'consorcio' || form.publico_consorcio_ativo) && <Row label="Público" value={`Consórcio · ${form.consorcio_situacao === 'em_atraso' ? 'cotas vigentes em atraso' : 'cotas ativas'} · administradora selecionada · ${(form.consorcio_vendedores_ids || []).length ? `${form.consorcio_vendedores_ids.length} vendedor(es)` : 'todos os vendedores'}`} />}
           <Row label="Público (fontes)" value={resumoPublico(form)} />
           <Row label="Filtros" value={resumoFiltros(form)} />
           <Row label="Prontos p/ envio" value={preview?.prontos_envio ?? '-'} />
