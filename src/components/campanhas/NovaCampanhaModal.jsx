@@ -218,24 +218,38 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     [templates, form.template_id]
   );
 
-  // Carregar clientes base (sem filtro ainda — aplicado na prévia)
-  const clientesDisponiveis = useMemo(async () => [], []);
+  const carregarClientesBase = async () => {
+    if (form.publico_consorcio_ativo) {
+      const vendasAtivas = await base44.entities.Venda.filter({
+        empresa_id: empresaId,
+        status: 'ativa',
+        administradora_id: form.administradora_id,
+      }, '-created_date', 5000);
+      const ids = [...new Set((vendasAtivas || []).map((v) => v.cliente_id).filter(Boolean))];
+      if (!ids.length) return [];
+      const todosClientes = await base44.entities.Cliente.filter({ empresa_id: empresaId }, null, 5000);
+      const idsSet = new Set(ids);
+      return (todosClientes || []).filter((cliente) => idsSet.has(cliente.id));
+    }
+
+    const sub = form.clientes_sub || 'todos';
+    const filtro = { empresa_id: empresaId };
+    if (sub === 'ativos') filtro.status = 'ativo';
+    if (sub === 'inativos') filtro.status = 'inativo';
+    let clientes = await base44.entities.Cliente.filter(filtro, null, 5000);
+    if (sub === 'sem_whatsapp') clientes = clientes.filter((c) => normalizeTel(c.celular || '').length < 10);
+    if (sub === 'com_whatsapp') clientes = clientes.filter((c) => normalizeTel(c.celular || '').length >= 10);
+    return clientes;
+  };
 
   const calcularPrevia = async () => {
     if (!empresaId) return;
     setLoadingPreview(true);
     setPreview(null);
     try {
-      const sub = form.clientes_sub || 'todos';
-      const filtro = { empresa_id: empresaId };
-      if (sub === 'ativos') filtro.status = 'ativo';
-      if (sub === 'inativos') filtro.status = 'inativo';
-      const clientes = await base44.entities.Cliente.filter(filtro, null, 2000);
+      const baseClientes = await carregarClientesBase();
       const telsMap = await carregarTelefonesPorCliente(empresaId);
       const bloqueados = await carregarTelefonesBloqueados(empresaId);
-      let baseClientes = clientes;
-      if (sub === 'sem_whatsapp') baseClientes = baseClientes.filter((c) => normalizeTel(c.celular || '').length < 10);
-      if (sub === 'com_whatsapp') baseClientes = baseClientes.filter((c) => normalizeTel(c.celular || '').length >= 10);
       const filtrados = aplicarFiltrosPublico(baseClientes, form);
       const comTelefone = filtrados.filter((c) =>
         selecionarTelefonesParaCampanha(c, modoTelefoneParaCampanha(form), telsMap.get(c.id) || []).length > 0
@@ -273,8 +287,17 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
   };
 
   const podeAvancar = useMemo(() => {
-    if (step === 1) return !!form.template_id && !!form.nome;
+    if (step === 1) {
+      if (!form.nome || !form.conn_selecionada) return false;
+      if (form.canal_tipo === 'nao_oficial') {
+        if (!form.mensagem_texto?.trim()) return false;
+        if (form.mensagem_tipo !== 'texto' && !form.midia_url) return false;
+        return true;
+      }
+      return !!form.template_id;
+    }
     if (step === 2) {
+      if (form.publico_consorcio_ativo) return !!form.administradora_id;
       if (!form.origens || form.origens.length === 0) return false;
       // Cada fonte selecionada precisa de ao menos 1 seleção interna
       if (form.origens.includes('funis') && (form.funis_selecionados || []).length === 0) return false;
@@ -304,16 +327,9 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
   const submit = async () => {
     setSaving(true);
     try {
-      const sub = form.clientes_sub || 'todos';
-      const filtro = { empresa_id: empresaId };
-      if (sub === 'ativos') filtro.status = 'ativo';
-      if (sub === 'inativos') filtro.status = 'inativo';
-      const clientes = await base44.entities.Cliente.filter(filtro, null, 2000);
+      const baseClientes = await carregarClientesBase();
       const telsMap = await carregarTelefonesPorCliente(empresaId);
       const bloqueados = await carregarTelefonesBloqueados(empresaId);
-      let baseClientes = clientes;
-      if (sub === 'sem_whatsapp') baseClientes = baseClientes.filter((c) => normalizeTel(c.celular || '').length < 10);
-      if (sub === 'com_whatsapp') baseClientes = baseClientes.filter((c) => normalizeTel(c.celular || '').length >= 10);
       const filtrados = aplicarFiltrosPublico(baseClientes, form);
       const comTelefone = filtrados.filter((c) =>
         selecionarTelefonesParaCampanha(c, modoTelefoneParaCampanha(form), telsMap.get(c.id) || []).length > 0
