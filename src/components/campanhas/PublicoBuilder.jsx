@@ -162,9 +162,12 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
           )
         )
       );
-      setVendedoresConsorcio((colaboradores || []).filter((c) =>
-        ['vendedor', 'colaborador_vendedor'].includes(c.perfil)
-      ));
+      const perfisResponsaveis = ['vendedor', 'colaborador_vendedor', 'gerente', 'admin', 'parceiro'];
+      setVendedoresConsorcio(
+        (colaboradores || [])
+          .filter((c) => perfisResponsaveis.includes(c.perfil))
+          .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'))
+      );
     }
 
     carregarFiltrosConsorcio();
@@ -338,13 +341,24 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
             </div>
             <div>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <Label>Vendedores</Label>
+                <Label>Responsáveis — vendedores, administradores e parceiros</Label>
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, consorcio_vendedores_ids: [] })}
+                  onClick={() => {
+                    const todosIds = vendedoresConsorcio.map((v) => v.id);
+                    const selecionados = form.consorcio_vendedores_ids || [];
+                    const todosMarcados = todosIds.length > 0 && todosIds.every((id) => selecionados.includes(id));
+                    setForm({
+                      ...form,
+                      consorcio_vendedores_ids: todosMarcados ? [] : todosIds,
+                    });
+                  }}
                   className="text-xs text-emerald-700 hover:underline"
                 >
-                  Selecionar todos
+                  {vendedoresConsorcio.length > 0 &&
+                   vendedoresConsorcio.every((v) => (form.consorcio_vendedores_ids || []).includes(v.id))
+                    ? 'Desmarcar todos'
+                    : 'Selecionar todos'}
                 </button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-auto rounded-lg border border-emerald-200 bg-white p-2">
@@ -365,12 +379,12 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
                     </label>
                   );
                 })}
-                {vendedoresConsorcio.length === 0 && <p className="text-xs text-slate-500 p-2">Nenhum vendedor ativo encontrado.</p>}
+                {vendedoresConsorcio.length === 0 && <p className="text-xs text-slate-500 p-2">Nenhum vendedor, administrador ou parceiro ativo encontrado.</p>}
               </div>
               <p className="text-[11px] text-slate-500 mt-1">
                 {(form.consorcio_vendedores_ids || []).length === 0
-                  ? 'Todos os vendedores serão incluídos.'
-                  : `${form.consorcio_vendedores_ids.length} vendedor(es) selecionado(s).`}
+                  ? 'Todos os responsáveis serão incluídos.'
+                  : `${form.consorcio_vendedores_ids.length} responsável(is) selecionado(s).`}
               </p>
             </div>
             <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
