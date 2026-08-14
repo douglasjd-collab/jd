@@ -207,7 +207,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       void diagInfo;
       return aprovados;
     },
-    enabled: !!empresaId && open,
+    enabled: !!empresaId && open && form.canal_tipo === 'oficial',
     staleTime: 30_000,
   });
 
@@ -852,8 +852,9 @@ function Step5({ form, setForm }) {
           Enviar agora
         </button>
         <button
-          onClick={() => setForm({ ...form, agendamento: 'agendar' })}
-          className={`flex-1 p-3 rounded-lg border text-sm font-medium ${
+          onClick={() => form.canal_tipo === 'oficial' && setForm({ ...form, agendamento: 'agendar' })}
+          disabled={form.canal_tipo === 'nao_oficial'}
+          className={`flex-1 p-3 rounded-lg border text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed ${
             form.agendamento === 'agendar' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200'
           }`}
         >
