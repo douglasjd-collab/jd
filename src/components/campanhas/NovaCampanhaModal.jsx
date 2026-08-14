@@ -269,7 +269,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       const baseClientes = await carregarClientesBase();
       const telsMap = await carregarTelefonesPorCliente(empresaId);
       const bloqueados = await carregarTelefonesBloqueados(empresaId);
-      const filtrados = aplicarFiltrosPublico(baseClientes, form);
+      const filtrados = aplicarFiltrosPublico(baseClientes, form, telsMap);
       const comTelefone = filtrados.filter((c) =>
         selecionarTelefonesParaCampanha(c, modoTelefoneParaCampanha(form), telsMap.get(c.id) || []).length > 0
       );
@@ -349,7 +349,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       const baseClientes = await carregarClientesBase();
       const telsMap = await carregarTelefonesPorCliente(empresaId);
       const bloqueados = await carregarTelefonesBloqueados(empresaId);
-      const filtrados = aplicarFiltrosPublico(baseClientes, form);
+      const filtrados = aplicarFiltrosPublico(baseClientes, form, telsMap);
       const comTelefone = filtrados.filter((c) =>
         selecionarTelefonesParaCampanha(c, modoTelefoneParaCampanha(form), telsMap.get(c.id) || []).length > 0
       );
@@ -727,11 +727,16 @@ function Step3({ form, setForm, empresaId }) {
         <div>
           <Label>Vendedor responsável</Label>
           <select
-            value={form.filtro_vendedor_id || ''}
+            value={(form.publico_produto === 'consorcio' || form.publico_consorcio_ativo) ? '' : (form.filtro_vendedor_id || '')}
+            disabled={form.publico_produto === 'consorcio' || form.publico_consorcio_ativo}
             onChange={(e) => setForm({ ...form, filtro_vendedor_id: e.target.value })}
-            className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white"
+            className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white disabled:bg-slate-100 disabled:text-slate-500"
           >
-            <option value="">Todos os vendedores</option>
+            <option value="">
+              {(form.publico_produto === 'consorcio' || form.publico_consorcio_ativo)
+                ? 'Definido na etapa Público'
+                : 'Todos os vendedores'}
+            </option>
             {vendedores.map((v) => (
               <option key={v.id} value={v.id}>{v.nome}</option>
             ))}
