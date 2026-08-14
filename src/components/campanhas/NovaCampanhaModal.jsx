@@ -74,6 +74,8 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     midia_url: '',
     midia_nome: '',
     publico_consorcio_ativo: false,
+    publico_produto: '',
+    consorcio_situacao: 'em_atraso',
     administradora_id: '',
     origens: [],
     clientes_sub: 'todos',
@@ -115,6 +117,8 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         midia_url: '',
         midia_nome: '',
         publico_consorcio_ativo: false,
+        publico_produto: '',
+        consorcio_situacao: 'em_atraso',
         administradora_id: '',
         origens: [],
         clientes_sub: 'todos',
@@ -226,13 +230,15 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
   );
 
   const carregarClientesBase = async () => {
-    if (form.publico_consorcio_ativo) {
-      const vendasAtivas = await base44.entities.Venda.filter({
+    if (form.publico_produto === 'consorcio' || form.publico_consorcio_ativo) {
+      // Em atraso representa uma cota vigente com pendência financeira.
+      // Canceladas e contempladas usam outros status e, por isso, ficam fora automaticamente.
+      const vendasElegiveis = await base44.entities.Venda.filter({
         empresa_id: empresaId,
-        status: 'ativa',
+        status: form.consorcio_situacao || 'em_atraso',
         administradora_id: form.administradora_id,
       }, '-created_date', 5000);
-      const ids = [...new Set((vendasAtivas || []).map((v) => v.cliente_id).filter(Boolean))];
+      const ids = [...new Set((vendasElegiveis || []).map((v) => v.cliente_id).filter(Boolean))];
       if (!ids.length) return [];
       const todosClientes = await base44.entities.Cliente.filter({ empresa_id: empresaId }, null, 5000);
       const idsSet = new Set(ids);
@@ -304,7 +310,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       return !!form.template_id;
     }
     if (step === 2) {
-      if (form.publico_consorcio_ativo) return !!form.administradora_id;
+      if (form.publico_produto === 'consorcio' || form.publico_consorcio_ativo) return !!form.administradora_id && !!form.consorcio_situacao;
       if (!form.origens || form.origens.length === 0) return false;
       // Cada fonte selecionada precisa de ao menos 1 seleção interna
       if (form.origens.includes('funis') && (form.funis_selecionados || []).length === 0) return false;
@@ -908,7 +914,7 @@ function Step6({ form, template, preview, user }) {
             ? <Row label="Template" value={template?.display_name || template?.name || '-'} />
             : <Row label="Formato" value={form.mensagem_tipo === 'texto' ? 'Apenas texto' : form.mensagem_tipo === 'imagem_texto' ? 'Imagem + texto' : 'Vídeo + texto'} />}
           <Row label="Canal" value={form.canal_tipo === 'nao_oficial' ? 'WhatsApp API não oficial — JD/D-API' : 'WhatsApp API Oficial'} />
-          {form.publico_consorcio_ativo && <Row label="Público" value="Cotas ativas da administradora selecionada" />}
+          {(form.publico_produto === 'consorcio' || form.publico_consorcio_ativo) && <Row label="Público" value={`Consórcio · ${form.consorcio_situacao === 'em_atraso' ? 'cotas vigentes em atraso' : 'cotas ativas'} · administradora selecionada`} />}
           <Row label="Público (fontes)" value={resumoPublico(form)} />
           <Row label="Filtros" value={resumoFiltros(form)} />
           <Row label="Prontos p/ envio" value={preview?.prontos_envio ?? '-'} />
