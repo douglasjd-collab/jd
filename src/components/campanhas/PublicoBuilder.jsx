@@ -119,20 +119,56 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
 
   useEffect(() => {
     if (!empresaId) return;
-    Promise.all([
-      base44.entities.Administradora.filter({ empresa_id: empresaId, status: 'ativa' }, 'nome_fantasia', 200),
-      base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome', 500),
-    ])
-      .then(([admins, colaboradores]) => {
-        setAdministradoras(admins || []);
-        setVendedoresConsorcio((colaboradores || []).filter((c) =>
-          ['vendedor', 'colaborador_vendedor'].includes(c.perfil)
-        ));
-      })
-      .catch(() => {
-        setAdministradoras([]);
-        setVendedoresConsorcio([]);
+    let cancelled = false;
+
+    async function carregarFiltrosConsorcio() {
+      const [admins, propostas, colaboradores] = await Promise.all([
+        base44.entities.Administradora.list('nome_fantasia', 500).catch(() => []),
+        base44.entities.Venda.filter({ empresa_id: empresaId }, '-created_date', 5000).catch(() => []),
+        base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome', 500).catch(() => []),
+      ]);
+
+      if (cancelled) return;
+
+      const adminsPermitidas = (admins || []).filter((a) => {
+        const pertenceEmpresa = !a.empresa_id || a.empresa_id === empresaId;
+        const status = String(a.status || '').toLowerCase();
+        return pertenceEmpresa && !['inativa', 'inativo', 'cancelada', 'cancelado'].includes(status);
       });
+
+      // Algumas propostas antigas têm a administradora gravada na venda, mas o
+      // cadastro da entidade Administradora não possui empresa_id/status.
+      // Mesclamos as duas fontes para o seletor nunca ficar vazio.
+      const porId = new Map();
+      adminsPermitidas.forEach((a) => {
+        if (a.id) porId.set(a.id, a);
+      });
+      (propostas || []).forEach((p) => {
+        if (!p.administradora_id) return;
+        const existente = porId.get(p.administradora_id);
+        const nome = p.administradora_nome || existente?.nome_fantasia || existente?.razao_social;
+        porId.set(p.administradora_id, {
+          ...(existente || {}),
+          id: p.administradora_id,
+          nome_fantasia: nome || 'Administradora sem nome',
+        });
+      });
+
+      setAdministradoras(
+        Array.from(porId.values()).sort((a, b) =>
+          String(a.nome_fantasia || a.razao_social || '').localeCompare(
+            String(b.nome_fantasia || b.razao_social || ''),
+            'pt-BR'
+          )
+        )
+      );
+      setVendedoresConsorcio((colaboradores || []).filter((c) =>
+        ['vendedor', 'colaborador_vendedor'].includes(c.perfil)
+      ));
+    }
+
+    carregarFiltrosConsorcio();
+    return () => { cancelled = true; };
   }, [empresaId]);
 
   // Carrega dados das fontes selecionadas
