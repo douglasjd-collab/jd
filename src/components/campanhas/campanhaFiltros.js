@@ -22,7 +22,7 @@ export function isTelefoneValidoParaEnvio(num) {
 // Retorna a lista reduzida (antes da verificação de telefone/envio).
 // Não aplica regras automáticas (duplicados, inválidos, bloqueados) — estas
 // são aplicadas na etapa de seleção de telefones.
-export function aplicarFiltrosPublico(clientes, form) {
+export function aplicarFiltrosPublico(clientes, form, telefonesPorCliente = new Map()) {
   if (!Array.isArray(clientes)) return [];
   let filtrados = clientes;
 
@@ -57,20 +57,27 @@ export function aplicarFiltrosPublico(clientes, form) {
   // 5. Com telefone válido — exclui clientes sem nenhum telefone válido no
   //    cadastro (celular, pj_celular, telefone_fixo, pj_telefone_fixo).
   if (form.filtro_telefone_valido) {
-    filtrados = filtrados.filter(
-      (c) =>
+    filtrados = filtrados.filter((c) => {
+      const extras = telefonesPorCliente.get(c.id) || [];
+      return (
         isTelefoneValidoParaEnvio(c.celular) ||
         isTelefoneValidoParaEnvio(c.pj_celular) ||
         isTelefoneValidoParaEnvio(c.telefone_fixo) ||
-        isTelefoneValidoParaEnvio(c.pj_telefone_fixo)
-    );
+        isTelefoneValidoParaEnvio(c.pj_telefone_fixo) ||
+        extras.some((t) => isTelefoneValidoParaEnvio(t.telefone || t.numero))
+      );
+    });
   }
 
   // 6. Apenas telefones WhatsApp — não exclui clientes, apenas redefine o
   //    modo de seleção de telefones (ver modoTelefoneParaCampanha).
 
   // 7. Vendedor responsável
-  if (form.filtro_vendedor_id) {
+  // Em Consórcio, o vendedor pertence à proposta e já foi aplicado na etapa
+  // Público. Não devemos filtrar novamente por Cliente.vendedor_id, pois esse
+  // campo pode estar vazio mesmo quando a proposta possui vendedor.
+  const publicoConsorcio = form.publico_produto === 'consorcio' || form.publico_consorcio_ativo;
+  if (form.filtro_vendedor_id && !publicoConsorcio) {
     filtrados = filtrados.filter((c) => c.vendedor_id === form.filtro_vendedor_id);
   }
 
