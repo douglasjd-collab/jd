@@ -373,6 +373,8 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
           origens: form.publico_consorcio_ativo ? ['consorcio_ativo'] : form.origens,
           clientes_sub: form.clientes_sub,
           publico_consorcio_ativo: form.publico_consorcio_ativo,
+          publico_produto: form.publico_produto,
+          consorcio_situacao: form.consorcio_situacao,
           administradora_id: form.administradora_id,
           funis: form.funis_selecionados,
           tags: form.tags_selecionadas,
