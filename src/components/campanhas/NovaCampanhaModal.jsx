@@ -517,27 +517,37 @@ function Stepper({ step }) {
   );
 }
 
-function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, connections, multiplasConexoes }) {
-  // Se há múltiplas conexões oficiais conectadas, lista apenas os templates
-  // da conexão escolhida. Caso contrário (1 só conexão), mostra todos os
-  // aprovados da empresa (já pré-filtrados pelo hook).
-  const templatesVisiveis = multiplasConexoes && form.conn_selecionada
-    ? (templates || []).filter((t) => t.connection_id === form.conn_selecionada)
+function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, connections }) {
+  const [uploading, setUploading] = useState(false);
+  const templatesVisiveis = form.conn_selecionada
+    ? (templates || []).filter((t) => !t.connection_id || t.connection_id === form.conn_selecionada)
     : (templates || []);
-
   const selecionado = templatesVisiveis.find((t) => t.id === form.template_id) || null;
 
-  let botoesSel = [];
-  try { botoesSel = selecionado ? JSON.parse(selecionado.buttons_json || '[]') : []; } catch {}
-  let variaveisSel = [];
-  try { variaveisSel = selecionado ? JSON.parse(selecionado.variables_json || '[]') : []; } catch {}
+  const uploadMidia = async (file) => {
+    if (!file) return;
+    const imagem = form.mensagem_tipo === 'imagem_texto';
+    const valido = imagem ? file.type.startsWith('image/') : file.type.startsWith('video/');
+    if (!valido) return toast.error(imagem ? 'Selecione uma imagem.' : 'Selecione um vídeo.');
+    setUploading(true);
+    try {
+      const res = await base44.integrations.Core.UploadFile({ file });
+      if (!res?.file_url) throw new Error('O upload não retornou a URL do arquivo');
+      setForm({ ...form, midia_url: res.file_url, midia_nome: file.name });
+      toast.success('Mídia adicionada à campanha');
+    } catch (e) {
+      toast.error('Erro ao enviar mídia: ' + (e.message || 'desconhecido'));
+    } finally {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div>
           <Label>Nome da campanha *</Label>
-          <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Renovação Empréstimo Julho" />
+          <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Vencimento Canopus" />
         </div>
         <div>
           <Label>Descrição</Label>
@@ -545,121 +555,91 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <Label className="block">Template aprovado *</Label>
-        <button
-          type="button"
-          onClick={() => onSync()}
-          disabled={syncing}
-          className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
-          title="Sincronizar templates da API Oficial (Meta/D-API) e atualizar a lista"
-        >
-          {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-          Sincronizar com a Meta
-        </button>
+      <div>
+        <Label className="block mb-2">Tipo de API *</Label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <button type="button" onClick={() => setForm({ ...form, canal_tipo: 'nao_oficial', conn_selecionada: '', template_id: '' })}
+            className={`p-3 rounded-lg border text-left ${form.canal_tipo === 'nao_oficial' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'}`}>
+            <p className="font-semibold text-sm">API não oficial — JD/D-API</p>
+            <p className="text-xs text-slate-500">Mensagem criada na hora, sem template aprovado.</p>
+          </button>
+          <button type="button" onClick={() => setForm({ ...form, canal_tipo: 'oficial', conn_selecionada: '', template_id: '' })}
+            className={`p-3 rounded-lg border text-left ${form.canal_tipo === 'oficial' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'}`}>
+            <p className="font-semibold text-sm">API Oficial — Meta</p>
+            <p className="text-xs text-slate-500">Utiliza template previamente aprovado.</p>
+          </button>
+        </div>
       </div>
 
-      {syncError && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="py-3 text-sm text-red-700 flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-            <span>{syncError}</span>
-          </CardContent>
-        </Card>
-      )}
-
-      {multiplasConexoes && (
-        <div>
-          <Label>Canal de envio *</Label>
-          <select
-            value={form.conn_selecionada || ''}
-            onChange={(e) => setForm({ ...form, conn_selecionada: e.target.value, template_id: '' })}
-            className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm"
-          >
-            <option value="">Selecione a conexão oficial…</option>
-            {connections.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome || c.session_id} {c.phone_number ? `· ${c.phone_number}` : ''} · {c.provider_type === 'dapi' ? 'API Oficial (D-API)' : 'API Oficial (Meta)'}
-              </option>
-            ))}
-          </select>
-          <p className="text-[11px] text-slate-500 mt-1">Listaremos apenas os templates APROVADOS desta conexão.</p>
-        </div>
-      )}
-
-      {loading || syncing ? (
-        <div className="flex items-center gap-2 text-slate-500 py-4">
-          <Loader2 className="w-4 h-4 animate-spin" /> Sincronizando templates da API Oficial…
-        </div>
-      ) : (multiplasConexoes && !form.conn_selecionada) ? (
-        <Card className="border-slate-200 bg-slate-50">
-          <CardContent className="py-4 text-sm text-slate-600">
-            Selecione um canal de envio acima para listar os templates aprovados vinculados a essa conexão.
-          </CardContent>
-        </Card>
-      ) : templatesVisiveis.length === 0 ? (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardContent className="py-4 text-sm text-amber-700">
-            Nenhum template aprovado encontrado{multiplasConexoes ? ' para a conexão selecionada.' : '.'} Clique em <strong>"Sincronizar com a Meta"</strong> ou crie/aprove templates na aba <strong>Templates</strong> antes de criar uma campanha.
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-72 overflow-auto pr-1">
-          {templatesVisiveis.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setForm({ ...form, template_id: t.id })}
-              className={`text-left p-3 rounded-lg border transition ${
-                form.template_id === t.id ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-medium text-slate-800 text-sm truncate">{t.display_name || t.name}</p>
-                {form.template_id === t.id && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {t.category} · {t.language} · {(t.type || t.header_type || 'TEXT').toUpperCase()}
-              </p>
-              {t.body_text && (
-                <p className="text-xs text-slate-400 mt-1 line-clamp-2">{t.body_text}</p>
-              )}
-              {t.connection_nome && (
-                <p className="text-[10px] text-slate-400 mt-1 truncate">🔗 {t.connection_nome}</p>
-              )}
-            </button>
+      <div>
+        <Label>Canal de envio *</Label>
+        <select value={form.conn_selecionada || ''} onChange={(e) => setForm({ ...form, conn_selecionada: e.target.value, template_id: '' })}
+          className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white">
+          <option value="">Selecione a conexão…</option>
+          {(connections || []).map((c) => (
+            <option key={c.id} value={c.id}>{c.nome || c.session_id} {c.phone_number ? `· ${c.phone_number}` : ''}</option>
           ))}
-        </div>
-      )}
+        </select>
+      </div>
 
-      {selecionado && (
-        <div className="mt-2 grid grid-cols-1 lg:grid-cols-2 gap-4 border rounded-lg p-3 bg-slate-50">
+      {form.canal_tipo === 'nao_oficial' ? (
+        <div className="space-y-3 border rounded-xl p-4 bg-slate-50">
           <div>
-            <p className="text-xs text-slate-500 mb-1 font-semibold">Pré-visualização</p>
-            <TemplatePreview
-              headerText={selecionado.type === 'TEXT' ? (selecionado.header_text || '') : ''}
-              tipo={selecionado.type || selecionado.header_type || 'TEXT'}
-              headerMediaUrl={selecionado.header_media_url || ''}
-              bodyText={selecionado.body_text || ''}
-              footerText={selecionado.footer_text || ''}
-              buttons={botoesSel}
-              examples={variaveisSel}
-            />
+            <Label className="block mb-2">Formato da mensagem *</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'texto', label: 'Apenas texto', Icon: FileText },
+                { id: 'imagem_texto', label: 'Imagem + texto', Icon: ImageIcon },
+                { id: 'video_texto', label: 'Vídeo + texto', Icon: Video },
+              ].map(({ id: tipo, label, Icon }) => (
+                <button key={tipo} type="button" onClick={() => setForm({ ...form, mensagem_tipo: tipo, midia_url: '', midia_nome: '' })}
+                  className={`p-3 rounded-lg border text-xs font-medium flex flex-col items-center gap-1 ${form.mensagem_tipo === tipo ? 'border-emerald-500 bg-white text-emerald-700' : 'border-slate-200 bg-white'}`}>
+                  <Icon className="w-5 h-5" />{label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="text-xs text-slate-600 space-y-1">
-            <p><strong className="text-slate-700">Nome técnico:</strong> {selecionado.name}</p>
-            <p><strong className="text-slate-700">Categoria:</strong> {selecionado.category}</p>
-            <p><strong className="text-slate-700">Idioma:</strong> {selecionado.language}</p>
-            <p><strong className="text-slate-700">Tipo:</strong> {selecionado.type || selecionado.header_type || 'TEXT'}</p>
-            {selecionado.connection_nome && (
-              <p><strong className="text-slate-700">Conexão:</strong> {selecionado.connection_nome}</p>
-            )}
-            {selecionado.header_media_url && (
-              <p className="break-all">
-                <strong className="text-slate-700">Mídia do cabeçalho:</strong>{' '}
-                <a href={selecionado.header_media_url} target="_blank" rel="noopener noreferrer" className="text-emerald-700 underline">abrir arquivo</a>
-              </p>
-            )}
+          {form.mensagem_tipo !== 'texto' && (
+            <div>
+              <Label>{form.mensagem_tipo === 'imagem_texto' ? 'Imagem' : 'Vídeo'} *</Label>
+              <label className="mt-1 border border-dashed rounded-lg p-4 flex items-center justify-center gap-2 cursor-pointer bg-white">
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                <span className="text-sm">{form.midia_nome || (uploading ? 'Enviando…' : 'Selecionar arquivo')}</span>
+                <input type="file" className="hidden" disabled={uploading}
+                  accept={form.mensagem_tipo === 'imagem_texto' ? 'image/*' : 'video/*'}
+                  onChange={(e) => { uploadMidia(e.target.files?.[0]); e.target.value = ''; }} />
+              </label>
+            </div>
+          )}
+          <div>
+            <Label>Texto da mensagem *</Label>
+            <Textarea rows={6} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })}
+              placeholder={"Olá, {nome}!\nHoje é o vencimento da sua parcela.\nSe já realizou o pagamento, desconsidere esta mensagem."} />
+            <p className="text-[11px] text-slate-500 mt-1">Use <strong>{'{nome}'}</strong> para inserir o primeiro nome do cliente.</p>
           </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <Label>Template aprovado *</Label>
+            <button type="button" onClick={() => onSync()} disabled={syncing}
+              className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700">
+              {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />} Sincronizar com a Meta
+            </button>
+          </div>
+          {syncError && <p className="text-xs text-red-600">{syncError}</p>}
+          {loading || syncing ? <div className="text-sm text-slate-500">Carregando templates…</div> :
+            templatesVisiveis.length === 0 ? <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700">Nenhum template aprovado encontrado para esta conexão.</div> :
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-64 overflow-auto">
+              {templatesVisiveis.map((t) => (
+                <button key={t.id} type="button" onClick={() => setForm({ ...form, template_id: t.id })}
+                  className={`p-3 rounded-lg border text-left ${form.template_id === t.id ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'}`}>
+                  <p className="font-medium text-sm">{t.display_name || t.name}</p>
+                  <p className="text-xs text-slate-500 line-clamp-2">{t.body_text || t.category}</p>
+                </button>
+              ))}
+            </div>}
+          {selecionado && <TemplatePreview tipo={selecionado.type || selecionado.header_type || 'TEXT'} headerMediaUrl={selecionado.header_media_url || ''} bodyText={selecionado.body_text || ''} footerText={selecionado.footer_text || ''} />}
         </div>
       )}
     </div>
