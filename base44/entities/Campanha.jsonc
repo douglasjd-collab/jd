@@ -27,6 +27,7 @@
       "type": "string",
       "enum": [
         "whatsapp_meta_oficial",
+        "whatsapp_nao_oficial",
         "instagram",
         "facebook_messenger",
         "sms",
@@ -35,6 +36,36 @@
       ],
       "default": "whatsapp_meta_oficial",
       "description": "Canal utilizado. Gen\u00e9rico para suporte a m\u00faltiplos canais no futuro."
+    },
+    "connection_id": {
+      "type": "string",
+      "description": "ID da conex\u00e3o WhatsApp usada no disparo"
+    },
+    "mensagem_tipo": {
+      "type": "string",
+      "enum": [
+        "texto",
+        "imagem_texto",
+        "video_texto"
+      ],
+      "description": "Formato livre usado pela API n\u00e3o oficial"
+    },
+    "mensagem_texto": {
+      "type": "string",
+      "description": "Texto livre da campanha n\u00e3o oficial"
+    },
+    "midia_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Imagem ou v\u00eddeo da campanha n\u00e3o oficial"
+    },
+    "administradora_id": {
+      "type": "string",
+      "description": "Administradora selecionada para o p\u00fablico de cons\u00f3rcio ativo"
+    },
+    "administradora_nome": {
+      "type": "string",
+      "description": "Nome da administradora selecionada"
     },
     "template_id": {
       "type": "string",
