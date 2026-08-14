@@ -177,6 +177,10 @@
       "default": false,
       "description": "Quando true, o status n\u00e3o pode ser alterado manualmente (propostas transferidas/estornadas)"
     },
+    "observacao_lance": {
+      "type": "string",
+      "description": "Orienta\u00e7\u00e3o fixa cadastrada na proposta para a oferta de lance"
+    },
     "comissao_total_prevista": {
       "type": "number",
       "description": "Valor total de comiss\u00e3o prevista"
