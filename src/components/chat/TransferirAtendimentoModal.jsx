@@ -38,6 +38,8 @@ export default function TransferirAtendimentoModal({ open, onOpenChange, convers
       onOpenChange(false);
       setSelecionado(null);
       setBusca('');
+    } catch (_) {
+      // O fluxo principal já exibe o erro; manter o modal aberto permite tentar novamente.
     } finally {
       setTransferindo(false);
     }
@@ -59,8 +61,13 @@ export default function TransferirAtendimentoModal({ open, onOpenChange, convers
         </DialogHeader>
 
         {conversa && (
-          <div className="bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-600 border">
-            Conversa: <span className="font-semibold text-slate-800">{conversa.cliente_nome || conversa.cliente_telefone}</span>
+          <div className="space-y-2">
+            <div className="bg-slate-50 rounded-lg px-3 py-2 text-sm text-slate-600 border">
+              Conversa: <span className="font-semibold text-slate-800">{conversa.cliente_nome || conversa.cliente_telefone}</span>
+            </div>
+            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              As microtarefas pendentes desta conversa também serão atribuídas ao atendente selecionado.
+            </p>
           </div>
         )}
 
