@@ -584,8 +584,20 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       }
 
       if (form.agendamento === 'agora' && form.canal_tipo === 'nao_oficial') {
-        await base44.entities.Campanha.update(campanha.id, { status: 'executando' });
-        await base44.functions.invoke('dispararCampanhaNaoOficial', { campanha_id: campanha.id });
+        // Libera a interface imediatamente. A função registra o processamento no
+        // backend e o monitor global acompanha Campanha/CampanhaDestinatario.
+        await base44.entities.Campanha.update(campanha.id, {
+          status: 'executando',
+          inicio_execucao: new Date().toISOString(),
+        });
+        qc.invalidateQueries({ queryKey: ['campanhas-lista', empresaId] });
+        qc.invalidateQueries({ queryKey: ['campanha-monitor-global', empresaId] });
+        onOpenChange(false);
+        void base44.functions.invoke('dispararCampanhaNaoOficial', { campanha_id: campanha.id })
+          .catch(async (erro) => {
+            console.error('Erro ao iniciar campanha em segundo plano:', erro);
+            await base44.entities.Campanha.update(campanha.id, { status: 'erro' }).catch(() => {});
+          });
       }
 
       toast.success(
@@ -595,9 +607,10 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
             ? `Disparo iniciado para ${vistos.size} telefone(s) ativos da administradora selecionada`
             : `Campanha criada com ${vistos.size} telefone(s) na fila (${comTelefone.length} clientes)`
       );
-      qc.invalidateQueries(['campanhas-lista', empresaId]);
-      qc.invalidateQueries(['campanhas-dashboard', empresaId]);
-      onOpenChange(false);
+      qc.invalidateQueries({ queryKey: ['campanhas-lista', empresaId] });
+      qc.invalidateQueries({ queryKey: ['campanhas-dashboard', empresaId] });
+      qc.invalidateQueries({ queryKey: ['campanha-monitor-global', empresaId] });
+      if (form.agendamento !== 'agora' || form.canal_tipo !== 'nao_oficial') onOpenChange(false);
     } catch (e) {
       toast.error('Erro ao criar campanha: ' + (e.message || 'desconhecido'));
     } finally {
