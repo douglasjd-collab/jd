@@ -2541,12 +2541,12 @@ export default function BatePapo() {
                     />
                     )}
 
-                    {/* Botão Flutuante Coach IA */}
+                    {/* Botão flutuante do Assistente GPT */}
                     {!coachIAOpen && conversaSelecionada && (
                       <button
                         onClick={() => { setCoachIATab('agora'); setCoachIAOpen(true); }}
                         className="coach-float-btn"
-                        title="Coach IA"
+                        title="Assistente GPT"
                       >
                         🤖
                         <span className="coach-float-badge" />
@@ -2630,7 +2630,7 @@ export default function BatePapo() {
                     />
                   )}
 
-                  {/* Painel Coach IA */}
+                  {/* Painel do Assistente GPT */}
                   <CoachIAPanel
                     conversaId={conversaSelecionada?.id}
                     mensagens={mensagens}
