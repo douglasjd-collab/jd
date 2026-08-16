@@ -453,7 +453,7 @@ export default function BatePapo() {
       await base44.entities.ConversaWhatsapp.update(conversa.id, {
         responsavel_id: colaborador.id,
         responsavel_nome: colaborador.nome,
-        responsavel_expira_em: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 min — sem resposta volta para Esperando
+        responsavel_expira_em: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // prazo máximo do atendimento: 24h
         status: 'encerrada',
         ultimo_remetente: 'vendedor',
       });
@@ -1120,7 +1120,10 @@ export default function BatePapo() {
       // seguinte precisa manter responsavel_id vazio para ir direto a "Finalizados".
       if (conversaSelecionada && !variables.finalizarAposEnvio) {
         const msgExibicao = variables.texto || (variables.arquivo ? variables.arquivo.nome : '');
-        const expira = new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
+        const expira = conversaSelecionada.responsavel_expira_em
+          && new Date(conversaSelecionada.responsavel_expira_em) > new Date()
+          ? conversaSelecionada.responsavel_expira_em
+          : new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
 
         // 1. Atualizar cache LOCAL imediatamente — move conversa para "Em Atendimento"
         queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
@@ -1185,7 +1188,10 @@ export default function BatePapo() {
       // do enviarMensagemMutation.onSuccess, mas sem bloquear).
       if (conversaSelecionada) {
         const msgExibicao = texto || (arquivo?.nome || '');
-        const expira = new Date(Date.now() + (window.TEMPO_ATENDIMENTO_MS || 10 * 60 * 1000)).toISOString();
+        const expira = conversaSelecionada.responsavel_expira_em
+          && new Date(conversaSelecionada.responsavel_expira_em) > new Date()
+          ? conversaSelecionada.responsavel_expira_em
+          : new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
         queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
           (Array.isArray(old) ? old : []).map((c) => c.id === conversaSelecionada.id
             ? { ...c, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString(), responsavel_id: user?.colaborador_id || user?.id, responsavel_nome: user?.nome_perfil || user?.full_name || 'Atendente', responsavel_expira_em: expira }
@@ -1302,11 +1308,11 @@ export default function BatePapo() {
     );
   };
 
-  // ── Lógica de responsabilidade por 10 minutos ────────────────────────────
-  // Quando atendente responde → marcar conversa com responsavel_id + responsavel_expira_em
-  // Se expirar → conversa volta para "em_espera"
+  // ── Responsabilidade do atendimento ──────────────────────────────────────
+  // Ao assumir, o vendedor mantém a conversa até finalizar.
+  // Se não finalizar em 24 horas, a automação devolve para "Esperando".
 
-  const TEMPO_ATENDIMENTO_MS = 15 * 60 * 1000; // 15 minutos — sem interação volta para Esperando
+  const TEMPO_ATENDIMENTO_MS = 24 * 60 * 60 * 1000;
 
   // Verificar se a conversa tem atendente ativo (responsável não expirado)
   const temAtendente = (c) => {
@@ -1325,7 +1331,7 @@ export default function BatePapo() {
     return !temAtendente(c);
   };
 
-  // Em atendimento: atendente respondeu recentemente (dentro dos 10 min) E NÃO está em espera
+  // Em atendimento: existe responsável dentro da janela máxima de 24 horas.
   const estaEmAtendimento = (c) => {
     if (!c || !c.id) return false;
     if (c.status === 'arquivada' || c.status === 'encerrada') return false;
@@ -1333,9 +1339,14 @@ export default function BatePapo() {
     return temAtendente(c) && c.status === 'ativa';
   };
 
-  // Ao enviar mensagem, marcar responsabilidade por 10min
+  // Ao assumir/enviar, preserva o prazo original; mensagens posteriores não reiniciam as 24h.
   const marcarResponsabilidade = async (conversaId) => {
-    const expira = new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
+    const expiraAtual = conversaSelecionada?.id === conversaId
+      ? conversaSelecionada.responsavel_expira_em
+      : null;
+    const expira = expiraAtual && new Date(expiraAtual) > new Date()
+      ? expiraAtual
+      : new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
     try {
       await base44.entities.ConversaWhatsapp.update(conversaId, {
         responsavel_id: user?.colaborador_id || user?.id || 'atendente',
