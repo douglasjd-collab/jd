@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-const TEMPO_ATENDIMENTO_MS = 15 * 60 * 1000;
+const TEMPO_ATENDIMENTO_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Estrela de Atendimento Prioritário.
