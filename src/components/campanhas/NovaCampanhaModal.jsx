@@ -273,28 +273,84 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       const comTelefone = filtrados.filter((c) =>
         selecionarTelefonesParaCampanha(c, modoTelefoneParaCampanha(form), telsMap.get(c.id) || []).length > 0
       );
-      const telsPorCliente = comTelefone.map((c) => selecionarTelefonesParaCampanha(c, modoTelefoneParaCampanha(form), telsMap.get(c.id) || []));
-      const totalTelefones = telsPorCliente.reduce((s, arr) => s + arr.length, 0);
       const antesFiltros = baseClientes.length;
       const removidosFiltros = antesFiltros - filtrados.length;
       const telefonesUnicosSet = new Set();
+      const destinatarios = [];
+      let totalTelefones = 0;
       let invalidos = 0;
+      let duplicados = 0;
       let bloqueadosRemovidos = 0;
-      telsPorCliente.forEach((arr) => arr.forEach((t) => {
-        if (t.length < 10) { invalidos++; return; }
-        if (bloqueados.has(t)) { bloqueadosRemovidos++; return; }
-        telefonesUnicosSet.add(t);
-      }));
-      const duplicados = totalTelefones - invalidos - bloqueadosRemovidos - telefonesUnicosSet.size;
+      let semTelefone = 0;
+
+      filtrados.forEach((cliente) => {
+        const nome = cliente.nome_completo || cliente.pj_razao_social || cliente.pj_nome_fantasia || 'Sem nome';
+        const cidade = cliente.res_cidade || cliente.com_cidade || '—';
+        const telefones = selecionarTelefonesParaCampanha(
+          cliente,
+          modoTelefoneParaCampanha(form),
+          telsMap.get(cliente.id) || []
+        );
+
+        if (!telefones.length) {
+          semTelefone++;
+          destinatarios.push({
+            id: `${cliente.id}-sem-telefone`,
+            cliente_id: cliente.id,
+            nome,
+            telefone: '—',
+            cidade,
+            status: 'removido',
+            motivo: 'Sem telefone cadastrado',
+          });
+          return;
+        }
+
+        telefones.forEach((telefone, indice) => {
+          totalTelefones++;
+          let status = 'apto';
+          let motivo = 'Apto para receber';
+
+          if (telefone.length < 10) {
+            invalidos++;
+            status = 'removido';
+            motivo = 'Telefone inválido';
+          } else if (bloqueados.has(telefone)) {
+            bloqueadosRemovidos++;
+            status = 'removido';
+            motivo = 'Contato bloqueado';
+          } else if (telefonesUnicosSet.has(telefone)) {
+            duplicados++;
+            status = 'removido';
+            motivo = 'Telefone duplicado';
+          } else {
+            telefonesUnicosSet.add(telefone);
+          }
+
+          destinatarios.push({
+            id: `${cliente.id}-${telefone}-${indice}`,
+            cliente_id: cliente.id,
+            nome,
+            telefone,
+            cidade,
+            status,
+            motivo,
+          });
+        });
+      });
+
       setPreview({
+        clientes_base: antesFiltros,
         clientes_selecionados: filtrados.length,
         clientes_removidos_filtros: removidosFiltros,
         total_clientes: comTelefone.length,
+        clientes_sem_telefone: semTelefone,
         telefones_invalidos: invalidos,
         telefones_duplicados: duplicados,
         bloqueados_removidos: bloqueadosRemovidos,
         total_telefones: totalTelefones,
         total_final_envios: telefonesUnicosSet.size,
+        destinatarios,
         // Compat com resumo final (Step6)
         prontos_envio: telefonesUnicosSet.size,
       });
@@ -491,7 +547,15 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
             <PublicoBuilder form={form} setForm={setForm} empresaId={empresaId} user={user} />
           )}
           {step === 3 && <Step3 form={form} setForm={setForm} empresaId={empresaId} />}
-          {step === 4 && <Step4 preview={preview} loading={loadingPreview} onRecalc={calcularPrevia} />}
+          {step === 4 && (
+            <Step4
+              preview={preview}
+              loading={loadingPreview}
+              onRecalc={calcularPrevia}
+              form={form}
+              template={templateSelecionado}
+            />
+          )}
           {step === 5 && <Step5 form={form} setForm={setForm} />}
           {step === 6 && <Step6 form={form} template={templateSelecionado} preview={preview} user={user} />}
         </div>
@@ -821,38 +885,181 @@ function ToggleCheck({ checked, onChange, label }) {
   );
 }
 
-function Step4({ preview, loading, onRecalc }) {
+function Step4({ preview, loading, onRecalc, form, template }) {
+  const [busca, setBusca] = useState('');
+  const [situacao, setSituacao] = useState('todos');
+
+  const contatosVisiveis = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    return (preview?.destinatarios || []).filter((item) => {
+      const correspondeSituacao = situacao === 'todos' || item.status === situacao;
+      const correspondeBusca = !termo
+        || item.nome.toLowerCase().includes(termo)
+        || item.telefone.includes(termo)
+        || item.cidade.toLowerCase().includes(termo);
+      return correspondeSituacao && correspondeBusca;
+    });
+  }, [preview, busca, situacao]);
+
+  const exemplo = (preview?.destinatarios || []).find((item) => item.status === 'apto');
+  const primeiroNome = exemplo?.nome && exemplo.nome !== 'Sem nome'
+    ? exemplo.nome.trim().split(/\s+/)[0]
+    : 'Cliente';
+  const textoExemplo = (form.mensagem_texto || '').replace(/\{nome\}/gi, primeiroNome);
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <Label className="block mb-1">Prévia dos destinatários</Label>
-          <p className="text-sm text-slate-500">Clique em "Atualizar prévia" para calcular.</p>
+          <Label className="block mb-1">Confira a campanha antes de enviar</Label>
+          <p className="text-sm text-slate-500">Mensagem, quantidade final e destinatários calculados automaticamente.</p>
         </div>
         <Button variant="outline" size="sm" onClick={onRecalc} disabled={loading}>
-          {loading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : null}
-          Atualizar prévia
+          {loading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1.5" />}
+          Recalcular
         </Button>
       </div>
-      {preview && !loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <Stat label="Clientes selecionados" value={preview.clientes_selecionados ?? 0} color="text-slate-700" />
-          <Stat label="Removidos pelos filtros" value={preview.clientes_removidos_filtros ?? 0} color="text-red-600" />
-          <Stat label="Total de clientes" value={preview.total_clientes ?? 0} color="text-blue-600" />
-          <Stat label="Telefones inválidos" value={preview.telefones_invalidos ?? 0} color="text-amber-600" />
-          <Stat label="Telefones duplicados" value={preview.telefones_duplicados ?? 0} color="text-amber-600" />
-          <Stat label="Contatos bloqueados" value={preview.bloqueados_removidos ?? 0} color="text-red-500" />
-          <Stat label="Total de telefones" value={preview.total_telefones ?? 0} color="text-slate-700" />
-          <Stat label="Total final de envios" value={preview.total_final_envios ?? 0} color="text-emerald-700" highlight />
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-slate-500">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /> Preparando a prévia…
         </div>
-      ) : loading ? (
-        <div className="flex items-center justify-center py-10 text-slate-500">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" /> Calculando…
-        </div>
+      ) : preview ? (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,0.8fr)_minmax(0,1.2fr)] gap-4">
+            <Card className="border-slate-200 overflow-hidden">
+              <CardContent className="p-0">
+                <div className="px-4 py-3 border-b bg-slate-50">
+                  <p className="font-semibold text-sm text-slate-800">Mensagem que será enviada</p>
+                  <p className="text-xs text-slate-500">Exemplo para {primeiroNome}</p>
+                </div>
+                <div className="p-4 bg-[#efeae2] min-h-[260px]">
+                  <div className="max-w-sm ml-auto rounded-lg overflow-hidden bg-[#d9fdd3] shadow-sm">
+                    {form.canal_tipo === 'oficial' ? (
+                      <div className="bg-white">
+                        <TemplatePreview
+                          tipo={template?.type || template?.header_type || 'TEXT'}
+                          headerMediaUrl={template?.header_media_url || ''}
+                          bodyText={template?.body_text || ''}
+                          footerText={template?.footer_text || ''}
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        {form.mensagem_tipo === 'imagem_texto' && form.midia_url && (
+                          <img src={form.midia_url} alt="Imagem da campanha" className="w-full max-h-56 object-cover" />
+                        )}
+                        {form.mensagem_tipo === 'video_texto' && form.midia_url && (
+                          <video src={form.midia_url} controls className="w-full max-h-56 bg-black" />
+                        )}
+                        <p className="p-3 text-sm text-slate-800 whitespace-pre-wrap break-words">{textoExemplo}</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-3">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
+                <p className="text-sm font-medium text-emerald-800">Mensagens que serão enviadas</p>
+                <p className="text-4xl font-bold text-emerald-700 mt-1">{preview.total_final_envios ?? 0}</p>
+                <p className="text-xs text-emerald-700 mt-1">Um envio por telefone apto e sem duplicidade.</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Stat label="Público encontrado" value={preview.clientes_base ?? 0} color="text-slate-700" />
+                <Stat label="Após os filtros" value={preview.clientes_selecionados ?? 0} color="text-blue-600" />
+              </div>
+              <div className="rounded-lg border border-slate-200 p-3">
+                <p className="text-xs font-semibold text-slate-600 mb-2">Contatos que não receberão</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <Row label="Removidos pelos filtros" value={preview.clientes_removidos_filtros ?? 0} />
+                  <Row label="Sem telefone" value={preview.clientes_sem_telefone ?? 0} />
+                  <Row label="Telefone inválido" value={preview.telefones_invalidos ?? 0} />
+                  <Row label="Telefone duplicado" value={preview.telefones_duplicados ?? 0} />
+                  <Row label="Bloqueados" value={preview.bloqueados_removidos ?? 0} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Card className="border-slate-200">
+            <CardContent className="p-0">
+              <div className="p-4 border-b space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-sm text-slate-800">Lista de contatos</p>
+                    <p className="text-xs text-slate-500">{contatosVisiveis.length} registro(s) exibido(s)</p>
+                  </div>
+                  <div className="flex gap-2">
+                    {[
+                      { id: 'todos', label: 'Todos' },
+                      { id: 'apto', label: 'Aptos' },
+                      { id: 'removido', label: 'Removidos' },
+                    ].map((opcao) => (
+                      <button
+                        key={opcao.id}
+                        type="button"
+                        onClick={() => setSituacao(opcao.id)}
+                        className={cn(
+                          'px-3 py-1.5 rounded-full text-xs font-medium border',
+                          situacao === opcao.id
+                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                            : 'bg-white border-slate-200 text-slate-600'
+                        )}
+                      >
+                        {opcao.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <Input
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  placeholder="Pesquisar por nome, telefone ou cidade"
+                />
+              </div>
+              <div className="max-h-72 overflow-auto">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-slate-50 text-xs text-slate-500">
+                    <tr>
+                      <th className="text-left px-4 py-2.5">Cliente</th>
+                      <th className="text-left px-4 py-2.5">Telefone</th>
+                      <th className="text-left px-4 py-2.5 hidden md:table-cell">Cidade</th>
+                      <th className="text-left px-4 py-2.5">Situação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {contatosVisiveis.map((item) => (
+                      <tr key={item.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-2.5 font-medium text-slate-700">{item.nome}</td>
+                        <td className="px-4 py-2.5 text-slate-600">{item.telefone}</td>
+                        <td className="px-4 py-2.5 text-slate-500 hidden md:table-cell">{item.cidade}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={cn(
+                            'inline-flex px-2 py-1 rounded-full text-xs font-medium',
+                            item.status === 'apto'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-amber-100 text-amber-700'
+                          )}>
+                            {item.motivo}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {contatosVisiveis.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="text-center text-slate-400 py-10">Nenhum contato encontrado.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       ) : (
-        <div className="text-center text-slate-400 py-10">
-          Prévia ainda não calculada.
-        </div>
+        <div className="text-center text-slate-400 py-10">Prévia ainda não calculada.</div>
       )}
     </div>
   );
