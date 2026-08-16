@@ -83,7 +83,7 @@ export default function DashboardProdutividade({ empresaId, onClose, onAbrirConv
       await base44.entities.ConversaWhatsapp.update(conversaId, {
         responsavel_id: currentUser?.colaborador_id || currentUser?.id || 'atendente',
         responsavel_nome: currentUser?.nome_perfil || currentUser?.full_name || currentUser?.email || 'Atendente',
-        responsavel_expira_em: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        responsavel_expira_em: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         status: 'ativa',
       });
       toast.success('Conversa assumida');
