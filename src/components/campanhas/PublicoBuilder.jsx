@@ -190,7 +190,31 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
         const filtroEmp = isSuperAdmin ? {} : (empresaId ? { empresa_id: empresaId } : {});
         const promises = [];
         if (needs.funis) promises.push(base44.entities.EtapaFunil.filter({ ...filtroEmp, status: 'ativa' }, 'ordem', 500).then((r) => !cancelled && setFunis(r)).catch(() => {}));
-        if (needs.tags) promises.push(base44.entities.ContatoTag.filter(filtroEmp, null, 500).then((r) => !cancelled && setTags(r)).catch(() => {}));
+        if (needs.tags) promises.push(
+          Promise.all([
+            base44.entities.ContatoTag.filter(filtroEmp, null, 500),
+            base44.entities.ContatoWhatsapp.filter(
+              empresaId ? { empresa_id: empresaId } : filtroEmp,
+              null,
+              5000
+            ),
+          ])
+            .then(([tagsCadastradas, contatos]) => {
+              if (cancelled) return;
+              const contagemPorTag = new Map();
+              (contatos || []).forEach((contato) => {
+                const tagsDoContato = Array.isArray(contato.tags_ids) ? contato.tags_ids : [];
+                tagsDoContato.forEach((tagId) => {
+                  contagemPorTag.set(tagId, (contagemPorTag.get(tagId) || 0) + 1);
+                });
+              });
+              setTags((tagsCadastradas || []).map((tag) => ({
+                ...tag,
+                quantidade_contatos: contagemPorTag.get(tag.id) || 0,
+              })));
+            })
+            .catch(() => {})
+        );
         if (needs.listas) promises.push(base44.entities.ListaContatosImportada.filter({ ...filtroEmp, status: 'ativa' }, '-data_importacao', 200).then((r) => !cancelled && setListas(r)).catch(() => {}));
         if (needs.parceiros) promises.push(base44.entities.Colaborador.filter({ ...filtroEmp, perfil: 'parceiro', status: 'ativo' }, 'nome', 500).then((r) => !cancelled && setParceiros(r)).catch(() => {}));
         await Promise.all(promises);
@@ -251,8 +275,15 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
       parts.push({ fonte: 'Funis', valor: `${n}.funil${n === 1 ? '' : 'is'}` });
     }
     if (origens.includes('tags')) {
-      const n = (form.tags_selecionadas || []).length;
-      parts.push({ fonte: 'Tags', valor: `${n} tag${n === 1 ? '' : 's'}` });
+      const idsSelecionados = form.tags_selecionadas || [];
+      const quantidade = tags
+        .filter((tag) => idsSelecionados.includes(tag.id))
+        .reduce((total, tag) => total + (tag.quantidade_contatos || 0), 0);
+      const n = idsSelecionados.length;
+      parts.push({
+        fonte: 'Tags',
+        valor: `${n} tag${n === 1 ? '' : 's'} · ${quantidade} contato${quantidade === 1 ? '' : 's'}`,
+      });
     }
     if (origens.includes('listas')) {
       const n = (form.listas_selecionadas || []).length;
@@ -554,7 +585,13 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
                           className="accent-emerald-600"
                         />
                         <span className="w-2.5 h-2.5 rounded-full" style={{ background: t.cor || '#9ca3af' }} />
-                        <span className="font-medium text-slate-700">{t.nome}</span>
+                        <span className="font-medium text-slate-700 flex-1">{t.nome}</span>
+                        <span className={cn(
+                          'text-xs font-semibold px-2 py-0.5 rounded-full',
+                          sel ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                        )}>
+                          {t.quantidade_contatos || 0} {(t.quantidade_contatos || 0) === 1 ? 'pessoa' : 'pessoas'}
+                        </span>
                       </label>
                     );
                   })
