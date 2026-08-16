@@ -174,7 +174,7 @@ export default function ChatFlutuante({ empresaId, user, captureTargetRef, captu
     onSuccess: async (data, vars) => {
       if (conversaSelecionada) {
         const msg = vars.texto || (vars.arquivo?.nome || '');
-        const expira = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+        const expira = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
         base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
           ultima_mensagem: msg, data_ultima_mensagem: new Date().toISOString(),
           ultimo_remetente: 'vendedor',
