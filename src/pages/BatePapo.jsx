@@ -1739,6 +1739,13 @@ export default function BatePapo() {
           .jd-chat-card:hover {
             background: #efefef;
           }
+          .jd-chat-card.api-oficial {
+            background: #ecfdf3;
+            box-shadow: inset 3px 0 0 #22c55e;
+          }
+          .jd-chat-card.api-oficial:hover {
+            background: #dcfce7;
+          }
           .jd-chat-card.selected {
             background: #d1e9ff;
             box-shadow: inset 3px 0 0 #2563eb;
@@ -2157,6 +2164,10 @@ export default function BatePapo() {
                   ) : conversasFiltradas.map((c) => {
                       const naoLidas = naoLidasPorConversa[c.id] ?? 0;
                        const isSelecionada = conversaSelecionada?.id === c.id;
+                       const isApiOficial = c.provider === 'whatsapp_meta'
+                         || c.canal_origem === 'meta'
+                         || c.tipo_conexao === 'meta_oficial'
+                         || c.instancia === 'META_OFICIAL';
                        const mostrarBadge = !isSelecionada && c.status !== 'encerrada' && (naoLidas > 0 || estaEmEspera(c));
                       const cache = contatosWhatsapp[c.id];
                       const nomeEhId = !cache?.nome || cache?.nome?.startsWith('Instagram ') || cache?.nome === c.cliente_telefone;
@@ -2170,7 +2181,11 @@ export default function BatePapo() {
                       return (
                         <div
                           key={c.id}
-                          className={classNames('jd-chat-card', conversaSelecionada?.id === c.id && 'selected')}
+                          className={classNames(
+                            'jd-chat-card',
+                            isApiOficial && 'api-oficial',
+                            isSelecionada && 'selected'
+                          )}
                           onClick={(e) => {
                             if (e.target.closest('.jd-chat-menu') || e.target.closest('[data-radix-dropdown-menu-trigger]')) return;
                             selecionarConversa(c);
