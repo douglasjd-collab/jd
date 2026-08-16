@@ -75,7 +75,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     midia_nome: '',
     publico_consorcio_ativo: false,
     publico_produto: '',
-    consorcio_situacao: 'em_atraso',
+    consorcio_situacao: 'todas_vigentes',
     consorcio_vendedores_ids: [],
     administradora_id: '',
     origens: [],
@@ -119,7 +119,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         midia_nome: '',
         publico_consorcio_ativo: false,
         publico_produto: '',
-        consorcio_situacao: 'em_atraso',
+        consorcio_situacao: 'todas_vigentes',
         consorcio_vendedores_ids: [],
         administradora_id: '',
         origens: [],
@@ -233,22 +233,39 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
 
   const carregarClientesBase = async () => {
     if (form.publico_produto === 'consorcio' || form.publico_consorcio_ativo) {
-      // Em atraso representa uma cota vigente com pendência financeira.
-      // Canceladas e contempladas usam outros status e, por isso, ficam fora automaticamente.
-      const vendasElegiveis = await base44.entities.Venda.filter({
-        empresa_id: empresaId,
-        status: form.consorcio_situacao || 'em_atraso',
-        administradora_id: form.administradora_id,
-      }, '-created_date', 5000);
+      // O público nasce da mesma entidade exibida em Menu > Consórcio > Propostas.
+      // Por padrão entram todas as cotas vigentes; canceladas, contempladas e
+      // transferidas ficam fora. Administradora e responsável são refinamentos opcionais.
+      const [todasVendas, todosClientes] = await Promise.all([
+        base44.entities.Venda.filter({ empresa_id: empresaId }, '-created_date', 5000),
+        base44.entities.Cliente.filter({ empresa_id: empresaId }, null, 5000),
+      ]);
+      const situacao = form.consorcio_situacao || 'todas_vigentes';
+      const statusExcluidos = new Set(['cancelada', 'cancelado', 'contemplada', 'contemplado', 'transferida']);
       const vendedoresSelecionados = new Set(form.consorcio_vendedores_ids || []);
-      const vendasDosVendedores = vendedoresSelecionados.size > 0
-        ? (vendasElegiveis || []).filter((v) => vendedoresSelecionados.has(v.vendedor_id))
-        : (vendasElegiveis || []);
-      const ids = [...new Set(vendasDosVendedores.map((v) => v.cliente_id).filter(Boolean))];
-      if (!ids.length) return [];
-      const todosClientes = await base44.entities.Cliente.filter({ empresa_id: empresaId }, null, 5000);
-      const idsSet = new Set(ids);
-      return (todosClientes || []).filter((cliente) => idsSet.has(cliente.id));
+      const vendasElegiveis = (todasVendas || []).filter((v) => {
+        const status = String(v.status || '').trim().toLowerCase();
+        if (statusExcluidos.has(status)) return false;
+        if (situacao !== 'todas_vigentes' && status !== situacao) return false;
+        if (form.administradora_id && v.administradora_id !== form.administradora_id) return false;
+        if (vendedoresSelecionados.size && !vendedoresSelecionados.has(v.vendedor_id)) return false;
+        return true;
+      });
+
+      const clientesPorId = new Map((todosClientes || []).map((c) => [c.id, c]));
+      const clientesPorCpf = new Map((todosClientes || []).map((c) => [String(c.cpf || c.pj_cnpj || '').replace(/\D/g, ''), c]).filter(([cpf]) => cpf));
+      const clientesPorNome = new Map((todosClientes || []).map((c) => [String(c.nome_completo || c.pj_razao_social || '').trim().toLowerCase(), c]).filter(([nome]) => nome));
+      const resultado = [];
+      const incluidos = new Set();
+      vendasElegiveis.forEach((v) => {
+        const cpf = String(v.cliente_cpf || '').replace(/\D/g, '');
+        const nome = String(v.cliente_nome || '').trim().toLowerCase();
+        const cliente = clientesPorId.get(v.cliente_id) || clientesPorCpf.get(cpf) || clientesPorNome.get(nome);
+        if (!cliente || incluidos.has(cliente.id)) return;
+        incluidos.add(cliente.id);
+        resultado.push(cliente);
+      });
+      return resultado;
     }
 
     // Tags são vinculadas aos registros de ContatoWhatsapp. Quando Tags é a
@@ -439,7 +456,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       return !!form.template_id;
     }
     if (step === 2) {
-      if (form.publico_produto === 'consorcio' || form.publico_consorcio_ativo) return !!form.administradora_id && !!form.consorcio_situacao;
+      if (form.publico_produto === 'consorcio' || form.publico_consorcio_ativo) return !!form.consorcio_situacao;
       if (!form.origens || form.origens.length === 0) return false;
       // Cada fonte selecionada precisa de ao menos 1 seleção interna
       if (form.origens.includes('funis') && (form.funis_selecionados || []).length === 0) return false;
