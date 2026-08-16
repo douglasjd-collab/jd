@@ -299,7 +299,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
         empresaId={empresaId}
       />
 
-      {campanhaEmAndamento && <CampanhaFlutuante campanha={campanhaEmAndamento} />}
+      {/* O monitor flutuante é global e é renderizado pelo Layout. */}
     </div>
   );
 }
