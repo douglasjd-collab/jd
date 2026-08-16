@@ -104,6 +104,7 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
   const [parceiros, setParceiros] = useState([]);
   const [administradoras, setAdministradoras] = useState([]);
   const [vendedoresConsorcio, setVendedoresConsorcio] = useState([]);
+  const [propostasConsorcio, setPropostasConsorcio] = useState([]);
   const [loadingData, setLoadingData] = useState(false);
 
   const [buscaFunil, setBuscaFunil] = useState('');
@@ -129,6 +130,7 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
       ]);
 
       if (cancelled) return;
+      setPropostasConsorcio(propostas || []);
 
       const adminsPermitidas = (admins || []).filter((a) => {
         const pertenceEmpresa = !a.empresa_id || a.empresa_id === empresaId;
@@ -173,6 +175,28 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
     carregarFiltrosConsorcio();
     return () => { cancelled = true; };
   }, [empresaId]);
+
+  const propostasConsorcioFiltradas = useMemo(() => {
+    const situacao = form.consorcio_situacao || 'todas_vigentes';
+    const excluidos = new Set(['cancelada', 'cancelado', 'contemplada', 'contemplado', 'transferida']);
+    return (propostasConsorcio || []).filter((p) => {
+      const status = String(p.status || '').trim().toLowerCase();
+      if (excluidos.has(status)) return false;
+      if (situacao !== 'todas_vigentes' && status !== situacao) return false;
+      if (form.administradora_id && p.administradora_id !== form.administradora_id) return false;
+      return true;
+    });
+  }, [propostasConsorcio, form.consorcio_situacao, form.administradora_id]);
+
+  const quantidadePorResponsavel = useMemo(() => {
+    const mapa = new Map();
+    propostasConsorcioFiltradas.forEach((p) => {
+      if (!p.vendedor_id || !p.cliente_id) return;
+      if (!mapa.has(p.vendedor_id)) mapa.set(p.vendedor_id, new Set());
+      mapa.get(p.vendedor_id).add(p.cliente_id);
+    });
+    return new Map([...mapa].map(([id, clientes]) => [id, clientes.size]));
+  }, [propostasConsorcioFiltradas]);
 
   // Carrega dados das fontes selecionadas
   useEffect(() => {
@@ -333,7 +357,7 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
                 ...form,
                 publico_produto: id,
                 publico_consorcio_ativo: id === 'consorcio',
-                consorcio_situacao: id === 'consorcio' ? 'em_atraso' : form.consorcio_situacao,
+                consorcio_situacao: id === 'consorcio' ? 'todas_vigentes' : form.consorcio_situacao,
                 administradora_id: id === 'consorcio' ? form.administradora_id : '',
                 consorcio_vendedores_ids: id === 'consorcio' ? (form.consorcio_vendedores_ids || []) : [],
               })}
@@ -355,19 +379,20 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
               <div>
                 <Label>Situação da cota *</Label>
                 <select
-                  value={form.consorcio_situacao || 'em_atraso'}
+                  value={form.consorcio_situacao || 'todas_vigentes'}
                   onChange={(e) => setForm({ ...form, consorcio_situacao: e.target.value })}
                   className="w-full border border-emerald-200 rounded-md px-3 py-2 text-sm bg-white"
                 >
-                  <option value="em_atraso">Vigente e em atraso</option>
-                  <option value="ativa">Ativa, sem filtro de atraso</option>
+                  <option value="todas_vigentes">Todas as cotas vigentes</option>
+                  <option value="ativa">Somente ativas</option>
+                  <option value="em_atraso">Somente em atraso</option>
                 </select>
               </div>
               <div>
-                <Label>Administradora *</Label>
+                <Label>Administradora</Label>
                 <select value={form.administradora_id || ''} onChange={(e) => setForm({ ...form, administradora_id: e.target.value })}
                   className="w-full border border-emerald-200 rounded-md px-3 py-2 text-sm bg-white">
-                  <option value="">Selecione a administradora…</option>
+                  <option value="">Todas as administradoras</option>
                   {administradoras.map((a) => <option key={a.id} value={a.id}>{a.nome_fantasia || a.razao_social}</option>)}
                 </select>
               </div>
@@ -405,7 +430,10 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
                         onChange={() => toggleArr('consorcio_vendedores_ids', v.id)}
                         className="accent-emerald-600"
                       />
-                      <span>{v.nome || v.email}</span>
+                      <span className="flex-1">{v.nome || v.email}</span>
+                      <span className="text-xs font-semibold rounded-full bg-slate-100 text-slate-600 px-2 py-0.5">
+                        {quantidadePorResponsavel.get(v.id) || 0} cliente(s)
+                      </span>
                     </label>
                   );
                 })}
@@ -419,7 +447,7 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
             </div>
             <div className="rounded-lg border border-emerald-200 bg-white px-3 py-2">
               <p className="text-xs font-medium text-emerald-800">Origem: Menu › Consórcio › Propostas</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">Canceladas e contempladas são excluídas automaticamente. Telefones repetidos recebem apenas uma mensagem.</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Todas as propostas vigentes são consideradas. Canceladas e contempladas são excluídas. O telefone é localizado no cadastro do cliente e números repetidos recebem apenas uma mensagem.</p>
             </div>
           </div>
         )}
