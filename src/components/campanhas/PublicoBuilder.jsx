@@ -201,16 +201,18 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
           ])
             .then(([tagsCadastradas, contatos]) => {
               if (cancelled) return;
-              const contagemPorTag = new Map();
+              const contatosUnicosPorTag = new Map();
               (contatos || []).forEach((contato) => {
                 const tagsDoContato = Array.isArray(contato.tags_ids) ? contato.tags_ids : [];
+                const chaveContato = contato.cliente_id || normalizeTel(contato.telefone) || contato.id;
                 tagsDoContato.forEach((tagId) => {
-                  contagemPorTag.set(tagId, (contagemPorTag.get(tagId) || 0) + 1);
+                  if (!contatosUnicosPorTag.has(tagId)) contatosUnicosPorTag.set(tagId, new Set());
+                  contatosUnicosPorTag.get(tagId).add(chaveContato);
                 });
               });
               setTags((tagsCadastradas || []).map((tag) => ({
                 ...tag,
-                quantidade_contatos: contagemPorTag.get(tag.id) || 0,
+                quantidade_contatos: contatosUnicosPorTag.get(tag.id)?.size || 0,
               })));
             })
             .catch(() => {})
