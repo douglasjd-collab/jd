@@ -5,6 +5,12 @@ const COACH_SCHEMA = {
   properties: {
     situacao_tags: { type: 'array', items: { type: 'object', properties: { tipo: { type: 'string', enum: ['red','amber','blue','green','purple'] }, texto: { type: 'string' } } } },
     risco_percentual: { type: 'number' },
+    produto_interesse: { type: 'string' },
+    nivel_interesse: { type: 'string', enum: ['baixo','medio','alto','pronto_para_reuniao'] },
+    objetivo_cliente: { type: 'string' },
+    dados_faltantes: { type: 'array', items: { type: 'string' } },
+    deve_convidar_reuniao: { type: 'boolean' },
+    modalidade_reuniao: { type: 'string', enum: ['presencial','online','indefinida'] },
     script_ideal: { type: 'string' },
     proximos_passos: { type: 'array', items: { type: 'string' } },
     resumo: { type: 'string' },
@@ -58,7 +64,7 @@ Deno.serve(async (req) => {
       if (ops?.length > 0) oportunidade = ops[0];
     } catch (_) {}
 
-    // Etapas do funil disponíveis para o Coach IA movimentar/criar leads
+    // Etapas do funil disponíveis para o Assistente GPT movimentar/criar leads
     let etapas = [];
     if (empresaId) {
       try { etapas = await base44.asServiceRole.entities.EtapaFunil.filter({ empresa_id: empresaId, status: 'ativa' }); } catch (_) {}
@@ -83,7 +89,7 @@ CONTEXTO CRM:
 - Valor estimado: R$ ${oportunidade.valor_estimado || 0}
 - Status: ${oportunidade.status || 'aberta'}` : '';
 
-    const prompt = `Você é um Coach de Vendas IA especializado em analisar conversas de WhatsApp em tempo real, orientar vendedores E gerenciar o funil de vendas (CRM) automaticamente.
+    const prompt = `Você é o Assistente GPT da JD, especializado em analisar e qualificar conversas de WhatsApp, sugerir respostas naturais, conduzir o cliente para uma reunião presencial ou online quando houver interesse e apoiar o cadastro no CRM.
 
 ${contextoOportunidade}
 
@@ -95,10 +101,24 @@ CONTEXTO DO FUNIL:
 - Etapas disponíveis para mover/criar: ${nomesEtapasDisponiveis.join(', ') || 'nenhuma configurada'}
 - Data de hoje: ${hoje}
 
-Gere um coaching COMPLETO com TODOS os campos abaixo. Responda em JSON:
+Gere uma análise comercial COMPLETA com TODOS os campos abaixo. Responda em JSON.
+
+REGRAS IMPORTANTES:
+- Identifique o produto, objetivo e nível de interesse do cliente usando somente o histórico.
+- Faça uma pergunta por vez quando faltarem dados para qualificação.
+- Quando houver interesse suficiente, sugira uma reunião presencial ou online e pergunte a preferência do cliente.
+- Não invente preço, aprovação, prazo, taxa ou condição comercial.
+- A resposta sugerida deve ser curta, humana, educada e adequada ao momento da conversa.
+- Não peça nem exponha dados pessoais desnecessários. Documentos só devem ser tratados no fluxo de cadastro com revisão humana.
 
 1. situacao_tags: array de {tipo:"red"|"amber"|"blue"|"green"|"purple", texto:""} — 3 ou 4 tags
 2. risco_percentual: 0 a 100
+2.1 produto_interesse: produto ou serviço identificado, ou "Não identificado"
+2.2 nivel_interesse: "baixo" | "medio" | "alto" | "pronto_para_reuniao"
+2.3 objetivo_cliente: objetivo principal em uma frase
+2.4 dados_faltantes: informações ainda necessárias para qualificar o cliente
+2.5 deve_convidar_reuniao: true quando for o momento adequado
+2.6 modalidade_reuniao: "presencial" | "online" | "indefinida"
 3. script_ideal: mensagem PRONTA e PERSUASIVA para AGORA
 4. proximos_passos: 3-4 ações táticas prioritárias
 5. resumo: resumo em 2-4 frases
@@ -129,7 +149,7 @@ AÇÕES REAIS NO FUNIL (aja como responsável pelo CRM):
     let acaoFunil = { criada: false, movida: false, oportunidade_id: oportunidade?.id || null, etapa_nome: oportunidade?.etapa_nome || null };
 
     if (empresaId && clienteTelefone) {
-      // Criar oportunidade se o Coach IA identificou um lead novo
+      // Criar oportunidade se o Assistente GPT identificou um lead novo
       if (!oportunidade && analise.deve_criar_oportunidade && analise.produto) {
         const etapaInicial = etapas
           .filter(e => e.produto === analise.produto && e.tipo === 'aberta')
@@ -147,7 +167,7 @@ AÇÕES REAIS NO FUNIL (aja como responsável pelo CRM):
             etapa_nome: etapaInicial.nome,
             vendedor_id: conversa?.responsavel_id || conversa?.usuario_responsavel_id || '',
             vendedor_nome: conversa?.responsavel_nome || conversa?.usuario_responsavel_nome || '',
-            origem: 'WhatsApp (Coach IA)',
+            origem: 'WhatsApp (Assistente GPT)',
             data_cadastro_lead: hoje,
             data_ultima_movimentacao: new Date().toISOString(),
             status: 'aberta'
@@ -158,8 +178,8 @@ AÇÕES REAIS NO FUNIL (aja como responsável pelo CRM):
             etapa_destino_id: etapaInicial.id,
             etapa_destino_nome: etapaInicial.nome,
             usuario_id: 'ia',
-            usuario_nome: 'Coach IA',
-            observacao: 'Lead adicionado automaticamente pelo Coach IA a partir da conversa'
+            usuario_nome: 'Assistente GPT',
+            observacao: 'Lead adicionado automaticamente pelo Assistente GPT a partir da conversa'
           });
 
           acaoFunil.criada = true;
@@ -173,7 +193,7 @@ AÇÕES REAIS NO FUNIL (aja como responsável pelo CRM):
             oportunidade_titulo: oportunidade.titulo,
             cliente_nome: clienteNome,
             etapa_nome: etapaInicial.nome,
-            mensagem: `A Coach IA adicionou ${clienteNome} ao funil de vendas.`
+            mensagem: `A Assistente GPT adicionou ${clienteNome} ao funil de vendas.`
           });
         }
       }
@@ -202,7 +222,7 @@ AÇÕES REAIS NO FUNIL (aja como responsável pelo CRM):
               etapa_destino_id: etapaDestino.id,
               etapa_destino_nome: etapaDestino.nome,
               usuario_id: 'ia',
-              usuario_nome: 'Coach IA'
+              usuario_nome: 'Assistente GPT'
             });
 
             acaoFunil.movida = true;
@@ -216,7 +236,7 @@ AÇÕES REAIS NO FUNIL (aja como responsável pelo CRM):
               cliente_nome: clienteNome,
               etapa_nome: etapaDestino.nome,
               etapa_origem_nome: oportunidade.etapa_nome || '',
-              mensagem: `A Coach IA moveu ${clienteNome} de "${oportunidade.etapa_nome || '-'}" para "${etapaDestino.nome}".`
+              mensagem: `A Assistente GPT moveu ${clienteNome} de "${oportunidade.etapa_nome || '-'}" para "${etapaDestino.nome}".`
             });
           }
         } else if (Object.keys(updates).length > 0) {
@@ -233,7 +253,7 @@ AÇÕES REAIS NO FUNIL (aja como responsável pelo CRM):
     return Response.json({ success: true, analise, acao_funil: acaoFunil });
 
   } catch (error) {
-    console.error('Erro Coach IA:', error.message);
+    console.error('Erro Assistente GPT:', error.message);
     return Response.json({ error: error.message, success: false }, { status: 500 });
   }
 });
