@@ -1162,7 +1162,7 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
     ultimo_remetente: 'vendedor',
     responsavel_id: conversa.responsavel_id || 'whatsapp_celular',
     responsavel_nome: conversa.responsavel_nome || connection.profile_name || 'Atendente (WhatsApp)',
-    responsavel_expira_em: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    responsavel_expira_em: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   });
 
   // Marcar todas as mensagens do cliente anteriores como lidas.
