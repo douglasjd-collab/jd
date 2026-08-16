@@ -1146,9 +1146,8 @@ function Step5({ form, setForm }) {
           Enviar agora
         </button>
         <button
-          onClick={() => form.canal_tipo === 'oficial' && setForm({ ...form, agendamento: 'agendar' })}
-          disabled={form.canal_tipo === 'nao_oficial'}
-          className={`flex-1 p-3 rounded-lg border text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed ${
+          onClick={() => setForm({ ...form, agendamento: 'agendar' })}
+          className={`flex-1 p-3 rounded-lg border text-sm font-medium ${
             form.agendamento === 'agendar' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200'
           }`}
         >
@@ -1171,7 +1170,10 @@ function Step5({ form, setForm }) {
       )}
 
       <div className="border-t pt-4">
-        <Label className="block mb-2">Controle de velocidade</Label>
+        <Label className="block mb-2">Cadência segura de envio</Label>
+        <p className="text-xs text-slate-500 mb-3">
+          O sistema respeita o limite configurado, aplica pausas e recuo automático quando o provedor apresenta erro.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <Label>Mensagens por minuto</Label>
