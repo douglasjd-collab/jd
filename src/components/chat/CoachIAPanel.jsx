@@ -225,8 +225,8 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
       <div className="px-4 py-3 border-b border-zinc-800 flex items-center gap-2 shrink-0 bg-[#0d0d0f]">
         <div className="w-7 h-7 rounded-md bg-gradient-to-br from-violet-600 to-purple-700 flex items-center justify-center text-sm">🤖</div>
         <div>
-          <p className="text-xs font-semibold text-zinc-200">Coach IA</p>
-          <p className="text-[10px] text-zinc-500">Análise em tempo real</p>
+          <p className="text-xs font-semibold text-zinc-200">Assistente GPT</p>
+          <p className="text-[10px] text-zinc-500">Análise, qualificação e cadastro</p>
         </div>
         {analise && <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-bold border ${rkColors[rk]}`}>Risco {risco}%</span>}
         <button onClick={onClose} className="ml-2 p-1 rounded-md hover:bg-zinc-800 text-zinc-500"><X className="w-3.5 h-3.5" /></button>
@@ -283,7 +283,7 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
               {tab === 'agora' && (
                 <>
                   <div>
-                    <div className="cs-t">Situação detectada</div>
+                    <div className="cs-t">Situação e qualificação</div>
                     <div className="flex flex-wrap gap-1.5">
                       {analise.situacao_tags?.map((tag, i) => (
                         <span key={i} className={`ct ${tag.tipo}`}>
@@ -292,13 +292,20 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
                       ))}
                     </div>
                   </div>
+                  {(analise.produto_interesse || analise.nivel_interesse || analise.objetivo_cliente) && (
+                    <div className="rounded-lg border border-violet-500/20 bg-violet-500/10 p-2.5 text-[11px] text-zinc-300 space-y-1">
+                      {analise.produto_interesse && <div><b className="text-violet-300">Interesse:</b> {analise.produto_interesse}</div>}
+                      {analise.nivel_interesse && <div><b className="text-violet-300">Nível:</b> {analise.nivel_interesse}</div>}
+                      {analise.objetivo_cliente && <div><b className="text-violet-300">Objetivo:</b> {analise.objetivo_cliente}</div>}
+                    </div>
+                  )}
                   <hr className="div-line" />
                   <div>
-                    <div className="cs-t">Script ideal — responda agora</div>
+                    <div className="cs-t">Resposta sugerida — envie quando revisar</div>
                     <div className="script-box">{ALT_SCRIPTS[scriptIdx] || analise.script_ideal}</div>
                     <div className="sa">
                       <button className="sb" onClick={() => copiar(ALT_SCRIPTS[scriptIdx] || analise.script_ideal)}>📋 Copiar</button>
-                      <button className="sb p" onClick={() => onSendScript?.(ALT_SCRIPTS[scriptIdx] || analise.script_ideal)}>➤ Enviar</button>
+                      <button className="sb p" onClick={() => onSendScript?.(ALT_SCRIPTS[scriptIdx] || analise.script_ideal)}>➤ Usar resposta</button>
                       <button className="sb" onClick={proximoScript}>🔄 Outro</button>
                     </div>
                   </div>
@@ -334,7 +341,7 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
                       <div className="cad-title">{passo.titulo}</div>
                       <div className="cad-desc">{passo.descricao}</div>
                       {passo.status === 'active' && (
-                        <button className="cad-btn" onClick={() => onSendScript?.(ALT_SCRIPTS[scriptIdx] || analise.script_ideal)}>➤ Usar script do Coach</button>
+                        <button className="cad-btn" onClick={() => onSendScript?.(ALT_SCRIPTS[scriptIdx] || analise.script_ideal)}>➤ Usar resposta do GPT</button>
                       )}
                       {passo.status === 'pending' && passo.titulo?.toLowerCase().includes('follow') && (
                         <button className="cad-btn" onClick={() => toast.success('Follow-up agendado!')}>📅 Agendar envio</button>
@@ -558,8 +565,8 @@ export default function CoachIAPanel({ conversaId, mensagens, empresaId, visible
                   <hr className="div-line" />
                   <div className="cs-t">Taxa de fechamento</div>
                   <div className="grid grid-cols-2 gap-2">
-                    <div className="kb-card" style={{textAlign:'center'}}><div style={{fontSize:22,fontWeight:700,color:'#34d399'}}>47%</div><div style={{fontSize:10,color:'#52525b'}}>Com Coach IA</div></div>
-                    <div className="kb-card" style={{textAlign:'center'}}><div style={{fontSize:22,fontWeight:700,color:'#f87171'}}>18%</div><div style={{fontSize:10,color:'#52525b'}}>Sem Coach IA</div></div>
+                    <div className="kb-card" style={{textAlign:'center'}}><div style={{fontSize:22,fontWeight:700,color:'#34d399'}}>47%</div><div style={{fontSize:10,color:'#52525b'}}>Com Assistente GPT</div></div>
+                    <div className="kb-card" style={{textAlign:'center'}}><div style={{fontSize:22,fontWeight:700,color:'#f87171'}}>18%</div><div style={{fontSize:10,color:'#52525b'}}>Sem Assistente GPT</div></div>
                   </div>
                   <button className="execute-btn" onClick={() => toast.success('Fechamento registrado!', {description:'IA vai aprender com esta conversa.'})}>🎓 Marcar fechamento e ensinar IA</button>
                 </>
