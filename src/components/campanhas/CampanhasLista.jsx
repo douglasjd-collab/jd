@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Eye, Copy, Ban, Download, BarChart3, Loader2, RotateCw, Pencil } from 'lucide-react';
+import { Plus, Search, Eye, Copy, Ban, Download, BarChart3, Loader2, RotateCw, Pencil, Minus, Maximize2, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import EditarCampanhaModal from './EditarCampanhaModal';
@@ -30,7 +30,13 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
     queryKey: ['campanhas-lista', empresaId],
     queryFn: () => base44.entities.Campanha.filter({ empresa_id: empresaId }, '-created_date', 500),
     enabled: !!empresaId,
+    refetchInterval: 3000,
   });
+
+  const campanhaEmAndamento = useMemo(
+    () => (campanhas || []).find((c) => ['executando', 'agendada'].includes(c.status)) || null,
+    [campanhas]
+  );
 
   const filtradas = useMemo(() => {
     return (campanhas || []).filter((c) => {
@@ -292,6 +298,122 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
         campanha={editando}
         empresaId={empresaId}
       />
+
+      {campanhaEmAndamento && <CampanhaFlutuante campanha={campanhaEmAndamento} />}
+    </div>
+  );
+}
+
+function CampanhaFlutuante({ campanha }) {
+  const [minimizado, setMinimizado] = useState(false);
+  const [posicao, setPosicao] = useState({ x: 24, y: 24 });
+  const arrasteRef = useRef(null);
+  const total = Number(campanha.total_destinatarios || 0);
+  const enviados = Number(campanha.enviados || 0);
+  const falhas = Number(campanha.falhas || 0);
+  const processados = Math.min(total, enviados + falhas);
+  const percentual = total > 0 ? Math.round((processados / total) * 100) : 0;
+
+  const iniciarArraste = (evento) => {
+    const ponto = evento.touches?.[0] || evento;
+    arrasteRef.current = {
+      inicioX: ponto.clientX,
+      inicioY: ponto.clientY,
+      posicaoX: posicao.x,
+      posicaoY: posicao.y,
+    };
+
+    const mover = (e) => {
+      const atual = e.touches?.[0] || e;
+      if (!arrasteRef.current) return;
+      setPosicao({
+        x: Math.max(8, arrasteRef.current.posicaoX + arrasteRef.current.inicioX - atual.clientX),
+        y: Math.max(8, arrasteRef.current.posicaoY + arrasteRef.current.inicioY - atual.clientY),
+      });
+    };
+    const parar = () => {
+      arrasteRef.current = null;
+      window.removeEventListener('mousemove', mover);
+      window.removeEventListener('mouseup', parar);
+      window.removeEventListener('touchmove', mover);
+      window.removeEventListener('touchend', parar);
+    };
+
+    window.addEventListener('mousemove', mover);
+    window.addEventListener('mouseup', parar);
+    window.addEventListener('touchmove', mover, { passive: true });
+    window.addEventListener('touchend', parar);
+  };
+
+  return (
+    <div
+      className="fixed z-50 w-[320px] max-w-[calc(100vw-16px)] rounded-xl border border-emerald-200 bg-white shadow-2xl overflow-hidden"
+      style={{ right: posicao.x, bottom: posicao.y }}
+    >
+      <div
+        className="flex items-center gap-2 px-3 py-2.5 bg-emerald-600 text-white cursor-move select-none"
+        onMouseDown={iniciarArraste}
+        onTouchStart={iniciarArraste}
+      >
+        <GripVertical className="w-4 h-4 opacity-80" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold truncate">
+            {campanha.status === 'agendada' ? 'Campanha agendada' : 'Disparo em andamento'}
+          </p>
+          <p className="text-[11px] text-emerald-100 truncate">{campanha.nome}</p>
+        </div>
+        <button
+          type="button"
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onClick={() => setMinimizado((valor) => !valor)}
+          className="p-1 rounded hover:bg-emerald-700"
+          title={minimizado ? 'Expandir' : 'Minimizar'}
+        >
+          {minimizado ? <Maximize2 className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+        </button>
+      </div>
+
+      {!minimizado && (
+        <div className="p-4 space-y-3">
+          {campanha.status === 'agendada' ? (
+            <div>
+              <p className="text-xs text-slate-500">Início programado</p>
+              <p className="text-sm font-semibold text-slate-800">
+                {campanha.agendada_para
+                  ? format(new Date(campanha.agendada_para), 'dd/MM/yyyy HH:mm')
+                  : 'Aguardando horário'}
+              </p>
+              <p className="text-xs text-slate-500 mt-2">
+                Você pode continuar usando o CRM. A campanha será iniciada automaticamente.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-2xl font-bold text-slate-800">{enviados}</p>
+                  <p className="text-xs text-slate-500">de {total} enviadas</p>
+                </div>
+                <span className="text-sm font-semibold text-emerald-700">{percentual}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                  style={{ width: `${percentual}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-xs text-slate-500">
+                <span>{Math.max(0, total - processados)} na fila</span>
+                <span className={falhas ? 'text-red-600' : ''}>{falhas} falha(s)</span>
+              </div>
+              <p className="text-xs text-slate-500">
+                O envio continua em segundo plano enquanto você utiliza outras áreas do CRM.
+              </p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
