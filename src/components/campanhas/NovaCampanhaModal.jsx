@@ -251,6 +251,73 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       return (todosClientes || []).filter((cliente) => idsSet.has(cliente.id));
     }
 
+    // Tags são vinculadas aos registros de ContatoWhatsapp. Quando Tags é a
+    // fonte escolhida, cruzamos esses contatos com Cliente por cliente_id ou telefone.
+    // Contatos ainda não cadastrados como Cliente também permanecem aptos ao disparo.
+    if ((form.origens || []).includes('tags') && !(form.origens || []).includes('clientes')) {
+      const tagsSelecionadas = new Set(form.tags_selecionadas || []);
+      if (!tagsSelecionadas.size) return [];
+
+      const [contatosWhatsapp, clientes] = await Promise.all([
+        base44.entities.ContatoWhatsapp.filter({ empresa_id: empresaId }, null, 5000),
+        base44.entities.Cliente.filter({ empresa_id: empresaId }, null, 5000),
+      ]);
+
+      const clientesPorId = new Map((clientes || []).map((cliente) => [cliente.id, cliente]));
+      const clientesPorTelefone = new Map();
+      (clientes || []).forEach((cliente) => {
+        [
+          cliente.celular,
+          cliente.pj_celular,
+          cliente.telefone_fixo,
+          cliente.pj_telefone_fixo,
+        ].forEach((telefone) => {
+          const normalizado = normalizeTel(telefone || '');
+          if (normalizado) clientesPorTelefone.set(normalizado, cliente);
+        });
+      });
+
+      const resultado = [];
+      const chavesIncluidas = new Set();
+
+      (contatosWhatsapp || [])
+        .filter((contato) =>
+          (Array.isArray(contato.tags_ids) ? contato.tags_ids : [])
+            .some((tagId) => tagsSelecionadas.has(tagId))
+        )
+        .forEach((contato) => {
+          const telefone = normalizeTel(contato.telefone || '');
+          const clienteVinculado = clientesPorId.get(contato.cliente_id)
+            || clientesPorTelefone.get(telefone);
+          const chave = clienteVinculado?.id || telefone || contato.id;
+          if (chavesIncluidas.has(chave)) return;
+          chavesIncluidas.add(chave);
+
+          if (clienteVinculado) {
+            resultado.push({
+              ...clienteVinculado,
+              _cliente_id_campanha: clienteVinculado.id,
+              _contato_whatsapp_id: contato.id,
+            });
+          } else {
+            resultado.push({
+              id: `contato-whatsapp-${contato.id}`,
+              _cliente_id_campanha: null,
+              _contato_whatsapp_id: contato.id,
+              empresa_id: empresaId,
+              tipo_pessoa: 'Física',
+              nome_completo: contato.nome || 'Sem nome',
+              primeiro_nome: (contato.nome || '').trim().split(/\s+/)[0] || '',
+              celular: telefone,
+              res_cidade: '',
+              status: 'ativo',
+            });
+          }
+        });
+
+      return resultado;
+    }
+
     const sub = form.clientes_sub || 'todos';
     const filtro = { empresa_id: empresaId };
     if (sub === 'ativos') filtro.status = 'ativo';
@@ -489,7 +556,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       const destinatarios = destinatariosExpandidos.map(({ c, tel }) => ({
         empresa_id: empresaId,
         campanha_id: campanha.id,
-        cliente_id: c.id,
+        cliente_id: c._cliente_id_campanha === null ? null : (c._cliente_id_campanha || c.id),
         cliente_nome: c.nome_completo || c.pj_razao_social || '',
         telefone: tel,
         status: 'na_fila',
