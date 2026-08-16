@@ -896,7 +896,10 @@ async function processarWebhook(req, rawBody, base44) {
 
     // Se a mensagem foi enviada pelo vendedor (fora do CRM), marcar como em atendimento por 10 min
     if (fromMe) {
-      const expira = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const expira = conversa.responsavel_expira_em
+        && new Date(conversa.responsavel_expira_em) > new Date()
+        ? conversa.responsavel_expira_em
+        : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       updateData.responsavel_expira_em = expira;
       // Manter responsavel_id existente se já houver, senão deixar sem (não temos user aqui)
       if (!conversa.responsavel_id) {
