@@ -774,7 +774,10 @@ async function processarWebhook(req, rawBody, base44) {
       };
       // Mensagem enviada pelo celular (fora do CRM) também move o cliente para "Em atendimento"
       if (fromMe) {
-        updateDataMeta.responsavel_expira_em = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        updateDataMeta.responsavel_expira_em = conversa.responsavel_expira_em
+          && new Date(conversa.responsavel_expira_em) > new Date()
+          ? conversa.responsavel_expira_em
+          : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
         if (!conversa.responsavel_id) {
           updateDataMeta.responsavel_id = 'externo';
           updateDataMeta.responsavel_nome = pushName || 'Atendente';
