@@ -55,6 +55,7 @@ import VendaForm from '@/components/forms/VendaForm';
 import AlertasTarefasPopup from '@/components/tarefas/AlertasTarefasPopup';
 import AlertasTarefasAtrasadas from '@/components/tarefas/AlertasTarefasAtrasadas';
 import PopupChamadaRecebida from '@/components/chat/PopupChamadaRecebida';
+import CampanhaMonitorGlobal from '@/components/campanhas/CampanhaMonitorGlobal';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
@@ -832,6 +833,9 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Popup de chamada de voz WhatsApp recebida */}
       {user && user.perfil !== 'parceiro' && <PopupChamadaRecebida user={user} />}
+
+      {/* Monitor de campanhas permanece ativo em todas as áreas do CRM */}
+      {user?.empresa_id && user.perfil !== 'parceiro' && <CampanhaMonitorGlobal empresaId={user.empresa_id} />}
 
       {/* Nova Venda Consórcio Modal */}
       <VendaForm
