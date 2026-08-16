@@ -206,7 +206,7 @@ export default function CadastroSeletivoPanel({
     <div className="space-y-3">
       <div className="cs-t">Cadastro seletivo por nome/CPF</div>
       <div className="text-[11px] text-zinc-400 leading-relaxed">
-        A Coach IA procurará no histórico da conversa os documentos correspondentes
+        O Assistente GPT procurará no histórico da conversa os documentos correspondentes
         a uma <strong className="text-zinc-100">única pessoa</strong> e ignorará os documentos
         de outras pessoas. Use o CPF como identificador principal.
       </div>
