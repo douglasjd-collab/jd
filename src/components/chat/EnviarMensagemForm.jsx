@@ -155,7 +155,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [texto, conversaId]);
 
-  // Script externo (Coach IA)
+  // Resposta externa sugerida pelo Assistente GPT
   useEffect(() => {
     if (scriptExterno) {
       setTexto(scriptExterno);
@@ -681,7 +681,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
                     className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors border-t border-slate-100 ${coachIAOpen ? 'bg-violet-50 text-violet-700' : 'text-slate-700 hover:bg-slate-50'}`}
                   >
                     <span className="text-base">🤖</span>
-                    <span>Coach IA</span>
+                    <span>Assistente GPT</span>
                     {coachIAOpen && <span className="ml-auto text-xs text-violet-500 font-medium">Aberto</span>}
                   </button>
                 )}
