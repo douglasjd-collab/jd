@@ -91,7 +91,7 @@ export default function OfertaLance() {
         empresa_id: empresaId,
         provider_type: 'dapi',
         is_active: true
-      }, '-is_default,-created_date', 10);
+      }, '-created_date', 50);
       const conexaoDapi =
         conexoesDapi?.find(c => c.is_default && c.status === 'conectado') ||
         conexoesDapi?.find(c => c.status === 'conectado') ||
@@ -130,6 +130,7 @@ export default function OfertaLance() {
         instancia: conexaoDapi.session_id || 'D-API',
         connection_id: conexaoDapi.id,
         locked_provider: true,
+        status: 'ativa',
       };
 
       if (conversa) {
