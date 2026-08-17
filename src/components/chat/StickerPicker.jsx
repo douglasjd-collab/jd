@@ -5,6 +5,12 @@ import { Button } from '@/components/ui/button';
 // Figurinhas no estilo "Joinha" — personagem com boné e óculos
 const FIGURINHAS = [
   {
+    id: 'joinha',
+    label: 'Joinha',
+    url: 'https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/3911acfc5_exec-febfd105-0c47-40eb-9f8e-03e8fe728026.png',
+    nome: 'sticker_joinha.png',
+  },
+  {
     id: 'bom_dia',
     label: 'Bom dia',
     url: 'https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/f9fc0fde7_exec-61780b3a-21bf-4ad8-8008-a4e581138495.png',
