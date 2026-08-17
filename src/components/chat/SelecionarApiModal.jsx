@@ -70,7 +70,7 @@ export default function SelecionarApiModal({
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-sky-800 text-sm">{displayConnectionName(alternativa)}</p>
                 <p className="text-[11px] text-sky-700 mt-0.5 leading-tight">
-                  Instância Evolution — WhatsApp pessoal/conectado via QR.
+                  API não oficial da JD Promotora — WhatsApp conectado via D-API.
                 </p>
               </div>
               <CheckCircle2 className="w-5 h-5 text-sky-600 flex-shrink-0" />
