@@ -159,12 +159,16 @@ Deno.serve(async (req) => {
     const agora = new Date();
     const agoraISO = agora.toISOString();
 
-    const todas = await base44.asServiceRole.entities.MensagemAgendada.filter(
-      { status: 'agendada' },
-      null,
-      500
+    // Busca somente o que já venceu. Antes a rotina carregava até 500 agendamentos
+    // em toda execução, mesmo quando não havia nada para enviar.
+    const pendentes = await base44.asServiceRole.entities.MensagemAgendada.filter(
+      {
+        status: 'agendada',
+        proxima_execucao: { $lte: agoraISO },
+      },
+      'proxima_execucao',
+      100
     );
-    const pendentes = todas.filter((m) => m.proxima_execucao && m.proxima_execucao <= agoraISO);
 
     if (pendentes.length === 0) {
       return Response.json({ ok: true, processadas: 0, mensagem: 'Nenhuma mensagem pendente' });
