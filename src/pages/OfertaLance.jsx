@@ -77,13 +77,31 @@ export default function OfertaLance() {
       toast.error('Telefone do cliente não encontrado. Cadastre o telefone no cadastro do cliente.');
       return;
     }
-    if (!currentUser?.empresa_id) {
+    const empresaId = comprovante.empresa_id || currentUser?.empresa_id || selectedVenda?.empresa_id;
+    if (!empresaId) {
       toast.error('Empresa não identificada. Não é possível enviar pelo CRM.');
       return;
     }
     setEnviandoComprovante(true);
     try {
       const tel = String(comprovante.telefone).replace(/\D/g, '');
+
+      // Este fluxo deve sair obrigatoriamente pela API não oficial (D-API).
+      const conexoesDapi = await base44.entities.WhatsappConnection.filter({
+        empresa_id: empresaId,
+        provider_type: 'dapi',
+        is_active: true
+      }, '-is_default,-created_date', 10);
+      const conexaoDapi =
+        conexoesDapi?.find(c => c.is_default && c.status === 'conectado') ||
+        conexoesDapi?.find(c => c.status === 'conectado') ||
+        conexoesDapi?.find(c => c.is_default) ||
+        conexoesDapi?.[0];
+
+      if (!conexaoDapi) {
+        throw new Error('Nenhuma conexão ativa da API não oficial foi encontrada para esta empresa.');
+      }
+
       // Buscar conversa existente pelo telefone (tenta variações com/sem 9º dígito)
       const variacoes = [tel];
       if (tel.startsWith('55') && tel.length === 12) variacoes.push(tel.slice(0, 4) + '9' + tel.slice(4));
@@ -92,53 +110,56 @@ export default function OfertaLance() {
       let conversa = null;
       for (const v of variacoes) {
         const convs = await base44.entities.ConversaWhatsapp.filter(
-          { empresa_id: currentUser.empresa_id, cliente_telefone: v },
-          '-data_ultima_mensagem', 1
+          { empresa_id: empresaId, cliente_telefone: v },
+          '-data_ultima_mensagem', 20
         );
-        if (convs?.length > 0) { conversa = convs[0]; break; }
+        conversa =
+          convs?.find(c => c.connection_id === conexaoDapi.id) ||
+          convs?.find(c => c.provider === 'dapi' || c.canal_origem === 'dapi' || c.tipo_conexao === 'dapi') ||
+          convs?.[0] ||
+          null;
+        if (conversa) break;
       }
 
-      // Criar conversa se não existir
-      if (!conversa) {
-        let dadosCanal = { tipo_conexao: 'empresa' };
-        try {
-          const conexoesDapi = await base44.entities.WhatsappConnection.filter({
-            empresa_id: currentUser.empresa_id,
-            provider_type: 'dapi',
-            is_active: true
-          }, '-created_date', 1);
-          const conexaoDapi = conexoesDapi?.[0];
-          if (conexaoDapi) {
-            dadosCanal = {
-              tipo_conexao: 'dapi',
-              canal_origem: 'dapi',
-              provider: 'dapi',
-              instancia: conexaoDapi.session_id || 'D-API',
-              connection_id: conexaoDapi.id,
-              locked_provider: true,
-            };
-          }
-        } catch (_) {}
+      const dadosCanalDapi = {
+        tipo_conexao: 'dapi',
+        canal_origem: 'dapi',
+        provider: 'dapi',
+        canal_atendimento: 'dapi',
+        canal_preferencial: 'dapi',
+        instancia: conexaoDapi.session_id || 'D-API',
+        connection_id: conexaoDapi.id,
+        locked_provider: true,
+      };
+
+      if (conversa) {
+        conversa = await base44.entities.ConversaWhatsapp.update(conversa.id, dadosCanalDapi);
+      } else {
         conversa = await base44.entities.ConversaWhatsapp.create({
-          empresa_id: currentUser.empresa_id,
-          cliente_id: '',
+          empresa_id: empresaId,
+          cliente_id: comprovante.cliente_id || '',
           cliente_nome: comprovante.cliente || tel,
           cliente_telefone: tel,
           whatsapp_id: `conv_${Date.now()}`,
           status: 'ativa',
           ultima_mensagem: '',
           data_ultima_mensagem: new Date().toISOString(),
-          ...dadosCanal
+          ...dadosCanalDapi
         });
       }
 
       const texto = gerarTextoComprovante(comprovante);
       const res = await base44.functions.invoke('enviarMensagemWhatsapp', {
         conversa_id: conversa.id,
+        empresa_id: empresaId,
         numero_cliente: tel,
         mensagem_texto: texto,
+        forcar_api: 'dapi',
+        connection_id: conexaoDapi.id,
       });
-      if (res?.data?.error) throw new Error(res.data.error);
+      if (res?.data?.success === false || res?.data?.error) {
+        throw new Error(res.data.error || 'A API não oficial recusou o envio.');
+      }
       toast.success('Comprovante enviado pelo WhatsApp do CRM!');
       closeForm();
     } catch (e) {
