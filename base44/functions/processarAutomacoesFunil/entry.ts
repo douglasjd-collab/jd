@@ -25,16 +25,38 @@ Deno.serve(async (req) => {
   // 2. Buscar leads abertos
   const oportunidades = await base44.asServiceRole.entities.Oportunidade.filter({ status: 'aberta' });
 
-  // 3. Buscar histórico já enviado (para não reenviar)
-  const historicoEnviado = await base44.asServiceRole.entities.HistoricoAutomacao.list('-enviado_em', 5000);
+  // 3. Buscar somente o histórico das oportunidades abertas desta rodada.
+  // Evita varrer milhares de registros que não podem gerar um disparo agora.
+  const oportunidadeIds = oportunidades.map((o) => o.id).filter(Boolean);
+  const historicoEnviado = oportunidadeIds.length
+    ? await base44.asServiceRole.entities.HistoricoAutomacao.filter(
+        { oportunidade_id: { $in: oportunidadeIds }, status: 'enviado' },
+        '-enviado_em',
+        5000
+      )
+    : [];
 
   // Mapa: oportunidade_id + automacao_id -> já enviado?
   const jaEnviado = new Set(
-    historicoEnviado.filter(h => h.status === 'enviado').map(h => `${h.oportunidade_id}__${h.automacao_id}`)
+    historicoEnviado.map(h => `${h.oportunidade_id}__${h.automacao_id}`)
   );
 
-  // 4. Buscar conversas WhatsApp para checar se cliente respondeu
-  const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({});
+  // 4. Só carrega respostas de clientes posteriores à oportunidade mais antiga
+  // ainda aberta. Antes a automação carregava toda a base de conversas.
+  const inicioMaisAntigo = oportunidades.reduce((maisAntigo, o) => {
+    const data = new Date(o.data_ultima_movimentacao || o.created_date || agora);
+    return data < maisAntigo ? data : maisAntigo;
+  }, agora);
+  const conversas = oportunidades.length
+    ? await base44.asServiceRole.entities.ConversaWhatsapp.filter(
+        {
+          ultimo_remetente: 'cliente',
+          data_ultima_mensagem: { $gte: inicioMaisAntigo.toISOString() },
+        },
+        '-data_ultima_mensagem',
+        2000
+      )
+    : [];
   const conversasPorTelefone = {};
   for (const c of conversas) {
     conversasPorTelefone[c.cliente_telefone] = c;
