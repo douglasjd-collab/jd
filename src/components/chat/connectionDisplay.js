@@ -20,13 +20,12 @@ export function isConnectionOficial(c) {
   return false;
 }
 
-// A alternativa "D-API – Douglas | JD Promotora" — qualquer conexão ativa que
-// NÃO seja a API Oficial (Evolution ou D-API não-oficial).
+// A alternativa "D-API – Douglas | JD Promotora" aceita somente D-API
+// não oficial. Evolution foi removida integralmente do Bate-papo.
 export function isConnectionDapiAlternative(c) {
   if (!c) return false;
   if (isConnectionOficial(c)) return false;
-  const providerType = String(c.provider_type || '');
-  return providerType === 'dapi' || providerType === 'evolution';
+  return String(c.provider_type || '') === 'dapi';
 }
 
 // Nome amigável exibido no badge do topo e nos itens do dropdown.
@@ -45,6 +44,5 @@ export function connectionLabelEmoji(c) {
   if (!c) return '⬜';
   if (isConnectionOficial(c)) return '🟢';
   if (String(c.provider_type || '') === 'dapi') return '🟦';
-  if (String(c.provider_type || '') === 'evolution') return '🟣';
   return '⬜';
 }
