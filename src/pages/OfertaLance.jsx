@@ -77,7 +77,7 @@ export default function OfertaLance() {
       toast.error('Telefone do cliente não encontrado. Cadastre o telefone no cadastro do cliente.');
       return;
     }
-    const empresaId = comprovante.empresa_id || currentUser?.empresa_id || selectedVenda?.empresa_id;
+    const empresaId = currentUser?.empresa_id || comprovante.empresa_id || selectedVenda?.empresa_id;
     if (!empresaId) {
       toast.error('Empresa não identificada. Não é possível enviar pelo CRM.');
       return;
@@ -221,13 +221,19 @@ export default function OfertaLance() {
     try {
       const me = await base44.auth.me();
 
-      if (me.role === 'super_admin') {
+      if (me.role === 'super_admin' || me.perfil === 'super_admin') {
+        let colaboradorSA = null;
+        try {
+          const colabsSA = await base44.entities.Colaborador.filter({ user_id: me.id }, '-created_date');
+          colaboradorSA = colabsSA.find(c => c.status === 'ativo') || colabsSA[0] || null;
+        } catch {}
         setCurrentUser({
           ...me,
           auth_id: me.id,
-          colaborador_id: null,
-          empresa_id: null,
+          colaborador_id: colaboradorSA?.id || null,
+          empresa_id: colaboradorSA?.empresa_id || null,
           perfil: 'super_admin',
+          nome_perfil: colaboradorSA?.nome || me.full_name || '',
         });
         return;
       }
