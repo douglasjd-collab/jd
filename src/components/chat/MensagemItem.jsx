@@ -1148,12 +1148,6 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                 Meta
               </span>
             )}
-            {mensagem.provider === 'evolution' && (
-              <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-black/10 text-slate-700 leading-none">
-                <span className="w-1 h-1 rounded-full bg-slate-700 inline-block opacity-90" />
-                Evolution
-              </span>
-            )}
           </div>
         )}
         {!isGrupo && !isVendedor && mensagem.usuario_nome && (
