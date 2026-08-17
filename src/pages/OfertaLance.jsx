@@ -346,6 +346,8 @@ export default function OfertaLance() {
         telLimpo = '55' + telLimpo;
       }
       setComprovante({
+        empresa_id: variables.empresa_id || '',
+        cliente_id: variables.cliente_id || '',
         cliente: variables.cliente_nome || '',
         grupo: variables.grupo || '',
         cota: variables.cota || '',
