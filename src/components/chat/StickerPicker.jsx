@@ -65,7 +65,7 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
   };
 
   return (
-    <div className="relative pb-1 pr-1">
+    <div className="pb-1 pr-1">
       <Button
         type="button"
         variant="ghost"
@@ -84,12 +84,12 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
             className="fixed inset-0 z-30"
             onClick={() => setAberto(false)}
           />
-          <div className="absolute bottom-full left-0 mb-2 bg-white border border-slate-200 rounded-2xl shadow-lg p-3 z-40 w-[440px] max-w-[calc(100vw-2rem)]">
-            <div className="flex items-center gap-2 mb-2 px-1">
+          <div className="absolute bottom-full left-0 right-0 mb-2 mx-3 bg-white border border-slate-200 rounded-2xl shadow-lg p-4 z-40">
+            <div className="flex items-center gap-2 mb-3 px-1">
               <Sticker className="w-4 h-4 text-purple-500" />
               <span className="text-xs font-semibold text-slate-600">Figurinhas Joinha</span>
             </div>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-3">
               {FIGURINHAS.map((fig) => (
                 <button
                   key={fig.id}
