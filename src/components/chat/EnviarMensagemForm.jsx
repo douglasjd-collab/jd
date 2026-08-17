@@ -7,6 +7,7 @@ import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Pl
 import MensagensRapidasModal from './MensagensRapidasModal';
 import TemplateMetaModal from './TemplateMetaModal';
 import ImageEditorModal from './image-editor/ImageEditorModal';
+import StickerPicker from './StickerPicker';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -718,6 +719,9 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
           >
             <Zap className="w-5 h-5" />
           </Button>
+
+          {/* Figurinhas (Joinha) */}
+          <StickerPicker onEnviar={onEnviar} isLoading={isLoading} />
 
           {/* Textarea */}
           <div className="flex-1">
