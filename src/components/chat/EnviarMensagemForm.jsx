@@ -720,11 +720,8 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
             <Zap className="w-5 h-5" />
           </Button>
 
-          {/* Figurinhas (Joinha) */}
-          <StickerPicker onEnviar={onEnviar} isLoading={isLoading} />
-
-          {/* Textarea */}
-          <div className="flex-1">
+          {/* Textarea + Figurinha dentro do mesmo quadro */}
+          <div className="flex-1 flex items-end gap-1 rounded-2xl border border-slate-300 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 bg-white overflow-visible">
             <textarea
               ref={textareaRef}
               value={texto}
@@ -761,7 +758,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
               }}
               placeholder={arquivos.length > 0 ? `📎 ${arquivos.length} arquivo(s) selecionado(s)` : 'Digite sua mensagem...'}
               rows={1}
-              className="msg-textarea w-full rounded-2xl border border-slate-300 px-4 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none text-sm"
+              className="msg-textarea flex-1 bg-transparent border-0 px-4 py-2 focus:outline-none resize-none text-sm rounded-2xl"
               style={{
                 minHeight: '40px',
                 maxHeight: MAX_HEIGHT + 'px',
@@ -769,6 +766,8 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
                 lineHeight: LINE_HEIGHT + 'px',
               }}
             />
+            {/* Figurinhas (Joinha) dentro do quadro de digitação */}
+            <StickerPicker onEnviar={onEnviar} isLoading={isLoading} />
           </div>
 
           {/* Botão gravar áudio */}

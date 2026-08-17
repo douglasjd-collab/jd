@@ -59,13 +59,13 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
   };
 
   return (
-    <div className="relative pb-1">
+    <div className="relative pb-1 pr-1">
       <Button
         type="button"
         variant="ghost"
         size="icon"
         onClick={() => setAberto((prev) => !prev)}
-        className={`rounded-full w-10 h-10 transition-all ${aberto ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 hover:bg-purple-100 text-slate-600 hover:text-purple-600'}`}
+        className={`rounded-full w-9 h-9 transition-all ${aberto ? 'text-purple-600' : 'text-slate-400 hover:text-purple-600'}`}
         title="Figurinhas"
       >
         <Sticker className="w-5 h-5" />
