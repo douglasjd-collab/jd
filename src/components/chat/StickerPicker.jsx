@@ -40,12 +40,44 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
   const [aberto, setAberto] = useState(false);
   const [enviando, setEnviando] = useState(null);
 
+  // Remove o fundo preto da figurinha via canvas, deixando o contorno transparente
+  const removerFundoPreto = (url) => new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          // Fundo preto → transparente; transições suaves (anti-alias) ficam semitransparentes
+          if (r < 30 && g < 30 && b < 30) {
+            data[i + 3] = 0;
+          } else if (r < 70 && g < 70 && b < 70) {
+            data[i + 3] = Math.round(((r + g + b) / 3 - 30) / 40 * 255);
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
+        canvas.toBlob((blob) => resolve(blob), 'image/png');
+      } catch (e) {
+        // Canvas tainted (CORS) — usa a imagem original sem remover fundo
+        fetch(url).then(r => r.blob()).then(resolve).catch(reject);
+      }
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+
   const enviarFigurinha = async (fig) => {
     if (isLoading || enviando) return;
     setEnviando(fig.id);
     try {
-      const resp = await fetch(fig.url);
-      const blob = await resp.blob();
+      const blob = await removerFundoPreto(fig.url);
       const file = new File([blob], fig.nome, { type: 'image/png' });
       onEnviar({
         texto: '',
