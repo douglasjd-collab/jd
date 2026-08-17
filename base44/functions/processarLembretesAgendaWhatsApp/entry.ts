@@ -54,15 +54,18 @@ Deno.serve(async (req) => {
       const msgCliente = config.mensagem_cliente || MSG_CLIENTE_DEFAULT;
       const msgResponsavel = config.mensagem_responsavel || MSG_RESPONSAVEL_DEFAULT;
 
-      // Buscar compromissos ativos das próximas X horas (pega o maior intervalo + 30min)
+      // Busca apenas compromissos dentro da janela dos lembretes configurados.
+      // Antes carregava até 500 compromissos de uma janela muito maior em toda execução.
       const maxMinutos = Math.max(...tempos, 60);
-      const futuro = new Date(now.getTime() + (maxMinutos + 60) * 60 * 1000);
+      const minMinutos = Math.min(...tempos);
+      const inicioJanela = new Date(now.getTime() + Math.max(0, minMinutos - 2) * 60 * 1000);
+      const fimJanela = new Date(now.getTime() + (maxMinutos + 2) * 60 * 1000);
 
       const compromissos = await base44.asServiceRole.entities.Agenda.filter({
         empresa_id: empresaId,
         status: { $in: ['agendado', 'confirmado'] },
-        inicio: { $gte: now.toISOString(), $lte: futuro.toISOString() },
-      }, 'inicio', 500);
+        inicio: { $gte: inicioJanela.toISOString(), $lte: fimJanela.toISOString() },
+      }, 'inicio', 100);
 
       for (const comp of (compromissos || [])) {
         const inicio = new Date(comp.inicio);
