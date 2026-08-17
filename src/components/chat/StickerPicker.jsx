@@ -7,26 +7,26 @@ const FIGURINHAS = [
   {
     id: 'bom_dia',
     label: 'Bom dia',
-    url: 'https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/7b5dc6c0c_generated_image.png',
+    url: 'https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/f9fc0fde7_exec-61780b3a-21bf-4ad8-8008-a4e581138495.png',
     nome: 'sticker_bom_dia.png',
   },
   {
     id: 'boa_tarde',
     label: 'Boa tarde',
-    url: 'https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/5da7b149d_generated_image.png',
+    url: 'https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/457e5b33a_exec-0e0262cd-9231-43db-ab01-8b5f6f68b914.png',
     nome: 'sticker_boa_tarde.png',
   },
   {
     id: 'boa_noite',
     label: 'Boa noite',
-    url: 'https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/3529cbac8_generated_image.png',
+    url: 'https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/9253f5874_exec-1579e045-eaa5-426d-bde4-c449457e1e4c.png',
     nome: 'sticker_boa_noite.png',
   },
   {
     id: 'tchau',
-    label: 'Tchau (finalizar)',
-    url: 'https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/cb86b9047_generated_image.png',
-    nome: 'sticker_tchau.png',
+    label: 'Até logo (finalizar)',
+    url: 'https://media.base44.com/images/public/6950a9860c8af0e2ff10fc9e/225722926_exec-3f115dbf-932c-4e4e-85c4-0594dfe6ea21.png',
+    nome: 'sticker_ate_logo.png',
   },
 ];
 
