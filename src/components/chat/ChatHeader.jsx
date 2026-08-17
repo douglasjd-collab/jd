@@ -104,9 +104,10 @@ _Cashback sujeito às regras da campanha._`;
           is_active: true
         }, '-created_date', 50);
         
-        setConexoesAtivas(todas || []);
+        const permitidas = (todas || []).filter(c => c.provider_type !== 'evolution');
+        setConexoesAtivas(permitidas);
         
-        const dapi = todas.find(c => c.provider_type === 'dapi' && c.is_active);
+        const dapi = permitidas.find(c => c.provider_type === 'dapi' && c.is_active);
         setConexaoDapiAtiva(dapi || null);
       } catch (e) {
         console.error('Erro ao buscar conexões:', e.message);
@@ -181,6 +182,10 @@ _Cashback sujeito às regras da campanha._`;
   // Alternar para uma conexão específica
   const alternarParaConexao = async (conexao) => {
     if (!conexao) return;
+    if (conexao.provider_type === 'evolution') {
+      toast.error('A Evolution API foi removida do Bate-papo.');
+      return;
+    }
     
     const isAdmin = user?.perfil === 'master' || user?.perfil === 'super_admin' || user?.perfil === 'admin';
     if (!isAdmin) {
@@ -205,11 +210,6 @@ _Cashback sujeito às regras da campanha._`;
         updateData.canal_origem = 'meta';
         updateData.provider = 'whatsapp_meta';
         updateData.instancia = 'META_OFICIAL';
-      } else if (conexao.provider_type === 'evolution') {
-        updateData.tipo_conexao = 'empresa';
-        updateData.canal_origem = 'evolution';
-        updateData.provider = 'evolution';
-        updateData.instancia = conexao.session_id || conexao.nome || '';
       }
       
       await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, updateData);
@@ -222,7 +222,7 @@ _Cashback sujeito às regras da campanha._`;
       setCanalOverride(updateData.tipo_conexao);
       
       const ehOficialSel = conexao.provider_type === 'dapi' && (String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial'));
-      toast.success(`Alterado para ${conexao.provider_type === 'dapi' ? (ehOficialSel ? 'API - Oficial' : `API - ${(conexao.nome || conexao.session_id).replace('Douglas | ', '')}`) : conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' : `Evolution - ${conexao.nome || conexao.session_id}`}`);
+      toast.success(`Alterado para ${conexao.provider_type === 'dapi' ? (ehOficialSel ? 'API - Oficial' : `API - ${(conexao.nome || conexao.session_id).replace('Douglas | ', '')}`) : 'Meta Oficial'}`);
       
       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
     } catch (e) {
@@ -368,7 +368,7 @@ _Cashback sujeito às regras da campanha._`;
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" side="bottom" className="z-[200]">
                     {conexoesAtivas
-                      .filter(c => c.is_active)
+                      .filter(c => c.is_active && c.provider_type !== 'evolution')
                       .map((conexao) => (
                         <DropdownMenuItem
                           key={conexao.id}
@@ -377,7 +377,6 @@ _Cashback sujeito às regras da campanha._`;
                         >
                           {conexao.provider_type === 'dapi' && ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? '🟢' : '🟦')}
                           {conexao.provider_type === 'meta_oficial' && '🟢'}
-                          {conexao.provider_type === 'evolution' && '🟣'}
                           {' '}
                           {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? 'API - Oficial' : `API - ${(conexao.nome || conexao.session_id).replace('Douglas | ', '')}`) :
                            conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' :
@@ -400,7 +399,7 @@ _Cashback sujeito às regras da campanha._`;
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" side="bottom" className="z-[200]">
                     {conexoesAtivas
-                      .filter(c => c.is_active)
+                      .filter(c => c.is_active && c.provider_type !== 'evolution')
                       .map((conexao) => (
                         <DropdownMenuItem
                           key={conexao.id}
@@ -409,7 +408,6 @@ _Cashback sujeito às regras da campanha._`;
                         >
                           {conexao.provider_type === 'dapi' && ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? '🟢' : '🟦')}
                           {conexao.provider_type === 'meta_oficial' && '🟢'}
-                          {conexao.provider_type === 'evolution' && '🟣'}
                           {' '}
                           {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? 'API - Oficial' : `API - ${(conexao.nome || conexao.session_id).replace('Douglas | ', '')}`) :
                            conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' :
@@ -423,16 +421,16 @@ _Cashback sujeito às regras da campanha._`;
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button
-                      title="Respondendo via Evolution — clique para trocar"
+                      title="Selecione uma API permitida para responder"
                       className="inline-flex items-center gap-1 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm cursor-pointer transition-all hover:scale-105 hover:opacity-80 active:scale-95 bg-blue-500"
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-white opacity-90 inline-block" />
-                      Evolution
+                      Selecionar API
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" side="bottom" className="z-[200]">
                     {conexoesAtivas
-                      .filter(c => c.is_active)
+                      .filter(c => c.is_active && c.provider_type !== 'evolution')
                       .map((conexao) => (
                         <DropdownMenuItem
                           key={conexao.id}
@@ -441,7 +439,6 @@ _Cashback sujeito às regras da campanha._`;
                         >
                           {conexao.provider_type === 'dapi' && ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? '🟢' : '🟦')}
                           {conexao.provider_type === 'meta_oficial' && '🟢'}
-                          {conexao.provider_type === 'evolution' && '🟣'}
                           {' '}
                           {conexao.provider_type === 'dapi' ? ((String(conexao.session_id || '').toLowerCase().startsWith('cloud') || String(conexao.nome || '').toLowerCase().includes('oficial')) ? 'API - Oficial' : `API - ${(conexao.nome || conexao.session_id).replace('Douglas | ', '')}`) :
                            conexao.provider_type === 'meta_oficial' ? 'Meta Oficial' :
@@ -625,7 +622,7 @@ _Cashback sujeito às regras da campanha._`;
                       if (conexaoDapiAtiva) {
                         alternarParaConexao(conexaoDapiAtiva);
                       } else {
-                        alternarParaConexao(conexoesAtivas.find(c => c.provider_type === 'evolution'));
+                        toast.error('Nenhuma conexão D-API ativa foi encontrada.');
                       }
                     } else {
                       alternarParaConexao(conexoesAtivas.find(c => c.provider_type === 'meta_oficial'));
