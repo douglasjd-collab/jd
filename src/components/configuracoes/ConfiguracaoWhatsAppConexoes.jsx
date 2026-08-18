@@ -1077,7 +1077,6 @@ export default function ConfiguracaoWhatsApp() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="dapi">D-API</SelectItem>
-                    <SelectItem value="evolution">Evolution API</SelectItem>
                     <SelectItem value="meta_oficial">Meta Oficial</SelectItem>
                   </SelectContent>
                 </Select>

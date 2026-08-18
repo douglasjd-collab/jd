@@ -81,7 +81,6 @@ export default function ConnectionFormDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="dapi">D-API</SelectItem>
-                  <SelectItem value="evolution">Evolution API</SelectItem>
                   <SelectItem value="meta_oficial">Meta Oficial (WhatsApp Cloud)</SelectItem>
                 </SelectContent>
               </Select>
