@@ -639,6 +639,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
         );
       }
 
+      case 'figurinha':
       case 'imagem':
         return (
           <div className="w-full">
