@@ -40,51 +40,68 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
   const [aberto, setAberto] = useState(false);
   const [enviando, setEnviando] = useState(null);
 
-  // Remove o fundo preto da figurinha via canvas, deixando o contorno transparente
-  const removerFundoPreto = (url) => new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
+  // Baixa a figurinha, remove o fundo preto via canvas e converte para WebP
+  // 512×512 (formato de figurinha nativo do WhatsApp — o backend envia como
+  // sticker quando o tipo é image/webp).
+  const prepararFigurinha = async (url) => {
+    // 1. Baixar como blob e criar object URL (same-origin → canvas não tainted)
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('Falha ao baixar figurinha');
+    const blobOriginal = await resp.blob();
+    const objectUrl = URL.createObjectURL(blobOriginal);
+
+    try {
+      const img = await new Promise((resolve, reject) => {
+        const i = new Image();
+        i.onload = () => resolve(i);
+        i.onerror = reject;
+        i.src = objectUrl;
+      });
+
+      // 2. Canvas 512×512 (padrão de figurinha WhatsApp)
+      const size = 512;
       const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
+      canvas.width = size;
+      canvas.height = size;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      try {
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i], g = data[i + 1], b = data[i + 2];
-          // Fundo preto → transparente; transições suaves (anti-alias) ficam semitransparentes
-          if (r < 30 && g < 30 && b < 30) {
-            data[i + 3] = 0;
-          } else if (r < 70 && g < 70 && b < 70) {
-            data[i + 3] = Math.round(((r + g + b) / 3 - 30) / 40 * 255);
-          }
+      ctx.drawImage(img, 0, 0, size, size);
+
+      // 3. Remover fundo preto → transparente
+      const imageData = ctx.getImageData(0, 0, size, size);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i], g = data[i + 1], b = data[i + 2];
+        if (r < 30 && g < 30 && b < 30) {
+          data[i + 3] = 0;
+        } else if (r < 70 && g < 70 && b < 70) {
+          data[i + 3] = Math.round(((r + g + b) / 3 - 30) / 40 * 255);
         }
-        ctx.putImageData(imageData, 0, 0);
-        canvas.toBlob((blob) => resolve(blob), 'image/png');
-      } catch (e) {
-        // Canvas tainted (CORS) — usa a imagem original sem remover fundo
-        fetch(url).then(r => r.blob()).then(resolve).catch(reject);
       }
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
+      ctx.putImageData(imageData, 0, 0);
+
+      // 4. Converter para WebP (figurinha nativa); fallback PNG transparente
+      const webpBlob = await new Promise((res) => canvas.toBlob(res, 'image/webp', 0.9));
+      if (webpBlob && webpBlob.size > 0) return { blob: webpBlob, tipo: 'image/webp' };
+      const pngBlob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
+      return { blob: pngBlob, tipo: 'image/png' };
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
 
   const enviarFigurinha = async (fig) => {
     if (isLoading || enviando) return;
     setEnviando(fig.id);
     try {
-      const blob = await removerFundoPreto(fig.url);
-      const file = new File([blob], fig.nome, { type: 'image/png' });
+      const { blob, tipo } = await prepararFigurinha(fig.url);
+      const nome = tipo === 'image/webp' ? fig.nome.replace(/\.png$/, '.webp') : fig.nome;
+      const file = new File([blob], nome, { type: tipo });
       onEnviar({
         texto: '',
         arquivo: {
           file,
-          nome: fig.nome,
-          tipo: 'image/png',
+          nome,
+          tipo,
           tamanho: file.size || 0,
         },
       });
