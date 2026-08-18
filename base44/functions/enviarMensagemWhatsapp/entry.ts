@@ -521,8 +521,12 @@ Deno.serve(async (req) => {
           return Response.json({ error: 'Falha ao gerar URL do arquivo para envio via D-API', success: false }, { status: 500 });
         }
 
-        if (tipoArq === 'image/webp' || tipoArq.startsWith('image')) {
-          tipoConteudoDapi = tipoArq === 'image/webp' ? 'figurinha' : 'imagem';
+        if (tipoArq === 'image/webp' || arquivo.is_sticker) {
+          tipoConteudoDapi = 'figurinha';
+          dapiAction = 'sendSticker';
+          dapiActionParams = { stickerUrl: arquivoUrlDapi };
+        } else if (tipoArq.startsWith('image')) {
+          tipoConteudoDapi = 'imagem';
           dapiAction = 'sendImage';
           dapiActionParams = { imageUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '' };
         } else if (tipoArq.startsWith('audio')) {
