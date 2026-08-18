@@ -40,15 +40,13 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
   const [aberto, setAberto] = useState(false);
   const [enviando, setEnviando] = useState(null);
 
-  // Baixa a figurinha, remove o fundo preto via canvas e converte para WebP
-  // 512×512 (formato de figurinha nativo do WhatsApp — o backend envia como
-  // sticker quando o tipo é image/webp).
+  // Prepara uma figurinha real: WebP de 512 px e fundo transparente.
+  // O recorte remove somente o fundo conectado à borda; assim, o boné, óculos
+  // e camisa escuros do personagem não desaparecem.
   const prepararFigurinha = async (url) => {
-    // 1. Baixar como blob e criar object URL (same-origin → canvas não tainted)
     const resp = await fetch(url);
     if (!resp.ok) throw new Error('Falha ao baixar figurinha');
-    const blobOriginal = await resp.blob();
-    const objectUrl = URL.createObjectURL(blobOriginal);
+    const objectUrl = URL.createObjectURL(await resp.blob());
 
     try {
       const img = await new Promise((resolve, reject) => {
@@ -58,51 +56,73 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
         i.src = objectUrl;
       });
 
-      // 2. Canvas 512×512 (padrão de figurinha WhatsApp)
       const size = 512;
       const canvas = document.createElement('canvas');
       canvas.width = size;
       canvas.height = size;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       ctx.drawImage(img, 0, 0, size, size);
 
-      // 3. Remover fundo preto → transparente
       const imageData = ctx.getImageData(0, 0, size, size);
-      const data = imageData.data;
-      for (let i = 0; i < data.length; i += 4) {
+      const { data } = imageData;
+      const visitado = new Uint8Array(size * size);
+      const fila = [];
+      const colocarSeFundo = (x, y) => {
+        const pos = y * size + x;
+        if (visitado[pos]) return;
+        const i = pos * 4;
         const r = data[i], g = data[i + 1], b = data[i + 2];
-        if (r < 30 && g < 30 && b < 30) {
-          data[i + 3] = 0;
-        } else if (r < 70 && g < 70 && b < 70) {
-          data[i + 3] = Math.round(((r + g + b) / 3 - 30) / 40 * 255);
+        // Fundo preto/cinza quase neutro, sem apagar detalhes escuros internos.
+        if (Math.max(r, g, b) < 60 && Math.max(r, g, b) - Math.min(r, g, b) < 18) {
+          visitado[pos] = 1;
+          fila.push(pos);
         }
+      };
+
+      for (let x = 0; x < size; x++) { colocarSeFundo(x, 0); colocarSeFundo(x, size - 1); }
+      for (let y = 1; y < size - 1; y++) { colocarSeFundo(0, y); colocarSeFundo(size - 1, y); }
+
+      for (let cursor = 0; cursor < fila.length; cursor++) {
+        const pos = fila[cursor];
+        const x = pos % size, y = Math.floor(pos / size);
+        data[pos * 4 + 3] = 0;
+        if (x > 0) colocarSeFundo(x - 1, y);
+        if (x < size - 1) colocarSeFundo(x + 1, y);
+        if (y > 0) colocarSeFundo(x, y - 1);
+        if (y < size - 1) colocarSeFundo(x, y + 1);
       }
       ctx.putImageData(imageData, 0, 0);
 
-      // 4. Converter para WebP (figurinha nativa); fallback PNG transparente
       const webpBlob = await new Promise((res) => canvas.toBlob(res, 'image/webp', 0.9));
-      if (webpBlob && webpBlob.size > 0) return { blob: webpBlob, tipo: 'image/webp' };
-      const pngBlob = await new Promise((res) => canvas.toBlob(res, 'image/png'));
-      return { blob: pngBlob, tipo: 'image/png' };
+      if (!webpBlob || !webpBlob.size) throw new Error('Seu navegador não conseguiu preparar a figurinha');
+      return webpBlob;
     } finally {
       URL.revokeObjectURL(objectUrl);
     }
   };
 
+  const lerBase64 = (blob) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',').pop());
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
   const enviarFigurinha = async (fig) => {
     if (isLoading || enviando) return;
     setEnviando(fig.id);
     try {
-      const { blob, tipo } = await prepararFigurinha(fig.url);
-      const nome = tipo === 'image/webp' ? fig.nome.replace(/\.png$/, '.webp') : fig.nome;
-      const file = new File([blob], nome, { type: tipo });
+      const blob = await prepararFigurinha(fig.url);
+      const nome = fig.nome.replace(/\.png$/, '.webp');
+      const base64 = await lerBase64(blob);
       onEnviar({
         texto: '',
         arquivo: {
-          file,
           nome,
-          tipo,
-          tamanho: file.size || 0,
+          tipo: 'image/webp',
+          base64,
+          tamanho: blob.size || 0,
+          is_sticker: true,
         },
       });
       setAberto(false);
