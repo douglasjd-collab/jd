@@ -446,7 +446,9 @@ Deno.serve(async (req) => {
       },
 
       // Enviar áudio - POST /api/v1/messages/send/audio
-      async sendAudio(phoneNumber, audioUrl) {
+      // contextInfo (opcional) adiciona o quote/reply a uma mensagem original,
+      // conforme schema oficial da D-API (stanzaId + participant + quotedMessage).
+      async sendAudio(phoneNumber, audioUrl, contextInfo = null) {
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
         
         const messagePayload = {
@@ -455,6 +457,9 @@ Deno.serve(async (req) => {
           audio: audioUrl,
           ptt: true
         };
+        if (contextInfo) {
+          messagePayload.contextInfo = contextInfo;
+        }
         
         return await this.request('/api/v1/messages/send/audio', 'POST', messagePayload);
       },
@@ -829,7 +834,7 @@ Deno.serve(async (req) => {
         if (!phoneNumber || !audioUrl) {
           return Response.json({ error: 'phoneNumber and audioUrl required' }, { status: 400 });
         }
-        result = await adapter.sendAudio(phoneNumber, audioUrl);
+        result = await adapter.sendAudio(phoneNumber, audioUrl, payload.contextInfo || null);
         break;
         
       case 'sendDocument':

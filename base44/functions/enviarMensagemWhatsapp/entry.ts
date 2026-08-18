@@ -532,7 +532,7 @@ Deno.serve(async (req) => {
         } else if (tipoArq.startsWith('audio')) {
           tipoConteudoDapi = 'audio';
           dapiAction = 'sendAudio';
-          dapiActionParams = { audioUrl: arquivoUrlDapi };
+          dapiActionParams = { audioUrl: arquivoUrlDapi, contextInfo: dapiContextInfo };
         } else if (tipoArq.startsWith('video')) {
           tipoConteudoDapi = 'video';
           dapiAction = 'sendVideo';
@@ -547,6 +547,38 @@ Deno.serve(async (req) => {
       }
 
       const textoEnviar = mensagem_texto?.trim() || '';
+
+      // ── D-API: montar contextInfo para resposta (quote) ──────────────────
+      // A D-API usa o schema Baileys (contextInfo) para renderizar a citação
+      // no WhatsApp. Sem isso, áudios enviados como reply aparecem "soltos",
+      // sem o bloco de citação da mensagem original.
+      let dapiContextInfo = null;
+      if (resposta_para_message_id) {
+        try {
+          const originaisCtx = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+            { whatsapp_message_id: String(resposta_para_message_id) }, '-created_date', 5
+          );
+          const originalCtx = (originaisCtx && originaisCtx.length > 0)
+            ? (originaisCtx.find(m => m.empresa_id === empresaId) || originaisCtx[0])
+            : null;
+          const jidCliente = `${numeroDapi}@s.whatsapp.net`;
+          let participantJid = jidCliente;
+          // Se a mensagem original foi enviada pelo vendedor, o participant é o nosso JID
+          if (originalCtx?.remetente === 'vendedor' && conexaoDapi?.phone_number) {
+            const meuNum = String(conexaoDapi.phone_number).replace(/\D/g, '');
+            participantJid = `${meuNum}@s.whatsapp.net`;
+          }
+          dapiContextInfo = {
+            stanzaId: String(resposta_para_message_id),
+            participant: participantJid,
+            remoteJid: jidCliente,
+            quotedMessage: { conversation: resposta_para_texto || originalCtx?.texto || '' }
+          };
+          console.log('💬 D-API contextInfo montado para reply:', dapiContextInfo);
+        } catch (e) {
+          console.warn('⚠️ Erro ao montar contextInfo D-API:', e.message);
+        }
+      }
       
       // Chamar whatsappService para envio D-API
       try {
@@ -928,6 +960,10 @@ Deno.serve(async (req) => {
           endpoint = `${baseUrl}/message/sendWhatsAppAudio/${instanceName}`;
           // Evolution espera o base64 puro do áudio (sem prefixo data:) e encoding=true para converter
           requestPayload = { number: numeroFormatado, audio: arquivo.base64, encoding: true, delay: 1200 };
+          // Reply/quoted — adicionar quoted se tiver message_id da mensagem original
+          if (resposta_para_message_id) {
+            requestPayload.quoted = { key: { id: resposta_para_message_id } };
+          }
         } else if (tipo.startsWith('video')) {
           endpoint = `${baseUrl}/message/sendMedia/${instanceName}`;
           requestPayload = { number: numeroFormatado, mediatype: 'video', media: arquivo.base64, fileName: arquivo.nome, caption: mensagem_texto || '' };
