@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     const entityClient = isServiceRoleCall ? base44.asServiceRole : base44;
     
     const payload = await req.json().catch(() => ({}));
-    const { connectionId, action, webhookUrl, phoneNumber, text, imageUrl, audioUrl, documentUrl, videoUrl, caption, fileName, messageIds, messageId, emoji } = payload;
+    const { connectionId, action, webhookUrl, phoneNumber, text, imageUrl, stickerUrl, audioUrl, documentUrl, videoUrl, caption, fileName, messageIds, messageId, emoji } = payload;
     
     // Buscar conexão (opcional p/ ação testConnection com dados do form ainda não salvos)
     // Usa entityClient para respeitar RLS mesmo em chamadas de service role agendadas.
@@ -435,6 +435,16 @@ Deno.serve(async (req) => {
         return await this.request('/api/v1/messages/send/image', 'POST', messagePayload);
       },
       
+      // Enviar figurinha - POST /api/v1/messages/send/sticker
+      async sendSticker(phoneNumber, stickerUrl) {
+        const normalizedPhone = phoneNumber.replace(/\D/g, '');
+        return await this.request('/api/v1/messages/send/sticker', 'POST', {
+          sessionId: this.sessionId,
+          to: normalizedPhone,
+          sticker: stickerUrl
+        });
+      },
+
       // Enviar áudio - POST /api/v1/messages/send/audio
       async sendAudio(phoneNumber, audioUrl) {
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
@@ -808,6 +818,13 @@ Deno.serve(async (req) => {
         result = await adapter.sendImage(phoneNumber, imageUrl, caption);
         break;
         
+      case 'sendSticker':
+        if (!phoneNumber || !stickerUrl) {
+          return Response.json({ error: 'phoneNumber and stickerUrl required' }, { status: 400 });
+        }
+        result = await adapter.sendSticker(phoneNumber, stickerUrl);
+        break;
+
       case 'sendAudio':
         if (!phoneNumber || !audioUrl) {
           return Response.json({ error: 'phoneNumber and audioUrl required' }, { status: 400 });
