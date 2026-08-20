@@ -737,7 +737,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                     controls 
                     className="flex-1 h-8" 
                     src={mediaUrl} 
-                    preload="auto"
+                    preload="none"
                     data-chat-audio="true"
                     data-conversa-id={String(conversaId || '')}
                     data-mensagem-id={String(mensagem.id || '')}

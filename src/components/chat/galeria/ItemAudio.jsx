@@ -21,7 +21,7 @@ export default function ItemAudio({ mensagem, onLocalizarMensagem }) {
   const [tocando, setTocando] = useState(false);
   const [duracao, setDuracao] = useState(0);
   const [atual, setAtual] = useState(0);
-  const [carregando, setCarregando] = useState(true);
+  const [carregando, setCarregando] = useState(false);
   const [velocidade, setVelocidade] = useState(1);
 
   useEffect(() => {
@@ -140,7 +140,7 @@ export default function ItemAudio({ mensagem, onLocalizarMensagem }) {
         <p className="text-[11px] text-slate-500 mt-0.5 italic truncate">"{mensagem.texto}"</p>
       )}
 
-      <audio ref={audioRef} src={mensagem.arquivo_url} preload="auto" className="hidden" />
+      <audio ref={audioRef} src={mensagem.arquivo_url} preload="none" className="hidden" />
     </div>
   );
 }
