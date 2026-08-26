@@ -46,7 +46,7 @@ export default function CadastroMenorLanceModal({ open, onOpenChange, empresaId,
           50
         ),
         base44.entities.Administradora.filter(
-          { empresa_id: empresaId, status: 'ativa' },
+          { status: 'ativa' },
           'nome_fantasia',
           100
         ),
