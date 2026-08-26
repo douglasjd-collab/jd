@@ -56,6 +56,7 @@ import AlertasTarefasPopup from '@/components/tarefas/AlertasTarefasPopup';
 import AlertasTarefasAtrasadas from '@/components/tarefas/AlertasTarefasAtrasadas';
 import PopupChamadaRecebida from '@/components/chat/PopupChamadaRecebida';
 import CampanhaMonitorGlobal from '@/components/campanhas/CampanhaMonitorGlobal';
+import ChatFlutuante from '@/components/chat/ChatFlutuante';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
@@ -836,6 +837,11 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Monitor de campanhas permanece ativo em todas as áreas do CRM */}
       {user?.empresa_id && user.perfil !== 'parceiro' && <CampanhaMonitorGlobal empresaId={user.empresa_id} />}
+
+      {/* Chat flutuante do WhatsApp — disponível em todo o sistema (exceto no Bate-Papo, onde é redundante) */}
+      {user?.empresa_id && user.perfil !== 'parceiro' && currentPageName !== 'BatePapo' && (
+        <ChatFlutuante empresaId={user.empresa_id} user={user} defaultMinimized={true} />
+      )}
 
       {/* Nova Venda Consórcio Modal */}
       <VendaForm
