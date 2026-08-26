@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { format } from 'date-fns';
+import { formatDateTimeFullBR } from '@/components/utils/dateHelpers';
 import { createPageUrl } from '@/utils';
 import { useNavigate } from 'react-router-dom';
 import CampanhasPlanejamentoBadge from './CampanhasPlanejamentoBadge';
@@ -198,7 +198,7 @@ export default function OportunidadeCardConsolidado({
                       Sim {simulacoes.length - idx}
                     </p>
                     <p className="text-slate-500 text-[11px]">
-                      {format(new Date(sim.created_date), 'dd/MM/yyyy HH:mm')}
+                      {formatDateTimeFullBR(sim.created_date)}
                     </p>
                   </div>
                   <p className="font-semibold text-emerald-600">

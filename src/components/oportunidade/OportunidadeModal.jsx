@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseUTCTimestamp } from '@/components/utils/dateHelpers';
 
 import OportunidadeAbaDetalhes from './OportunidadeAbaDetalhes';
 import OportunidadeAbaComentarios from './OportunidadeAbaComentarios';
@@ -24,7 +25,10 @@ const formatCurrency = (v) =>
 
 function tempoParado(dateStr) {
   if (!dateStr) return null;
-  try { return formatDistanceToNow(new Date(dateStr), { addSuffix: false, locale: ptBR }); } catch { return null; }
+  try {
+    const d = parseUTCTimestamp(dateStr);
+    return d ? formatDistanceToNow(d, { addSuffix: false, locale: ptBR }) : null;
+  } catch { return null; }
 }
 
 const STATUS_CORES = {

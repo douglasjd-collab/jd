@@ -45,3 +45,57 @@ export function formatDateBR(value, fallback = "-") {
   if (!d) return fallback;
   return format(d, "dd/MM/yyyy");
 }
+
+/**
+ * Converte um timestamp ISO do backend (geralmente armazenado em UTC mas sem o sufixo 'Z')
+ * para um Date válido no fuso horário local do usuário.
+ *
+ * O Base44 armazena created_date/updated_date como ISO sem o 'Z' final, então new Date()
+ * interpreta incorretamente como hora local quando na verdade é UTC — causando deslocamento
+ * de horas (ex: +3h para UTC-3 em Pernambuco). Esta função anexa 'Z' quando necessário.
+ */
+export function parseUTCTimestamp(value) {
+  if (!value) return null;
+  if (value instanceof Date) return isValid(value) ? value : null;
+  if (typeof value !== "string") return null;
+
+  const s = value.trim();
+  if (!s) return null;
+
+  // Se já tem timezone info (Z ou +/-offset), parse normal
+  const hasTimezone = /[zZ]$/.test(s) || /[+-]\d{2}:?\d{2}$/.test(s);
+  if (hasTimezone) {
+    const d = new Date(s);
+    return isValid(d) ? d : null;
+  }
+
+  // Sem timezone info: assume UTC e anexa 'Z'
+  // Só anexa se for um datetime ISO (contém 'T'), evitando datas-only
+  if (s.includes("T")) {
+    const d = new Date(s + "Z");
+    return isValid(d) ? d : null;
+  }
+
+  // Fallback: date-only ou outro formato
+  const d = new Date(s);
+  return isValid(d) ? d : null;
+}
+
+/**
+ * Formata timestamp ISO do backend em formato dd/MM HH:mm no fuso local do usuário.
+ * Corrige o problema de timestamps UTC sem sufixo 'Z' sendo exibidos como UTC.
+ */
+export function formatDateTimeBR(value, fallback = "") {
+  const d = parseUTCTimestamp(value);
+  if (!d) return fallback;
+  return format(d, "dd/MM HH:mm");
+}
+
+/**
+ * Formata timestamp ISO do backend em formato dd/MM/yyyy HH:mm no fuso local.
+ */
+export function formatDateTimeFullBR(value, fallback = "") {
+  const d = parseUTCTimestamp(value);
+  if (!d) return fallback;
+  return format(d, "dd/MM/yyyy HH:mm");
+}

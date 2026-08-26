@@ -1,6 +1,5 @@
 import React from 'react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { formatDateTimeBR } from '@/components/utils/dateHelpers';
 import {
   ArrowRightLeft, MessageSquare, Plus, Paperclip, CheckSquare,
   User, DollarSign, Tag, Clock, Eye
@@ -91,7 +90,7 @@ export default function OportunidadeAbaHistorico({ oportunidade, movimentacoes =
                         )}
                       </div>
                       <span className="text-xs text-slate-400 flex-shrink-0 mt-0.5">
-                        {ev.created_date ? format(new Date(ev.created_date), 'dd/MM HH:mm') : ''}
+                        {ev.created_date ? formatDateTimeBR(ev.created_date) : ''}
                       </span>
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5 font-medium">{ev.usuario_nome}</p>
