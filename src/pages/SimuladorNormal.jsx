@@ -225,6 +225,9 @@ export default function SimuladorNormal() {
   };
 
   const creditoTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.credito) || 0), 0);
+  // Crédito da maior carta individual — usado para filtrar grupos disponíveis,
+  // pois cada carta entra num grupo separadamente (não a soma total).
+  const creditoMaximoCarta = cartas.reduce((max, carta) => Math.max(max, parseFloat(carta.credito) || 0), 0);
   const parcelaTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.parcela) || 0), 0);
   const parcelaReduzidaTotal = cartas.reduce((acc, carta) => acc + (parseFloat(carta.parcelaReduzida) || 0), 0);
   const prazoOriginal = cartas.find(c => c.prazo)?.prazo || '';
@@ -931,7 +934,7 @@ export default function SimuladorNormal() {
             empresaId={empresaId}
             administradoraId={administradoraId}
             categoriaBem={tipoGrupo}
-            credito={creditoTotal}
+            credito={creditoMaximoCarta}
             grupoSelecionado={grupo}
             onSelectGrupo={setGrupo}
           />
