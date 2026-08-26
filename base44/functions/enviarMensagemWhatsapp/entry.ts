@@ -482,6 +482,41 @@ Deno.serve(async (req) => {
       
       console.log('📱 Número D-API:', numeroDapi);
 
+      // ── D-API: montar contextInfo para resposta (quote) ──────────────────
+      // A D-API usa o schema Baileys (contextInfo) para renderizar a citação
+      // no WhatsApp. Sem isso, áudios enviados como reply aparecem "soltos",
+      // sem o bloco de citação da mensagem original.
+      // IMPORTANTE: este bloco deve rodar ANTES da detecção de tipo de mídia,
+      // pois dapiActionParams (abaixo) já referencia dapiContextInfo ao montar
+      // o payload de áudio — declarar depois causaria ReferenceError de TDZ.
+      let dapiContextInfo = null;
+      if (resposta_para_message_id) {
+        try {
+          const originaisCtx = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
+            { whatsapp_message_id: String(resposta_para_message_id) }, '-created_date', 5
+          );
+          const originalCtx = (originaisCtx && originaisCtx.length > 0)
+            ? (originaisCtx.find(m => m.empresa_id === empresaId) || originaisCtx[0])
+            : null;
+          const jidCliente = `${numeroDapi}@s.whatsapp.net`;
+          let participantJid = jidCliente;
+          // Se a mensagem original foi enviada pelo vendedor, o participant é o nosso JID
+          if (originalCtx?.remetente === 'vendedor' && conexaoDapi?.phone_number) {
+            const meuNum = String(conexaoDapi.phone_number).replace(/\D/g, '');
+            participantJid = `${meuNum}@s.whatsapp.net`;
+          }
+          dapiContextInfo = {
+            stanzaId: String(resposta_para_message_id),
+            participant: participantJid,
+            remoteJid: jidCliente,
+            quotedMessage: { conversation: resposta_para_texto || originalCtx?.texto || '' }
+          };
+          console.log('💬 D-API contextInfo montado para reply:', dapiContextInfo);
+        } catch (e) {
+          console.warn('⚠️ Erro ao montar contextInfo D-API:', e.message);
+        }
+      }
+
       // Determinar tipo de conteúdo e ação D-API (texto ou mídia)
       let tipoConteudoDapi = 'texto';
       let arquivoUrlDapi = null;
@@ -548,38 +583,6 @@ Deno.serve(async (req) => {
 
       const textoEnviar = mensagem_texto?.trim() || '';
 
-      // ── D-API: montar contextInfo para resposta (quote) ──────────────────
-      // A D-API usa o schema Baileys (contextInfo) para renderizar a citação
-      // no WhatsApp. Sem isso, áudios enviados como reply aparecem "soltos",
-      // sem o bloco de citação da mensagem original.
-      let dapiContextInfo = null;
-      if (resposta_para_message_id) {
-        try {
-          const originaisCtx = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-            { whatsapp_message_id: String(resposta_para_message_id) }, '-created_date', 5
-          );
-          const originalCtx = (originaisCtx && originaisCtx.length > 0)
-            ? (originaisCtx.find(m => m.empresa_id === empresaId) || originaisCtx[0])
-            : null;
-          const jidCliente = `${numeroDapi}@s.whatsapp.net`;
-          let participantJid = jidCliente;
-          // Se a mensagem original foi enviada pelo vendedor, o participant é o nosso JID
-          if (originalCtx?.remetente === 'vendedor' && conexaoDapi?.phone_number) {
-            const meuNum = String(conexaoDapi.phone_number).replace(/\D/g, '');
-            participantJid = `${meuNum}@s.whatsapp.net`;
-          }
-          dapiContextInfo = {
-            stanzaId: String(resposta_para_message_id),
-            participant: participantJid,
-            remoteJid: jidCliente,
-            quotedMessage: { conversation: resposta_para_texto || originalCtx?.texto || '' }
-          };
-          console.log('💬 D-API contextInfo montado para reply:', dapiContextInfo);
-        } catch (e) {
-          console.warn('⚠️ Erro ao montar contextInfo D-API:', e.message);
-        }
-      }
-      
       // Chamar whatsappService para envio D-API
       try {
         const startTime = Date.now();
