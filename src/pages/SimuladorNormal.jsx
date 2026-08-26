@@ -152,13 +152,12 @@ export default function SimuladorNormal() {
     // Buscar empresa_id do colaborador
     if (user) {
       const colabs = await base44.entities.Colaborador.filter(
-        { user_id: user.id, status: 'ativo' },
-        '-created_date',
-        1
+        { user_id: user.id },
+        '-created_date'
       );
-      const colab = colabs?.[0];
+      const colab = colabs?.find(c => c.status === 'ativo') || colabs?.[0];
       let empId = colab?.empresa_id || null;
-      if (!empId && ['master', 'super_admin'].includes(colab?.perfil)) {
+      if (!empId && ['master', 'super_admin'].includes(colab?.perfil || user.role)) {
         const empresas = await base44.entities.Empresa.filter({ status: 'ativa' }, '-created_date', 1);
         if (empresas?.length) empId = empresas[0].id;
       }
