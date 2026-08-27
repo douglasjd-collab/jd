@@ -29,7 +29,7 @@ export default function ChatFlutuante({ empresaId, user, captureTargetRef, captu
   const [contatosCache, setContatosCache] = useState({});
 
   // ── Arraste do painel ──
-  const [pos, setPos] = useState({ x: Math.max(20, window.innerWidth - 400), y: 80 });
+  const [pos, setPos] = useState({ x: Math.max(20, window.innerWidth - 440), y: 60 });
   const dragRef = useRef(null);
   const dragState = useRef(null);
 
@@ -45,7 +45,7 @@ export default function ChatFlutuante({ empresaId, user, captureTargetRef, captu
     if (!dragState.current) return;
     const dx = e.clientX - dragState.current.startX;
     const dy = e.clientY - dragState.current.startY;
-    const nx = Math.max(0, Math.min(window.innerWidth - 380, dragState.current.origX + dx));
+    const nx = Math.max(0, Math.min(window.innerWidth - 420, dragState.current.origX + dx));
     const ny = Math.max(0, Math.min(window.innerHeight - 80, dragState.current.origY + dy));
     setPos({ x: nx, y: ny });
   };
@@ -59,7 +59,7 @@ export default function ChatFlutuante({ empresaId, user, captureTargetRef, captu
   useEffect(() => {
     const onResize = () => {
       setPos(prev => ({
-        x: Math.max(0, Math.min(window.innerWidth - 380, prev.x)),
+        x: Math.max(0, Math.min(window.innerWidth - 420, prev.x)),
         y: Math.max(0, Math.min(window.innerHeight - 80, prev.y)),
       }));
     };
@@ -259,7 +259,7 @@ export default function ChatFlutuante({ empresaId, user, captureTargetRef, captu
         <div
           ref={dragRef}
           className="fixed z-[9999] flex flex-col bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden"
-          style={{ left: pos.x, top: pos.y, width: 380, height: 560, maxHeight: 'calc(100vh - 100px)' }}
+          style={{ left: pos.x, top: pos.y, width: 420, height: 680, maxHeight: 'calc(100vh - 80px)' }}
         >
           {/* Cabeçalho (arrastável) */}
           <div
