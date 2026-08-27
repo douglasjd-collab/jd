@@ -90,7 +90,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
       if (!codigo) return;
       
       // Agrupar por nome_bem completo + valor_bem para não perder planos com mesmo código mas nomes diferentes (ex: 50% vs 70% vs normal)
-      const chave = `${plano.nome_bem || codigo}__${plano.valor_bem || 0}`;
+      const chave = `${plano.nome_bem || codigo}__${plano.valor_bem || 0}__${plano.grupo || ''}`;
       
       if (!groups[chave]) {
         groups[chave] = {
@@ -313,7 +313,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
                   <TableBody>
                     {filteredPlanos.map((group) => (
                       <TableRow 
-                        key={`${group.codigo}__${group.valor_bem}`}
+                        key={`${group.codigo}__${group.valor_bem}__${group.grupo || ''}`}
                         className="hover:bg-slate-50 cursor-pointer"
                         onClick={() => handleOpenVariacoes(group)}
                       >
@@ -383,7 +383,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
               <span className="text-lg font-semibold text-blue-600">
                 {formatCurrency(selectedGroup?.valor_bem)}
               </span>
-              <Badge>{selectedGroup?.plano?.split('|')[0]?.trim()}</Badge>
+              <Badge>{selectedGroup?.grupo || selectedGroup?.plano?.split('|')[0]?.trim() || '-'}</Badge>
             </div>
           </DialogHeader>
 
