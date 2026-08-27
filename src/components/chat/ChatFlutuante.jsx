@@ -139,16 +139,39 @@ export default function ChatFlutuante({ empresaId, user, captureTargetRef, captu
     }
   }, [mensagens]);
 
+  // Converte File → base64 (o backend enviarMensagemWhatsapp espera base64, não File)
+  const fileParaBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      const base64 = result.includes(',') ? result.split(',').pop() : result;
+      resolve(base64);
+    };
+    reader.onerror = () => reject(reader.error || new Error('Falha ao ler arquivo'));
+    reader.readAsDataURL(file);
+  });
+
   // Envio de mensagem (mesma função do BatePapo)
   const enviarMutation = useMutation({
     mutationFn: async ({ texto, arquivo, mensagemParaResponder }) => {
       const destinatario = isGrupo(conversaSelecionada) ? conversaSelecionada.whatsapp_id : conversaSelecionada.cliente_telefone;
+      // Se arquivo veio como File (não base64), converter antes de enviar ao backend
+      let arquivoPayload = arquivo;
+      if (arquivo?.file && !arquivo.base64) {
+        const base64 = await fileParaBase64(arquivo.file);
+        arquivoPayload = {
+          base64,
+          nome: arquivo.nome,
+          tipo: arquivo.tipo,
+          tamanho: arquivo.tamanho || arquivo.file.size || 0,
+        };
+      }
       const resp = await base44.functions.invoke('enviarMensagemWhatsapp', {
         conversa_id: conversaSelecionada.id,
         mensagem_texto: texto,
         numero_cliente: destinatario,
         empresa_id: empresaId,
-        arquivo,
+        arquivo: arquivoPayload,
         resposta_para_texto: mensagemParaResponder?.texto || null,
         resposta_para_nome: mensagemParaResponder ? (mensagemParaResponder.remetente === 'vendedor' ? (mensagemParaResponder.usuario_nome || 'Você') : (conversaSelecionada?.cliente_nome || 'Cliente')) : null,
         resposta_para_message_id: mensagemParaResponder?.whatsapp_message_id || null,
