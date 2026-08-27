@@ -57,6 +57,31 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
     staleTime: 0,
   });
 
+  const { data: historicosLance = [] } = useQuery({
+    queryKey: ['historicos-lance-modal', empresaId, open],
+    queryFn: async () => {
+      const res = empresaId
+        ? await base44.entities.HistoricoLanceGrupo.filter({ empresa_id: empresaId })
+        : await base44.entities.HistoricoLanceGrupo.list('-assembleia_data', 5000);
+      const lista = Array.isArray(res) ? res : (res?.items ?? []);
+      return lista.filter(h => !h.status || h.status === 'ATIVO');
+    },
+    enabled: open,
+    staleTime: 60000,
+  });
+
+  const { data: detalhesLance = [] } = useQuery({
+    queryKey: ['detalhes-lance-modal', empresaId, open],
+    queryFn: async () => {
+      const res = empresaId
+        ? await base44.entities.HistoricoLanceDetalhe.filter({ empresa_id: empresaId })
+        : await base44.entities.HistoricoLanceDetalhe.list('-created_date', 5000);
+      return Array.isArray(res) ? res : (res?.items ?? []);
+    },
+    enabled: open,
+    staleTime: 60000,
+  });
+
   const groupedPlanos = useMemo(() => {
     const groups = {};
     
@@ -74,6 +99,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
           valor_bem: plano.valor_bem,
           produto_id: plano.produto_id,
           plano: plano.plano,
+          grupo: plano.grupo,
           tipo_venda: plano.tipo_venda,
           variacoes: []
         };
@@ -84,6 +110,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
         prazo_meses: plano.prazo_meses,
         parcela: plano.parcela,
         plano: plano.plano,
+        grupo: plano.grupo,
         tipo_venda: plano.tipo_venda
       });
     });
@@ -94,6 +121,40 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
     
     return Object.values(groups);
   }, [planos]);
+
+  const menorLancePorGrupo = useMemo(() => {
+    const dataPorHistorico = new Map(
+      historicosLance.map(h => [h.id, h.assembleia_data || ''])
+    );
+    const porGrupo = {};
+
+    detalhesLance.forEach(detalhe => {
+      if (detalhe.modalidade !== 'lance_livre') return;
+      const percentual = Number(detalhe.lance_percent);
+      if (!Number.isFinite(percentual)) return;
+
+      const grupo = String(detalhe.grupo || '').replace(/^0+/, '') || '0';
+      const dataAssembleia = dataPorHistorico.get(detalhe.historico_id);
+      if (!dataAssembleia) return;
+
+      const atual = porGrupo[grupo];
+      if (!atual || dataAssembleia > atual.data) {
+        porGrupo[grupo] = { data: dataAssembleia, menor: percentual };
+      } else if (dataAssembleia === atual.data) {
+        atual.menor = Math.min(atual.menor, percentual);
+      }
+    });
+
+    return porGrupo;
+  }, [detalhesLance, historicosLance]);
+
+  const formatPercent = (value) => {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return null;
+    return Number(value).toLocaleString('pt-BR', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    });
+  };
 
   const formatCurrency = (value) => {
     return value?.toLocaleString('pt-BR', { 
@@ -128,6 +189,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
         const matchSearch = (
           g.nome_bem?.toLowerCase().includes(s) ||
           g.codigo?.toLowerCase().includes(s) ||
+          g.grupo?.toLowerCase().includes(s) ||
           g.plano?.toLowerCase().includes(s)
         );
         if (!matchSearch) return false;
@@ -148,8 +210,10 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
 
   const handleSelectVariacao = (group, variacao) => {
     // Extrair número do grupo do campo plano (ex: "9130|..." -> "9130")
-    const grupoNumero = group.plano?.split('|')[0]?.trim() || 
-                        variacao.plano?.split('|')[0]?.trim() || 
+    const grupoNumero = group.grupo ||
+                        variacao.grupo ||
+                        group.plano?.split('|')[0]?.trim() ||
+                        variacao.plano?.split('|')[0]?.trim() ||
                         group.codigo?.replace(/^\D+/, '') || '';
     
     onSelectPlano({
@@ -174,7 +238,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-7xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Selecionar Plano Canopus</DialogTitle>
           </DialogHeader>
@@ -238,10 +302,11 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
                   <TableHeader>
                     <TableRow>
                       <TableHead>PLANO</TableHead>
-                      <TableHead className="text-right">VALOR</TableHead>
+                      <TableHead className="text-center">GRUPO</TableHead>
+                      <TableHead className="text-center">LANCE DO GRUPO</TableHead>
+                      <TableHead className="text-right">CRÉDITO</TableHead>
                       <TableHead className="text-center">PRAZO</TableHead>
                       <TableHead className="text-right">1ª PARCELA</TableHead>
-                      <TableHead className="text-center">VARIAÇÕES</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -259,6 +324,23 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
                             <span className="ml-1">{group.nome_bem?.split(' - ')[1] || group.nome_bem}</span>
                           </div>
                         </TableCell>
+                        <TableCell className="text-center font-medium text-slate-700">
+                          {group.grupo || '-'}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {(() => {
+                            const grupoNormalizado = String(group.grupo || '').replace(/^0+/, '') || '0';
+                            const menorLance = menorLancePorGrupo[grupoNormalizado]?.menor;
+                            const percentual = formatPercent(menorLance);
+                            return percentual ? (
+                              <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                                Menor: {percentual}%
+                              </Badge>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(group.valor_bem)}
                         </TableCell>
@@ -267,9 +349,6 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
                         </TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(group.variacoes[0]?.parcela)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline">{group.variacoes.length}</Badge>
                         </TableCell>
                         <TableCell>
                           <Button 
