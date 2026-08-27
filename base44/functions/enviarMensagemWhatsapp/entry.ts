@@ -718,9 +718,54 @@ Deno.serve(async (req) => {
           status: 'enviada'
         });
         
-        // Atualizar conversa
+        // ── D-API: documentos (PDF/DOC) não suportam caption no endpoint ──
+        // /api/v1/messages/send/document (schema oficial não tem campo caption).
+        // Imagens e vídeos suportam caption normalmente, mas documentos NÃO.
+        // Quando o atendente envia um documento com texto, o texto era silenciosamente
+        // descartado. Solução: enviar o texto como mensagem separada logo após o
+        // documento, para que o cliente receba ambos.
+        let textoFollowUpId = null;
+        if (tipoConteudoDapi === 'pdf' && textoEnviar) {
+          try {
+            console.log('📝 D-API documento sem caption — enviando texto como follow-up:', textoEnviar.substring(0, 50));
+            const followUpResp = await base44.functions.invoke('whatsappService', {
+              connectionId: conexaoDapi.id,
+              action: 'sendText',
+              phoneNumber: numeroDapi,
+              text: textoEnviar
+            });
+            const followUpResult = followUpResp?.data;
+            if (followUpResult?.success) {
+              textoFollowUpId = followUpResult?.data?.data?.messageId || followUpResult?.data?.messageId || `dapi_txt_${Date.now()}`;
+              // Salvar a mensagem de texto separada no banco
+              await base44.asServiceRole.entities.MensagemWhatsapp.create({
+                conversa_id: conversa_id,
+                empresa_id: empresaId,
+                remetente: 'vendedor',
+                usuario_id: user.id,
+                usuario_nome: nomeAtendente,
+                atendente_nome: nomeAtendente,
+                tipo_conteudo: 'texto',
+                texto: textoEnviar,
+                provider: 'dapi',
+                download_status: 'nao_aplicavel',
+                whatsapp_message_id: textoFollowUpId,
+                data_envio: new Date().toISOString(),
+                status: 'enviada'
+              });
+              console.log('✅ Texto follow-up enviado após documento:', textoFollowUpId);
+            } else {
+              console.warn('⚠️ Falha ao enviar texto follow-up após documento:', followUpResult?.error);
+            }
+          } catch (followUpErr) {
+            console.warn('⚠️ Erro ao enviar texto follow-up após documento:', followUpErr.message);
+          }
+        }
+        
+        // Atualizar conversa — usar o texto como última mensagem quando houver
+        const ultimaMsgDisplay = textoEnviar || `📎 ${arquivo?.nome || 'arquivo'}`;
         await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
-          ultima_mensagem: (textoEnviar || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
+          ultima_mensagem: ultimaMsgDisplay.substring(0, 200),
           data_ultima_mensagem: new Date().toISOString(),
           ultimo_remetente: 'vendedor',
         });
