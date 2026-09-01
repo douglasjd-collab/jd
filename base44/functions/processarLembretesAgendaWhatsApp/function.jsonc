@@ -1,0 +1,15 @@
+{
+  "name": "processarLembretesAgendaWhatsApp",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "name": "Processarlembretesagendadowhatsapp",
+      "description": "Automação antiga substituída pelo processador central otimizado.",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "*/5 * * * *",
+      "is_active": false
+    }
+  ]
+}
