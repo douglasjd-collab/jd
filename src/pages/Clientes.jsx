@@ -41,6 +41,7 @@ export default function Clientes() {
   const [deduplicando, setDeduplicando] = useState(false);
   const [confirmDedup, setConfirmDedup] = useState(false);
   const queryClient = useQueryClient();
+  const salvandoClienteRef = React.useRef(false);
 
   React.useEffect(() => {
     loadUser();
@@ -217,6 +218,13 @@ export default function Clientes() {
   const normCpf = (cpf) => String(cpf || '').replace(/\D/g, '');
 
   const handleSubmit = async (data) => {
+    // Trava síncrona: impede dois cliques/submits antes de o estado da mutation atualizar.
+    if (salvandoClienteRef.current) {
+      toast.info('O cadastro deste cliente já está sendo processado.');
+      return null;
+    }
+    salvandoClienteRef.current = true;
+
     try {
       const user = await base44.auth.me();
       
@@ -288,6 +296,27 @@ export default function Clientes() {
         clienteData.empresa_id = empresa_id;
       }
 
+      // Conferência fresca no banco imediatamente antes de salvar.
+      // A lista da tela pode estar desatualizada quando outra aba ou usuário acabou de cadastrar.
+      const clientesAtuais = empresa_id
+        ? await base44.entities.Cliente.filter({ empresa_id }, '-created_date', 5000)
+        : await base44.entities.Cliente.list('-created_date', 5000);
+      const documentoNorm = data.tipo_pessoa === 'Jurídica'
+        ? normCpf(clienteData.pj_cnpj)
+        : normCpf(clienteData.cpf);
+      const campoDocumento = data.tipo_pessoa === 'Jurídica' ? 'pj_cnpj' : 'cpf';
+      const duplicado = documentoNorm && clientesAtuais.find((c) =>
+        c.id !== clienteParaEditar?.id &&
+        c.tipo_pessoa === data.tipo_pessoa &&
+        normCpf(c[campoDocumento]) === documentoNorm
+      );
+
+      if (duplicado) {
+        const rotulo = data.tipo_pessoa === 'Jurídica' ? 'CNPJ' : 'CPF';
+        toast.error(`Já existe um cliente com este ${rotulo} cadastrado.`);
+        return null;
+      }
+
       let clienteSalvo = null;
       if (clienteParaEditar) {
         clienteSalvo = await updateMutation.mutateAsync({ id: clienteParaEditar.id, data: clienteData });
@@ -302,6 +331,8 @@ export default function Clientes() {
       console.error('Erro ao salvar cliente:', error);
       toast.error('Erro ao salvar cliente: ' + error.message);
       return null;
+    } finally {
+      salvandoClienteRef.current = false;
     }
   };
 
