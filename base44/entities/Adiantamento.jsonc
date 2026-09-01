@@ -9,10 +9,14 @@
     "pessoa_tipo": {
       "type": "string",
       "enum": [
+        "parceiro",
         "vendedor",
-        "parceiro"
+        "colaborador",
+        "colaborador_vendedor",
+        "gerente",
+        "admin"
       ],
-      "description": "Tipo de pessoa"
+      "description": "Perfil do benefici\u00e1rio do adiantamento"
     },
     "colaborador_id": {
       "type": "string",
