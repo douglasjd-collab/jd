@@ -54,7 +54,6 @@ export default function Tarefas() {
   const kanbanRef = useRef(null);
   const isDraggingRef = useRef(false);
   const scrollAnimRef = useRef(null);
-  const ultimaBuscaAbertaRef = useRef('');
 
   const handleDragStart = useCallback(() => {
     isDraggingRef.current = true;
@@ -344,34 +343,6 @@ export default function Tarefas() {
     );
   }, [tarefas, termoBusca]);
 
-  useEffect(() => {
-    if (termoBusca.length < 2) {
-      ultimaBuscaAbertaRef.current = '';
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      const resultadosExatos = resultadosBuscaNome.filter(t =>
-        normalizarBusca(t.titulo) === termoBusca ||
-        normalizarBusca(t.cliente_nome) === termoBusca
-      );
-      const tarefaParaAbrir = resultadosExatos.length === 1
-        ? resultadosExatos[0]
-        : resultadosBuscaNome.length === 1
-          ? resultadosBuscaNome[0]
-          : null;
-
-      if (!tarefaParaAbrir) return;
-      const chaveBusca = `${termoBusca}:${tarefaParaAbrir.id}`;
-      if (ultimaBuscaAbertaRef.current === chaveBusca) return;
-
-      ultimaBuscaAbertaRef.current = chaveBusca;
-      setTarefaSelecionada(tarefaParaAbrir);
-      setDetalhesOpen(true);
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [termoBusca, resultadosBuscaNome]);
 
   const tarefasFiltradas = tarefasDoSetor.filter(t => {
     const matchBusca = !termoBusca || normalizarBusca(t.titulo).includes(termoBusca) || normalizarBusca(t.cliente_nome).includes(termoBusca);
