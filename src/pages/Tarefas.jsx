@@ -379,29 +379,36 @@ export default function Tarefas() {
         )}
       </PageHeader>
 
-      {/* Abas */}
-      <div className="flex items-center gap-1 bg-white border rounded-xl p-1 shadow-sm w-fit">
-        <button
-          onClick={() => setAbaAtiva('andamento')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'andamento' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          Em andamento
-        </button>
-        <button
-          onClick={() => setAbaAtiva('finalizados')}
-          className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'finalizados' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
-        >
-          Finalizados
-        </button>
+      {/* Abas + pesquisa em destaque */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-1 bg-white border rounded-xl p-1 shadow-sm w-fit">
+          <button
+            onClick={() => setAbaAtiva('andamento')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'andamento' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Em andamento
+          </button>
+          <button
+            onClick={() => setAbaAtiva('finalizados')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'finalizados' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            Finalizados
+          </button>
+        </div>
+        <div className="relative w-full sm:w-80 lg:w-96">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-600 pointer-events-none" />
+          <Input
+            placeholder="Pesquisar tarefas..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="h-11 pl-11 pr-4 text-sm font-medium bg-white border-2 border-blue-300 rounded-xl shadow-sm placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-blue-500"
+          />
+        </div>
       </div>
 
       {/* Filtros — scroll horizontal no mobile */}
       <div className="overflow-x-auto -mx-4 px-4 pb-1 md:mx-0 md:px-0">
         <div className="flex items-center gap-2 min-w-max">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-            <Input placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-8 text-xs w-36" />
-          </div>
           <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
             <option value="todos">Status</option>
             {statusList.filter(s => s && s.nome).map(s => <option key={s.slug || s.id || s.nome} value={s.slug || s.nome}>{s.nome}</option>)}
