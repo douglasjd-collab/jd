@@ -1,0 +1,15 @@
+{
+  "name": "verificarPropostasLinkNaoAbertas",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "name": "Verifiquepropostaslinknaoabertas",
+      "description": "Automação antiga substituída pelo processador central otimizado.",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "*/5 * * * *",
+      "is_active": false
+    }
+  ]
+}
