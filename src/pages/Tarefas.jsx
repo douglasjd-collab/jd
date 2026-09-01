@@ -201,14 +201,35 @@ export default function Tarefas() {
     } catch (e) { console.error('Histórico:', e); }
   };
 
+  const aplicarDataConclusao = (data, tarefaAnterior = null) => {
+    if (!data?.status) return data;
+
+    const finalizando = ['concluido', 'arquivado'].includes(data.status);
+    const estavaFinalizada = ['concluido', 'arquivado'].includes(tarefaAnterior?.status);
+
+    if (finalizando) {
+      return {
+        ...data,
+        data_conclusao_real: data.data_conclusao_real || tarefaAnterior?.data_conclusao_real || hoje,
+      };
+    }
+
+    if (estavaFinalizada) {
+      return { ...data, data_conclusao_real: null };
+    }
+
+    return data;
+  };
+
   const criarTarefa = useMutation({
     mutationFn: async (data) => {
+      const dadosComConclusao = aplicarDataConclusao(data);
       const tarefa = await base44.entities.Tarefa.create({
-        ...data,
+        ...dadosComConclusao,
         empresa_id: empresaId,
         criado_por_id: currentUser?.id,
         criado_por_nome: currentUser?.nome_perfil || currentUser?.full_name,
-        data_cadastro: data.data_cadastro || hoje,
+        data_cadastro: dadosComConclusao.data_cadastro || hoje,
       });
       await registrarHistorico({ tarefaId: tarefa.id, acao: 'criou', descricao: `Criou a tarefa "${tarefa.titulo}"`, statusNovo: tarefa.status });
       return tarefa;
@@ -218,12 +239,13 @@ export default function Tarefas() {
 
   const atualizarTarefa = useMutation({
     mutationFn: async ({ id, data, tarefaAntiga }) => {
-      const result = await base44.entities.Tarefa.update(id, data);
-      if (tarefaAntiga?.status && data.status && tarefaAntiga.status !== data.status) {
-        await registrarHistorico({ tarefaId: id, acao: 'moveu_status', descricao: `Status alterado`, statusAnterior: tarefaAntiga.status, statusNovo: data.status });
+      const dadosComConclusao = aplicarDataConclusao(data, tarefaAntiga);
+      const result = await base44.entities.Tarefa.update(id, dadosComConclusao);
+      if (tarefaAntiga?.status && dadosComConclusao.status && tarefaAntiga.status !== dadosComConclusao.status) {
+        await registrarHistorico({ tarefaId: id, acao: 'moveu_status', descricao: `Status alterado`, statusAnterior: tarefaAntiga.status, statusNovo: dadosComConclusao.status });
       }
-      if (tarefaAntiga?.data_conclusao_prevista && data.data_conclusao_prevista && tarefaAntiga.data_conclusao_prevista !== data.data_conclusao_prevista) {
-        await registrarHistorico({ tarefaId: id, acao: 'alterou_prazo', descricao: `Prazo alterado`, valorAnterior: tarefaAntiga.data_conclusao_prevista, valorNovo: data.data_conclusao_prevista });
+      if (tarefaAntiga?.data_conclusao_prevista && dadosComConclusao.data_conclusao_prevista && tarefaAntiga.data_conclusao_prevista !== dadosComConclusao.data_conclusao_prevista) {
+        await registrarHistorico({ tarefaId: id, acao: 'alterou_prazo', descricao: `Prazo alterado`, valorAnterior: tarefaAntiga.data_conclusao_prevista, valorNovo: dadosComConclusao.data_conclusao_prevista });
       }
       return result;
     },
@@ -256,12 +278,13 @@ export default function Tarefas() {
 
   const handleUpdate = async (id, data) => {
     const tarefaOriginal = tarefas.find(t => t.id === id);
-    await base44.entities.Tarefa.update(id, data);
-    if (tarefaOriginal?.status && data.status && tarefaOriginal.status !== data.status) {
-      await registrarHistorico({ tarefaId: id, acao: 'moveu_status', descricao: `Status alterado`, statusAnterior: tarefaOriginal.status, statusNovo: data.status });
+    const dadosComConclusao = aplicarDataConclusao(data, tarefaOriginal);
+    await base44.entities.Tarefa.update(id, dadosComConclusao);
+    if (tarefaOriginal?.status && dadosComConclusao.status && tarefaOriginal.status !== dadosComConclusao.status) {
+      await registrarHistorico({ tarefaId: id, acao: 'moveu_status', descricao: `Status alterado`, statusAnterior: tarefaOriginal.status, statusNovo: dadosComConclusao.status });
     }
     queryClient.invalidateQueries({ queryKey: ['tarefas'] });
-    if (tarefaSelecionada?.id === id) setTarefaSelecionada(prev => ({ ...prev, ...data }));
+    if (tarefaSelecionada?.id === id) setTarefaSelecionada(prev => ({ ...prev, ...dadosComConclusao }));
   };
 
   const SLUGS_FINALIZADOS = ['concluido', 'arquivado'];
@@ -586,19 +609,20 @@ export default function Tarefas() {
           if (!destination || destination.droppableId === source.droppableId) return;
 
           const novoStatus = destination.droppableId;
+          const tarefaOriginal = tarefas.find(t => t.id === draggableId);
+          const dadosMovimento = aplicarDataConclusao({ status: novoStatus }, tarefaOriginal);
 
           // Atualiza o cache imediatamente (sem await) para movimento instantâneo
           queryClient.setQueryData(
             ['tarefas', empresaId, currentUser?.colaborador_id, isAdminPerfil, isParceiro, currentUser?.id],
             (old) => {
               if (!old || !Array.isArray(old)) return old;
-              return old.map(t => t.id === draggableId ? { ...t, status: novoStatus } : t);
+              return old.map(t => t.id === draggableId ? { ...t, ...dadosMovimento } : t);
             }
           );
 
           // API em background
-          const tarefaOriginal = tarefas.find(t => t.id === draggableId);
-          base44.entities.Tarefa.update(draggableId, { status: novoStatus })
+          base44.entities.Tarefa.update(draggableId, dadosMovimento)
             .then(() => {
               if (tarefaOriginal?.status && tarefaOriginal.status !== novoStatus) {
                 registrarHistorico({ tarefaId: draggableId, acao: 'moveu_status', descricao: 'Status alterado', statusAnterior: tarefaOriginal.status, statusNovo: novoStatus });
