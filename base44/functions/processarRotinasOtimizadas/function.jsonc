@@ -1,0 +1,15 @@
+{
+  "name": "processarRotinasOtimizadas",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "name": "Processador central otimizado",
+      "description": "Verifica filas leves e só invoca rotinas quando existe trabalho pendente.",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "*/5 * * * *",
+      "is_active": true
+    }
+  ]
+}
