@@ -190,6 +190,21 @@
     "edicao_api_erro": {
       "type": "string",
       "description": "Mensagem de erro retornada pela API do WhatsApp ao tentar editar a mensagem no aparelho, se houver"
+    },
+    "funil_ia_status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "processando",
+        "analisado",
+        "erro"
+      ],
+      "description": "Controle de idempot\u00eancia da an\u00e1lise de \u00e1udio pela IA do funil"
+    },
+    "funil_ia_processado_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data da conclus\u00e3o da an\u00e1lise de \u00e1udio pela IA"
     }
   },
   "required": [
