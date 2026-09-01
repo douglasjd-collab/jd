@@ -22,6 +22,17 @@ const STATUS_COLORS = {
   cancelado: 'bg-slate-100 text-slate-500',
 };
 
+const PERFIS_ADIANTAMENTO = [
+  { value: 'parceiro', label: 'Parceiro' },
+  { value: 'vendedor', label: 'Vendedor' },
+  { value: 'colaborador', label: 'Colaborador' },
+  { value: 'colaborador_vendedor', label: 'Colaborador/Vendedor' },
+  { value: 'gerente', label: 'Gerente' },
+  { value: 'admin', label: 'Administrador' },
+];
+
+const PESSOA_LABELS = Object.fromEntries(PERFIS_ADIANTAMENTO.map(p => [p.value, p.label]));
+
 export default function Adiantamentos() {
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState('');
@@ -139,18 +150,20 @@ export default function Adiantamentos() {
   const handleSalvar = async () => {
     if (!form.valor || parseFloat(form.valor) <= 0) { toast.error('Informe o valor'); return; }
     if (!form.data) { toast.error('Informe a data'); return; }
-    if (form.pessoa_tipo === 'vendedor' && !form.colaborador_id) { toast.error('Selecione o vendedor'); return; }
-    if (form.pessoa_tipo === 'parceiro' && !form.parceiro_id) { toast.error('Selecione o parceiro'); return; }
+    if (!form.colaborador_id && !form.parceiro_id) {
+      toast.error(`Selecione o ${(PESSOA_LABELS[form.pessoa_tipo] || 'beneficiário').toLowerCase()}`);
+      return;
+    }
 
     setIsSaving(true);
     try {
       const data = {
         empresa_id: user.empresa_id,
         pessoa_tipo: form.pessoa_tipo,
-        colaborador_id: form.pessoa_tipo === 'vendedor' ? form.colaborador_id : null,
-        colaborador_nome: form.pessoa_tipo === 'vendedor' ? form.colaborador_nome : null,
-        parceiro_id: form.pessoa_tipo === 'parceiro' ? form.parceiro_id : null,
-        parceiro_nome: form.pessoa_tipo === 'parceiro' ? form.parceiro_nome : null,
+        colaborador_id: form.colaborador_id || null,
+        colaborador_nome: form.colaborador_nome || null,
+        parceiro_id: form.parceiro_id || null,
+        parceiro_nome: form.parceiro_nome || null,
         valor: parseFloat(form.valor),
         data: form.data,
         motivo: form.motivo || '',
@@ -191,7 +204,7 @@ export default function Adiantamentos() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Adiantamentos</h1>
-          <p className="text-slate-500 text-sm mt-1">Gerencie adiantamentos de salários a vendedores e parceiros.</p>
+          <p className="text-slate-500 text-sm mt-1">Gerencie adiantamentos para parceiros, vendedores, colaboradores, gerentes e administradores.</p>
         </div>
         {isAdmin && (
           <Button onClick={() => abrirModal()} className="bg-[#10353C] hover:bg-[#1a5060] text-white">
@@ -261,8 +274,8 @@ export default function Adiantamentos() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-slate-800">{a.colaborador_nome || a.parceiro_nome || '-'}</p>
-                    <Badge className={`text-xs ${a.pessoa_tipo === 'vendedor' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
-                      {a.pessoa_tipo === 'vendedor' ? 'Vendedor' : 'Parceiro'}
+                    <Badge className={`text-xs ${a.pessoa_tipo === 'parceiro' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {PESSOA_LABELS[a.pessoa_tipo] || (a.parceiro_id ? 'Parceiro' : 'Colaborador')}
                     </Badge>
                     <Badge className={`text-xs ${STATUS_COLORS[a.status]}`}>
                       {a.status === 'pendente' ? '⏳ Pendente' : a.status === 'descontado' ? '✅ Descontado' : '❌ Cancelado'}
@@ -321,35 +334,52 @@ export default function Adiantamentos() {
               <Select value={form.pessoa_tipo} onValueChange={v => setForm(f => ({ ...f, pessoa_tipo: v, colaborador_id: '', colaborador_nome: '', parceiro_id: '', parceiro_nome: '' }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="vendedor">Vendedor / Colaborador</SelectItem>
-                  <SelectItem value="parceiro">Empresa Parceira</SelectItem>
+                  {PERFIS_ADIANTAMENTO.map(perfil => (
+                    <SelectItem key={perfil.value} value={perfil.value}>{perfil.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {form.pessoa_tipo === 'vendedor' ? (
+            {form.pessoa_tipo === 'parceiro' ? (
               <div>
-                <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Vendedor *</Label>
-                <Select value={form.colaborador_id} onValueChange={v => {
-                  const c = colaboradores.find(x => x.id === v);
-                  setForm(f => ({ ...f, colaborador_id: v, colaborador_nome: c?.nome || '' }));
-                }}>
+                <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Parceiro *</Label>
+                <Select
+                  value={form.colaborador_id ? `colaborador:${form.colaborador_id}` : form.parceiro_id ? `empresa:${form.parceiro_id}` : ''}
+                  onValueChange={v => {
+                    const [origem, id] = v.split(':');
+                    if (origem === 'colaborador') {
+                      const c = colaboradores.find(x => x.id === id);
+                      setForm(f => ({ ...f, colaborador_id: id, colaborador_nome: c?.nome || '', parceiro_id: '', parceiro_nome: '' }));
+                    } else {
+                      const p = parceiros.find(x => x.id === id);
+                      setForm(f => ({ ...f, parceiro_id: id, parceiro_nome: p?.nome || '', colaborador_id: '', colaborador_nome: '' }));
+                    }
+                  }}
+                >
                   <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                   <SelectContent>
-                    {colaboradores.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+                    {colaboradores.filter(c => c.perfil === 'parceiro').map(c => (
+                      <SelectItem key={`colaborador:${c.id}`} value={`colaborador:${c.id}`}>{c.nome}</SelectItem>
+                    ))}
+                    {parceiros.map(p => (
+                      <SelectItem key={`empresa:${p.id}`} value={`empresa:${p.id}`}>{p.nome} — Empresa Parceira</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             ) : (
               <div>
-                <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Parceiro *</Label>
-                <Select value={form.parceiro_id} onValueChange={v => {
-                  const p = parceiros.find(x => x.id === v);
-                  setForm(f => ({ ...f, parceiro_id: v, parceiro_nome: p?.nome || '' }));
+                <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">{PESSOA_LABELS[form.pessoa_tipo]} *</Label>
+                <Select value={form.colaborador_id} onValueChange={v => {
+                  const c = colaboradores.find(x => x.id === v);
+                  setForm(f => ({ ...f, colaborador_id: v, colaborador_nome: c?.nome || '', parceiro_id: '', parceiro_nome: '' }));
                 }}>
                   <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                   <SelectContent>
-                    {parceiros.map(p => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}
+                    {colaboradores
+                      .filter(c => c.perfil === form.pessoa_tipo)
+                      .map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
