@@ -18,6 +18,14 @@ Deno.serve(async (req) => {
     if (!mensagem.arquivo_url) {
       return Response.json({ skipped: true, reason: 'sem arquivo de áudio ainda' });
     }
+    if (mensagem.funil_ia_status === 'analisado' || mensagem.funil_ia_status === 'processando') {
+      return Response.json({ skipped: true, reason: 'áudio já processado ou em processamento' });
+    }
+
+    // Lock simples contra reprocessamento do mesmo áudio por eventos repetidos.
+    await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagem.id, {
+      funil_ia_status: 'processando',
+    });
 
     // 1) Transcrever (reaproveita texto já transcrito, senão chama Whisper diretamente)
     let transcricao = mensagem.texto && mensagem.texto !== 'Áudio' ? mensagem.texto : '';
@@ -176,6 +184,10 @@ Responda em JSON com:
     }
 
     if (!oportunidade) {
+      await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagem.id, {
+        funil_ia_status: 'analisado',
+        funil_ia_processado_em: new Date().toISOString(),
+      });
       return Response.json({ success: true, transcricao, acao: 'sem_oportunidade' });
     }
 
@@ -235,6 +247,11 @@ Responda em JSON com:
       usuario_nome: 'Assistente IA',
       mensagem: partesComentario.join('\n\n'),
       tipo: 'comentario'
+    });
+
+    await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagem.id, {
+      funil_ia_status: 'analisado',
+      funil_ia_processado_em: new Date().toISOString(),
     });
 
     return Response.json({ success: true, transcricao, analise, oportunidade_id: oportunidade.id });
