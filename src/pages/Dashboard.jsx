@@ -10,7 +10,6 @@ import DashboardFunilConsolidado from '@/components/dashboard/DashboardFunilCons
 import DashboardProducaoPorProduto from '@/components/dashboard/DashboardProducaoPorProduto';
 import DashboardInsights from '@/components/dashboard/DashboardInsights';
 import DashboardOportunidadesParadas from '@/components/dashboard/DashboardOportunidadesParadas';
-import CipRetornoModal from '@/components/emprestimos/CipRetornoModal';
 import LancesDoGrupoPanel from '@/components/simulador/LancesDoGrupoPanel';
 import GraficoProducao from '@/components/dashboard/GraficoProducao';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -59,7 +58,6 @@ export default function Dashboard() {
   const [filtroVendedor, setFiltroVendedor] = useState('todos');
   const [filtroFilial, setFiltroFilial] = useState('todos');
   const [filtroProduto, setFiltroProduto] = useState('todos');
-  const [cipModalOpen, setCipModalOpen] = useState(false);
   const [gruposModalOpen, setGruposModalOpen] = useState(false);
   const [grupoSelecionado, setGrupoSelecionado] = useState('');
 
@@ -258,20 +256,6 @@ export default function Dashboard() {
     return m;
   }, [colaboradores]);
 
-  const { data: propostasCip = [] } = useQuery({
-    queryKey: ['cip-exec', user?.empresa_id],
-    enabled: !!user,
-    queryFn: async () => {
-      const hoje = format(new Date(), 'yyyy-MM-dd');
-      const f = { produto: 'emprestimo' };
-      if (user.empresa_id) f.empresa_id = user.empresa_id;
-      if (isParceiro && user.colaborador_id) f.vendedor_id = user.colaborador_id;
-      const todas = await base44.entities.Proposta.filter(f, '-created_date', 200);
-      return todas.filter(p => p.cip_data_retorno_prevista === hoje);
-    },
-    staleTime: 300000, // 5 minutos
-  });
-
   // Indica se a venda é uma transferência de cota (não deve contar como nova venda)
   const isTransferencia = (v) =>
     v.origem_proposta === 'transferencia_cota' ||
@@ -388,12 +372,6 @@ export default function Dashboard() {
             </h1>
             <p className="text-slate-500 text-sm mt-0.5">{format(new Date(), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</p>
           </div>
-          {propostasCip.length > 0 && (
-            <button onClick={() => setCipModalOpen(true)} className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-2 text-sm font-medium hover:bg-amber-100 transition-colors">
-              <AlertCircle className="w-4 h-4" />
-              {propostasCip.length} CIP(s) com retorno hoje
-            </button>
-          )}
         </div>
 
         {/* Aniversariantes */}
@@ -691,7 +669,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        <CipRetornoModal open={cipModalOpen} onOpenChange={setCipModalOpen} propostas={propostasCip} />
       </div>
     </ErrorBoundary>
   );
