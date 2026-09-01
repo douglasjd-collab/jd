@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import ColaboracaoInterna from './ColaboracaoInterna';
 import ChecklistAba from './ChecklistAba';
+import TempoTarefa from './TempoTarefa';
 import { ParticipantesBottomSheet, AtividadeRecenteBottomSheet } from './TarefaMobileSheets';
 
 const PRIORIDADE_CORES = {
@@ -439,6 +440,9 @@ export default function TarefaDetalhesModal({
                   )}
                 </div>
               </div>
+
+              {/* Tempo exato entre criação e conclusão/hoje */}
+              <TempoTarefa tarefa={tarefa} />
 
               {/* Grid de informações */}
               <div className="grid grid-cols-2 gap-3">
