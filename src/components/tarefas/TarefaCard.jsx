@@ -5,8 +5,8 @@ import { MoreHorizontal, CheckSquare, Paperclip, MessageCircle, Phone } from 'lu
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { differenceInDays, formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { differenceInDays } from 'date-fns';
+import TempoTarefa from './TempoTarefa';
 
 /* ─── PRIORIDADE → cor da borda topo e badge ─── */
 const prioridadeCfg = {
@@ -63,15 +63,6 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes }) 
     if (atrasada)  return { label: `Atrasada ${Math.abs(diasPrazo)} ${Math.abs(diasPrazo) === 1 ? 'dia' : 'dias'}`, cls: 'text-red-600' };
     if (venceHoje) return { label: 'Vence hoje', cls: 'text-orange-500' };
     return null;
-  })();
-
-  // Tempo desde o cadastro
-  const tempoStr = (() => {
-    const base = tarefa.created_date || tarefa.data_cadastro;
-    if (!base) return null;
-    try {
-      return formatDistanceToNow(new Date(base), { addSuffix: true, locale: ptBR });
-    } catch { return null; }
   })();
 
   // Cor do card (inspirada no funil)
@@ -226,14 +217,10 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes }) 
         </div>
       </div>
 
-      {/* ══ TEMPO ══ */}
-      {tempoStr && (
-        <div className="px-3 pb-3 -mt-1">
-          <p className="text-xs text-slate-400">
-            ⏱ {tempoStr}
-          </p>
-        </div>
-      )}
+      {/* ══ TEMPO EXATO EM DIAS ══ */}
+      <div className="px-3 pb-3 -mt-1">
+        <TempoTarefa tarefa={tarefa} compacto />
+      </div>
     </div>
   );
 }
