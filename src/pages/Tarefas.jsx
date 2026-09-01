@@ -54,6 +54,7 @@ export default function Tarefas() {
   const kanbanRef = useRef(null);
   const isDraggingRef = useRef(false);
   const scrollAnimRef = useRef(null);
+  const ultimaBuscaAbertaRef = useRef('');
 
   const handleDragStart = useCallback(() => {
     isDraggingRef.current = true;
@@ -309,10 +310,48 @@ export default function Tarefas() {
     return true;
   };
 
+  const normalizarBusca = (str) => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const termoBusca = normalizarBusca(search.trim());
+
+  const resultadosBuscaNome = useMemo(() => {
+    if (termoBusca.length < 2) return [];
+    return tarefas.filter(t =>
+      normalizarBusca(t.titulo).includes(termoBusca) ||
+      normalizarBusca(t.cliente_nome).includes(termoBusca)
+    );
+  }, [tarefas, termoBusca]);
+
+  useEffect(() => {
+    if (termoBusca.length < 2) {
+      ultimaBuscaAbertaRef.current = '';
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      const resultadosExatos = resultadosBuscaNome.filter(t =>
+        normalizarBusca(t.titulo) === termoBusca ||
+        normalizarBusca(t.cliente_nome) === termoBusca
+      );
+      const tarefaParaAbrir = resultadosExatos.length === 1
+        ? resultadosExatos[0]
+        : resultadosBuscaNome.length === 1
+          ? resultadosBuscaNome[0]
+          : null;
+
+      if (!tarefaParaAbrir) return;
+      const chaveBusca = `${termoBusca}:${tarefaParaAbrir.id}`;
+      if (ultimaBuscaAbertaRef.current === chaveBusca) return;
+
+      ultimaBuscaAbertaRef.current = chaveBusca;
+      setTarefaSelecionada(tarefaParaAbrir);
+      setDetalhesOpen(true);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [termoBusca, resultadosBuscaNome]);
+
   const tarefasFiltradas = tarefasDoSetor.filter(t => {
-    const normalize = str => (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const s = normalize(search);
-    const matchBusca = !search.trim() || normalize(t.titulo).includes(s) || normalize(t.cliente_nome).includes(s);
+    const matchBusca = !termoBusca || normalizarBusca(t.titulo).includes(termoBusca) || normalizarBusca(t.cliente_nome).includes(termoBusca);
     const matchStatus = filtroStatus === 'todos' || t.status === filtroStatus;
     const matchPrioridade = filtroPrioridade === 'todas' || t.prioridade === filtroPrioridade;
     let responsaveisIds = [];
@@ -396,13 +435,19 @@ export default function Tarefas() {
           </button>
         </div>
         <div className="relative w-full sm:w-80 lg:w-96">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-600 pointer-events-none" />
+          <Search className="absolute left-3.5 top-[22px] -translate-y-1/2 w-5 h-5 text-blue-600 pointer-events-none" />
           <Input
             placeholder="Pesquisar tarefas..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="h-11 pl-11 pr-4 text-sm font-medium bg-white border-2 border-blue-300 rounded-xl shadow-sm placeholder:text-slate-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-blue-500"
+            className={`h-11 pl-11 pr-4 text-sm font-medium bg-white border-2 rounded-xl shadow-sm placeholder:text-slate-500 focus-visible:ring-2 ${termoBusca.length >= 2 && resultadosBuscaNome.length === 0 ? 'border-red-400 focus-visible:ring-red-400 focus-visible:border-red-500' : 'border-blue-300 focus-visible:ring-blue-500 focus-visible:border-blue-500'}`}
           />
+          {termoBusca.length >= 2 && resultadosBuscaNome.length === 0 && (
+            <div className="absolute left-0 top-full mt-1.5 z-20 flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 shadow-sm whitespace-nowrap">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+              Nenhum card encontrado com esse nome.
+            </div>
+          )}
         </div>
       </div>
 
