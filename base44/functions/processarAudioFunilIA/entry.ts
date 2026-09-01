@@ -1,11 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 
 Deno.serve(async (req) => {
+  let base44: any = null;
+  let mensagem: any = null;
   try {
-    const base44 = createClientFromRequest(req);
+    base44 = createClientFromRequest(req);
     const payload = await req.json().catch(() => ({}));
 
-    let mensagem = payload.data;
+    mensagem = payload.data;
     if (payload.payload_too_large && payload.event?.entity_id) {
       mensagem = await base44.asServiceRole.entities.MensagemWhatsapp.get(payload.event.entity_id);
     }
@@ -257,6 +259,11 @@ Responda em JSON com:
     return Response.json({ success: true, transcricao, analise, oportunidade_id: oportunidade.id });
   } catch (error) {
     console.error('Erro processarAudioFunilIA:', error.message);
+    if (base44 && mensagem?.id) {
+      await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagem.id, {
+        funil_ia_status: 'erro',
+      }).catch(() => {});
+    }
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
