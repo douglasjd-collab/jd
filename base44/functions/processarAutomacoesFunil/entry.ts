@@ -155,11 +155,15 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Buscar empresa para pegar config Evolution
-      const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: oport.empresa_id });
-      const empresa = empresas[0];
-      if (!empresa?.evolution_url || !empresa?.evolution_api_key || !empresa?.evolution_instance_name) {
-        logs.push(`[${oport.titulo}] Empresa sem configuração WhatsApp`);
+      // Automações do funil usam somente a conexão D-API ativa.
+      const conexoes = await base44.asServiceRole.entities.WhatsappConnection.filter(
+        { empresa_id: oport.empresa_id, provider_type: 'dapi', is_active: true },
+        '-created_date',
+        1
+      );
+      const conexao = conexoes[0];
+      if (!conexao) {
+        logs.push(`[${oport.titulo}] Empresa sem conexão D-API ativa`);
         continue;
       }
 
@@ -167,50 +171,38 @@ Deno.serve(async (req) => {
       let erroDetalhe = '';
 
       try {
-        const evUrl = empresa.evolution_url;
-        const evKey = empresa.evolution_api_key;
-        const evInst = empresa.evolution_instance_name;
-
-        // Enviar texto (se houver)
         if (mensagemFinal) {
-          const resp = await fetch(`${evUrl}/message/sendText/${evInst}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': evKey },
-            body: JSON.stringify({ number: telefone, text: mensagemFinal })
+          await base44.asServiceRole.functions.invoke('whatsappService', {
+            connectionId: conexao.id,
+            action: 'sendText',
+            phoneNumber: telefone,
+            text: mensagemFinal,
           });
-          if (!resp.ok) {
-            const txt = await resp.text();
-            throw new Error(`HTTP ${resp.status}: ${txt}`);
-          }
         }
 
-        // Enviar mídia (se configurada)
         if (auto.tipo_midia && auto.tipo_midia !== 'nenhuma' && auto.midia_url) {
           const caption = auto.midia_caption ? resolverVariaveis(auto.midia_caption, oport) : '';
-          if (auto.tipo_midia === 'imagem' || auto.tipo_midia === 'video') {
-            const respMedia = await fetch(`${evUrl}/message/sendMedia/${evInst}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'apikey': evKey },
-              body: JSON.stringify({ number: telefone, mediatype: auto.tipo_midia, media: auto.midia_url, caption })
-            });
-            if (!respMedia.ok) {
-              const txt = await respMedia.text();
-              throw new Error(`Mídia HTTP ${respMedia.status}: ${txt}`);
-            }
+          const payload: any = {
+            connectionId: conexao.id,
+            phoneNumber: telefone,
+            caption,
+          };
+          if (auto.tipo_midia === 'imagem') {
+            payload.action = 'sendImage';
+            payload.imageUrl = auto.midia_url;
+          } else if (auto.tipo_midia === 'video') {
+            payload.action = 'sendVideo';
+            payload.videoUrl = auto.midia_url;
           } else if (auto.tipo_midia === 'audio') {
-            const respAudio = await fetch(`${evUrl}/message/sendWhatsAppAudio/${evInst}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'apikey': evKey },
-              body: JSON.stringify({ number: telefone, audio: auto.midia_url })
-            });
-            if (!respAudio.ok) {
-              const txt = await respAudio.text();
-              throw new Error(`Áudio HTTP ${respAudio.status}: ${txt}`);
-            }
+            payload.action = 'sendAudio';
+            payload.audioUrl = auto.midia_url;
+          }
+          if (payload.action) {
+            await base44.asServiceRole.functions.invoke('whatsappService', payload);
           }
         }
 
-        logs.push(`✅ [${oport.titulo}] Automação "${auto.nome}" enviada para ${telefone}`);
+        logs.push(`✅ [${oport.titulo}] Automação "${auto.nome}" enviada via D-API para ${telefone}`);
       } catch (e) {
         statusEnvio = 'erro';
         erroDetalhe = e.message;
