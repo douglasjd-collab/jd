@@ -1,0 +1,88 @@
+{
+  "name": "ConsumoIntegracaoLog",
+  "type": "object",
+  "description": "Registro interno de consumo de cr\u00e9ditos de integra\u00e7\u00e3o. Cada execu\u00e7\u00e3o de fun\u00e7\u00e3o que consome cr\u00e9ditos (InvokeLLM, fetch externo, SendEmail, etc.) registra aqui para auditoria. N\u00e3o gera novas integra\u00e7\u00f5es pagas \u2014 apenas grava no banco (opera\u00e7\u00e3o de entidade, gratuita).",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa (quando aplic\u00e1vel)"
+    },
+    "funcao_nome": {
+      "type": "string",
+      "description": "Nome da fun\u00e7\u00e3o backend que executou"
+    },
+    "origem": {
+      "type": "string",
+      "enum": [
+        "webhook",
+        "usuario",
+        "automacao",
+        "sistema"
+      ],
+      "description": "Origem da execu\u00e7\u00e3o: webhook recebido, a\u00e7\u00e3o manual do usu\u00e1rio, automa\u00e7\u00e3o agendada, ou sistema interno"
+    },
+    "registros_encontrados": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantos registros foram encontrados na consulta"
+    },
+    "registros_processados": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantos registros foram efetivamente processados"
+    },
+    "resultado": {
+      "type": "string",
+      "enum": [
+        "util",
+        "vazio",
+        "erro",
+        "pulado"
+      ],
+      "default": "pulado",
+      "description": "Resultado da execu\u00e7\u00e3o: \u00fatil (processou algo), vazio (nada para processar), erro (falhou), pulado (idempot\u00eancia/lock)"
+    },
+    "duracao_ms": {
+      "type": "number",
+      "default": 0,
+      "description": "Dura\u00e7\u00e3o da execu\u00e7\u00e3o em milissegundos"
+    },
+    "tentativa": {
+      "type": "number",
+      "default": 1,
+      "description": "N\u00famero da tentativa (1 = primeira execu\u00e7\u00e3o)"
+    },
+    "evento_id": {
+      "type": "string",
+      "description": "Identificador \u00fanico do evento para deduplica\u00e7\u00e3o (ex: whatsapp_message_id, traceId do webhook)"
+    },
+    "motivo": {
+      "type": "string",
+      "description": "Motivo da execu\u00e7\u00e3o ou motivo de ter sido pulada/erro"
+    },
+    "integracoes_feitas": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantas chamadas de integra\u00e7\u00e3o (InvokeLLM, fetch externo, etc.) foram feitas nesta execu\u00e7\u00e3o"
+    }
+  },
+  "required": [
+    "funcao_nome",
+    "origem",
+    "resultado"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return true; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return user.perfil === 'super_admin' || user.perfil === 'master';"
+    },
+    "delete": {
+      "rule": "return user.perfil === 'super_admin' || user.perfil === 'master';"
+    }
+  }
+}
