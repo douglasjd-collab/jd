@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Layers, AlertTriangle, Clock3, CheckCircle2, UserSquare2, LayoutList, Kanban } from 'lucide-react';
 import TarefasLista from '@/components/tarefas/TarefasLista';
 import { toast } from 'sonner';
-import { format, addDays, differenceInDays } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import TarefaCard from '@/components/tarefas/TarefaCard';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
 import TarefaDetalhesModal from '@/components/tarefas/TarefaDetalhesModal';
