@@ -122,7 +122,7 @@ function exportarLinhaPDFSimples(lote) {
   doc.text(`Protocolo: ${lote._protocolo}`, 14, 23);
   doc.text(`Gerado em: ${fmtDate(new Date().toISOString().slice(0, 10))}`, 14, 29);
   const colunas = [
-    'Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total',
+    'Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido',
     ...(lote._vendedor !== undefined ? ['Vendedor'] : []),
     'Status',
   ];
@@ -144,7 +144,7 @@ function exportarLinhaCSV(lote, mostrarQuitacao) {
   const colunas = [
     'Nº Protocolo', 'Data Programada',
     ...(mostrarQuitacao ? ['Data Quitação'] : []),
-    'Valor Comissão', 'Acréscimos', 'Descontos', 'Total',
+    'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido',
     ...(lote._vendedor !== undefined ? ['Vendedor'] : []),
     'Status',
   ];
@@ -721,16 +721,22 @@ export default function Saques() {
     reprogramarMutation.mutate({ id: loteParaReprogramar.id, tipo: loteParaReprogramar._tipo });
   };
 
-  const normalizarEmp = (l) => ({
-    ...l,
-    status: l.status === 'programado' ? 'programado' : 'quitado',
-    _protocolo: l.lote_codigo || `EMP${l.id?.slice(-6)}`,
-    _valor: l.valor_total || 0,
-    _total: (l.valor_total || 0) + (l.acrescimos || 0) - (l.descontos || 0),
-    _data_quitacao: l.data_quitacao,
-    _vendedor: isMaster ? l.vendedor_nome : undefined,
-    _tipo: 'emp',
-  });
+  const normalizarEmp = (l) => {
+    // valor_total/valor_efetivamente_pago representam o líquido já pago.
+    // Reconstrói a comissão bruta para não descontar adiantamentos duas vezes.
+    const valorLiquido = l.valor_efetivamente_pago ?? l.valor_total ?? 0;
+    const valorComissaoBruta = valorLiquido + (l.descontos || 0) - (l.acrescimos || 0);
+    return {
+      ...l,
+      status: l.status === 'programado' ? 'programado' : 'quitado',
+      _protocolo: l.lote_codigo || `EMP${l.id?.slice(-6)}`,
+      _valor: valorComissaoBruta,
+      _total: valorLiquido,
+      _data_quitacao: l.data_quitacao,
+      _vendedor: isMaster ? l.vendedor_nome : undefined,
+      _tipo: 'emp',
+    };
+  };
 
   const legadoGrupos = {};
   propostasLegado.forEach(p => {
@@ -792,12 +798,12 @@ export default function Saques() {
   const totalQuitado = quitados.reduce((a, l) => a + l._total, 0);
 
   const colunasProgr = isMaster
-    ? ['Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Vendedor', 'Status / Ações']
-    : ['Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Status / Ações'];
+    ? ['Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido', 'Vendedor', 'Status / Ações']
+    : ['Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido', 'Status / Ações'];
 
   const colunasQuit = isMaster
-    ? ['Nº Protocolo', 'Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Vendedor', 'Status / Ações']
-    : ['Nº Protocolo', 'Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Total', 'Status / Ações'];
+    ? ['Nº Protocolo', 'Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido', 'Vendedor', 'Status / Ações']
+    : ['Nº Protocolo', 'Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido', 'Status / Ações'];
 
   if (loadingUser) {
     return (
