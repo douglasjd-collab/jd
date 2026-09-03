@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { X, Pencil, Trash2, AlignLeft, Check, MessageSquarePlus, Send, Loader2 } from 'lucide-react';
+import { X, Pencil, Trash2, AlignLeft, Check, MessageSquarePlus, Send, Loader2, Eye } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -187,115 +187,98 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
     <div className="flex gap-0 bg-white rounded-xl border shadow-sm overflow-hidden">
       {/* Tabela */}
       <div className="flex-1 min-w-0 overflow-x-auto">
-        <table className="w-full text-sm" style={{ minWidth: 900 }}>
-          <thead>
-            <tr className="border-b bg-gradient-to-r from-slate-50 to-slate-100">
-              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:140}}>Cliente</th>
-              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:200}}>Título</th>
-              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:140}}>Status</th>
-              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:130}}>Responsáveis</th>
-              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:110}}>Início</th>
-              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:110}}>Limite</th>
-              <th className="text-left px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:140}}></th>
-              <th className="text-center px-4 py-4 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:100}}>Ações</th>
+        <table className="w-full text-sm" style={{ minWidth: 1180 }}>
+          <thead className="sticky top-0 z-10">
+            <tr className="border-b bg-slate-50">
+              <th className="text-left px-3 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:260}}>Tarefa</th>
+              <th className="text-left px-3 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:180}}>Cliente</th>
+              <th className="text-left px-3 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:130}}>Setor</th>
+              <th className="text-left px-3 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:170}}>Responsável</th>
+              <th className="text-left px-3 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:140}}>Prazo</th>
+              <th className="text-left px-3 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:100}}>Prioridade</th>
+              <th className="text-left px-3 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:145}}>Status</th>
+              <th className="text-center px-3 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide" style={{width:150}}>Ações</th>
             </tr>
           </thead>
           <tbody>
-            {tarefas.map((tarefa, idx) => {
+            {tarefas.map((tarefa) => {
               const atrasada = isAtrasada(tarefa);
               const isSel = selecionada === tarefa.id;
+              let responsaveisIds = [];
+              try { responsaveisIds = tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : []; } catch {}
+              if (responsaveisIds.length === 0 && tarefa.responsavel_principal_id) responsaveisIds = [tarefa.responsavel_principal_id];
+              const responsaveis = responsaveisIds.map(id => colaboradores.find(c => c.id === id)).filter(Boolean);
+              const principal = responsaveis[0];
+              const setor = tarefa.setor_nome || tarefa.subsetor_nome || tarefa.tipo_nome || 'Sem setor';
+              const prioridade = tarefa.prioridade || 'media';
 
               return (
                 <tr
                   key={tarefa.id}
-                  className={`border-b last:border-0 transition-all duration-200 ${isSel ? 'bg-blue-50' : 'hover:bg-gradient-to-r hover:from-slate-50 hover:to-transparent'} group cursor-pointer`}
+                  className={`border-b last:border-0 transition-colors ${isSel ? 'bg-blue-50' : atrasada ? 'bg-red-50/40 hover:bg-red-50/70' : 'hover:bg-slate-50'} cursor-pointer`}
                   onDoubleClick={() => onVerDetalhes(tarefa)}
                 >
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                        {(tarefa.cliente_nome || '?').charAt(0).toUpperCase()}
-                      </div>
+                  <td className="px-3 py-3 max-w-[260px]">
+                    <div className="flex items-start gap-2">
+                      <span className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${atrasada ? 'bg-red-500' : tarefa.data_conclusao_prevista === hoje ? 'bg-amber-400' : 'bg-blue-400'}`} />
                       <div className="min-w-0">
-                        <p className="font-medium text-slate-800 truncate">{tarefa.cliente_nome || <span className="text-slate-400 italic">Interna</span>}</p>
-                        {tarefa.tipo && <p className="text-xs text-slate-500">{tiposList.find(t => t.id === tarefa.tipo)?.nome || tarefa.tipo}</p>}
+                        <p className={`font-semibold truncate ${atrasada ? 'text-red-700' : 'text-slate-800'}`}>{tarefa.titulo}</p>
+                        {tarefa.descricao && <p className="text-xs text-slate-400 truncate mt-0.5" title={tarefa.descricao}>{tarefa.descricao}</p>}
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-2">
-                      {atrasada && (
-                        <span className="flex-shrink-0 w-2 h-2 rounded-full bg-red-500" title="Atrasada" />
-                      )}
-                      {!atrasada && tarefa.data_conclusao_prevista === hoje && (
-                        <span className="flex-shrink-0 w-4 h-4 rounded-full bg-yellow-100 border border-yellow-400 flex items-center justify-center text-yellow-600 text-[9px] font-bold" title="Vence hoje">!</span>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className={`truncate font-medium ${atrasada ? 'text-red-600' : 'text-slate-800'}`}>{tarefa.titulo}</p>
-                        {tarefa.descricao && <p className="text-xs text-slate-400 truncate">{tarefa.descricao}</p>}
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
+                        {(tarefa.cliente_nome || 'I').charAt(0).toUpperCase()}
                       </div>
+                      <span className="font-medium text-slate-700 truncate">{tarefa.cliente_nome || 'Tarefa interna'}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setTarefaStatusModal(tarefa); setStatusModalOpen(true); }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white whitespace-nowrap cursor-pointer hover:shadow-md transition-all"
-                      style={{ backgroundColor: statusList.find(s => s.slug === tarefa.status)?.cor || '#94a3b8' }}
-                    >
-                      <span className="w-2 h-2 rounded-full bg-white opacity-70"></span>
-                      {statusList.find(s => s.slug === tarefa.status)?.nome || tarefa.status}
-                    </button>
+                  <td className="px-3 py-3">
+                    <span className="inline-flex max-w-[125px] truncate rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600" title={setor}>{setor}</span>
                   </td>
-                  <td className="px-4 py-4">
+                  <td className="px-3 py-3">
                     <button
                       onClick={(e) => { e.stopPropagation(); setTarefaResponsaveisModal(tarefa); setResponsaveisModalOpen(true); }}
-                      className="flex items-center -space-x-2 cursor-pointer hover:opacity-80 transition-opacity group/avatars"
+                      className="flex items-center gap-2 min-w-0 hover:opacity-75"
                     >
-                      {(() => {
-                        let ids = [];
-                        try { ids = tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : []; } catch {}
-                        if (ids.length === 0 && tarefa.responsavel_principal_id) ids = [tarefa.responsavel_principal_id];
-                        return (
-                          <>
-                            {ids.length === 0 && <span className="text-slate-300 text-xs px-2 py-1">-</span>}
-                            {ids.slice(0, 3).map((id) => {
-                              const colab = colaboradores.find(c => c.id === id);
-                              return (
-                                <div key={id} className="ring-2 ring-white rounded-full hover:scale-110 transition-transform">
-                                  <Iniciais nome={colab?.nome || '?'} foto={colab?.foto_perfil} size="sm" />
-                                </div>
-                              );
-                            })}
-                            {ids.length > 3 && (
-                              <div className="w-7 h-7 rounded-full bg-slate-200 ring-2 ring-white flex items-center justify-center text-xs text-slate-600 font-semibold hover:scale-110 transition-transform">
-                                +{ids.length - 3}
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
+                      {principal ? <Iniciais nome={principal.nome} foto={principal.foto_perfil} size="sm" /> : <span className="w-7 h-7 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">—</span>}
+                      <span className="text-xs text-slate-700 truncate max-w-[105px]">{principal?.nome || tarefa.responsavel_principal_nome || 'Não definido'}</span>
+                      {responsaveis.length > 1 && <span className="text-[10px] font-semibold text-slate-500">+{responsaveis.length - 1}</span>}
                     </button>
                   </td>
-                  <td className="px-4 py-4 text-slate-500 text-xs">
-                    {formatarData(tarefa.data_cadastro || tarefa.created_date)}
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className={`text-xs font-semibold ${atrasada ? 'text-red-600 font-bold' : 'text-slate-500'}`}>
+                  <td className="px-3 py-3 whitespace-nowrap">
+                    <p className={`text-xs font-semibold ${atrasada ? 'text-red-600' : tarefa.data_conclusao_prevista === hoje ? 'text-amber-600' : 'text-slate-600'}`}>
                       {formatarData(tarefa.data_conclusao_prevista)}
+                    </p>
+                    <p className={`text-[11px] mt-0.5 ${atrasada ? 'text-red-500' : 'text-slate-400'}`}>
+                      {atrasada ? 'Em atraso' : tarefa.data_conclusao_prevista === hoje ? 'Vence hoje' : 'No prazo'}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${PRIORIDADE_CORES[prioridade] || PRIORIDADE_CORES.media}`}>
+                      {PRIORIDADE_LABEL[prioridade] || prioridade}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-center" onClick={e => e.stopPropagation()}>
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <button
-                      onClick={() => { setTarefaSelecionada(tarefa); setDetalhesOpen(true); setAbaDetalhes('comentarios'); }}
-                      title="Comentários"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-300 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-400 transition-colors text-xs font-medium"
+                      onClick={(e) => { e.stopPropagation(); setTarefaStatusModal(tarefa); setStatusModalOpen(true); }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-white hover:shadow-sm"
+                      style={{ backgroundColor: getStatus(tarefa.status)?.cor || '#94a3b8' }}
                     >
-                      <MessageSquarePlus className="w-4 h-4" />
-                      Comentários
+                      <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
+                      {getStatus(tarefa.status)?.nome || tarefa.status}
                     </button>
                   </td>
-                  <td className="px-4 py-4" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-center gap-0.5">
+                      <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-slate-100" onClick={() => onVerDetalhes(tarefa)} title="Abrir detalhes">
+                        <Eye className="w-4 h-4 text-slate-600" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-blue-50" onClick={() => { setTarefaSelecionada(tarefa); setDetalhesOpen(true); setAbaDetalhes('comentarios'); }} title="Comentários">
+                        <MessageSquarePlus className="w-4 h-4 text-blue-600" />
+                      </Button>
                       <Button size="icon" variant="ghost" className="h-8 w-8 hover:bg-blue-50" onClick={() => onEdit(tarefa)} title="Editar">
                         <Pencil className="w-4 h-4 text-blue-600" />
                       </Button>
