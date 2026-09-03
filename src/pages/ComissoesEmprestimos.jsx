@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import {
   Search, Loader2, CheckCircle2, Clock, BarChart2,
   ChevronDown, ChevronUp, DollarSign, AlertCircle,
-  TrendingUp, TrendingDown, FileText, Download, FileSpreadsheet, Calendar
+  TrendingUp, TrendingDown, FileText, Download, FileSpreadsheet, Calendar, Copy
 } from 'lucide-react';
 import PropostaDetalhesModal from '@/components/comissoes/PropostaDetalhesModal';
 import { toast } from 'react-hot-toast';
@@ -1544,9 +1544,9 @@ export default function ComissoesEmprestimos() {
                 <span className="text-xs text-slate-500 font-semibold uppercase">Vendedor</span>
                 <span className="col-span-2 font-semibold text-slate-800">{vendedorModal?.vendedor_nome || '-'}</span>
               </div>
-              <div className="grid grid-cols-3 gap-2 items-center">
-                <span className="text-xs text-slate-500 font-semibold uppercase">Valor líquido</span>
-                <span className="col-span-2 font-bold text-[#10353C]">{fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc + (parseFloat(acrescimoValor) || 0)))}</span>
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
+                <span className="block text-xs text-emerald-700 font-semibold uppercase">Valor líquido a pagar</span>
+                <span className="block mt-1 text-xl font-bold text-emerald-800">{fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc + (parseFloat(acrescimoValor) || 0)))}</span>
               </div>
               <div className="grid grid-cols-3 gap-2 items-center">
                 <span className="text-xs text-slate-500 font-semibold uppercase">Forma</span>
@@ -1561,7 +1561,26 @@ export default function ComissoesEmprestimos() {
               {pixVendedor?.chave && (
                 <div className="grid grid-cols-3 gap-2 items-center">
                   <span className="text-xs text-slate-500 font-semibold uppercase">Chave PIX</span>
-                  <span className="col-span-2 font-semibold text-slate-800 font-mono">{mascararChavePix(pixVendedor.chave, pixVendedor.tipo)}</span>
+                  <div className="col-span-2 flex items-center gap-2 min-w-0">
+                    <span className="font-semibold text-slate-800 font-mono break-all">{pixVendedor.chave}</span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 shrink-0 px-2"
+                      title="Copiar chave PIX"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(String(pixVendedor.chave));
+                          toast.success('Chave PIX copiada');
+                        } catch {
+                          toast.error('Não foi possível copiar a chave PIX');
+                        }
+                      }}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               )}
               <div className="grid grid-cols-3 gap-2 items-center">
@@ -1571,7 +1590,7 @@ export default function ComissoesEmprestimos() {
               {pixVendedor?.titularDocumento && (
                 <div className="grid grid-cols-3 gap-2 items-center">
                   <span className="text-xs text-slate-500 font-semibold uppercase">CPF/CNPJ</span>
-                  <span className="col-span-2 font-semibold text-slate-800 font-mono">{mascararDocumento(pixVendedor.titularDocumento)}</span>
+                  <span className="col-span-2 font-semibold text-slate-800 font-mono">{pixVendedor.titularDocumento}</span>
                 </div>
               )}
               {pixVendedor?.instituicao && (
@@ -1670,7 +1689,7 @@ export default function ComissoesEmprestimos() {
               <div className="flex justify-between"><span>Valor líquido:</span><strong>{fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc + (parseFloat(acrescimoValor) || 0)))}</strong></div>
               <div className="flex justify-between"><span>Forma:</span><strong>{formaPagamento}</strong></div>
               {pixVendedor?.chave && (
-                <div className="flex justify-between"><span>Chave PIX:</span><strong className="font-mono">{mascararChavePix(pixVendedor.chave, pixVendedor.tipo)}</strong></div>
+                <div className="flex justify-between gap-3"><span>Chave PIX:</span><strong className="font-mono break-all text-right">{pixVendedor.chave}</strong></div>
               )}
               <div className="flex justify-between"><span>Qtd. propostas:</span><strong>{modalSelecionados.size}</strong></div>
             </div>
