@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { X, Pencil, Trash2, AlignLeft, Check, MessageSquarePlus, Send, Loader2, Eye } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { X, Pencil, Trash2, AlignLeft, MessageSquarePlus, Loader2, Eye } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import SelecionarStatusResponsaveisModal from './SelecionarStatusResponsaveisModal';
@@ -43,7 +43,7 @@ function Iniciais({ nome, foto, size = 'sm' }) {
 
 
 
-function ComentarioPopup({ tarefa, currentUser, open, onClose }) {
+function _ComentarioPopup({ tarefa, currentUser, open, onClose }) {
   const [texto, setTexto] = useState('');
   const queryClient = useQueryClient();
 
@@ -147,7 +147,7 @@ function ComentarioPopup({ tarefa, currentUser, open, onClose }) {
   );
 }
 
-export default function TarefasLista({ tarefas, statusList, colaboradores = [], onEdit, onDelete, onVerDetalhes, onUpdate, currentUser, tiposList = [] }) {
+export default function TarefasLista({ tarefas, statusList, colaboradores = [], onEdit, onDelete, onVerDetalhes, onUpdate, currentUser }) {
   const [selecionada, setSelecionada] = useState(null);
   const [tarefaSelecionada, setTarefaSelecionada] = useState(null);
   const [detalhesOpen, setDetalhesOpen] = useState(false);
