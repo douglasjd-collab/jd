@@ -43,7 +43,7 @@ function Iniciais({ nome, foto, size = 'sm' }) {
 
 
 
-function _ComentarioPopup({ tarefa, currentUser, open, onClose }) {
+function ComentarioPopup({ tarefa, currentUser, open, onClose }) {
   const [texto, setTexto] = useState('');
   const queryClient = useQueryClient();
 
