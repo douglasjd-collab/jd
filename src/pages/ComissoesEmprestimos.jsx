@@ -424,12 +424,42 @@ export default function ComissoesEmprestimos() {
   };
 
   const gerarPDF = async (propostasLista, vendedorInfo, dataPagamento, formaPagto, loteCode, percMap = {}, adiantamentosDesc = [], dadosBancarios = null, acrescimoVal = 0, acrescimoDesc = '', pixInfo = null, codigoAutentic = '', comprovanteAnexado = false) => {
+    // Propostas antigas podem não ter cliente_cpf salvo. Busca o documento
+    // diretamente no cadastro do cliente vinculado antes de gerar o comprovante.
+    let itensComCpf = propostasLista;
+    const clienteIds = [...new Set(
+      propostasLista
+        .filter(p => !p.cliente_cpf && p.cliente_id)
+        .map(p => p.cliente_id)
+    )];
+
+    if (clienteIds.length > 0) {
+      try {
+        const clientes = await base44.entities.Cliente.filter(
+          { id: { $in: clienteIds } },
+          null,
+          Math.max(clienteIds.length, 50)
+        );
+        const clientesPorId = new Map(clientes.map(c => [c.id, c]));
+        itensComCpf = propostasLista.map(p => {
+          if (p.cliente_cpf) return p;
+          const cliente = clientesPorId.get(p.cliente_id);
+          return {
+            ...p,
+            cliente_cpf: cliente?.cpf || cliente?.pj_cnpj || '-',
+          };
+        });
+      } catch (err) {
+        console.warn('Não foi possível complementar o CPF dos clientes no comprovante', err);
+      }
+    }
+
     const doc = gerarPdfComprovanteEmprestimo({
       vendedorNome: vendedorInfo?.vendedor_nome || '-',
       dataPagamento,
       formaPagamento: formaPagto || '-',
       loteCode,
-      itens: propostasLista,
+      itens: itensComCpf,
       percMap,
       adiantamentosDesc,
       acrescimoVal,
