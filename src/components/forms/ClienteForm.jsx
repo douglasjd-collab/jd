@@ -121,7 +121,13 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
   useEffect(() => {
     if (cliente) {
       Object.keys(cliente).forEach(key => {
-        setValue(key, cliente[key]);
+        if (key === 'cpf') {
+          setValue(key, formatCPF(String(cliente[key] || '')));
+        } else if (key === 'pj_cnpj') {
+          setValue(key, formatCNPJ(String(cliente[key] || '')));
+        } else {
+          setValue(key, cliente[key]);
+        }
       });
     } else {
       reset({
