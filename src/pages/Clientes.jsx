@@ -216,6 +216,16 @@ export default function Clientes() {
   });
 
   const normCpf = (cpf) => String(cpf || '').replace(/\D/g, '');
+  const formatDocumento = (documento) => {
+    const numeros = normCpf(documento);
+    if (numeros.length === 11) {
+      return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    }
+    if (numeros.length === 14) {
+      return numeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
+    return documento || '-';
+  };
 
   const handleSubmit = async (data) => {
     // Trava síncrona: impede dois cliques/submits antes de o estado da mutation atualizar.
@@ -435,7 +445,9 @@ export default function Clientes() {
     {
       header: 'CPF/CNPJ',
       cell: (row) => (
-        <span className="text-sm text-slate-600">{row.tipo_pessoa === 'Jurídica' ? row.pj_cnpj : row.cpf}</span>
+        <span className="text-sm text-slate-600">
+          {formatDocumento(row.tipo_pessoa === 'Jurídica' ? row.pj_cnpj : row.cpf)}
+        </span>
       )
     },
     {
