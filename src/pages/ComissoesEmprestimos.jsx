@@ -493,6 +493,7 @@ export default function ComissoesEmprestimos() {
     }
 
     setIsPaying(true);
+    setEtapaPagamento('Validando pagamento...');
     try {
       const ids = Array.from(modalSelecionados);
       const paraPagar = propostas.filter(p => ids.includes(p.id) && p.comissao_banco_recebida && !p.comissao_vendedor_paga);
@@ -503,16 +504,21 @@ export default function ComissoesEmprestimos() {
       // Upload do comprovante bancário anexado (se houver)
       let comprovanteUrl = null;
       if (comprovanteFile) {
+        setEtapaPagamento('Enviando comprovante...');
         try {
-          const respUpload = await base44.integrations.Core.UploadFile({ file: comprovanteFile });
+          const respUpload = await Promise.race([
+            base44.integrations.Core.UploadFile({ file: comprovanteFile }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('O envio do comprovante excedeu 30 segundos.')), 30000)),
+          ]);
           comprovanteUrl = respUpload?.file_url || null;
+          if (!comprovanteUrl) throw new Error('O comprovante não retornou um endereço válido.');
         } catch (e) {
           console.warn('Falha ao anexar comprovante:', e);
-          toast.error('Erro ao anexar comprovante. Tente novamente.');
-          setIsPaying(false);
-          return;
+          throw new Error(`Não foi possível anexar o comprovante: ${e?.message || 'erro desconhecido'}`);
         }
       }
+
+      setEtapaPagamento('Registrando pagamento...');
 
       const dataPagamento = moment().format('YYYY-MM-DD');
       const dataHoraQuitacao = moment().toISOString();
