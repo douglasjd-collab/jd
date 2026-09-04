@@ -356,7 +356,7 @@ export default function Tarefas() {
       ? SLUGS_FINALIZADOS.includes(t.status)
       : !SLUGS_FINALIZADOS.includes(t.status);
     return matchBusca && matchStatus && matchPrioridade && matchResponsavel && matchMinhas && matchAba && matchPrazo(t);
-  });
+  }).sort((a, b) => Number(Boolean(b.prioridade_destaque)) - Number(Boolean(a.prioridade_destaque)));
 
   // Indicadores calculados sobre tarefasDoSetor (respeita filtro de setor)
   const atrasadas = tarefasDoSetor.filter(t => t.data_conclusao_prevista && t.data_conclusao_prevista < hoje && t.status !== 'concluido' && t.status !== 'arquivado').length;
@@ -567,6 +567,7 @@ export default function Tarefas() {
           onDelete={(t) => { if (confirm(`Excluir tarefa "${t.titulo}"?`)) excluirTarefa.mutate(t); }}
           onVerDetalhes={(t) => { setTarefaSelecionada(t); setDetalhesOpen(true); }}
           onUpdate={handleUpdate}
+          onTogglePrioridade={(t) => handleUpdate(t.id, { prioridade_destaque: !t.prioridade_destaque })}
           currentUser={currentUser}
           subsetoresList={subsetoresList}
           />
@@ -644,6 +645,7 @@ export default function Tarefas() {
                                   onEdit={(t) => { setTarefaSelecionada(t); setFormOpen(true); }}
                                   onDelete={(t) => { if (confirm(`Excluir tarefa "${t.titulo}"?`)) excluirTarefa.mutate(t); }}
                                   onVerDetalhes={(t) => { setTarefaSelecionada(t); setDetalhesOpen(true); }}
+                                  onTogglePrioridade={(t) => handleUpdate(t.id, { prioridade_destaque: !t.prioridade_destaque })}
                                 />
                               </div>
                             )}
