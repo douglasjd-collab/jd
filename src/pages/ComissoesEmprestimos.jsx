@@ -572,6 +572,7 @@ export default function ComissoesEmprestimos() {
       });
 
       // 2. Criar snapshot dos itens e atualizar propostas
+      setEtapaPagamento('Atualizando comissões...');
       for (const { p, percVendedor, percEmpresa, valVendedor, editadoManual } of itensComValores) {
         // Snapshot imutável
         await base44.entities.ComissaoEmprestimoPaga.create({
@@ -610,6 +611,7 @@ export default function ComissoesEmprestimos() {
       }
 
       // Descontar adiantamentos selecionados (com suporte a desconto parcial)
+      setEtapaPagamento('Aplicando adiantamentos...');
       const adisDesc = Array.from(adiantamentosSelecionados)
         .map(id => adiantamentosVendedor.find(a => a.id === id))
         .filter(Boolean);
@@ -682,6 +684,7 @@ export default function ComissoesEmprestimos() {
       }
 
       // PDF usa os valores já calculados (congelados)
+      setEtapaPagamento('Gerando comprovante...');
       const percMapFinal = {};
       itensComValores.forEach(({ p, percVendedor }) => { percMapFinal[p.id] = percVendedor; });
       const doc = await gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode, percMapFinal, adisDesc, dadosBancariosVendedor, acrescimoVal, acrescimoDescricao, pixVendedor, codigoAutentic, !!comprovanteUrl);
@@ -709,10 +712,11 @@ export default function ComissoesEmprestimos() {
       setComprovanteTransacaoId('');
       setCodigoAutenticacao('');
     } catch (err) {
-      console.error(err);
-      toast.error('Erro ao processar pagamento');
+      console.error('Erro ao processar pagamento:', err);
+      toast.error(err?.message || 'Erro ao processar pagamento. Verifique os dados e tente novamente.');
     } finally {
       setIsPaying(false);
+      setEtapaPagamento('');
     }
   };
 
@@ -1696,7 +1700,7 @@ export default function ComissoesEmprestimos() {
               onClick={handleConfirmarPagamento}
               className="bg-emerald-600 hover:bg-emerald-700 text-white">
               {isPaying ? (
-                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Confirmando...</>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{etapaPagamento || 'Confirmando...'}</>
               ) : (
                 <><CheckCircle2 className="w-4 h-4 mr-2" />Confirmar Pagamento</>
               )}
