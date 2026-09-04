@@ -1,7 +1,7 @@
 import React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, CheckSquare, Paperclip, MessageCircle, Phone } from 'lucide-react';
+import { MoreHorizontal, CheckSquare, Paperclip, MessageCircle, Phone, Star } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -28,7 +28,7 @@ const pendenciaLabel = {
   equipe_interna: 'Aguardando Equipe',
 };
 
-export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes }) {
+export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes, onTogglePrioridade }) {
   const finalizado = tarefa.status === 'concluido' || tarefa.status === 'arquivado';
   const prazoDate = tarefa.data_conclusao_prevista
     ? new Date(tarefa.data_conclusao_prevista + 'T23:59:59')
@@ -84,7 +84,17 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes }) 
             {tarefa.setor_nome || tarefa.subsetor_nome || 'TAREFA'}
           </span>
         </div>
-        <DropdownMenu>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onTogglePrioridade?.(tarefa); }}
+            className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-amber-100 transition-colors"
+            title={tarefa.prioridade_destaque ? 'Remover prioridade' : 'Marcar como prioridade'}
+            aria-label={tarefa.prioridade_destaque ? 'Remover prioridade da tarefa' : 'Marcar tarefa como prioridade'}
+          >
+            <Star className={`w-4 h-4 ${tarefa.prioridade_destaque ? 'fill-amber-400 text-amber-500' : 'text-slate-400 hover:text-amber-500'}`} />
+          </button>
+          <DropdownMenu>
           <DropdownMenuTrigger asChild onClick={e => e.stopPropagation()}>
             <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-700 flex-shrink-0">
               <MoreHorizontal className="w-4 h-4" />
@@ -95,7 +105,8 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes }) 
             <DropdownMenuItem onClick={e => { e.stopPropagation(); onEdit(tarefa); }}>Editar</DropdownMenuItem>
             <DropdownMenuItem onClick={e => { e.stopPropagation(); onDelete(tarefa); }} className="text-red-600">Excluir</DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* Status prazo ou pendência */}
