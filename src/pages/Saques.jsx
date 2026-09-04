@@ -826,7 +826,7 @@ export default function Saques() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Minhas Comissões</h1>
+        <h1 className="text-2xl font-bold text-slate-900">Comissões Pagas</h1>
         <p className="text-sm text-slate-500 mt-0.5">Histórico de comissões programadas e quitadas</p>
       </div>
 
