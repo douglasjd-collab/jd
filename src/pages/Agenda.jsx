@@ -46,6 +46,16 @@ function formatDateBR(iso) {
   }
 }
 
+function formatPhoneBR(value = '') {
+  const digits = String(value).replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits ? `(${digits}` : '';
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 function getInitials(name = '') {
   return name.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase();
 }
@@ -654,7 +664,15 @@ export default function AgendaPage() {
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Agenda.create({ ...data, empresa_id: user?.empresa_id, usuario_id: user?.auth_id }),
-    onSuccess: () => { queryClient.invalidateQueries(['agenda']); toast.success('Compromisso criado!'); handleCloseModal(); },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['agenda'] });
+      toast.success('Compromisso criado!');
+      handleCloseModal();
+    },
+    onError: (error) => {
+      console.error('Erro ao criar compromisso:', error);
+      toast.error(error?.message || 'Não foi possível criar o compromisso. Tente novamente.');
+    },
   });
 
   const updateMutation = useMutation({
@@ -673,7 +691,7 @@ export default function AgendaPage() {
       titulo: item.titulo || '', tipo: item.tipo || 'reuniao',
       inicio: item.inicio ? format(parseISO(item.inicio), "yyyy-MM-dd'T'HH:mm") : '',
       fim: item.fim ? format(parseISO(item.fim), "yyyy-MM-dd'T'HH:mm") : '',
-      status: item.status || 'agendado', descricao: item.descricao || '', local: item.local || '', telefone: item.telefone || '',
+      status: item.status || 'agendado', descricao: item.descricao || '', local: item.local || '', telefone: formatPhoneBR(item.telefone || ''),
     } : { titulo: '', tipo: 'reuniao', inicio: format(selectedDate, "yyyy-MM-dd'T'HH:mm"), fim: '', status: 'agendado', descricao: '', local: '', telefone: '' });
     setModalOpen(true);
   };
@@ -682,8 +700,29 @@ export default function AgendaPage() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.titulo || !formData.inicio) { toast.error('Preencha título e data/hora!'); return; }
-    const payload = { ...formData, inicio: new Date(formData.inicio).toISOString(), fim: formData.fim ? new Date(formData.fim).toISOString() : null };
+    if (!formData.titulo?.trim() || !formData.inicio) {
+      toast.error('Preencha título e data/hora!');
+      return;
+    }
+
+    const inicio = new Date(formData.inicio);
+    const fim = formData.fim ? new Date(formData.fim) : null;
+    if (Number.isNaN(inicio.getTime()) || (fim && Number.isNaN(fim.getTime()))) {
+      toast.error('Informe uma data e hora válidas.');
+      return;
+    }
+    if (fim && fim < inicio) {
+      toast.error('O término não pode ser anterior ao início.');
+      return;
+    }
+
+    const payload = {
+      ...formData,
+      titulo: formData.titulo.trim(),
+      telefone: formatPhoneBR(formData.telefone),
+      inicio: inicio.toISOString(),
+      ...(fim ? { fim: fim.toISOString() } : {}),
+    };
     if (editingItem) updateMutation.mutate({ id: editingItem.id, data: payload });
     else createMutation.mutate(payload);
   };
@@ -1043,7 +1082,14 @@ export default function AgendaPage() {
               </div>
               <div>
                 <Label>Telefone do contato</Label>
-                <Input value={formData.telefone} onChange={e => setFormData({ ...formData, telefone: e.target.value })} placeholder="Ex: 11999999999" />
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={15}
+                  value={formData.telefone}
+                  onChange={e => setFormData({ ...formData, telefone: formatPhoneBR(e.target.value) })}
+                  placeholder="(87) 98127-5628"
+                />
               </div>
             </div>
             <div>
@@ -1052,7 +1098,15 @@ export default function AgendaPage() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleCloseModal}>Cancelar</Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">{editingItem ? 'Atualizar' : 'Criar'}</Button>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {(createMutation.isPending || updateMutation.isPending)
+                  ? 'Salvando...'
+                  : editingItem ? 'Atualizar' : 'Criar'}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>
