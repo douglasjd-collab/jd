@@ -1,32 +1,32 @@
 {
   "name": "Tarefa",
-  "type": "object",
   "properties": {
-    "empresa_id": {
-      "type": "string",
-      "description": "ID da empresa"
+    "anexos": {
+      "description": "JSON array de {nome, url, data} \u2014 lista de arquivos anexados",
+      "type": "string"
     },
-    "titulo": {
-      "type": "string",
-      "description": "T\u00edtulo da tarefa"
+    "checklist": {
+      "description": "JSON array de {id, texto, checked}",
+      "type": "string"
     },
-    "descricao": {
-      "type": "string",
-      "description": "Descri\u00e7\u00e3o da tarefa"
+    "checklist_template_id": {
+      "type": "string"
     },
-    "microtarefa": {
-      "type": "boolean",
-      "default": false,
-      "description": "Identifica uma a\u00e7\u00e3o r\u00e1pida criada no Bate-papo"
+    "cliente_cpf": {
+      "description": "CPF do cliente (denormalizado)",
+      "type": "string"
     },
-    "conversa_id": {
-      "type": "string",
-      "description": "ID da conversa do WhatsApp vinculada"
+    "cliente_id": {
+      "description": "ID do cliente",
+      "type": "string"
     },
-    "vencimento_em": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Data e hora limite da microtarefa"
+    "cliente_nome": {
+      "description": "Nome do cliente (denormalizado)",
+      "type": "string"
+    },
+    "cliente_telefone": {
+      "description": "Telefone do cliente (denormalizado)",
+      "type": "string"
     },
     "concluida_por_id": {
       "type": "string"
@@ -34,94 +34,57 @@
     "concluida_por_nome": {
       "type": "string"
     },
-    "cliente_id": {
-      "type": "string",
-      "description": "ID do cliente"
+    "conversa_id": {
+      "description": "ID da conversa do WhatsApp vinculada",
+      "type": "string"
     },
-    "cliente_nome": {
-      "type": "string",
-      "description": "Nome do cliente (denormalizado)"
+    "criado_por_id": {
+      "type": "string"
     },
-    "cliente_cpf": {
-      "type": "string",
-      "description": "CPF do cliente (denormalizado)"
+    "criado_por_nome": {
+      "type": "string"
     },
-    "cliente_telefone": {
-      "type": "string",
-      "description": "Telefone do cliente (denormalizado)"
+    "data_cadastro": {
+      "description": "Data de cadastro",
+      "format": "date",
+      "type": "string"
     },
-    "senha_gov": {
-      "type": "string",
-      "description": "Senha GOV do cliente"
+    "data_conclusao_prevista": {
+      "description": "Data prevista de conclus\u00e3o",
+      "format": "date",
+      "type": "string"
     },
-    "setor_id": {
-      "type": "string",
-      "description": "ID do setor da tarefa"
+    "data_conclusao_real": {
+      "description": "Data real de conclus\u00e3o",
+      "format": "date",
+      "type": "string"
     },
-    "setor_nome": {
-      "type": "string",
-      "description": "Nome do setor (denormalizado)"
+    "descricao": {
+      "description": "Descri\u00e7\u00e3o da tarefa",
+      "type": "string"
     },
-    "subsetor_id": {
-      "type": "string",
-      "description": "ID do subsetor (substitui tipo_id)"
+    "empresa_id": {
+      "description": "ID da empresa",
+      "type": "string"
     },
-    "subsetor_nome": {
-      "type": "string",
-      "description": "Nome do subsetor (substitui tipo_nome)"
-    },
-    "tipo_id": {
-      "type": "string",
-      "description": "ID do tipo de tarefa (legado - usar subsetor_id)"
-    },
-    "tipo_nome": {
-      "type": "string",
-      "description": "Nome do tipo de tarefa (legado - usar subsetor_nome)"
+    "microtarefa": {
+      "default": false,
+      "description": "Identifica uma a\u00e7\u00e3o r\u00e1pida criada no Bate-papo",
+      "type": "boolean"
     },
     "origem": {
-      "type": "string",
+      "default": "manual",
+      "description": "Origem da tarefa",
       "enum": [
         "manual",
         "sistema",
         "cliente",
         "whatsapp"
       ],
-      "default": "manual",
-      "description": "Origem da tarefa"
-    },
-    "data_cadastro": {
-      "type": "string",
-      "format": "date",
-      "description": "Data de cadastro"
-    },
-    "data_conclusao_prevista": {
-      "type": "string",
-      "format": "date",
-      "description": "Data prevista de conclus\u00e3o"
-    },
-    "data_conclusao_real": {
-      "type": "string",
-      "format": "date",
-      "description": "Data real de conclus\u00e3o"
-    },
-    "status": {
-      "type": "string",
-      "default": "a_fazer",
-      "description": "Status da tarefa"
-    },
-    "prioridade": {
-      "type": "string",
-      "enum": [
-        "baixa",
-        "media",
-        "alta",
-        "urgente"
-      ],
-      "default": "media",
-      "description": "Prioridade"
+      "type": "string"
     },
     "pendencia_com": {
-      "type": "string",
+      "description": "Quem est\u00e1 com a pend\u00eancia",
       "enum": [
         "cliente",
         "banco",
@@ -132,7 +95,35 @@
         "parceiro",
         "equipe_interna"
       ],
-      "description": "Quem est\u00e1 com a pend\u00eancia"
+      "type": "string"
+    },
+    "prioridade": {
+      "default": "media",
+      "description": "Prioridade",
+      "enum": [
+        "baixa",
+        "media",
+        "alta",
+        "urgente"
+      ],
+      "type": "string"
+    },
+    "prioridade_destaque": {
+      "default": false,
+      "description": "Marca a tarefa com estrela como prioridade operacional",
+      "type": "boolean"
+    },
+    "responsaveis_fotos": {
+      "description": "JSON array de fotos dos respons\u00e1veis",
+      "type": "string"
+    },
+    "responsaveis_ids": {
+      "description": "JSON array de IDs dos respons\u00e1veis",
+      "type": "string"
+    },
+    "responsaveis_nomes": {
+      "description": "JSON array de nomes dos respons\u00e1veis",
+      "type": "string"
     },
     "responsavel_principal_id": {
       "type": "string"
@@ -140,33 +131,46 @@
     "responsavel_principal_nome": {
       "type": "string"
     },
-    "responsaveis_ids": {
-      "type": "string",
-      "description": "JSON array de IDs dos respons\u00e1veis"
-    },
-    "responsaveis_nomes": {
-      "type": "string",
-      "description": "JSON array de nomes dos respons\u00e1veis"
-    },
-    "responsaveis_fotos": {
-      "type": "string",
-      "description": "JSON array de fotos dos respons\u00e1veis"
-    },
-    "checklist": {
-      "type": "string",
-      "description": "JSON array de {id, texto, checked}"
-    },
-    "checklist_template_id": {
+    "senha_gov": {
+      "description": "Senha GOV do cliente",
       "type": "string"
     },
-    "anexos": {
-      "type": "string",
-      "description": "JSON array de {nome, url, data} \u2014 lista de arquivos anexados"
-    },
-    "criado_por_id": {
+    "setor_id": {
+      "description": "ID do setor da tarefa",
       "type": "string"
     },
-    "criado_por_nome": {
+    "setor_nome": {
+      "description": "Nome do setor (denormalizado)",
+      "type": "string"
+    },
+    "status": {
+      "default": "a_fazer",
+      "description": "Status da tarefa",
+      "type": "string"
+    },
+    "subsetor_id": {
+      "description": "ID do subsetor (substitui tipo_id)",
+      "type": "string"
+    },
+    "subsetor_nome": {
+      "description": "Nome do subsetor (substitui tipo_nome)",
+      "type": "string"
+    },
+    "tipo_id": {
+      "description": "ID do tipo de tarefa (legado - usar subsetor_id)",
+      "type": "string"
+    },
+    "tipo_nome": {
+      "description": "Nome do tipo de tarefa (legado - usar subsetor_nome)",
+      "type": "string"
+    },
+    "titulo": {
+      "description": "T\u00edtulo da tarefa",
+      "type": "string"
+    },
+    "vencimento_em": {
+      "description": "Data e hora limite da microtarefa",
+      "format": "date-time",
       "type": "string"
     }
   },
@@ -176,17 +180,18 @@
     "data_conclusao_prevista"
   ],
   "security": {
-    "read": {
-      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; if (user.perfil === 'parceiro') return record.criado_por_id === user.user_id; return record.empresa_id === user.empresa_id;"
-    },
     "create": {
       "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
     },
-    "update": {
-      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; if (user.perfil === 'parceiro') return record.criado_por_id === user.user_id; return record.empresa_id === user.empresa_id;"
-    },
     "delete": {
       "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return ['admin','gerente'].includes(user.perfil) && record.empresa_id === user.empresa_id;"
+    },
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; if (user.perfil === 'parceiro') return record.criado_por_id === user.user_id; return record.empresa_id === user.empresa_id;"
+    },
+    "update": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; if (user.perfil === 'parceiro') return record.criado_por_id === user.user_id; return record.empresa_id === user.empresa_id;"
     }
-  }
+  },
+  "type": "object"
 }
