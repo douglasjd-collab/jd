@@ -415,7 +415,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Histórico Geral', page: 'Importacao' },
       ]
     },
-    { name: 'Minhas Comissões', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor', 'colaborador', 'funcionario', 'colaborador_vendedor', 'parceiro'] },
+    { name: 'Comissões Pagas', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor', 'colaborador', 'funcionario', 'colaborador_vendedor', 'parceiro'] },
     { name: 'Meu Financeiro', icon: TrendingUp, page: 'MeuFinanceiro', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor', 'colaborador', 'funcionario', 'colaborador_vendedor', 'parceiro'] },
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario', 'colaborador_vendedor', 'parceiro'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
@@ -457,7 +457,7 @@ export default function Layout({ children, currentPageName }) {
     'Financeiro': 'financeiro',
     'Cadastros': 'cadastros',
     'Importação': 'importacao',
-    'Minhas Comissões': 'saques',
+    'Comissões Pagas': 'saques',
     'Meu Financeiro': 'meu_financeiro',
     'Relatórios': 'relatorios',
     'Configurações': 'configuracoes',
