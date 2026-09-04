@@ -69,6 +69,7 @@ export default function ComissoesEmprestimos() {
   const [acrescimoValor, setAcrescimoValor] = useState('');
   const [acrescimoDescricao, setAcrescimoDescricao] = useState('');
   const [isPaying, setIsPaying] = useState(false);
+  const [etapaPagamento, setEtapaPagamento] = useState('');
 
   // Adiantamentos a descontar no modal de pagamento
   const [adiantamentosVendedor, setAdiantamentosVendedor] = useState([]);
@@ -479,7 +480,11 @@ export default function ComissoesEmprestimos() {
     .reduce((acc, a) => acc + (a.valor || 0), 0);
 
   const handleConfirmarPagamento = async () => {
-    if (modalSelecionados.size === 0 || !vendedorModal) return;
+    if (isPaying) return;
+    if (modalSelecionados.size === 0 || !vendedorModal) {
+      toast.error('Selecione ao menos um contrato para confirmar o pagamento.');
+      return;
+    }
 
     // Validação: PIX obrigatório quando forma de pagamento for PIX
     if (formaPagamento === 'PIX' && (!pixVendedor || !pixVendedor.chave)) {
@@ -491,7 +496,9 @@ export default function ComissoesEmprestimos() {
     try {
       const ids = Array.from(modalSelecionados);
       const paraPagar = propostas.filter(p => ids.includes(p.id) && p.comissao_banco_recebida && !p.comissao_vendedor_paga);
-      if (paraPagar.length === 0) { toast.error('Nenhum contrato válido para pagar'); return; }
+      if (paraPagar.length === 0) {
+        throw new Error('Nenhum contrato válido para pagar. Atualize a página e tente novamente.');
+      }
 
       // Upload do comprovante bancário anexado (se houver)
       let comprovanteUrl = null;
