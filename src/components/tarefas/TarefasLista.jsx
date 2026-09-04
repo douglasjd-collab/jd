@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { X, Pencil, Trash2, AlignLeft, MessageSquarePlus, Loader2, Eye } from 'lucide-react';
+import { X, Pencil, Trash2, AlignLeft, MessageSquarePlus, Loader2, Eye, Star } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -147,7 +147,7 @@ function ComentarioPopup({ tarefa, currentUser, open, onClose }) {
   );
 }
 
-export default function TarefasLista({ tarefas, statusList, colaboradores = [], onEdit, onDelete, onVerDetalhes, onUpdate, currentUser }) {
+export default function TarefasLista({ tarefas, statusList, colaboradores = [], onEdit, onDelete, onVerDetalhes, onUpdate, onTogglePrioridade, currentUser }) {
   const [selecionada, setSelecionada] = useState(null);
   const [tarefaSelecionada, setTarefaSelecionada] = useState(null);
   const [detalhesOpen, setDetalhesOpen] = useState(false);
@@ -220,6 +220,15 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                 >
                   <td className="px-3 py-3 max-w-[260px]">
                     <div className="flex items-start gap-2">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onTogglePrioridade?.(tarefa); }}
+                        className="mt-0.5 flex-shrink-0 rounded p-0.5 hover:bg-amber-100 transition-colors"
+                        title={tarefa.prioridade_destaque ? 'Remover prioridade' : 'Marcar como prioridade'}
+                        aria-label={tarefa.prioridade_destaque ? 'Remover prioridade da tarefa' : 'Marcar tarefa como prioridade'}
+                      >
+                        <Star className={`w-4 h-4 ${tarefa.prioridade_destaque ? 'fill-amber-400 text-amber-500' : 'text-slate-300 hover:text-amber-400'}`} />
+                      </button>
                       <span className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${atrasada ? 'bg-red-500' : tarefa.data_conclusao_prevista === hoje ? 'bg-amber-400' : 'bg-blue-400'}`} />
                       <div className="min-w-0">
                         <p className={`font-semibold truncate ${atrasada ? 'text-red-700' : 'text-slate-800'}`}>{tarefa.titulo}</p>
