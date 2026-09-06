@@ -1,0 +1,44 @@
+{
+  "name": "Verificar Propostas de Link N\u00e3o Abertas (3h)",
+  "description": "A cada 30 minutos, verifica links de proposta de simula\u00e7\u00e3o criados h\u00e1 mais de 3h que ainda n\u00e3o foram abertos pelo cliente e envia alerta de follow-up no WhatsApp do vendedor.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": 30,
+      "interval_unit": "minutes",
+      "interval_anchor": "2026-08-07T01:51:28.147000",
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "verificar_propostas_de_link_n_o_abertas_3h",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "verificarPropostasLinkNaoAbertas",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  },
+  "x-base44-migrated-from-automation": {
+    "legacy_payload_function": "verificarPropostasLinkNaoAbertas"
+  }
+}
