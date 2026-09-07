@@ -4,10 +4,19 @@ const FONTES = {
     contemplados: "https://fragaebitelloconsorcios.com.br/api/json/contemplados",
     desagios: "https://fragaebitelloconsorcios.com.br/api/json/desagios",
   },
+  jobs_consorcios: {
+    nome: "Consórcios Digital / Jobs",
+    token: "https://api.consorcios.digital/v1/token",
+    cartas: "https://api.consorcios.digital/v1/jobs/vendas/cartas?adm=CI",
+  },
 };
 
 const num = (v: unknown) => {
-  const n = Number(v ?? 0);
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  const raw = (v ?? "").toString().trim().replace(/R\$|\s/g, "");
+  if (!raw) return 0;
+  const normalizado = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
+  const n = Number(normalizado.replace(/[^0-9.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
 };
 
@@ -66,6 +75,145 @@ async function carregarFragaBitello(tipo: "contemplados" | "desagios") {
   const data = await response.json();
   if (!Array.isArray(data)) throw new Error("Resposta inválida da Fraga & Bitello");
   return data.map((item) => normalizaCarta(item, tipo));
+}
+
+let tokenJobsCache: { valor: string; expiraEm: number } | null = null;
+
+const primeiro = (item: any, campos: string[]) => {
+  for (const campo of campos) {
+    let valor = item;
+    for (const parte of campo.split(".")) valor = valor?.[parte];
+    if (valor !== undefined && valor !== null && texto(valor) !== "") return valor;
+  }
+  return undefined;
+};
+
+const extrairListaJobs = (data: any): any[] | null => {
+  if (Array.isArray(data)) return data;
+  const candidatos = [
+    data?.data, data?.cartas, data?.items, data?.results, data?.resultado, data?.dados,
+    data?.data?.cartas, data?.data?.items, data?.data?.results,
+  ];
+  return candidatos.find(Array.isArray) || null;
+};
+
+const normalizaCartaJobs = (item: any, indice: number) => {
+  const codigo = texto(primeiro(item, [
+    "id", "codigo", "código", "id_carta", "idCarta", "numero", "grupo_cota",
+  ])) || String(indice + 1);
+  const valorCredito = num(primeiro(item, [
+    "valor_credito", "valorCredito", "credito", "crédito", "valor_carta",
+    "valorCarta", "credito_atual", "creditoAtual",
+  ]));
+  const entrada = num(primeiro(item, [
+    "entrada", "valor_entrada", "valorEntrada", "lance", "agio", "ágio",
+  ]));
+  const taxaOriginal = primeiro(item, [
+    "taxa", "taxa_percentual", "taxaPercentual", "percentual_taxa",
+  ]);
+
+  return {
+    id: `jobs_consorcios:contemplados:${codigo}`,
+    codigo,
+    fornecedor: "jobs_consorcios",
+    fornecedor_nome: FONTES.jobs_consorcios.nome,
+    origem: "contemplados",
+    categoria: texto(primeiro(item, [
+      "categoria", "tipo", "segmento", "bem", "tipo_bem", "tipoBem",
+    ])) || "Outros",
+    administradora: texto(primeiro(item, [
+      "administradora", "administradora_nome", "administradoraNome", "adm",
+    ])) || "Consórcios Digital",
+    administradora_img: texto(primeiro(item, [
+      "administradora_img", "administradoraImagem", "logo", "logo_url",
+    ])),
+    valor_credito: valorCredito,
+    valor_credito_original: num(primeiro(item, [
+      "valor_credito_original", "valorCreditoOriginal", "credito_original",
+    ])) || valorCredito,
+    entrada_api: entrada,
+    entrada_sem_comissao: entrada,
+    percentual_comissao_entrada: 0,
+    entrada,
+    parcelas: Math.max(0, Math.trunc(num(primeiro(item, [
+      "parcelas", "prazo", "parcelas_restantes", "parcelasRestantes",
+      "quantidade_parcelas", "quantidadeParcelas",
+    ])))),
+    valor_parcela: num(primeiro(item, [
+      "valor_parcela", "valorParcela", "parcela", "parcela_atual",
+    ])),
+    saldo_devedor: num(primeiro(item, [
+      "saldo_devedor", "saldoDevedor", "saldo", "saldo_atual",
+    ])),
+    taxa_transferencia: num(primeiro(item, [
+      "taxa_transferencia", "taxaTransferencia", "transferencia",
+    ])),
+    seguro: num(primeiro(item, ["seguro", "valor_seguro", "valorSeguro"])),
+    fundo: num(primeiro(item, ["fundo", "fundo_reserva", "fundoReserva"])),
+    prox_reajuste: primeiro(item, [
+      "prox_reajuste", "proximo_reajuste", "proximoReajuste",
+    ]) || null,
+    status: normalizaStatus(primeiro(item, [
+      "status", "situacao", "situação", "disponibilidade", "reserva",
+    ])),
+    disponibilidade_original: texto(primeiro(item, [
+      "status", "situacao", "situação", "disponibilidade", "reserva",
+    ])),
+    taxa: taxaOriginal === undefined ? null : num(taxaOriginal),
+  };
+};
+
+async function obterTokenJobs() {
+  if (tokenJobsCache && tokenJobsCache.expiraEm > Date.now() + 30000) return tokenJobsCache.valor;
+
+  const username = Deno.env.get("CONSORCIOS_DIGITAL_USERNAME");
+  const password = Deno.env.get("CONSORCIOS_DIGITAL_PASSWORD");
+  if (!username || !password) {
+    throw new Error("Credenciais da Consórcios Digital não configuradas nos Secrets");
+  }
+
+  const response = await fetch(FONTES.jobs_consorcios.token, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body: new URLSearchParams({ username, password }),
+    signal: AbortSignal.timeout(15000),
+  });
+  const respostaTexto = await response.text();
+  if (!response.ok) throw new Error(`Autenticação JOBS respondeu HTTP ${response.status}`);
+
+  let data: any = respostaTexto;
+  try { data = JSON.parse(respostaTexto); } catch { /* token em texto puro */ }
+  const token = texto(
+    typeof data === "string" ? data :
+      data?.access_token || data?.token || data?.accessToken ||
+      data?.data?.access_token || data?.data?.token,
+  ).replace(/^Bearer\s+/i, "");
+
+  if (!token) throw new Error("A autenticação JOBS não retornou um token válido");
+  tokenJobsCache = { valor: token, expiraEm: Date.now() + 50 * 60 * 1000 };
+  return token;
+}
+
+async function carregarJobsConsorcios() {
+  const token = await obterTokenJobs();
+  const response = await fetch(FONTES.jobs_consorcios.cartas, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    signal: AbortSignal.timeout(20000),
+  });
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) tokenJobsCache = null;
+    throw new Error(`Consórcios Digital / JOBS respondeu HTTP ${response.status}`);
+  }
+
+  const data = await response.json().catch(() => {
+    throw new Error("A Consórcios Digital / JOBS retornou uma resposta inválida");
+  });
+  const lista = extrairListaJobs(data);
+  if (!lista) throw new Error("Formato da lista de cartas da JOBS não reconhecido");
+  return lista.map(normalizaCartaJobs).filter((c) => c.valor_credito > 0);
 }
 
 const normalizaTexto = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -185,7 +333,37 @@ Deno.serve(async (req) => {
       detalhe: tipo === "contemplados" ? "Fonte via site — sem API pública" : "Deságios não disponíveis via API",
     });
 
-    statusFontes.push({ fonte: "jobs_consorcios", nome: "Consórcios Digital / Jobs", status: "pendente", quantidade: 0 });
+    if (tipo === "contemplados") {
+      try {
+        const jobs = await carregarJobsConsorcios();
+        cartas.push(...jobs);
+        statusFontes.push({
+          fonte: "jobs_consorcios",
+          nome: FONTES.jobs_consorcios.nome,
+          status: "conectada",
+          quantidade: jobs.length,
+        });
+      } catch (error) {
+        const mensagem = error?.message || String(error);
+        const credenciaisPendentes = mensagem.includes("não configuradas");
+        statusFontes.push({
+          fonte: "jobs_consorcios",
+          nome: FONTES.jobs_consorcios.nome,
+          status: credenciaisPendentes ? "pendente" : "erro",
+          erro: credenciaisPendentes ? undefined : mensagem,
+          detalhe: mensagem,
+          quantidade: 0,
+        });
+      }
+    } else {
+      statusFontes.push({
+        fonte: "jobs_consorcios",
+        nome: FONTES.jobs_consorcios.nome,
+        status: "pendente",
+        quantidade: 0,
+        detalhe: "O endpoint fornecido pela JOBS contempla somente cartas contempladas",
+      });
+    }
 
     if (categoria && categoria !== "todas") {
       const cat = normalizaTexto(categoria);
