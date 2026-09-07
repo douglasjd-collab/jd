@@ -176,12 +176,12 @@ export default function PlanosCanopusPage() {
     enabled: !!user
   });
 
-  const menorLancePorGrupo = React.useMemo(() => {
+  const lancesPorGrupo = React.useMemo(() => {
     const historicoPorId = new Map(historicosLance.map(item => [item.id, item]));
     const mapa = {};
 
     detalhesLance.forEach(item => {
-      if (item.modalidade !== 'lance_livre') return;
+      if (!['lance_livre', 'lance_limitado'].includes(item.modalidade)) return;
 
       const historico = historicoPorId.get(item.historico_id);
       const percentual = Number(item.lance_percent);
@@ -190,16 +190,23 @@ export default function PlanosCanopusPage() {
 
       const empresaId = item.empresa_id || historico.empresa_id || '';
       const chave = `${empresaId}:${normalizarGrupo(item.grupo)}`;
-      const atual = mapa[chave];
+      let atual = mapa[chave];
 
       if (!atual || dataAssembleia > atual.data_assembleia) {
-        mapa[chave] = {
-          menor_lance_percentual: percentual,
-          data_assembleia: dataAssembleia
+        atual = {
+          data_assembleia: dataAssembleia,
+          lance_livre: null,
+          lance_limitado: null
         };
-      } else if (dataAssembleia === atual.data_assembleia) {
-        atual.menor_lance_percentual = Math.min(atual.menor_lance_percentual, percentual);
+        mapa[chave] = atual;
       }
+
+      if (dataAssembleia !== atual.data_assembleia) return;
+
+      const valorAtual = atual[item.modalidade];
+      atual[item.modalidade] = valorAtual === null
+        ? percentual
+        : Math.min(valorAtual, percentual);
     });
 
     return mapa;
@@ -609,17 +616,26 @@ ${textoVariacoes}
                     </TableCell>
                     <TableCell className="text-center">
                       {(() => {
-                        const lance = menorLancePorGrupo[`${group.empresa_id || ''}:${normalizarGrupo(group.grupo)}`];
-                        return lance ? (
-                          <div className="flex flex-col items-center">
+                        const lances = lancesPorGrupo[`${group.empresa_id || ''}:${normalizarGrupo(group.grupo)}`];
+                        if (!lances) return <span className="text-slate-400">Sem assembleia</span>;
+
+                        const formatarPercentual = (valor) => valor === null
+                          ? '—'
+                          : `${Number(valor).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
+
+                        return (
+                          <div className="flex flex-col items-center gap-1">
                             <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
-                              Menor: {Number(lance.menor_lance_percentual).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%
+                              Livre: {formatarPercentual(lances.lance_livre)}
                             </Badge>
-                            <span className="mt-1 text-[10px] text-slate-400">
-                              {lance.data_assembleia ? new Date(lance.data_assembleia + 'T00:00:00').toLocaleDateString('pt-BR') : ''}
+                            <Badge className="border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50">
+                              Limitado: {formatarPercentual(lances.lance_limitado)}
+                            </Badge>
+                            <span className="text-[10px] text-slate-400">
+                              {new Date(lances.data_assembleia + 'T00:00:00').toLocaleDateString('pt-BR')}
                             </span>
                           </div>
-                        ) : <span className="text-slate-400">Sem assembleia</span>;
+                        );
                       })()}
                     </TableCell>
                     <TableCell className="text-right font-medium text-slate-900">
