@@ -376,7 +376,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Comissões a Pagar', page: 'ComissoesEmprestimos' },
         { name: 'Adiantamentos', page: 'Adiantamentos' },
         { name: 'Comissões Pagas (Consórcio)', page: 'ComissoesPagas' },
-        
+        { name: 'Comissões Pagas', page: 'Saques' },
       ]
     },
     { 
@@ -415,7 +415,6 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Histórico Geral', page: 'Importacao' },
       ]
     },
-    { name: 'Comissões Pagas', icon: Wallet, page: 'Saques', roles: ['master', 'super_admin', 'admin', 'vendedor', 'colaborador', 'funcionario', 'colaborador_vendedor', 'parceiro'] },
     { name: 'Meu Financeiro', icon: TrendingUp, page: 'MeuFinanceiro', roles: ['master', 'super_admin', 'admin', 'gerente', 'vendedor', 'colaborador', 'funcionario', 'colaborador_vendedor', 'parceiro'] },
     { name: 'Meus Dados', icon: UserCircle, page: 'MeusDados', roles: ['vendedor', 'gerente', 'colaborador', 'funcionario', 'colaborador_vendedor', 'parceiro'] },
     { name: 'Configurações', icon: Settings, page: 'Configuracoes', roles: ['master', 'super_admin', 'admin'] },
