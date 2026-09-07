@@ -86,7 +86,8 @@ Deno.serve(async (req) => {
         }
 
         // Gera hash para upsert
-        const hash_chave = `${empresa_id}|${plano}|${produto}|${nome_bem}|${prazo_meses}|IPCA|false`;
+        const grupoNormalizado = String(grupo_cota || '').replace(/\D/g, '');
+        const hash_chave = `${empresa_id}|${grupoNormalizado}|${plano}|${produto}|${nome_bem}|${valor_bem || 0}|${prazo_meses}|IPCA|false`;
 
         // Busca se já existe
         const existing = await base44.asServiceRole.entities.PlanoCanopus.filter({
@@ -98,6 +99,7 @@ Deno.serve(async (req) => {
           empresa_id,
           origem,
           plano,
+          grupo: grupoNormalizado,
           produto,
           nome_bem,
           reajuste_tipo: 'IPCA',
@@ -141,6 +143,8 @@ Deno.serve(async (req) => {
         const existingConsorcio = await base44.asServiceRole.entities.PlanoConsorcio.filter({
           empresa_id,
           nome: planoConsorcioData.nome,
+          grupo: grupoNormalizado,
+          valor_carta: valor_bem || 0,
           prazo: prazo_meses,
         });
 
