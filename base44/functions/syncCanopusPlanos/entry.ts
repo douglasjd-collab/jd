@@ -283,10 +283,12 @@ Deno.serve(async (req) => {
       const plano = $p(tds[4]).text().trim();
       const tipo_venda = tds.length > 5 ? $p(tds[5]).text().trim() : "";
       const taxa_adm = tds.length > 6 ? moneyToNumber($p(tds[6]).text().trim()) : 0;
+      // O portal traz o grupo no início do campo plano (ex.: "8.121 | ...").
+      const grupo = String(plano.split("|")[0] || "").replace(/\D/g, "");
+      const external_hash_legado = `${empresaId}|${id_tipo_produto}|${permite_reserva}|${nome_bem}|${prazo_meses}|${plano}|${tipo_venda}`;
+      const external_hash = `${empresaId}|${id_tipo_produto}|${permite_reserva}|${grupo}|${nome_bem}|${valor_bem}|${prazo_meses}|${plano}|${tipo_venda}`;
 
-      const external_hash = `${empresaId}|${id_tipo_produto}|${permite_reserva}|${nome_bem}|${prazo_meses}|${plano}|${tipo_venda}`;
-
-      planos.push({ nome_bem, valor_bem, prazo_meses, parcela, plano, tipo_venda, taxa_adm, external_hash });
+      planos.push({ nome_bem, valor_bem, prazo_meses, parcela, plano, grupo, tipo_venda, taxa_adm, external_hash, external_hash_legado });
     });
 
     console.log(`[Canopus Sync] Planos extraídos: ${planos.length}`);
@@ -305,10 +307,17 @@ Deno.serve(async (req) => {
     let atualizados = 0;
 
     for (const p of planos) {
-      const existentes = await base44.asServiceRole.entities.PlanoCanopus.filter({
+      let existentes = await base44.asServiceRole.entities.PlanoCanopus.filter({
         empresa_id: empresaId,
         external_hash: p.external_hash,
       });
+      // Atualiza registros da sincronização anterior sem criar cópia.
+      if (!existentes?.length && p.external_hash_legado) {
+        existentes = await base44.asServiceRole.entities.PlanoCanopus.filter({
+          empresa_id: empresaId,
+          external_hash: p.external_hash_legado,
+        });
+      }
 
       const dados = {
         empresa_id: empresaId,
@@ -321,6 +330,7 @@ Deno.serve(async (req) => {
         prazo_meses: p.prazo_meses,
         parcela: p.parcela,
         plano: p.plano,
+        grupo: p.grupo,
         tipo_venda: p.tipo_venda,
         taxa_adm: p.taxa_adm,
         status: "ativo",
