@@ -177,12 +177,18 @@ async function obterTokenJobs() {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       Accept: "application/json",
+      "User-Agent": "JD-Promotora-CRM/1.0",
     },
     body: new URLSearchParams({ username, password }),
     signal: AbortSignal.timeout(15000),
+    redirect: "follow",
   });
   const respostaTexto = await response.text();
-  if (!response.ok) throw new Error(`Autenticação JOBS respondeu HTTP ${response.status}`);
+  if (!response.ok) {
+    // Inclui trecho do corpo na mensagem para diagnóstico (ex: 526 SSL, 401 credenciais)
+    const trecho = respostaTexto.substring(0, 200).replace(/\s+/g, " ").trim();
+    throw new Error(`Autenticação JOBS respondeu HTTP ${response.status}${trecho ? `: ${trecho}` : ""}`);
+  }
 
   let data: any = respostaTexto;
   try { data = JSON.parse(respostaTexto); } catch { /* token em texto puro */ }
