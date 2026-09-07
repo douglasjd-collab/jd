@@ -109,10 +109,10 @@ function FonteBadge({ fonte }) {
       ? { icon: AlertTriangle, cls: "bg-red-50 text-red-700 border-red-200", texto: "Erro na consulta" }
       : fonte.status === "site_sem_api"
         ? { icon: ExternalLink, cls: "bg-blue-50 text-blue-700 border-blue-200", texto: "Via site • sem API" }
-        : { icon: Clock3, cls: "bg-amber-50 text-amber-700 border-amber-200", texto: "Integração pendente" };
+        : { icon: Clock3, cls: "bg-amber-50 text-amber-700 border-amber-200", texto: fonte.detalhe?.includes("Credenciais") ? "Configurar credenciais" : "Integração pendente" };
   const Icon = cfg.icon;
   return (
-    <div className={`rounded-xl border p-3 flex items-center justify-between gap-3 ${cfg.cls}`}>
+    <div title={fonte.detalhe || fonte.erro || ""} className={`rounded-xl border p-3 flex items-center justify-between gap-3 ${cfg.cls}`}>
       <div className="flex items-center gap-2 min-w-0"><Icon className="w-4 h-4 shrink-0"/><span className="font-semibold text-sm truncate">{fonte.nome}</span></div>
       <span className="text-xs whitespace-nowrap">{cfg.texto}</span>
     </div>
