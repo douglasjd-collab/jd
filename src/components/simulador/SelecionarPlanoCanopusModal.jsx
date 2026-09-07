@@ -150,14 +150,14 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
     return Object.values(groups);
   }, [planos, gruposAtivos]);
 
-  const menorLancePorGrupo = useMemo(() => {
+  const lancesPorGrupo = useMemo(() => {
     const dataPorHistorico = new Map(
       historicosLance.map(h => [h.id, h.assembleia_data || ''])
     );
     const porGrupo = {};
 
     detalhesLance.forEach(detalhe => {
-      if (detalhe.modalidade !== 'lance_livre') return;
+      if (!['lance_livre', 'lance_limitado'].includes(detalhe.modalidade)) return;
       const percentual = Number(detalhe.lance_percent);
       if (!Number.isFinite(percentual)) return;
 
@@ -165,12 +165,22 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
       const dataAssembleia = dataPorHistorico.get(detalhe.historico_id);
       if (!dataAssembleia) return;
 
-      const atual = porGrupo[grupo];
+      let atual = porGrupo[grupo];
       if (!atual || dataAssembleia > atual.data) {
-        porGrupo[grupo] = { data: dataAssembleia, menor: percentual };
-      } else if (dataAssembleia === atual.data) {
-        atual.menor = Math.min(atual.menor, percentual);
+        atual = {
+          data: dataAssembleia,
+          lance_livre: null,
+          lance_limitado: null
+        };
+        porGrupo[grupo] = atual;
       }
+
+      if (dataAssembleia !== atual.data) return;
+
+      const valorAtual = atual[detalhe.modalidade];
+      atual[detalhe.modalidade] = valorAtual === null
+        ? percentual
+        : Math.min(valorAtual, percentual);
     });
 
     return porGrupo;
@@ -358,14 +368,21 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
                         <TableCell className="text-center">
                           {(() => {
                             const grupoNormalizado = String(group.grupo || '').replace(/^0+/, '') || '0';
-                            const menorLance = menorLancePorGrupo[grupoNormalizado]?.menor;
-                            const percentual = formatPercent(menorLance);
-                            return percentual ? (
-                              <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
-                                Menor: {percentual}%
-                              </Badge>
-                            ) : (
-                              <span className="text-slate-400">-</span>
+                            const lances = lancesPorGrupo[grupoNormalizado];
+                            if (!lances) return <span className="text-slate-400">Sem assembleia</span>;
+
+                            const livre = formatPercent(lances.lance_livre);
+                            const limitado = formatPercent(lances.lance_limitado);
+
+                            return (
+                              <div className="flex flex-col items-center gap-1">
+                                <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                                  Livre: {livre ? `${livre}%` : '—'}
+                                </Badge>
+                                <Badge className="border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50">
+                                  Limitado: {limitado ? `${limitado}%` : '—'}
+                                </Badge>
+                              </div>
                             );
                           })()}
                         </TableCell>
