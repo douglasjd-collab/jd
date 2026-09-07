@@ -215,15 +215,23 @@ export default function PlanosCanopusPage() {
   // Cada grupo mantém sua própria grade de créditos e prazos.
   const groupedPlanos = React.useMemo(() => {
     const groups = {};
-    const ativos = new Set(gruposAtivos.map(g =>
-      `${g.empresa_id || ''}:${normalizarGrupo(g.numero_grupo)}`
-    ));
+    const gruposAtivosPorChave = new Map(gruposAtivos.map(g => [
+      `${g.empresa_id || ''}:${normalizarGrupo(g.numero_grupo)}`,
+      g
+    ]));
     
     planos.forEach(plano => {
       const codigo = plano.nome_bem?.split(' - ')[0]?.trim() || plano.external_hash?.split('_')[0];
       const grupo = extrairGrupoPlano(plano);
       const chaveGrupoAtivo = `${plano.empresa_id || ''}:${normalizarGrupo(grupo)}`;
-      if (!codigo || !grupo || !ativos.has(chaveGrupoAtivo)) return;
+      const cadastroGrupo = gruposAtivosPorChave.get(chaveGrupoAtivo);
+      if (!codigo || !grupo || !cadastroGrupo) return;
+
+      const valorCredito = Number(plano.valor_bem || 0);
+      const creditoMinimo = Number(cadastroGrupo.credito_minimo || 0);
+      const creditoMaximo = Number(cadastroGrupo.credito_maximo || 0);
+      if ((creditoMinimo > 0 && valorCredito < creditoMinimo) ||
+          (creditoMaximo > 0 && valorCredito > creditoMaximo)) return;
 
       const chave = `${codigo}__${plano.valor_bem || 0}__${normalizarGrupo(grupo)}`;
       if (!groups[chave]) {
