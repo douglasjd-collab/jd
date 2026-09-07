@@ -57,6 +57,28 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
     staleTime: 0,
   });
 
+  const normalizarGrupo = (valor) => {
+    const digitos = String(valor || '').replace(/\D/g, '');
+    return digitos.replace(/^0+/, '') || (digitos ? '0' : '');
+  };
+
+  const extrairGrupoPlano = (plano) => {
+    const informado = plano.grupo || plano.plano?.split('|')?.[0] || '';
+    return String(informado).replace(/\D/g, '');
+  };
+
+  const { data: gruposAtivos = [] } = useQuery({
+    queryKey: ['grupos-ativos-modal-planos', empresaId, open],
+    queryFn: async () => {
+      const res = empresaId
+        ? await base44.entities.GrupoConsorcio.filter({ empresa_id: empresaId, status: 'ativo' }, 'numero_grupo', 1000)
+        : await base44.entities.GrupoConsorcio.filter({ status: 'ativo' }, 'numero_grupo', 1000);
+      return Array.isArray(res) ? res : (res?.items ?? []);
+    },
+    enabled: open,
+    staleTime: 30000,
+  });
+
   const { data: historicosLance = [] } = useQuery({
     queryKey: ['historicos-lance-modal', empresaId, open],
     queryFn: async () => {
@@ -84,13 +106,18 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
 
   const groupedPlanos = useMemo(() => {
     const groups = {};
+    const ativos = new Set(gruposAtivos.map(g =>
+      `${g.empresa_id || ''}:${normalizarGrupo(g.numero_grupo)}`
+    ));
     
     planos.forEach(plano => {
       const codigo = plano.nome_bem?.split(' - ')[0]?.trim() || plano.external_hash?.split('_')[0];
-      if (!codigo) return;
+      const grupo = extrairGrupoPlano(plano);
+      const chaveGrupoAtivo = `${plano.empresa_id || ''}:${normalizarGrupo(grupo)}`;
+      if (!codigo || !grupo || !ativos.has(chaveGrupoAtivo)) return;
       
-      // Agrupar por nome_bem completo + valor_bem para não perder planos com mesmo código mas nomes diferentes (ex: 50% vs 70% vs normal)
-      const chave = `${plano.nome_bem || codigo}__${plano.valor_bem || 0}__${plano.grupo || ''}`;
+      // Crédito e prazo iguais continuam separados quando pertencem a grupos diferentes.
+      const chave = `${plano.nome_bem || codigo}__${plano.valor_bem || 0}__${normalizarGrupo(grupo)}`;
       
       if (!groups[chave]) {
         groups[chave] = {
@@ -99,7 +126,8 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
           valor_bem: plano.valor_bem,
           produto_id: plano.produto_id,
           plano: plano.plano,
-          grupo: plano.grupo,
+          grupo,
+          empresa_id: plano.empresa_id,
           tipo_venda: plano.tipo_venda,
           variacoes: []
         };
@@ -110,7 +138,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
         prazo_meses: plano.prazo_meses,
         parcela: plano.parcela,
         plano: plano.plano,
-        grupo: plano.grupo,
+        grupo,
         tipo_venda: plano.tipo_venda
       });
     });
@@ -120,7 +148,7 @@ export default function SelecionarPlanoCanopusModal({ open, onOpenChange, onSele
     });
     
     return Object.values(groups);
-  }, [planos]);
+  }, [planos, gruposAtivos]);
 
   const menorLancePorGrupo = useMemo(() => {
     const dataPorHistorico = new Map(
