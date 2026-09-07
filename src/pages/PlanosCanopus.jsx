@@ -153,28 +153,57 @@ export default function PlanosCanopusPage() {
     enabled: !!user
   });
 
-  const { data: menoresLances = [] } = useQuery({
-    queryKey: ['menores-lances-planos', user?.empresa_id, user?.perfil],
+  const { data: historicosLance = [] } = useQuery({
+    queryKey: ['historicos-lance-planos', user?.empresa_id, user?.perfil],
     queryFn: async () => {
-      const filtro = user?.empresa_id
-        ? { empresa_id: user.empresa_id, modalidade: 'livre' }
-        : { modalidade: 'livre' };
-      const res = await base44.entities.MenorLanceAssembleia.filter(filtro, '-data_assembleia', 2000);
+      const res = user?.empresa_id
+        ? await base44.entities.HistoricoLanceGrupo.filter({ empresa_id: user.empresa_id }, '-assembleia_data', 5000)
+        : await base44.entities.HistoricoLanceGrupo.list('-assembleia_data', 5000);
+      const lista = Array.isArray(res) ? res : (res?.items ?? []);
+      return lista.filter(item => !item.status || item.status === 'ATIVO');
+    },
+    enabled: !!user
+  });
+
+  const { data: detalhesLance = [] } = useQuery({
+    queryKey: ['detalhes-lance-planos', user?.empresa_id, user?.perfil],
+    queryFn: async () => {
+      const res = user?.empresa_id
+        ? await base44.entities.HistoricoLanceDetalhe.filter({ empresa_id: user.empresa_id }, '-created_date', 10000)
+        : await base44.entities.HistoricoLanceDetalhe.list('-created_date', 10000);
       return Array.isArray(res) ? res : (res?.items ?? []);
     },
     enabled: !!user
   });
 
   const menorLancePorGrupo = React.useMemo(() => {
+    const historicoPorId = new Map(historicosLance.map(item => [item.id, item]));
     const mapa = {};
-    menoresLances.forEach(item => {
-      const chave = `${item.empresa_id || ''}:${normalizarGrupo(item.grupo)}`;
-      if (!mapa[chave] || String(item.data_assembleia || '') > String(mapa[chave].data_assembleia || '')) {
-        mapa[chave] = item;
+
+    detalhesLance.forEach(item => {
+      if (item.modalidade !== 'lance_livre') return;
+
+      const historico = historicoPorId.get(item.historico_id);
+      const percentual = Number(item.lance_percent);
+      const dataAssembleia = historico?.assembleia_data || '';
+      if (!historico || !dataAssembleia || !Number.isFinite(percentual)) return;
+
+      const empresaId = item.empresa_id || historico.empresa_id || '';
+      const chave = `${empresaId}:${normalizarGrupo(item.grupo)}`;
+      const atual = mapa[chave];
+
+      if (!atual || dataAssembleia > atual.data_assembleia) {
+        mapa[chave] = {
+          menor_lance_percentual: percentual,
+          data_assembleia: dataAssembleia
+        };
+      } else if (dataAssembleia === atual.data_assembleia) {
+        atual.menor_lance_percentual = Math.min(atual.menor_lance_percentual, percentual);
       }
     });
+
     return mapa;
-  }, [menoresLances]);
+  }, [historicosLance, detalhesLance]);
 
   // Cada grupo mantém sua própria grade de créditos e prazos.
   const groupedPlanos = React.useMemo(() => {
