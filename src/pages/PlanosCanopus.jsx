@@ -114,70 +114,118 @@ export default function PlanosCanopusPage() {
     queryFn: async () => {
       if (!user) return [];
       
-      // Super admin / master: lista tudo
+      // A tela operacional exibe somente planos ativos.
       if (user.perfil === 'super_admin' || user.perfil === 'master') {
-        const res = await base44.entities.PlanoCanopus.list('-ultima_sincronizacao', 2000);
-        return Array.isArray(res) ? res : (res?.items ?? []);
+        const res = await base44.entities.PlanoCanopus.list('-ultima_sincronizacao', 3000);
+        const lista = Array.isArray(res) ? res : (res?.items ?? []);
+        return lista.filter(p => p.status === 'ativo');
       }
       
-      // Demais perfis: filtra por empresa_id
       if (!user.empresa_id) return [];
       const res = await base44.entities.PlanoCanopus.filter(
-        { empresa_id: user.empresa_id },
+        { empresa_id: user.empresa_id, status: 'ativo' },
         '-ultima_sincronizacao',
-        2000
+        3000
       );
       return Array.isArray(res) ? res : (res?.items ?? []);
     },
     enabled: !!user
   });
 
-  // Agrupar planos por código (sem prazo) - ANTES dos early returns
+  const normalizarGrupo = (valor) => {
+    const digitos = String(valor || '').replace(/\D/g, '');
+    return digitos.replace(/^0+/, '') || (digitos ? '0' : '');
+  };
+
+  const extrairGrupoPlano = (plano) => {
+    const informado = plano.grupo || plano.plano?.split('|')?.[0] || '';
+    return String(informado).replace(/\D/g, '');
+  };
+
+  const { data: gruposAtivos = [] } = useQuery({
+    queryKey: ['grupos-ativos-planos', user?.empresa_id, user?.perfil],
+    queryFn: async () => {
+      const res = user?.empresa_id
+        ? await base44.entities.GrupoConsorcio.filter({ empresa_id: user.empresa_id, status: 'ativo' }, 'numero_grupo', 1000)
+        : await base44.entities.GrupoConsorcio.filter({ status: 'ativo' }, 'numero_grupo', 1000);
+      return Array.isArray(res) ? res : (res?.items ?? []);
+    },
+    enabled: !!user
+  });
+
+  const { data: menoresLances = [] } = useQuery({
+    queryKey: ['menores-lances-planos', user?.empresa_id, user?.perfil],
+    queryFn: async () => {
+      const filtro = user?.empresa_id
+        ? { empresa_id: user.empresa_id, modalidade: 'livre' }
+        : { modalidade: 'livre' };
+      const res = await base44.entities.MenorLanceAssembleia.filter(filtro, '-data_assembleia', 2000);
+      return Array.isArray(res) ? res : (res?.items ?? []);
+    },
+    enabled: !!user
+  });
+
+  const menorLancePorGrupo = React.useMemo(() => {
+    const mapa = {};
+    menoresLances.forEach(item => {
+      const chave = `${item.empresa_id || ''}:${normalizarGrupo(item.grupo)}`;
+      if (!mapa[chave] || String(item.data_assembleia || '') > String(mapa[chave].data_assembleia || '')) {
+        mapa[chave] = item;
+      }
+    });
+    return mapa;
+  }, [menoresLances]);
+
+  // Cada grupo mantém sua própria grade de créditos e prazos.
   const groupedPlanos = React.useMemo(() => {
     const groups = {};
+    const ativos = new Set(gruposAtivos.map(g =>
+      `${g.empresa_id || ''}:${normalizarGrupo(g.numero_grupo)}`
+    ));
     
     planos.forEach(plano => {
-      // Extrair código base do nome_bem (ex: "CR4072 - AUTOMÓVEL LEVE" -> "CR4072")
       const codigo = plano.nome_bem?.split(' - ')[0]?.trim() || plano.external_hash?.split('_')[0];
-      if (!codigo) return;
-      
-      if (!groups[codigo]) {
-        groups[codigo] = {
+      const grupo = extrairGrupoPlano(plano);
+      const chaveGrupoAtivo = `${plano.empresa_id || ''}:${normalizarGrupo(grupo)}`;
+      if (!codigo || !grupo || !ativos.has(chaveGrupoAtivo)) return;
+
+      const chave = `${codigo}__${plano.valor_bem || 0}__${normalizarGrupo(grupo)}`;
+      if (!groups[chave]) {
+        groups[chave] = {
           codigo,
           nome_bem: plano.nome_bem,
           valor_bem: plano.valor_bem,
           produto_id: plano.produto_id,
           plano: plano.plano,
-          grupo: plano.grupo,
+          grupo,
+          empresa_id: plano.empresa_id,
           tipo_venda: plano.tipo_venda,
           status: plano.status,
-          variacoes: new Map() // Usar Map para evitar duplicatas por prazo
+          variacoes: new Map()
         };
       }
       
-      // Usar prazo_meses como chave para evitar duplicatas
-      const prazo = plano.prazo_meses;
-      if (prazo && !groups[codigo].variacoes.has(prazo)) {
-        groups[codigo].variacoes.set(prazo, {
+      const chaveVariacao = `${plano.prazo_meses || 0}__${plano.plano || ''}__${plano.tipo_venda || ''}`;
+      if (plano.prazo_meses && !groups[chave].variacoes.has(chaveVariacao)) {
+        groups[chave].variacoes.set(chaveVariacao, {
           id: plano.id,
-          prazo_meses: prazo,
+          prazo_meses: plano.prazo_meses,
           parcela: plano.parcela,
           taxa_adm: plano.taxa_adm,
           plano: plano.plano,
-          grupo: plano.grupo,
+          grupo,
           tipo_venda: plano.tipo_venda,
           nome_bem: plano.nome_bem
         });
       }
     });
     
-    // Converter Map para array e ordenar por prazo
     return Object.values(groups).map(group => ({
       ...group,
       variacoes: Array.from(group.variacoes.values())
         .sort((a, b) => (b.prazo_meses || 0) - (a.prazo_meses || 0))
     }));
-  }, [planos]);
+  }, [planos, gruposAtivos]);
 
   const filteredPlanos = React.useMemo(() => {
     const filtered = groupedPlanos.filter(g => {
@@ -187,6 +235,7 @@ export default function PlanosCanopusPage() {
         const matchSearch = (
           g.nome_bem?.toLowerCase().includes(s) ||
           g.codigo?.toLowerCase().includes(s) ||
+          g.grupo?.toLowerCase().includes(s) ||
           g.plano?.toLowerCase().includes(s)
         );
         if (!matchSearch) return false;
@@ -499,6 +548,8 @@ ${textoVariacoes}
               <TableHeader>
                 <TableRow className="bg-slate-50">
                   <TableHead className="font-semibold">NOME DO BEM</TableHead>
+                  <TableHead className="font-semibold text-center">GRUPO</TableHead>
+                  <TableHead className="font-semibold text-center">LANCE DO GRUPO</TableHead>
                   <TableHead className="font-semibold text-right">VALOR</TableHead>
                   <TableHead className="font-semibold text-center">PRAZO</TableHead>
                   <TableHead className="font-semibold text-right">1ª PARCELA</TableHead>
@@ -510,7 +561,7 @@ ${textoVariacoes}
               <TableBody>
                 {filteredPlanos.map((group, index) => (
                   <TableRow 
-                    key={group.codigo} 
+                    key={`${group.codigo}__${group.valor_bem}__${group.grupo}`} 
                     className={`hover:bg-blue-50 cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-slate-200'}`}
                     onClick={() => handleOpenDialog(group)}
                   >
@@ -523,6 +574,24 @@ ${textoVariacoes}
                           {group.variacoes.length} variações
                         </Badge>
                       </div>
+                    </TableCell>
+                    <TableCell className="text-center font-semibold text-slate-800">
+                      {group.grupo}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {(() => {
+                        const lance = menorLancePorGrupo[`${group.empresa_id || ''}:${normalizarGrupo(group.grupo)}`];
+                        return lance ? (
+                          <div className="flex flex-col items-center">
+                            <Badge className="border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+                              Menor: {Number(lance.menor_lance_percentual).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%
+                            </Badge>
+                            <span className="mt-1 text-[10px] text-slate-400">
+                              {lance.data_assembleia ? new Date(lance.data_assembleia + 'T00:00:00').toLocaleDateString('pt-BR') : ''}
+                            </span>
+                          </div>
+                        ) : <span className="text-slate-400">Sem assembleia</span>;
+                      })()}
                     </TableCell>
                     <TableCell className="text-right font-medium text-slate-900">
                       {formatCurrency(group.valor_bem)}
