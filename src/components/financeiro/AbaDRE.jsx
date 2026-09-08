@@ -8,7 +8,7 @@ moment.locale('pt-br');
 const BRL = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const PCT = (v, total) => total > 0 ? `${((v/total)*100).toFixed(1)}%` : '0%';
 
-export default function AbaDRE({ despesas, receitas, comissoes, filiais = [] }) {
+export default function AbaDRE({ despesas, receitas, comissoes, lotesComissaoConsorcio = [], lotesComissaoEmprestimo = [], filiais = [] }) {
   const [periodo, setPeriodo] = useState(() => moment().format('YYYY-MM'));
   const [filterFilial, setFilterFilial] = useState('todas');
 
@@ -27,9 +27,20 @@ export default function AbaDRE({ despesas, receitas, comissoes, filiais = [] }) 
     filtrarPorPeriodo(receitas.filter(r => r.status === 'recebida'), 'data_recebimento')
       .reduce((s,r) => s+(r.valor||0),0), [receitas, periodo]);
 
-  const comissoesPagas = useMemo(() =>
-    filtrarPorPeriodo(comissoes.filter(c => ['pago','paga'].includes(c.status_pagamento)), 'data_pagamento')
-      .reduce((s,c) => s+(c.valor_vendedor||0),0), [comissoes, periodo]);
+  // Comissões pagas: lotes quitados (consórcio + empréstimo) — refletem os pagamentos reais aos vendedores
+  const comissoesPagas = useMemo(() => {
+    const lotesConsorcio = filtrarPorPeriodo(
+      (lotesComissaoConsorcio || []).filter(l => l.status === 'quitado'),
+      'data_quitacao'
+    ).reduce((s,l) => s + (l.total_pago || l.valor_total || 0), 0);
+
+    const lotesEmprestimo = filtrarPorPeriodo(
+      (lotesComissaoEmprestimo || []).filter(l => l.status === 'quitado'),
+      'data_quitacao'
+    ).reduce((s,l) => s + (l.valor_efetivamente_pago || l.valor_total || 0), 0);
+
+    return lotesConsorcio + lotesEmprestimo;
+  }, [lotesComissaoConsorcio, lotesComissaoEmprestimo, periodo]);
 
   // DRE por competência: soma todas as despesas do período (pagas + pendentes), exceto canceladas
   const despesasValidas = despesas.filter(d => d.status !== 'cancelado' && d.status !== 'cancelada');
