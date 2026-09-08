@@ -540,7 +540,8 @@ export default function Saques() {
       const filter = { produto: 'emprestimo', comissao_vendedor_paga: true };
       if (empresaId) filter.empresa_id = empresaId;
       if (!isMaster && (colab?.id || user?.id)) filter.vendedor_id = colab?.id || user?.id;
-      return base44.entities.Proposta.filter(filter, '-comissao_vendedor_data_pagamento', 1000);
+      return base44.entities.Proposta.filter(filter, '-comissao_vendedor_data_pagamento', 1000)
+        .then(propostas => propostas.filter(p => !p.lote_pagamento_id));
     },
   });
 
