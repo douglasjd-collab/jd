@@ -109,6 +109,13 @@ Exemplo: CR4072 pode ter opções de 96, 86, 76, 66, 56, 46 e 36 meses com parce
 
 VOCÊ DEVE EXTRAIR TODAS AS VARIAÇÕES DE PRAZO/PARCELA PARA CADA BEM!
 
+REGRAS OBRIGATÓRIAS PARA AS COLUNAS:
+- Leia as colunas sempre nesta ordem fixa: 96, 86, 76, 66, 56, 46 e 36 meses.
+- Alguns PDFs possuem fonte codificada e os cabeçalhos 56, 46 e 36 podem parecer "v6", "w6", "x6", "{6", "|6" ou "}6". Interprete-os pela posição correta.
+- Crie registro SOMENTE quando a célula possuir uma parcela numérica maior que zero. Uma célula contendo apenas "R$" está vazia e não representa prazo disponível.
+- Não omita nenhuma célula que possua valor de parcela.
+- O grupo deve ser extraído do título do PDF e repetido em todas as variações.
+
 FORMATO DA TABELA:
 - Linha principal: Código (ex: CR4205) + Descrição (ex: AUTOMÓVEL LEVE 70%) + Valor do crédito
 - Ao expandir: Múltiplas opções com formato "Plano de X meses / 1ª parcela de R$ Y,YY | Grupo: ZZZZZ"
@@ -195,9 +202,27 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
         const planosParaAtualizar = [];
 
         // Preparar dados para operações em lote
+        const hashesPreparados = new Set();
         for (const plano of planosBase) {
-          const external_hash = `${plano.codigo}_${plano.prazo_meses}`;
-          const existente = existentesMap.get(external_hash);
+          const grupoNormalizado = String(plano.grupo || '').replace(/\D/g, '').replace(/^0+/, '') || '0';
+          const codigoNormalizado = String(plano.codigo || '').trim();
+          const prazo = Number(plano.prazo_meses) || 0;
+          const valor = Number(plano.valor_bem) || 0;
+          const parcela = Number(plano.primeira_parcela) || 0;
+          if (!grupoNormalizado || grupoNormalizado === '0' || !codigoNormalizado || !prazo || !valor || !parcela) {
+            continue;
+          }
+
+          const external_hash = `PDF|${grupoNormalizado}|${codigoNormalizado}|${valor}|${prazo}|${plano.tipo_venda || ''}|${plano.plano || ''}`;
+          if (hashesPreparados.has(external_hash)) continue;
+          hashesPreparados.add(external_hash);
+
+          const legacyHash = `${codigoNormalizado}_${prazo}`;
+          const legado = existentesMap.get(legacyHash);
+          const grupoLegado = String(legado?.grupo || legado?.plano?.split('|')?.[0] || '')
+            .replace(/\D/g, '').replace(/^0+/, '') || '0';
+          const existente = existentesMap.get(external_hash) ||
+            (legado && grupoLegado === grupoNormalizado ? legado : null);
 
           const payload = {
             empresa_id: emp.id,
@@ -205,12 +230,13 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
             produto_id,
             permite_reserva: "N",
             external_hash,
-            nome_bem: `${plano.codigo} - ${plano.nome_bem}`,
-            valor_bem: plano.valor_bem,
-            prazo_meses: plano.prazo_meses,
-            parcela: plano.primeira_parcela,
+            nome_bem: `${codigoNormalizado} - ${plano.nome_bem}`,
+            valor_bem: valor,
+            prazo_meses: prazo,
+            parcela,
             taxa_adm: plano.taxa_adm || null,
-            plano: `${plano.grupo || ""} | ${plano.plano || ""}`.trim(),
+            plano: `${grupoNormalizado} | ${plano.plano || ""}`.trim(),
+            grupo: grupoNormalizado,
             tipo_venda: plano.tipo_venda || "",
             ultima_sincronizacao: new Date().toISOString(),
             status: "ativo"
