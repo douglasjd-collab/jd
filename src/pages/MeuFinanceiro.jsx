@@ -7,7 +7,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { Loader2, Plus, Pencil, Trash2, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Upload, X, Calendar, Building2, CreditCard, Hash, Key, MoreVertical, Eye, AlertTriangle, DollarSign, Clock, PieChart, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts';
@@ -39,7 +38,6 @@ export default function MeuFinanceiro() {
   const [carregando, setCarregando] = useState(true);
   const [aba, setAba] = useState('dashboard');
   const [refreshKey, setRefreshKey] = useState(0);
-  const [modalForm, setModalForm] = useState({ open: false, item: null, tipo: 'receita' });
 
   useEffect(() => {
     (async () => {
@@ -55,8 +53,6 @@ export default function MeuFinanceiro() {
 
   const onSaved = () => setRefreshKey(k => k + 1);
 
-  const abrirModal = (tipo) => setModalForm({ open: true, item: null, tipo });
-
   if (carregando) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-slate-400" /></div>;
   if (!user) return <div className="text-center py-20 text-slate-500">Usuário não encontrado.</div>;
 
@@ -71,22 +67,14 @@ export default function MeuFinanceiro() {
           <p className="text-xs text-slate-500 dark:text-slate-400">{user.nome_perfil || user.full_name}</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Botão Adicionar */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button className="gap-2 bg-green-600 hover:bg-green-700 text-white rounded-full px-5 h-10 font-semibold text-sm">
-                <Plus className="w-4 h-4" /> Adicionar
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onSelect={() => abrirModal('receita')} className="gap-2 cursor-pointer">
-                <ArrowUpCircle className="w-4 h-4 text-green-500" /> Nova Receita
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => abrirModal('despesa')} className="gap-2 cursor-pointer">
-                <ArrowDownCircle className="w-4 h-4 text-red-500" /> Nova Despesa
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {aba !== 'dashboard' && (
+            <Button
+              onClick={() => setAba('dashboard')}
+              className="gap-2 bg-slate-600 hover:bg-slate-700 text-white rounded-full px-5 h-10 font-semibold text-sm"
+            >
+              <ChevronLeft className="w-4 h-4" /> Voltar
+            </Button>
+          )}
 
           {/* Select estilo pill roxo */}
           <Select value={aba} onValueChange={setAba}>
@@ -109,17 +97,6 @@ export default function MeuFinanceiro() {
         <TabsContent value="projecao"><ProjecaoTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="dre"><DRETab user={user} refreshKey={refreshKey} /></TabsContent>
       </Tabs>
-
-      {modalForm.open && (
-        <FormModalFinanceiro
-          open={modalForm.open}
-          onClose={() => setModalForm({ open: false, item: null, tipo: 'receita' })}
-          item={modalForm.item}
-          tipo={modalForm.tipo}
-          user={user}
-          onSaved={() => { onSaved(); setModalForm({ open: false, item: null, tipo: 'receita' }); }}
-        />
-      )}
     </div>
   );
 }
