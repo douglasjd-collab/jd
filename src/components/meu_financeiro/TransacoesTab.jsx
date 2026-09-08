@@ -11,6 +11,17 @@ import { format, parseISO, startOfMonth, endOfMonth, addMonths, subMonths } from
 import { ptBR } from 'date-fns/locale';
 import FormModalFinanceiro from '@/components/meu_financeiro/FormModalFinanceiro';
 import ReceberPagarModal from '@/components/meu_financeiro/ReceberPagarModal';
+import SwipeableTransactionCard from '@/components/meu_financeiro/SwipeableTransactionCard';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +59,7 @@ export default function TransacoesTab({ user, refreshKey }) {
   const [modal, setModal] = useState({ open: false, item: null, tipo: 'receita' });
   const [menuAberto, setMenuAberto] = useState(false);
   const [receberPagarModal, setReceberPagarModal] = useState({ open: false, item: null, tipo: 'receita' });
+  const [itemParaExcluir, setItemParaExcluir] = useState(null);
 
   // Handler para abrir modal de nova transação
   const abrirNovaTransacao = (tipo) => {
@@ -130,10 +142,10 @@ export default function TransacoesTab({ user, refreshKey }) {
   const balancoMensal = totalReceitas - totalDespesas;
 
   const excluir = async (item) => {
-    if (!confirm(`Excluir esta ${item._tipo === 'receita' ? 'receita' : 'despesa'}?`)) return;
     try {
       await base44.entities[item._tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa'].delete(item.id);
       toast.success('Excluído!');
+      setItemParaExcluir(null);
       carregar();
     } catch { toast.error('Erro ao excluir'); }
   };
@@ -149,58 +161,6 @@ export default function TransacoesTab({ user, refreshKey }) {
 
   const mesLabel = format(mesAtual, 'MMMM yyyy', { locale: ptBR });
   const mesLabelCapitalizado = mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1);
-
-  // Componente de transação mobile
-  const TransacaoMobile = ({ t }) => {
-    const isReceita = t._tipo === 'receita';
-    const statusBadge = isReceita 
-      ? { bg: 'bg-green-100', text: 'text-green-700', label: 'Recebida' }
-      : { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Pendente' };
-    
-    return (
-      <div 
-        className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 cursor-pointer active:bg-slate-50"
-        onClick={() => abrirEfetivacao(t)}
-      >
-        <div className="flex items-center gap-3">
-          {/* Ícone */}
-          <div className={`w-10 h-10 rounded-full ${isReceita ? 'bg-green-100' : 'bg-red-100'} flex items-center justify-center flex-shrink-0`}>
-            <div className={`w-7 h-7 rounded-full ${isReceita ? 'bg-green-500' : 'bg-red-500'} flex items-center justify-center`}>
-              {isReceita ? (
-                <ArrowUpCircle className="w-4 h-4 text-white" />
-              ) : (
-                <ArrowDownCircle className="w-4 h-4 text-white" />
-              )}
-            </div>
-          </div>
-          
-          {/* Informações */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
-              <p className="font-semibold text-slate-800 truncate">
-                {t.descricao?.length > 20 ? t.descricao.substring(0, 20) + '...' : t.descricao}
-              </p>
-            </div>
-            <p className="text-xs text-slate-500">
-              {t.categoria || 'Sem categoria'} · {t.data ? format(parseISO(t.data), 'dd/MM/yy') : '-'}
-            </p>
-            <div className="mt-1.5">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge.bg} ${statusBadge.text}`}>
-                {statusBadge.label}
-              </span>
-            </div>
-          </div>
-          
-          {/* Valor */}
-          <div className="text-right flex-shrink-0">
-            <p className={`font-bold text-sm ${isReceita ? 'text-green-600' : 'text-red-600'}`}>
-              {isReceita ? '+' : '-'} {fmtMoeda(t.valor)}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="mt-4 space-y-4">
@@ -318,7 +278,12 @@ export default function TransacoesTab({ user, refreshKey }) {
             </div>
           ) : (
             transacoesFiltradas.map(t => (
-              <TransacaoMobile key={`${t._tipo}-${t.id}`} t={t} />
+              <SwipeableTransactionCard
+                key={`${t._tipo}-${t.id}`}
+                t={t}
+                onClick={abrirEfetivacao}
+                onSwipeDelete={setItemParaExcluir}
+              />
             ))
           )}
         </div>
@@ -398,7 +363,7 @@ export default function TransacoesTab({ user, refreshKey }) {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                               <DropdownMenuItem onClick={() => { setModal({ open: true, item: t, tipo: t._tipo }); }}>Editar</DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => excluir(t)} className="text-red-600">Excluir</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setItemParaExcluir(t)} className="text-red-600">Excluir</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </td>
@@ -463,6 +428,33 @@ export default function TransacoesTab({ user, refreshKey }) {
           onConfirmar={() => { carregar(); setReceberPagarModal({ open: false, item: null, tipo: 'receita' }); }}
         />
       )}
+
+      {/* Confirmação de exclusão */}
+      <AlertDialog open={!!itemParaExcluir} onOpenChange={(open) => !open && setItemParaExcluir(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você realmente deseja excluir essa {itemParaExcluir?._tipo === 'receita' ? 'receita' : 'despesa'}?
+              {' '}
+              {itemParaExcluir?.descricao && (
+                <span className="font-semibold block mt-1">"{itemParaExcluir.descricao}"</span>
+              )}
+              <span className="block mt-1 text-red-600 font-semibold">{fmtMoeda(itemParaExcluir?.valor)}</span>
+              <span className="block mt-2">Esta ação não pode ser desfeita.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => itemParaExcluir && excluir(itemParaExcluir)}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Sim, excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
