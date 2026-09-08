@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Search, DollarSign, FileText, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, DollarSign, FileText, Download, ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import moment from 'moment';
@@ -161,10 +161,18 @@ export default function ComissoesRecebidas() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <PageHeader
-        title="Comissões Recebidas"
-        subtitle="Histórico de comissões pagas"
-      />
+      <div className="flex items-center justify-between gap-4">
+        <PageHeader
+          title="Comissões Recebidas"
+          subtitle="Histórico de comissões pagas"
+        />
+        <Button
+          onClick={() => window.history.back()}
+          className="gap-2 bg-slate-600 hover:bg-slate-700 text-white rounded-full px-5 h-10 font-semibold text-sm"
+        >
+          <ChevronLeft className="w-4 h-4" /> Voltar
+        </Button>
+      </div>
 
       {/* Stats */}
       <Card className="p-6 mb-6">
