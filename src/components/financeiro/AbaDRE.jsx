@@ -31,13 +31,16 @@ export default function AbaDRE({ despesas, receitas, comissoes, filiais = [] }) 
     filtrarPorPeriodo(comissoes.filter(c => ['pago','paga'].includes(c.status_pagamento)), 'data_pagamento')
       .reduce((s,c) => s+(c.valor_vendedor||0),0), [comissoes, periodo]);
 
+  // DRE por competência: soma todas as despesas do período (pagas + pendentes), exceto canceladas
+  const despesasValidas = despesas.filter(d => d.status !== 'cancelado' && d.status !== 'cancelada');
+
   const despesasOperacionais = useMemo(() =>
-    filtrarPorPeriodo(despesas.filter(d => ['pago','paga'].includes(d.status)), 'data_pagamento')
+    filtrarPorPeriodo(despesasValidas, 'data')
       .reduce((s,d) => s+(d.valor||0),0), [despesas, periodo]);
 
   // Impostos estimados (assumir que estão como categoria 'impostos' ou 'imposto')
   const impostos = useMemo(() =>
-    filtrarPorPeriodo(despesas.filter(d => ['pago','paga'].includes(d.status) && (d.categoria||'').toLowerCase().includes('imposto')), 'data_pagamento')
+    filtrarPorPeriodo(despesasValidas.filter(d => (d.categoria||'').toLowerCase().includes('imposto')), 'data')
       .reduce((s,d) => s+(d.valor||0),0), [despesas, periodo]);
 
   const despesasSemImpostos = despesasOperacionais - impostos;
@@ -53,10 +56,10 @@ export default function AbaDRE({ despesas, receitas, comissoes, filiais = [] }) 
     { label: 'LUCRO LÍQUIDO', valor: lucroLiquido, tipo: 'total', destaque: true },
   ];
 
-  // Detalhamento de despesas por categoria
+  // Detalhamento de despesas por categoria (por competência)
   const despesasPorCategoria = useMemo(() => {
     const map = {};
-    filtrarPorPeriodo(despesas.filter(d => ['pago','paga'].includes(d.status)), 'data_pagamento')
+    filtrarPorPeriodo(despesasValidas, 'data')
       .forEach(d => {
         const cat = d.categoria || 'Sem categoria';
         map[cat] = (map[cat]||0) + (d.valor||0);
