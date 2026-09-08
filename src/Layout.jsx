@@ -838,7 +838,7 @@ export default function Layout({ children, currentPageName }) {
       {user?.empresa_id && user.perfil !== 'parceiro' && <CampanhaMonitorGlobal empresaId={user.empresa_id} />}
 
       {/* Chat flutuante do WhatsApp — disponível em todo o sistema (exceto no Bate-Papo, onde é redundante) */}
-      {user?.empresa_id && user.perfil !== 'parceiro' && currentPageName !== 'BatePapo' && (
+      {user?.empresa_id && user.perfil !== 'parceiro' && currentPageName !== 'BatePapo' && currentPageName !== 'MeuFinanceiro' && (
         <ChatFlutuante empresaId={user.empresa_id} user={user} defaultMinimized={true} />
       )}
 
