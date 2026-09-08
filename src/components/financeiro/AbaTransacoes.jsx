@@ -24,9 +24,10 @@ const STATUS_COLORS = {
   recebida: 'bg-green-100 text-green-700', pendente: 'bg-yellow-100 text-yellow-700',
   atrasada: 'bg-red-100 text-red-700', cancelada: 'bg-slate-100 text-slate-500',
   'aguardando pagamento': 'bg-blue-100 text-blue-700', prevista: 'bg-purple-100 text-purple-700',
+  agendado: 'bg-purple-100 text-purple-700',
 };
 
-export default function AbaTransacoes({ despesas, receitas, comissoes, categoriasDespesa, contasBancarias, user, refetchAll, queryClient: qc, onEditDespesa, onEditReceita }) {
+export default function AbaTransacoes({ despesas, receitas, comissoes, lotesComissaoConsorcio, lotesComissaoEmprestimo, categoriasDespesa, contasBancarias, user, refetchAll, queryClient: qc, onEditDespesa, onEditReceita }) {
   const queryClient = useQueryClient();
   const hoje = moment().format('YYYY-MM-DD');
   const [search, setSearch] = useState('');
@@ -46,37 +47,56 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, categoria
     return 'pendente';
   };
 
-  // Mapear comissões a pagar (ComissaoAPagar) como despesas no relatório de transações
-  const comissoesComoTransacoes = useMemo(() => (comissoes || []).map(c => {
-    const quitada = c.status_pagamento === 'quitada';
-    const dataRef = quitada ? (c.data_pagamento || c.data_recebimento) : c.data_recebimento;
-    const descricao = `Comissão ${c.vendedor_nome || ''}${c.cliente_nome ? ' — ' + c.cliente_nome : ''}${c.grupo || c.cota ? ' (' + [c.grupo, c.cota].filter(Boolean).join('/') + ')' : ''}`;
+  // Mapear lotes de pagamento de comissão (consórcio) — só quitado ou agendado (programado)
+  const lotesConsorcioComoTransacoes = useMemo(() => (lotesComissaoConsorcio || []).map(l => {
+    const quitado = l.status === 'quitado';
+    const dataRef = quitado ? (l.data_quitacao || l.data_pagamento) : l.data_pagamento;
     return {
-      ...c,
-      _id: 'comissao_' + c.id,
+      ...l,
+      _id: 'lote_consorcio_' + l.id,
       _tipo: 'despesa',
-      _status: quitada ? 'pago' : 'pendente',
-      _origem: 'comissao',
-      descricao,
-      valor: c.valor_a_pagar,
+      _status: quitado ? 'pago' : 'agendado',
+      _origem: 'lote_comissao',
+      descricao: `Lote Comissão ${l.vendedor_nome || ''} (${l.lote_code || ''})`,
+      valor: l.total_pago,
       data: dataRef,
-      data_vencimento: quitada ? null : dataRef,
       categoria: 'Comissão',
       produto: 'Consórcio',
-      responsavel_nome: c.vendedor_nome || '',
-      status: quitada ? 'pago' : 'pendente',
+      responsavel_nome: l.vendedor_nome || '',
+      status: quitado ? 'pago' : 'agendado',
     };
-  }), [comissoes, hoje]);
+  }), [lotesComissaoConsorcio]);
+
+  // Mapear lotes de pagamento de comissão (empréstimo) — só quitado ou agendado (programado)
+  const lotesEmprestimoComoTransacoes = useMemo(() => (lotesComissaoEmprestimo || []).map(l => {
+    const quitado = l.status === 'quitado';
+    const dataRef = quitado ? (l.data_quitacao || l.data_pagamento) : l.data_pagamento;
+    return {
+      ...l,
+      _id: 'lote_emprestimo_' + l.id,
+      _tipo: 'despesa',
+      _status: quitado ? 'pago' : 'agendado',
+      _origem: 'lote_comissao',
+      descricao: `Lote Comissão Empréstimo ${l.vendedor_nome || ''} (${l.lote_codigo || ''})`,
+      valor: l.valor_efetivamente_pago || l.valor_total,
+      data: dataRef,
+      categoria: 'Comissão',
+      produto: 'Empréstimo Consignado',
+      responsavel_nome: l.vendedor_nome || '',
+      status: quitado ? 'pago' : 'agendado',
+    };
+  }), [lotesComissaoEmprestimo]);
 
   const allTransacoes = useMemo(() => [
     ...despesas.map(d => ({ ...d, _id: 'despesa_' + d.id, _tipo: 'despesa', _status: getStatusDespesa(d) })),
     ...receitas.map(r => ({ ...r, _id: 'receita_' + r.id, _tipo: 'receita', _status: r.status || 'pendente' })),
-    ...comissoesComoTransacoes,
+    ...lotesConsorcioComoTransacoes,
+    ...lotesEmprestimoComoTransacoes,
   ].sort((a, b) => {
     const da = a.data_vencimento || a.data || '';
     const db = b.data_vencimento || b.data || '';
     return db.localeCompare(da);
-  }), [despesas, receitas, comissoesComoTransacoes, hoje]);
+  }), [despesas, receitas, lotesConsorcioComoTransacoes, lotesEmprestimoComoTransacoes, hoje]);
 
   const filtered = useMemo(() => allTransacoes.filter(t => {
     if (filterType !== 'todos' && t._tipo !== filterType) return false;
@@ -149,6 +169,7 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, categoria
               <SelectItem value="recebida">Recebida</SelectItem>
               <SelectItem value="atrasada">Atrasada</SelectItem>
               <SelectItem value="prevista">Prevista</SelectItem>
+              <SelectItem value="agendado">Agendado</SelectItem>
               <SelectItem value="cancelada">Cancelada</SelectItem>
             </SelectContent>
           </Select>
@@ -217,8 +238,8 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, categoria
                     <td className="p-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stCls}`}>{st}</span></td>
                     <td className="p-3">
                       <div className="flex items-center gap-1">
-                        {t._origem === 'comissao' ? (
-                          <span className="text-xs text-slate-400 italic">Comissão</span>
+                        {t._origem === 'lote_comissao' ? (
+                          <span className="text-xs text-slate-400 italic">Lote Comissão</span>
                         ) : (
                           <>
                             {isDespesa && !['pago','paga'].includes(st) && (

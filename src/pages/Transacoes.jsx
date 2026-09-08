@@ -60,6 +60,20 @@ export default function Transacoes() {
     enabled: !!user,
   });
 
+  // Lotes de pagamento de comissão (consórcio) — status: programado (agendado) ou quitado
+  const { data: lotesComissaoConsorcio = [], refetch: refetchLotesConsorcio } = useQuery({
+    queryKey: ['lotes-comissao-consorcio-transacoes', user?.empresa_id],
+    queryFn: () => base44.entities.PagamentoComissaoLote.filter(empresaFiltro, '-data_pagamento', 2000),
+    enabled: !!user,
+  });
+
+  // Lotes de pagamento de comissão (empréstimo) — status: programado (agendado) ou quitado
+  const { data: lotesComissaoEmprestimo = [], refetch: refetchLotesEmprestimo } = useQuery({
+    queryKey: ['lotes-comissao-emprestimo-transacoes', user?.empresa_id],
+    queryFn: () => base44.entities.LotePagamentoComissaoEmprestimo.filter(empresaFiltro, '-data_pagamento', 2000),
+    enabled: !!user,
+  });
+
   const { data: filiais = [] } = useQuery({
     queryKey: ['filiais-transacoes', user?.empresa_id],
     queryFn: () => base44.entities.Filial.filter(user?.empresa_id ? { empresa_id: user.empresa_id } : {}, 'nome'),
@@ -82,6 +96,8 @@ export default function Transacoes() {
     queryClient.invalidateQueries({ queryKey: ['despesas-transacoes'] });
     queryClient.invalidateQueries({ queryKey: ['receitas-transacoes'] });
     queryClient.invalidateQueries({ queryKey: ['comissoes-transacoes'] });
+    queryClient.invalidateQueries({ queryKey: ['lotes-comissao-consorcio-transacoes'] });
+    queryClient.invalidateQueries({ queryKey: ['lotes-comissao-emprestimo-transacoes'] });
   };
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
@@ -105,7 +121,8 @@ export default function Transacoes() {
   }
 
   const sharedProps = {
-    user, despesas, receitas, comissoes, categoriasDespesa, contasBancarias,
+    user, despesas, receitas, comissoes, lotesComissaoConsorcio, lotesComissaoEmprestimo,
+    categoriasDespesa, contasBancarias,
     filiais, periodo, setPeriodo, refetchAll, queryClient,
     loadingDespesas, loadingReceitas,
     onEditDespesa: (d) => setEditandoDespesa(d),
