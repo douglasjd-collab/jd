@@ -26,7 +26,7 @@ const STATUS_COLORS = {
   'aguardando pagamento': 'bg-blue-100 text-blue-700', prevista: 'bg-purple-100 text-purple-700',
 };
 
-export default function AbaTransacoes({ despesas, receitas, categoriasDespesa, contasBancarias, user, refetchAll, queryClient: qc, onEditDespesa, onEditReceita }) {
+export default function AbaTransacoes({ despesas, receitas, comissoes, categoriasDespesa, contasBancarias, user, refetchAll, queryClient: qc, onEditDespesa, onEditReceita }) {
   const queryClient = useQueryClient();
   const hoje = moment().format('YYYY-MM-DD');
   const [search, setSearch] = useState('');
@@ -46,14 +46,37 @@ export default function AbaTransacoes({ despesas, receitas, categoriasDespesa, c
     return 'pendente';
   };
 
+  // Mapear comissões a pagar (ComissaoAPagar) como despesas no relatório de transações
+  const comissoesComoTransacoes = useMemo(() => (comissoes || []).map(c => {
+    const quitada = c.status_pagamento === 'quitada';
+    const dataRef = quitada ? (c.data_pagamento || c.data_recebimento) : c.data_recebimento;
+    const descricao = `Comissão ${c.vendedor_nome || ''}${c.cliente_nome ? ' — ' + c.cliente_nome : ''}${c.grupo || c.cota ? ' (' + [c.grupo, c.cota].filter(Boolean).join('/') + ')' : ''}`;
+    return {
+      ...c,
+      _id: 'comissao_' + c.id,
+      _tipo: 'despesa',
+      _status: quitada ? 'pago' : 'pendente',
+      _origem: 'comissao',
+      descricao,
+      valor: c.valor_a_pagar,
+      data: dataRef,
+      data_vencimento: quitada ? null : dataRef,
+      categoria: 'Comissão',
+      produto: 'Consórcio',
+      responsavel_nome: c.vendedor_nome || '',
+      status: quitada ? 'pago' : 'pendente',
+    };
+  }), [comissoes, hoje]);
+
   const allTransacoes = useMemo(() => [
-    ...despesas.map(d => ({ ...d, _tipo: 'despesa', _status: getStatusDespesa(d) })),
-    ...receitas.map(r => ({ ...r, _tipo: 'receita', _status: r.status || 'pendente' })),
+    ...despesas.map(d => ({ ...d, _id: 'despesa_' + d.id, _tipo: 'despesa', _status: getStatusDespesa(d) })),
+    ...receitas.map(r => ({ ...r, _id: 'receita_' + r.id, _tipo: 'receita', _status: r.status || 'pendente' })),
+    ...comissoesComoTransacoes,
   ].sort((a, b) => {
     const da = a.data_vencimento || a.data || '';
     const db = b.data_vencimento || b.data || '';
     return db.localeCompare(da);
-  }), [despesas, receitas, hoje]);
+  }), [despesas, receitas, comissoesComoTransacoes, hoje]);
 
   const filtered = useMemo(() => allTransacoes.filter(t => {
     if (filterType !== 'todos' && t._tipo !== filterType) return false;
@@ -172,7 +195,7 @@ export default function AbaTransacoes({ despesas, receitas, categoriasDespesa, c
                 const st = t._status;
                 const stCls = STATUS_COLORS[st] || 'bg-slate-100 text-slate-500';
                 return (
-                  <tr key={t.id + t._tipo} className="border-b hover:bg-slate-50">
+                  <tr key={t._id} className="border-b hover:bg-slate-50">
                     <td className="p-3">
                       {isDespesa
                         ? <span className="flex items-center gap-1 text-red-600 font-semibold text-xs"><TrendingDown className="w-3.5 h-3.5"/>Despesa</span>
@@ -194,33 +217,39 @@ export default function AbaTransacoes({ despesas, receitas, categoriasDespesa, c
                     <td className="p-3"><span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stCls}`}>{st}</span></td>
                     <td className="p-3">
                       <div className="flex items-center gap-1">
-                        {isDespesa && !['pago','paga'].includes(st) && (
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white h-6 text-xs px-2"
-                            onClick={() => setPagandoConta({ despesa: t, dataPagamento: moment().format('YYYY-MM-DD') })}>
-                            Pagar
-                          </Button>
-                        )}
-                        {!isDespesa && st !== 'recebida' && (
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white h-6 text-xs px-2"
-                            onClick={() => setRecebendoReceita({ receita: t, dataRecebimento: moment().format('YYYY-MM-DD') })}>
-                            Receber
-                          </Button>
-                        )}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0"><MoreVertical className="w-3.5 h-3.5"/></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => isDespesa ? (onEditDespesa ? onEditDespesa(t) : setEditingDespesa(t)) : (onEditReceita ? onEditReceita(t) : setEditingReceita(t))}>
-                              <Edit2 className="w-3.5 h-3.5 mr-2"/>Editar
-                            </DropdownMenuItem>
-                            {canDelete && (
-                              <DropdownMenuItem className="text-red-600" onClick={() => { if(confirm('Excluir?')) isDespesa ? deleteDespesa.mutate(t.id) : deleteReceita.mutate(t.id); }}>
-                                <Trash2 className="w-3.5 h-3.5 mr-2"/>Excluir
-                              </DropdownMenuItem>
+                        {t._origem === 'comissao' ? (
+                          <span className="text-xs text-slate-400 italic">Comissão</span>
+                        ) : (
+                          <>
+                            {isDespesa && !['pago','paga'].includes(st) && (
+                              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white h-6 text-xs px-2"
+                                onClick={() => setPagandoConta({ despesa: t, dataPagamento: moment().format('YYYY-MM-DD') })}>
+                                Pagar
+                              </Button>
                             )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                            {!isDespesa && st !== 'recebida' && (
+                              <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white h-6 text-xs px-2"
+                                onClick={() => setRecebendoReceita({ receita: t, dataRecebimento: moment().format('YYYY-MM-DD') })}>
+                                Receber
+                              </Button>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button size="sm" variant="ghost" className="h-6 w-6 p-0"><MoreVertical className="w-3.5 h-3.5"/></Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => isDespesa ? (onEditDespesa ? onEditDespesa(t) : setEditingDespesa(t)) : (onEditReceita ? onEditReceita(t) : setEditingReceita(t))}>
+                                  <Edit2 className="w-3.5 h-3.5 mr-2"/>Editar
+                                </DropdownMenuItem>
+                                {canDelete && (
+                                  <DropdownMenuItem className="text-red-600" onClick={() => { if(confirm('Excluir?')) isDespesa ? deleteDespesa.mutate(t.id) : deleteReceita.mutate(t.id); }}>
+                                    <Trash2 className="w-3.5 h-3.5 mr-2"/>Excluir
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
