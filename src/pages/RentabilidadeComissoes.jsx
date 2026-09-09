@@ -101,20 +101,31 @@ export default function RentabilidadeComissoes() {
     l.status === 'quitado' && dentroPeriodo(l.data_quitacao || l.data_pagamento)
   ), [lotes, inicio, fim]);
 
+  // Pagamentos antigos, feitos antes da criação dos lotes/snapshots atuais.
+  const pagamentosLegadoPeriodo = useMemo(() => propostas.filter(p =>
+    p.comissao_vendedor_paga === true &&
+    !itensPorProposta.has(p.id) &&
+    dentroPeriodo(p.comissao_vendedor_data_pagamento)
+  ), [propostas, itensPorProposta, inicio, fim]);
+
   const agentes = useMemo(() => {
     const ids = new Set();
     propostasRecebidas.forEach(p => ids.add(p.vendedor_id || 'sem-vendedor'));
     lotesQuitadosPeriodo.forEach(l => ids.add(l.vendedor_id || 'sem-vendedor'));
+    pagamentosLegadoPeriodo.forEach(p => ids.add(p.vendedor_id || 'sem-vendedor'));
 
     return Array.from(ids).map(id => {
       const cadastro = mapaAgentes.get(id);
       const props = propostasRecebidas.filter(p => (p.vendedor_id || 'sem-vendedor') === id);
       const lotesAgente = lotesQuitadosPeriodo.filter(l => (l.vendedor_id || 'sem-vendedor') === id);
-      const nome = cadastro?.nome || props[0]?.vendedor_nome || lotesAgente[0]?.vendedor_nome || 'Sem responsável';
+      const legadoAgente = pagamentosLegadoPeriodo.filter(p => (p.vendedor_id || 'sem-vendedor') === id);
+      const nome = cadastro?.nome || props[0]?.vendedor_nome || lotesAgente[0]?.vendedor_nome || legadoAgente[0]?.vendedor_nome || 'Sem responsável';
       const perfil = cadastro?.perfil || 'vendedor';
       const producao = props.reduce((s, p) => s + numero(p.valor_credito), 0);
       const comissaoGerada = props.reduce((s, p) => s + numero(p.valor_comissao || p.comissao_recebida), 0);
-      const pago = lotesAgente.reduce((s, l) => s + numero(l.valor_efetivamente_pago ?? l.valor_total), 0);
+      const pagoLotes = lotesAgente.reduce((s, l) => s + numero(l.valor_efetivamente_pago ?? l.valor_total), 0);
+      const pagoLegado = legadoAgente.reduce((s, p) => s + numero(p.valor_comissao_vendedor_pago || p.valor_comissao), 0);
+      const pago = pagoLotes + pagoLegado;
       const acrescimos = lotesAgente.reduce((s, l) => s + numero(l.acrescimos), 0);
       const descontos = lotesAgente.reduce((s, l) => s + numero(l.descontos), 0);
       const margem = comissaoGerada - pago;
@@ -129,7 +140,7 @@ export default function RentabilidadeComissoes() {
       if (busca && !a.nome.toLowerCase().includes(busca.toLowerCase())) return false;
       return true;
     }).sort((a, b) => b.margem - a.margem);
-  }, [propostasRecebidas, lotesQuitadosPeriodo, mapaAgentes, agenteId, tipoAgente, busca]);
+  }, [propostasRecebidas, lotesQuitadosPeriodo, pagamentosLegadoPeriodo, mapaAgentes, agenteId, tipoAgente, busca]);
 
   const totais = useMemo(() => agentes.reduce((t, a) => ({
     producao: t.producao + a.producao,
