@@ -10,6 +10,12 @@ import { subDays } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const fmtMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+const parseMoeda = (v) => {
+  const texto = String(v ?? '').replace(/\s/g, '').replace('R$', '');
+  const normalizado = texto.includes(',') ? texto.replace(/\./g, '').replace(',', '.') : texto;
+  const numero = Number(normalizado);
+  return Number.isFinite(numero) ? numero : 0;
+};
 
 export default function ReceberPagarModal({ open, onClose, item, tipo, user, onConfirmar }) {
   const isMobile = useIsMobile();
@@ -18,6 +24,8 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
   const bgIcon = tipo === 'receita' ? 'bg-green-100' : 'bg-red-100';
 
   const [valor, setValor] = useState('');
+  const [jurosMulta, setJurosMulta] = useState('');
+  const [desconto, setDesconto] = useState('');
   const [dataSelecionada, setDataSelecionada] = useState('hoje');
   const [dataPersonalizada, setDataPersonalizada] = useState('');
   const [contaBancariaId, setContaBancariaId] = useState('');
@@ -63,8 +71,10 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
     if (!open || !item) return;
     
     setValor(item.valor || 0);
-    const dataRef = item.data_recebimento || item.data_pagamento || item.data || '';
+    setJurosMulta(item.juros_multa ? String(item.juros_multa).replace('.', ',') : '');
+    setDesconto(item.desconto ? String(item.desconto).replace('.', ',') : '');
     const hoje = new Date().toISOString().split('T')[0];
+    const dataRef = item.data_recebimento || item.data_pagamento || hoje;
     const ontem = subDays(new Date(), 1).toISOString().split('T')[0];
     
     if (dataRef === hoje) {
@@ -107,9 +117,22 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
     return dataPersonalizada || new Date().toISOString().split('T')[0];
   };
 
+  const dataPagamentoAtual = getDataFinal();
+  const dataVencimento = item?.data_vencimento || item?.data || '';
+  const pagamentoAtrasado = tipo === 'despesa' && !!dataVencimento && dataPagamentoAtual > dataVencimento;
+  const pagamentoAntecipado = tipo === 'despesa' && !!dataVencimento && dataPagamentoAtual < dataVencimento;
+  const valorOriginal = Number(item?.valor || 0);
+  const jurosAplicado = pagamentoAtrasado ? Math.max(0, parseMoeda(jurosMulta)) : 0;
+  const descontoAplicado = pagamentoAntecipado ? Math.max(0, parseMoeda(desconto)) : 0;
+  const valorEfetivamentePago = Math.max(0, valorOriginal + jurosAplicado - descontoAplicado);
+
   const handleConfirmar = async () => {
     if (!contaBancariaId) {
       toast.error('Selecione uma conta bancária');
+      return;
+    }
+    if (descontoAplicado > valorOriginal + jurosAplicado) {
+      toast.error('O desconto não pode ser maior que o valor da despesa');
       return;
     }
 
@@ -128,12 +151,18 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
         observacao: observacao.trim(),
         comprovante_url: comprovanteUrl || null,
         comprovante_nome: comprovanteNome || null,
+        ...(tipo === 'despesa' ? {
+          valor_original: valorOriginal,
+          juros_multa: jurosAplicado,
+          desconto: descontoAplicado,
+          valor_pago: valorEfetivamentePago,
+        } : {}),
       });
 
       // Atualizar saldo da conta bancária
       const conta = await base44.entities.MeuFinanceiroContaBancaria.get(contaBancariaId);
       if (conta) {
-        const ajuste = tipo === 'receita' ? (item.valor || 0) : -(item.valor || 0);
+        const ajuste = tipo === 'receita' ? (item.valor || 0) : -valorEfetivamentePago;
         const novoSaldo = (conta.saldo_atual || 0) + ajuste;
         await base44.entities.MeuFinanceiroContaBancaria.update(contaBancariaId, { saldo_atual: novoSaldo });
       }
@@ -237,6 +266,54 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
           </div>
         )}
       </div>
+
+      {/* Ajustes por data de pagamento — somente despesas */}
+      {tipo === 'despesa' && (
+        <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+          {pagamentoAtrasado && (
+            <div>
+              <label className="text-sm font-semibold text-red-700">Juros/Multa por atraso</label>
+              <div className="relative mt-1.5">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">R$</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={jurosMulta}
+                  onChange={(e) => setJurosMulta(e.target.value)}
+                  placeholder="0,00"
+                  className="w-full rounded-lg border border-red-200 bg-white py-2.5 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-200"
+                />
+              </div>
+              <p className="mt-1 text-xs text-red-600">Pagamento após o vencimento de {dataVencimento.split('-').reverse().join('/')}.</p>
+            </div>
+          )}
+
+          {pagamentoAntecipado && (
+            <div>
+              <label className="text-sm font-semibold text-green-700">Desconto por antecipação</label>
+              <div className="relative mt-1.5">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">R$</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={desconto}
+                  onChange={(e) => setDesconto(e.target.value)}
+                  placeholder="0,00"
+                  className="w-full rounded-lg border border-green-200 bg-white py-2.5 pl-10 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-200"
+                />
+              </div>
+              <p className="mt-1 text-xs text-green-600">Pagamento antes do vencimento de {dataVencimento.split('-').reverse().join('/')}.</p>
+            </div>
+          )}
+
+          <div className="space-y-1 border-t border-slate-200 pt-3 text-sm">
+            <div className="flex justify-between text-slate-600"><span>Valor original</span><span>{fmtMoeda(valorOriginal)}</span></div>
+            {jurosAplicado > 0 && <div className="flex justify-between text-red-600"><span>Juros/Multa</span><span>+ {fmtMoeda(jurosAplicado)}</span></div>}
+            {descontoAplicado > 0 && <div className="flex justify-between text-green-600"><span>Desconto</span><span>- {fmtMoeda(descontoAplicado)}</span></div>}
+            <div className="flex justify-between pt-1 text-base font-bold text-slate-800"><span>Total a pagar</span><span>{fmtMoeda(valorEfetivamentePago)}</span></div>
+          </div>
+        </div>
+      )}
 
       {/* Conta Bancária */}
       <div>
