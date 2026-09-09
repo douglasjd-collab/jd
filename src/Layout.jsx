@@ -368,6 +368,7 @@ export default function Layout({ children, currentPageName }) {
       roles: ['master', 'super_admin', 'admin'],
       submenu: [
         { name: 'Dashboard Financeiro', page: 'RelatoriosFinanceiros' },
+        { name: 'Rentabilidade', page: 'RentabilidadeComissoes' },
         { name: 'Contas Bancárias', page: 'ContasBancarias' },
         { name: 'Movimentações Financeiras', page: 'Transacoes' },
         { name: 'Receber Comissão', page: 'ReceberComissao' },
