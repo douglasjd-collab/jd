@@ -91,6 +91,7 @@ export default function TransacoesTab({ user, refreshKey }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const [receberPagarModal, setReceberPagarModal] = useState({ open: false, item: null, tipo: 'receita' });
   const [itemParaExcluir, setItemParaExcluir] = useState(null);
+  const [excluindo, setExcluindo] = useState(false);
 
   // Handler para abrir modal de nova transação
   const abrirNovaTransacao = (tipo) => {
@@ -172,13 +173,43 @@ export default function TransacoesTab({ user, refreshKey }) {
 
   const balancoMensal = totalReceitas - totalDespesas;
 
-  const excluir = async (item) => {
+  const excluir = async (item, escopo = 'mes') => {
+    setExcluindo(true);
     try {
-      await base44.entities[item._tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa'].delete(item.id);
-      toast.success('Excluído!');
+      const ehDespesaRecorrente = item._tipo === 'despesa' &&
+        (item.tipo_lancamento === 'recorrente' || item.recorrencia_origem_id);
+
+      if (!ehDespesaRecorrente) {
+        await base44.entities[item._tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa'].delete(item.id);
+      } else if (escopo === 'todos') {
+        const origemId = item.recorrencia_origem_id || item.id;
+        const serie = despesas.filter(d => d.id === origemId || d.recorrencia_origem_id === origemId);
+
+        // Preservar parcelas já pagas e cancelar somente lançamentos ainda abertos.
+        for (const parcela of serie) {
+          if (parcela.id === origemId && parcela.status === 'pago') {
+            await base44.entities.MeuFinanceiroDespesa.update(parcela.id, { tipo_lancamento: 'unico' });
+          } else if (parcela.status !== 'pago') {
+            await base44.entities.MeuFinanceiroDespesa.update(parcela.id, {
+              status: 'cancelado',
+              ...(parcela.id === origemId ? { tipo_lancamento: 'unico' } : {}),
+            });
+          }
+        }
+      } else {
+        // Cancelar apenas a parcela escolhida, mantendo o vínculo e os demais meses.
+        await base44.entities.MeuFinanceiroDespesa.update(item.id, { status: 'cancelado' });
+      }
+
+      toast.success(escopo === 'todos' && ehDespesaRecorrente ? 'Parcelas futuras excluídas!' : 'Excluído!');
       setItemParaExcluir(null);
-      carregar();
-    } catch { toast.error('Erro ao excluir'); }
+      await carregar();
+    } catch (e) {
+      toast.error(e?.message || 'Erro ao excluir');
+      console.error('Erro ao excluir lançamento:', e);
+    } finally {
+      setExcluindo(false);
+    }
   };
 
   const abrirEfetivacao = (item) => {
@@ -192,6 +223,8 @@ export default function TransacoesTab({ user, refreshKey }) {
 
   const mesLabel = format(mesAtual, 'MMMM yyyy', { locale: ptBR });
   const mesLabelCapitalizado = mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1);
+  const itemEhRecorrente = itemParaExcluir?._tipo === 'despesa' &&
+    (itemParaExcluir?.tipo_lancamento === 'recorrente' || itemParaExcluir?.recorrencia_origem_id);
 
   return (
     <div className="mt-4 space-y-4">
@@ -476,14 +509,34 @@ export default function TransacoesTab({ user, refreshKey }) {
               <span className="block mt-2">Esta ação não pode ser desfeita.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => itemParaExcluir && excluir(itemParaExcluir)}
-              className="bg-red-600 hover:bg-red-700 text-white"
-            >
-              Sim, excluir
-            </AlertDialogAction>
+          <AlertDialogFooter className="sm:justify-end gap-2">
+            <AlertDialogCancel disabled={excluindo}>Cancelar</AlertDialogCancel>
+            {itemEhRecorrente ? (
+              <>
+                <AlertDialogAction
+                  disabled={excluindo}
+                  onClick={(e) => { e.preventDefault(); itemParaExcluir && excluir(itemParaExcluir, 'mes'); }}
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  Somente este mês
+                </AlertDialogAction>
+                <AlertDialogAction
+                  disabled={excluindo}
+                  onClick={(e) => { e.preventDefault(); itemParaExcluir && excluir(itemParaExcluir, 'todos'); }}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Todos os meses
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction
+                disabled={excluindo}
+                onClick={() => itemParaExcluir && excluir(itemParaExcluir)}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Sim, excluir
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
