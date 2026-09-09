@@ -79,7 +79,9 @@ export default function SwipeableTransactionCard({ t, onClick, onSwipeDelete }) 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5">
               <p className="font-semibold text-slate-800 truncate">
-                {t.descricao?.length > 20 ? t.descricao.substring(0, 20) + '...' : t.descricao}
+                {(t._descricaoExibicao || t.descricao)?.length > 28
+                  ? (t._descricaoExibicao || t.descricao).substring(0, 28) + '...'
+                  : (t._descricaoExibicao || t.descricao)}
               </p>
             </div>
             <p className="text-xs text-slate-500">
