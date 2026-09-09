@@ -158,7 +158,7 @@ export default function TransacoesTab({ user, refreshKey }) {
   // KPIs do mês
   const saldoAtual = useMemo(() => {
     const recRec = receitas.filter(r => r.status === 'recebida').reduce((s, r) => s + (r.valor || 0), 0);
-    const despPag = despesas.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor || 0), 0);
+    const despPag = despesas.filter(d => d.status === 'pago').reduce((s, d) => s + (d.valor_pago ?? d.valor ?? 0), 0);
     return recRec - despPag;
   }, [receitas, despesas]);
 
@@ -167,7 +167,7 @@ export default function TransacoesTab({ user, refreshKey }) {
   }, [transacoesMes]);
 
   const totalDespesas = useMemo(() => {
-    return transacoesMes.filter(t => t._tipo === 'despesa').reduce((s, d) => s + (d.valor || 0), 0);
+    return transacoesMes.filter(t => t._tipo === 'despesa').reduce((s, d) => s + (d.status === 'pago' ? (d.valor_pago ?? d.valor ?? 0) : (d.valor || 0)), 0);
   }, [transacoesMes]);
 
   const balancoMensal = totalReceitas - totalDespesas;
@@ -384,7 +384,7 @@ export default function TransacoesTab({ user, refreshKey }) {
                           {t.conta_bancaria_id ? 'Conta vinculada' : '-'}
                         </td>
                         <td className={`px-4 py-3 text-right font-bold text-sm ${t._tipo === 'receita' ? 'text-green-600' : 'text-red-600'}`}>
-                          {t._tipo === 'receita' ? '+' : '-'} {fmtMoeda(t.valor)}
+                          {t._tipo === 'receita' ? '+' : '-'} {fmtMoeda(t._tipo === 'despesa' && t.status === 'pago' ? (t.valor_pago ?? t.valor) : t.valor)}
                         </td>
                         <td className="px-4 py-3">
                           <DropdownMenu>
