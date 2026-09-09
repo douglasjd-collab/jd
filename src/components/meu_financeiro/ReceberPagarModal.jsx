@@ -144,7 +144,7 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
       const campoData = tipo === 'receita' ? 'data_recebimento' : 'data_pagamento';
       const novoStatus = tipo === 'receita' ? 'recebida' : 'pago';
 
-      await base44.entities[entidade].update(item.id, {
+      const dadosAtualizados = {
         [campoStatus]: novoStatus,
         [campoData]: dataFinal,
         conta_bancaria_id: contaBancariaId,
@@ -157,7 +157,9 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
           desconto: descontoAplicado,
           valor_pago: valorEfetivamentePago,
         } : {}),
-      });
+      };
+
+      await base44.entities[entidade].update(item.id, dadosAtualizados);
 
       // Atualizar saldo da conta bancária
       const conta = await base44.entities.MeuFinanceiroContaBancaria.get(contaBancariaId);
@@ -168,7 +170,7 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
       }
 
       toast.success(tipo === 'receita' ? 'Recebimento confirmado!' : 'Pagamento confirmado!');
-      onConfirmar();
+      await onConfirmar?.({ ...item, ...dadosAtualizados });
       onClose();
     } catch (e) {
       const mensagem = e?.message || 'Não foi possível efetivar o pagamento';
