@@ -87,6 +87,10 @@
       "type": "string",
       "description": "URL do comprovante anexado"
     },
+    "comprovante_nome": {
+      "type": "string",
+      "description": "Nome original do arquivo de comprovante"
+    },
     "conta_bancaria_id": {
       "type": "string",
       "description": "ID da conta banc\u00e1ria vinculada"
