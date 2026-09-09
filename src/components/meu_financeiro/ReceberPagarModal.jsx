@@ -170,9 +170,10 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
       toast.success(tipo === 'receita' ? 'Recebimento confirmado!' : 'Pagamento confirmado!');
       onConfirmar();
       onClose();
-    } catch (e) { 
-      toast.error('Erro ao confirmar'); 
-      console.error(e); 
+    } catch (e) {
+      const mensagem = e?.message || 'Não foi possível efetivar o pagamento';
+      toast.error(mensagem);
+      console.error('Erro ao efetivar pagamento:', e); 
     } finally { 
       setSalvando(false); 
     }
@@ -414,14 +415,15 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
         >
           Cancelar
         </Button>
-        <Button 
-          onClick={handleConfirmar} 
-          disabled={salvando}
+        <Button
+          type="button"
+          onClick={handleConfirmar}
+          disabled={salvando || uploading}
           className="flex-[2] h-11 rounded-lg text-white font-semibold shadow-lg flex items-center justify-center gap-2"
           style={{ backgroundColor: corPrimaria }}
         >
           <Check className="w-4 h-4" />
-          {salvando ? 'Confirmando...' : btnConfirmar}
+          {salvando ? 'Registrando pagamento...' : btnConfirmar}
         </Button>
       </div>
     </div>
