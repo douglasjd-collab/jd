@@ -80,7 +80,7 @@ function CatIcon({ tipo, categoria }) {
   );
 }
 
-export default function TransacoesTab({ user, refreshKey }) {
+export default function TransacoesTab({ user, refreshKey, onSaved }) {
   const isMobile = useIsMobile();
   const [receitas, setReceitas] = useState([]);
   const [despesas, setDespesas] = useState([]);
@@ -204,6 +204,7 @@ export default function TransacoesTab({ user, refreshKey }) {
       toast.success(escopo === 'todos' && ehDespesaRecorrente ? 'Parcelas futuras excluídas!' : 'Excluído!');
       setItemParaExcluir(null);
       await carregar();
+      onSaved?.();
     } catch (e) {
       toast.error(e?.message || 'Erro ao excluir');
       console.error('Erro ao excluir lançamento:', e);
@@ -479,7 +480,7 @@ export default function TransacoesTab({ user, refreshKey }) {
           item={modal.item}
           tipo={modal.tipo}
           user={user}
-          onSaved={() => { carregar(); setModal({ open: false, item: null, tipo: 'receita' }); }}
+          onSaved={() => { carregar(); onSaved?.(); setModal({ open: false, item: null, tipo: 'receita' }); }}
         />
       )}
 
@@ -490,7 +491,7 @@ export default function TransacoesTab({ user, refreshKey }) {
           item={receberPagarModal.item}
           tipo={receberPagarModal.tipo}
           user={user}
-          onConfirmar={() => { carregar(); setReceberPagarModal({ open: false, item: null, tipo: 'receita' }); }}
+          onConfirmar={() => { carregar(); onSaved?.(); setReceberPagarModal({ open: false, item: null, tipo: 'receita' }); }}
         />
       )}
 
