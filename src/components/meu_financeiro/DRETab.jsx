@@ -37,9 +37,9 @@ export default function DRETab({ user, refreshKey }) {
 
   // Cálculos DRE
   const receitaBruta = receitasMes.filter(r => r.status === 'recebida').reduce((s, r) => s + (r.valor || 0), 0);
-  const comissoesPagas = despesasMes.filter(d => d.status === 'pago' && (d.categoria || '').toLowerCase().includes('comissão')).reduce((s, d) => s + (d.valor || 0), 0);
-  const impostos = despesasMes.filter(d => d.status === 'pago' && (d.categoria || '').toLowerCase().includes('imposto')).reduce((s, d) => s + (d.valor || 0), 0);
-  const despesasOperacionais = despesasMes.filter(d => d.status === 'pago' && !(d.categoria || '').toLowerCase().includes('comissão') && !(d.categoria || '').toLowerCase().includes('imposto')).reduce((s, d) => s + (d.valor || 0), 0);
+  const comissoesPagas = despesasMes.filter(d => d.status === 'pago' && (d.categoria || '').toLowerCase().includes('comissão')).reduce((s, d) => s + (d.valor_pago ?? d.valor ?? 0), 0);
+  const impostos = despesasMes.filter(d => d.status === 'pago' && (d.categoria || '').toLowerCase().includes('imposto')).reduce((s, d) => s + (d.valor_pago ?? d.valor ?? 0), 0);
+  const despesasOperacionais = despesasMes.filter(d => d.status === 'pago' && !(d.categoria || '').toLowerCase().includes('comissão') && !(d.categoria || '').toLowerCase().includes('imposto')).reduce((s, d) => s + (d.valor_pago ?? d.valor ?? 0), 0);
   const lucroOperacional = receitaBruta - comissoesPagas - impostos - despesasOperacionais;
   const lucroLiquido = lucroOperacional; // Simplificado - sem outras deduções
 
@@ -50,7 +50,7 @@ export default function DRETab({ user, refreshKey }) {
     const map = {};
     despesasMes.filter(d => d.status === 'pago').forEach(d => {
       const cat = d.categoria || 'Geral';
-      map[cat] = (map[cat] || 0) + (d.valor || 0);
+      map[cat] = (map[cat] || 0) + (d.valor_pago ?? d.valor ?? 0);
     });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [despesasMes]);
