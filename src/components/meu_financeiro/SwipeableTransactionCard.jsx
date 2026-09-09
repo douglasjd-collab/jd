@@ -1,12 +1,13 @@
 import React, { useRef, useState } from 'react';
-import { ArrowUpCircle, ArrowDownCircle, Trash2 } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, Trash2, Pencil } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 const fmtMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
-const SWIPE_THRESHOLD = -80;
+const ACTIONS_WIDTH = 168;
+const SWIPE_THRESHOLD = -55;
 
-export default function SwipeableTransactionCard({ t, onClick, onSwipeDelete }) {
+export default function SwipeableTransactionCard({ t, onClick, onEdit, onDelete }) {
   const isReceita = t._tipo === 'receita';
   const touchStartX = useRef(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
@@ -25,36 +26,57 @@ export default function SwipeableTransactionCard({ t, onClick, onSwipeDelete }) 
     if (touchStartX.current === null) return;
     const diff = e.touches[0].clientX - touchStartX.current;
     if (diff < 0) {
-      setSwipeOffset(Math.max(diff, -100));
+      setSwipeOffset(Math.max(diff, -ACTIONS_WIDTH));
       setIsSwiping(true);
-    } else {
-      setSwipeOffset(0);
+    } else if (swipeOffset < 0) {
+      setSwipeOffset(Math.min(0, -ACTIONS_WIDTH + diff));
+      setIsSwiping(true);
     }
   };
 
   const handleTouchEnd = () => {
-    if (swipeOffset < SWIPE_THRESHOLD) {
-      onSwipeDelete(t);
-    }
-    setSwipeOffset(0);
+    setSwipeOffset(swipeOffset < SWIPE_THRESHOLD ? -ACTIONS_WIDTH : 0);
     touchStartX.current = null;
     setTimeout(() => setIsSwiping(false), 300);
   };
 
+  const executarAcao = (acao) => {
+    setSwipeOffset(0);
+    acao(t);
+  };
+
   return (
     <div className="relative overflow-hidden rounded-xl" style={{ touchAction: 'pan-y' }}>
-      {/* Fundo vermelho de exclusão */}
-      <div className="absolute inset-0 flex items-center justify-end pr-6 bg-red-500 rounded-xl">
-        <div className="flex items-center gap-2 text-white">
+      {/* Ações reveladas ao deslizar para a esquerda */}
+      <div className="absolute inset-y-0 right-0 flex rounded-r-xl overflow-hidden">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); executarAcao(onEdit); }}
+          className="w-[84px] bg-blue-600 text-white flex flex-col items-center justify-center gap-1 active:bg-blue-700"
+          aria-label="Editar transação"
+        >
+          <Pencil className="w-5 h-5" />
+          <span className="text-xs font-semibold">Editar</span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); executarAcao(onDelete); }}
+          className="w-[84px] bg-red-500 text-white flex flex-col items-center justify-center gap-1 active:bg-red-600"
+          aria-label="Excluir transação"
+        >
           <Trash2 className="w-5 h-5" />
-          <span className="text-sm font-semibold">Excluir</span>
-        </div>
+          <span className="text-xs font-semibold">Excluir</span>
+        </button>
       </div>
 
       {/* Card */}
       <div
         className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 cursor-pointer active:bg-slate-50 relative"
-        onClick={() => !isSwiping && swipeOffset === 0 && onClick(t)}
+        onClick={() => {
+          if (isSwiping) return;
+          if (swipeOffset < 0) setSwipeOffset(0);
+          else onClick(t);
+        }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
