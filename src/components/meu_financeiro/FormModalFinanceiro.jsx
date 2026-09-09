@@ -49,6 +49,7 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
   const [contas, setContas] = useState([]);
   const [carregandoOpc, setCarregandoOpc] = useState(false);
   const [modalCategoriasOpen, setModalCategoriasOpen] = useState(false);
+  const [recorrenciaOrigem, setRecorrenciaOrigem] = useState(null);
 
   // Carregar opções ao abrir
   useEffect(() => {
@@ -67,42 +68,66 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
     carregar();
   }, [open, tipo, user]);
 
-  // Preencher formulário ao editar
+  // Preencher formulário ao editar. Parcelas geradas herdam as configurações
+  // de recorrência do lançamento original.
   useEffect(() => {
     if (!open) return;
-    if (item) {
-      setValor(formatCurrency(item.valor));
-      setStatusPago(tipo === 'receita' ? item.status === 'recebida' : item.status === 'pago');
-      setData(item.data || hoje());
-      setDescricao(item.descricao || '');
-      setCategoriaId(item.categoria_id || '');
-      setSubcategoriaId(item.subcategoria_id || '');
-      setContaBancariaId(item.conta_bancaria_id || '');
-      setObservacao(item.observacao || '');
-      setTipoLancamento(item.tipo_lancamento || 'unico');
-      setFrequencia(item.frequencia || 'mensal');
-      setRepetirAte(item.repetir_ate_tipo || 'fim_ano');
-      setRepetirAteMeses(item.repetir_ate_meses || 12);
-      setRepetirAteData(item.repetir_ate_data || '');
-      setFileUrl(item.comprovante_url || '');
-      setFileName(item.comprovante_nome || '');
-    } else {
-      setValor('');
-      setStatusPago(tipo === 'receita' ? true : false);
-      setData(hoje());
-      setDescricao('');
-      setCategoriaId('');
-      setSubcategoriaId('');
-      setContaBancariaId('');
-      setObservacao('');
-      setTipoLancamento('unico');
-      setFrequencia('mensal');
-      setRepetirAte('fim_ano');
-      setRepetirAteMeses(12);
-      setRepetirAteData('');
-      setFileUrl('');
-      setFileName('');
-    }
+    let ativo = true;
+
+    const preencherFormulario = async () => {
+      if (item) {
+        let origem = null;
+        if (item.recorrencia_origem_id) {
+          try {
+            const entidade = tipo === 'receita' ? 'MeuFinanceiroReceita' : 'MeuFinanceiroDespesa';
+            origem = await base44.entities[entidade].get(item.recorrencia_origem_id);
+          } catch (e) {
+            console.error('Erro ao carregar configuração da recorrência:', e);
+          }
+        } else if (item.tipo_lancamento === 'recorrente') {
+          origem = item;
+        }
+
+        if (!ativo) return;
+        const configRecorrencia = origem || item;
+        setRecorrenciaOrigem(origem);
+        setValor(formatCurrency(item.valor));
+        setStatusPago(tipo === 'receita' ? item.status === 'recebida' : item.status === 'pago');
+        setData(item.data || hoje());
+        setDescricao(item.descricao || '');
+        setCategoriaId(item.categoria_id || '');
+        setSubcategoriaId(item.subcategoria_id || '');
+        setContaBancariaId(item.conta_bancaria_id || '');
+        setObservacao(item.observacao || '');
+        setTipoLancamento(origem ? 'recorrente' : (item.tipo_lancamento || 'unico'));
+        setFrequencia(configRecorrencia.frequencia || 'mensal');
+        setRepetirAte(configRecorrencia.repetir_ate_tipo || 'fim_ano');
+        setRepetirAteMeses(configRecorrencia.repetir_ate_meses || 12);
+        setRepetirAteData(configRecorrencia.repetir_ate_data || '');
+        setFileUrl(item.comprovante_url || '');
+        setFileName(item.comprovante_nome || '');
+      } else {
+        setRecorrenciaOrigem(null);
+        setValor('');
+        setStatusPago(tipo === 'receita' ? true : false);
+        setData(hoje());
+        setDescricao('');
+        setCategoriaId('');
+        setSubcategoriaId('');
+        setContaBancariaId('');
+        setObservacao('');
+        setTipoLancamento('unico');
+        setFrequencia('mensal');
+        setRepetirAte('fim_ano');
+        setRepetirAteMeses(12);
+        setRepetirAteData('');
+        setFileUrl('');
+        setFileName('');
+      }
+    };
+
+    preencherFormulario();
+    return () => { ativo = false; };
   }, [open, item, tipo]);
 
   const handleUpload = async (e) => {
@@ -150,7 +175,9 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
         categoria_id: categoriaId || null,
         subcategoria_id: subcategoriaId || null,
         comprovante_url: fileUrl || null,
-        tipo_lancamento: ehRecorrente ? 'recorrente' : 'unico',
+        tipo_lancamento: item?.recorrencia_origem_id
+          ? (item.tipo_lancamento || 'unico')
+          : (ehRecorrente ? 'recorrente' : 'unico'),
         ...(ehRecorrente ? {
           frequencia,
           dia_vencimento: parseInt(data.split('-')[2]) || 1,
@@ -205,6 +232,18 @@ export default function FormModalFinanceiro({ open, onClose, item, tipo, user, o
         savedItem = { ...payload, id: item.id };
       } else {
         savedItem = await base44.entities[entidade].create(payload);
+      }
+
+      // Ao editar uma parcela da série, manter as configurações no lançamento original.
+      if (editando && recorrenciaOrigem?.id && ehRecorrente) {
+        await base44.entities[entidade].update(recorrenciaOrigem.id, {
+          tipo_lancamento: 'recorrente',
+          frequencia,
+          dia_vencimento: recorrenciaOrigem.dia_vencimento || parseInt(recorrenciaOrigem.data?.split('-')[2]) || 1,
+          repetir_ate_tipo: repetirAte,
+          repetir_ate_meses: repetirAte === 'meses' ? repetirAteMeses : null,
+          repetir_ate_data: repetirAte === 'data' ? repetirAteData : null,
+        });
       }
 
       // Se for recorrente, gerar lançamentos futuros
