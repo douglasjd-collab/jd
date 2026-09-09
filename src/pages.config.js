@@ -106,6 +106,7 @@ import ReceberComissao from './pages/ReceberComissao';
 import RecebimentoComissao from './pages/RecebimentoComissao';
 import Relatorios from './pages/Relatorios';
 import RelatoriosFinanceiros from './pages/RelatoriosFinanceiros';
+import RentabilidadeComissoes from './pages/RentabilidadeComissoes';
 import Saques from './pages/Saques';
 import SimuladorEscolha from './pages/SimuladorEscolha';
 import SimuladorNormal from './pages/SimuladorNormal';
@@ -188,6 +189,7 @@ export const PAGES = {
     "RecebimentoComissao": RecebimentoComissao,
     "Relatorios": Relatorios,
     "RelatoriosFinanceiros": RelatoriosFinanceiros,
+    "RentabilidadeComissoes": RentabilidadeComissoes,
     "Saques": Saques,
     "SimuladorEscolha": SimuladorEscolha,
     "SimuladorNormal": SimuladorNormal,
