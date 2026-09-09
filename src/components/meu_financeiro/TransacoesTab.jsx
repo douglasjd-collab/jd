@@ -313,7 +313,8 @@ export default function TransacoesTab({ user, refreshKey }) {
                 key={`${t._tipo}-${t.id}`}
                 t={t}
                 onClick={abrirEfetivacao}
-                onSwipeDelete={setItemParaExcluir}
+                onEdit={(item) => setModal({ open: true, item, tipo: item._tipo })}
+                onDelete={setItemParaExcluir}
               />
             ))
           )}
