@@ -119,7 +119,7 @@ export default function SwipeableTransactionCard({ t, onClick, onEdit, onDelete 
           {/* Valor */}
           <div className="text-right flex-shrink-0">
             <p className={`font-bold text-sm ${isReceita ? 'text-green-600' : 'text-red-600'}`}>
-              {isReceita ? '+' : '-'} {fmtMoeda(t.valor)}
+              {isReceita ? '+' : '-'} {fmtMoeda(!isReceita && t.status === 'pago' ? (t.valor_pago ?? t.valor) : t.valor)}
             </p>
           </div>
         </div>
