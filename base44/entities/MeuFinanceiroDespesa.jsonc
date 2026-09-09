@@ -32,7 +32,25 @@
     },
     "valor": {
       "type": "number",
-      "description": "Valor da despesa"
+      "description": "Valor original da despesa"
+    },
+    "valor_original": {
+      "type": "number",
+      "description": "Valor original da despesa antes de juros ou descontos"
+    },
+    "juros_multa": {
+      "type": "number",
+      "default": 0,
+      "description": "Juros ou multa acrescentados no pagamento em atraso"
+    },
+    "desconto": {
+      "type": "number",
+      "default": 0,
+      "description": "Desconto concedido no pagamento antecipado"
+    },
+    "valor_pago": {
+      "type": "number",
+      "description": "Valor efetivamente movimentado no pagamento"
     },
     "data": {
       "type": "string",
