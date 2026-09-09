@@ -491,7 +491,18 @@ export default function TransacoesTab({ user, refreshKey, onSaved }) {
           item={receberPagarModal.item}
           tipo={receberPagarModal.tipo}
           user={user}
-          onConfirmar={() => { carregar(); onSaved?.(); setReceberPagarModal({ open: false, item: null, tipo: 'receita' }); }}
+          onConfirmar={async (itemAtualizado) => {
+            if (itemAtualizado?._tipo === 'receita') {
+              setReceitas(atuais => atuais.map(r => r.id === itemAtualizado.id ? itemAtualizado : r));
+            } else if (itemAtualizado) {
+              setDespesas(atuais => numerarParcelasRecorrentes(
+                atuais.map(d => d.id === itemAtualizado.id ? itemAtualizado : d)
+              ));
+            }
+            setReceberPagarModal({ open: false, item: null, tipo: 'receita' });
+            onSaved?.();
+            await carregar();
+          }}
         />
       )}
 
