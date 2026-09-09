@@ -31,6 +31,37 @@ import {
 
 const fmtMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
+const descricaoBase = (descricao = '') => descricao
+  .replace(/\s*[—–-]?\s*Parcela\s+\d+\/\d+\s*$/i, '')
+  .trim();
+
+const numerarParcelasRecorrentes = (itens) => {
+  const grupos = new Map();
+
+  itens.forEach((item) => {
+    const origemId = item.recorrencia_origem_id || (item.tipo_lancamento === 'recorrente' ? item.id : null);
+    if (!origemId) return;
+    if (!grupos.has(origemId)) grupos.set(origemId, []);
+    grupos.get(origemId).push(item);
+  });
+
+  const numeracaoPorId = new Map();
+  grupos.forEach((grupo) => {
+    const ordenado = [...grupo].sort((a, b) =>
+      (a.data_vencimento || a.data || '').localeCompare(b.data_vencimento || b.data || '')
+    );
+    const total = ordenado.length;
+    ordenado.forEach((item, indice) => {
+      numeracaoPorId.set(item.id, `${descricaoBase(item.descricao)} — Parcela ${indice + 1}/${total}`);
+    });
+  });
+
+  return itens.map((item) => ({
+    ...item,
+    _descricaoExibicao: numeracaoPorId.get(item.id) || item.descricao,
+  }));
+};
+
 // Ícone de categoria com cor dinâmica
 function CatIcon({ tipo, categoria }) {
   const isReceita = tipo === 'receita';
@@ -90,7 +121,7 @@ export default function TransacoesTab({ user, refreshKey }) {
         base44.entities.MeuFinanceiroReceita.filter(filtro, '-data', 2000),
         base44.entities.MeuFinanceiroDespesa.filter(filtro, '-data', 2000),
       ]);
-      setReceitas(r); setDespesas(d);
+      setReceitas(r); setDespesas(numerarParcelasRecorrentes(d));
     } catch (e) { console.error(e); } finally { setLoading(false); }
   }, [user]);
 
@@ -342,7 +373,7 @@ export default function TransacoesTab({ user, refreshKey }) {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <CatIcon tipo={t._tipo} categoria={t.categoria} />
-                            <span className="font-medium text-sm text-slate-800 dark:text-slate-100">{t.descricao}</span>
+                            <span className="font-medium text-sm text-slate-800 dark:text-slate-100">{t._descricaoExibicao || t.descricao}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
