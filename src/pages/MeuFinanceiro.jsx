@@ -826,26 +826,24 @@ function DespesasFixasCard({ despesas }) {
     d.tipo_lancamento === 'recorrente' && !d.recorrencia_origem_id
   );
 
-  const fixas = despesas
-    .filter(d => d.recorrencia_origem_id && d.status !== 'cancelado')
-    .reduce((acc, d) => {
-      const chave = d.recorrencia_origem_id;
-      if (!acc[chave]) acc[chave] = { descricao: d.descricao, valor: d.valor, categorias: new Set(), quantidade: 0, total: 0 };
-      acc[chave].quantidade++;
-      acc[chave].total += d.valor || 0;
-      acc[chave].categorias.add(d.categoria);
-      return acc;
-    }, {});
+  // Exibir somente séries que realmente possuem parcelas pendentes ou previstas.
+  // Um lançamento original já pago e sem parcelas futuras não deve permanecer no resumo.
+  const entries = recorrentes.flatMap((origem) => {
+    const parcelasDaSerie = despesas.filter(d =>
+      (d.id === origem.id || d.recorrencia_origem_id === origem.id) &&
+      !['pago', 'cancelado'].includes(d.status) &&
+      (d.data || '') >= hojeStr
+    );
 
-  // Também incluir originais recorrentes que podem não ter gerado previstos ainda
-  recorrentes.forEach(r => {
-    const previstas = despesas.filter(d => d.recorrencia_origem_id === r.id);
-    if (!fixas[r.id]) {
-      fixas[r.id] = { descricao: r.descricao, valor: r.valor, categorias: new Set([r.categoria]), quantidade: previstas.length, total: r.valor * Math.max(1, previstas.length || 1) };
-    }
+    if (parcelasDaSerie.length === 0) return [];
+
+    return [{
+      descricao: origem.descricao,
+      valor: origem.valor,
+      quantidade: parcelasDaSerie.length,
+      total: parcelasDaSerie.reduce((soma, parcela) => soma + (parcela.valor || 0), 0),
+    }];
   });
-
-  const entries = Object.values(fixas);
 
   if (entries.length === 0) return null;
 
