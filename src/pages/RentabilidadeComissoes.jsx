@@ -123,15 +123,16 @@ export default function RentabilidadeComissoes() {
       const perfil = cadastro?.perfil || 'vendedor';
       const producao = props.reduce((s, p) => s + numero(p.valor_credito), 0);
       const comissaoGerada = props.reduce((s, p) => s + numero(p.valor_comissao || p.comissao_recebida), 0);
+      const comissaoRecebida = props.reduce((s, p) => s + numero(p.comissao_recebida), 0);
       const pagoLotes = lotesAgente.reduce((s, l) => s + numero(l.valor_efetivamente_pago ?? l.valor_total), 0);
       const pagoLegado = legadoAgente.reduce((s, p) => s + numero(p.valor_comissao_vendedor_pago || p.valor_comissao), 0);
       const pago = pagoLotes + pagoLegado;
       const acrescimos = lotesAgente.reduce((s, l) => s + numero(l.acrescimos), 0);
       const descontos = lotesAgente.reduce((s, l) => s + numero(l.descontos), 0);
-      const margem = comissaoGerada - pago;
+      const saldoJD = comissaoRecebida - pago;
       return {
         id, nome, perfil, filial_nome: cadastro?.filial_nome || '-', props, lotesAgente,
-        producao, comissaoGerada, pago, acrescimos, descontos, margem,
+        producao, comissaoGerada, comissaoRecebida, pago, acrescimos, descontos, saldoJD,
       };
     }).filter(a => {
       if (agenteId !== 'todos' && a.id !== agenteId) return false;
@@ -145,9 +146,10 @@ export default function RentabilidadeComissoes() {
   const totais = useMemo(() => agentes.reduce((t, a) => ({
     producao: t.producao + a.producao,
     gerada: t.gerada + a.comissaoGerada,
+    recebida: t.recebida + a.comissaoRecebida,
     pago: t.pago + a.pago,
-    margem: t.margem + a.margem,
-  }), { producao: 0, gerada: 0, pago: 0, margem: 0 }), [agentes]);
+    saldoJD: t.saldoJD + a.saldoJD,
+  }), { producao: 0, gerada: 0, recebida: 0, pago: 0, saldoJD: 0 }), [agentes]);
 
   const listaAgentes = useMemo(() => {
     const mapa = new Map();
@@ -162,9 +164,9 @@ export default function RentabilidadeComissoes() {
   }, [propostas, lotes, mapaAgentes]);
 
   const exportarCsv = () => {
-    const cabecalho = ['Tipo', 'Responsável', 'Unidade', 'Produção', 'Comissão gerada', 'Comissão paga', 'Margem JD'];
+    const cabecalho = ['Tipo', 'Responsável', 'Unidade', 'Produção', 'Comissão gerada', 'Comissão recebida', 'Comissão paga', 'Saldo JD'];
     const linhas = agentes.map(a => [
-      normalizarPerfil(a.perfil), a.nome, a.filial_nome, a.producao, a.comissaoGerada, a.pago, a.margem
+      normalizarPerfil(a.perfil), a.nome, a.filial_nome, a.producao, a.comissaoGerada, a.comissaoRecebida, a.pago, a.saldoJD
     ]);
     const csv = [cabecalho, ...linhas].map(l => l.map(escaparCsv).join(';')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -197,14 +199,15 @@ export default function RentabilidadeComissoes() {
           <div><Label>Responsável</Label><Select value={agenteId} onValueChange={setAgenteId}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todos">Todos</SelectItem>{listaAgentes.map(a => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}</SelectContent></Select></div>
           <div><Label>Buscar nome</Label><Input className="mt-1" placeholder="Vendedor ou parceiro" value={busca} onChange={e => setBusca(e.target.value)} /></div>
         </div>
-        <p className="text-xs text-slate-500 mt-3">Comissão gerada usa a data de recebimento do banco. Comissão paga usa a data de quitação do lote no mesmo período.</p>
+        <p className="text-xs text-slate-500 mt-3">Produção e comissões (gerada/recebida) usam a data de recebimento do banco. Comissão paga usa a data de quitação do lote no mesmo período.</p>
       </Card>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <Card className="p-4 border-l-4 border-l-blue-500"><div className="flex justify-between"><div><p className="text-xs text-slate-500 uppercase">Produção liberada</p><p className="text-2xl font-bold text-slate-900 mt-1">{moeda(totais.producao)}</p></div><TrendingUp className="text-blue-500" /></div></Card>
-        <Card className="p-4 border-l-4 border-l-indigo-500"><div className="flex justify-between"><div><p className="text-xs text-slate-500 uppercase">Comissão gerada</p><p className="text-2xl font-bold text-indigo-700 mt-1">{moeda(totais.gerada)}</p></div><DollarSign className="text-indigo-500" /></div></Card>
-        <Card className="p-4 border-l-4 border-l-orange-500"><div className="flex justify-between"><div><p className="text-xs text-slate-500 uppercase">Comissão paga</p><p className="text-2xl font-bold text-orange-700 mt-1">{moeda(totais.pago)}</p></div><HandCoins className="text-orange-500" /></div></Card>
-        <Card className={`p-4 border-l-4 ${totais.margem >= 0 ? 'border-l-emerald-500' : 'border-l-red-500'}`}><div className="flex justify-between"><div><p className="text-xs text-slate-500 uppercase">Saldo da comissão</p><p className={`text-2xl font-bold mt-1 ${totais.margem >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{moeda(totais.margem)}</p></div><Wallet className={totais.margem >= 0 ? 'text-emerald-500' : 'text-red-500'} /></div></Card>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <Card className="p-4 border-l-4 border-l-blue-500"><div className="flex justify-between"><div><p className="text-xs text-slate-500 uppercase">Produção</p><p className="text-xl font-bold text-slate-900 mt-1">{moeda(totais.producao)}</p></div><TrendingUp className="text-blue-500" /></div></Card>
+        <Card className="p-4 border-l-4 border-l-indigo-500"><div className="flex justify-between"><div><p className="text-xs text-slate-500 uppercase">Comissão gerada</p><p className="text-xl font-bold text-indigo-700 mt-1">{moeda(totais.gerada)}</p></div><DollarSign className="text-indigo-500" /></div></Card>
+        <Card className="p-4 border-l-4 border-l-cyan-500"><div className="flex justify-between"><div><p className="text-xs text-slate-500 uppercase">Comissão recebida</p><p className="text-xl font-bold text-cyan-700 mt-1">{moeda(totais.recebida)}</p></div><DollarSign className="text-cyan-500" /></div></Card>
+        <Card className="p-4 border-l-4 border-l-orange-500"><div className="flex justify-between"><div><p className="text-xs text-slate-500 uppercase">Comissão paga</p><p className="text-xl font-bold text-orange-700 mt-1">{moeda(totais.pago)}</p></div><HandCoins className="text-orange-500" /></div></Card>
+        <Card className={`p-4 border-l-4 ${totais.saldoJD >= 0 ? 'border-l-emerald-500' : 'border-l-red-500'}`}><div className="flex justify-between"><div><p className="text-xs text-slate-500 uppercase">Saldo JD</p><p className={`text-xl font-bold mt-1 ${totais.saldoJD >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{moeda(totais.saldoJD)}</p></div><Wallet className={totais.saldoJD >= 0 ? 'text-emerald-500' : 'text-red-500'} /></div></Card>
       </div>
 
       <Card className="overflow-hidden">
@@ -212,7 +215,7 @@ export default function RentabilidadeComissoes() {
         {agentes.length === 0 ? <div className="p-10 text-center text-slate-400">Nenhum movimento encontrado no período.</div> : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-600"><tr><th className="p-3 text-left">Responsável</th><th className="p-3 text-left">Tipo</th><th className="p-3 text-left">Unidade</th><th className="p-3 text-right">Produção</th><th className="p-3 text-right">Comissão gerada</th><th className="p-3 text-right">Paga</th><th className="p-3 text-right">Saldo JD</th><th className="p-3 text-center">Detalhes</th></tr></thead>
+              <thead className="bg-slate-50 text-slate-600"><tr><th className="p-3 text-left">Responsável</th><th className="p-3 text-left">Tipo</th><th className="p-3 text-left">Unidade</th><th className="p-3 text-right">Produção</th><th className="p-3 text-right">Comissão gerada</th><th className="p-3 text-right">Comissão recebida</th><th className="p-3 text-right">Paga</th><th className="p-3 text-right">Saldo JD</th><th className="p-3 text-center">Detalhes</th></tr></thead>
               <tbody>{agentes.map(a => <React.Fragment key={a.id}>
                 <tr className="border-t hover:bg-slate-50">
                   <td className="p-3 font-medium text-slate-900"><span className="inline-flex items-center gap-2"><UserRound className="w-4 h-4 text-slate-400" />{a.nome}</span></td>
@@ -220,14 +223,15 @@ export default function RentabilidadeComissoes() {
                   <td className="p-3 text-slate-600">{a.filial_nome}</td>
                   <td className="p-3 text-right">{moeda(a.producao)}</td>
                   <td className="p-3 text-right font-semibold text-indigo-700">{moeda(a.comissaoGerada)}</td>
+                  <td className="p-3 text-right text-cyan-700">{moeda(a.comissaoRecebida)}</td>
                   <td className="p-3 text-right text-orange-700">{moeda(a.pago)}</td>
-                  <td className={`p-3 text-right font-bold ${a.margem >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{moeda(a.margem)}</td>
+                  <td className={`p-3 text-right font-bold ${a.saldoJD >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{moeda(a.saldoJD)}</td>
                   <td className="p-3 text-center"><Button size="sm" variant="outline" onClick={() => setDetalheId(detalheId === a.id ? null : a.id)}>{detalheId === a.id ? 'Fechar' : 'Ver contratos'}</Button></td>
                 </tr>
-                {detalheId === a.id && <tr><td colSpan={8} className="p-0 bg-slate-50"><div className="p-4 overflow-x-auto">
+                {detalheId === a.id && <tr><td colSpan={9} className="p-0 bg-slate-50"><div className="p-4 overflow-x-auto">
                   <div className="flex gap-4 text-xs mb-3 text-slate-600"><span>Acréscimos pagos: <b>{moeda(a.acrescimos)}</b></span><span>Descontos: <b>{moeda(a.descontos)}</b></span></div>
-                  <table className="w-full bg-white border rounded text-xs"><thead><tr className="bg-slate-100"><th className="p-2 text-left">Cliente</th><th className="p-2 text-left">Contrato</th><th className="p-2 text-left">Banco</th><th className="p-2 text-left">Recebimento</th><th className="p-2 text-right">Crédito</th><th className="p-2 text-right">Comissão JD</th><th className="p-2 text-right">Pago ao responsável</th><th className="p-2 text-right">Margem contrato</th></tr></thead>
-                    <tbody>{a.props.map(p => { const item = itensPorProposta.get(p.id); const pago = numero(item?.valor_vendedor_pago ?? p.valor_comissao_vendedor_pago); const gerada = numero(item?.valor_comissao_empresa_original ?? p.valor_comissao ?? p.comissao_recebida); return <tr key={p.id} className="border-t"><td className="p-2">{p.cliente_nome || '-'}</td><td className="p-2">{p.contrato || '-'}</td><td className="p-2">{p.administradora_nome || '-'}</td><td className="p-2">{moment(p.data_comissao_recebida || p.data_venda).format('DD/MM/YYYY')}</td><td className="p-2 text-right">{moeda(p.valor_credito)}</td><td className="p-2 text-right">{moeda(gerada)}</td><td className="p-2 text-right">{moeda(pago)}</td><td className="p-2 text-right font-semibold">{moeda(gerada - pago)}</td></tr>; })}</tbody>
+                  <table className="w-full bg-white border rounded text-xs"><thead><tr className="bg-slate-100"><th className="p-2 text-left">Cliente</th><th className="p-2 text-left">Contrato</th><th className="p-2 text-left">Banco</th><th className="p-2 text-left">Recebimento</th><th className="p-2 text-right">Empréstimo</th><th className="p-2 text-right">Comissão gerada</th><th className="p-2 text-right">Comissão recebida</th><th className="p-2 text-right">Pago ao responsável</th><th className="p-2 text-right">Saldo JD</th></tr></thead>
+                    <tbody>{a.props.map(p => { const item = itensPorProposta.get(p.id); const pago = numero(item?.valor_vendedor_pago ?? p.valor_comissao_vendedor_pago); const gerada = numero(item?.valor_comissao_empresa_original ?? p.valor_comissao ?? p.comissao_recebida); const recebida = numero(p.comissao_recebida); return <tr key={p.id} className="border-t"><td className="p-2">{p.cliente_nome || '-'}</td><td className="p-2">{p.contrato || '-'}</td><td className="p-2">{p.administradora_nome || '-'}</td><td className="p-2">{moment(p.data_comissao_recebida || p.data_venda).format('DD/MM/YYYY')}</td><td className="p-2 text-right">{moeda(p.valor_credito)}</td><td className="p-2 text-right">{moeda(gerada)}</td><td className="p-2 text-right">{moeda(recebida)}</td><td className="p-2 text-right">{moeda(pago)}</td><td className="p-2 text-right font-semibold">{moeda(recebida - pago)}</td></tr>; })}</tbody>
                   </table>
                 </div></td></tr>}
               </React.Fragment>)}</tbody>
@@ -238,7 +242,7 @@ export default function RentabilidadeComissoes() {
 
       <Card className="p-4 bg-amber-50 border-amber-200">
         <p className="text-sm font-semibold text-amber-900">Como interpretar o saldo</p>
-        <p className="text-xs text-amber-800 mt-1">Saldo da comissão = comissão recebida dos bancos no período − pagamentos efetivamente quitados para vendedores e parceiros no período. Custos fixos, impostos e estornos ainda não são descontados neste relatório.</p>
+        <p className="text-xs text-amber-800 mt-1"><b>Produção</b> = valor do empréstimo que gerou a comissão. <b>Comissão gerada</b> = valor da comissão em reais (estimada). <b>Comissão recebida</b> = valor efetivamente recebido do banco. <b>Comissão paga</b> = pagamentos quitados para vendedores e parceiros. <b>Saldo JD</b> = comissão recebida − comissão paga. Custos fixos, impostos e estornos ainda não são descontados.</p>
       </Card>
     </div>
   );
