@@ -124,9 +124,13 @@ export default function RentabilidadeComissoes() {
       const producao = props.reduce((s, p) => s + numero(p.valor_credito), 0);
       const comissaoGerada = props.reduce((s, p) => s + numero(p.valor_comissao || p.comissao_recebida), 0);
       const comissaoRecebida = props.reduce((s, p) => s + numero(p.comissao_recebida), 0);
-      const pagoLotes = lotesAgente.reduce((s, l) => s + numero(l.valor_efetivamente_pago ?? l.valor_total), 0);
-      const pagoLegado = legadoAgente.reduce((s, p) => s + numero(p.valor_comissao_vendedor_pago || p.valor_comissao), 0);
-      const pago = pagoLotes + pagoLegado;
+      // Pago ao responsável: soma do valor efetivamente pago por proposta recebida no período
+      // (mesma base do detalhamento "Ver contratos"), em vez do total do lote — que pode incluir
+      // propostas recebidas fora do período e inflar a coluna.
+      const pago = props.reduce((s, p) => {
+        const item = itensPorProposta.get(p.id);
+        return s + numero(item?.valor_vendedor_pago ?? p.valor_comissao_vendedor_pago);
+      }, 0);
       const acrescimos = lotesAgente.reduce((s, l) => s + numero(l.acrescimos), 0);
       const descontos = lotesAgente.reduce((s, l) => s + numero(l.descontos), 0);
       const saldoJD = comissaoRecebida - pago;
@@ -140,7 +144,7 @@ export default function RentabilidadeComissoes() {
       if (tipoAgente === 'equipe' && a.perfil === 'parceiro') return false;
       if (busca && !a.nome.toLowerCase().includes(busca.toLowerCase())) return false;
       return true;
-    }).sort((a, b) => b.margem - a.margem);
+    }).sort((a, b) => b.saldoJD - a.saldoJD);
   }, [propostasRecebidas, lotesQuitadosPeriodo, pagamentosLegadoPeriodo, mapaAgentes, agenteId, tipoAgente, busca]);
 
   const totais = useMemo(() => agentes.reduce((t, a) => ({
@@ -199,7 +203,7 @@ export default function RentabilidadeComissoes() {
           <div><Label>Responsável</Label><Select value={agenteId} onValueChange={setAgenteId}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="todos">Todos</SelectItem>{listaAgentes.map(a => <SelectItem key={a.id} value={a.id}>{a.nome}</SelectItem>)}</SelectContent></Select></div>
           <div><Label>Buscar nome</Label><Input className="mt-1" placeholder="Vendedor ou parceiro" value={busca} onChange={e => setBusca(e.target.value)} /></div>
         </div>
-        <p className="text-xs text-slate-500 mt-3">Produção e comissões (gerada/recebida) usam a data de recebimento do banco. Comissão paga usa a data de quitação do lote no mesmo período.</p>
+        <p className="text-xs text-slate-500 mt-3">Todas as colunas (produção, comissão gerada, recebida e paga) usam a data de recebimento do banco no período — o que garante que o total pago bate com o detalhamento "Ver contratos".</p>
       </Card>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
