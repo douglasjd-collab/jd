@@ -69,14 +69,14 @@ export default function RentabilidadeComissoes() {
   useEffect(() => { setDetalheId(null); }, [aba, inicio, fim]);
 
   const filtroEmpresa = useMemo(() => user?.empresa_id ? { empresa_id: user.empresa_id } : {}, [user?.empresa_id]);
-  const query = (chave, fn) => useQuery({ queryKey: [chave, user?.empresa_id], queryFn: fn, enabled: !!user });
+  const useRentabilidadeQuery = (chave, fn) => useQuery({ queryKey: [chave, user?.empresa_id], queryFn: fn, enabled: !!user });
 
-  const propostasQ = query('rentabilidade-propostas', () => base44.entities.Proposta.filter({ ...filtroEmpresa, produto: 'emprestimo' }, '-data_comissao_recebida', 5000));
-  const itensPagosQ = query('rentabilidade-itens-pagos', () => base44.entities.ComissaoEmprestimoPaga.filter(filtroEmpresa, '-data_pagamento', 5000));
-  const lotesQ = query('rentabilidade-lotes', () => base44.entities.LotePagamentoComissaoEmprestimo.filter(filtroEmpresa, '-data_pagamento', 2000));
-  const colaboradoresQ = query('rentabilidade-colaboradores', () => base44.entities.Colaborador.filter(filtroEmpresa, 'nome', 2000));
-  const vendasConsorcioQ = query('rentabilidade-vendas-consorcio', () => base44.entities.Venda.filter(filtroEmpresa, '-data_venda', 5000));
-  const comissoesConsorcioQ = query('rentabilidade-comissoes-consorcio', () => base44.entities.ComissaoAPagar.filter(filtroEmpresa, '-data_recebimento', 5000));
+  const propostasQ = useRentabilidadeQuery('rentabilidade-propostas', () => base44.entities.Proposta.filter({ ...filtroEmpresa, produto: 'emprestimo' }, '-data_comissao_recebida', 5000));
+  const itensPagosQ = useRentabilidadeQuery('rentabilidade-itens-pagos', () => base44.entities.ComissaoEmprestimoPaga.filter(filtroEmpresa, '-data_pagamento', 5000));
+  const lotesQ = useRentabilidadeQuery('rentabilidade-lotes', () => base44.entities.LotePagamentoComissaoEmprestimo.filter(filtroEmpresa, '-data_pagamento', 2000));
+  const colaboradoresQ = useRentabilidadeQuery('rentabilidade-colaboradores', () => base44.entities.Colaborador.filter(filtroEmpresa, 'nome', 2000));
+  const vendasConsorcioQ = useRentabilidadeQuery('rentabilidade-vendas-consorcio', () => base44.entities.Venda.filter(filtroEmpresa, '-data_venda', 5000));
+  const comissoesConsorcioQ = useRentabilidadeQuery('rentabilidade-comissoes-consorcio', () => base44.entities.ComissaoAPagar.filter(filtroEmpresa, '-data_recebimento', 5000));
 
   const propostas = propostasQ.data || [];
   const itensPagos = itensPagosQ.data || [];

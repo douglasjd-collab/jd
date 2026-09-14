@@ -123,7 +123,23 @@ export default function ClienteDetalhes() {
     },
     {
       header: 'Valor',
-      cell: (row) => formatCurrency(row._valor)
+      cell: (row) => (
+        <div>
+          <span className="font-medium">{formatCurrency(row._valor)}</span>
+          <p className="text-[10px] text-slate-400">Bruto</p>
+        </div>
+      )
+    },
+    {
+      header: 'Valor Líquido',
+      cell: (row) => row._tipo === 'emprestimo' && row._valor_liquido
+        ? (
+          <div>
+            <span className="font-medium text-emerald-700">{formatCurrency(row._valor_liquido)}</span>
+            <p className="text-[10px] text-slate-400">Líquido</p>
+          </div>
+        )
+        : <span className="text-slate-300">-</span>
     },
     {
       header: 'Data',
@@ -151,6 +167,7 @@ export default function ClienteDetalhes() {
       _descricao: p.emprestimo_tipo || p.produto || 'Empréstimo',
       _contrato: p.contrato || p.emprestimo_numero_ade || '',
       _valor: p.valor_credito || 0,
+      _valor_liquido: p.valor_liquido || 0,
       _banco: p.administradora_nome,
     }))
   ].sort((a, b) => new Date(b.data_venda || 0) - new Date(a.data_venda || 0));
