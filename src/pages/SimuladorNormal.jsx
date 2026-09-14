@@ -438,10 +438,10 @@ export default function SimuladorNormal() {
     // O lance embutido NÃO desconta do saldo quando o plano já inclui o embutido (50% ou 70% no nome)
     // Nesses planos, a parcela já é calculada pela administradora considerando o embutido,
     // então NÃO se desconta novamente do saldo devedor.
-    const planoSelecionadoUpper = planoSelecionadoInfo?.toUpperCase() || '';
-    const nomesCartasUpper = cartas.map(c => (c.nomePlano || '').toUpperCase()).join(' ');
-    const textoPlanos = planoSelecionadoUpper + ' ' + nomesCartasUpper;
-    const planoJaTemEmbutido = textoPlanos.includes('50%') || textoPlanos.includes('70%') || lanceEmbutidoJaIncluso;
+    // O plano só é considerado "já tem embutido" quando o toggle do usuário confirma isso.
+    // O nome do plano (50%/70%) NÃO basta — o usuário pode ter desligado o toggle
+    // para forçar o desconto do embutido do saldo devedor.
+    const planoJaTemEmbutido = lanceEmbutidoJaIncluso;
     // Se o plano já tem embutido (50%/70%), NÃO desconta do saldo devedor
     // Se parcela reduzida foi selecionada, também NÃO desconta (embutido já refletido na parcela menor)
     const lanceEmbutidoDescontaNoSaldo = usarLanceEmbutido && !planoJaTemEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0);
