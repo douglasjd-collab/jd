@@ -52,11 +52,34 @@ Deno.serve(async (req) => {
             }
 
             if (!invitedUser) {
+                // Usuário ainda não aceitou o convite — salvar dados preenchidos em ConvitePendente
+                // para que, quando ele fizer login, o criarColaboradorPrimeiroLogin crie o Colaborador
+                // completo com todos os dados (sem perder o que o admin preencheu).
+                try {
+                    const pendentesExistentes = await base44.asServiceRole.entities.ConvitePendente.filter({ email });
+                    const dadosConvite = {
+                        email,
+                        empresa_id: empresaVinculadaId || null,
+                        perfil,
+                        dados_json: JSON.stringify(payload),
+                        status: 'pendente',
+                        enviado_por_id: user.id,
+                        enviado_por_nome: user.full_name || solicitanteColab?.nome || null,
+                    };
+                    if (pendentesExistentes?.length > 0) {
+                        await base44.asServiceRole.entities.ConvitePendente.update(pendentesExistentes[0].id, dadosConvite);
+                    } else {
+                        await base44.asServiceRole.entities.ConvitePendente.create(dadosConvite);
+                    }
+                } catch (e) {
+                    console.error('Erro ao salvar convite pendente:', e);
+                }
+
                 return Response.json({
                     success: true,
                     invited: true,
                     userLinked: false,
-                    message: 'Convite enviado! O usuário aparecerá no sistema após aceitar o convite.'
+                    message: 'Convite enviado! Os dados foram salvos e serão aplicados quando o usuário aceitar o convite.'
                 });
             }
         }
@@ -135,6 +158,16 @@ Deno.serve(async (req) => {
             colaborador = await base44.asServiceRole.entities.Colaborador.update(existingColab[0].id, colaboradorData);
         } else {
             colaborador = await base44.asServiceRole.entities.Colaborador.create(colaboradorData);
+        }
+
+        // Limpar convite pendente (se existir) — o Colaborador já foi criado com os dados completos
+        try {
+            const pendentes = await base44.asServiceRole.entities.ConvitePendente.filter({ email });
+            if (pendentes?.length > 0) {
+                await base44.asServiceRole.entities.ConvitePendente.deleteMany({ email });
+            }
+        } catch (e) {
+            console.error('Erro ao limpar convite pendente:', e);
         }
 
         return Response.json({ success: true, user: invitedUser, colaborador });

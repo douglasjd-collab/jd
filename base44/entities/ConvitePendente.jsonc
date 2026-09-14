@@ -1,0 +1,59 @@
+{
+  "name": "ConvitePendente",
+  "type": "object",
+  "description": "Dados preenchidos no formul\u00e1rio de Novo Usu\u00e1rio que ainda n\u00e3o foram vinculados a um Colaborador (porque o usu\u00e1rio convidado ainda n\u00e3o aceitou o convite / n\u00e3o fez login). Quando o convidado entra no sistema, o criarColaboradorPrimeiroLogin consome estes dados e cria o Colaborador completo, evitando perda dos dados preenchidos pelo admin.",
+  "properties": {
+    "email": {
+      "type": "string",
+      "description": "E-mail do convidado (chave de deduplica\u00e7\u00e3o)"
+    },
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa vinculada no convite"
+    },
+    "dados_json": {
+      "type": "string",
+      "description": "JSON completo com todos os campos preenchidos no formul\u00e1rio (nome, cpf, telefone, endere\u00e7o, banco, PIX, perfil, etc.)"
+    },
+    "perfil": {
+      "type": "string",
+      "description": "Perfil definido no convite (vendedor, parceiro, gerente, etc.)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "consumido"
+      ],
+      "default": "pendente",
+      "description": "pendente = aguardando o convidado aceitar e fazer login; consumido = j\u00e1 usado para criar o Colaborador"
+    },
+    "enviado_por_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que enviou o convite"
+    },
+    "enviado_por_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio que enviou o convite"
+    }
+  },
+  "required": [
+    "email",
+    "dados_json",
+    "perfil"
+  ],
+  "security": {
+    "read": {
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+    },
+    "create": {
+      "rule": "return true;"
+    },
+    "update": {
+      "rule": "return true;"
+    },
+    "delete": {
+      "rule": "return user.perfil === 'super_admin' || user.perfil === 'master';"
+    }
+  }
+}
