@@ -456,9 +456,10 @@ export default function SimuladorNormal() {
     // O nome do plano (50%/70%) NÃO basta — o usuário pode ter desligado o toggle
     // para forçar o desconto do embutido do saldo devedor.
     const planoJaTemEmbutido = lanceEmbutidoJaIncluso;
-    // Se o plano já tem embutido (50%/70%), NÃO desconta do saldo devedor
-    // Se parcela reduzida foi selecionada, também NÃO desconta (embutido já refletido na parcela menor)
-    const lanceEmbutidoDescontaNoSaldo = usarLanceEmbutido && !planoJaTemEmbutido && !(usarParcelaReduzida && parcelaReduzidaTotal > 0);
+    // O desconto do lance embutido do saldo devedor depende ÚNICA e exclusivamente
+    // do toggle "Plano 50% / 70% (embutido já incluso)?". Se desligado, o embutido
+    // SEMPRE desconta do saldo devedor, mesmo quando parcela reduzida está selecionada.
+    const lanceEmbutidoDescontaNoSaldo = usarLanceEmbutido && !planoJaTemEmbutido;
 
     // Aplicar lance próprio se ativo
     if (usarLanceProprio && lanceProprio) {
