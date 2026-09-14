@@ -30,6 +30,7 @@ export default function SimuladorNormal() {
   const [currentUser, setCurrentUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
   const [clienteNome, setClienteNome] = useState('');
+  const [clienteCPF, setClienteCPF] = useState('');
   const [telefone, setTelefone] = useState('');
   const [tipoGrupo, setTipoGrupo] = useState('automovel');
   const [grupo, setGrupo] = useState('');
@@ -59,12 +60,25 @@ export default function SimuladorNormal() {
     loadUser();
     carregarPlanoSelecionado();
 
-    // Restaurar nome e telefone da última simulação
+    // Restaurar nome, CPF e telefone da última simulação
     const ultimoNome = localStorage.getItem('simulacao_ultima_nome');
+    const ultimoCPF = localStorage.getItem('simulacao_ultima_cpf');
     const ultimoTelefone = localStorage.getItem('simulacao_ultimo_telefone');
     if (ultimoNome) setClienteNome(ultimoNome);
+    if (ultimoCPF) setClienteCPF(ultimoCPF);
     if (ultimoTelefone) setTelefone(ultimoTelefone);
   }, []);
+
+  // Persistir nome, CPF e telefone da última simulação
+  useEffect(() => {
+    if (clienteNome) localStorage.setItem('simulacao_ultima_nome', clienteNome);
+  }, [clienteNome]);
+  useEffect(() => {
+    if (clienteCPF) localStorage.setItem('simulacao_ultima_cpf', clienteCPF);
+  }, [clienteCPF]);
+  useEffect(() => {
+    if (telefone) localStorage.setItem('simulacao_ultimo_telefone', telefone);
+  }, [telefone]);
 
   const carregarPlanoSelecionado = async () => {
     const dadosPlano = localStorage.getItem('planoSelecionado');
@@ -746,6 +760,14 @@ export default function SimuladorNormal() {
     return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
   };
 
+  const formatCPF = (value) => {
+    const numbers = value.replace(/\D/g, '').slice(0, 11);
+    if (numbers.length <= 3) return numbers;
+    if (numbers.length <= 6) return numbers.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+    if (numbers.length <= 9) return numbers.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+    return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+  };
+
   const handleMoedaInput = (value) => {
     const numeros = value.replace(/\D/g, '');
     return parseFloat(numeros) / 100;
@@ -879,10 +901,14 @@ export default function SimuladorNormal() {
               <CardTitle className="flex items-center gap-2 text-lg">📋 Dados do Cliente</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <Label>Nome do Cliente *</Label>
                   <Input value={clienteNome} onChange={(e) => setClienteNome(e.target.value)} placeholder="Nome completo" />
+                </div>
+                <div>
+                  <Label>CPF</Label>
+                  <Input value={clienteCPF} onChange={(e) => setClienteCPF(formatCPF(e.target.value))} placeholder="000.000.000-00" />
                 </div>
                 <div>
                   <Label>Telefone *</Label>
