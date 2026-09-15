@@ -35,6 +35,19 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
+// Template padrão da mensagem enviada no comprovante de oferta de lance
+const TEMPLATE_PADRAO_LANCE = `{{saudacao}}! 😊
+
+Passando para informar que ofertamos o *lance de {{percentual}}%* em sua carta de crédito.
+
+Esse lance será *embutido*, ou seja, você não precisa utilizar dinheiro próprio. Caso sua cota seja contemplada pelo lance, o valor correspondente será descontado do crédito contratado, conforme as regras do grupo.
+
+Se não houver contemplação, *nenhum valor será cobrado ou descontado*.
+
+Com essa oferta, sua cota passa a concorrer também na modalidade de lance fixo, aumentando suas possibilidades de contemplação.
+
+Agora é só aguardar o resultado da assembleia. Estamos na torcida por você! 🍀`;
+
 export default function OfertaLance() {
   const [currentUser, setCurrentUser] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -51,11 +64,65 @@ export default function OfertaLance() {
   const [chatPopup, setChatPopup] = useState(null); // { telefone, nome } contato para o popup
   const [buscandoTelefone, setBuscandoTelefone] = useState(null); // id da venda em busca
   const [comprovante, setComprovante] = useState(null); // comprovante gerado após ofertar
+  const [textoMensagem, setTextoMensagem] = useState(''); // texto personalizado editável
+  const [templatePadrao, setTemplatePadrao] = useState(TEMPLATE_PADRAO_LANCE); // template salvo
+  const [salvandoPadrao, setSalvandoPadrao] = useState(false);
   const queryClient = useQueryClient();
 
-  // Texto do comprovante para envio via WhatsApp
+  // Carregar template salvo do ConfiguracaoSistema ao montar
+  useEffect(() => {
+    const loadTemplate = async () => {
+      try {
+        const configs = await base44.entities.ConfiguracaoSistema.filter({ chave: 'template_msg_comprovante_lance' });
+        if (configs.length > 0 && configs[0].valor) {
+          setTemplatePadrao(configs[0].valor);
+        }
+      } catch {}
+    };
+    loadTemplate();
+  }, []);
+
+  // Substituir variáveis do template pelos dados do comprovante
+  const substituirVariaveis = (template, c) => {
+    const hora = new Date().getHours();
+    const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+    return template
+      .replace(/\{\{saudacao\}\}/g, saudacao)
+      .replace(/\{\{cliente\}\}/g, c.cliente || '')
+      .replace(/\{\{percentual\}\}/g, String(c.percentual || ''))
+      .replace(/\{\{tipo_lance\}\}/g, tipoLanceLabels[c.tipo_lance] || c.tipo_lance || '')
+      .replace(/\{\{valor_lance\}\}/g, formatCurrency(c.valor_lance))
+      .replace(/\{\{grupo\}\}/g, c.grupo || '')
+      .replace(/\{\{cota\}\}/g, c.cota || '')
+      .replace(/\{\{valor_carta\}\}/g, formatCurrency(c.valor_carta));
+  };
+
+  // Salvar texto editado como padrão para futuros envios
+  const salvarComoPadrao = async () => {
+    setSalvandoPadrao(true);
+    try {
+      const configs = await base44.entities.ConfiguracaoSistema.filter({ chave: 'template_msg_comprovante_lance' });
+      if (configs.length > 0) {
+        await base44.entities.ConfiguracaoSistema.update(configs[0].id, { valor: textoMensagem });
+      } else {
+        await base44.entities.ConfiguracaoSistema.create({
+          chave: 'template_msg_comprovante_lance',
+          valor: textoMensagem,
+          descricao: 'Template padrão da mensagem enviada no comprovante de oferta de lance',
+        });
+      }
+      setTemplatePadrao(textoMensagem);
+      toast.success('Texto salvo como padrão!');
+    } catch (e) {
+      toast.error('Erro ao salvar padrão: ' + (e.message || ''));
+    } finally {
+      setSalvandoPadrao(false);
+    }
+  };
+
+  // Texto completo para envio via WhatsApp = texto personalizado + comprovante
   const gerarTextoComprovante = (c) => {
-    const linhas = [
+    const linhasComprovante = [
       '*COMPROVANTE DE OFERTA DE LANCE*',
       '',
       `Cliente: ${c.cliente}`,
@@ -65,10 +132,10 @@ export default function OfertaLance() {
       `Tipo de lance: ${tipoLanceLabels[c.tipo_lance] || c.tipo_lance}`,
       `Valor do lance: ${formatCurrency(c.valor_lance)}`,
     ];
-    if (c.observacao) linhas.push(`Informação do lance: ${c.observacao}`);
-    linhas.push('', `Data: ${c.data}`);
-    if (c.usuario) linhas.push(`Registrado por: ${c.usuario}`);
-    return linhas.join('\n');
+    if (c.observacao) linhasComprovante.push(`Informação do lance: ${c.observacao}`);
+    linhasComprovante.push('', `Data: ${c.data}`);
+    if (c.usuario) linhasComprovante.push(`Registrado por: ${c.usuario}`);
+    return `${textoMensagem}\n\n${linhasComprovante.join('\n')}`;
   };
 
   const [enviandoComprovante, setEnviandoComprovante] = useState(false);
@@ -363,7 +430,7 @@ export default function OfertaLance() {
       if (telLimpo && !telLimpo.startsWith('55') && telLimpo.length >= 10) {
         telLimpo = '55' + telLimpo;
       }
-      setComprovante({
+      const dadosComprovante = {
         empresa_id: variables.empresa_id || '',
         cliente_id: variables.cliente_id || '',
         cliente: variables.cliente_nome || '',
@@ -377,7 +444,9 @@ export default function OfertaLance() {
         data: new Date().toLocaleString('pt-BR'),
         telefone: telLimpo,
         usuario: variables.usuario_nome || '',
-      });
+      };
+      setComprovante(dadosComprovante);
+      setTextoMensagem(substituirVariaveis(templatePadrao, dadosComprovante));
       toast.success('Lance ofertado com sucesso! Comprovante gerado.');
     },
     onError: (error) => {
@@ -454,6 +523,7 @@ export default function OfertaLance() {
       setTipoLance('livre');
       setObservacao('');
       setComprovante(null);
+      setTextoMensagem('');
     }, 200);
   };
 
@@ -858,6 +928,32 @@ export default function OfertaLance() {
                 {comprovante.usuario && (
                   <div><span className="text-slate-500">Registrado por: </span><span className="font-medium">{comprovante.usuario}</span></div>
                 )}
+              </div>
+
+              {/* Texto personalizado editável */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="texto-msg" className="text-sm font-medium">Mensagem para o cliente</Label>
+                  <button
+                    type="button"
+                    onClick={salvarComoPadrao}
+                    disabled={salvandoPadrao}
+                    className="text-xs text-[#23BE84] hover:text-[#1da570] font-medium disabled:opacity-50"
+                  >
+                    {salvandoPadrao ? 'Salvando...' : 'Salvar como padrão'}
+                  </button>
+                </div>
+                <Textarea
+                  id="texto-msg"
+                  value={textoMensagem}
+                  onChange={(e) => setTextoMensagem(e.target.value)}
+                  rows={10}
+                  className="text-sm resize-none"
+                  placeholder="Digite a mensagem que será enviada ao cliente..."
+                />
+                <p className="text-xs text-slate-400">
+                  Variáveis disponíveis: {'{{saudacao}}'}, {'{{cliente}}'}, {'{{percentual}}'}, {'{{tipo_lance}}'}, {'{{valor_lance}}'}, {'{{grupo}}'}, {'{{cota}}'}, {'{{valor_carta}}'}. O comprovante com os dados será anexado automaticamente após a mensagem.
+                </p>
               </div>
 
               {comprovante.telefone ? (
