@@ -120,7 +120,12 @@ export default function OfertaLance() {
     }
   };
 
-  // Texto completo para envio via WhatsApp = texto personalizado + comprovante
+  // Verifica se o tipo de lance é FIXO (30% ou 50%) — apenas estes enviam mensagem personalizada
+  const isLanceFixo = (tipo) => tipo === 'fixo_30' || tipo === 'fixo_50';
+
+  // Texto completo para envio via WhatsApp.
+  // Lance FIXO (30%/50%): texto personalizado + comprovante.
+  // Outros tipos: apenas o comprovante.
   const gerarTextoComprovante = (c) => {
     const linhasComprovante = [
       '*COMPROVANTE DE OFERTA DE LANCE*',
@@ -135,7 +140,10 @@ export default function OfertaLance() {
     if (c.observacao) linhasComprovante.push(`Informação do lance: ${c.observacao}`);
     linhasComprovante.push('', `Data: ${c.data}`);
     if (c.usuario) linhasComprovante.push(`Registrado por: ${c.usuario}`);
-    return `${textoMensagem}\n\n${linhasComprovante.join('\n')}`;
+    if (isLanceFixo(c.tipo_lance)) {
+      return `${textoMensagem}\n\n${linhasComprovante.join('\n')}`;
+    }
+    return linhasComprovante.join('\n');
   };
 
   const [enviandoComprovante, setEnviandoComprovante] = useState(false);
@@ -930,35 +938,39 @@ export default function OfertaLance() {
                 )}
               </div>
 
-              {/* Texto personalizado editável */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="texto-msg" className="text-sm font-medium">Mensagem para o cliente</Label>
-                  <button
-                    type="button"
-                    onClick={salvarComoPadrao}
-                    disabled={salvandoPadrao}
-                    className="text-xs text-[#23BE84] hover:text-[#1da570] font-medium disabled:opacity-50"
-                  >
-                    {salvandoPadrao ? 'Salvando...' : 'Salvar como padrão'}
-                  </button>
+              {/* Texto personalizado editável — apenas para lance FIXO (30% ou 50%) */}
+              {isLanceFixo(comprovante.tipo_lance) && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="texto-msg" className="text-sm font-medium">Mensagem para o cliente</Label>
+                    <button
+                      type="button"
+                      onClick={salvarComoPadrao}
+                      disabled={salvandoPadrao}
+                      className="text-xs text-[#23BE84] hover:text-[#1da570] font-medium disabled:opacity-50"
+                    >
+                      {salvandoPadrao ? 'Salvando...' : 'Salvar como padrão'}
+                    </button>
+                  </div>
+                  <Textarea
+                    id="texto-msg"
+                    value={textoMensagem}
+                    onChange={(e) => setTextoMensagem(e.target.value)}
+                    rows={10}
+                    className="text-sm resize-none"
+                    placeholder="Digite a mensagem que será enviada ao cliente..."
+                  />
+                  <p className="text-xs text-slate-400">
+                    Variáveis disponíveis: {'{{saudacao}}'}, {'{{cliente}}'}, {'{{percentual}}'}, {'{{tipo_lance}}'}, {'{{valor_lance}}'}, {'{{grupo}}'}, {'{{cota}}'}, {'{{valor_carta}}'}. O comprovante com os dados será anexado automaticamente após a mensagem.
+                  </p>
                 </div>
-                <Textarea
-                  id="texto-msg"
-                  value={textoMensagem}
-                  onChange={(e) => setTextoMensagem(e.target.value)}
-                  rows={10}
-                  className="text-sm resize-none"
-                  placeholder="Digite a mensagem que será enviada ao cliente..."
-                />
-                <p className="text-xs text-slate-400">
-                  Variáveis disponíveis: {'{{saudacao}}'}, {'{{cliente}}'}, {'{{percentual}}'}, {'{{tipo_lance}}'}, {'{{valor_lance}}'}, {'{{grupo}}'}, {'{{cota}}'}, {'{{valor_carta}}'}. O comprovante com os dados será anexado automaticamente após a mensagem.
-                </p>
-              </div>
+              )}
 
               {comprovante.telefone ? (
                 <p className="text-xs text-slate-500">
-                  Deseja enviar este comprovante para o cliente via WhatsApp ({comprovante.telefone})?
+                  {isLanceFixo(comprovante.tipo_lance)
+                    ? `Deseja enviar a mensagem e o comprovante para o cliente via WhatsApp (${comprovante.telefone})?`
+                    : `Deseja enviar este comprovante para o cliente via WhatsApp (${comprovante.telefone})?`}
                 </p>
               ) : (
                 <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
