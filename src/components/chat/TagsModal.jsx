@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, X, Loader2, Pencil, Check } from 'lucide-react';
+import { Plus, X, Loader2, Pencil, Check, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -37,6 +37,7 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId, onTa
   const [editNome, setEditNome] = useState('');
   const [editCor, setEditCor] = useState('#3B82F6');
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
+  const [buscaTag, setBuscaTag] = useState('');
 
   useEffect(() => {
     if (!open || !empresaId || !contato?.cliente_telefone) return;
@@ -262,13 +263,22 @@ export default function TagsModal({ open, onOpenChange, contato, empresaId, onTa
             {/* Lista de tags */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold">Tags disponíveis</Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                <Input
+                  value={buscaTag}
+                  onChange={e => setBuscaTag(e.target.value)}
+                  placeholder="Buscar tag..."
+                  className="text-sm pl-8 h-8"
+                />
+              </div>
               <div className="space-y-1.5 max-h-60 overflow-y-auto">
                 {tags.length === 0 ? (
                   <p className="text-xs text-slate-500 py-2">
                     Nenhuma tag criada ainda
                   </p>
                 ) : (
-                  tags.map(tag => (
+                  tags.filter(tag => !buscaTag.trim() || (tag.nome || '').toLowerCase().includes(buscaTag.trim().toLowerCase())).map(tag => (
                     editandoTagId === tag.id ? (
                       <div key={tag.id} className="flex flex-col gap-2 p-2.5 rounded-lg border-2 border-slate-300 bg-slate-50">
                         <div className="flex gap-2">

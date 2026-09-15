@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import MicrotarefaChecklistComentarios from '@/components/chat/MicrotarefaChecklistComentarios';
 
 const ACOES_RAPIDAS = [
   'Solicitar boleto',
@@ -34,7 +35,7 @@ const prazoTexto = (iso) => {
   return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + `, ${hora}`;
 };
 
-export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir, onAdiar, salvando = false }) {
+export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir, onAdiar, salvando = false, user, empresaId }) {
   const [aberto, setAberto] = useState(true);
   const [modal, setModal] = useState(false);
   const [titulo, setTitulo] = useState('');
@@ -100,6 +101,7 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
                 <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => abrirNova()} title="Nova microtarefa"><Plus className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
+            <MicrotarefaChecklistComentarios tarefa={proxima} empresaId={empresaId} user={user} />
           </div>
         )}
       </div>

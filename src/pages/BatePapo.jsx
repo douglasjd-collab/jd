@@ -2418,8 +2418,7 @@ export default function BatePapo() {
                     onCriar={criarMicrotarefa}
                     onConcluir={concluirMicrotarefa}
                     onAdiar={adiarMicrotarefa}
-                    salvando={salvandoMicrotarefa}
-                  />
+                    salvando={salvandoMicrotarefa} user={user} empresaId={empresaId} />
                 )}
                 {dapiChamadaAtivaVisivel && (
                   <DapiCallBar
