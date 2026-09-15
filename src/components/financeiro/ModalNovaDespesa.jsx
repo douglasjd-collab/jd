@@ -75,40 +75,6 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
   const [formData, setFormData] = useState(emptyForm);
   const formInitRef = React.useRef(null);
 
-  React.useEffect(() => {
-    if (!open) {
-      formInitRef.current = null;
-      return;
-    }
-    if (despesaParaEditar) {
-      // Evita reinicializar o formulário se já foi preenchido para esta despesa
-      // (protege contra sobrescrever edições do usuário quando todasCategorias carrega)
-      if (formInitRef.current === despesaParaEditar.id) return;
-
-      const form = getFormFromDespesa(despesaParaEditar);
-
-      // Se as categorias já carregaram, detecta se o "categoria" salvo é na verdade
-      // uma subcategoria e separa corretamente em categoria pai + subcategoria
-      if (todasCategorias.length > 0) {
-        const sub = todasCategorias.find(c => c.nome === form.categoria && c.categoria_pai_id);
-        if (sub) {
-          const pai = todasCategorias.find(c => c.id === sub.categoria_pai_id);
-          if (pai) {
-            form.categoria = pai.nome;
-            form.subcategoria = sub.nome;
-          }
-        }
-        // Marca como inicializado apenas quando as categorias estão disponíveis
-        formInitRef.current = despesaParaEditar.id;
-      }
-
-      setFormData(form);
-    } else {
-      setFormData(emptyForm);
-      formInitRef.current = null;
-    }
-  }, [open, despesaParaEditar, todasCategorias]);
-
   const { data: filiais = [] } = useQuery({
     queryKey: ['filiais-despesa', user?.empresa_id],
     queryFn: () => base44.entities.Filial.filter(user?.empresa_id ? { empresa_id: user.empresa_id, situacao: 'ativa' } : {}, 'nome'),
@@ -144,6 +110,40 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
     },
     enabled: !!user?.empresa_id,
   });
+
+  React.useEffect(() => {
+    if (!open) {
+      formInitRef.current = null;
+      return;
+    }
+    if (despesaParaEditar) {
+      // Evita reinicializar o formulário se já foi preenchido para esta despesa
+      // (protege contra sobrescrever edições do usuário quando todasCategorias carrega)
+      if (formInitRef.current === despesaParaEditar.id) return;
+
+      const form = getFormFromDespesa(despesaParaEditar);
+
+      // Se as categorias já carregaram, detecta se o "categoria" salvo é na verdade
+      // uma subcategoria e separa corretamente em categoria pai + subcategoria
+      if (todasCategorias.length > 0) {
+        const sub = todasCategorias.find(c => c.nome === form.categoria && c.categoria_pai_id);
+        if (sub) {
+          const pai = todasCategorias.find(c => c.id === sub.categoria_pai_id);
+          if (pai) {
+            form.categoria = pai.nome;
+            form.subcategoria = sub.nome;
+          }
+        }
+        // Marca como inicializado apenas quando as categorias estão disponíveis
+        formInitRef.current = despesaParaEditar.id;
+      }
+
+      setFormData(form);
+    } else {
+      setFormData(emptyForm);
+      formInitRef.current = null;
+    }
+  }, [open, despesaParaEditar, todasCategorias]);
 
   const categoriasPai = todasCategorias.filter(c => !c.categoria_pai_id);
   const subcategoriasDaCat = todasCategorias.filter(c => {
