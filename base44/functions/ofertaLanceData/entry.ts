@@ -36,13 +36,9 @@ Deno.serve(async (req) => {
     const propostasUnicas = propostasNormalizadas.filter(p => !idsLegado.has(p.id));
     const vendas = [...vendasLegado, ...propostasUnicas];
 
-    // Buscar ofertas da competência via service role
-    let ofertas = [];
-    if (competencia) {
-      ofertas = await base44.asServiceRole.entities.OfertaLance.filter({ competencia });
-    } else {
-      ofertas = await base44.asServiceRole.entities.OfertaLance.list('-created_date', 500);
-    }
+    // Buscar TODAS as ofertas (não filtra por competência) — as ofertas devem persistir
+    // ao virar o mês. O frontend separa por competência para determinar pendentes.
+    const ofertas = await base44.asServiceRole.entities.OfertaLance.list('-data_oferta', 2000);
 
     // Enriquecer ofertas com dados da venda
     const ofertasEnriquecidas = ofertas.map(oferta => {

@@ -209,9 +209,17 @@ export default function OfertaLance() {
     }
   };
 
-  // Competência atual (YYYY-MM) - fevereiro 2026
+  // Competência atual (YYYY-MM)
+  // Regra: a partir do dia 18 de cada mês, o sistema já libera a oferta de lance
+  // para o mês seguinte (próxima competência).
   const hoje = new Date();
-  const competenciaAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`;
+  let compAno = hoje.getFullYear();
+  let compMes = hoje.getMonth() + 1;
+  if (hoje.getDate() >= 18) {
+    compMes += 1;
+    if (compMes > 12) { compMes = 1; compAno += 1; }
+  }
+  const competenciaAtual = `${compAno}-${String(compMes).padStart(2, '0')}`;
 
   useEffect(() => {
     loadUser();
@@ -303,13 +311,16 @@ export default function OfertaLance() {
   });
 
   const todasVendas = dadosLance.vendas || [];
-  const ofertasAtual = dadosLance.ofertas || [];
+  const todasOfertas = dadosLance.ofertas || [];
   const loadingOfertas = false;
 
-  // Vendas pendentes (sem oferta no mês atual, status ativa/pendente/aguardando_aprovacao)
+  // Ofertas da competência atual (para determinar pendentes e duplicidade)
+  const ofertasCompetenciaAtual = todasOfertas.filter(o => o.competencia === competenciaAtual);
+
+  // Vendas pendentes (sem oferta na competência atual, status ativa/pendente/aguardando_aprovacao)
   const vendasPendentes = todasVendas.filter(v => {
     const statusValido = ['ativa', 'pendente', 'aguardando_aprovacao', 'em_atraso'].includes(v.status);
-    const jaOfertado = ofertasAtual.some(o => o.venda_id === v.id);
+    const jaOfertado = ofertasCompetenciaAtual.some(o => o.venda_id === v.id);
     const matchSearch = search === '' || 
       v.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
       v.cliente_cpf?.includes(search) ||
@@ -318,8 +329,8 @@ export default function OfertaLance() {
     return statusValido && !jaOfertado && matchSearch;
   });
 
-  // Ofertas ofertadas com filtro de busca
-  const ofertasFiltered = ofertasAtual.filter(o => {
+  // Todas as ofertas (persistem ao virar o mês) com filtro de busca
+  const ofertasFiltered = todasOfertas.filter(o => {
     return search === '' || 
       o.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
       o.grupo?.includes(search) ||
@@ -328,8 +339,8 @@ export default function OfertaLance() {
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
-      // Verificar duplicidade
-      const jaExiste = ofertasAtual.some(o => o.venda_id === data.venda_id);
+      // Verificar duplicidade na competência atual
+      const jaExiste = ofertasCompetenciaAtual.some(o => o.venda_id === data.venda_id);
       if (jaExiste) {
         throw new Error('Já existe oferta de lance registrada para esta carta neste mês.');
       }
@@ -619,6 +630,17 @@ export default function OfertaLance() {
       cell: (row) => tipoLanceLabels[row.tipo_lance] || row.tipo_lance
     },
     {
+      header: 'Competência',
+      cell: (row) => {
+        const isAtual = row.competencia === competenciaAtual;
+        return (
+          <Badge variant={isAtual ? 'default' : 'secondary'} className={cn('text-xs', isAtual && 'bg-[#23BE84] hover:bg-[#1da570]')}>
+            {row.competencia || '-'}
+          </Badge>
+        );
+      }
+    },
+    {
       header: 'Data',
       cell: (row) => format(new Date(row.data_oferta), 'dd/MM/yyyy HH:mm')
     },
@@ -666,7 +688,7 @@ export default function OfertaLance() {
     <div className="space-y-6">
       <PageHeader
         title="Oferta de Lance"
-        subtitle={`Competência: ${hoje.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}`}
+        subtitle={`Competência: ${new Date(compAno, compMes - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}${hoje.getDate() >= 18 ? ' (liberada antecipadamente)' : ''}`}
       />
 
       <Card className="p-4 border-0 shadow-sm mb-6">
