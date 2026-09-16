@@ -25,7 +25,7 @@ export default function AbaDRE({ despesas, receitas, comissoes, lotesComissaoCon
 
   const receitasBrutas = useMemo(() =>
     filtrarPorPeriodo(receitas.filter(r => r.status === 'recebida'), 'data_recebimento')
-      .reduce((s,r) => s+(r.valor||0),0), [receitas, periodo]);
+      .reduce((s,r) => s+(r.valor||0),0), [receitas, periodo, filterFilial]);
 
   // Comissões pagas: lotes quitados (consórcio + empréstimo) — refletem os pagamentos reais aos vendedores
   const comissoesPagas = useMemo(() => {
@@ -40,19 +40,19 @@ export default function AbaDRE({ despesas, receitas, comissoes, lotesComissaoCon
     ).reduce((s,l) => s + (l.valor_efetivamente_pago || l.valor_total || 0), 0);
 
     return lotesConsorcio + lotesEmprestimo;
-  }, [lotesComissaoConsorcio, lotesComissaoEmprestimo, periodo]);
+  }, [lotesComissaoConsorcio, lotesComissaoEmprestimo, periodo, filterFilial]);
 
   // DRE por competência: soma todas as despesas do período (pagas + pendentes), exceto canceladas
   const despesasValidas = despesas.filter(d => d.status !== 'cancelado' && d.status !== 'cancelada');
 
   const despesasOperacionais = useMemo(() =>
     filtrarPorPeriodo(despesasValidas, 'data')
-      .reduce((s,d) => s+(d.valor||0),0), [despesas, periodo]);
+      .reduce((s,d) => s+(d.valor||0),0), [despesas, periodo, filterFilial]);
 
   // Impostos estimados (assumir que estão como categoria 'impostos' ou 'imposto')
   const impostos = useMemo(() =>
     filtrarPorPeriodo(despesasValidas.filter(d => (d.categoria||'').toLowerCase().includes('imposto')), 'data')
-      .reduce((s,d) => s+(d.valor||0),0), [despesas, periodo]);
+      .reduce((s,d) => s+(d.valor||0),0), [despesas, periodo, filterFilial]);
 
   const despesasSemImpostos = despesasOperacionais - impostos;
   const lucroOperacional = receitasBrutas - comissoesPagas - despesasSemImpostos - impostos;
@@ -76,7 +76,7 @@ export default function AbaDRE({ despesas, receitas, comissoes, lotesComissaoCon
         map[cat] = (map[cat]||0) + (d.valor||0);
       });
     return Object.entries(map).sort((a,b) => b[1]-a[1]);
-  }, [despesas, periodo]);
+    }, [despesas, periodo, filterFilial]);
 
   return (
     <div className="space-y-4">

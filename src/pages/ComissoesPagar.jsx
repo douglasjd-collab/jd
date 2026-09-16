@@ -291,8 +291,25 @@ export default function ComissoesPagar() {
       const loteCode = `EMPAY${String(lotes.length + 1).padStart(4, '0')}`;
       const totalPago = paraPagar.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
 
+      // Buscar filial do vendedor/parceiro para vincular a comissão paga à filial no DRE
+      let filialId = null;
+      let filialNome = null;
+      if (vendedorModal.vendedor_id) {
+        try {
+          let colabs = await base44.entities.Colaborador.filter({ id: vendedorModal.vendedor_id });
+          if (!colabs || colabs.length === 0) {
+            colabs = await base44.entities.Colaborador.filter({ user_id: vendedorModal.vendedor_id });
+          }
+          if (colabs && colabs.length > 0) {
+            filialId = colabs[0].filial_id || null;
+            filialNome = colabs[0].filial_nome || null;
+          }
+        } catch {}
+      }
+
       await base44.entities.PagamentoComissaoLote.create({
         empresa_id: user.empresa_id, lote_code: loteCode,
+        filial_id: filialId, filial_nome: filialNome,
         vendedor_id: vendedorModal.vendedor_id, vendedor_nome: vendedorModal.vendedor_nome,
         data_pagamento: dataPagamento, forma_pagamento: formaPagamento,
         total_itens: paraPagar.length, total_pago: totalPago, observacao,

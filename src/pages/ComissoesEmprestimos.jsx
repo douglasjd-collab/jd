@@ -76,6 +76,8 @@ export default function ComissoesEmprestimos() {
   const [adiantamentosSelecionados, setAdiantamentosSelecionados] = useState(new Set());
   const [dadosBancariosVendedor, setDadosBancariosVendedor] = useState(null);
 
+  // Filial do vendedor/parceiro (para vincular comissão paga à filial no DRE)
+  const [filialVendedor, setFilialVendedor] = useState(null);
   // PIX do vendedor (snapshot imutável no comprovante)
   const [pixVendedor, setPixVendedor] = useState(null);
   // Modal de confirmação do pagamento (passo 2 do fluxo PIX)
@@ -333,6 +335,7 @@ export default function ComissoesEmprestimos() {
 
     // Reset do passo de confirmação / comprovante / PIX (snapshot por chamada)
     setPixVendedor(null);
+    setFilialVendedor(null);
     setConfirmarModal(false);
     setComprovanteFile(null);
     setComprovanteTransacaoId('');
@@ -370,8 +373,10 @@ export default function ComissoesEmprestimos() {
           tipo_conta: c.tipo_conta || null,
           pix: pixChave,
         });
+        setFilialVendedor({ id: c.filial_id || null, nome: c.filial_nome || null });
       } else {
         setDadosBancariosVendedor(null);
+        setFilialVendedor(null);
       }
     } catch {
       setAdiantamentosVendedor([]);
@@ -543,6 +548,8 @@ export default function ComissoesEmprestimos() {
       // 1. Criar lote (com snapshot imutável do PIX + comprovante + autenticação + responsável)
       const lote = await base44.entities.LotePagamentoComissaoEmprestimo.create({
         empresa_id: vendedorModal.propostas[0]?.empresa_id || user?.empresa_id,
+        filial_id: filialVendedor?.id || null,
+        filial_nome: filialVendedor?.nome || null,
         vendedor_id: vendedorModal.vendedor_id,
         vendedor_nome: vendedorModal.vendedor_nome,
         data_pagamento: dataPagamento,
@@ -747,6 +754,8 @@ export default function ComissoesEmprestimos() {
 
       const lote = await base44.entities.LotePagamentoComissaoEmprestimo.create({
         empresa_id: vendedorModal.propostas[0]?.empresa_id || user?.empresa_id,
+        filial_id: filialVendedor?.id || null,
+        filial_nome: filialVendedor?.nome || null,
         vendedor_id: vendedorModal.vendedor_id,
         vendedor_nome: vendedorModal.vendedor_nome,
         data_pagamento: dataAgendamento,
