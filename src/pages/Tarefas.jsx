@@ -361,12 +361,13 @@ export default function Tarefas() {
   // Indicadores calculados sobre tarefasDoSetor (respeita filtro de setor)
   const atrasadas = tarefasDoSetor.filter(t => t.data_conclusao_prevista && t.data_conclusao_prevista < hoje && t.status !== 'concluido' && t.status !== 'arquivado').length;
   const minhasTarefas = tarefasDoSetor.filter(t => {
+    if (t.status === 'concluido' || t.status === 'arquivado') return false;
     let ids = [];
     try { ids = t.responsaveis_ids ? JSON.parse(t.responsaveis_ids) : []; } catch {}
     return t.responsavel_principal_id === currentUser?.id || ids.includes(currentUser?.id);
   }).length;
   const vencemHoje = tarefasDoSetor.filter(t => t.data_conclusao_prevista === hoje && t.status !== 'concluido' && t.status !== 'arquivado').length;
-  const concluidas = tarefasDoSetor.filter(t => t.status === 'concluido').length;
+  const concluidas = tarefasDoSetor.filter(t => t.status === 'concluido' || t.status === 'arquivado').length;
 
   if (!currentUser) return (
     <div className="flex items-center justify-center min-h-screen">
