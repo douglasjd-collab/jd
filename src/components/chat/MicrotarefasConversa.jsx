@@ -1,10 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { ClipboardList, Plus, Check, Clock, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import { useTarefaFormData } from '@/hooks/useTarefaFormData';
+import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
+import { format } from 'date-fns';
 import MicrotarefaChecklistComentarios from '@/components/chat/MicrotarefaChecklistComentarios';
 
 const ACOES_RAPIDAS = [
@@ -18,12 +17,6 @@ const ACOES_RAPIDAS = [
   'Fazer pós-venda',
 ];
 
-const dataLocalInput = (dias = 0) => {
-  const d = new Date(Date.now() + dias * 86400000);
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
-};
-
 const prazoTexto = (iso) => {
   if (!iso) return 'Sem horário definido';
   const data = new Date(iso);
@@ -35,13 +28,11 @@ const prazoTexto = (iso) => {
   return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + `, ${hora}`;
 };
 
-export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir, onAdiar, salvando = false, user, empresaId }) {
+export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir, onAdiar, salvando = false, user, empresaId, conversa }) {
   const [aberto, setAberto] = useState(true);
   const [modal, setModal] = useState(false);
-  const [titulo, setTitulo] = useState('');
-  const [descricao, setDescricao] = useState('');
-  const [vencimento, setVencimento] = useState(dataLocalInput(0));
-  const [prioridade, setPrioridade] = useState('media');
+  const [tituloInicial, setTituloInicial] = useState('');
+  const { colaboradores, clientes, statusList, setores, subsetores } = useTarefaFormData(empresaId);
 
   const ordenadas = useMemo(() => [...tarefas].sort((a, b) =>
     new Date(a.vencimento_em || a.data_conclusao_prevista || 0) - new Date(b.vencimento_em || b.data_conclusao_prevista || 0)
@@ -50,16 +41,27 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
   const vencida = proxima?.vencimento_em && new Date(proxima.vencimento_em) < new Date();
 
   const abrirNova = (acao = '') => {
-    setTitulo(acao);
-    setDescricao('');
-    setVencimento(dataLocalInput(0));
-    setPrioridade('media');
+    setTituloInicial(acao);
     setModal(true);
   };
 
-  const salvar = async () => {
-    if (!titulo.trim() || !vencimento) return;
-    await onCriar({ titulo: titulo.trim(), descricao: descricao.trim(), vencimento_em: new Date(vencimento).toISOString(), prioridade });
+  const tarefaPreenchida = useMemo(() => {
+    if (!modal) return null;
+    const nomeCliente = conversa?.cliente_nome || conversa?.cliente_telefone || '';
+    return {
+      titulo: tituloInicial,
+      cliente_id: conversa?.cliente_id || '',
+      cliente_nome: nomeCliente,
+      cliente_telefone: conversa?.cliente_telefone || '',
+      data_cadastro: format(new Date(), 'yyyy-MM-dd'),
+      prioridade: 'media',
+      status: statusList?.[0]?.slug || statusList?.[0]?.id || 'a_fazer',
+      responsavel_principal_id: user?.colaborador_id || user?.id || '',
+    };
+  }, [modal, tituloInicial, conversa, user, statusList]);
+
+  const handleSave = (data) => {
+    onCriar(data);
     setModal(false);
   };
 
@@ -69,9 +71,21 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
         <button onClick={() => abrirNova()} className="mx-3 mt-2 mb-1 flex items-center justify-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100">
           <Plus className="h-4 w-4" /> Criar próxima ação
         </button>
-        <Dialog open={modal} onOpenChange={setModal}>
-          <Formulario titulo={titulo} setTitulo={setTitulo} descricao={descricao} setDescricao={setDescricao} vencimento={vencimento} setVencimento={setVencimento} prioridade={prioridade} setPrioridade={setPrioridade} salvar={salvar} salvando={salvando} abrirNova={abrirNova} />
-        </Dialog>
+        <TarefaFormModal
+          open={modal}
+          onOpenChange={setModal}
+          tarefa={tarefaPreenchida}
+          onSave={handleSave}
+          colaboradores={colaboradores}
+          clientes={clientes}
+          statusList={statusList}
+          templates={[]}
+          tiposList={[]}
+          setoresList={setores}
+          subsetoresList={subsetores}
+          currentUser={user}
+          empresaId={empresaId}
+        />
       </>
     );
   }
@@ -98,37 +112,28 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
               <div className="ml-auto flex gap-1.5">
                 <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" disabled={salvando} onClick={() => onAdiar(proxima)}><Clock className="mr-1 h-3 w-3" />Adiar</Button>
                 <Button size="sm" className="h-7 bg-emerald-600 px-2 text-[11px] hover:bg-emerald-700" disabled={salvando} onClick={() => onConcluir(proxima)}>{salvando ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}Concluir</Button>
-                <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => abrirNova()} title="Nova microtarefa"><Plus className="h-3.5 w-3.5" /></Button>
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => abrirNova()} title="Nova tarefa"><Plus className="h-3.5 w-3.5" /></Button>
               </div>
             </div>
             <MicrotarefaChecklistComentarios tarefa={proxima} empresaId={empresaId} user={user} />
           </div>
         )}
       </div>
-      <Dialog open={modal} onOpenChange={setModal}>
-        <Formulario titulo={titulo} setTitulo={setTitulo} descricao={descricao} setDescricao={setDescricao} vencimento={vencimento} setVencimento={setVencimento} prioridade={prioridade} setPrioridade={setPrioridade} salvar={salvar} salvando={salvando} abrirNova={abrirNova} />
-      </Dialog>
+      <TarefaFormModal
+        open={modal}
+        onOpenChange={setModal}
+        tarefa={tarefaPreenchida}
+        onSave={handleSave}
+        colaboradores={colaboradores}
+        clientes={clientes}
+        statusList={statusList}
+        templates={[]}
+        tiposList={[]}
+        setoresList={setores}
+        subsetoresList={subsetores}
+        currentUser={user}
+        empresaId={empresaId}
+      />
     </>
-  );
-}
-
-function Formulario({ titulo, setTitulo, descricao, setDescricao, vencimento, setVencimento, prioridade, setPrioridade, salvar, salvando, abrirNova }) {
-  return (
-    <DialogContent className="max-w-md">
-      <DialogHeader><DialogTitle>Nova microtarefa</DialogTitle></DialogHeader>
-      <div className="space-y-4">
-        <div>
-          <Label>Ação rápida</Label>
-          <div className="mt-2 flex flex-wrap gap-1.5">{ACOES_RAPIDAS.map(a => <button key={a} onClick={() => setTitulo(a)} className={`rounded-full border px-2.5 py-1 text-[11px] ${titulo === a ? 'border-amber-500 bg-amber-100 text-amber-900' : 'border-slate-200 bg-slate-50 text-slate-600'}`}>{a}</button>)}</div>
-        </div>
-        <div><Label>O que precisa ser feito?</Label><Input className="mt-1" value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex.: Solicitar boleto atualizado" autoFocus /></div>
-        <div><Label>Observação (opcional)</Label><Textarea className="mt-1" value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Informações importantes para executar a tarefa" /></div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><Label>Prazo</Label><Input className="mt-1" type="datetime-local" value={vencimento} onChange={e => setVencimento(e.target.value)} /></div>
-          <div><Label>Prioridade</Label><select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={prioridade} onChange={e => setPrioridade(e.target.value)}><option value="baixa">Baixa</option><option value="media">Normal</option><option value="alta">Importante</option><option value="urgente">Urgente</option></select></div>
-        </div>
-      </div>
-      <DialogFooter><Button variant="outline" onClick={() => abrirNova('')}>Limpar</Button><Button onClick={salvar} disabled={salvando || !titulo.trim() || !vencimento} className="bg-amber-500 text-amber-950 hover:bg-amber-600">{salvando && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Criar microtarefa</Button></DialogFooter>
-    </DialogContent>
   );
 }

@@ -1468,28 +1468,26 @@ export default function BatePapo() {
     try {
       const nomeCliente = contatosWhatsapp[conversaSelecionada.id]?.nome || conversaSelecionada.cliente_nome || conversaSelecionada.cliente_telefone;
       const hoje = new Date().toISOString().slice(0, 10);
+      const venc = dados.vencimento_em || (dados.data_conclusao_prevista ? new Date(dados.data_conclusao_prevista + 'T09:00:00').toISOString() : new Date().toISOString());
       await base44.entities.Tarefa.create({
         empresa_id: empresaId,
-        titulo: dados.titulo,
-        descricao: dados.descricao || '',
+        ...dados,
         microtarefa: true,
         conversa_id: conversaSelecionada.id,
-        vencimento_em: dados.vencimento_em,
-        data_cadastro: hoje,
-        data_conclusao_prevista: dados.vencimento_em.slice(0, 10),
-        status: 'a_fazer',
-        prioridade: dados.prioridade || 'media',
-        origem: 'whatsapp',
-        cliente_id: conversaSelecionada.cliente_id || '',
-        cliente_nome: nomeCliente,
-        cliente_telefone: conversaSelecionada.cliente_telefone || '',
-        responsavel_principal_id: user?.colaborador_id || user?.id || '',
-        responsavel_principal_nome: user?.nome_perfil || user?.full_name || user?.email || '',
+        vencimento_em: venc,
+        data_cadastro: dados.data_cadastro || hoje,
+        data_conclusao_prevista: dados.data_conclusao_prevista || venc.slice(0, 10),
+        origem: dados.origem || 'whatsapp',
+        cliente_id: dados.cliente_id || conversaSelecionada.cliente_id || '',
+        cliente_nome: dados.cliente_nome || nomeCliente,
+        cliente_telefone: dados.cliente_telefone || conversaSelecionada.cliente_telefone || '',
+        responsavel_principal_id: dados.responsavel_principal_id || user?.colaborador_id || user?.id || '',
+        responsavel_principal_nome: dados.responsavel_principal_nome || user?.nome_perfil || user?.full_name || user?.email || '',
         criado_por_id: user?.colaborador_id || user?.id || '',
         criado_por_nome: user?.nome_perfil || user?.full_name || user?.email || '',
       });
       await refetchMicrotarefas();
-      toast.success('Microtarefa criada!');
+      toast.success('Tarefa criada!');
     } catch (e) {
       toast.error('Erro ao criar microtarefa: ' + e.message);
       throw e;
@@ -2418,7 +2416,7 @@ export default function BatePapo() {
                     onCriar={criarMicrotarefa}
                     onConcluir={concluirMicrotarefa}
                     onAdiar={adiarMicrotarefa}
-                    salvando={salvandoMicrotarefa} user={user} empresaId={empresaId} />
+                    salvando={salvandoMicrotarefa} user={user} empresaId={empresaId} conversa={conversaSelecionada} />
                 )}
                 {dapiChamadaAtivaVisivel && (
                   <DapiCallBar

@@ -52,6 +52,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
   useEffect(() => {
     if (open) {
       if (tarefa) {
+        const isEdit = !!tarefa.id;
         setForm({
            titulo: tarefa.titulo || '',
            descricao: tarefa.descricao || '',
@@ -67,13 +68,19 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
            origem: tarefa.origem || 'manual',
            data_cadastro: tarefa.data_cadastro || format(new Date(), 'yyyy-MM-dd'),
            data_conclusao_prevista: tarefa.data_conclusao_prevista || '',
-           status: tarefa.status || 'a_fazer',
+           status: isEdit ? (tarefa.status || 'a_fazer') : (statusInicial || statusList?.[0]?.slug || statusList?.[0]?.id || 'a_fazer'),
            prioridade: tarefa.prioridade || 'media',
            pendencia_com: tarefa.pendencia_com || '',
            responsavel_principal_id: tarefa.responsavel_principal_id || '',
          });
         try { setChecklist(tarefa.checklist ? JSON.parse(tarefa.checklist) : []); } catch { setChecklist([]); }
-        try { setResponsaveisSel(tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : []); } catch { setResponsaveisSel([]); }
+        try {
+          if (isEdit) {
+            setResponsaveisSel(tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : []);
+          } else {
+            setResponsaveisSel(tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : (currentUser?.colaborador_id ? [currentUser.colaborador_id] : (currentUser?.id ? [currentUser.id] : [])));
+          }
+        } catch { setResponsaveisSel(currentUser?.colaborador_id ? [currentUser.colaborador_id] : []); }
       } else {
         setForm({
            titulo: '', descricao: '', cliente_id: '', cliente_nome: '',
@@ -185,12 +192,12 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[92vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-lg">{tarefa ? 'Editar Tarefa' : 'Nova Tarefa'}</DialogTitle>
+          <DialogTitle className="text-lg">{tarefa?.id ? 'Editar Tarefa' : 'Nova Tarefa'}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Templates favoritos */}
-          {!tarefa && favoriteTemplates.length > 0 && (
+          {!tarefa?.id && favoriteTemplates.length > 0 && (
             <div>
               <Label className="text-xs text-slate-500 mb-1 block">Checklist rápido</Label>
               <div className="flex flex-wrap gap-2">
@@ -508,7 +515,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
           <div className="flex justify-end gap-3 pt-2 border-t">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
             <Button onClick={handleSave} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">
-              {tarefa ? 'Salvar alterações' : 'Criar Tarefa'}
+              {tarefa?.id ? 'Salvar alterações' : 'Criar Tarefa'}
             </Button>
           </div>
         </div>
