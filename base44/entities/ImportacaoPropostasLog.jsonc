@@ -45,6 +45,14 @@
       "type": "string",
       "description": "JSON array com IDs das propostas criadas nesta importa\u00e7\u00e3o (para desfazer)"
     },
+    "erros_json": {
+      "type": "string",
+      "description": "JSON array com detalhes das falhas da importa\u00e7\u00e3o [{linha, cliente, contrato, motivo, tipo_original}] \u2014 para exibir no modal de resultado"
+    },
+    "tipos_nao_mapeados_json": {
+      "type": "string",
+      "description": "JSON array com os tipos de empr\u00e9stimo n\u00e3o reconhecidos nesta importa\u00e7\u00e3o"
+    },
     "status": {
       "type": "string",
       "enum": [

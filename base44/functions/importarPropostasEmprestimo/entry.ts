@@ -372,6 +372,7 @@ Deno.serve(async (req) => {
     let ignoradas = 0;
     let pendentes_tipo = 0;
     const erros = [];
+    const falhas = []; // falhas detalhadas: {linha, cliente, contrato, motivo, tipo_original}
     const previews = [];
     const propostasCriadasIds = []; // para log de desfazer
 
@@ -410,6 +411,7 @@ Deno.serve(async (req) => {
 
         if (!nomeVal && !cpfVal) {
           ignoradas++;
+          falhas.push({ linha: i + 2, cliente: '', contrato: '', motivo: 'Linha vazia (sem nome e CPF)' });
           continue;
         }
 
@@ -700,6 +702,7 @@ Deno.serve(async (req) => {
             // Só bloquear se comissão do VENDEDOR já foi paga (financeiro fechado)
             if (temComissaoPaga(propostaExistente)) {
               ignoradas++;
+              falhas.push({ linha: i + 2, cliente: nomeVal, contrato: contratoVal || adeVal, motivo: 'Comissão do vendedor já paga — proposta bloqueada' });
               console.log(`❌ IGNORADA (comissão do vendedor já paga): ${contratoFinal || nomeVal}`);
             } else {
               // ✅ Atualizar apenas campos que vieram preenchidos no arquivo
@@ -797,6 +800,7 @@ Deno.serve(async (req) => {
         } catch (err) {
           console.error(`❌ Erro ao processar ${contratoFinal || nomeVal}:`, err.message);
           ignoradas++;
+          falhas.push({ linha: i + 2, cliente: nomeVal, contrato: contratoVal || adeVal, motivo: `Erro: ${err.message}` });
         }
 
         previews.push({
@@ -811,6 +815,7 @@ Deno.serve(async (req) => {
 
       } catch (err) {
         erros.push(`Linha ${i + 2}: ${err.message}`);
+        falhas.push({ linha: i + 2, cliente: nomeVal || '', contrato: contratoVal || adeVal || '', motivo: `Erro: ${err.message}` });
         console.error(`Erro na linha ${i + 2}:`, err);
       }
     }
@@ -879,6 +884,8 @@ Deno.serve(async (req) => {
         atualizadas,
         ignoradas,
         propostas_ids_criadas: JSON.stringify(propostasCriadasIds),
+        erros_json: JSON.stringify(falhas.slice(0, 500)),
+        tipos_nao_mapeados_json: JSON.stringify(Object.keys(tiposNaoMapeados)),
         status: 'concluida',
       });
     } catch (logErr) {

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import VincularTipoEmprestimoInline from '@/components/importacao/VincularTipoEmprestimoInline';
 
 export default function ImportacaoProducao() {
   const [user, setUser] = useState(null);
@@ -31,6 +32,8 @@ export default function ImportacaoProducao() {
   const [visualizarPropostas, setVisualizarPropostas] = useState([]);
   const [loadingVisualizar, setLoadingVisualizar] = useState(false);
   const [visualizarAba, setVisualizarAba] = useState('criadas');
+  const [visualizarFalhas, setVisualizarFalhas] = useState([]);
+  const [visualizarTiposNaoMapeados, setVisualizarTiposNaoMapeados] = useState([]);
   const inputRef = useRef(null);
 
   useEffect(() => { init(); }, []);
@@ -70,12 +73,29 @@ export default function ImportacaoProducao() {
     setVisualizarOpen(true);
     setVisualizarAba('criadas');
     setVisualizarPropostas([]);
+    setVisualizarFalhas([]);
+    setVisualizarTiposNaoMapeados([]);
     setLoadingVisualizar(true);
     try {
+      // Carregar falhas e tipos não mapeados do log
+      let falhas = [];
+      let tiposNaoMapeados = [];
+      try {
+        falhas = log.erros_json ? JSON.parse(log.erros_json) : [];
+        tiposNaoMapeados = log.tipos_nao_mapeados_json ? JSON.parse(log.tipos_nao_mapeados_json) : [];
+      } catch {}
+      setVisualizarFalhas(falhas);
+      setVisualizarTiposNaoMapeados(tiposNaoMapeados);
+
+      // Se há falhas com tipo não reconhecido, abrir na aba de falhas
+      const temFalhasTipo = falhas.some(f => f.motivo && f.motivo.includes('Tipo não reconhecido'));
+      if (temFalhasTipo || (falhas.length > 0 && log.criadas === 0)) {
+        setVisualizarAba('falhas');
+      }
+
       const ids = log.propostas_ids_criadas ? JSON.parse(log.propostas_ids_criadas) : [];
       if (ids.length > 0) {
         const propostas = await Promise.all(
-          // buscar em lotes de 50 para não sobrecarregar
           Array.from({ length: Math.ceil(ids.length / 50) }, (_, i) =>
             base44.entities.Proposta.filter({ empresa_id: log.empresa_id }, null, 1000)
           )
@@ -511,7 +531,7 @@ export default function ImportacaoProducao() {
           </DialogHeader>
 
           {/* Resumo */}
-          <div className="grid grid-cols-3 gap-3 my-2">
+          <div className="grid grid-cols-4 gap-3 my-2">
             <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
               <p className="text-2xl font-bold text-green-700">{visualizarLog?.criadas || 0}</p>
               <p className="text-xs text-green-600 mt-0.5">Criadas</p>
@@ -524,21 +544,29 @@ export default function ImportacaoProducao() {
               <p className="text-2xl font-bold text-orange-700">{visualizarPropostas.filter(p => p.pendente_vinculacao_tipo).length}</p>
               <p className="text-xs text-orange-600 mt-0.5">Pendentes (tipo)</p>
             </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-center">
+              <p className="text-2xl font-bold text-red-700">{visualizarFalhas.length}</p>
+              <p className="text-xs text-red-600 mt-0.5">Falhas</p>
+            </div>
           </div>
 
           {/* Abas */}
-          <div className="flex gap-1 border-b pb-0">
+          <div className="flex gap-1 border-b pb-0 flex-wrap">
             {[
               { key: 'criadas', label: `Criadas (${visualizarPropostas.filter(p => !p.pendente_vinculacao_tipo).length})`, color: 'green' },
               { key: 'pendentes', label: `Pendentes (${visualizarPropostas.filter(p => p.pendente_vinculacao_tipo).length})`, color: 'orange' },
               { key: 'atualizadas', label: `Atualizadas (${visualizarLog?.atualizadas || 0})`, color: 'blue' },
+              { key: 'falhas', label: `Falhas (${visualizarFalhas.length})`, color: 'red' },
             ].map(aba => (
               <button
                 key={aba.key}
                 onClick={() => setVisualizarAba(aba.key)}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   visualizarAba === aba.key
-                    ? `border-${aba.color}-600 text-${aba.color}-700`
+                    ? aba.color === 'green' ? 'border-green-600 text-green-700'
+                      : aba.color === 'orange' ? 'border-orange-600 text-orange-700'
+                      : aba.color === 'blue' ? 'border-blue-600 text-blue-700'
+                      : 'border-red-600 text-red-700'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
@@ -575,11 +603,115 @@ export default function ImportacaoProducao() {
                     <p className="text-xs text-slate-400 mt-2">Os IDs das propostas atualizadas não são armazenados no histórico — apenas as criadas são rastreadas individualmente.</p>
                   </div>
                 )}
+                {visualizarAba === 'falhas' && (
+                  <FalhasTab
+                    falhas={visualizarFalhas}
+                    tiposNaoMapeados={visualizarTiposNaoMapeados}
+                    empresaId={empresaId}
+                    onTipoCriado={() => {
+                      toast.success('Tipo criado! Reimporte o arquivo para vincular as propostas pendentes.');
+                      setVisualizarOpen(false);
+                      recarregarHistorico();
+                    }}
+                  />
+                )}
               </>
             )}
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function FalhasTab({ falhas, tiposNaoMapeados, empresaId, onTipoCriado }) {
+  // Agrupa falhas por motivo
+  const falhasPorMotivo = React.useMemo(() => {
+    const map = {};
+    falhas.forEach(f => {
+      const key = f.motivo || 'Motivo desconhecido';
+      if (!map[key]) map[key] = [];
+      map[key].push(f);
+    });
+    return map;
+  }, [falhas]);
+
+  if (falhas.length === 0) {
+    return (
+      <div className="p-8 text-center text-slate-400 text-sm">
+        <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-400" />
+        Nenhuma falha registrada nesta importação.
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* Tipos não mapeados — opção de vincular inline */}
+      {tiposNaoMapeados.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-start gap-2 p-3 bg-orange-50 border border-orange-200 rounded-xl">
+            <Tag className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-orange-800">Tipos de empréstimo não reconhecidos</p>
+              <p className="text-xs text-orange-700 mt-0.5">
+                Crie o tipo abaixo para vincular as propostas pendentes. Após criar, reimporte o arquivo.
+              </p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {tiposNaoMapeados.map((t, i) => (
+              <div key={i} className="flex items-center gap-3 p-2.5 bg-white border border-orange-200 rounded-lg">
+                <span className="text-sm font-mono text-orange-800 flex-1">{t}</span>
+                <VincularTipoEmprestimoInline
+                  empresaId={empresaId}
+                  tipoOriginal={t}
+                  onCreated={onTipoCriado}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Lista de falhas agrupadas por motivo */}
+      <div className="space-y-3">
+        {Object.entries(falhasPorMotivo).map(([motivo, lista]) => {
+          const isTipoNaoReconhecido = motivo.includes('Tipo não reconhecido');
+          return (
+            <div key={motivo} className={`border rounded-xl overflow-hidden ${isTipoNaoReconhecido ? 'border-orange-200' : 'border-red-200'}`}>
+              <div className={`px-4 py-2.5 flex items-center justify-between ${isTipoNaoReconhecido ? 'bg-orange-50' : 'bg-red-50'}`}>
+                <div className="flex items-center gap-2">
+                  {isTipoNaoReconhecido
+                    ? <Tag className="w-4 h-4 text-orange-600" />
+                    : <AlertTriangle className="w-4 h-4 text-red-600" />}
+                  <span className={`text-sm font-semibold ${isTipoNaoReconhecido ? 'text-orange-800' : 'text-red-800'}`}>{motivo}</span>
+                </div>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isTipoNaoReconhecido ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>
+                  {lista.length} contrato(s)
+                </span>
+              </div>
+              <div className="divide-y">
+                {lista.slice(0, 50).map((f, i) => (
+                  <div key={i} className="flex items-center gap-3 px-4 py-2 text-sm bg-white">
+                    <span className="text-xs text-slate-400 font-mono w-12">L{f.linha}</span>
+                    <span className="flex-1 truncate text-slate-700">{f.cliente || '—'}</span>
+                    <span className="font-mono text-xs text-slate-500 w-40 truncate">{f.contrato || '—'}</span>
+                    {f.tipo_original && (
+                      <span className="text-xs font-mono text-orange-700 bg-orange-50 px-2 py-0.5 rounded">{f.tipo_original}</span>
+                    )}
+                  </div>
+                ))}
+                {lista.length > 50 && (
+                  <div className="px-4 py-2 text-xs text-slate-400 text-center bg-slate-50">
+                    +{lista.length - 50} outra(s)...
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
