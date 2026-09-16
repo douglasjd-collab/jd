@@ -90,7 +90,7 @@ const COLUNAS = (() => {
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
   letters.forEach(l => cols.push(l));
   letters.forEach(l1 => letters.forEach(l2 => cols.push(l1 + l2)));
-  return cols.slice(0, 60); // A até BH
+  return cols.slice(0, 80); // A até BZ
 })();
 
 export default function LayoutImportacaoConfig() {
