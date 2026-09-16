@@ -104,7 +104,15 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
       setCadastrandoCliente(false);
       setNomeInicialCliente('');
     }
-  }, [open, tarefa, statusInicial, statusList]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Garante status padrão quando statusList carrega após abertura do modal (sem resetar o resto)
+  useEffect(() => {
+    if (open && statusList?.length > 0 && !form.status) {
+      setForm(f => ({ ...f, status: statusInicial || statusList[0]?.slug || statusList[0]?.id || 'a_fazer' }));
+    }
+  }, [open, statusList, statusInicial]);
 
   const toggleResponsavel = (id) => {
     setResponsaveisSel(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);

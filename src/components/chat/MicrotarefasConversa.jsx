@@ -55,10 +55,9 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
       cliente_telefone: conversa?.cliente_telefone || '',
       data_cadastro: format(new Date(), 'yyyy-MM-dd'),
       prioridade: 'media',
-      status: statusList?.[0]?.slug || statusList?.[0]?.id || 'a_fazer',
       responsavel_principal_id: user?.colaborador_id || user?.id || '',
     };
-  }, [modal, tituloInicial, conversa, user, statusList]);
+  }, [modal, tituloInicial, conversa, user]);
 
   const handleSave = (data) => {
     onCriar(data);
