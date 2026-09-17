@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { ClipboardList, Plus, Check, Clock, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { ClipboardList, Plus, Check, Clock, ChevronDown, ChevronUp, Loader2, Pencil, User, Users, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { useTarefaFormData } from '@/hooks/useTarefaFormData';
 import TarefaFormModal from '@/components/tarefas/TarefaFormModal';
 import { format } from 'date-fns';
@@ -28,10 +29,12 @@ const prazoTexto = (iso) => {
   return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + `, ${hora}`;
 };
 
-export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir, onAdiar, salvando = false, user, empresaId, conversa }) {
+export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir, onAdiar, onEditar, salvando = false, user, empresaId, conversa }) {
   const [aberto, setAberto] = useState(true);
   const [modal, setModal] = useState(false);
+  const [editando, setEditando] = useState(false);
   const [tituloInicial, setTituloInicial] = useState('');
+  const [respOpen, setRespOpen] = useState(false);
   const { colaboradores, clientes, statusList, setores, subsetores } = useTarefaFormData(empresaId);
 
   const ordenadas = useMemo(() => [...tarefas].sort((a, b) =>
@@ -41,12 +44,19 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
   const vencida = proxima?.vencimento_em && new Date(proxima.vencimento_em) < new Date();
 
   const abrirNova = (acao = '') => {
+    setEditando(false);
     setTituloInicial(acao);
+    setModal(true);
+  };
+
+  const abrirEdicao = () => {
+    setEditando(true);
     setModal(true);
   };
 
   const tarefaPreenchida = useMemo(() => {
     if (!modal) return null;
+    if (editando) return proxima;
     const nomeCliente = conversa?.cliente_nome || conversa?.cliente_telefone || '';
     return {
       titulo: tituloInicial,
@@ -57,12 +67,48 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
       prioridade: 'media',
       responsavel_principal_id: user?.colaborador_id || user?.id || '',
     };
-  }, [modal, tituloInicial, conversa, user]);
+  }, [modal, editando, tituloInicial, conversa, user, proxima]);
 
   const handleSave = (data) => {
-    onCriar(data);
+    if (editando && onEditar) {
+      onEditar({ ...proxima, ...data });
+    } else {
+      onCriar(data);
+    }
     setModal(false);
+    setEditando(false);
   };
+
+  const nomeColaborador = (id) => {
+    if (!id) return null;
+    const colab = colaboradores.find(c => c.id === id);
+    return colab?.nome || null;
+  };
+
+  const obterResponsaveis = (tarefa) => {
+    if (!tarefa) return [];
+    const result = [];
+    if (tarefa.responsavel_principal_id) {
+      result.push({
+        id: tarefa.responsavel_principal_id,
+        nome: tarefa.responsavel_principal_nome || nomeColaborador(tarefa.responsavel_principal_id) || 'Responsável',
+        principal: true,
+      });
+    }
+    let outrosIds = [];
+    try {
+      outrosIds = tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : [];
+    } catch {}
+    outrosIds.forEach(id => {
+      if (id && !result.find(r => r.id === id)) {
+        result.push({ id, nome: nomeColaborador(id) || 'Responsável', principal: false });
+      }
+    });
+    return result;
+  };
+
+  const responsaveis = obterResponsaveis(proxima);
+  const respPrincipal = responsaveis.find(r => r.principal) || responsaveis[0];
 
   if (!proxima) {
     return (
@@ -72,7 +118,7 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
         </button>
         <TarefaFormModal
           open={modal}
-          onOpenChange={setModal}
+          onOpenChange={(v) => { setModal(v); if (!v) setEditando(false); }}
           tarefa={tarefaPreenchida}
           onSave={handleSave}
           colaboradores={colaboradores}
@@ -108,7 +154,19 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
             {proxima.descricao && <p className="mb-2 text-xs text-slate-600">{proxima.descricao}</p>}
             <div className="flex flex-wrap items-center gap-2">
               <span className={`text-[11px] font-semibold ${vencida ? 'text-red-600' : 'text-amber-700'}`}><Clock className="mr-1 inline h-3 w-3" />{vencida ? 'Vencida · ' : ''}{prazoTexto(proxima.vencimento_em)}</span>
+              {respPrincipal && (
+                <button
+                  onClick={() => setRespOpen(true)}
+                  className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-white"
+                  title="Ver responsáveis"
+                >
+                  <User className="h-3 w-3" />
+                  <span className="max-w-[100px] truncate">{respPrincipal.nome}</span>
+                  {responsaveis.length > 1 && <span className="text-slate-400">+{responsaveis.length - 1}</span>}
+                </button>
+              )}
               <div className="ml-auto flex gap-1.5">
+                <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={abrirEdicao} title="Editar tarefa"><Pencil className="h-3.5 w-3.5" /></Button>
                 <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" disabled={salvando} onClick={() => onAdiar(proxima)}><Clock className="mr-1 h-3 w-3" />Adiar</Button>
                 <Button size="sm" className="h-7 bg-emerald-600 px-2 text-[11px] hover:bg-emerald-700" disabled={salvando} onClick={() => onConcluir(proxima)}>{salvando ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Check className="mr-1 h-3 w-3" />}Concluir</Button>
                 <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => abrirNova()} title="Nova tarefa"><Plus className="h-3.5 w-3.5" /></Button>
@@ -120,7 +178,7 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
       </div>
       <TarefaFormModal
         open={modal}
-        onOpenChange={setModal}
+        onOpenChange={(v) => { setModal(v); if (!v) setEditando(false); }}
         tarefa={tarefaPreenchida}
         onSave={handleSave}
         colaboradores={colaboradores}
@@ -133,6 +191,42 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
         currentUser={user}
         empresaId={empresaId}
       />
+
+      {/* Dialog - Ver responsáveis */}
+      <Dialog open={respOpen} onOpenChange={setRespOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Users className="h-4 w-4 text-amber-700" />
+              Responsáveis pela tarefa
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <p className="text-sm font-medium text-slate-800">{proxima.titulo}</p>
+            {responsaveis.length === 0 ? (
+              <p className="text-xs text-slate-500 italic">Nenhum responsável atribuído.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {responsaveis.map(r => (
+                  <div key={r.id} className="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-xs font-bold text-white">
+                      {r.nome?.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-800">{r.nome}</p>
+                      {r.principal && <span className="text-[10px] font-semibold text-amber-700">Responsável principal</span>}
+                    </div>
+                    {r.principal && <Crown className="h-3.5 w-3.5 text-amber-500" />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRespOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

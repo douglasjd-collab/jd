@@ -1517,19 +1517,18 @@ export default function BatePapo() {
   const adiarMicrotarefa = async (tarefa) => {
     setSalvandoMicrotarefa(true);
     try {
-      const novaData = new Date(tarefa.vencimento_em || Date.now());
-      novaData.setDate(novaData.getDate() + 1);
-      await base44.entities.Tarefa.update(tarefa.id, {
-        vencimento_em: novaData.toISOString(),
-        data_conclusao_prevista: novaData.toISOString().slice(0, 10),
-      });
-      await refetchMicrotarefas();
-      toast.success('Microtarefa adiada para amanhã');
-    } catch (e) {
-      toast.error('Erro ao adiar: ' + e.message);
-    } finally {
-      setSalvandoMicrotarefa(false);
-    }
+      const novaData = new Date(tarefa.vencimento_em || Date.now()); novaData.setDate(novaData.getDate() + 1);
+      await base44.entities.Tarefa.update(tarefa.id, { vencimento_em: novaData.toISOString(), data_conclusao_prevista: novaData.toISOString().slice(0, 10) });
+      await refetchMicrotarefas(); toast.success('Microtarefa adiada para amanhã');
+    } catch (e) { toast.error('Erro ao adiar: ' + e.message); } finally { setSalvandoMicrotarefa(false); }
+  };
+  const editarMicrotarefa = async (dados) => {
+    if (!dados?.id) return; setSalvandoMicrotarefa(true);
+    try {
+      const { id, created_date, updated_date, created_by_id, ...campos } = dados;
+      await base44.entities.Tarefa.update(id, campos);
+      await refetchMicrotarefas(); toast.success('Tarefa atualizada!');
+    } catch (e) { toast.error('Erro ao editar: ' + e.message); } finally { setSalvandoMicrotarefa(false); }
   };
 
   // Conversas válidas — exclui grupos, broadcast e LID (apenas contatos individuais)
@@ -2413,9 +2412,7 @@ export default function BatePapo() {
                 {!isGrupo(conversaSelecionada) && (
                   <MicrotarefasConversa
                     tarefas={microtarefasPorConversa[conversaSelecionada.id] || []}
-                    onCriar={criarMicrotarefa}
-                    onConcluir={concluirMicrotarefa}
-                    onAdiar={adiarMicrotarefa}
+                    onCriar={criarMicrotarefa} onConcluir={concluirMicrotarefa} onAdiar={adiarMicrotarefa} onEditar={editarMicrotarefa}
                     salvando={salvandoMicrotarefa} user={user} empresaId={empresaId} conversa={conversaSelecionada} />
                 )}
                 {dapiChamadaAtivaVisivel && (
