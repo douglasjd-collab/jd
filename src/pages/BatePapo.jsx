@@ -447,7 +447,7 @@ export default function BatePapo() {
         microtarefa: true,
       }, '-created_date', 500);
       const microtarefasPendentes = (tarefasDaConversa || []).filter(
-        tarefa => !['concluida', 'cancelada'].includes(tarefa.status)
+        tarefa => !['concluida', 'concluido', 'arquivado', 'arquivada', 'cancelada', 'cancelado'].includes(tarefa.status)
       );
 
       await base44.entities.ConversaWhatsapp.update(conversa.id, {
@@ -850,14 +850,14 @@ export default function BatePapo() {
 
   useEffect(() => {
     if (!empresaId) return;
-    const unsub = base44.entities.ConversaWhatsapp.subscribe((event) => {
-      console.log(`🔔 ConversaWhatsapp ${event.type}:`, event.id);
-      if (['create', 'update'].includes(event.type)) {
-        refetchConversasComDebounce();
-      }
+    const unsubConv = base44.entities.ConversaWhatsapp.subscribe((event) => {
+      if (['create', 'update'].includes(event.type)) refetchConversasComDebounce();
     });
-    return unsub;
-  }, [empresaId, refetchConversasComDebounce]);
+    const unsubTarefa = base44.entities.Tarefa.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ['microtarefas-chat', empresaId] });
+    });
+    return () => { unsubConv(); unsubTarefa(); };
+  }, [empresaId, refetchConversasComDebounce, queryClient]);
 
 
 
@@ -1443,7 +1443,7 @@ export default function BatePapo() {
     enabled: !!empresaId,
     queryFn: async () => {
       const itens = await base44.entities.Tarefa.filter({ empresa_id: empresaId, microtarefa: true }, '-created_date', 500);
-      return (itens || []).filter(t => !['concluida', 'cancelada'].includes(t.status));
+      return (itens || []).filter(t => !['concluida', 'concluido', 'arquivado', 'arquivada', 'cancelada', 'cancelado'].includes(t.status));
     },
     refetchInterval: 30000,
   });
@@ -1500,7 +1500,7 @@ export default function BatePapo() {
     setSalvandoMicrotarefa(true);
     try {
       await base44.entities.Tarefa.update(tarefa.id, {
-        status: 'concluida',
+        status: 'concluido',
         data_conclusao_real: new Date().toISOString().slice(0, 10),
         concluida_por_id: user?.colaborador_id || user?.id || '',
         concluida_por_nome: user?.nome_perfil || user?.full_name || user?.email || '',
