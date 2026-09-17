@@ -30,7 +30,7 @@ export default function ImportarPlanosCanopusPDF({ open, onOpenChange, standalon
       if (!file) throw new Error('Selecione um arquivo PDF');
 
       // 1. Upload do PDF
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
 
       // 2. Chamar função com URL do arquivo
       const response = await base44.functions.invoke('importPlanosCanopusPDF', {
