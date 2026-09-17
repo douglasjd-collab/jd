@@ -43,6 +43,10 @@ export default function ImportarPlanosCanopusPDF({ open, onOpenChange, standalon
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['planos-canopus'] });
       toast.success(`Importação concluída! ${data.criados} criados, ${data.atualizados} atualizados`);
+      if (data.ignorados?.length > 0) {
+        toast.warning(`${data.ignorados.length} linha(s) do PDF não puderam ser importadas (dados incompletos). Verifique o console para detalhes.`);
+        console.warn('Planos ignorados na importação:', data.ignorados);
+      }
       setFile(null);
       onOpenChange(false);
     },

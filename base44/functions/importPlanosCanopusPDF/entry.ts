@@ -104,24 +104,24 @@ Deno.serve(async (req) => {
     const extractRes = await base44.asServiceRole.integrations.Core.InvokeLLM({
       prompt: `Extraia TODOS os dados da tabela de planos de consórcio deste PDF.
 
-IMPORTANTE: Ao clicar em cada linha da tabela, aparecem MÚLTIPLAS OPÇÕES de prazo e parcela para o mesmo bem.
-Exemplo: CR4072 pode ter opções de 96, 86, 76, 66, 56, 46 e 36 meses com parcelas diferentes.
+IMPORTANTE: A tabela principal ("TABELA DE VENDAS") lista, para cada linha (código + descrição + crédito), UMA COLUNA DE PARCELA PARA CADA PRAZO OFERECIDO NAQUELE PDF ESPECÍFICO.
 
-VOCÊ DEVE EXTRAIR TODAS AS VARIAÇÕES DE PRAZO/PARCELA PARA CADA BEM!
+VOCÊ DEVE EXTRAIR TODAS AS LINHAS (todos os valores de crédito, do menor ao maior) E, PARA CADA LINHA, TODAS AS COLUNAS DE PRAZO PRESENTES NA TABELA!
 
 REGRAS OBRIGATÓRIAS PARA AS COLUNAS:
-- Leia as colunas sempre nesta ordem fixa: 96, 86, 76, 66, 56, 46 e 36 meses.
-- Alguns PDFs possuem fonte codificada e os cabeçalhos 56, 46 e 36 podem parecer "v6", "w6", "x6", "{6", "|6" ou "}6". Interprete-os pela posição correta.
+- NÃO assuma uma quantidade ou ordem fixa de prazos. Cada PDF pode ter um conjunto diferente de colunas de prazo (ex: 106, 96, 86, 76, 66, 56, 46, 36, 26, 16 OU 126, 116, 106, 96, 86, 76, 66, 56, 46, 36, 26, 16, entre outras combinações).
+- Leia o cabeçalho de CADA coluna da tabela (ex: "PRAZO: 106 Meses", "PRAZO: 96 Meses" etc.) e use o número exato informado ali como prazo_meses daquela coluna — não infira nem descarte colunas.
+- Alguns PDFs possuem fonte codificada e os cabeçalhos podem aparecer distorcidos. Nesses casos, use a ordem visual das colunas (da esquerda/maior prazo para a direita/menor prazo, como no cabeçalho legível) para inferir o prazo correto de cada uma.
 - Crie registro SOMENTE quando a célula possuir uma parcela numérica maior que zero. Uma célula contendo apenas "R$" está vazia e não representa prazo disponível.
-- Não omita nenhuma célula que possua valor de parcela.
+- Não omita NENHUMA linha da tabela (inclusive as primeiras linhas, com os menores valores de crédito) nem NENHUMA coluna de prazo que possua valor de parcela preenchido.
 - O grupo deve ser extraído do título do PDF e repetido em todas as variações.
 
 FORMATO DA TABELA:
 - Linha principal: Código (ex: CR4205) + Descrição (ex: AUTOMÓVEL LEVE 70%) + Valor do crédito
-- Ao expandir: Múltiplas opções com formato "Plano de X meses / 1ª parcela de R$ Y,YY | Grupo: ZZZZZ"
-- TAXA DE ADMINISTRAÇÃO: Está na coluna "TAXA ADM. MENSAL" da tabela expandida, geralmente aparece como percentual (ex: "18.20 %", "17.00 %", "16.50 %")
+- Cada linha tem uma célula de parcela por coluna de prazo da tabela
+- TAXA DE ADMINISTRAÇÃO: Está na tabela "TAXA ADM. MENSAL" (parte inferior do PDF), organizada por prazo da cota. Associe a taxa ao prazo_meses correspondente.
 
-Para cada VARIAÇÃO de prazo/parcela, extraia um registro separado:
+Para cada VARIAÇÃO de prazo/parcela (de TODAS as linhas de crédito e TODAS as colunas de prazo), extraia um registro separado:
 - codigo: código do plano (ex: CR4205, CR4072, CR4301)
 - nome_bem: descrição do bem (ex: "AUTOMÓVEL LEVE 70%", "AUTOMÓVEL LEVE 50%")
 - valor_bem: valor do crédito (apenas número, sem R$)
@@ -188,6 +188,7 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
     let criados = 0;
     let atualizados = 0;
     const erros = [];
+    const ignorados = [];
 
     for (const emp of empresasAlvo) {
       try {
@@ -210,6 +211,13 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
           const valor = Number(plano.valor_bem) || 0;
           const parcela = Number(plano.primeira_parcela) || 0;
           if (!grupoNormalizado || grupoNormalizado === '0' || !codigoNormalizado || !prazo || !valor || !parcela) {
+            ignorados.push({
+              empresa_id: emp.id,
+              codigo: codigoNormalizado || null,
+              valor_bem: plano.valor_bem ?? null,
+              prazo_meses: plano.prazo_meses ?? null,
+              motivo: !codigoNormalizado ? 'código ausente' : !grupoNormalizado || grupoNormalizado === '0' ? 'grupo ausente' : !prazo ? 'prazo ausente' : !valor ? 'valor do crédito ausente' : 'parcela ausente'
+            });
             continue;
           }
 
@@ -279,6 +287,7 @@ Retorne um array de planos no formato JSON com TODAS as variações e suas respe
       total_planos: planosBase.length,
       criados,
       atualizados,
+      ignorados,
       erros,
       message: isDistributor 
         ? `Distribuição concluída: ${criados} criados, ${atualizados} atualizados em ${empresasAlvo.length} empresa(s)`
