@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
@@ -70,6 +70,8 @@ export default function ComissoesEmprestimos() {
   const [acrescimoDescricao, setAcrescimoDescricao] = useState('');
   const [isPaying, setIsPaying] = useState(false);
   const [etapaPagamento, setEtapaPagamento] = useState('');
+  // Trava síncrona contra duplo-clique (isPaying em state pode ser stale entre renders)
+  const isPayingRef = useRef(false);
 
   // Adiantamentos a descontar no modal de pagamento
   const [adiantamentosVendedor, setAdiantamentosVendedor] = useState([]);
@@ -485,7 +487,8 @@ export default function ComissoesEmprestimos() {
     .reduce((acc, a) => acc + (a.valor || 0), 0);
 
   const handleConfirmarPagamento = async () => {
-    if (isPaying) return;
+    // Trava síncrona: impede segunda execução mesmo antes do re-render
+    if (isPayingRef.current) return;
     if (modalSelecionados.size === 0 || !vendedorModal) {
       toast.error('Selecione ao menos um contrato para confirmar o pagamento.');
       return;
@@ -497,10 +500,19 @@ export default function ComissoesEmprestimos() {
       return;
     }
 
-    setIsPaying(true);
+    // Pré-verificação: se algum contrato selecionado já foi pago, bloqueia
+    const ids = Array.from(modalSelecionados);
+    const jaPagos = propostas.filter(p => ids.includes(p.id) && p.comissao_vendedor_paga);
+    if (jaPagos.length > 0) {
+      toast.error(`Pagamento já realizado para ${jaPagos.length} contrato(s) deste vendedor. Atualize a lista e tente novamente.`);
+      isPayingRef.current = false;
+      setIsPaying(false);
+      return;
+    }
+
+    isPayingRef.current = true;
     setEtapaPagamento('Validando pagamento...');
     try {
-      const ids = Array.from(modalSelecionados);
       const paraPagar = propostas.filter(p => ids.includes(p.id) && p.comissao_banco_recebida && !p.comissao_vendedor_paga);
       if (paraPagar.length === 0) {
         throw new Error('Nenhum contrato válido para pagar. Atualize a página e tente novamente.');
@@ -722,6 +734,7 @@ export default function ComissoesEmprestimos() {
       console.error('Erro ao processar pagamento:', err);
       toast.error(err?.message || 'Erro ao processar pagamento. Verifique os dados e tente novamente.');
     } finally {
+      isPayingRef.current = false;
       setIsPaying(false);
       setEtapaPagamento('');
     }
