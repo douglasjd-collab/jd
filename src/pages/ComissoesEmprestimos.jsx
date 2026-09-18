@@ -512,7 +512,7 @@ export default function ComissoesEmprestimos() {
         setEtapaPagamento('Enviando comprovante...');
         try {
           const respUpload = await Promise.race([
-            base44.integrations.Core.UploadFile({ file: comprovanteFile }),
+            base44.integrations.Core.UploadPublicFile({ file: comprovanteFile }),
             new Promise((_, reject) => setTimeout(() => reject(new Error('O envio do comprovante excedeu 30 segundos.')), 30000)),
           ]);
           comprovanteUrl = respUpload?.file_url || null;
@@ -700,7 +700,7 @@ export default function ComissoesEmprestimos() {
       try {
         const pdfBlob = doc.output('blob');
         const pdfFile = new File([pdfBlob], `comprovante_${loteCode}.pdf`, { type: 'application/pdf' });
-        const { file_url: pdfUrl } = await base44.integrations.Core.UploadFile({ file: pdfFile });
+        const { file_url: pdfUrl } = await base44.integrations.Core.UploadPublicFile({ file: pdfFile });
         if (pdfUrl) {
           await base44.entities.LotePagamentoComissaoEmprestimo.update(lote.id, { pdf_url: pdfUrl });
         }
