@@ -446,6 +446,23 @@
     "testemunha2_endereco": {
       "type": "string",
       "description": "[TESTEMUNHA 2] Endere\u00e7o"
+    },
+    "cliente_analfabeto": {
+      "type": "boolean",
+      "default": false,
+      "description": "[ANALFABETO] Se o cliente \u00e9 analfabeto \u2014 termo ser\u00e1 impresso para impress\u00e3o digital + assinatura a rogo por parente de 1\u00ba grau + 2 testemunhas obrigat\u00f3rias"
+    },
+    "rogo_nome": {
+      "type": "string",
+      "description": "[ANALFABETO] Nome do parente de 1\u00ba grau que assina a rogo pelo cliente"
+    },
+    "rogo_cpf": {
+      "type": "string",
+      "description": "[ANALFABETO] CPF do parente que assina a rogo"
+    },
+    "rogo_parentesco": {
+      "type": "string",
+      "description": "[ANALFABETO] Grau de parentesco do rogo (ex: pai, m\u00e3e, filho, filha, irm\u00e3o, irm\u00e3)"
     }
   },
   "required": [

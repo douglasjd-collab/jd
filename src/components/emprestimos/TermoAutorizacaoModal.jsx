@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle, Download, Printer, FileCheck2, Send, Loader2 } from 'lucide-react';
+import { AlertTriangle, Download, Printer, FileCheck2, Send, Loader2, Fingerprint } from 'lucide-react';
 import { toast } from 'sonner';
 import { validarDadosTermo } from './validarDadosTermo';
 import { gerarTermoAutorizacaoPDF, getTipoOperacaoLabel } from './gerarTermoAutorizacao';
@@ -215,6 +215,11 @@ export default function TermoAutorizacaoModal({
               <p><span className="font-semibold text-slate-500">Banco:</span> {proposta.administradora_nome}</p>
               <p><span className="font-semibold text-slate-500">Operação:</span> {getTipoOperacaoLabel(proposta)}</p>
               <p><span className="font-semibold text-slate-500">Contrato:</span> {proposta.contrato}</p>
+              {proposta.cliente_analfabeto && (
+                <p className="flex items-center gap-1.5 text-amber-700 font-semibold">
+                  <Fingerprint className="w-4 h-4" /> Cliente analfabeto — impressão digital + assinatura a rogo + 2 testemunhas obrigatórias
+                </p>
+              )}
             </div>
             <p className="text-xs text-slate-400">O termo é gerado exatamente com os dados cadastrados. Para corrigir alguma informação, atualize o cadastro de origem e gere novamente.</p>
             <DialogFooter className="flex-wrap gap-2 sm:justify-between">

@@ -8,7 +8,7 @@ import { Loader2, ShieldCheck, FileText, CheckCircle2, XCircle, ExternalLink } f
 import AssinaturaCanvas from '@/components/assinatura/AssinaturaCanvas';
 import CapturaCamera from '@/components/assinatura/CapturaCamera';
 
-const ROLE_LABELS = { cliente: 'Cliente', testemunha1: 'Testemunha 1', testemunha2: 'Testemunha 2', representante: 'Representante da empresa' };
+const ROLE_LABELS = { cliente: 'Cliente', rogo: 'Rogo (Parente de 1º grau)', testemunha1: 'Testemunha 1', testemunha2: 'Testemunha 2', representante: 'Representante da empresa' };
 
 const CLIENTE_ACEITES = [
   'Confirmo que conferi meu nome, CPF e dados pessoais.',
@@ -87,7 +87,7 @@ export default function AssinarDocumento() {
 
   const listaAceites = info?.role === 'cliente' ? CLIENTE_ACEITES : TESTEMUNHA_ACEITES;
   const todosAceitos = listaAceites.every((a) => aceites.includes(a));
-  const exigeFrase = info?.role === 'cliente';
+  const exigeFrase = info?.role === 'cliente' || info?.role === 'rogo';
 
   const enviarEvidencia = async (tipoEvidencia, dataUrl, proximoStep) => {
     setEnviandoEvidencia(true);

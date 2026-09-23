@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Copy, FileSignature, CheckCircle2, Clock, Download, Loader2, ShieldCheck, XCircle, AlertTriangle } from 'lucide-react';
+import { Copy, FileSignature, CheckCircle2, Clock, Download, Loader2, ShieldCheck, XCircle, AlertTriangle, Fingerprint } from 'lucide-react';
 import { toast } from 'sonner';
 import { gerarTermoComAssinaturasPDF } from './gerarTermoComAssinaturas';
 
@@ -27,6 +27,7 @@ const STATUS_COLORS = {
 
 const ROLE_LABELS = {
   cliente: 'Cliente',
+  rogo: 'Rogo (Parente de 1º grau)',
   testemunha1: 'Testemunha 1',
   testemunha2: 'Testemunha 2',
   representante: 'Representante da empresa',
@@ -189,6 +190,11 @@ export default function AcompanhamentoAssinaturasModal({ open, onOpenChange, pro
           <div className="bg-slate-50 rounded-lg p-3 text-sm">
             <p className="font-semibold text-slate-700">{proposta.cliente_nome}</p>
             <p className="text-slate-500">Contrato: {proposta.contrato || '-'}</p>
+            {sol?.cliente_analfabeto && (
+              <p className="mt-1 flex items-center gap-1.5 text-amber-700 font-medium">
+                <Fingerprint className="w-4 h-4" /> Cliente analfabeto — assinatura por impressão digital + a rogo
+              </p>
+            )}
           </div>
         )}
 

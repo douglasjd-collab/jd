@@ -260,18 +260,79 @@ export function gerarTermoAutorizacaoPDF(proposta, cliente, empresa) {
   addField('Data', dataExtenso());
   y += 6;
 
-  checkBreak(30);
-  doc.setFontSize(9.5);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ASSINATURA DO(A) AUTORIZANTE', marginX, y);
-  y += 14;
-  doc.setFont('helvetica', 'normal');
-  doc.line(marginX, y, marginX + 80, y);
-  y += 5;
-  doc.text(clienteNome || '-', marginX, y);
-  y += 5;
-  doc.text(`CPF: ${clienteCpf || '-'}`, marginX, y);
-  y += 12;
+  const clienteAnalfabeto = proposta.cliente_analfabeto === true;
+
+  if (clienteAnalfabeto) {
+    // Cliente analfabeto: impressão digital + assinatura a rogo por parente de 1º grau
+    checkBreak(40);
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('IMPRESSÃO DIGITAL DO(A) AUTORIZANTE', marginX, y);
+    y += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text('Por ser analfabeto(a), o(a) AUTORIZANTE apõe sua impressão digital no campo abaixo:', marginX, y, { maxWidth });
+    y += 8;
+
+    // Caixa para a impressão digital (retângulo com espaço em branco)
+    checkBreak(40);
+    const boxW = 60;
+    const boxH = 35;
+    doc.setDrawColor(120, 120, 120);
+    doc.setLineWidth(0.5);
+    doc.rect(marginX, y, boxW, boxH);
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'italic');
+    doc.text('Colocar a impressão digital aqui', marginX + boxW / 2, y + boxH / 2, { align: 'center' });
+    y += boxH + 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.text(clienteNome || '-', marginX, y);
+    y += 5;
+    doc.text(`CPF: ${clienteCpf || '-'}`, marginX, y);
+    y += 10;
+
+    // Assinatura a rogo (parente de 1º grau)
+    checkBreak(35);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.text('ASSINATURA A ROGO (PARENTE DE 1º GRAU)', marginX, y);
+    y += 6;
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    const rogoNome = proposta.rogo_nome || '';
+    const rogoCpf = proposta.rogo_cpf || '';
+    const rogoParentesco = proposta.rogo_parentesco || '';
+    if (rogoNome) {
+      addField('Nome do rogo', rogoNome);
+      if (rogoCpf) addField('CPF do rogo', rogoCpf);
+      if (rogoParentesco) addField('Grau de parentesco', rogoParentesco);
+    }
+    y += 8;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.line(marginX, y, marginX + 80, y);
+    y += 5;
+    doc.text(rogoNome || '________________________________', marginX, y);
+    y += 5;
+    doc.text(`CPF: ${rogoCpf || '-'}`, marginX, y);
+    y += 5;
+    if (rogoParentesco) { doc.text(`Parentesco: ${rogoParentesco}`, marginX, y); y += 5; }
+    y += 10;
+  } else {
+    checkBreak(30);
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ASSINATURA DO(A) AUTORIZANTE', marginX, y);
+    y += 14;
+    doc.setFont('helvetica', 'normal');
+    doc.line(marginX, y, marginX + 80, y);
+    y += 5;
+    doc.text(clienteNome || '-', marginX, y);
+    y += 5;
+    doc.text(`CPF: ${clienteCpf || '-'}`, marginX, y);
+    y += 12;
+  }
 
   checkBreak(30);
   doc.setFont('helvetica', 'bold');
@@ -287,18 +348,24 @@ export function gerarTermoAutorizacaoPDF(proposta, cliente, empresa) {
   doc.text(`Representante: ${empresa?.socio_nome || '-'}`, marginX, y);
   y += 12;
 
-  // Testemunhas (opcional — reforça a validade do Termo)
+  // Testemunhas (obrigatório para cliente analfabeto; opcional nos demais casos)
   const testemunhas = [
     { nome: proposta.testemunha1_nome, cpf: proposta.testemunha1_cpf, telefone: proposta.testemunha1_telefone, endereco: proposta.testemunha1_endereco },
     { nome: proposta.testemunha2_nome, cpf: proposta.testemunha2_cpf, telefone: proposta.testemunha2_telefone, endereco: proposta.testemunha2_endereco },
   ].filter((t) => t.nome);
 
-  if (testemunhas.length > 0) {
+  if (clienteAnalfabeto || testemunhas.length > 0) {
     checkBreak(14);
     doc.setFontSize(10.5);
     doc.setFont('helvetica', 'bold');
-    doc.text('TESTEMUNHAS', marginX, y);
+    doc.text(clienteAnalfabeto ? 'TESTEMUNHAS (OBRIGATÓRIO)' : 'TESTEMUNHAS', marginX, y);
     y += 8;
+    if (clienteAnalfabeto) {
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Para clientes analfabetos, a presença de duas testemunhas é obrigatória.', marginX, y, { maxWidth });
+      y += 6;
+    }
 
     testemunhas.forEach((t, idx) => {
       checkBreak(30);

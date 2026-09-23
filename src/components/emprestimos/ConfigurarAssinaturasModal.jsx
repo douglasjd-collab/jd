@@ -4,9 +4,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, Copy, MessageCircle, Loader2, CheckCircle2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { AlertTriangle, Copy, MessageCircle, Loader2, CheckCircle2, Fingerprint, Printer } from 'lucide-react';
 import { toast } from 'sonner';
-import { getTipoOperacaoLabel } from './gerarTermoAutorizacao';
+import { getTipoOperacaoLabel, gerarTermoAutorizacaoPDF } from './gerarTermoAutorizacao';
 
 const genToken = () => {
   const bytes = new Uint8Array(16);
@@ -14,15 +15,25 @@ const genToken = () => {
   return Array.from(bytes).map((b) => b.toString(36)).join('').slice(0, 20).toUpperCase();
 };
 
+const PARENTESCOS_1_GRAU = ['Pai', 'Mãe', 'Filho(a)', 'Irmão(ã)'];
+
 export default function ConfigurarAssinaturasModal({ open, onOpenChange, proposta, cliente, empresa, termoAtual, currentUser, onCreated }) {
   const [testemunha1, setTestemunha1] = useState({ nome: '', cpf: '', telefone: '', email: '', relacao: '' });
   const [testemunha2, setTestemunha2] = useState({ nome: '', cpf: '', telefone: '', email: '', relacao: '' });
   const [representante, setRepresentante] = useState({ cargo: '', telefone: '', email: '' });
+  const [analfabeto, setAnalfabeto] = useState(false);
+  const [rogo, setRogo] = useState({ nome: '', cpf: '', parentesco: '' });
   const [saving, setSaving] = useState(false);
   const [solicitacaoCriada, setSolicitacaoCriada] = useState(null);
 
   useEffect(() => {
     if (open && proposta) {
+      setAnalfabeto(proposta.cliente_analfabeto === true);
+      setRogo({
+        nome: proposta.rogo_nome || '',
+        cpf: proposta.rogo_cpf || '',
+        parentesco: proposta.rogo_parentesco || '',
+      });
       setTestemunha1({
         nome: proposta.testemunha1_nome || '', cpf: proposta.testemunha1_cpf || '',
         telefone: proposta.testemunha1_telefone || '', email: '', relacao: '',
@@ -38,10 +49,77 @@ export default function ConfigurarAssinaturasModal({ open, onOpenChange, propost
 
   const representanteAusente = !empresa?.socio_nome || !empresa?.socio_cpf;
 
-  const handleCriar = async () => {
+  // Validação: se analfabeto, testemunhas e rogo são obrigatórios
+  const analfabetoValido = analfabeto
+    ? testemunha1.nome && testemunha1.cpf && testemunha2.nome && testemunha2.cpf && rogo.nome && rogo.cpf && rogo.parentesco
+    : true;
+
+  const handleSalvarAnalfabeto = async () => {
+    try {
+      await base44.entities.Proposta.update(proposta.id, {
+        cliente_analfabeto: analfabeto,
+        rogo_nome: analfabeto ? rogo.nome : '',
+        rogo_cpf: analfabeto ? rogo.cpf : '',
+        rogo_parentesco: analfabeto ? rogo.parentesco : '',
+        testemunha1_nome: testemunha1.nome,
+        testemunha1_cpf: testemunha1.cpf,
+        testemunha1_telefone: testemunha1.telefone,
+        testemunha2_nome: testemunha2.nome,
+        testemunha2_cpf: testemunha2.cpf,
+        testemunha2_telefone: testemunha2.telefone,
+      });
+    } catch (e) {
+      toast.error('Erro ao salvar dados do analfabeto: ' + e.message);
+    }
+  };
+
+  const handleImprimirTermoAnalfabeto = async () => {
+    if (!analfabetoValido) {
+      toast.error('Preencha os dados do rogo e das duas testemunhas obrigatórias.');
+      return;
+    }
     setSaving(true);
     try {
+      await handleSalvarAnalfabeto();
+      const propostaAtualizada = {
+        ...proposta,
+        cliente_analfabeto: true,
+        rogo_nome: rogo.nome,
+        rogo_cpf: rogo.cpf,
+        rogo_parentesco: rogo.parentesco,
+        testemunha1_nome: testemunha1.nome,
+        testemunha1_cpf: testemunha1.cpf,
+        testemunha1_telefone: testemunha1.telefone,
+        testemunha2_nome: testemunha2.nome,
+        testemunha2_cpf: testemunha2.cpf,
+        testemunha2_telefone: testemunha2.telefone,
+      };
+      const docPdf = gerarTermoAutorizacaoPDF(propostaAtualizada, cliente, empresa);
+      docPdf.autoPrint();
+      window.open(docPdf.output('bloburl'), '_blank');
+      toast.success('Termo gerado para impressão. Imprima, colha a impressão digital e a assinatura a rogo, depois escaneie e anexe à proposta.');
+      onCreated?.();
+      onOpenChange(false);
+    } catch (e) {
+      toast.error('Erro ao gerar termo: ' + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCriar = async () => {
+    if (analfabeto && !analfabetoValido) {
+      toast.error('Preencha os dados do rogo e das duas testemunhas obrigatórias.');
+      return;
+    }
+    setSaving(true);
+    try {
+      if (analfabeto) {
+        await handleSalvarAnalfabeto();
+      }
+
       const ordem = ['cliente'];
+      if (analfabeto && rogo.nome) ordem.push('rogo');
       if (testemunha1.nome) ordem.push('testemunha1');
       if (testemunha2.nome) ordem.push('testemunha2');
       ordem.push('representante');
@@ -68,7 +146,14 @@ export default function ConfigurarAssinaturasModal({ open, onOpenChange, propost
         cliente_telefone: cliente?.celular || cliente?.telefone_fixo || '',
         cliente_email: cliente?.email || '',
         cliente_token: genToken(),
-        cliente_status: 'pendente',
+        cliente_status: analfabeto ? 'nao_aplicavel' : 'pendente',
+        cliente_analfabeto: analfabeto,
+
+        rogo_nome: analfabeto ? rogo.nome : '',
+        rogo_cpf: analfabeto ? rogo.cpf : '',
+        rogo_parentesco: analfabeto ? rogo.parentesco : '',
+        rogo_token: analfabeto && rogo.nome ? genToken() : '',
+        rogo_status: analfabeto && rogo.nome ? 'pendente' : 'nao_aplicavel',
 
         testemunha1_nome: testemunha1.nome, testemunha1_cpf: testemunha1.cpf,
         testemunha1_telefone: testemunha1.telefone, testemunha1_email: testemunha1.email,
@@ -186,8 +271,52 @@ export default function ConfigurarAssinaturasModal({ open, onOpenChange, propost
                 <p className="text-slate-500">{proposta.cliente_nome} — {proposta.cliente_cpf || cliente?.cpf}</p>
               </div>
 
+              {/* Checkbox Cliente Analfabeto */}
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <Checkbox
+                    checked={analfabeto}
+                    onCheckedChange={(v) => setAnalfabeto(v === true)}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1">
+                    <span className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                      <Fingerprint className="w-4 h-4 text-amber-600" /> Cliente analfabeto
+                    </span>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Marque se o cliente é analfabeto. O termo será impresso para colher a impressão digital,
+                      com assinatura a rogo por parente de 1º grau e 2 testemunhas obrigatórias.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              {/* Campos do Rogo (parente de 1º grau) — só aparece se analfabeto */}
+              {analfabeto && (
+                <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50/50 p-3">
+                  <p className="font-semibold text-sm text-slate-800 flex items-center gap-1.5">
+                    <Fingerprint className="w-4 h-4 text-amber-600" /> Assinatura a Rogo — Parente de 1º grau (obrigatório)
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input placeholder="Nome completo do parente" value={rogo.nome} onChange={(e) => setRogo((p) => ({ ...p, nome: e.target.value }))} />
+                    <Input placeholder="CPF do parente" value={rogo.cpf} onChange={(e) => setRogo((p) => ({ ...p, cpf: e.target.value }))} />
+                    <select
+                      className="col-span-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={rogo.parentesco}
+                      onChange={(e) => setRogo((p) => ({ ...p, parentesco: e.target.value }))}
+                    >
+                      <option value="">Selecione o grau de parentesco...</option>
+                      {PARENTESCOS_1_GRAU.map((p) => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
-                <p className="font-semibold text-sm text-slate-700">Testemunha 1 (opcional)</p>
+                <p className="font-semibold text-sm text-slate-700">
+                  Testemunha 1 {analfabeto && <span className="text-red-500 font-bold">(obrigatória)</span>}
+                  {!analfabeto && <span className="text-slate-400 font-normal">(opcional)</span>}
+                </p>
                 <div className="grid grid-cols-2 gap-2">
                   <Input placeholder="Nome completo" value={testemunha1.nome} onChange={(e) => setTestemunha1((p) => ({ ...p, nome: e.target.value }))} />
                   <Input placeholder="CPF" value={testemunha1.cpf} onChange={(e) => setTestemunha1((p) => ({ ...p, cpf: e.target.value }))} />
@@ -198,7 +327,10 @@ export default function ConfigurarAssinaturasModal({ open, onOpenChange, propost
               </div>
 
               <div className="space-y-2">
-                <p className="font-semibold text-sm text-slate-700">Testemunha 2 (opcional)</p>
+                <p className="font-semibold text-sm text-slate-700">
+                  Testemunha 2 {analfabeto && <span className="text-red-500 font-bold">(obrigatória)</span>}
+                  {!analfabeto && <span className="text-slate-400 font-normal">(opcional)</span>}
+                </p>
                 <div className="grid grid-cols-2 gap-2">
                   <Input placeholder="Nome completo" value={testemunha2.nome} onChange={(e) => setTestemunha2((p) => ({ ...p, nome: e.target.value }))} />
                   <Input placeholder="CPF" value={testemunha2.cpf} onChange={(e) => setTestemunha2((p) => ({ ...p, cpf: e.target.value }))} />
@@ -218,16 +350,34 @@ export default function ConfigurarAssinaturasModal({ open, onOpenChange, propost
                 </div>
               </div>
 
-              <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-                Assinaturas sem ordem obrigatória: todos os participantes podem assinar assim que receberem seus links.
-              </div>
+              {analfabeto ? (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 space-y-1">
+                  <p className="font-semibold">Fluxo para cliente analfabeto:</p>
+                  <p>1. Imprima o termo (botão abaixo).</p>
+                  <p>2. Colha a impressão digital do cliente no campo indicado.</p>
+                  <p>3. Colha a assinatura a rogo do parente de 1º grau.</p>
+                  <p>4. Colha as assinaturas das 2 testemunhas.</p>
+                  <p>5. Escaneie o documento assinado e anexe à proposta.</p>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                  Assinaturas sem ordem obrigatória: todos os participantes podem assinar assim que receberem seus links.
+                </div>
+              )}
             </div>
-            <DialogFooter>
+            <DialogFooter className="flex-wrap gap-2">
               <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button onClick={handleCriar} disabled={saving} className="bg-[#23BE84] hover:bg-[#1da570] gap-1.5">
-                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                Gerar links de assinatura
-              </Button>
+              {analfabeto ? (
+                <Button onClick={handleImprimirTermoAnalfabeto} disabled={saving || !analfabetoValido} className="bg-amber-600 hover:bg-amber-700 gap-1.5">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Printer className="w-4 h-4" />}
+                  Imprimir termo (impressão digital + a rogo)
+                </Button>
+              ) : (
+                <Button onClick={handleCriar} disabled={saving} className="bg-[#23BE84] hover:bg-[#1da570] gap-1.5">
+                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Gerar links de assinatura
+                </Button>
+              )}
             </DialogFooter>
           </>
         )}

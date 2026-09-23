@@ -102,6 +102,52 @@
       "type": "string",
       "description": "JSON com evid\u00eancias digitais do cliente: selfie_url, selfie_hash, rg_frente_url, rg_frente_hash, rg_verso_url, rg_verso_hash, ip, navegador, sistema_operacional, idioma, resolucao_tela e timestamps de captura"
     },
+    "cliente_analfabeto": {
+      "type": "boolean",
+      "default": false,
+      "description": "Se o cliente \u00e9 analfabeto \u2014 assinatura \u00e9 por impress\u00e3o digital (f\u00edsica) + a rogo por parente de 1\u00ba grau"
+    },
+    "cliente_digital_url": {
+      "type": "string",
+      "description": "URL da foto/scan da impress\u00e3o digital do cliente analfabeto (upload do termo impresso e digitalizado)"
+    },
+    "rogo_nome": {
+      "type": "string",
+      "description": "Nome do parente de 1\u00ba grau que assina a rogo pelo cliente analfabeto"
+    },
+    "rogo_cpf": {
+      "type": "string",
+      "description": "CPF do parente que assina a rogo"
+    },
+    "rogo_parentesco": {
+      "type": "string",
+      "description": "Grau de parentesco do rogo (ex: pai, m\u00e3e, filho, filha, irm\u00e3o, irm\u00e3)"
+    },
+    "rogo_token": {
+      "type": "string"
+    },
+    "rogo_status": {
+      "type": "string",
+      "enum": [
+        "nao_aplicavel",
+        "pendente",
+        "visualizado",
+        "assinado",
+        "recusado"
+      ],
+      "default": "nao_aplicavel"
+    },
+    "rogo_data_assinatura": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rogo_assinatura_url": {
+      "type": "string"
+    },
+    "rogo_evidencias_json": {
+      "type": "string",
+      "description": "JSON com evid\u00eancias digitais do rogo (mesma estrutura das evid\u00eancias do cliente)"
+    },
     "testemunha1_nome": {
       "type": "string"
     },

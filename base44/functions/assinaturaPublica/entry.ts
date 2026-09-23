@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 
-const ROLES = ['cliente', 'testemunha1', 'testemunha2', 'representante'];
+const ROLES = ['cliente', 'rogo', 'testemunha1', 'testemunha2', 'representante'];
 
 const TIPO_EVENTO = {
   selfie: 'selfie_enviada',
@@ -200,11 +200,13 @@ Deno.serve(async (req) => {
       if (!podeAssinar(sol, role)) {
         return Response.json({ error: 'Esta assinatura ainda não está liberada ou já foi concluída.' }, { status: 400 });
       }
+      // Rogo e testemunhas precisam confirmar identidade; cliente analfabeto assina fisicamente (nao_aplicavel)
+      const isRogoOrTestemunha = ['rogo', 'testemunha1', 'testemunha2'].includes(role);
       const evidenciasRole = parseEvidencias(sol, role);
       const documentoCompleto = evidenciasRole.tipo_documento === 'cnh'
         ? !!evidenciasRole.cnh_url
         : !!evidenciasRole.rg_frente_url && !!evidenciasRole.rg_verso_url;
-      if (!evidenciasRole.selfie_url || !documentoCompleto) {
+      if (isRogoOrTestemunha && (!evidenciasRole.selfie_url || !documentoCompleto)) {
         return Response.json({ error: 'Confirme sua identidade (selfie e documento) antes de assinar.' }, { status: 400 });
       }
 
