@@ -313,6 +313,7 @@ export default function Layout({ children, currentPageName }) {
       submenu: [
         { name: 'Nova Venda', page: 'NovaVendaConsignado' },
         { name: 'Propostas', page: 'VendasEmprestimos' },
+        { name: 'Gerenciador de Assinaturas', page: 'GerenciadorAssinaturas' },
         { name: 'Propostas sem Vendedor', page: 'PropostasSemVendedor' },
       ]
     },

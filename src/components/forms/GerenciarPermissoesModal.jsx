@@ -27,6 +27,7 @@ const MENU_ESTRUTURA = [
     submenu: [
       { key: 'emprestimos:NovaVendaConsignado', label: 'Nova Venda' },
       { key: 'emprestimos:VendasEmprestimos',    label: 'Propostas' },
+      { key: 'emprestimos:GerenciadorAssinaturas', label: 'Gerenciador de Assinaturas' },
       { key: 'emprestimos:PropostasSemVendedor', label: 'Propostas sem Vendedor' },
     ],
   },
