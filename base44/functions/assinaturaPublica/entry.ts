@@ -30,11 +30,11 @@ function statusAposAssinatura(sol, roleAssinado) {
     sol[`${role}_status`] === 'assinado' ||
     sol[`${role}_status`] === 'nao_aplicavel'
   );
-  return todosAssinaram ? 'assinado' : 'em_assinatura';
+  return todosAssinaram ? 'aguardando_conferencia' : 'em_assinatura';
 }
 
 function podeAssinar(sol, role) {
-  if (sol.status === 'assinado' || sol.status === 'recusado' || sol.status === 'cancelado') return false;
+  if (sol.status === 'assinado' || sol.status === 'aguardando_conferencia' || sol.status === 'recusado' || sol.status === 'cancelado') return false;
   return sol[`${role}_status`] !== 'assinado' && sol[`${role}_status`] !== 'nao_aplicavel';
 }
 
@@ -222,13 +222,13 @@ Deno.serve(async (req) => {
         : 'Assinatura desenhada manualmente';
       await registrarLog(base44, sol, { evento: 'assinatura_realizada', papel: role, ip, device, resultado: 'sucesso', detalhes: descricaoMetodo });
 
-      if (novoStatusGeral === 'assinado' && sol.termo_autorizacao_id) {
+      if (novoStatusGeral === 'aguardando_conferencia' && sol.termo_autorizacao_id) {
         await base44.asServiceRole.entities.TermoAutorizacao.update(sol.termo_autorizacao_id, {
-          status: 'assinado',
+          status: 'aguardando_conferencia',
           data_assinatura: new Date().toISOString(),
           forma_assinatura: 'eletronica',
         });
-        await registrarLog(base44, sol, { evento: 'documento_finalizado', papel: role, ip, device, resultado: 'sucesso' });
+        await registrarLog(base44, sol, { evento: 'assinaturas_concluidas_aguardando_conferencia', papel: role, ip, device, resultado: 'sucesso' });
       }
 
       return Response.json({ success: true, status_geral: novoStatusGeral });

@@ -18,6 +18,12 @@ export const SITUACOES = {
     badge: 'bg-amber-100 text-amber-700',
     dot: 'bg-amber-500',
   },
+  aguardando_conferencia: {
+    key: 'aguardando_conferencia',
+    label: 'Aguardando conferência',
+    badge: 'bg-cyan-100 text-cyan-700',
+    dot: 'bg-cyan-500',
+  },
   recusado: {
     key: 'recusado',
     label: 'Assinatura recusada',
@@ -36,6 +42,7 @@ export const SITUACAO_ORDER = [
   'termo_nao_gerado',
   'termo_gerado_nao_enviado',
   'assinatura_pendente',
+  'aguardando_conferencia',
   'recusado',
   'concluido',
 ];
@@ -66,6 +73,9 @@ export function classificarProposta(termoRecente, solicitacaoAtual) {
     // Há solicitação: usar status da solicitação (não apenas do termo)
     if (solicitacaoAtual.status === 'assinado') {
       return { situacao: 'concluido', faltantes: [], etapaAtual: null };
+    }
+    if (solicitacaoAtual.status === 'aguardando_conferencia') {
+      return { situacao: 'aguardando_conferencia', faltantes: [], etapaAtual: null };
     }
     if (solicitacaoAtual.status === 'recusado') {
       return { situacao: 'recusado', faltantes: [], etapaAtual: null };

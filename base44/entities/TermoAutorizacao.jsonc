@@ -21,6 +21,7 @@
         "gerado",
         "aguardando_assinatura",
         "visualizado",
+        "aguardando_conferencia",
         "assinado",
         "recusado",
         "cancelado",
@@ -117,6 +118,23 @@
     "motivo_substituicao": {
       "type": "string",
       "description": "Motivo pelo qual esta vers\u00e3o foi substitu\u00edda por uma nova"
+    },
+    "conferido_por_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que conferiu/aprovou ou reprovou o termo assinado"
+    },
+    "conferido_por_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio que conferiu/aprovou ou reprovou"
+    },
+    "data_conferencia": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data e hora em que o termo assinado foi conferido (aprovado ou reprovado)"
+    },
+    "motivo_reprovacao": {
+      "type": "string",
+      "description": "Motivo da reprova\u00e7\u00e3o do termo assinado (quando reprovado para refazer)"
     }
   },
   "required": [

@@ -354,7 +354,7 @@ export default function GerenciadorAssinaturas() {
       </div>
 
       {/* Contadores por situação */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
         <button
           onClick={() => setFilterSituacao('pendencias')}
           className={`text-left bg-white rounded-xl p-3 shadow-sm border-2 transition-all ${filterSituacao === 'pendencias' ? 'border-[#23BE84] ring-1 ring-[#23BE84]' : 'border-slate-100 hover:border-slate-200'}`}
