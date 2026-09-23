@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 
 const ROLE_LABELS = {
   cliente: 'Cliente (Autorizante)',
+  rogo: 'Rogo (Parente de 1º grau)',
   testemunha1: '1ª Testemunha',
   testemunha2: '2ª Testemunha',
   representante: 'Representante da empresa',
@@ -129,6 +130,7 @@ export async function gerarTermoComAssinaturasPDF({ proposta, cliente, empresa, 
 
   // Certificado de Evidências Digitais
   const evidenciasCliente = parseEvidencias(solicitacao, 'cliente');
+  const evidenciasRogo = parseEvidencias(solicitacao, 'rogo');
   let hashAssinaturaCliente = '';
   if (solicitacao?.cliente_assinatura_url) {
     try {
@@ -136,6 +138,15 @@ export async function gerarTermoComAssinaturasPDF({ proposta, cliente, empresa, 
       hashAssinaturaCliente = await sha256Blob(await res.blob());
     } catch {
       hashAssinaturaCliente = '';
+    }
+  }
+  let hashAssinaturaRogo = '';
+  if (solicitacao?.rogo_assinatura_url) {
+    try {
+      const res = await fetch(solicitacao.rogo_assinatura_url);
+      hashAssinaturaRogo = await sha256Blob(await res.blob());
+    } catch {
+      hashAssinaturaRogo = '';
     }
   }
 
@@ -153,8 +164,26 @@ export async function gerarTermoComAssinaturasPDF({ proposta, cliente, empresa, 
   doc.setFontSize(9.5);
   doc.text(`Nome: ${proposta?.cliente_nome || '-'}`, marginX, cy); cy += 5;
   doc.text(`CPF: ${proposta?.cliente_cpf || cliente?.cpf || '-'}`, marginX, cy); cy += 5;
+  if (solicitacao?.cliente_analfabeto) {
+    doc.text('Assinatura: Impressão digital (cliente analfabeto — física)', marginX, cy); cy += 5;
+    if (solicitacao?.rogo_nome) {
+      doc.text(`A rogo por: ${solicitacao.rogo_nome} (${solicitacao.rogo_parentesco || 'parente de 1º grau'})`, marginX, cy); cy += 5;
+    }
+  }
   doc.text(`Data: ${format(new Date(), 'dd/MM/yyyy')}`, marginX, cy); cy += 5;
   doc.text(`Hora: ${format(new Date(), 'HH:mm:ss')}`, marginX, cy); cy += 10;
+
+  // Evidências do Rogo (quando analfabeto)
+  if (solicitacao?.cliente_analfabeto && solicitacao?.rogo_nome) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.text('Rogo (Parente de 1º grau)', marginX, cy); cy += 6;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.text(`Nome: ${solicitacao.rogo_nome || '-'}`, marginX, cy); cy += 5;
+    doc.text(`CPF: ${solicitacao.rogo_cpf || '-'}`, marginX, cy); cy += 5;
+    doc.text(`Parentesco: ${solicitacao.rogo_parentesco || '-'}`, marginX, cy); cy += 10;
+  }
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10.5);
@@ -167,6 +196,9 @@ export async function gerarTermoComAssinaturasPDF({ proposta, cliente, empresa, 
       ? [['CNH aberta', !!evidenciasCliente.cnh_url]]
       : [['Frente do RG', !!evidenciasCliente.rg_frente_url], ['Verso do RG', !!evidenciasCliente.rg_verso_url]]),
     ['Assinatura', !!solicitacao?.cliente_assinatura_url],
+    ...(solicitacao?.cliente_analfabeto
+      ? [['Impressão digital (física)', !!solicitacao?.cliente_digital_url], ['Assinatura a rogo', !!solicitacao?.rogo_assinatura_url]]
+      : []),
     ['Hash do PDF', !!hashFinal],
     ['QR Code', !!qrDataUrl],
     ['Dispositivo registrado', !!evidenciasCliente.navegador],
@@ -189,6 +221,7 @@ export async function gerarTermoComAssinaturasPDF({ proposta, cliente, empresa, 
       ? [['Hash CNH', evidenciasCliente.cnh_hash || '-']]
       : [['Hash Frente RG', evidenciasCliente.rg_frente_hash || '-'], ['Hash Verso RG', evidenciasCliente.rg_verso_hash || '-']]),
     ['Hash Assinatura', hashAssinaturaCliente || '-'],
+    ...(solicitacao?.cliente_analfabeto && hashAssinaturaRogo ? [['Hash Assinatura Rogo', hashAssinaturaRogo]] : []),
   ].forEach(([label, valor]) => {
     doc.text(`${label}: ${valor}`, marginX, cy, { maxWidth });
     cy += 6;
