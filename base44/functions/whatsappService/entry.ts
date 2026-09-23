@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     const entityClient = isServiceRoleCall ? base44.asServiceRole : base44;
     
     const payload = await req.json().catch(() => ({}));
-    const { connectionId, action, webhookUrl, phoneNumber, text, imageUrl, stickerUrl, audioUrl, documentUrl, videoUrl, caption, fileName, messageIds, messageId, emoji } = payload;
+    const { connectionId, action, webhookUrl, phoneNumber, text, imageUrl, stickerUrl, audioUrl, documentUrl, videoUrl, caption, fileName, messageIds, messageId, emoji, contextInfo } = payload;
     
     // Buscar conexão (opcional p/ ação testConnection com dados do form ainda não salvos)
     // Usa entityClient para respeitar RLS mesmo em chamadas de service role agendadas.
@@ -409,7 +409,9 @@ Deno.serve(async (req) => {
       },
       
       // Enviar texto - POST /api/v1/messages/send/text
-      async sendText(phoneNumber, text) {
+      // contextInfo (opcional) adiciona o quote/reply a uma mensagem original,
+      // conforme schema oficial da D-API (stanzaId + participant + quotedMessage).
+      async sendText(phoneNumber, text, contextInfo = null) {
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
         
         const messagePayload = {
@@ -417,12 +419,16 @@ Deno.serve(async (req) => {
           to: normalizedPhone,
           text: text
         };
+        if (contextInfo) {
+          messagePayload.contextInfo = contextInfo;
+        }
         
         return await this.request('/api/v1/messages/send/text', 'POST', messagePayload);
       },
       
       // Enviar imagem - POST /api/v1/messages/send/image
-      async sendImage(phoneNumber, imageUrl, caption = '') {
+      // contextInfo (opcional) adiciona o quote/reply a uma mensagem original.
+      async sendImage(phoneNumber, imageUrl, caption = '', contextInfo = null) {
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
         
         const messagePayload = {
@@ -431,6 +437,9 @@ Deno.serve(async (req) => {
           image: imageUrl,
           caption: caption
         };
+        if (contextInfo) {
+          messagePayload.contextInfo = contextInfo;
+        }
         
         return await this.request('/api/v1/messages/send/image', 'POST', messagePayload);
       },
@@ -465,7 +474,8 @@ Deno.serve(async (req) => {
       },
       
       // Enviar documento - POST /api/v1/messages/send/document
-      async sendDocument(phoneNumber, documentUrl, caption = '', fileName = '') {
+      // contextInfo (opcional) adiciona o quote/reply a uma mensagem original.
+      async sendDocument(phoneNumber, documentUrl, caption = '', fileName = '', contextInfo = null) {
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
         
         const messagePayload = {
@@ -475,12 +485,16 @@ Deno.serve(async (req) => {
           caption: caption,
           fileName: fileName || undefined
         };
+        if (contextInfo) {
+          messagePayload.contextInfo = contextInfo;
+        }
         
         return await this.request('/api/v1/messages/send/document', 'POST', messagePayload);
       },
       
       // Enviar vídeo - POST /api/v1/messages/send/video
-      async sendVideo(phoneNumber, videoUrl, caption = '') {
+      // contextInfo (opcional) adiciona o quote/reply a uma mensagem original.
+      async sendVideo(phoneNumber, videoUrl, caption = '', contextInfo = null) {
         const normalizedPhone = phoneNumber.replace(/\D/g, '');
         
         const messagePayload = {
@@ -489,6 +503,9 @@ Deno.serve(async (req) => {
           video: videoUrl,
           caption: caption
         };
+        if (contextInfo) {
+          messagePayload.contextInfo = contextInfo;
+        }
         
         return await this.request('/api/v1/messages/send/video', 'POST', messagePayload);
       },
@@ -813,14 +830,14 @@ Deno.serve(async (req) => {
         if (!phoneNumber || !text) {
           return Response.json({ error: 'phoneNumber and text required' }, { status: 400 });
         }
-        result = await adapter.sendText(phoneNumber, text);
+        result = await adapter.sendText(phoneNumber, text, contextInfo || null);
         break;
         
       case 'sendImage':
         if (!phoneNumber || !imageUrl) {
           return Response.json({ error: 'phoneNumber and imageUrl required' }, { status: 400 });
         }
-        result = await adapter.sendImage(phoneNumber, imageUrl, caption);
+        result = await adapter.sendImage(phoneNumber, imageUrl, caption, contextInfo || null);
         break;
         
       case 'sendSticker':
@@ -834,21 +851,21 @@ Deno.serve(async (req) => {
         if (!phoneNumber || !audioUrl) {
           return Response.json({ error: 'phoneNumber and audioUrl required' }, { status: 400 });
         }
-        result = await adapter.sendAudio(phoneNumber, audioUrl, payload.contextInfo || null);
+        result = await adapter.sendAudio(phoneNumber, audioUrl, contextInfo || null);
         break;
         
       case 'sendDocument':
         if (!phoneNumber || !documentUrl) {
           return Response.json({ error: 'phoneNumber and documentUrl required' }, { status: 400 });
         }
-        result = await adapter.sendDocument(phoneNumber, documentUrl, caption, fileName);
+        result = await adapter.sendDocument(phoneNumber, documentUrl, caption, fileName, contextInfo || null);
         break;
         
       case 'sendVideo':
         if (!phoneNumber || !videoUrl) {
           return Response.json({ error: 'phoneNumber and videoUrl required' }, { status: 400 });
         }
-        result = await adapter.sendVideo(phoneNumber, videoUrl, caption);
+        result = await adapter.sendVideo(phoneNumber, videoUrl, caption, contextInfo || null);
         break;
         
       case 'sendReaction':

@@ -563,7 +563,7 @@ Deno.serve(async (req) => {
         } else if (tipoArq.startsWith('image')) {
           tipoConteudoDapi = 'imagem';
           dapiAction = 'sendImage';
-          dapiActionParams = { imageUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '' };
+          dapiActionParams = { imageUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '', contextInfo: dapiContextInfo };
         } else if (tipoArq.startsWith('audio')) {
           tipoConteudoDapi = 'audio';
           dapiAction = 'sendAudio';
@@ -571,17 +571,24 @@ Deno.serve(async (req) => {
         } else if (tipoArq.startsWith('video')) {
           tipoConteudoDapi = 'video';
           dapiAction = 'sendVideo';
-          dapiActionParams = { videoUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '' };
+          dapiActionParams = { videoUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '', contextInfo: dapiContextInfo };
         } else {
           tipoConteudoDapi = 'pdf';
           dapiAction = 'sendDocument';
-          dapiActionParams = { documentUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '', fileName: arquivo.nome || nomeUploadDapi };
+          dapiActionParams = { documentUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '', fileName: arquivo.nome || nomeUploadDapi, contextInfo: dapiContextInfo };
         }
       } else if (!mensagem_texto || !mensagem_texto.trim()) {
         return Response.json({ error: 'Mensagem de texto é obrigatória para D-API' }, { status: 400 });
       }
 
       const textoEnviar = mensagem_texto?.trim() || '';
+
+      // Garantir que contextInfo (reply/quote) seja repassado também para texto.
+      // Antes o contextInfo só era incluído em dapiActionParams para áudio; para
+      // texto puro (sendText) ele ficava vazio e a citação não aparecia no WhatsApp.
+      if (dapiAction === 'sendText' && dapiContextInfo) {
+        dapiActionParams.contextInfo = dapiContextInfo;
+      }
 
       // Chamar whatsappService para envio D-API
       try {
