@@ -869,9 +869,9 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                   </button>
                 )}
               </div>
-              {mensagem.texto && mensagem.texto.trim() && (
-                <div className={`px-3 pb-2 break-words whitespace-pre-wrap ${isVendedor ? 'text-white/90' : 'text-slate-700'}`}>
-                  {mensagem.texto}
+              {mensagem.texto && mensagem.texto.trim() && !textoIsPadraoMidia(mensagem.texto) && (
+                <div className={`px-3 pb-2 break-words whitespace-pre-wrap text-slate-900`}>
+                  {formatarTexto(mensagem.texto)}
                 </div>
               )}
             </div>
