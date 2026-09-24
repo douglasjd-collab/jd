@@ -17,7 +17,7 @@ const parseMoeda = (v) => {
   return Number.isFinite(numero) ? numero : 0;
 };
 
-export default function ReceberPagarModal({ open, onClose, item, tipo, user, onConfirmar }) {
+export default function ReceberPagarModal({ open, onClose, item, tipo, user, onConfirmar, isEdicao = false }) {
   const isMobile = useIsMobile();
   const corPrimaria = tipo === 'receita' ? '#10b981' : '#e03131';
   const corTexto = tipo === 'receita' ? 'text-green-600' : 'text-red-600';
@@ -162,6 +162,19 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
       await base44.entities[entidade].update(item.id, dadosAtualizados);
 
       // Atualizar saldo da conta bancária
+      // Se for edição de um pagamento já existente, primeiro revertemos o ajuste antigo
+      // na conta anterior para depois aplicar o novo ajuste (evita duplo desconto/credito)
+      if (isEdicao && item?.conta_bancaria_id) {
+        const contaAntiga = await base44.entities.MeuFinanceiroContaBancaria.get(item.conta_bancaria_id);
+        if (contaAntiga) {
+          const ajusteAntigoReverso = tipo === 'receita'
+            ? -(item.valor || 0)
+            : (item.valor_pago ?? item.valor ?? 0);
+          const saldoAntigoCorrigido = (contaAntiga.saldo_atual || 0) + ajusteAntigoReverso;
+          await base44.entities.MeuFinanceiroContaBancaria.update(item.conta_bancaria_id, { saldo_atual: saldoAntigoCorrigido });
+        }
+      }
+
       const conta = await base44.entities.MeuFinanceiroContaBancaria.get(contaBancariaId);
       if (conta) {
         const ajuste = tipo === 'receita' ? (item.valor || 0) : -valorEfetivamentePago;
@@ -169,7 +182,9 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
         await base44.entities.MeuFinanceiroContaBancaria.update(contaBancariaId, { saldo_atual: novoSaldo });
       }
 
-      toast.success(tipo === 'receita' ? 'Recebimento confirmado!' : 'Pagamento confirmado!');
+      toast.success(isEdicao
+        ? (tipo === 'receita' ? 'Recebimento editado!' : 'Pagamento editado!')
+        : (tipo === 'receita' ? 'Recebimento confirmado!' : 'Pagamento confirmado!'));
       await onConfirmar?.({ ...item, ...dadosAtualizados });
       onClose();
     } catch (e) {
@@ -181,18 +196,22 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
     }
   };
 
-  const titulo = tipo === 'receita' 
-    ? 'Deseja efetivar esta receita?' 
-    : 'Deseja efetivar esta despesa?';
+  const titulo = isEdicao
+    ? (tipo === 'receita' ? 'Editar recebimento' : 'Editar pagamento')
+    : (tipo === 'receita' ? 'Deseja efetivar esta receita?' : 'Deseja efetivar esta despesa?');
   
-  const subtitle = tipo === 'receita'
-    ? 'Ao efetivar esta receita, o valor será creditado na conta.'
-    : 'Ao efetivar esta despesa, o valor será descontado na conta.';
+  const subtitle = isEdicao
+    ? (tipo === 'receita' ? 'Altere os dados do recebimento já registrado.' : 'Altere os dados do pagamento já registrado.')
+    : (tipo === 'receita'
+      ? 'Ao efetivar esta receita, o valor será creditado na conta.'
+      : 'Ao efetivar esta despesa, o valor será descontado na conta.');
 
   const labelValor = tipo === 'receita' ? 'Valor da receita' : 'Valor da despesa';
   const labelData = tipo === 'receita' ? 'Data do recebimento' : 'Data do pagamento';
   const labelConta = 'Conta bancária';
-  const btnConfirmar = tipo === 'receita' ? 'Receber receita' : 'Pagar despesa';
+  const btnConfirmar = isEdicao
+    ? 'Salvar alterações'
+    : (tipo === 'receita' ? 'Receber receita' : 'Pagar despesa');
 
   const ConteudoModal = () => (
     <div className="space-y-4">

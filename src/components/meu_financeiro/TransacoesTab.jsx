@@ -490,6 +490,7 @@ export default function TransacoesTab({ user, refreshKey, onSaved }) {
           onClose={() => setReceberPagarModal({ open: false, item: null, tipo: 'receita' })}
           item={receberPagarModal.item}
           tipo={receberPagarModal.tipo}
+          isEdicao={receberPagarModal.item?.status === 'pago' || receberPagarModal.item?.status === 'recebida'}
           user={user}
           onConfirmar={async (itemAtualizado) => {
             if (itemAtualizado?._tipo === 'receita') {
