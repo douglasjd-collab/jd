@@ -89,6 +89,18 @@ export default function ComissoesPagar() {
 
   const STATUS_A_PAGAR = ['a_pagar', 'a_apagar', 'pendente'];
 
+  // Função auxiliar para parsear data em ambos os formatos (deve vir antes do uso em filtered)
+  const parseMes = (d) => {
+    if (!d) return null;
+    // Formato ISO: 2026-02-24
+    let m = moment(d, 'YYYY-MM-DD', true);
+    if (m.isValid()) return m.format('YYYY-MM');
+    // Formato BR: 24/02/2026
+    m = moment(d, 'DD/MM/YYYY', true);
+    if (m.isValid()) return m.format('YYYY-MM');
+    return null;
+  };
+
   const filtered = comissoes.filter((c) => {
     if (user?.perfil === 'vendedor' && c.vendedor_id !== user?.id) return false;
     if (user?.empresa_id && c.empresa_id !== user?.empresa_id) return false;
@@ -117,18 +129,6 @@ export default function ComissoesPagar() {
     return acc;
   }, {});
   const vendedoresComComissoes = Object.values(groupedByVendedor);
-
-  // Função auxiliar para parsear data em ambos os formatos
-  const parseMes = (d) => {
-    if (!d) return null;
-    // Formato ISO: 2026-02-24
-    let m = moment(d, 'YYYY-MM-DD', true);
-    if (m.isValid()) return m.format('YYYY-MM');
-    // Formato BR: 24/02/2026
-    m = moment(d, 'DD/MM/YYYY', true);
-    if (m.isValid()) return m.format('YYYY-MM');
-    return null;
-  };
 
   const mesesDisponiveis = [...new Set(comissoes.map(c => parseMes(c.data_recebimento)).filter(Boolean))].sort().reverse();
 
