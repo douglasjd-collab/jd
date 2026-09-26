@@ -42,7 +42,7 @@ export default function BatePapoAbas({
         </button>
       </div>
 
-      {/* Linha 2: Transferidos | Grupos | Campanhas | Finalizados */}
+      {/* Linha 2: Transferidos | Grupos | Microtarefas | Clientes no Funil */}
       <div className="grid grid-cols-4 gap-1.5">
         <button onClick={() => setFiltroStatus('transferida')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'transferida' ? 'bg-orange-500' : 'bg-slate-100'}`}>
           <span className={`text-sm font-bold ${filtroStatus === 'transferida' ? 'text-white' : 'text-orange-500'}`}>{contadores.transferida}</span>
@@ -56,9 +56,9 @@ export default function BatePapoAbas({
           <span className={`text-sm font-bold ${filtroStatus === 'microtarefas' ? 'text-white' : 'text-amber-600'}`}>{contadores.microtarefas || 0}</span>
           <span className={`text-[9px] font-medium ${filtroStatus === 'microtarefas' ? 'text-white' : 'text-slate-600'}`}>Microtarefas</span>
         </button>
-        <button onClick={() => setFiltroStatus('encerrada')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'encerrada' ? 'bg-slate-600' : 'bg-slate-100'}`}>
-          <span className={`text-sm font-bold ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-400'}`}>{contadores.encerrada}</span>
-          <span className={`text-[9px] font-medium ${filtroStatus === 'encerrada' ? 'text-white' : 'text-slate-500'}`}>Finalizados</span>
+        <button onClick={() => setFiltroStatus('funil')} className={`flex flex-col items-center gap-0.5 cursor-pointer hover:opacity-80 transition-all rounded-lg px-1 py-1.5 ${filtroStatus === 'funil' ? 'bg-indigo-600' : 'bg-slate-100'}`}>
+          <span className={`text-sm font-bold ${filtroStatus === 'funil' ? 'text-white' : 'text-indigo-600'}`}>{contadores.funil || 0}</span>
+          <span className={`text-[9px] leading-tight text-center font-medium ${filtroStatus === 'funil' ? 'text-white' : 'text-slate-600'}`}>Clientes no Funil</span>
         </button>
       </div>
 
@@ -71,15 +71,15 @@ export default function BatePapoAbas({
           </span>
           <div className="flex items-center gap-1">
             {[
-              { key: 'todos', label: 'Todos' },
-              { key: 'prioritarios', label: '⭐ Prioritários' },
-              { key: 'sem', label: 'Sem prioridade' },
+              { key: 'todos', label: 'Todos', acao: () => setFiltroPrioridade('todos'), ativo: filtroStatus !== 'encerrada' && filtroPrioridade === 'todos' },
+              { key: 'prioritarios', label: '⭐ Prioritários', acao: () => setFiltroPrioridade('prioritarios'), ativo: filtroStatus !== 'encerrada' && filtroPrioridade === 'prioritarios' },
+              { key: 'encerrada', label: 'Finalizados', acao: () => setFiltroStatus('encerrada'), ativo: filtroStatus === 'encerrada' },
             ].map(opt => (
               <button
                 key={opt.key}
-                onClick={() => setFiltroPrioridade(opt.key)}
+                onClick={opt.acao}
                 className={`text-[10px] font-medium px-2 py-1 rounded-md transition-colors ${
-                  filtroPrioridade === opt.key
+                  opt.ativo
                     ? 'bg-yellow-400 text-yellow-900'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}

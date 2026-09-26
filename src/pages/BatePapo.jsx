@@ -81,6 +81,8 @@ import EditarMensagemModal from '@/components/chat/EditarMensagemModal';
 import { criarLocalizarMensagem } from '@/components/chat/localizarMensagemNoHistorico';
 import EstrelaPrioridadeButton from '@/components/chat/EstrelaPrioridadeButton';
 import BatePapoAbas from '@/components/chat/BatePapoAbas';
+import useClientesNoFunil from '@/hooks/useClientesNoFunil';
+import '@/styles/batePapoCustom.css';
 import MicrotarefasConversa from '@/components/chat/MicrotarefasConversa';
 
 function classNames(...classes) {
@@ -266,7 +268,7 @@ export default function BatePapo() {
   };
   const [searchConversas, setSearchConversas] = useState('');
   const [filtroStatus, setFiltroStatus] = useState('ativa');
-  const [filtroPrioridade, setFiltroPrioridade] = useState('todos'); // 'todos' | 'prioritarios' | 'sem'
+  const [filtroPrioridade, setFiltroPrioridade] = useState('todos'); // 'todos' | 'prioritarios'
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
   const [contatosWhatsapp, setContatosWhatsapp] = useState({});
   const [infoLeadAberto, setInfoLeadAberto] = useState(false);
@@ -1462,6 +1464,8 @@ export default function BatePapo() {
     return mapa;
   }, [microtarefas]);
 
+  const { estaNoFunil } = useClientesNoFunil(empresaId);
+
   const criarMicrotarefa = async (dados) => {
     if (!conversaSelecionada) return;
     setSalvandoMicrotarefa(true);
@@ -1573,6 +1577,7 @@ export default function BatePapo() {
     campanhas: conversas.filter(c => !isGrupo(c) && c.status === 'campanha').length,
     prioritarios: conversasValidas.filter(c => c.atendimento_prioritario).length,
     microtarefas: Object.keys(microtarefasPorConversa).length,
+    funil: conversas.filter(c => !isGrupo(c) && c.status !== 'campanha' && estaNoFunil(c)).length,
   };
 
 
@@ -1623,6 +1628,7 @@ export default function BatePapo() {
       if (filtroStatus === 'meu')        return c.status === 'ativa' && atendenteDentroDoTempo(c) && c.responsavel_id === (user?.colaborador_id || user?.id);
       if (filtroStatus === 'campanhas')  return c.status === 'campanha';
       if (filtroStatus === 'microtarefas') return !!microtarefasPorConversa[c.id]?.length;
+      if (filtroStatus === 'funil')        return estaNoFunil(c);
       return false;
     })
     .sort((a, b) => {
@@ -1663,160 +1669,7 @@ export default function BatePapo() {
         />
       )}
       <div id="batepapo-root" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 30, display: 'flex', flexDirection: 'column', padding: '8px', boxSizing: 'border-box', backgroundColor: '#F0EBE0' }}>
-        <style>{`
-          @media (min-width: 1024px) { #batepapo-root { left: 18rem !important; } }
-          @media (max-width: 1023px) { #batepapo-root { top: 3.5rem !important; padding: 0 !important; } }
-          #batepapo-root > div > div { border-radius: 0 !important; }
-          .jd-messenger-sidebar {
-            width: 100%;
-            max-width: 340px;
-            min-width: 300px;
-            height: 100%;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-          }
-          @media (max-width: 1023px) {
-            .jd-messenger-sidebar {
-              max-width: 100% !important;
-              min-width: 100% !important;
-              width: 100% !important;
-            }
-            #batepapo-root { padding: 0 !important; }
-            .jd-chat-card { min-height: 64px; padding: 8px 10px; }
-            .jd-chat-name { font-size: 14px; }
-            .jd-chat-avatar { width: 46px; height: 46px; min-width: 46px; }
-          }
-          .jd-messenger-top {
-            flex-shrink: 0;
-          }
-          .jd-conversation-list {
-            overflow-y: auto;
-            overflow-x: hidden;
-          }
-          .jd-chat-list {
-            width: 100%;
-            max-width: 100%;
-            overflow-x: hidden;
-            padding: 8px 10px;
-            box-sizing: border-box;
-          }
-          .jd-chat-card {
-            width: 100%;
-            max-width: 100%;
-            min-height: 76px;
-            box-sizing: border-box;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 12px;
-            margin-bottom: 6px;
-            background: #f7f7f7;
-            border-radius: 14px;
-            overflow: hidden;
-            cursor: pointer;
-            transition: background-color 150ms;
-            flex-shrink: 0;
-          }
-          .jd-chat-card:hover {
-            background: #efefef;
-          }
-          .jd-chat-card.api-oficial {
-            background: #ecfdf3;
-            box-shadow: inset 3px 0 0 #22c55e;
-          }
-          .jd-chat-card.api-oficial:hover {
-            background: #dcfce7;
-          }
-          .jd-chat-card.selected {
-            background: #d1e9ff;
-            box-shadow: inset 3px 0 0 #2563eb;
-          }
-          .jd-chat-avatar {
-            width: 52px;
-            height: 52px;
-            min-width: 52px;
-            border-radius: 50%;
-            overflow: hidden;
-            position: relative;
-            flex-shrink: 0;
-          }
-          .jd-chat-content {
-            flex: 1;
-            min-width: 0;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-          }
-          .jd-chat-top {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
-            width: 100%;
-            min-width: 0;
-            overflow: hidden;
-          }
-          .jd-chat-name {
-            flex: 1;
-            min-width: 0;
-            font-size: 15px;
-            font-weight: 600;
-            color: #111827;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: block;
-          }
-          .jd-chat-time {
-            flex-shrink: 0;
-            font-size: 12px;
-            color: #6b7280;
-            white-space: nowrap;
-          }
-          .jd-chat-bottom {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 6px;
-            width: 100%;
-            min-width: 0;
-            margin-top: 3px;
-            overflow: hidden;
-          }
-          .jd-chat-message {
-            flex: 1;
-            min-width: 0;
-            font-size: 13px;
-            color: #6b7280;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: block;
-            line-height: 20px;
-            max-height: 20px;
-          }
-          .jd-chat-badge {
-            flex-shrink: 0;
-            min-width: 20px;
-            height: 20px;
-            padding: 0 5px;
-            border-radius: 999px;
-            background: #22c55e;
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-          .jd-chat-menu {
-            flex-shrink: 0;
-            color: #9ca3af;
-            opacity: 1;
-          }
-        `}</style>
+
         <NovaConversaModal
           open={novaConversaOpen}
           onOpenChange={setNovaConversaOpen}
@@ -2544,55 +2397,7 @@ export default function BatePapo() {
                       </button>
                     )}
 
-                    <style>{`
-                      .coach-float-btn {
-                        position: absolute;
-                        bottom: 130px;
-                        right: 16px;
-                        width: 42px; height: 42px;
-                        border-radius: 50%;
-                        background: linear-gradient(135deg, #7c3aed, #6d28d9);
-                        color: white;
-                        border: none;
-                        cursor: pointer;
-                        display: flex; align-items: center; justify-content: center;
-                        font-size: 18px;
-                        box-shadow: 0 4px 16px rgba(124,58,237,0.5);
-                        transition: transform 0.2s, box-shadow 0.2s;
-                        z-index: 5;
-                        animation: coachPulse 2s infinite;
-                      }
-                      .coach-float-btn:hover { transform: scale(1.08); box-shadow: 0 6px 20px rgba(124,58,237,0.65); animation: none; }
-                      @keyframes coachPulse {
-                        0% { box-shadow: 0 0 0 0 rgba(124,58,237,0.5); }
-                        70% { box-shadow: 0 0 0 8px rgba(124,58,237,0); }
-                        100% { box-shadow: 0 0 0 0 rgba(124,58,237,0); }
-                      }
-                      .coach-float-badge {
-                        position: absolute;
-                        top: -2px; right: -2px;
-                        width: 8px; height: 8px;
-                        background: #ef4444;
-                        border-radius: 50%;
-                        border: 2px solid #09090b;
-                      }
-                      .scroll-bottom-btn {
-                        position: absolute;
-                        bottom: 78px;
-                        right: 18px;
-                        width: 36px; height: 36px;
-                        border-radius: 50%;
-                        background: #ffffff;
-                        color: #54656F;
-                        border: none;
-                        cursor: pointer;
-                        display: flex; align-items: center; justify-content: center;
-                        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-                        transition: transform 0.18s, box-shadow 0.18s;
-                        z-index: 5;
-                      }
-                      .scroll-bottom-btn:hover { transform: scale(1.08); box-shadow: 0 4px 12px rgba(0,0,0,0.22); }
-                    `}</style>
+
                   </div>
 
                   {/* Painel Informações do Lead */}
