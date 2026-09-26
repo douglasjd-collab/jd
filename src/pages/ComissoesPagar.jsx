@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Search, Receipt, ChevronDown, ChevronUp, User,
-  FileText, Loader2, CheckCircle2, Clock, BarChart2, Eye
+  FileText, Loader2, CheckCircle2, Clock, BarChart2, Eye, AlertCircle
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import moment from 'moment';
@@ -48,6 +48,10 @@ export default function ComissoesPagar() {
   // Modal detalhes do recebimento
   const [verRecebimentoModal, setVerRecebimentoModal] = useState(false);
   const [recebimentoDetalhes, setRecebimentoDetalhes] = useState(null);
+
+  // Adiantamentos a descontar no modal de pagamento
+  const [adiantamentosVendedor, setAdiantamentosVendedor] = useState([]);
+  const [adiantamentosSelecionados, setAdiantamentosSelecionados] = useState(new Set());
 
   const queryClient = useQueryClient();
 
@@ -154,7 +158,7 @@ export default function ComissoesPagar() {
     cancelEditing();
   };
 
-  const abrirModalPagamento = (vendedor, e) => {
+  const abrirModalPagamento = async (vendedor, e) => {
     if (e) e.stopPropagation();
     setVendedorModal(vendedor);
     const aPagar = vendedor.comissoes.filter(c => STATUS_A_PAGAR.includes(c.status_pagamento));
@@ -162,6 +166,24 @@ export default function ComissoesPagar() {
     setModalSearch('');
     setFormaPagamento('PIX');
     setObservacao('');
+    setAdiantamentosSelecionados(new Set());
+
+    // Buscar adiantamentos pendentes do vendedor (match por colaborador_id ou nome)
+    try {
+      const filtroAdi = { status: 'pendente' };
+      if (user?.empresa_id) filtroAdi.empresa_id = user.empresa_id;
+      const adis = await base44.entities.Adiantamento.filter(filtroAdi);
+      const nomeVendedor = (vendedor.vendedor_nome || '').toLowerCase().trim();
+      const adisDoVendedor = adis.filter(a =>
+        a.colaborador_id === vendedor.vendedor_id ||
+        (a.colaborador_nome || '').toLowerCase().trim() === nomeVendedor ||
+        (a.parceiro_nome || '').toLowerCase().trim() === nomeVendedor
+      );
+      setAdiantamentosVendedor(adisDoVendedor);
+    } catch {
+      setAdiantamentosVendedor([]);
+    }
+
     setPagarModal(true);
   };
 
@@ -312,16 +334,68 @@ export default function ComissoesPagar() {
         filial_id: filialId, filial_nome: filialNome,
         vendedor_id: vendedorModal.vendedor_id, vendedor_nome: vendedorModal.vendedor_nome,
         data_pagamento: dataPagamento, forma_pagamento: formaPagamento,
-        total_itens: paraPagar.length, total_pago: totalPago, observacao,
+        total_itens: paraPagar.length, total_pago: totalPago,
+        descontos: totalAdiantamentosDesc,
+        observacao,
         gerado_por_id: user.colaborador_id, gerado_por_nome: user.full_name,
         comissoes_ids: JSON.stringify(paraPagar.map(c => c.id)), email_enviado: false,
       });
 
+      // Descontar adiantamentos selecionados (com suporte a desconto parcial)
+      const adisDesc = Array.from(adiantamentosSelecionados)
+        .map(id => adiantamentosVendedor.find(a => a.id === id))
+        .filter(Boolean);
+
+      let saldoDisponivel = totalPago;
+      for (const adi of adisDesc) {
+        if (saldoDisponivel <= 0) break;
+        const valorDescontar = Math.min(adi.valor, saldoDisponivel);
+        const valorRestante = adi.valor - valorDescontar;
+        saldoDisponivel -= valorDescontar;
+
+        if (valorRestante > 0.01) {
+          // Desconto parcial: atualiza adiantamento original com restante + histórico
+          let historicoAtual = [];
+          try { historicoAtual = JSON.parse(adi.historico_descontos || '[]'); } catch {}
+          historicoAtual.push({
+            valor: valorDescontar, data_desconto: dataPagamento,
+            lote_codigo: loteCode, lote_id: loteCode,
+          });
+          await base44.entities.Adiantamento.update(adi.id, {
+            valor: valorRestante, status: 'pendente',
+            historico_descontos: JSON.stringify(historicoAtual),
+            observacao: `Parcialmente descontado no lote ${loteCode}. Restante: R$ ${valorRestante.toFixed(2)}`,
+          });
+          // Cria registro do valor efetivamente descontado
+          await base44.entities.Adiantamento.create({
+            empresa_id: adi.empresa_id || user.empresa_id,
+            colaborador_id: adi.colaborador_id,
+            colaborador_nome: adi.colaborador_nome,
+            parceiro_id: adi.parceiro_id,
+            parceiro_nome: adi.parceiro_nome,
+            pessoa_tipo: adi.pessoa_tipo,
+            valor: valorDescontar, data: adi.data, motivo: adi.motivo,
+            status: 'descontado', data_desconto: dataPagamento,
+            lote_pagamento_id: loteCode,
+            observacao: `Desconto parcial do lote ${loteCode}. Original: R$ ${adi.valor.toFixed(2)}`,
+          });
+        } else {
+          // Desconto total
+          await base44.entities.Adiantamento.update(adi.id, {
+            status: 'descontado', data_desconto: dataPagamento,
+            lote_pagamento_id: loteCode,
+          });
+        }
+      }
+
       await gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode);
       queryClient.invalidateQueries(['comissoes-a-pagar']);
-      toast.success(`✅ ${paraPagar.length} comissão(ões) paga(s)! PDF gerado.`);
+      const msgAdis = adisDesc.length > 0 ? ` ${adisDesc.length} adiantamento(s) descontado(s).` : '';
+      toast.success(`✅ ${paraPagar.length} comissão(ões) paga(s)! PDF gerado.${msgAdis}`);
       setPagarModal(false);
       setModalSelecionados(new Set());
+      setAdiantamentosSelecionados(new Set());
+      setAdiantamentosVendedor([]);
       setVendedorModal(null);
       // Redirecionar para Comissões Pagas
       setTimeout(() => { window.location.href = createPageUrl('ComissoesPagas'); }, 1200);
@@ -364,6 +438,17 @@ export default function ComissoesPagar() {
       aPagarModal.forEach(c => s.add(c.id));
       setModalSelecionados(s);
     }
+  };
+
+  const totalAdiantamentosDesc = Array.from(adiantamentosSelecionados)
+    .map(id => adiantamentosVendedor.find(a => a.id === id))
+    .filter(Boolean)
+    .reduce((acc, a) => acc + (a.valor || 0), 0);
+
+  const toggleAdiantamento = (id) => {
+    const s = new Set(adiantamentosSelecionados);
+    s.has(id) ? s.delete(id) : s.add(id);
+    setAdiantamentosSelecionados(s);
   };
 
   if (!user) return <div className="p-6 flex items-center gap-2 text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>;
@@ -586,6 +671,38 @@ export default function ComissoesPagar() {
             </table>
           </div>
 
+          {/* Adiantamentos pendentes do vendedor */}
+          {adiantamentosVendedor.length > 0 && (
+            <div className="border border-orange-200 rounded-lg bg-orange-50 p-3 space-y-2">
+              <div className="flex items-center gap-2 text-orange-800 font-semibold text-sm">
+                <AlertCircle className="w-4 h-4" />
+                Adiantamentos Pendentes — selecione para descontar neste pagamento
+              </div>
+              {adiantamentosVendedor.map(a => {
+                const sel = adiantamentosSelecionados.has(a.id);
+                return (
+                  <div
+                    key={a.id}
+                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer border transition-colors ${sel ? 'bg-orange-100 border-orange-400' : 'bg-white border-orange-200 hover:border-orange-300'}`}
+                    onClick={() => toggleAdiantamento(a.id)}
+                  >
+                    <Checkbox checked={sel} onCheckedChange={() => toggleAdiantamento(a.id)} />
+                    <div className="flex-1 text-xs">
+                      <span className="font-semibold text-slate-800">{fmt(a.valor)}</span>
+                      <span className="text-slate-500 ml-2">{moment(a.data).format('DD/MM/YYYY')}</span>
+                      {a.motivo && <span className="text-slate-500 ml-2">— {a.motivo}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+              {totalAdiantamentosDesc > 0 && (
+                <p className="text-xs text-orange-700 font-semibold pt-1">
+                  Desconto total: {fmt(totalAdiantamentosDesc)} · Valor líquido a pagar: {fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc))}
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="border-t pt-3 space-y-3">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
@@ -597,6 +714,11 @@ export default function ComissoesPagar() {
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-800 text-base">
                 Total a pagar: <span className="text-[#10353C]">{fmt(totalModalSelecionado)}</span>
+                {totalAdiantamentosDesc > 0 && (
+                  <span className="ml-3 text-sm text-orange-600 font-semibold">
+                    − {fmt(totalAdiantamentosDesc)} (adiantamentos) = <span className="text-green-700">{fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc))}</span>
+                  </span>
+                )}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -625,7 +747,7 @@ export default function ComissoesPagar() {
               {isPaying ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processando...</>
               ) : (
-                <><CheckCircle2 className="w-4 h-4 mr-2" />Pagar {modalSelecionados.size} contrato(s) ({fmt(totalModalSelecionado)})</>
+                <><CheckCircle2 className="w-4 h-4 mr-2" />Pagar {modalSelecionados.size} contrato(s) ({fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc))})</>
               )}
             </Button>
           </DialogFooter>
