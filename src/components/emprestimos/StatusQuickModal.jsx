@@ -102,6 +102,10 @@ export default function StatusQuickModal({ open, onOpenChange, proposta, empresa
   const updateMutation = useMutation({
     mutationFn: async (data) => {
       await base44.entities.Proposta.update(proposta.id, data);
+      // Finaliza (ou garante) a tarefa de acompanhamento vinculada à proposta
+      await base44.functions
+        .invoke('gerenciarTarefaProposta', { proposta_id: proposta.id })
+        .catch(() => {});
       // Registrar no histórico automaticamente
       const statusNome = data.status || proposta.status || '';
       const descricao = data.emprestimo_data_liberacao

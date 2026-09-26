@@ -225,6 +225,11 @@ export default function NovaVendaConsignado() {
         testemunha2_endereco: dados.testemunha2_endereco || '',
       });
 
+      // Cria a tarefa de acompanhamento das pendências desta proposta
+      await base44.functions
+        .invoke('gerenciarTarefaProposta', { proposta_id: proposta.id })
+        .catch(() => {});
+
       return proposta;
     },
     onSuccess: () => {

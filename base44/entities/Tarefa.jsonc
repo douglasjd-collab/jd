@@ -113,6 +113,10 @@
       "description": "Marca a tarefa com estrela como prioridade operacional",
       "type": "boolean"
     },
+    "proposta_id": {
+      "description": "ID da proposta de empr\u00e9stimo vinculada (tarefa de acompanhamento gerada automaticamente pelo sistema)",
+      "type": "string"
+    },
     "responsaveis_fotos": {
       "description": "JSON array de fotos dos respons\u00e1veis",
       "type": "string"
