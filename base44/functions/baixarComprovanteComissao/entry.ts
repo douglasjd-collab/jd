@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 import { jsPDF } from 'npm:jspdf@2.5.2';
 import 'npm:jspdf-autotable@3.8.4';
+import { gerarRelatorioComissaoConsorcioHTML } from '../../shared/relatorioComissaoConsorcioShared.ts';
 
 function fmt(v) {
   return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -25,6 +26,110 @@ const TIPO_LABELS = {
 };
 const getTipoLabel = (tipo) => TIPO_LABELS[tipo] || tipo || '-';
 
+// Reconstrói o relatório de comissão de consórcio a partir dos registros que
+// compõem o lote (usado quando o lote não guardou o HTML no momento do pagamento).
+async function reconstruirRelatorioConsorcio(base44, lote) {
+  // Itens do lote: vêm dos IDs das comissões gravados no próprio lote
+  let ids = [];
+  try { ids = JSON.parse(lote.comissoes_ids || '[]'); } catch (_) { ids = []; }
+
+  let comissoes = [];
+  if (ids.length > 0) {
+    const encontradas = await base44.asServiceRole.entities.ComissaoAPagar.filter({ id: { $in: ids } }, null, 500);
+    const porId = new Map(encontradas.map((c) => [c.id, c]));
+    comissoes = ids.map((id) => porId.get(id)).filter(Boolean);
+  }
+  if (comissoes.length === 0) {
+    comissoes = await base44.asServiceRole.entities.ComissaoAPagar.filter({ protocolo: lote.lote_code }, null, 500);
+  }
+  if (comissoes.length === 0) return null;
+
+  // Crédito de cada venda (para o % sobre o crédito)
+  const vendaIds = [...new Set(comissoes.map((c) => c.venda_id).filter(Boolean))];
+  const creditos = {};
+  if (vendaIds.length > 0) {
+    try {
+      const vendas = await base44.asServiceRole.entities.Venda.filter({ id: { $in: vendaIds } }, null, 500);
+      vendas.forEach((v) => { creditos[v.id] = v.valorCredito || 0; });
+    } catch (_) {}
+  }
+
+  // Nome/CPF/PIX do vendedor
+  let vendedorNome = lote.vendedor_nome || '-';
+  let vendedorCpf = '';
+  let pix = '';
+  if (lote.vendedor_id) {
+    try {
+      let colabs = await base44.asServiceRole.entities.Colaborador.filter({ id: lote.vendedor_id });
+      if (!colabs || colabs.length === 0) {
+        colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: lote.vendedor_id });
+      }
+      if (colabs && colabs.length > 0) {
+        vendedorNome = colabs[0].nome || vendedorNome;
+        vendedorCpf = colabs[0].cpf || '';
+        pix = colabs[0].pix_chave || colabs[0].chave_pix || '';
+      }
+    } catch (_) {}
+  }
+
+  // Adiantamentos descontados neste lote
+  let adiantamentosLote = [];
+  try {
+    adiantamentosLote = await base44.asServiceRole.entities.Adiantamento.filter({ lote_pagamento_id: lote.lote_code });
+  } catch (_) { adiantamentosLote = []; }
+
+  // Logo configurada e nome da empresa
+  let logoUrl = null;
+  try {
+    const configs = await base44.asServiceRole.entities.ConfiguracaoSistema.filter({ chave: 'logo_url' });
+    if (configs && configs.length > 0 && configs[0].valor) logoUrl = configs[0].valor;
+  } catch (_) {}
+  let empresaNome = 'JD PROMOTORA';
+  try {
+    const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: lote.empresa_id });
+    if (empresas && empresas.length > 0) empresaNome = empresas[0].nome_fantasia || empresas[0].nome || empresaNome;
+  } catch (_) {}
+
+  const itens = comissoes.map((c) => {
+    const credito = creditos[c.venda_id] || 0;
+    return {
+      cliente: c.cliente_nome || '-',
+      grupoCota: c.grupo && c.cota ? `${c.grupo}/${c.cota}` : (c.contrato || '-'),
+      parcela: c.parcela_numero ? `${c.parcela_numero}º` : '-',
+      dataRecebimento: c.data_recebimento,
+      credito,
+      percentual: credito && c.valor_a_pagar ? (c.valor_a_pagar / credito) * 100 : 0,
+      valor: c.valor_a_pagar || 0,
+      administradora: c.administradora_nome || '-',
+    };
+  });
+
+  const subtotal = itens.reduce((acc, i) => acc + i.valor, 0);
+  const totalAdiantamentos = adiantamentosLote.reduce((acc, a) => acc + (a.valor || 0), 0) || (lote.descontos || 0);
+  const acrescimos = lote.acrescimos || 0;
+  const totalLiquido = Math.max(0, subtotal - totalAdiantamentos + acrescimos);
+
+  return gerarRelatorioComissaoConsorcioHTML({
+    loteCode: lote.lote_code,
+    vendedorNome,
+    vendedorCpf,
+    pix,
+    dataPagamento: lote.data_pagamento,
+    formaPagamento: lote.forma_pagamento,
+    observacao: lote.observacao,
+    geradoPor: lote.gerado_por_nome,
+    geradoEm: new Date().toLocaleString('pt-BR'),
+    logoUrl,
+    empresaNome,
+    itens,
+    subtotal,
+    totalAdiantamentos,
+    acrescimos,
+    totalLiquido,
+    adiantamentos: adiantamentosLote.map((a) => ({ valor: a.valor, data: a.data_desconto || a.data, motivo: a.motivo })),
+  });
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -39,22 +144,34 @@ Deno.serve(async (req) => {
       const lotes = await base44.asServiceRole.entities.PagamentoComissaoLote.filter({ id: lote_id });
       const l = lotes?.[0];
       if (!l) return Response.json({ error: 'Lote nao encontrado' }, { status: 404 });
-      if (l.relatorio_html) {
-        let html = l.relatorio_html;
 
-        // Se houver comprovante, injetar imagem antes do </body>
-        if (l.comprovante_url) {
-          const comprovanteSection = `
+      let html = l.relatorio_html || null;
+
+      // Lotes pagos antes deste recurso não guardaram o HTML: reconstrói o mesmo
+      // relatório a partir dos registros do pagamento e passa a guardá-lo no lote,
+      // garantindo que a 2ª via devolva sempre o relatório original.
+      if (!html) {
+        try {
+          html = await reconstruirRelatorioConsorcio(base44, l);
+          if (html) await base44.asServiceRole.entities.PagamentoComissaoLote.update(l.id, { relatorio_html: html });
+        } catch (e) {
+          console.error('Falha ao reconstruir relatorio do lote', lote_id, e?.message);
+        }
+      }
+
+      if (!html) return Response.json({ error: 'Relatorio nao disponivel para este lote' }, { status: 404 });
+
+      // Se houver comprovante, injetar imagem antes do </body>
+      if (l.comprovante_url) {
+        const comprovanteSection = `
             <div style="page-break-before: always; padding: 20px; text-align: center;">
               <h2 style="font-family: Arial, sans-serif; color: #10353c; border-bottom: 2px solid #10353c; padding-bottom: 8px; margin-bottom: 16px;">Comprovante de Pagamento</h2>
               <img src="${l.comprovante_url}" style="max-width: 100%; max-height: 80vh; border: 1px solid #ccc; border-radius: 6px;" />
             </div>`;
-          html = html.replace('</body>', comprovanteSection + '</body>');
-        }
-
-        return Response.json({ relatorio_html: html });
+        html = html.replace('</body>', comprovanteSection + '</body>');
       }
-      return Response.json({ error: 'Relatorio nao disponivel para este lote' }, { status: 404 });
+
+      return Response.json({ relatorio_html: html });
     }
 
     // ─── EMPRÉSTIMOS: busca lote + snapshots ComissaoEmprestimoPaga ────────────
