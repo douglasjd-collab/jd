@@ -339,6 +339,7 @@ export default function ComissoesPagar() {
         observacao,
         gerado_por_id: user.colaborador_id, gerado_por_nome: user.full_name,
         comissoes_ids: JSON.stringify(paraPagar.map(c => c.id)), email_enviado: false,
+        status: 'quitado', data_quitacao: dataPagamento,
       });
 
       // Descontar adiantamentos selecionados (com suporte a desconto parcial)
