@@ -116,7 +116,11 @@ export default function AlertasTarefasPopup({ user, onAbrirTarefa }) {
       {/* Popup de alertas */}
       {aberto && alertas.length > 0 && (
         <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-16 px-4 pointer-events-none">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md pointer-events-auto overflow-hidden">
+          <div 
+            className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md pointer-events-auto overflow-hidden"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 bg-[#1e3a5f] text-white">
               <div className="flex items-center gap-2">

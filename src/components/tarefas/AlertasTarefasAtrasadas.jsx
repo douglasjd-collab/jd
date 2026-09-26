@@ -176,7 +176,11 @@ export default function AlertasTarefasAtrasadas({ user }) {
     <>
       {/* Popup de tarefa atrasada */}
       <div className="fixed inset-0 z-[9998] flex items-start justify-center pt-72 px-4 pointer-events-none">
-        <div className="bg-white rounded-2xl shadow-2xl border border-red-200 w-full max-w-md pointer-events-auto overflow-hidden animate-in slide-in-from-top-4 duration-300">
+        <div 
+          className="bg-white rounded-2xl shadow-2xl border border-red-200 w-full max-w-md pointer-events-auto overflow-hidden animate-in slide-in-from-top-4 duration-300"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 bg-red-600 text-white">
             <div className="flex items-center gap-2">
