@@ -89,6 +89,24 @@
 }
 
 @layer utilities {
+  /* Tabela compacta (Comissões a Pagar) — mais colunas visíveis na mesma largura */
+  .tabela-comissoes-compacta th,
+  .tabela-comissoes-compacta td {
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+  }
+  .tabela-comissoes-compacta th {
+    font-size: 10px !important;
+  }
+  .tabela-comissoes-compacta td.text-right,
+  .tabela-comissoes-compacta td.text-center {
+    white-space: nowrap !important;
+  }
+  .tabela-comissoes-compacta td p {
+    margin: 0;
+  }
+
   /* Esconder scrollbar mas manter scroll */
   .scrollbar-hide {
     -ms-overflow-style: none;
