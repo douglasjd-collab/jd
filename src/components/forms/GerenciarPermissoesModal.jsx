@@ -91,11 +91,12 @@ const MENU_ESTRUTURA = [
       { key: 'financeiro:ContasBancarias',         label: 'Contas Bancárias' },
       { key: 'financeiro:Transacoes',              label: 'Movimentações Financeiras' },
       { key: 'financeiro:ReceberComissao',         label: 'Receber Comissão' },
+      { key: 'financeiro:ComissoesRecebidas',      label: 'Comissões Recebidas' },
       { key: 'financeiro:ComissoesPagar',          label: 'Comissões a Pagar (Consórcio)' },
       { key: 'financeiro:ComissoesEmprestimos',    label: 'Comissões a Pagar (Empréstimos)' },
       { key: 'financeiro:Adiantamentos',           label: 'Adiantamentos' },
       { key: 'financeiro:ComissoesPagas',          label: 'Comissões Pagas (Consórcio)' },
-      { key: 'financeiro:Saques',                  label: 'Comissões Pagas' },
+      { key: 'financeiro:Saques',                  label: 'Comissões Pagas (Empréstimos)' },
     ],
   },
   {
