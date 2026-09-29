@@ -483,7 +483,15 @@ export default function Layout({ children, currentPageName }) {
   const isAdminRole = ['master', 'super_admin', 'admin'].includes(userRole);
 
   const filteredMenuItems = menuItems.filter(item => {
-    // Filtrar por role primeiro
+    const key = menuPermissaoKey[item.name];
+    // Menu liberado explicitamente nas permissões do usuário tem prioridade sobre o perfil
+    const liberadoPorPermissao = key && temPermissoesCustomizadas && (
+      item.submenu
+        ? item.submenu.some(sub => isSubmenuPermitido(key, sub.page))
+        : menus_permitidos.includes(key)
+    );
+    if (liberadoPorPermissao) return true;
+    // Filtrar por role
     if (!item.roles.includes(userRole)) return false;
     // Admin/master/super_admin/gerente/vendedor nunca são bloqueados por permissões customizadas
     if (isAdminRole) return true;
@@ -491,7 +499,6 @@ export default function Layout({ children, currentPageName }) {
     if (userRole === 'parceiro' && (item.name === 'Meu Financeiro' || item.name === 'Meus Dados')) return true;
     // Se não há permissões customizadas, libera tudo
     if (!temPermissoesCustomizadas) return true;
-    const key = menuPermissaoKey[item.name];
     if (!key) return true;
     // Para menus com submenu: liberar se ao menos 1 submenu estiver permitido
     if (item.submenu) {

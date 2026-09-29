@@ -87,6 +87,7 @@ const MENU_ESTRUTURA = [
     descricao: 'Gestão financeira, contas e comissões',
     submenu: [
       { key: 'financeiro:RelatoriosFinanceiros',  label: 'Dashboard Financeiro' },
+      { key: 'financeiro:RentabilidadeComissoes', label: 'Rentabilidade' },
       { key: 'financeiro:ContasBancarias',         label: 'Contas Bancárias' },
       { key: 'financeiro:Transacoes',              label: 'Movimentações Financeiras' },
       { key: 'financeiro:ReceberComissao',         label: 'Receber Comissão' },
@@ -94,6 +95,7 @@ const MENU_ESTRUTURA = [
       { key: 'financeiro:ComissoesEmprestimos',    label: 'Comissões a Pagar (Empréstimos)' },
       { key: 'financeiro:Adiantamentos',           label: 'Adiantamentos' },
       { key: 'financeiro:ComissoesPagas',          label: 'Comissões Pagas (Consórcio)' },
+      { key: 'financeiro:Saques',                  label: 'Comissões Pagas' },
     ],
   },
   {
