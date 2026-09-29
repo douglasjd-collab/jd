@@ -407,7 +407,8 @@ async function rodarPipeline(tempId, queryClient, pipelineRefs) {
       resp = await base44.functions.invoke('enviarMensagemWhatsapp', payload);
     } catch (err) {
       // Erro de rede — falhou, mas sem "isSuccess=false"
-      fila.setErro(tempId, err?.message || 'Falha de comunicação com o servidor');
+      const detalhe = err?.response?.data?.error || err?.response?.data?.details;
+      fila.setErro(tempId, typeof detalhe === 'string' ? detalhe : (err?.message || 'Falha de comunicação com o servidor'));
       atualizarEnvioCache(queryClient, fila.getEnvio(tempId) || envio0);
       return;
     }
