@@ -65,6 +65,12 @@ export default function PropostaEmprestimoDetalhes() {
     queryFn: () => base44.entities.StatusProposta.filter({ ativo: true }),
   });
 
+  const { data: recebimentosComissao = [], isLoading: loadingRecebimentos } = useQuery({
+    queryKey: ['recebimentos-comissao-proposta', propostaId],
+    enabled: !!propostaId && isAdmin,
+    queryFn: () => base44.entities.RecebimentoComissao.filter({ venda_id: propostaId }),
+  });
+
   const getStatusConfig = (p) => {
     if (!p) return null;
     return p.status_id ? statusList.find(s => s.id === p.status_id) : statusList.find(s => s.nome?.toLowerCase() === p.status?.toLowerCase());
@@ -314,6 +320,58 @@ export default function PropostaEmprestimoDetalhes() {
                   </span>
                 </div>
               </div>
+            </div>
+
+            <div className="mt-6 pt-5 border-t border-amber-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                <div>
+                  <h4 className="font-bold text-sm text-slate-800">Histórico de comissões recebidas</h4>
+                  <p className="text-xs text-slate-500">Atualizado automaticamente pelo menu de importação.</p>
+                </div>
+                <div className="text-left sm:text-right">
+                  <span className="text-xs text-slate-500">Total recebido neste contrato</span>
+                  <p className="font-bold text-green-700 text-lg">
+                    {fmt(recebimentosComissao.reduce((total, item) => total + (item.valor_recebido || 0), 0))}
+                  </p>
+                </div>
+              </div>
+
+              {loadingRecebimentos ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
+                </div>
+              ) : recebimentosComissao.length > 0 ? (
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-slate-600">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-semibold">Data</th>
+                        <th className="text-left px-3 py-2 font-semibold">Contrato/ADE</th>
+                        <th className="text-left px-3 py-2 font-semibold">Banco</th>
+                        <th className="text-left px-3 py-2 font-semibold">Parcela</th>
+                        <th className="text-right px-3 py-2 font-semibold">Valor recebido</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...recebimentosComissao]
+                        .sort((a, b) => String(b.data_recebimento || '').localeCompare(String(a.data_recebimento || '')))
+                        .map((recebimento) => (
+                          <tr key={recebimento.id} className="border-t border-slate-100">
+                            <td className="px-3 py-2 whitespace-nowrap">{fmtDate(recebimento.data_recebimento)}</td>
+                            <td className="px-3 py-2">{recebimento.contrato || proposta.contrato || proposta.emprestimo_numero_ade || '-'}</td>
+                            <td className="px-3 py-2">{recebimento.administradora_nome || proposta.administradora_nome || '-'}</td>
+                            <td className="px-3 py-2">{recebimento.parcela_informada ? `${recebimento.parcela_informada}ª` : '-'}</td>
+                            <td className="px-3 py-2 text-right font-bold text-green-700">{fmt(recebimento.valor_recebido)}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-6 text-center text-sm text-slate-500">
+                  Nenhuma comissão recebida foi importada para este contrato.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
