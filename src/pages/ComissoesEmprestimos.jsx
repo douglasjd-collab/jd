@@ -167,9 +167,14 @@ export default function ComissoesEmprestimos() {
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
 
+  // Vendedor e parceiro veem apenas as próprias comissões
+  const meuVendedorId = user?.colaborador_id || user?.id;
+  const propostasVisiveis = ['vendedor', 'parceiro'].includes(user?.perfil)
+    ? propostasPagas.filter(p => p.vendedor_id === meuVendedorId)
+    : propostasPagas;
+
   // Filtros
-  const filtered = propostasPagas.filter((p) => {
-    if (user?.perfil === 'vendedor' && p.vendedor_id !== user?.colaborador_id) return false;
+  const filtered = propostasVisiveis.filter((p) => {
 
     // Filtro: comissão recebida do banco
     if (comissaoBancoFilter === 'recebida' && !p.comissao_banco_recebida) return false;
@@ -177,6 +182,7 @@ export default function ComissoesEmprestimos() {
 
     // Filtro: status da comissão ao vendedor
     if (statusFilter === 'a_pagar' && (p.comissao_vendedor_paga || p.comissao_vendedor_agendada)) return false;
+    if (statusFilter === 'agendada' && !(p.comissao_vendedor_agendada && !p.comissao_vendedor_paga)) return false;
     if (statusFilter === 'paga' && !p.comissao_vendedor_paga) return false;
 
     // Filtro: mês (usa data_liberacao ou data_venda)
@@ -207,14 +213,14 @@ export default function ComissoesEmprestimos() {
   const vendedoresLista = Object.values(groupedByVendedor);
 
   // Meses disponíveis
-  const mesesDisponiveis = [...new Set(propostasPagas
+  const mesesDisponiveis = [...new Set(propostasVisiveis
     .map(p => parseMes(p.emprestimo_data_liberacao || p.data_venda))
     .filter(Boolean))].sort().reverse();
 
   // Stats — filtradas pelo mês selecionado para o dashboard
   const propostasMes = mesFilter === 'todos'
-    ? propostasPagas
-    : propostasPagas.filter(p => {
+    ? propostasVisiveis
+    : propostasVisiveis.filter(p => {
         const d = p.emprestimo_data_liberacao || p.data_venda || '';
         return d.startsWith(mesFilter);
       });
@@ -901,6 +907,7 @@ export default function ComissoesEmprestimos() {
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
                 <SelectItem value="a_pagar">A Pagar</SelectItem>
+                <SelectItem value="agendada">Agendadas</SelectItem>
                 <SelectItem value="paga">Pagos</SelectItem>
               </SelectContent>
             </Select>
@@ -1091,7 +1098,7 @@ export default function ComissoesEmprestimos() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                    {qtdAPagar > 0 && (
+                    {isAdmin && qtdAPagar > 0 && (
                       <Button size="sm" className="bg-[#23BE84] hover:bg-[#1da872] text-white border-0"
                         onClick={(e) => { e.stopPropagation(); abrirModalPagamento(vendedor, e); }}>
                         <CheckCircle2 className="w-4 h-4 mr-1" />Pagar Comissão
@@ -1156,40 +1163,58 @@ export default function ComissoesEmprestimos() {
                             </td>
                             <td className="p-3 text-right font-semibold text-slate-700">{fmt(p.valor_comissao)}</td>
                             <td className="p-3 text-right" onDoubleClick={e => e.stopPropagation()}>
-                              <Input
-                                type="number"
-                                min="0"
-                                max="100"
-                                step="0.01"
-                                value={percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualVendedorDefault(p).toFixed(2)}
-                                onChange={e => setPercentuaisCustom(prev => ({ ...prev, [p.id]: parseFloat(e.target.value) || 0 }))}
-                                className="w-14 h-7 text-xs text-right p-1"
-                              />
+                              {isAdmin ? (
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="0.01"
+                                  value={percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualVendedorDefault(p).toFixed(2)}
+                                  onChange={e => setPercentuaisCustom(prev => ({ ...prev, [p.id]: parseFloat(e.target.value) || 0 }))}
+                                  className="w-14 h-7 text-xs text-right p-1"
+                                />
+                              ) : (
+                                <span className="text-xs font-semibold text-slate-700">
+                                  {Number(percentuaisCustom[p.id] !== undefined ? percentuaisCustom[p.id] : getPercentualVendedorDefault(p)).toFixed(2)}%
+                                </span>
+                              )}
                             </td>
                             <td className="p-3 text-right font-semibold text-blue-700">{fmt(getValorAPagar(p))}</td>
                             <td className="p-3 text-center">
-                              <button
-                                onClick={() => {
-                                  setPropostaMarcar(p);
-                                  setBancoDtRecebimento(p.comissao_banco_data_recebimento || '');
+                              {isAdmin ? (
+                                <button
+                                  onClick={() => {
+                                    setPropostaMarcar(p);
+                                    setBancoDtRecebimento(p.comissao_banco_data_recebimento || '');
                                                    setBancoValorRecebido(p.comissao_banco_valor_recebido ? String(p.comissao_banco_valor_recebido) : p.valor_comissao ? String(p.valor_comissao) : '');
                                                    setBancoPercentualRecebido(p.comissao_banco_percentual_recebido ? String(p.comissao_banco_percentual_recebido) : getPercentualEmpresa(p) ? String(getPercentualEmpresa(p).toFixed(4)) : '');
                                                    setBancoBaseComissao(p.comissao_banco_base_comissao ? String(p.comissao_banco_base_comissao) : '');
-                                  setMarcarBancoModal(true);
-                                }}
-                                className={`px-2 py-1 rounded-full text-xs font-semibold transition-colors ${
-                                  p.comissao_banco_recebida
-                                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                    : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                                }`}
-                              >
-                                {p.comissao_banco_recebida ? '✅ Recebida' : '⏳ Pendente'}
-                              </button>
+                                    setMarcarBancoModal(true);
+                                  }}
+                                  className={`px-2 py-1 rounded-full text-xs font-semibold transition-colors ${
+                                    p.comissao_banco_recebida
+                                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                      : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                                  }`}
+                                >
+                                  {p.comissao_banco_recebida ? '✅ Recebida' : '⏳ Pendente'}
+                                </button>
+                              ) : (
+                                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                                  p.comissao_banco_recebida ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                                }`}>
+                                  {p.comissao_banco_recebida ? '✅ Recebida' : '⏳ Pendente'}
+                                </span>
+                              )}
                             </td>
                             <td className="p-3 text-center">
                               {p.comissao_vendedor_paga ? (
                                 <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
                                   ✅ Pago
+                                </span>
+                              ) : p.comissao_vendedor_agendada ? (
+                                <span className="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                                  📅 Agendado{p.comissao_vendedor_data_agendamento ? ` ${moment(p.comissao_vendedor_data_agendamento).format('DD/MM/YYYY')}` : ''}
                                 </span>
                               ) : p.comissao_banco_recebida ? (
                                 <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">

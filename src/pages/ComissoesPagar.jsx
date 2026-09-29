@@ -91,6 +91,12 @@ export default function ComissoesPagar() {
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil);
 
+  // Parceiro vê apenas as próprias comissões (lista, meses e totais)
+  const meuVendedorId = user?.colaborador_id || user?.id;
+  const comissoesVisiveis = user?.perfil === 'parceiro'
+    ? comissoes.filter(c => c.vendedor_id === meuVendedorId)
+    : comissoes;
+
   const STATUS_A_PAGAR = ['a_pagar', 'a_apagar', 'pendente'];
 
   // Função auxiliar para parsear data em ambos os formatos (deve vir antes do uso em filtered)
@@ -105,7 +111,7 @@ export default function ComissoesPagar() {
     return null;
   };
 
-  const filtered = comissoes.filter((c) => {
+  const filtered = comissoesVisiveis.filter((c) => {
     if (user?.perfil === 'vendedor' && c.vendedor_id !== user?.id) return false;
     if (user?.empresa_id && c.empresa_id !== user?.empresa_id) return false;
     if (statusFilter === 'a_pagar' && !STATUS_A_PAGAR.includes(c.status_pagamento)) return false;
@@ -134,13 +140,13 @@ export default function ComissoesPagar() {
   }, {});
   const vendedoresComComissoes = Object.values(groupedByVendedor);
 
-  const mesesDisponiveis = [...new Set(comissoes.map(c => parseMes(c.data_recebimento)).filter(Boolean))].sort().reverse();
+  const mesesDisponiveis = [...new Set(comissoesVisiveis.map(c => parseMes(c.data_recebimento)).filter(Boolean))].sort().reverse();
 
   const mesAtual = moment().format('YYYY-MM');
-  const totalComissoes = comissoes.reduce((a, c) => a + (c.valor_a_pagar || 0), 0);
-  const pagasEsseMes = comissoes.filter(c => c.status_pagamento === 'paga' && c.data_pagamento?.startsWith(mesAtual))
+  const totalComissoes = comissoesVisiveis.reduce((a, c) => a + (c.valor_a_pagar || 0), 0);
+  const pagasEsseMes = comissoesVisiveis.filter(c => c.status_pagamento === 'paga' && c.data_pagamento?.startsWith(mesAtual))
     .reduce((a, c) => a + (c.valor_a_pagar || 0), 0);
-  const pendentes = comissoes.filter(c => STATUS_A_PAGAR.includes(c.status_pagamento))
+  const pendentes = comissoesVisiveis.filter(c => STATUS_A_PAGAR.includes(c.status_pagamento))
     .reduce((a, c) => a + (c.valor_a_pagar || 0), 0);
 
   const startEditing = (comissao) => { setEditingId(comissao.id); setEditingValue(String(comissao.percentual_comissao || 0)); setEditingError(''); };
@@ -576,7 +582,7 @@ export default function ComissoesPagar() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                    {qtdAPagar > 0 && (
+                    {isAdmin && qtdAPagar > 0 && (
                      <Button size="sm" className="bg-[#23BE84] hover:bg-[#1da872] text-white border-0"
                        onClick={(e) => { e.stopPropagation(); abrirModalPagamento(vendedor, e); }}>
                        <CheckCircle2 className="w-4 h-4 mr-1" />Pagar Comissão

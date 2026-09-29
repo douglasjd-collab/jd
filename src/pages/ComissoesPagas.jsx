@@ -39,7 +39,7 @@ export default function ComissoesPagas() {
         const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
         if (colabs.length > 0) {
           const colab = colabs[0];
-          setUser({ ...me, perfil: colab.perfil, empresa_id: colab.empresa_id });
+          setUser({ ...me, perfil: colab.perfil, empresa_id: colab.empresa_id, colaborador_id: colab.id });
         }
       }
     } catch (e) {
@@ -79,8 +79,14 @@ export default function ComissoesPagas() {
     resolver();
   }, [lotes]);
 
+  // Parceiro vê apenas as próprias comissões (lista, lotes e totais)
+  const meuVendedorId = user?.colaborador_id || user?.id;
+  const comissoesVisiveis = user?.perfil === 'parceiro'
+    ? comissoesPagas.filter(c => c.vendedor_id === meuVendedorId)
+    : comissoesPagas;
+
   // Filtrar comissões
-  const dadosFiltrados = comissoesPagas.filter((c) => {
+  const dadosFiltrados = comissoesVisiveis.filter((c) => {
     if (user?.perfil === 'vendedor' && c.vendedor_id !== user.id) return false;
     if (filtroVendedor && !c.vendedor_nome?.toLowerCase().includes(filtroVendedor.toLowerCase())) return false;
     if (filtroMes !== 'todos' && c.data_pagamento) {
@@ -98,6 +104,7 @@ export default function ComissoesPagas() {
   // Agrupar por lote (lote_code = protocolo único por pagamento)
   // Cada lote do PagamentoComissaoLote é um relatório individual
   const lotesFiltrados = lotes.filter(l => {
+    if (user?.perfil === 'parceiro' && l.vendedor_id !== meuVendedorId) return false;
     const nomeReal = (l.vendedor_id && nomesReais[l.vendedor_id]) || l.vendedor_nome || '';
     if (filtroVendedor && !nomeReal.toLowerCase().includes(filtroVendedor.toLowerCase())) return false;
     if (filtroMes !== 'todos' && l.data_pagamento) {
@@ -122,7 +129,7 @@ export default function ComissoesPagas() {
   const idsEmLotes = new Set(lotesComComissoes.flatMap(l => l.comissoes.map(c => c.id)));
   const semLote = dadosFiltrados.filter(c => !idsEmLotes.has(c.id));
 
-  const mesesDisponiveis = [...new Set(comissoesPagas
+  const mesesDisponiveis = [...new Set(comissoesVisiveis
     .filter(c => c.data_pagamento)
     .map(c => moment(c.data_pagamento).format('YYYY-MM'))
   )].sort().reverse();
