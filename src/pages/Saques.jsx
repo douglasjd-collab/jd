@@ -866,7 +866,7 @@ export default function Saques() {
             type="month"
             value={mesFiltro}
             onChange={(e) => setMesFiltro(e.target.value)}
-            className="h-9 w-40"
+            className="h-9 w-56 min-w-0 px-2"
           />
           {mesFiltro && (
             <Button size="sm" variant="outline" className="h-9 text-xs" onClick={() => setMesFiltro('')}>
