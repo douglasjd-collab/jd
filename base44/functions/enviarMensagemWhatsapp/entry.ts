@@ -184,7 +184,9 @@ Deno.serve(async (req) => {
     const conversaExigeDapi =
       providerSalvo === 'dapi' ||
       canalOrigem === 'dapi' ||
-      tipoConexaoConversa === 'dapi';
+      tipoConexaoConversa === 'dapi' ||
+      conversaDoBanco?.canal_atendimento === 'dapi' ||
+      conversaDoBanco?.canal_preferencial === 'dapi';
     if (conversaExigeDapi && !conexaoDapi) {
       return Response.json({
         error: 'Selecione a API no seletor do bate-papo antes de enviar. A conversa exige D-API mas nenhuma conexão está vinculada.',
@@ -334,6 +336,10 @@ Deno.serve(async (req) => {
       }
       usaMetaOficial = true;
       console.log('🟢 Provedor automático: API Oficial Meta (tipo_conexao:', tipoConexaoConversa, ' | phone_number_id:', phoneNumberIdMeta, ')');
+    } else if (canalAtendimento === 'dapi') {
+      // A conexão D-API já foi validada acima. Não exigir credenciais Evolution
+      // só porque a conversa possui um identificador de instância.
+      usaMetaOficial = false;
     } else if (
       canalAtendimento === 'evolution' ||
       canalAtendimento === 'empresa' ||
