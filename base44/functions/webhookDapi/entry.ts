@@ -256,28 +256,37 @@ Deno.serve(async (req) => {
       console.error(`❌ [Webhook D-API] ${webhookId} - Erro ao salvar log:`, e.message);
     });
     
-    // Responder 200 OK imediatamente
+    // Responder 200, exceto em falha transitória: aí 5xx faz a D-API reenviar o evento
+    // e a mensagem entra no Bate-Papo na retentativa, em vez de se perder.
     return Response.json({
-      success: true,
+      success: !errorMessage,
       event: eventType,
       sessionId,
       webhookId,
       timestamp: new Date().toISOString(),
       processed: !!processResult
-    });
+    }, { status: erroTransitorio(errorMessage) ? 500 : 200 });
     
   } catch (error) {
     console.error(`❌ [Webhook D-API] ${webhookId} - Erro geral:`, error.message);
     
-    // Mesmo com erro, responder 200 para evitar retries da D-API
+    // Mesmo com erro, responder 200 para evitar retries da D-API — exceto em falhas
+    // transitórias, onde a retentativa evita perder a mensagem.
     return Response.json({
       success: false,
       error: error.message,
       webhookId,
       timestamp: new Date().toISOString()
-    });
+    }, { status: erroTransitorio(error.message) ? 500 : 200 });
   }
 });
+
+// Falhas transitórias (limite de tráfego de leitura do banco, timeout, conexão) não podem
+// descartar uma mensagem: nesses casos o webhook responde 5xx para a D-API reenviar o evento,
+// em vez de perder a mensagem para sempre.
+function erroTransitorio(mensagem) {
+  return /(volume limit exceeded|rate limit|too many requests|429|timeout|timed out|temporarily|ECONNRESET|socket hang up)/i.test(String(mensagem || ''));
+}
 
 /**
  * Mapear evento D-API para tipo no CRM
@@ -491,111 +500,6 @@ async function extrairRespostaCitada(base44, empresaId, data) {
  * A D-API pode enviar a reação como type=reaction ou como type=text + emoji único
  * com o ID da mensagem original em contextInfo.
  */
-async function processReactionDapi(base44, data, empresaId) {
-  const tipo = String(
-    data?.type || data?.messageType || data?.message_type || data?.data?.type || ''
-  ).toLowerCase();
-
-  const reactionData =
-    data?.reactionMessage ||
-    data?.reaction_message ||
-    data?.reaction ||
-    data?.data?.reactionMessage ||
-    data?.data?.reaction_message ||
-    data?.data?.reaction ||
-    data?.data ||
-    {};
-
-  const context =
-    data?.contextInfo ||
-    data?.context_info ||
-    data?.data?.contextInfo ||
-    data?.data?.context_info ||
-    data?.message?.contextInfo ||
-    data?.message?.context_info ||
-    {};
-
-  const targetId =
-    reactionData?.key?.id ||
-    reactionData?.message_id ||
-    reactionData?.messageId ||
-    reactionData?.reaction_message_id ||
-    reactionData?.reactionMessageId ||
-    reactionData?.target_message_id ||
-    reactionData?.targetMessageId ||
-    context?.stanza_id ||
-    context?.stanzaId ||
-    context?.quoted_message_id ||
-    context?.quotedMessageId ||
-    data?.quoted_message_id ||
-    data?.quotedMessageId ||
-    '';
-
-  const emojiRaw =
-    reactionData?.text ??
-    reactionData?.emoji ??
-    reactionData?.reaction_text ??
-    data?.data?.reaction_text ??
-    data?.emoji ??
-    (typeof data?.message === 'string' ? data.message : '') ??
-    (typeof data?.text === 'string' ? data.text : '') ??
-    (typeof data?.content === 'string' ? data.content : '') ??
-    '';
-
-  const emoji = String(emojiRaw || '').trim();
-  const isEmojiUnico = /^(?:\p{Extended_Pictographic}|\p{Regional_Indicator})[\p{Emoji_Modifier}\uFE0F\u200D\p{Extended_Pictographic}\p{Regional_Indicator}]*$/u.test(emoji);
-
-  const pareceReacao =
-    tipo === 'reaction' ||
-    tipo === 'reacao' ||
-    tipo === 'reação' ||
-    !!data?.reactionMessage ||
-    !!data?.reaction_message ||
-    !!data?.reaction ||
-    !!data?.data?.reactionMessage ||
-    !!data?.data?.reaction_message ||
-    typeof data?.data?.reaction_text === 'string' ||
-    (isEmojiUnico && !!targetId);
-
-  if (!pareceReacao) return null;
-
-  if (!targetId) {
-    console.warn('⚠️ [Webhook D-API] Reação recebida sem ID da mensagem original');
-    return { handled: true, reaction: true, updated: false, reason: 'target message id ausente' };
-  }
-
-  const originais = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
-    empresa_id: empresaId,
-    whatsapp_message_id: String(targetId)
-  }, '-created_date', 1);
-
-  if (!originais?.length) {
-    console.warn(`⚠️ [Webhook D-API] Mensagem original da reação não encontrada: ${targetId}`);
-    return {
-      handled: true,
-      reaction: true,
-      updated: false,
-      targetId: String(targetId),
-      reason: 'mensagem original não encontrada'
-    };
-  }
-
-  const original = originais[0];
-  await base44.asServiceRole.entities.MensagemWhatsapp.update(original.id, {
-    reaction: emoji || null
-  });
-
-  console.log(`✅ [Webhook D-API] Reação "${emoji}" aplicada à mensagem ${original.id}`);
-  return {
-    handled: true,
-    reaction: true,
-    updated: true,
-    messageId: original.id,
-    targetId: String(targetId),
-    emoji
-  };
-}
-
 async function processMessageReceived(base44, body, connection, empresaId) {
   const _traceId = (body?.traceId || body?._traceId || crypto.randomUUID());
   if (!connection) {
@@ -1218,7 +1122,17 @@ async function processMessageSent(base44, body, connection) {
     return { handled: true, messageId: externalMessageId, status: 'enviada' };
   }
   
-  return { handled: false, reason: 'mensagem não encontrada' };
+  // A mensagem não existe no CRM: foi enviada direto pelo WhatsApp do aparelho.
+  // Antes o evento era descartado aqui e a mensagem nunca aparecia no Bate-Papo.
+  // Agora ela é gravada no histórico pelo mesmo fluxo das mensagens fromMe, para que
+  // TODA mensagem enviada (CRM ou celular) apareça no CRM.
+  return await processMessageSentFromPhone(
+    base44,
+    messageData,
+    connection,
+    connection.empresa_id,
+    externalMessageId
+  );
 }
 
 /**

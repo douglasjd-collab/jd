@@ -705,8 +705,10 @@ Deno.serve(async (req) => {
         const nomeColaborador = await nomeAtendentePromise;
         const nomeAtendente = nomeColaborador || user?.nome_perfil || user?.full_name || user?.email || 'Atendente';
 
-        const [novaMensagem] = await Promise.all([
-          base44.asServiceRole.entities.MensagemWhatsapp.create({
+        // Gravar a mensagem é o passo crítico. O log de auditoria e o resumo da lista de
+        // conversas são secundários: se qualquer um deles falhar, o envio não pode voltar
+        // como erro (a mensagem já saiu) nem deixar de ser gravado e sumir do Bate-Papo.
+        const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
           conversa_id: conversa_id,
           empresa_id: empresaId,
           remetente: 'vendedor',
@@ -726,13 +728,15 @@ Deno.serve(async (req) => {
           whatsapp_message_id: messageIdDapi,
           data_envio: new Date().toISOString(),
           status: 'enviada'
-          }),
+        });
+
+        await Promise.all([
           // Atualiza a conversa em paralelo (última mensagem da lista de conversas)
           base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
             ultima_mensagem: (textoEnviar || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
             data_ultima_mensagem: new Date().toISOString(),
             ultimo_remetente: 'vendedor',
-          }),
+          }).catch((e) => console.error('⚠️ Erro ao atualizar resumo da conversa:', e.message)),
           logPromise,
         ]);
         
