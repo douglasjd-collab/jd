@@ -162,7 +162,7 @@ function normalizarParaBR(num) {
   return num;
 }
 
-// Processamento principal em background (não bloqueia resposta HTTP)
+// Processamento principal: confirmar HTTP 200 apenas após persistir a mensagem.
 async function processarWebhook(req, rawBody, base44) {
   const url = new URL(req.url);
   const instanceFromQuery = url.searchParams.get('instance') || '';
@@ -1208,15 +1208,14 @@ Deno.serve(async (req) => {
   // Criar client com service role para webhooks externos (sem token de usuário)
   const base44 = createClientFromRequest(req);
 
-  // ⚡ Responder 200 IMEDIATAMENTE para evitar timeout da Evolution
-  // Processar em background após responder
-  const response = Response.json({ success: true, received: true });
-
-  // Processar em background (não bloqueia a resposta)
-  processarWebhook(req, rawBody, base44).catch((error) => {
+  try {
+    // Confirmar recebimento somente após persistir. Um erro transitório retorna
+    // 503 para nova tentativa; whatsapp_message_id evita duplicatas.
+    await processarWebhook(req, rawBody, base44);
+    return Response.json({ success: true, received: true });
+  } catch (error) {
     console.error('❌ Erro ao processar:', error.message);
     console.error('❌ STACK:', error.stack);
-  });
-
-  return response;
+    return Response.json({ success: false, retry: true }, { status: 503 });
+  }
 });
