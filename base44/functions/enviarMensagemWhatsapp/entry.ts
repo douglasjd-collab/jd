@@ -725,14 +725,13 @@ Deno.serve(async (req) => {
           status: 'enviada'
         });
         
-        // ── D-API: documentos (PDF/DOC) não suportam caption no endpoint ──
-        // /api/v1/messages/send/document (schema oficial não tem campo caption).
-        // Imagens e vídeos suportam caption normalmente, mas documentos NÃO.
-        // Quando o atendente envia um documento com texto, o texto era silenciosamente
-        // descartado. Solução: enviar o texto como mensagem separada logo após o
-        // documento, para que o cliente receba ambos.
+        // A D-API não suporta legenda em documentos. Enviar texto adicional
+        // separadamente, mas não repetir o nome do arquivo que já acompanha o PDF.
+        const normalizarNomeDocumento = (valor) => String(valor || '').trim().replace(/^📎\s*/, '').normalize('NFC');
+        const textoEhSomenteNomeArquivo = tipoConteudoDapi === 'pdf' &&
+          normalizarNomeDocumento(textoEnviar) === normalizarNomeDocumento(arquivo?.nome || nomeUploadDapi);
         let textoFollowUpId = null;
-        if (tipoConteudoDapi === 'pdf' && textoEnviar) {
+        if (tipoConteudoDapi === 'pdf' && textoEnviar && !textoEhSomenteNomeArquivo) {
           try {
             console.log('📝 D-API documento sem caption — enviando texto como follow-up:', textoEnviar.substring(0, 50));
             const followUpResp = await base44.functions.invoke('whatsappService', {
