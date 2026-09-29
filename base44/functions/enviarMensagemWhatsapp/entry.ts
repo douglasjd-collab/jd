@@ -1,5 +1,91 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
+// ── ENVIO DIRETO À D-API ────────────────────────────────────────────────────
+// Antes o envio passava por uma função intermediária (whatsappService): cada
+// mensagem pagava nova inicialização do runtime, releitura da conexão e um log
+// extra — ~3s de espera antes da confirmação no chat. Aqui a mesma chamada HTTP
+// é feita direto, com o mesmo endpoint, headers e payload.
+const DAPI_ENDPOINTS = {
+  sendText: '/api/v1/messages/send/text',
+  sendImage: '/api/v1/messages/send/image',
+  sendSticker: '/api/v1/messages/send/sticker',
+  sendAudio: '/api/v1/messages/send/audio',
+  sendDocument: '/api/v1/messages/send/document',
+  sendVideo: '/api/v1/messages/send/video',
+};
+
+function montarPayloadDapi(action, sessionId, numero, texto, params) {
+  const base = { sessionId, to: String(numero || '').replace(/\D/g, '') };
+  const ctx = params?.contextInfo ? { contextInfo: params.contextInfo } : {};
+  switch (action) {
+    case 'sendText':
+      return { ...base, text: texto, ...ctx };
+    case 'sendImage':
+      return { ...base, image: params.imageUrl, caption: params.caption || '', ...ctx };
+    case 'sendSticker':
+      return { ...base, sticker: params.stickerUrl };
+    case 'sendAudio':
+      return { ...base, audio: params.audioUrl, ptt: true, ...ctx };
+    case 'sendDocument':
+      return { ...base, document: params.documentUrl, caption: params.caption || '', fileName: params.fileName || undefined, ...ctx };
+    case 'sendVideo':
+      return { ...base, video: params.videoUrl, caption: params.caption || '', ...ctx };
+    default:
+      throw new Error(`Ação D-API desconhecida: ${action}`);
+  }
+}
+
+// Retorna o mesmo formato da resposta de whatsappService ({ success, data, ... })
+// para manter intacto o tratamento de erro e a leitura do messageId abaixo.
+async function enviarDapiDireto(conexao, action, numero, texto, params) {
+  let baseUrl = String(conexao?.base_url || 'https://api.d-api.cloud').trim();
+  if (/\/functions\/(receberWebhookDapi|webhookDapi)/i.test(baseUrl) || /\/webhook/i.test(baseUrl)) {
+    baseUrl = 'https://api.d-api.cloud';
+  }
+
+  let apiKey = String(conexao?.api_key_encrypted || '').trim();
+  try {
+    const decoded = apiKey ? atob(apiKey) : '';
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decoded.trim())) {
+      apiKey = decoded.trim();
+    }
+  } catch (_) {}
+
+  const endpoint = `${baseUrl}${DAPI_ENDPOINTS[action]}`;
+  const body = montarPayloadDapi(action, String(conexao?.session_id || '').trim(), numero, texto, params || {});
+  const startTime = Date.now();
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Authorization': apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const responseData = await response.json().catch(() => ({}));
+  const responseTime = Date.now() - startTime;
+
+  if (!response.ok) {
+    return {
+      success: false,
+      error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
+      data: responseData,
+      httpStatus: response.status,
+      traceId: responseData.traceId,
+      responseTime,
+      endpoint,
+    };
+  }
+
+  return {
+    success: true,
+    data: responseData,
+    httpStatus: response.status,
+    traceId: responseData.traceId,
+    responseTime,
+    endpoint,
+  };
+}
+
 Deno.serve(async (req) => {
   console.log('='.repeat(80));
   console.log('📤 ENVIAR MENSAGEM WHATSAPP');
@@ -197,23 +283,6 @@ Deno.serve(async (req) => {
     // ── FONTE DE VERDADE DO CANAL ────────────────────────────────────────────
     const phoneNumberIdConversa = conversaDoBanco?.phone_number_id_meta || null;
 
-    // ── VERSÃO DINÂMICA DA API META ──────────────────────────────────────
-    // Buscar versão configurada via atualizacaoVersaoMetaApi (automática) ou fallback para v23.0
-    let metaApiVersion = 'v23.0';
-    if (empresaId) {
-      try {
-        const configsVersao = await base44.asServiceRole.entities.ConfiguracaoSistema.filter({
-          chave: `meta_api_versao_${empresaId}`,
-          empresa_id: empresaId
-        }, '-created_date', 1);
-        if (configsVersao?.length > 0 && configsVersao[0].valor) {
-          metaApiVersion = configsVersao[0].valor;
-          console.log(`📌 Versão Meta API carregada da config: ${metaApiVersion}`);
-        }
-      } catch (_) {}
-    }
-    // ─────────────────────────────────────────────────────────────────────
-
     // Fonte de verdade: canal_origem e provider são campos travados definidos no webhook.
     // phone_number_id_meta NÃO deve forçar Meta sozinho — ele é apenas uma credencial auxiliar.
     // Se canal_origem for 'evolution', é Evolution mesmo que haja phone_number_id_meta.
@@ -231,6 +300,24 @@ Deno.serve(async (req) => {
       conversaDoBanco?.canal_preferencial ||
       tipoConexaoConversa ||
       'evolution';
+
+    // ── VERSÃO DINÂMICA DA API META ──────────────────────────────────────
+    // Só é necessária nos canais Meta/Instagram: no envio D-API essa leitura
+    // extra era feita em toda mensagem sem ser usada (atrasava o envio).
+    let metaApiVersion = 'v23.0';
+    if (empresaId && canalAtendimento !== 'dapi') {
+      try {
+        const configsVersao = await base44.asServiceRole.entities.ConfiguracaoSistema.filter({
+          chave: `meta_api_versao_${empresaId}`,
+          empresa_id: empresaId
+        }, '-created_date', 1);
+        if (configsVersao?.length > 0 && configsVersao[0].valor) {
+          metaApiVersion = configsVersao[0].valor;
+          console.log(`📌 Versão Meta API carregada da config: ${metaApiVersion}`);
+        }
+      } catch (_) {}
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     console.log(`🧭 [ENVIO] canal_origem=${canalOrigem} | provider=${providerSalvo} | canalAtendimento resolvido=${canalAtendimento}`);
     console.log(`📥 [ENVIO] tipo_conexao=${tipoConexaoConversa} | instancia=${instanciaConversa}`);
@@ -596,18 +683,17 @@ Deno.serve(async (req) => {
         dapiActionParams.contextInfo = dapiContextInfo;
       }
 
-      // Chamar whatsappService para envio D-API
+      // Envio direto à D-API (sem a função intermediária whatsappService, que
+      // custava ~3s por mensagem e atrasava a confirmação de envio no chat).
       try {
+        // Nome do atendente buscado em paralelo com o envio.
+        const nomeAtendentePromise = base44.asServiceRole.entities.Colaborador
+          .filter({ user_id: user.id }, '-created_date', 1)
+          .then((cols) => cols?.[0]?.nome || null)
+          .catch(() => null);
+
         const startTime = Date.now();
-        const respService = await base44.functions.invoke('whatsappService', {
-          connectionId: conexaoDapi.id,
-          action: dapiAction,
-          phoneNumber: numeroDapi,
-          text: textoEnviar,
-          ...dapiActionParams
-        });
-        
-        const serviceResult = respService?.data;
+        const serviceResult = await enviarDapiDireto(conexaoDapi, dapiAction, numeroDapi, textoEnviar, dapiActionParams);
         const responseTime = Date.now() - startTime;
         
         console.log('📡 Resposta D-API:', serviceResult);
