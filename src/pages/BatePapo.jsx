@@ -64,6 +64,7 @@ import TransferirAtendimentoModal from '@/components/chat/TransferirAtendimentoM
 import TagsModal from '@/components/chat/TagsModal';
 import TagsGerenciamentoModal from '@/components/chat/TagsGerenciamentoModal';
 import FunilSelectionModal from '@/components/chat/FunilSelectionModal';
+import CriarProximaAcaoBar from '@/components/chat/CriarProximaAcaoBar';
 import FunilInfoPanel from '@/components/chat/FunilInfoPanel';
 import PainelInfoLead from '@/components/chat/PainelInfoLead';
 import BatePapoMenu from '@/components/chat/BatePapoMenu';
@@ -2229,7 +2230,10 @@ export default function BatePapo() {
                 abrirSalvarCrm={abrirSalvarCrm}
                 setContatoParaTags={setContatoParaTags}
                 setTagsModalOpen={setTagsModalOpen}
-                setCriarTarefaOpen={setCriarTarefaOpen}
+                setCriarTarefaOpen={() => {
+                  setConversaTarefa(conversaSelecionada);
+                  setCriarTarefaOpen(true);
+                }}
                 refetchMensagens={refetchMensagens}
                 queryClient={queryClient}
                 setConversaSelecionada={setConversaSelecionada}
@@ -2262,6 +2266,16 @@ export default function BatePapo() {
                   })
                 }
                 />
+                {!isGrupo(conversaSelecionada) && (
+                  <CriarProximaAcaoBar
+                    oportunidadeAtual={oportunidadeAtual}
+                    onAdicionarFunil={() => setFunilModalOpen(true)}
+                    onCriarTarefa={() => {
+                      setConversaTarefa(conversaSelecionada);
+                      setCriarTarefaOpen(true);
+                    }}
+                  />
+                )}
                 {!isGrupo(conversaSelecionada) && (
                   <MicrotarefasConversa
                     tarefas={microtarefasPorConversa[conversaSelecionada.id] || []}
