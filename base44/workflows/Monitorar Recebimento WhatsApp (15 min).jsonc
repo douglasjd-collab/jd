@@ -1,0 +1,45 @@
+{
+  "description": "A cada 15 minutos verifica se o WhatsApp est\u00e1 recebendo mensagens: reconecta sess\u00f5es D-API fora do ar e avisa no Telegram quando o CRM fica sem receber nenhuma mensagem.",
+  "name": "Monitorar Recebimento WhatsApp (15 min)",
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "monitorar_recebimento_whatsapp",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "verificar_recebimento": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "monitorarRecebimentoDapi",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Verificar recebimento do WhatsApp",
+            "description": "Reconecta sess\u00f5es e alerta"
+          }
+        }
+      }
+    ]
+  },
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/15 * * * *",
+      "one_time_date": null,
+      "timezone": "America/Sao_Paulo",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  }
+}

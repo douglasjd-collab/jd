@@ -1197,8 +1197,11 @@ async function processMessageSent(base44, body, connection) {
   
   const messageData = body.data || body.message || body;
   const externalMessageId = messageData.id || messageData.messageId;
+  // "to" pode chegar como texto (telefone/JID) ou como objeto { jid, name } dependendo do aparelho.
+  // Quando vinha como objeto, o código estourava "to?.replace is not a function" e o evento de
+  // mensagem enviada era descartado — a mensagem ficava travada como "pendente" no CRM.
   const to = messageData.to || messageData.receiver;
-  const toPhone = to?.replace(/@[\w.]+/g, '') || '';
+  const toPhone = (typeof to === 'string' ? to : (to?.jid || to?.id || '')).replace(/@[\w.]+/g, '');
   
   // Buscar mensagem pelo external_message_id
   const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
