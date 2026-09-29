@@ -500,6 +500,8 @@ export default function Saques() {
   const [reprogramando, setReprogramando] = useState(false);
   const [anexandoComprovante, setAnexandoComprovante] = useState(false);
   const [lancandoFinanceiro, setLancandoFinanceiro] = useState(false);
+  // Mês de referência (padrão: mês atual) — alterável mês a mês
+  const [mesFiltro, setMesFiltro] = useState(() => format(new Date(), 'yyyy-MM'));
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
@@ -522,24 +524,47 @@ export default function Saques() {
   const userLoaded = !loadingUser && !!user;
   const filtroBase = empresaId ? { empresa_id: empresaId } : {};
 
+  // Intervalo do mês selecionado (vazio = todos os meses)
+  const periodo = mesFiltro ? (() => {
+    const [ano, mes] = mesFiltro.split('-').map(Number);
+    return {
+      inicio: `${mesFiltro}-01`,
+      fim: mes === 12 ? `${ano + 1}-01-01` : `${ano}-${String(mes + 1).padStart(2, '0')}-01`,
+    };
+  })() : null;
+
+  // Considera a data de quitação quando existe; senão a data programada
+  const filtroPeriodo = (campoQuitacao, campoProgramada) => (periodo
+    ? {
+        $or: [
+          { [campoQuitacao]: { $gte: periodo.inicio, $lt: periodo.fim } },
+          { [campoQuitacao]: null, [campoProgramada]: { $gte: periodo.inicio, $lt: periodo.fim } },
+        ],
+      }
+    : {});
+
   const { data: lotesEmp = [], isLoading: l1 } = useQuery({
-    queryKey: ['lotes-emp', empresaId, colab?.id],
+    queryKey: ['lotes-emp', empresaId, colab?.id, mesFiltro],
     enabled: userLoaded,
     throwOnError: false,
     queryFn: () => base44.entities.LotePagamentoComissaoEmprestimo.filter(
-      isMaster ? filtroBase : { ...filtroBase, vendedor_id: colab?.id || user?.id },
+      {
+        ...(isMaster ? filtroBase : { ...filtroBase, vendedor_id: colab?.id || user?.id }),
+        ...filtroPeriodo('data_quitacao', 'data_pagamento'),
+      },
       '-created_date', 500
     ),
   });
 
   const { data: propostasLegado = [], isLoading: l3 } = useQuery({
-    queryKey: ['propostas-emp-pagas-legado-saques', empresaId, colab?.id],
+    queryKey: ['propostas-emp-pagas-legado-saques', empresaId, colab?.id, mesFiltro],
     enabled: userLoaded,
     throwOnError: false,
     queryFn: () => {
       const filter = { produto: 'emprestimo', comissao_vendedor_paga: true };
       if (empresaId) filter.empresa_id = empresaId;
       if (!isMaster && (colab?.id || user?.id)) filter.vendedor_id = colab?.id || user?.id;
+      if (periodo) filter.comissao_vendedor_data_pagamento = { $gte: periodo.inicio, $lt: periodo.fim };
       return base44.entities.Proposta.filter(filter, '-comissao_vendedor_data_pagamento', 1000)
         .then(propostas => propostas.filter(p => !p.lote_pagamento_id));
     },
@@ -552,11 +577,14 @@ export default function Saques() {
   });
 
   const { data: lotesConsorcio = [], isLoading: l2 } = useQuery({
-    queryKey: ['lotes-consorcio', empresaId, colab?.id],
+    queryKey: ['lotes-consorcio', empresaId, colab?.id, mesFiltro],
     enabled: userLoaded,
     throwOnError: false,
     queryFn: () => base44.entities.PagamentoComissaoLote.filter(
-      isMaster ? filtroBase : { ...filtroBase, vendedor_id: colab?.id || user?.id },
+      {
+        ...(isMaster ? filtroBase : { ...filtroBase, vendedor_id: colab?.id || user?.id }),
+        ...filtroPeriodo('data_quitacao', 'data_pagamento'),
+      },
       '-created_date', 500
     ),
   });
@@ -826,9 +854,26 @@ export default function Saques() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-900">Comissões Pagas</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Histórico de comissões programadas e quitadas</p>
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Comissões Pagas</h1>
+          <p className="text-sm text-slate-500 mt-0.5">Histórico de comissões programadas e quitadas</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="mes-comissoes" className="text-xs text-slate-500 whitespace-nowrap">Mês:</Label>
+          <Input
+            id="mes-comissoes"
+            type="month"
+            value={mesFiltro}
+            onChange={(e) => setMesFiltro(e.target.value)}
+            className="h-9 w-40"
+          />
+          {mesFiltro && (
+            <Button size="sm" variant="outline" className="h-9 text-xs" onClick={() => setMesFiltro('')}>
+              Todos os meses
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
