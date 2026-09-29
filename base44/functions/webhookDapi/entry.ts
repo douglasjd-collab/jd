@@ -1114,10 +1114,12 @@ async function processMessageSent(base44, body, connection) {
   
   if (mensagens.length > 0) {
     const msg = mensagens[0];
-    await base44.asServiceRole.entities.MensagemWhatsapp.update(msg.id, {
-      status: 'enviada',
-      entregue_em: new Date().toISOString()
-    });
+    // Nunca retrocede: "enviada" não rebaixa uma mensagem já entregue/lida (este
+    // evento pode chegar depois dos recibos e apagava o azul da leitura).
+    await base44.asServiceRole.entities.MensagemWhatsapp.updateMany({
+      id: msg.id,
+      status: { $nin: ['enviada', 'entregue', 'lida'] }
+    }, { $set: { status: 'enviada' } });
     
     return { handled: true, messageId: externalMessageId, status: 'enviada' };
   }
@@ -1150,10 +1152,12 @@ async function processMessageDelivered(base44, body, connection) {
   
   if (mensagens.length > 0) {
     const msg = mensagens[0];
-    await base44.asServiceRole.entities.MensagemWhatsapp.update(msg.id, {
-      status: 'entregue',
-      entregue_em: new Date().toISOString()
-    });
+    // O filtro de status garante a ordem no banco: um "entregue" que chega depois do
+    // "lida" não sobrescreve mais a leitura.
+    await base44.asServiceRole.entities.MensagemWhatsapp.updateMany({
+      id: msg.id,
+      status: { $nin: ['entregue', 'lida'] }
+    }, { $set: { status: 'entregue', entregue_em: new Date().toISOString() } });
     
     return { handled: true, messageId: externalMessageId, status: 'entregue' };
   }
@@ -1176,10 +1180,11 @@ async function processMessageRead(base44, body, connection) {
   
   if (mensagens.length > 0) {
     const msg = mensagens[0];
-    await base44.asServiceRole.entities.MensagemWhatsapp.update(msg.id, {
-      status: 'lida',
-      lida_em: new Date().toISOString()
-    });
+    // Idempotente: só grava se ainda não estiver lida.
+    await base44.asServiceRole.entities.MensagemWhatsapp.updateMany({
+      id: msg.id,
+      status: { $nin: ['lida'] }
+    }, { $set: { status: 'lida', lida_em: new Date().toISOString() } });
     
     return { handled: true, messageId: externalMessageId, status: 'lida' };
   }

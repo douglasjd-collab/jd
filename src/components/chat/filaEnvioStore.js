@@ -45,6 +45,29 @@ export function getEnviosPorConversa(conversaId) {
   return out;
 }
 
+/**
+ * Remove (sem notificar ouvintes) os envios já confirmados no banco — casados pelo id
+ * real ou pelo id do WhatsApp. Chamado ao montar a lista do chat: o efeito visual é a
+ * própria lista recarregada e, sem essa limpeza, o envio confirmado voltava como bolha
+ * otimista ao lado da mensagem real (a mesma mensagem aparecia duas vezes até a próxima
+ * recarga da lista).
+ */
+export function descartarConfirmados(conversaId, idsNoBanco, wamidsNoBanco) {
+  let removidos = 0;
+  for (const [tempId, e] of Array.from(envios.entries())) {
+    if (e.conversaId !== conversaId) continue;
+    if (e.estado === 'cancelado') continue;
+    const confirmado =
+      (e.realId && idsNoBanco.has(e.realId)) ||
+      (e.whatsappId && wamidsNoBanco.has(e.whatsappId));
+    if (confirmado) {
+      envios.delete(tempId);
+      removidos++;
+    }
+  }
+  return removidos;
+}
+
 export function temPendentes(conversaId) {
   for (const e of envios.values()) {
     if (

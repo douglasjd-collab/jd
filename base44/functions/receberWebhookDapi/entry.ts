@@ -892,32 +892,31 @@ async function processarChatsUpdate(base44, connection, data) {
   }
 }
 
-// Atualiza status (entregue/lida) de uma mensagem enviada pelo CRM via D-API
+// Atualiza status (entregue/lida) de uma mensagem enviada pelo CRM via D-API.
+//
+// A ordem (enviada < entregue < lida) é garantida pelo FILTRO da atualização, não por
+// uma leitura anterior: os recibos de "entregue" e "lida" chegam praticamente juntos e
+// podem ser processados em paralelo — lendo antes de gravar, os dois passavam na
+// verificação e o "entregue" gravava por último, deixando a mensagem com lida_em
+// preenchido e status "entregue" (dois traços cinza em vez do azul).
 async function atualizarStatusMensagem(base44, connection, data, statusInterno) {
   try {
     const wamid = data?.key?.id || data?.id;
     if (!wamid) return;
 
-    const mensagens = await base44.entities.MensagemWhatsapp.filter({
+    const patch = { $set: { status: statusInterno } };
+    if (statusInterno === 'entregue') patch.$set.entregue_em = new Date().toISOString();
+    if (statusInterno === 'lida') patch.$set.lida_em = new Date().toISOString();
+
+    await base44.entities.MensagemWhatsapp.updateMany({
       empresa_id: connection.empresa_id,
       whatsapp_message_id: wamid,
-    }, '-created_date', 1);
+      // 'lida' nunca é sobrescrita; 'entregue' não retrocede de 'lida'.
+      status: statusInterno === 'lida'
+        ? { $nin: ['lida'] }
+        : { $nin: ['entregue', 'lida'] },
+    }, patch);
 
-    if (mensagens.length === 0) {
-      console.warn('⚠️ Mensagem D-API não encontrada para atualizar status:', wamid);
-      return;
-    }
-
-    const mensagem = mensagens[0];
-    const ordemStatus = { 'enviada': 1, 'entregue': 2, 'lida': 3, 'erro': -1 };
-    const statusAtual = mensagem.status || 'pendente';
-    if ((ordemStatus[statusInterno] || 0) <= (ordemStatus[statusAtual] || 0)) return;
-
-    const updateData = { status: statusInterno };
-    if (statusInterno === 'entregue') updateData.entregue_em = new Date().toISOString();
-    if (statusInterno === 'lida') updateData.lida_em = new Date().toISOString();
-
-    await base44.entities.MensagemWhatsapp.update(mensagem.id, updateData);
     console.log(`✅ Status D-API atualizado: ${wamid} → ${statusInterno}`);
   } catch (e) {
     console.error('❌ Erro ao atualizar status D-API:', e.message);

@@ -7,7 +7,7 @@
 // cada recarga — do contrário ela desaparece da tela no momento do envio e só
 // reaparece (como enviada) quando o registro real chega.
 
-import { getEnviosPorConversa } from './filaEnvioStore';
+import { getEnviosPorConversa, descartarConfirmados } from './filaEnvioStore';
 
 const TIPOS_CONTEUDO = ['texto', 'sticker', 'imagem', 'audio', 'video', 'pdf', 'documento'];
 
@@ -50,10 +50,16 @@ export function construirBolhaOtimista(envio) {
 export function bolhasPendentesNaLista(conversaId, mensagensServidor = []) {
   if (!conversaId) return [];
   const idsNoBanco = new Set(mensagensServidor.map((m) => m.id));
+  const wamidsNoBanco = new Set(
+    mensagensServidor.map((m) => m.whatsapp_message_id).filter(Boolean)
+  );
+  // Envio que já existe no banco (pelo id real ou pelo id do WhatsApp) está confirmado:
+  // sai da fila e não é mais recriado como bolha. Sem isso, a mesma mensagem podia
+  // aparecer duas vezes — a cópia local ao lado da já gravada.
+  descartarConfirmados(conversaId, idsNoBanco, wamidsNoBanco);
   const bolhas = [];
   for (const envio of getEnviosPorConversa(conversaId)) {
     if (envio.estado === 'cancelado') continue;
-    if (envio.realId && idsNoBanco.has(envio.realId)) continue;
     const bolha = construirBolhaOtimista(envio);
     if (bolha) bolhas.push(bolha);
   }
