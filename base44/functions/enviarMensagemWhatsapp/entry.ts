@@ -1,90 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-// ── ENVIO DIRETO À D-API ────────────────────────────────────────────────────
-// Antes o envio passava por uma função intermediária (whatsappService): cada
-// mensagem pagava nova inicialização do runtime, releitura da conexão e um log
-// extra — ~3s de espera antes da confirmação no chat. Aqui a mesma chamada HTTP
-// é feita direto, com o mesmo endpoint, headers e payload.
-const DAPI_ENDPOINTS = {
-  sendText: '/api/v1/messages/send/text',
-  sendImage: '/api/v1/messages/send/image',
-  sendSticker: '/api/v1/messages/send/sticker',
-  sendAudio: '/api/v1/messages/send/audio',
-  sendDocument: '/api/v1/messages/send/document',
-  sendVideo: '/api/v1/messages/send/video',
-};
-
-function montarPayloadDapi(action, sessionId, numero, texto, params) {
-  const base = { sessionId, to: String(numero || '').replace(/\D/g, '') };
-  const ctx = params?.contextInfo ? { contextInfo: params.contextInfo } : {};
-  switch (action) {
-    case 'sendText':
-      return { ...base, text: texto, ...ctx };
-    case 'sendImage':
-      return { ...base, image: params.imageUrl, caption: params.caption || '', ...ctx };
-    case 'sendSticker':
-      return { ...base, sticker: params.stickerUrl };
-    case 'sendAudio':
-      return { ...base, audio: params.audioUrl, ptt: true, ...ctx };
-    case 'sendDocument':
-      return { ...base, document: params.documentUrl, caption: params.caption || '', fileName: params.fileName || undefined, ...ctx };
-    case 'sendVideo':
-      return { ...base, video: params.videoUrl, caption: params.caption || '', ...ctx };
-    default:
-      throw new Error(`Ação D-API desconhecida: ${action}`);
-  }
-}
-
-// Retorna o mesmo formato da resposta de whatsappService ({ success, data, ... })
-// para manter intacto o tratamento de erro e a leitura do messageId abaixo.
-async function enviarDapiDireto(conexao, action, numero, texto, params) {
-  let baseUrl = String(conexao?.base_url || 'https://api.d-api.cloud').trim();
-  if (/\/functions\/(receberWebhookDapi|webhookDapi)/i.test(baseUrl) || /\/webhook/i.test(baseUrl)) {
-    baseUrl = 'https://api.d-api.cloud';
-  }
-
-  let apiKey = String(conexao?.api_key_encrypted || '').trim();
-  try {
-    const decoded = apiKey ? atob(apiKey) : '';
-    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decoded.trim())) {
-      apiKey = decoded.trim();
-    }
-  } catch (_) {}
-
-  const endpoint = `${baseUrl}${DAPI_ENDPOINTS[action]}`;
-  const body = montarPayloadDapi(action, String(conexao?.session_id || '').trim(), numero, texto, params || {});
-  const startTime = Date.now();
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Authorization': apiKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  const responseData = await response.json().catch(() => ({}));
-  const responseTime = Date.now() - startTime;
-
-  if (!response.ok) {
-    return {
-      success: false,
-      error: `HTTP ${response.status}: ${JSON.stringify(responseData)}`,
-      data: responseData,
-      httpStatus: response.status,
-      traceId: responseData.traceId,
-      responseTime,
-      endpoint,
-    };
-  }
-
-  return {
-    success: true,
-    data: responseData,
-    httpStatus: response.status,
-    traceId: responseData.traceId,
-    responseTime,
-    endpoint,
-  };
-}
+import { enviarDapiDireto } from '../../shared/dapiEnvioShared.ts';
 
 Deno.serve(async (req) => {
   console.log('='.repeat(80));
@@ -765,37 +681,32 @@ Deno.serve(async (req) => {
           sessionId: conexaoDapi.session_id
         });
         
-        // Registrar log de sucesso
-        try {
-          await base44.entities.WhatsappConnectionLog.create({
-            empresa_id: empresaId,
-            connection_id: conexaoDapi.id,
-            event_type: 'message.sent',
-            direction: 'outbound',
-            payload_json: JSON.stringify({
-              action: dapiAction,
-              sessionId: conexaoDapi.session_id,
-              phoneNumber: numeroDapi,
-              text: textoEnviar,
-              ...dapiActionParams
-            }),
-            response_json: JSON.stringify(serviceResult),
-            error_message: null,
-            response_time_ms: responseTime,
-            created_at: new Date().toISOString()
-          });
-        } catch (logErr) {
-          console.error('⚠️ Erro ao registrar log D-API:', logErr.message);
-        }
-        
+        // Log de auditoria, nome do atendente e gravações rodam em paralelo —
+        // a confirmação ao atendente não espera cada escrita em sequência.
+        const logPromise = base44.entities.WhatsappConnectionLog.create({
+          empresa_id: empresaId,
+          connection_id: conexaoDapi.id,
+          event_type: 'message.sent',
+          direction: 'outbound',
+          payload_json: JSON.stringify({
+            action: dapiAction,
+            sessionId: conexaoDapi.session_id,
+            phoneNumber: numeroDapi,
+            text: textoEnviar,
+            ...dapiActionParams
+          }),
+          response_json: JSON.stringify(serviceResult),
+          error_message: null,
+          response_time_ms: responseTime,
+          created_at: new Date().toISOString()
+        }).catch((logErr) => console.error('⚠️ Erro ao registrar log D-API:', logErr.message));
+
         // Salvar mensagem no banco
-        let nomeAtendente = user?.nome_perfil || user?.full_name || user?.email || 'Atendente';
-        try {
-          const cols = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id }, '-created_date', 1);
-          if (cols?.length > 0) nomeAtendente = cols[0].nome || nomeAtendente;
-        } catch (_) {}
-        
-        const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
+        const nomeColaborador = await nomeAtendentePromise;
+        const nomeAtendente = nomeColaborador || user?.nome_perfil || user?.full_name || user?.email || 'Atendente';
+
+        const [novaMensagem] = await Promise.all([
+          base44.asServiceRole.entities.MensagemWhatsapp.create({
           conversa_id: conversa_id,
           empresa_id: empresaId,
           remetente: 'vendedor',
@@ -815,7 +726,15 @@ Deno.serve(async (req) => {
           whatsapp_message_id: messageIdDapi,
           data_envio: new Date().toISOString(),
           status: 'enviada'
-        });
+          }),
+          // Atualiza a conversa em paralelo (última mensagem da lista de conversas)
+          base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+            ultima_mensagem: (textoEnviar || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
+            data_ultima_mensagem: new Date().toISOString(),
+            ultimo_remetente: 'vendedor',
+          }),
+          logPromise,
+        ]);
         
         // A D-API não suporta legenda em documentos. Enviar texto adicional
         // separadamente, mas não repetir o nome do arquivo que já acompanha o PDF.
@@ -826,13 +745,7 @@ Deno.serve(async (req) => {
         if (tipoConteudoDapi === 'pdf' && textoEnviar && !textoEhSomenteNomeArquivo) {
           try {
             console.log('📝 D-API documento sem caption — enviando texto como follow-up:', textoEnviar.substring(0, 50));
-            const followUpResp = await base44.functions.invoke('whatsappService', {
-              connectionId: conexaoDapi.id,
-              action: 'sendText',
-              phoneNumber: numeroDapi,
-              text: textoEnviar
-            });
-            const followUpResult = followUpResp?.data;
+            const followUpResult = await enviarDapiDireto(conexaoDapi, 'sendText', numeroDapi, textoEnviar, {});
             if (followUpResult?.success) {
               textoFollowUpId = followUpResult?.data?.data?.messageId || followUpResult?.data?.messageId || `dapi_txt_${Date.now()}`;
               // Salvar a mensagem de texto separada no banco
@@ -859,14 +772,6 @@ Deno.serve(async (req) => {
             console.warn('⚠️ Erro ao enviar texto follow-up após documento:', followUpErr.message);
           }
         }
-        
-        // Atualizar conversa — usar o texto como última mensagem quando houver
-        const ultimaMsgDisplay = textoEnviar || `📎 ${arquivo?.nome || 'arquivo'}`;
-        await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
-          ultima_mensagem: ultimaMsgDisplay.substring(0, 200),
-          data_ultima_mensagem: new Date().toISOString(),
-          ultimo_remetente: 'vendedor',
-        });
         
         console.log('✅ Mensagem D-API salva:', novaMensagem.id);
         
