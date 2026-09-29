@@ -373,6 +373,7 @@ export default function Layout({ children, currentPageName }) {
         { name: 'Contas Bancárias', page: 'ContasBancarias' },
         { name: 'Movimentações Financeiras', page: 'Transacoes' },
         { name: 'Receber Comissão', page: 'ReceberComissao' },
+        { name: 'Comissões Recebidas', page: 'ComissoesRecebidas' },
         { name: 'Comissões a Pagar (Consórcio)', page: 'ComissoesPagar' },
 
         { name: 'Comissões a Pagar', page: 'ComissoesEmprestimos' },
