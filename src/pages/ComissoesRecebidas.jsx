@@ -45,33 +45,9 @@ export default function ComissoesRecebidas() {
     enabled: !!user,
   });
 
-  const { data: receitas = [] } = useQuery({
-    queryKey: ['receitas-recebidas'],
-    queryFn: async () => {
-      return await base44.entities.Receita.filter({ status: 'recebida' });
-    },
-    enabled: !!user,
-  });
-
-  // Combinar recebimentos e receitas
-  const todosRecebimentos = [
-    ...recebimentos.map(r => ({ ...r, tipo: 'comissao' })),
-    ...receitas.map(r => ({
-      ...r,
-      tipo: 'receita',
-      data_recebimento: r.data_recebimento || r.data,
-      valor_recebido: r.valor,
-      valor_a_pagar: r.valor,
-      cliente_nome: r.descricao,
-      vendedor_nome: r.usuario_nome,
-      grupo: null,
-      cota: null,
-      contrato: null,
-      parcela_informada: null,
-      percentual_comissao: 100,
-      administradora_nome: r.categoria_nome || 'Receita',
-    }))
-  ];
+  // Esta tela usa exclusivamente os recebimentos gerados pela importação de comissões.
+  // O mesmo registro é exibido aqui e dentro da venda/proposta vinculada.
+  const todosRecebimentos = recebimentos.map(r => ({ ...r, tipo: 'comissao' }));
 
   const filtered = todosRecebimentos.filter((r) => {
     if (user?.perfil === 'vendedor' && r.tipo === 'comissao' && r.vendedor_id !== user?.id) {
@@ -95,8 +71,12 @@ export default function ComissoesRecebidas() {
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      return r.vendedor_nome?.toLowerCase().includes(term) || 
-             r.cliente_nome?.toLowerCase().includes(term);
+      return r.vendedor_nome?.toLowerCase().includes(term) ||
+             r.cliente_nome?.toLowerCase().includes(term) ||
+             r.contrato?.toLowerCase().includes(term) ||
+             r.grupo?.toLowerCase().includes(term) ||
+             r.cota?.toLowerCase().includes(term) ||
+             r.administradora_nome?.toLowerCase().includes(term);
     }
     return true;
   });
@@ -164,7 +144,7 @@ export default function ComissoesRecebidas() {
       <div className="flex items-center justify-between gap-4">
         <PageHeader
           title="Comissões Recebidas"
-          subtitle="Histórico de comissões pagas"
+          subtitle="Histórico atualizado automaticamente pelas importações de comissão"
         />
         <Button
           onClick={() => window.history.back()}
@@ -194,7 +174,7 @@ export default function ComissoesRecebidas() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
-                placeholder="Buscar por vendedor ou cliente..."
+                placeholder="Buscar cliente, vendedor, contrato, grupo, cota ou banco..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
