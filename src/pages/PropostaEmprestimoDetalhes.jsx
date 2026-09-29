@@ -67,7 +67,7 @@ export default function PropostaEmprestimoDetalhes() {
 
   const { data: recebimentosComissao = [], isLoading: loadingRecebimentos } = useQuery({
     queryKey: ['recebimentos-comissao-proposta', propostaId],
-    enabled: !!propostaId && isAdmin,
+    enabled: !!propostaId && ['master', 'super_admin', 'admin', 'gerente'].includes(user?.perfil),
     queryFn: () => base44.entities.RecebimentoComissao.filter({ venda_id: propostaId }),
   });
 
