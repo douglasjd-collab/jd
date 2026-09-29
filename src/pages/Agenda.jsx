@@ -645,19 +645,27 @@ export default function AgendaPage() {
         setUser({ ...me, auth_id: me.id, empresa_id: null, perfil: 'super_admin' });
         return;
       }
-      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' }, '-created_date');
-      const colab = colabs?.[0];
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id }, '-created_date');
+      const colab = colabs?.find((c) => c.status === 'ativo') || colabs?.[0];
       setUser({ ...me, auth_id: me.id, empresa_id: colab?.empresa_id || null, perfil: colab?.perfil || 'vendedor' });
     } catch (e) { console.error(e); }
   };
 
+  // Perfis administrativos enxergam a agenda de toda a empresa; os demais (parceiro, vendedor...) apenas a própria agenda
+  const perfilUsuario = user?.perfil || (user?.role === 'admin' ? 'admin' : '');
+  const acessoTotal = ['master', 'super_admin', 'admin', 'gerente'].includes(perfilUsuario);
+
   const { data: compromissos = [], isLoading } = useQuery({
-    queryKey: ['agenda', user?.empresa_id, user?.auth_id],
-    queryFn: async () => {
+    queryKey: ['agenda', user?.empresa_id, user?.auth_id, acessoTotal],
+    queryFn: () => {
       if (!user) return [];
-      if (user.empresa_id) return base44.entities.Agenda.filter({ empresa_id: user.empresa_id }, 'inicio');
-      if (user.auth_id) return base44.entities.Agenda.filter({ usuario_id: user.auth_id }, 'inicio');
-      return [];
+      if (acessoTotal && user.empresa_id) {
+        return base44.entities.Agenda.filter({ empresa_id: user.empresa_id }, 'inicio');
+      }
+      if (!user.auth_id) return [];
+      const filtro = { usuario_id: user.auth_id };
+      if (user.empresa_id) filtro.empresa_id = user.empresa_id;
+      return base44.entities.Agenda.filter(filtro, 'inicio');
     },
     enabled: !!user,
   });
