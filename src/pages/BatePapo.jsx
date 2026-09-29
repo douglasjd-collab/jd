@@ -326,6 +326,7 @@ export default function BatePapo() {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [criarTarefaOpen, setCriarTarefaOpen] = useState(false);
   const [conversaTarefa, setConversaTarefa] = useState(null); // conversa para pré-preencher tarefa
+  const novaAcaoRef = React.useRef(null); // abre o formulário de próxima ação da conversa (MicrotarefasConversa)
 
   // Memoizar para evitar que re-renders do BatePapo recriem o objeto e disparem o useEffect do modal
   const tarefaPreenchida = React.useMemo(() => {
@@ -2270,17 +2271,14 @@ export default function BatePapo() {
                   <CriarProximaAcaoBar
                     oportunidadeAtual={oportunidadeAtual}
                     onAdicionarFunil={() => setFunilModalOpen(true)}
-                    onCriarTarefa={() => {
-                      setConversaTarefa(conversaSelecionada);
-                      setCriarTarefaOpen(true);
-                    }}
+                    onCriarTarefa={() => novaAcaoRef.current?.()}
                   />
                 )}
                 {!isGrupo(conversaSelecionada) && (
                   <MicrotarefasConversa
                     tarefas={microtarefasPorConversa[conversaSelecionada.id] || []}
                     onCriar={criarMicrotarefa} onConcluir={concluirMicrotarefa} onAdiar={adiarMicrotarefa} onEditar={editarMicrotarefa}
-                    salvando={salvandoMicrotarefa} user={user} empresaId={empresaId} conversa={conversaSelecionada} />
+                    salvando={salvandoMicrotarefa} user={user} empresaId={empresaId} conversa={conversaSelecionada} novaAcaoRef={novaAcaoRef} />
                 )}
                 {dapiChamadaAtivaVisivel && (
                   <DapiCallBar

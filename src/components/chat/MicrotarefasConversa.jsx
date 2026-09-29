@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ClipboardList, Plus, Check, Clock, ChevronDown, ChevronUp, Loader2, Pencil, User, Users, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -29,7 +29,7 @@ const prazoTexto = (iso) => {
   return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + `, ${hora}`;
 };
 
-export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir, onAdiar, onEditar, salvando = false, user, empresaId, conversa }) {
+export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir, onAdiar, onEditar, salvando = false, user, empresaId, conversa, novaAcaoRef }) {
   const [aberto, setAberto] = useState(true);
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState(false);
@@ -53,6 +53,13 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
     setEditando(true);
     setModal(true);
   };
+
+  // A barra "Criar próxima ação" abre este mesmo formulário, mantendo um único ponto de criação
+  useEffect(() => {
+    if (!novaAcaoRef) return;
+    novaAcaoRef.current = () => abrirNova();
+    return () => { novaAcaoRef.current = null; };
+  }, [novaAcaoRef]);
 
   const tarefaPreenchida = useMemo(() => {
     if (!modal) return null;
@@ -113,9 +120,6 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
   if (!proxima) {
     return (
       <>
-        <button onClick={() => abrirNova()} className="mx-3 mt-2 mb-1 flex items-center justify-center gap-2 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100">
-          <Plus className="h-4 w-4" /> Criar próxima ação
-        </button>
         <TarefaFormModal
           open={modal}
           onOpenChange={(v) => { setModal(v); if (!v) setEditando(false); }}
