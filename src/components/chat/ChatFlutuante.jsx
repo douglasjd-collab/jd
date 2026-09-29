@@ -10,6 +10,7 @@ import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import AvatarContato from '@/components/chat/AvatarContato';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { formatarTelefoneBR } from '@/components/utils/formatarTelefone';
 
 /**
  * Chat flutuante e arrastável — reutiliza os mesmos componentes do BatePapo.
@@ -299,7 +300,7 @@ export default function ChatFlutuante({ empresaId, user, captureTargetRef, captu
             )}
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-sm leading-tight truncate">{nomeCabecalho}</p>
-              {conversaSelecionada && <p className="text-[10px] text-white/70 truncate">{conversaSelecionada.cliente_telefone}</p>}
+              {conversaSelecionada && <p className="text-xs text-white/80 truncate">{formatarTelefoneBR(conversaSelecionada.cliente_telefone)}</p>}
             </div>
             {conversaSelecionada && captureTargetRef && (
               <button

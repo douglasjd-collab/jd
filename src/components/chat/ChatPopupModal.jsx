@@ -8,6 +8,7 @@ import MensagemItem from '@/components/chat/MensagemItem';
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import AvatarContato from '@/components/chat/AvatarContato';
 import { toast } from 'sonner';
+import { formatarTelefoneBR } from '@/components/utils/formatarTelefone';
 
 export default function ChatPopupModal({ open, onOpenChange, contato, empresaId, user, criarSeNaoExistir = true }) {
   const queryClient = useQueryClient();
@@ -182,7 +183,7 @@ export default function ChatPopupModal({ open, onOpenChange, contato, empresaId,
           <AvatarContato contato={contato} className="w-10 h-10 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm leading-tight truncate">{contato?.nome || contato?.telefone}</p>
-            <p className="text-xs text-white/70 truncate">{contato?.telefone}</p>
+            <p className="text-[13px] text-white/80 truncate">{formatarTelefoneBR(contato?.telefone)}</p>
           </div>
           <div className="flex items-center gap-1">
             {conversa && (
