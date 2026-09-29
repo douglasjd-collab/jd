@@ -729,7 +729,7 @@ Deno.serve(async (req) => {
         // separadamente, mas não repetir o nome do arquivo que já acompanha o PDF.
         const normalizarNomeDocumento = (valor) => String(valor || '').trim().replace(/^📎\s*/, '').normalize('NFC');
         const textoEhSomenteNomeArquivo = tipoConteudoDapi === 'pdf' &&
-          normalizarNomeDocumento(textoEnviar) === normalizarNomeDocumento(arquivo?.nome || nomeUploadDapi);
+          normalizarNomeDocumento(textoEnviar) === normalizarNomeDocumento(arquivo?.nome);
         let textoFollowUpId = null;
         if (tipoConteudoDapi === 'pdf' && textoEnviar && !textoEhSomenteNomeArquivo) {
           try {
