@@ -55,28 +55,32 @@ export default function ComissoesRecebidas() {
       return;
     }
 
-    const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
-    if (colabs.length > 0) {
-      const colab = colabs[0];
-      setUser({ ...me, perfil: colab.perfil, empresa_id: colab.empresa_id });
+    const colabs = await base44.entities.Colaborador.filter({ user_id: me.id }, '-created_date');
+    const colab = colabs.find((c) => c.status === 'ativo') || colabs[0];
+    if (colab) {
+      setUser({ ...me, perfil: colab.perfil, empresa_id: colab.empresa_id, colaborador_id: colab.id });
     }
   };
 
+  // Perfis administrativos enxergam toda a empresa; parceiro/vendedor enxergam apenas os próprios recebimentos
+  const perfilUsuario = user?.perfil || (user?.role === 'admin' ? 'admin' : '');
+  const acessoTotal = ['master', 'super_admin', 'admin', 'gerente'].includes(perfilUsuario);
+
   const { data: recebimentos = [], isLoading } = useQuery({
-    queryKey: ['recebimentos-comissao-por-cliente'],
-    queryFn: () => base44.entities.RecebimentoComissao.filter({ status_recebimento: 'recebida' }),
+    queryKey: ['recebimentos-comissao-por-cliente', user?.empresa_id, user?.colaborador_id, acessoTotal],
+    queryFn: () => {
+      const filtro = { status_recebimento: 'recebida' };
+      if (user?.empresa_id) filtro.empresa_id = user.empresa_id;
+      if (!acessoTotal) filtro.vendedor_id = user.colaborador_id || user.id;
+      return base44.entities.RecebimentoComissao.filter(filtro, '-data_recebimento', 1000);
+    },
     enabled: !!user,
   });
-
-  const recebimentosPermitidos = useMemo(() => {
-    if (user?.perfil !== 'vendedor') return recebimentos;
-    return recebimentos.filter((item) => item.vendedor_id === user.id);
-  }, [recebimentos, user]);
 
   const clientes = useMemo(() => {
     const agrupados = {};
 
-    recebimentosPermitidos.forEach((recebimento) => {
+    recebimentos.forEach((recebimento) => {
       const nome = recebimento.cliente_nome?.trim() || 'Cliente não identificado';
       const chave = recebimento.cliente_id || nome.toLowerCase();
 
@@ -103,9 +107,9 @@ export default function ComissoesRecebidas() {
     return Object.values(agrupados)
       .filter((cliente) => !termo || cliente.nome.toLowerCase().includes(termo))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-  }, [recebimentosPermitidos, searchTerm]);
+  }, [recebimentos, searchTerm]);
 
-  const totalGeral = recebimentosPermitidos.reduce(
+  const totalGeral = recebimentos.reduce(
     (total, item) => total + (item.valor_recebido || 0),
     0
   );

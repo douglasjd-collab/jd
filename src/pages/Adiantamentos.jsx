@@ -62,19 +62,24 @@ export default function Adiantamentos() {
     if (me.role === 'super_admin') {
       setUser({ ...me, perfil: 'super_admin', empresa_id: null });
     } else {
-      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
-      if (colabs.length > 0) {
-        const c = colabs[0];
+      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id }, '-created_date');
+      const c = colabs.find((col) => col.status === 'ativo') || colabs[0];
+      if (c) {
         setUser({ ...me, perfil: c.perfil, empresa_id: c.empresa_id, colaborador_id: c.id });
       }
     }
   };
 
+  // Perfis administrativos enxergam toda a empresa; parceiro/vendedor enxergam apenas os próprios adiantamentos
+  const perfilUsuario = user?.perfil || (user?.role === 'admin' ? 'admin' : '');
+  const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(perfilUsuario);
+
   const { data: adiantamentos = [], isLoading } = useQuery({
-    queryKey: ['adiantamentos', user?.empresa_id],
+    queryKey: ['adiantamentos', user?.empresa_id, user?.colaborador_id, isAdmin],
     queryFn: () => {
       const filtro = {};
       if (user?.empresa_id) filtro.empresa_id = user.empresa_id;
+      if (!isAdmin) filtro.colaborador_id = user.colaborador_id || user.id;
       return base44.entities.Adiantamento.filter(filtro, '-data', 500);
     },
     enabled: !!user,
@@ -87,7 +92,7 @@ export default function Adiantamentos() {
       if (user?.empresa_id) f.empresa_id = user.empresa_id;
       return base44.entities.Colaborador.filter(f, 'nome', 200);
     },
-    enabled: !!user,
+    enabled: !!user && isAdmin,
   });
 
   const { data: parceiros = [] } = useQuery({
@@ -97,7 +102,7 @@ export default function Adiantamentos() {
       if (user?.empresa_id) f.empresa_id = user.empresa_id;
       return base44.entities.EmpresaParceira.filter(f, 'nome', 200);
     },
-    enabled: !!user,
+    enabled: !!user && isAdmin,
   });
 
   const filtered = adiantamentos.filter(a => {
@@ -196,8 +201,6 @@ export default function Adiantamentos() {
   };
 
   if (!user) return <div className="p-6 flex items-center gap-2 text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>;
-
-  const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(user.perfil);
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
