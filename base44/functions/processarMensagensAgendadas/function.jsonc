@@ -4,12 +4,12 @@
   "automations": [
     {
       "name": "Processarmensagensagendadas",
-      "description": "Automação antiga substituída pelo processador central otimizado.",
+      "description": "Envia mensagens agendadas vencidas a cada 5 minutos, inclusive após atrasos do agendador.",
       "type": "scheduled",
       "schedule_mode": "recurring",
       "schedule_type": "cron",
       "cron_expression": "*/5 * * * *",
-      "is_active": false
+      "is_active": true
     }
   ]
 }
