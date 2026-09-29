@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
@@ -6,19 +6,43 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PageHeader } from '@/components/ui/PageHeader';
-import { Search, DollarSign, FileText, Download, ChevronDown, ChevronUp, ChevronLeft } from 'lucide-react';
+import { Search, DollarSign, User, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import moment from 'moment';
-import { formatDateBR, safeParseDate } from '@/components/utils/dateHelpers';
+import { createPageUrl } from '@/utils';
+import { formatDateBR } from '@/components/utils/dateHelpers';
+
+const formatCurrency = (value) =>
+  (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const getProduto = (recebimento) =>
+  recebimento.grupo || recebimento.cota ? 'consorcio' : 'emprestimo';
+
+const getProdutoLabel = (produto) =>
+  produto === 'consorcio' ? 'Consórcio' : 'Empréstimo';
+
+const getContratoKey = (recebimento) => {
+  if (getProduto(recebimento) === 'consorcio') {
+    return `consorcio:${recebimento.grupo || ''}:${recebimento.cota || ''}`;
+  }
+  return `emprestimo:${recebimento.contrato || recebimento.venda_id || ''}`;
+};
+
+const getContratoLabel = (recebimento) => {
+  if (getProduto(recebimento) === 'consorcio') {
+    const grupoCota = [recebimento.grupo, recebimento.cota].filter(Boolean).join('/');
+    return grupoCota ? `Grupo/Cota ${grupoCota}` : 'Consórcio sem grupo/cota';
+  }
+  return recebimento.contrato
+    ? `Contrato/ADE ${recebimento.contrato}`
+    : 'Empréstimo sem contrato informado';
+};
 
 export default function ComissoesRecebidas() {
   const [user, setUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [mesFilter, setMesFilter] = useState('todos');
-  const [dataInicio, setDataInicio] = useState('');
-  const [dataFim, setDataFim] = useState('');
-  const [expandedDates, setExpandedDates] = useState({});
+  const [clienteAberto, setClienteAberto] = useState(null);
+  const [produtoFilter, setProdutoFilter] = useState('todos');
+  const [contratoFilter, setContratoFilter] = useState('todos');
 
   React.useEffect(() => {
     loadUser();
@@ -28,111 +52,68 @@ export default function ComissoesRecebidas() {
     const me = await base44.auth.me();
     if (me.role === 'super_admin') {
       setUser({ ...me, perfil: 'super_admin', empresa_id: null });
-    } else {
-      const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
-      if (colabs.length > 0) {
-        const colab = colabs[0];
-        setUser({ ...me, perfil: colab.perfil, empresa_id: colab.empresa_id });
-      }
+      return;
+    }
+
+    const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
+    if (colabs.length > 0) {
+      const colab = colabs[0];
+      setUser({ ...me, perfil: colab.perfil, empresa_id: colab.empresa_id });
     }
   };
 
   const { data: recebimentos = [], isLoading } = useQuery({
-    queryKey: ['recebimentos-comissao'],
-    queryFn: async () => {
-      return await base44.entities.RecebimentoComissao.filter({ status_recebimento: 'recebida' });
-    },
+    queryKey: ['recebimentos-comissao-por-cliente'],
+    queryFn: () => base44.entities.RecebimentoComissao.filter({ status_recebimento: 'recebida' }),
     enabled: !!user,
   });
 
-  // Esta tela usa exclusivamente os recebimentos gerados pela importação de comissões.
-  // O mesmo registro é exibido aqui e dentro da venda/proposta vinculada.
-  const todosRecebimentos = recebimentos.map(r => ({ ...r, tipo: 'comissao' }));
+  const recebimentosPermitidos = useMemo(() => {
+    if (user?.perfil !== 'vendedor') return recebimentos;
+    return recebimentos.filter((item) => item.vendedor_id === user.id);
+  }, [recebimentos, user]);
 
-  const filtered = todosRecebimentos.filter((r) => {
-    if (user?.perfil === 'vendedor' && r.tipo === 'comissao' && r.vendedor_id !== user?.id) {
-      return false;
-    }
+  const clientes = useMemo(() => {
+    const agrupados = {};
 
-    // Filtro por período personalizado tem prioridade
-    if (dataInicio || dataFim) {
-      if (r.data_recebimento) {
-        const dataRec = safeParseDate(r.data_recebimento);
-        if (!dataRec) return false;
-        const inicio = dataInicio ? safeParseDate(dataInicio) : null;
-        const fim = dataFim ? safeParseDate(dataFim) : null;
-        if (inicio && dataRec < inicio) return false;
-        if (fim && dataRec > fim) return false;
+    recebimentosPermitidos.forEach((recebimento) => {
+      const nome = recebimento.cliente_nome?.trim() || 'Cliente não identificado';
+      const chave = recebimento.cliente_id || nome.toLowerCase();
+
+      if (!agrupados[chave]) {
+        agrupados[chave] = {
+          chave,
+          cliente_id: recebimento.cliente_id,
+          nome,
+          recebimentos: [],
+          total: 0,
+          produtos: new Set(),
+          contratos: new Set(),
+        };
       }
-    } else if (mesFilter !== 'todos' && r.data_recebimento) {
-      const mes = moment(r.data_recebimento, 'YYYY-MM-DD', true).format('YYYY-MM');
-      if (mes !== mesFilter) return false;
-    }
 
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      return r.vendedor_nome?.toLowerCase().includes(term) ||
-             r.cliente_nome?.toLowerCase().includes(term) ||
-             r.contrato?.toLowerCase().includes(term) ||
-             r.grupo?.toLowerCase().includes(term) ||
-             r.cota?.toLowerCase().includes(term) ||
-             r.administradora_nome?.toLowerCase().includes(term);
-    }
-    return true;
-  });
+      agrupados[chave].recebimentos.push(recebimento);
+      agrupados[chave].total += recebimento.valor_recebido || 0;
+      agrupados[chave].produtos.add(getProduto(recebimento));
+      agrupados[chave].contratos.add(getContratoKey(recebimento));
+    });
 
-  // Agrupar por data
-  const grouped = filtered.reduce((acc, r) => {
-    const data = r.data_recebimento || 'sem-data';
-    if (!acc[data]) {
-      acc[data] = [];
-    }
-    acc[data].push(r);
-    return acc;
-  }, {});
+    const termo = searchTerm.trim().toLowerCase();
 
-  // Ordenar por data (mais recente primeiro)
-  const sortedDates = Object.keys(grouped).sort((a, b) => {
-    if (a === 'sem-data') return 1;
-    if (b === 'sem-data') return -1;
-    return new Date(b) - new Date(a);
-  });
+    return Object.values(agrupados)
+      .filter((cliente) => !termo || cliente.nome.toLowerCase().includes(termo))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  }, [recebimentosPermitidos, searchTerm]);
 
-  const totalRecebido = filtered.reduce((acc, r) => acc + (r.valor_recebido || 0), 0);
+  const totalGeral = recebimentosPermitidos.reduce(
+    (total, item) => total + (item.valor_recebido || 0),
+    0
+  );
 
-  const mesesDisponiveis = [...new Set(todosRecebimentos.map((r) => 
-    r.data_recebimento ? moment(r.data_recebimento, 'YYYY-MM-DD', true).format('YYYY-MM') : null
-  ).filter(Boolean))].sort().reverse();
-
-  const toggleDate = (data) => {
-    setExpandedDates(prev => ({ ...prev, [data]: !prev[data] }));
-  };
-
-  const gerarPdfRelatorio = async (data, itens) => {
-    try {
-      toast.info('Gerando PDF do relatório...');
-      
-      const resp = await base44.functions.invoke('gerarPdfComissaoRecebida', { 
-        data, 
-        itens
-      });
-
-      // Criar blob e fazer download
-      const blob = new Blob([resp.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `comissao-recebida-${data}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      toast.success('PDF gerado com sucesso!');
-    } catch (e) {
-      console.error(e);
-      toast.error('Erro ao gerar PDF');
-    }
+  const abrirCliente = (chave) => {
+    setClienteAberto((atual) => (atual === chave ? null : chave));
+    setProdutoFilter('todos');
+    setContratoFilter('todos');
   };
 
   if (!user) {
@@ -140,230 +121,238 @@ export default function ComissoesRecebidas() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between gap-4">
-        <PageHeader
-          title="Comissões Recebidas"
-          subtitle="Histórico atualizado automaticamente pelas importações de comissão"
-        />
-        <Button
-          onClick={() => window.history.back()}
-          className="gap-2 bg-slate-600 hover:bg-slate-700 text-white rounded-full px-5 h-10 font-semibold text-sm"
-        >
-          <ChevronLeft className="w-4 h-4" /> Voltar
-        </Button>
+    <div className="p-4 lg:p-6 max-w-7xl mx-auto">
+      <PageHeader
+        title="Comissões Recebidas"
+        subtitle="Busque um cliente e consulte todas as comissões recebidas em seus produtos e contratos"
+      />
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <Card className="p-5 sm:col-span-2">
+          <p className="text-sm text-slate-500">Total de comissões recebidas</p>
+          <p className="text-3xl font-bold text-green-600 mt-1">{formatCurrency(totalGeral)}</p>
+        </Card>
+        <Card className="p-5 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-slate-500">Clientes com recebimento</p>
+            <p className="text-3xl font-bold text-[#10353C] mt-1">{clientes.length}</p>
+          </div>
+          <DollarSign className="w-10 h-10 text-green-600" />
+        </Card>
       </div>
 
-      {/* Stats */}
-      <Card className="p-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-slate-500">Total Recebido (Período)</p>
-            <p className="text-3xl font-bold text-green-600">
-              {totalRecebido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-            </p>
-          </div>
-          <DollarSign className="w-12 h-12 text-green-600" />
-        </div>
-      </Card>
-
-      {/* Filters */}
       <Card className="p-4 mb-6">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input
-                placeholder="Buscar cliente, vendedor, contrato, grupo, cota ou banco..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={mesFilter} onValueChange={(val) => {
-              setMesFilter(val);
-              if (val !== 'todos') {
-                setDataInicio('');
-                setDataFim('');
-              }
-            }}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Mês" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todos">Todos os meses</SelectItem>
-                {mesesDisponiveis.map((mes) => (
-                  <SelectItem key={mes} value={mes}>
-                    {moment(mes).format('MMMM/YYYY')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="flex flex-col md:flex-row gap-4 items-end">
-            <div className="flex-1">
-              <label className="text-sm font-medium text-slate-700 block mb-2">
-                Período Personalizado
-              </label>
-              <div className="flex gap-2 items-center">
-                <Input
-                  type="date"
-                  value={dataInicio}
-                  onChange={(e) => {
-                    setDataInicio(e.target.value);
-                    if (e.target.value) setMesFilter('todos');
-                  }}
-                  placeholder="Data Início"
-                  className="flex-1"
-                />
-                <span className="text-slate-500">até</span>
-                <Input
-                  type="date"
-                  value={dataFim}
-                  onChange={(e) => {
-                    setDataFim(e.target.value);
-                    if (e.target.value) setMesFilter('todos');
-                  }}
-                  placeholder="Data Fim"
-                  className="flex-1"
-                />
-              </div>
-            </div>
-            {(dataInicio || dataFim) && (
-              <button
-                onClick={() => {
-                  setDataInicio('');
-                  setDataFim('');
-                }}
-                className="text-sm text-blue-600 hover:text-blue-700 underline whitespace-nowrap"
-              >
-                Limpar período
-              </button>
-            )}
-          </div>
+        <label className="text-sm font-semibold text-slate-700 block mb-2">
+          Buscar cliente
+        </label>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Digite o nome do cliente..."
+            value={searchTerm}
+            onChange={(event) => {
+              setSearchTerm(event.target.value);
+              setClienteAberto(null);
+              setProdutoFilter('todos');
+              setContratoFilter('todos');
+            }}
+            className="pl-10 h-11"
+          />
         </div>
       </Card>
 
-      {/* Relatórios Agrupados */}
       {isLoading ? (
-        <Card className="p-8">
-          <div className="text-center text-slate-500">Carregando...</div>
-        </Card>
-      ) : filtered.length === 0 ? (
-        <Card className="p-8">
-          <div className="text-center text-slate-500">Nenhuma comissão recebida encontrada</div>
+        <Card className="p-10 text-center text-slate-500">Carregando comissões...</Card>
+      ) : clientes.length === 0 ? (
+        <Card className="p-10 text-center text-slate-500">
+          Nenhum cliente com comissão recebida foi encontrado.
         </Card>
       ) : (
-        <div className="space-y-4">
-          {sortedDates.map((data) => {
-            const itens = grouped[data];
-            const totalData = itens.reduce((sum, i) => sum + (i.valor_recebido || 0), 0);
-            const totalAPagar = itens.reduce((sum, i) => sum + (i.valor_a_pagar || 0), 0);
-            const isExpanded = expandedDates[data];
+        <div className="space-y-3">
+          {clientes.map((cliente) => {
+            const aberto = clienteAberto === cliente.chave;
+            const contratosDisponiveis = [...new Map(
+              cliente.recebimentos
+                .filter((item) => produtoFilter === 'todos' || getProduto(item) === produtoFilter)
+                .map((item) => [getContratoKey(item), {
+                  chave: getContratoKey(item),
+                  label: getContratoLabel(item),
+                }])
+            ).values()];
+
+            const recebimentosFiltrados = cliente.recebimentos
+              .filter((item) => produtoFilter === 'todos' || getProduto(item) === produtoFilter)
+              .filter((item) => contratoFilter === 'todos' || getContratoKey(item) === contratoFilter)
+              .sort((a, b) =>
+                String(b.data_recebimento || '').localeCompare(String(a.data_recebimento || ''))
+              );
+
+            const totalFiltrado = recebimentosFiltrados.reduce(
+              (total, item) => total + (item.valor_recebido || 0),
+              0
+            );
 
             return (
-              <Card key={data} className="overflow-hidden">
-                {/* Header do Relatório */}
-                <div className="bg-[#10353C] text-white p-4 flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5" />
-                      <div>
-                        <h3 className="font-bold text-lg">
-                          {data === 'sem-data' ? 'Sem data de recebimento' : formatDateBR(data)}
-                        </h3>
-                        <div className="text-sm text-white/80 flex gap-4 mt-1">
-                          <span>{itens.length} recebimento{itens.length !== 1 ? 's' : ''}</span>
-                          <span>Total: {totalData.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                          <span>A Pagar: {totalAPagar.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                        </div>
+              <Card key={cliente.chave} className="overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => abrirCliente(cliente.chave)}
+                  className="w-full p-4 flex items-center justify-between gap-4 text-left hover:bg-slate-50 transition-colors"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-11 h-11 rounded-full bg-[#10353C]/10 text-[#10353C] flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-slate-900 truncate">{cliente.nome}</h3>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className="text-xs text-slate-500">
+                          {cliente.recebimentos.length} recebimento{cliente.recebimentos.length !== 1 ? 's' : ''}
+                        </span>
+                        {[...cliente.produtos].map((produto) => (
+                          <Badge key={produto} variant="secondary" className="text-xs">
+                            {getProdutoLabel(produto)}
+                          </Badge>
+                        ))}
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => gerarPdfRelatorio(data, itens)}
-                      className="bg-white text-[#10353C] hover:bg-slate-100"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      PDF
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => toggleDate(data)}
-                      className="text-white hover:bg-white/10"
-                    >
-                      {isExpanded ? (
-                        <ChevronUp className="w-5 h-5" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
 
-                {/* Tabela de Itens */}
-                {isExpanded && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-slate-50 border-b">
-                       <tr>
-                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Tipo</th>
-                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Cliente/Descrição</th>
-                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Vendedor</th>
-                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Grupo/Cota</th>
-                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Parcela</th>
-                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Valor Recebido</th>
-                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">% Com.</th>
-                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">A Pagar</th>
-                         <th className="text-left p-3 font-semibold text-slate-700 text-sm">Origem</th>
-                       </tr>
-                      </thead>
-                      <tbody>
-                        {itens.map((recebimento) => (
-                          <tr key={`${recebimento.tipo}-${recebimento.id}`} className="border-b hover:bg-slate-50">
-                            <td className="p-3 text-sm">
-                              <Badge variant={recebimento.tipo === 'receita' ? 'default' : 'secondary'} className="text-xs">
-                                {recebimento.tipo === 'receita' ? 'Receita' : 'Comissão'}
-                              </Badge>
-                            </td>
-                            <td className="p-3 text-sm">{recebimento.cliente_nome || '-'}</td>
-                            <td className="p-3 text-sm">{recebimento.vendedor_nome || '-'}</td>
-                            <td className="p-3 text-sm">
-                              {recebimento.grupo && recebimento.cota 
-                                ? `${recebimento.grupo}/${recebimento.cota}` 
-                                : recebimento.contrato || '-'}
-                            </td>
-                            <td className="p-3 text-sm">
-                              {recebimento.parcela_informada ? `${recebimento.parcela_informada}º` : '-'}
-                            </td>
-                            <td className="p-3 text-sm font-semibold text-green-600">
-                              {(recebimento.valor_recebido || 0).toLocaleString('pt-BR', { 
-                                style: 'currency', 
-                                currency: 'BRL' 
-                              })}
-                            </td>
-                            <td className="p-3 text-sm">
-                              {recebimento.percentual_comissao || 100}%
-                            </td>
-                            <td className="p-3 text-sm font-semibold text-blue-600">
-                              {(recebimento.valor_a_pagar || 0).toLocaleString('pt-BR', { 
-                                style: 'currency', 
-                                currency: 'BRL' 
-                              })}
-                            </td>
-                            <td className="p-3 text-sm">
-                              <Badge variant="outline" className="text-xs">
-                                {recebimento.administradora_nome || '-'}
-                              </Badge>
-                            </td>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500">Total recebido</p>
+                      <p className="font-bold text-green-700">{formatCurrency(cliente.total)}</p>
+                    </div>
+                    {aberto
+                      ? <ChevronUp className="w-5 h-5 text-slate-500" />
+                      : <ChevronDown className="w-5 h-5 text-slate-500" />}
+                  </div>
+                </button>
+
+                {aberto && (
+                  <div className="border-t bg-slate-50/60 p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 block mb-1.5">
+                          Produto
+                        </label>
+                        <Select
+                          value={produtoFilter}
+                          onValueChange={(value) => {
+                            setProdutoFilter(value);
+                            setContratoFilter('todos');
+                          }}
+                        >
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder="Todos os produtos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos os produtos</SelectItem>
+                            {cliente.produtos.has('consorcio') && (
+                              <SelectItem value="consorcio">Consórcio</SelectItem>
+                            )}
+                            {cliente.produtos.has('emprestimo') && (
+                              <SelectItem value="emprestimo">Empréstimo</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 block mb-1.5">
+                          Contrato ou grupo/cota
+                        </label>
+                        <Select value={contratoFilter} onValueChange={setContratoFilter}>
+                          <SelectTrigger className="bg-white">
+                            <SelectValue placeholder="Todos os contratos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos os contratos</SelectItem>
+                            {contratosDisponiveis.map((contrato) => (
+                              <SelectItem key={contrato.chave} value={contrato.chave}>
+                                {contrato.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 bg-white border rounded-lg p-3 mb-4">
+                      <div>
+                        <p className="text-xs text-slate-500">Total no filtro selecionado</p>
+                        <p className="font-bold text-xl text-green-700">{formatCurrency(totalFiltrado)}</p>
+                      </div>
+                      <Badge variant="outline">
+                        {recebimentosFiltrados.length} lançamento{recebimentosFiltrados.length !== 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+
+                    <div className="overflow-x-auto bg-white rounded-lg border">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-100 text-slate-600">
+                          <tr>
+                            <th className="text-left px-3 py-2.5 font-semibold">Produto</th>
+                            <th className="text-left px-3 py-2.5 font-semibold">Contrato / Grupo e Cota</th>
+                            <th className="text-left px-3 py-2.5 font-semibold">Banco / Administradora</th>
+                            <th className="text-left px-3 py-2.5 font-semibold">Parcela</th>
+                            <th className="text-left px-3 py-2.5 font-semibold">Recebido em</th>
+                            <th className="text-right px-3 py-2.5 font-semibold">Valor recebido</th>
+                            <th className="text-center px-3 py-2.5 font-semibold">Contrato</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {recebimentosFiltrados.map((recebimento) => {
+                            const produto = getProduto(recebimento);
+                            return (
+                              <tr key={recebimento.id} className="border-t hover:bg-slate-50">
+                                <td className="px-3 py-3">
+                                  <Badge variant="secondary">{getProdutoLabel(produto)}</Badge>
+                                </td>
+                                <td className="px-3 py-3 font-medium">
+                                  {getContratoLabel(recebimento)}
+                                </td>
+                                <td className="px-3 py-3">
+                                  {recebimento.administradora_nome || '-'}
+                                </td>
+                                <td className="px-3 py-3">
+                                  {recebimento.parcela_informada
+                                    ? `${recebimento.parcela_informada}ª`
+                                    : '-'}
+                                </td>
+                                <td className="px-3 py-3 whitespace-nowrap">
+                                  {formatDateBR(recebimento.data_recebimento)}
+                                </td>
+                                <td className="px-3 py-3 text-right font-bold text-green-700">
+                                  {formatCurrency(recebimento.valor_recebido)}
+                                </td>
+                                <td className="px-3 py-3 text-center">
+                                  {recebimento.venda_id ? (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="gap-1.5"
+                                      onClick={() => {
+                                        window.location.href = createPageUrl(
+                                          produto === 'consorcio'
+                                            ? `VendaDetalhes?id=${recebimento.venda_id}`
+                                            : `PropostaEmprestimoDetalhes?id=${recebimento.venda_id}`
+                                        );
+                                      }}
+                                    >
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                      Abrir
+                                    </Button>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </Card>
