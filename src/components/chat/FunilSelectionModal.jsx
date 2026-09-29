@@ -43,7 +43,8 @@ export default function FunilSelectionModal({
       setLoading(true);
       try {
         const etapasData = await base44.entities.EtapaFunil.filter({ empresa_id: empresaId });
-        setEtapas(etapasData);
+        // Mantém a mesma ordem sequencial exibida no Funil de Vendas
+        setEtapas([...(etapasData || [])].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0)));
 
         const funisUnicos = [...new Set(etapasData.map(e => e.produto))].filter(Boolean);
         setFunis(funisUnicos);
@@ -85,6 +86,11 @@ export default function FunilSelectionModal({
   const etapasDoFunil = funilSelecionado 
     ? etapas.filter(e => e.produto === funilSelecionado)
     : [];
+
+  // O contato pode vir do CRM (ContatoWhatsapp: nome/telefone) ou da própria
+  // conversa (ConversaWhatsapp: cliente_nome/cliente_telefone) — normaliza os dois.
+  const telefoneContato = contato?.telefone || contato?.cliente_telefone || '';
+  const nomeContato = contato?.nome || contato?.cliente_nome || telefoneContato || 'Lead';
 
   const handleSalvar = async () => {
     if (!funilSelecionado || !etapaSelecionada) {
@@ -138,10 +144,10 @@ export default function FunilSelectionModal({
       } else {
         await base44.entities.Oportunidade.create({
           empresa_id: empresaId,
-          titulo: contato?.nome || contato?.telefone || 'Lead',
-          cliente_id: contato?.id || '',
-          cliente_nome: contato?.nome || contato?.telefone || '',
-          cliente_telefone: contato?.telefone || '',
+          titulo: nomeContato,
+          cliente_id: contato?.cliente_id || contato?.id || '',
+          cliente_nome: nomeContato,
+          cliente_telefone: telefoneContato,
           etapa_id: etapaSelecionada,
           etapa_nome: etapaData?.nome || 'Desconhecida',
           vendedor_id: vIdFinal,
@@ -160,9 +166,10 @@ export default function FunilSelectionModal({
         toast.success('Contato lançado no funil com sucesso!');
       }
       
-      // Invalida queries para atualizar no FunilVendas
+      // Invalida queries para atualizar no FunilVendas e no filtro rápido do Bate-Papo
       queryClient.invalidateQueries({ queryKey: ['oportunidades'] });
       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp'] });
+      queryClient.invalidateQueries({ queryKey: ['oportunidades-funil-chat'] });
       
       onOpenChange(false);
       onSuccess?.();
@@ -184,7 +191,7 @@ export default function FunilSelectionModal({
 
         <div className="space-y-4 py-4">
           <div className="text-sm text-slate-600">
-            <strong>Contato:</strong> {contato?.nome || contato?.telefone}
+            <strong>Contato:</strong> {nomeContato}{telefoneContato ? ` — ${telefoneContato}` : ''}
           </div>
 
           {/* Seleção de Funil */}
