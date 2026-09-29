@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import * as fila from './filaEnvioStore';
+import { construirBolhaOtimista } from './bolhaOtimista';
 
 const QKEY_PREFIX = 'mensagens-whatsapp';
 
@@ -206,41 +207,8 @@ export function useFilaEnvio() {
     const tempId = fila.enqueue(envioInput);
 
     // Adiciona imediatamente a bolha otimista no cache, marcada com o tempId.
-    setMensagemCache(queryClient, envioInput.conversaId, (old) => {
-      const tipoConteudo = envioInput.tipo === 'texto' ? 'texto' : (
-        envioInput.tipo === 'sticker' ? 'sticker' :
-        envioInput.tipo === 'imagem' ? 'imagem' :
-        envioInput.tipo === 'audio' ? 'audio' :
-        envioInput.tipo === 'video' ? 'video' :
-        envioInput.tipo === 'pdf' ? 'pdf' : 'documento'
-      );
-      const textoExibicao = envioInput.texto || (envioInput.arquivo ? envioInput.arquivo.nome : '');
-      const novoItem = {
-        id: tempId,
-        conversa_id: envioInput.conversaId,
-        empresa_id: envioInput.empresaId,
-        remetente: 'vendedor',
-        usuario_id: null,
-        usuario_nome: envioInput.usuarioNome,
-        tipo_conteudo: tipoConteudo,
-        texto: textoExibicao,
-        arquivo_nome: envioInput.arquivo?.nome || null,
-        arquivo_url: envioInput.arquivo?.url || null,
-        data_envio: new Date().toISOString(),
-        status: 'pendente',
-        // campos transitórios (somente client-side) — não são salvos no banco
-        fila_envio_estado: 'preparando',
-        fila_envio_progresso: 0,
-        fila_envio_erro: null,
-        resposta_para_texto: envioInput.mensagemParaResponder?.texto || null,
-        resposta_para_nome: envioInput.mensagemParaResponder
-          ? (envioInput.mensagemParaResponder.remetente === 'vendedor'
-              ? (envioInput.mensagemParaResponder.usuario_nome || 'Você')
-              : (envioInput.conversa?.cliente_nome || 'Cliente'))
-          : null,
-      };
-      return [...old, novoItem];
-    });
+    const bolha = construirBolhaOtimista(fila.getEnvio(tempId));
+    setMensagemCache(queryClient, envioInput.conversaId, (old) => (bolha ? [...old, bolha] : old));
 
     return tempId;
   }, [queryClient]);
@@ -265,23 +233,8 @@ export function useFilaEnvio() {
           return copia;
         }
         // Recria bolha se foi removida
-        const tipoConteudo = envio.tipo === 'texto' ? 'texto' : envio.tipo;
-        const novoItem = {
-          id: tempId,
-          conversa_id: envio.conversaId,
-          empresa_id: envio.empresaId,
-          remetente: 'vendedor',
-          usuario_nome: envio.usuarioNome,
-          tipo_conteudo: tipoConteudo,
-          texto: envio.texto || (envio.arquivo?.nome || ''),
-          arquivo_nome: envio.arquivo?.nome || null,
-          data_envio: new Date().toISOString(),
-          status: 'pendente',
-          fila_envio_estado: 'preparando',
-          fila_envio_progresso: 0,
-          resposta_para_texto: envio.mensagemParaResponder?.texto || null,
-        };
-        return [...old, novoItem];
+        const bolha = construirBolhaOtimista(envio);
+        return bolha ? [...old, bolha] : old;
       });
     }
   }, [queryClient]);

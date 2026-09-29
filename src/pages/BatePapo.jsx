@@ -48,6 +48,7 @@ import {
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import { useFilaEnvio } from '@/components/chat/useFilaEnvio';
 import { temPendentesGlobal } from '@/components/chat/filaEnvioStore';
+import { bolhasPendentesNaLista } from '@/components/chat/bolhaOtimista';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageFooter from '@/components/chat/ChatMessageFooter';
 import ConversaContextMenu from '@/components/chat/ConversaContextMenu';
@@ -737,7 +738,11 @@ export default function BatePapo() {
       console.log(`🔍 [ETAPA 13] Query SEM filtros adicionais — apenas conversa_id=${conversaSelecionadaId}`);
       // Remover msgs temp_ do cache ao fazer o fetch real (evita duplicatas)
       const ordenadas = [...msgs].reverse();
-      return ordenadas;
+      // Recolar as bolhas que ainda estão saindo: elas existem apenas no cache
+      // local e, sem isso, cada recarga da lista (polling de 5s + subscription
+      // de novas mensagens) apagava a mensagem da tela — ela "sumia" no envio e
+      // só reaparecia como enviada quando o banco devolvia o registro real.
+      return [...ordenadas, ...bolhasPendentesNaLista(conversaSelecionadaId, ordenadas)];
     },
     staleTime: 0,
     refetchInterval: 5000,
