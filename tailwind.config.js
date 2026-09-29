@@ -77,11 +77,20 @@ module.exports = {
   				to: {
   					height: '0'
   				}
+  			},
+  			'envio-indeterminado': {
+  				'0%': {
+  					transform: 'translateX(-110%)'
+  				},
+  				'100%': {
+  					transform: 'translateX(260%)'
+  				}
   			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  			'envio-indeterminado': 'envio-indeterminado 1.2s ease-in-out infinite'
   		}
   	}
   },

@@ -104,31 +104,14 @@ Deno.serve(async (req) => {
       console.log('📦 empresaId obtido da conversa:', empresaId);
     }
 
-    if (empresaId) {
-      try {
-        empresa = await base44.asServiceRole.entities.Empresa.get(empresaId);
-      } catch (e) {
-        console.warn('⚠️ Erro ao buscar empresa:', e.message);
-      }
-      if (empresa) {
-        instanceName = empresa.evolution_instance_name;
-        evolutionApiKey = empresa.evolution_api_key;
-        evolutionApiUrl = empresa.evolution_url;
-        console.log('📦 Credenciais da empresa carregadas:', { instanceName, url: evolutionApiUrl });
-      } else {
-        console.warn('⚠️ Empresa não encontrada para id:', empresaId);
-      }
-    } else {
-      console.warn('⚠️ empresaId não disponível');
-    }
-
-    // Fallback para variáveis de ambiente APENAS se empresa não tiver config própria
-    if (!evolutionApiKey) evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
-    if (!evolutionApiUrl) evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
-    if (!instanceName) instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
-
-    console.log('🔧 URL Evolution final:', evolutionApiUrl);
-    console.log('🔧 Instance final:', instanceName);
+    // A empresa (credenciais Meta/Evolution) e a conexão D-API da conversa são
+    // consultas independentes: a leitura da empresa roda em paralelo com a busca
+    // da conexão logo abaixo, para o envio começar ~1 ida ao banco mais cedo.
+    const empresaPromise = empresaId
+      ? base44.asServiceRole.entities.Empresa.get(empresaId)
+          .catch((e) => { console.warn('⚠️ Erro ao buscar empresa:', e.message); return null; })
+      : null;
+    if (!empresaId) console.warn('⚠️ empresaId não disponível');
 
     const instanciaConversa = conversaDoBanco?.instancia || '';
     const tipoConexaoConversa = conversaDoBanco?.tipo_conexao || '';
@@ -176,6 +159,27 @@ Deno.serve(async (req) => {
         console.warn('⚠️ Erro ao buscar conexão D-API:', e.message);
       }
     }
+
+    // Resolve a empresa buscada em paralelo com a conexão acima, antes de qualquer
+    // uso das credenciais (Evolution, Instagram ou Meta).
+    if (empresaPromise) {
+      empresa = await empresaPromise;
+      if (empresa) {
+        instanceName = empresa.evolution_instance_name;
+        evolutionApiKey = empresa.evolution_api_key;
+        evolutionApiUrl = empresa.evolution_url;
+        console.log('📦 Credenciais da empresa carregadas:', { instanceName, url: evolutionApiUrl });
+      } else {
+        console.warn('⚠️ Empresa não encontrada para id:', empresaId);
+      }
+    }
+
+    // Fallback para variáveis de ambiente APENAS se empresa não tiver config própria
+    if (!evolutionApiKey) evolutionApiKey = Deno.env.get('EVOLUTION_API_KEY');
+    if (!evolutionApiUrl) evolutionApiUrl = Deno.env.get('EVOLUTION_API_URL');
+    if (!instanceName) instanceName = Deno.env.get('EVOLUTION_INSTANCE_NAME');
+    console.log('🔧 URL Evolution final:', evolutionApiUrl);
+    console.log('🔧 Instance final:', instanceName);
 
     // Se o canal da conversa é D-API mas nenhuma conexão casou, BLOQUEAR o envio
     // (não usar fallback automático — o usuário precisa escolher a API manualmente).

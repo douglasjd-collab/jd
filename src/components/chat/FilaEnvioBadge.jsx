@@ -46,19 +46,28 @@ export default function FilaEnvioBadge({ mensagem, onReenviarEnvio, onCancelarEn
   // Em progresso (preparando/carregando/na_fila/enviando)
   const emProgresso = ['preparando', 'carregando', 'na_fila', 'enviando'].includes(estado);
   if (emProgresso) {
+    // 'enviando' = mensagem já entregue ao servidor, aguardando o WhatsApp/D-API
+    // confirmar (leva de 1s a 9s). Não existe progresso real para medir nesse
+    // trecho: um número parado ("85%") dava a impressão de envio travado, então
+    // aqui a barra fica indeterminada (animada) até a confirmação chegar.
+    const aguardandoServidor = estado === 'enviando';
     return (
       <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-700">
         <Loader2 className="w-3 h-3 animate-spin flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-0.5">
             <span className="truncate font-medium">{ESTADO_LABEL[estado]}</span>
-            {progresso > 0 && progresso < 100 && <span className="text-slate-500">{progresso}%</span>}
+            {!aguardandoServidor && progresso > 0 && progresso < 100 && <span className="text-slate-500">{progresso}%</span>}
           </div>
           <div className="h-1.5 w-full bg-slate-200/70 rounded-full overflow-hidden">
-            <div
-              className="h-1.5 rounded-full bg-emerald-500 transition-all duration-300"
-              style={{ width: `${Math.max(6, progresso)}%` }}
-            />
+            {aguardandoServidor ? (
+              <div className="h-1.5 w-2/5 rounded-full bg-emerald-500 animate-envio-indeterminado" />
+            ) : (
+              <div
+                className="h-1.5 rounded-full bg-emerald-500 transition-all duration-300"
+                style={{ width: `${Math.max(6, progresso)}%` }}
+              />
+            )}
           </div>
         </div>
         {/* Botão de cancelar durante upload/envio */}
