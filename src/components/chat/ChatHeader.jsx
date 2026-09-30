@@ -155,15 +155,32 @@ _Cashback sujeito às regras da campanha._`;
         await onEnviarMensagemFinalizacao(mensagemFinalizacao.trim());
       }
 
+      const finalizadoEm = new Date().toISOString();
+      const finalizadoPorId = user?.colaborador_id || user?.id || '';
+      const finalizadoPorNome = user?.nome_perfil || user?.full_name || user?.email || '';
+
       await base44.entities.ConversaWhatsapp.update(conversaId, {
         status: 'encerrada',
         responsavel_id: null,
         responsavel_nome: null,
+        atendimento_prioritario: false,
+        prioritario_removido_por_id: finalizadoPorId,
+        prioritario_removido_por_nome: finalizadoPorNome,
+        prioritario_removido_em: finalizadoEm,
       });
 
       queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
         old.map(c => c.id === conversaId
-          ? { ...c, status: 'encerrada', responsavel_id: null, responsavel_nome: null }
+          ? {
+              ...c,
+              status: 'encerrada',
+              responsavel_id: null,
+              responsavel_nome: null,
+              atendimento_prioritario: false,
+              prioritario_removido_por_id: finalizadoPorId,
+              prioritario_removido_por_nome: finalizadoPorNome,
+              prioritario_removido_em: finalizadoEm,
+            }
           : c)
       );
       setFinalizarModalOpen(false);
