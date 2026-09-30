@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 import { enviarDapiDireto } from '../../shared/dapiEnvioShared.ts';
+import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.ts';
 
 Deno.serve(async (req) => {
   console.log('='.repeat(80));
@@ -102,6 +103,15 @@ Deno.serve(async (req) => {
     if (!empresaId && conversaDoBanco?.empresa_id) {
       empresaId = conversaDoBanco.empresa_id;
       console.log('📦 empresaId obtido da conversa:', empresaId);
+    }
+
+    // ── Reabertura automática ────────────────────────────────────────────────
+    // Mensagem enviada pelo CRM para uma conversa Finalizada reabre a MESMA conversa
+    // (histórico, responsável e canal preservados, sem duplicar registro e sem
+    // devolver a estrela de prioridade removida na finalização).
+    const camposReaberturaConversa = novaMensagemDeveReabrir(conversaDoBanco) ? { status: 'ativa' } : {};
+    if (camposReaberturaConversa.status) {
+      console.log('🔓 Conversa finalizada será reaberta pelo envio do CRM:', conversa_id);
     }
 
     // A empresa (credenciais Meta/Evolution) e a conexão D-API da conversa são
@@ -309,6 +319,7 @@ Deno.serve(async (req) => {
       });
 
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+        ...camposReaberturaConversa,
         ultima_mensagem: mensagem_texto.trim().substring(0, 100),
         data_ultima_mensagem: new Date().toISOString(),
         ultimo_remetente: 'vendedor',
@@ -737,6 +748,7 @@ Deno.serve(async (req) => {
         await Promise.all([
           // Atualiza a conversa em paralelo (última mensagem da lista de conversas)
           base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+            ...camposReaberturaConversa,
             ultima_mensagem: (textoEnviar || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
             data_ultima_mensagem: new Date().toISOString(),
             ultimo_remetente: 'vendedor',
@@ -1206,6 +1218,7 @@ Deno.serve(async (req) => {
       // Atualizar última mensagem da conversa mantendo o tipo_conexao correto
       // CRÍTICO: não alterar tipo_conexao aqui — ele só deve mudar via ação manual do usuário
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+        ...camposReaberturaConversa,
         ultima_mensagem: (mensagem_texto || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
         data_ultima_mensagem: new Date().toISOString(),
         ultimo_remetente: 'vendedor',

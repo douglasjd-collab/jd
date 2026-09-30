@@ -860,7 +860,16 @@ export default function BatePapo() {
   useEffect(() => {
     if (!empresaId) return;
     const unsubConv = base44.entities.ConversaWhatsapp.subscribe((event) => {
-      if (['create', 'update'].includes(event.type)) refetchConversasComDebounce();
+      if (!['create', 'update'].includes(event.type)) return;
+      // Aplica a mudança na lista na hora — ex: conversa finalizada que reabre
+      // automaticamente ao receber/enviar mensagem nova (sai de "Finalizados"
+      // e entra em "Todos"/"Em Atend." sem precisar recarregar a página).
+      const conv = event.data;
+      if (conv?.id) {
+        queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
+          Array.isArray(old) ? old.map((c) => (c.id === conv.id ? { ...c, ...conv } : c)) : old);
+      }
+      refetchConversasComDebounce();
     });
     const unsubTarefa = base44.entities.Tarefa.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ['microtarefas-chat', empresaId] });

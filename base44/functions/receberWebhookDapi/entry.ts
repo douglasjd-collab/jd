@@ -1,5 +1,6 @@
 import { createClient } from 'npm:@base44/sdk@0.8.31';
 import { processReactionDapi } from '../../shared/reactionDapiShared.ts';
+import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.ts';
 
 /**
  * Webhook D-API - Recebe eventos de conexão em tempo real
@@ -673,12 +674,20 @@ async function processarMensagemEnviadaPeloCelular(base44, connection, data, tel
       status: 'enviada'
     });
 
-    // Responder pelo WhatsApp normal (celular) também move o cliente para "Em atendimento"
+    // Responder pelo WhatsApp normal (celular) também move o cliente para "Em atendimento".
+    // Se a conversa estava Finalizada, a mensagem NOVA a reabre no mesmo registro
+    // (histórico, responsável e canal preservados). Mensagem antiga de sincronização
+    // de histórico não reabre.
+    const reabrirPorMensagemNova = novaMensagemDeveReabrir(conversa, timestamp);
+    if (reabrirPorMensagemNova) {
+      console.log(`🔓 Conversa finalizada ${conversa.id} reaberta por mensagem enviada pelo celular`);
+    }
     const expiraAtendimento = conversa.responsavel_expira_em
       && new Date(conversa.responsavel_expira_em) > new Date()
       ? conversa.responsavel_expira_em
       : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     await base44.entities.ConversaWhatsapp.update(conversa.id, {
+      ...(reabrirPorMensagemNova ? { status: 'ativa' } : {}),
       ultima_mensagem: String(texto).substring(0, 200),
       data_ultima_mensagem: timestamp,
       ultimo_remetente: 'vendedor',
