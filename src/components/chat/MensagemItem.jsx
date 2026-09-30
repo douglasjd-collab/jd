@@ -3,6 +3,8 @@ import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, More
 import VideoMensagem from './VideoMensagem';
 import FilaEnvioBadge from './FilaEnvioBadge';
 import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
+import { resolverTipoConteudo } from './tipoMidiaMensagem';
+import { baixarArquivo } from './baixarArquivo';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
@@ -60,6 +62,13 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
   const [contatoExtraido, setContatoExtraido] = useState(null);
   const [statusAtual, setStatusAtual] = useState(mensagem.status);
   const audioRef = React.useRef(null);
+  const baixandoRef = useRef(false);
+
+  // Tipo real do arquivo (áudio/imagem/vídeo/pdf), resolvido por MIME/extensão.
+  // Um tipo_conteudo incorreto salvo pelo webhook não pode levar um áudio para o
+  // visualizador de PDF: o navegador não exibe o arquivo no iframe e o baixa
+  // automaticamente para a pasta Downloads a cada abertura da conversa.
+  const tipoConteudo = resolverTipoConteudo(mensagem);
 
   // Sincronizar statusAtual com a prop mensagem.status para re-render imediato
   useEffect(() => {
@@ -247,7 +256,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
   // Auto-carregar mídia ao montar
   useEffect(() => {
     const tiposMidia = ['audio', 'imagem', 'video'];
-    if (!tiposMidia.includes(mensagem.tipo_conteudo)) return;
+    if (!tiposMidia.includes(tipoConteudo)) return;
     if (mensagem.id?.startsWith('temp_')) return;
     if (isPacoteFigurinha(mensagem.arquivo_url)) return; // pacote de figurinhas (.was) nunca é exibível
 
@@ -256,7 +265,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
     // a duração e pode expirar. Só considerar pronto quando for permanente.
     const urlRecebida = mensagem.arquivo_url || '';
     const urlPermanente = urlRecebida.includes('base44') || urlRecebida.includes('supabase') || urlRecebida.includes('amazonaws');
-    if (isUrlValida(urlRecebida, mensagem.download_status) && mensagem.arquivo_url !== urlFalhouRef.current && (mensagem.tipo_conteudo !== 'audio' || urlPermanente)) {
+    if (isUrlValida(urlRecebida, mensagem.download_status) && mensagem.arquivo_url !== urlFalhouRef.current && (tipoConteudo !== 'audio' || urlPermanente)) {
       setMediaUrl(sanitizeUrl(urlRecebida));
       return;
     }
@@ -361,7 +370,9 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
 
   // Download: garante URL permanente via backend antes de baixar
   const handleDownload = async (url, nomeArquivo) => {
-    if (!url) return;
+    if (!url || baixandoRef.current) return;
+    baixandoRef.current = true;
+    setTimeout(() => { baixandoRef.current = false; }, 2000);
     
     let urlFinal = sanitizeUrl(url);
     
@@ -384,8 +395,9 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
       }
     }
     
-    // Abrir em nova aba (funciona para qualquer domínio)
-    window.open(urlFinal, '_blank');
+    // Salva o arquivo uma única vez, com o nome correto (sem abrir abas).
+    const baixou = await baixarArquivo(urlFinal, nomeArquivo || mensagem.arquivo_nome);
+    if (!baixou) toast.error('Não foi possível baixar o arquivo.');
   };
 
   const handleTranscrever = async () => {
@@ -618,7 +630,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
       }
     }
 
-    switch (mensagem.tipo_conteudo) {
+    switch (tipoConteudo) {
       case 'texto': {
         return (
           <div className="flex flex-col gap-1">
@@ -820,7 +832,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
       case 'documento': {
         const urlDoc = mediaUrl;
         const nomeDoc = mensagem.arquivo_nome || 'Documento PDF';
-        const isPdf = mensagem.tipo_conteudo === 'pdf'
+        const isPdf = tipoConteudo === 'pdf'
           || nomeDoc.toLowerCase().endsWith('.pdf')
           || mensagem.mime_type === 'application/pdf'
           || (urlDoc || '').toLowerCase().includes('.pdf');
@@ -935,7 +947,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
     }
   };
 
-  const isSticker = mensagem.tipo_conteudo === 'imagem' && (
+  const isSticker = tipoConteudo === 'imagem' && (
     mensagem.arquivo_nome?.toLowerCase().includes('sticker') ||
     mensagem.texto === 'Sticker' ||
     (!mensagem.texto && mensagem.arquivo_url && !mensagem.arquivo_nome)
@@ -956,10 +968,10 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
   };
   const textoVazio = textoIsPadraoMidia(mensagem.texto);
   const isContatoMsg = !!(mensagem.texto && (mensagem.texto.includes('contactMessage') || mensagem.texto.includes('BEGIN:VCARD')));
-  const isImagemLimpa = mensagem.tipo_conteudo === 'imagem' && textoVazio && !isContatoMsg;
+  const isImagemLimpa = tipoConteudo === 'imagem' && textoVazio && !isContatoMsg;
 
   // Atalho "Encaminhar" exibido ao lado do balão — somente para Imagem e PDF/Documento (não texto/áudio/vídeo)
-  const mostrarAtalhoEncaminhar = !modoSelecao && ['imagem', 'pdf', 'documento'].includes(mensagem.tipo_conteudo);
+  const mostrarAtalhoEncaminhar = !modoSelecao && ['imagem', 'pdf', 'documento'].includes(tipoConteudo);
   const atalhoEncaminhar = mostrarAtalhoEncaminhar ? (
     <button
       type="button"
@@ -1259,14 +1271,14 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                Editar mensagem
              </DropdownMenuItem>
            )}
-           {mensagem.tipo_conteudo === 'imagem' && mediaUrl && (
+           {tipoConteudo === 'imagem' && mediaUrl && (
              <DropdownMenuItem onClick={() => onEditarReenviar?.(mediaUrl)}>
                <FileText className="w-4 h-4 mr-2" />
                Editar e reenviar
              </DropdownMenuItem>
            )}
            <DropdownMenuItem onClick={() => {
-             const texto = mensagem.texto || `[${mensagem.tipo_conteudo}]`;
+             const texto = mensagem.texto || `[${tipoConteudo}]`;
              navigator.clipboard.writeText(texto);
              toast.success('Copiado!');
            }}>
@@ -1277,10 +1289,10 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
              <Pin className="w-4 h-4 mr-2" />
              Fixar
            </DropdownMenuItem>
-           {(mensagem.tipo_conteudo === 'audio' || mensagem.tipo_conteudo === 'imagem' || mensagem.tipo_conteudo === 'pdf' || mensagem.tipo_conteudo === 'documento' || mensagem.tipo_conteudo === 'video') && mediaUrl && (
+           {(tipoConteudo === 'audio' || tipoConteudo === 'imagem' || tipoConteudo === 'pdf' || tipoConteudo === 'documento' || tipoConteudo === 'video') && mediaUrl && (
              <DropdownMenuItem onClick={() => {
-               const ext = mensagem.tipo_conteudo === 'audio' ? 'mp3' : mensagem.tipo_conteudo === 'imagem' ? 'jpg' : mensagem.tipo_conteudo === 'video' ? 'mp4' : 'pdf';
-               handleDownload(mediaUrl, mensagem.arquivo_nome || `${mensagem.tipo_conteudo}_${mensagem.id}.${ext}`);
+               const ext = tipoConteudo === 'audio' ? 'mp3' : tipoConteudo === 'imagem' ? 'jpg' : tipoConteudo === 'video' ? 'mp4' : 'pdf';
+               handleDownload(mediaUrl, mensagem.arquivo_nome || `${tipoConteudo}_${mensagem.id}.${ext}`);
              }}>
                <Download className="w-4 h-4 mr-2" />
                Baixar arquivo

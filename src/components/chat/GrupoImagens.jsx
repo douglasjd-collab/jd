@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Download, X, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
+import { baixarArquivo } from './baixarArquivo';
 
 const CELL_SIZE = 160; // px por célula
 const GAP = 3;
@@ -241,7 +242,7 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
             <X style={{ width: 24, height: 24, color: '#fff' }} />
           </button>
           <button
-            onClick={e => { e.stopPropagation(); window.open(imagemAberta, '_blank'); }}
+            onClick={e => { e.stopPropagation(); baixarArquivo(imagemAberta); }}
             style={{ position: 'absolute', top: 16, right: 64, background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', padding: 8, cursor: 'pointer' }}
           >
             <Download style={{ width: 24, height: 24, color: '#fff' }} />

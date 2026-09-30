@@ -3,6 +3,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, ChevronLeft, ChevronRight, Download, MapPin, ZoomIn, ZoomOut, Forward } from 'lucide-react';
 import { formatarDataHora, ehImagem, ehVideo } from './helpers';
+import { baixarArquivo } from '../baixarArquivo';
 
 const AVATARES_REMETENTE = {
   cliente: '🧑',
@@ -61,11 +62,14 @@ export default function VisualizadorMidia({ midias, indiceInicial, onFechar, onL
                 </Button>
               </>
             )}
-            <a href={midia.arquivo_url} download={midia.arquivo_nome || 'midia'} target="_blank" rel="noreferrer">
-              <Button size="sm" variant="ghost" className="text-white hover:bg-white/10 gap-1">
-                <Download className="h-4 w-4" /> Baixar
-              </Button>
-            </a>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-white hover:bg-white/10 gap-1"
+              onClick={() => baixarArquivo(midia.arquivo_url, midia.arquivo_nome || 'midia')}
+            >
+              <Download className="h-4 w-4" /> Baixar
+            </Button>
             <Button size="sm" variant="ghost" className="text-white hover:bg-white/10 gap-1" onClick={() => { onEncaminhar?.(midia); onFechar(); }}>
               <Forward className="h-4 w-4" /> Encaminhar
             </Button>
@@ -97,7 +101,13 @@ export default function VisualizadorMidia({ midias, indiceInicial, onFechar, onL
           ) : (
             <div className="text-white text-center p-6">
               <p className="text-sm">Formato não suportado para visualização.</p>
-              <a href={midia.arquivo_url} download className="text-blue-300 underline mt-2 inline-block">Baixar arquivo</a>
+              <button
+                type="button"
+                onClick={() => baixarArquivo(midia.arquivo_url, midia.arquivo_nome || 'arquivo')}
+                className="text-blue-300 underline mt-2 inline-block"
+              >
+                Baixar arquivo
+              </button>
             </div>
           )}
 

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Loader2, MapPin, FileText, Download, Eye } from 'lucide-react';
 import { useGaleriaMensagens } from './useGaleriaMensagens';
 import { formatarDataHora, formatarBytes, iconeArquivo, ehPdf } from './helpers';
+import { baixarArquivo } from '../baixarArquivo';
 
 /**
  * Aba "Documentos" — PDF/DOC/XLS/CSV/TXT/ZIP. PDFs abrem em visualizador inline.
@@ -67,9 +68,9 @@ export default function AbaDocumentos({ conversaId, filtros, onLocalizarMensagem
                     <Eye className="h-4 w-4 text-slate-600" />
                   </button>
                 )}
-                <a href={m.arquivo_url} download={nomeExibicao} target="_blank" rel="noreferrer" className="h-8 w-8 rounded-md hover:bg-slate-100 flex items-center justify-center" title="Baixar">
+                <button onClick={() => baixarArquivo(m.arquivo_url, nomeExibicao)} className="h-8 w-8 rounded-md hover:bg-slate-100 flex items-center justify-center" title="Baixar">
                   <Download className="h-4 w-4 text-slate-600" />
-                </a>
+                </button>
                 <button onClick={() => onLocalizarMensagem?.(m.id)} className="h-8 w-8 rounded-md hover:bg-slate-100 flex items-center justify-center" title="Localizar na conversa">
                   <MapPin className="h-4 w-4 text-slate-600" />
                 </button>

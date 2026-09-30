@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, MapPin, Play, Pause, Loader2 } from 'lucide-react';
 import { formatarDataHora } from './helpers';
+import { baixarArquivo } from '../baixarArquivo';
 
 const VELOCIDADES = [1, 1.5, 2];
 
@@ -105,11 +106,15 @@ export default function ItemAudio({ mensagem, onLocalizarMensagem }) {
           {velocidade}x
         </button>
 
-        <a href={mensagem.arquivo_url} download={mensagem.arquivo_nome || 'audio.mp3'} target="_blank" rel="noreferrer" className="shrink-0">
-          <Button size="icon" variant="ghost" className="h-8 w-8" title="Baixar áudio">
-            <Download className="h-4 w-4 text-slate-600" />
-          </Button>
-        </a>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 shrink-0"
+          title="Baixar áudio"
+          onClick={() => baixarArquivo(mensagem.arquivo_url, mensagem.arquivo_nome || 'audio.ogg')}
+        >
+          <Download className="h-4 w-4 text-slate-600" />
+        </Button>
 
         <Button
           size="icon"

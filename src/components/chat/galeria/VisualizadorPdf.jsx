@@ -3,6 +3,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { X, Download, MapPin, Forward } from 'lucide-react';
 import { formatarDataHora, iconeArquivo, formatarBytes } from './helpers';
+import { baixarArquivo } from '../baixarArquivo';
 
 /**
  * Visualizador inline de PDF dentro do CRM, sem forçar download.
@@ -24,11 +25,14 @@ export default function VisualizadorPdf({ mensagem, onFechar, onLocalizarMensage
             <span className="text-white/60 hidden sm:inline">· {formatarBytes(mensagem.arquivo_tamanho)}</span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <a href={mensagem.arquivo_url} download={nomeExibicao} target="_blank" rel="noreferrer">
-              <Button size="sm" variant="ghost" className="text-white hover:bg-white/10 gap-1">
-                <Download className="h-4 w-4" /> Baixar
-              </Button>
-            </a>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-white hover:bg-white/10 gap-1"
+              onClick={() => baixarArquivo(mensagem.arquivo_url, nomeExibicao)}
+            >
+              <Download className="h-4 w-4" /> Baixar
+            </Button>
             <Button size="sm" variant="ghost" className="text-white hover:bg-white/10 gap-1" onClick={() => { onEncaminhar?.(mensagem); onFechar(); }}>
               <Forward className="h-4 w-4" /> Encaminhar
             </Button>
