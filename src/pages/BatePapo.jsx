@@ -269,7 +269,7 @@ export default function BatePapo() {
     }
   };
   const [searchConversas, setSearchConversas] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('ativa');
+  const [filtroStatus, setFiltroStatus] = useState('todas');
   const [filtroPrioridade, setFiltroPrioridade] = useState('todos'); // 'todos' | 'prioritarios'
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
   const [contatosWhatsapp, setContatosWhatsapp] = useState({});
