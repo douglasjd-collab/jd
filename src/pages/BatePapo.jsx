@@ -1639,16 +1639,13 @@ export default function BatePapo() {
       return false;
     })
     .sort((a, b) => {
-      // 1) Prioritárias primeiro (em Todas e Em Atendimento);
-      // 2) dentro de cada grupo, mais recente primeiro.
+      // A prioridade é exibida apenas pelo filtro da estrela; não fixa conversas no topo.
+      // Na lista normal, manter a ordem por mensagem mais recente.
       if (filtroStatus === 'microtarefas') {
         const ta = microtarefasPorConversa[a.id]?.[0]?.vencimento_em || '9999';
         const tb = microtarefasPorConversa[b.id]?.[0]?.vencimento_em || '9999';
         return new Date(ta) - new Date(tb);
       }
-      const ordemPrioritaria = (c) => (['todas', 'ativa'].includes(filtroStatus) && c.atendimento_prioritario) ? 1 : 0;
-      const pa = ordemPrioritaria(b) - ordemPrioritaria(a);
-      if (pa !== 0) return pa;
       return new Date(b.data_ultima_mensagem || 0) - new Date(a.data_ultima_mensagem || 0);
     });
 
