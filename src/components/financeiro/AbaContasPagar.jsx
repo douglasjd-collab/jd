@@ -28,7 +28,9 @@ export default function AbaContasPagar({ despesas, refetchAll }) {
   };
 
   const lista = useMemo(() => despesas.map(d => ({...d, _status: getStatus(d)})).filter(d => {
-    if (filterStatus !== 'todos' && d._status !== filterStatus) return false;
+    if (filterStatus === 'pendente') {
+      if (!['pendente', 'atrasado'].includes(d._status)) return false;
+    } else if (filterStatus !== 'todos' && d._status !== filterStatus) return false;
     if (search) return (d.descricao||'').toLowerCase().includes(search.toLowerCase()) || (d.categoria||'').toLowerCase().includes(search.toLowerCase());
     return true;
   }).sort((a,b) => {
@@ -77,7 +79,7 @@ export default function AbaContasPagar({ despesas, refetchAll }) {
             <SelectTrigger className="w-40"><SelectValue/></SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="pendente">Pendente</SelectItem>
+              <SelectItem value="pendente">Pendentes (inclui atrasadas)</SelectItem>
               <SelectItem value="atrasado">Atrasado</SelectItem>
               <SelectItem value="pago">Pago</SelectItem>
               <SelectItem value="cancelado">Cancelado</SelectItem>
