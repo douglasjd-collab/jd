@@ -15,7 +15,7 @@ const BRL = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}
 
 export default function AbaContasPagar({ despesas, refetchAll }) {
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('pendente');
+  const [filterStatus, setFilterStatus] = useState('todos');
   const [pagandoModal, setPagandoModal] = useState(null);
   const hoje = moment().format('YYYY-MM-DD');
 
@@ -37,13 +37,14 @@ export default function AbaContasPagar({ despesas, refetchAll }) {
     return va.localeCompare(vb);
   }), [despesas, filterStatus, search, hoje]);
 
-  const totalPagar = useMemo(() => despesas.filter(d => !['pago','paga'].includes(d.status)).reduce((s,d) => s+(d.valor||0),0), [despesas]);
+  const totalPagar = useMemo(() => despesas.filter(d => ['pendente', 'atrasado'].includes(getStatus(d))).reduce((s,d) => s+(d.valor||0),0), [despesas]);
   const totalAtrasado = useMemo(() => despesas.filter(d => getStatus(d) === 'atrasado').reduce((s,d) => s+(d.valor||0),0), [despesas]);
   const totalPago = useMemo(() => despesas.filter(d => ['pago','paga'].includes(d.status)).reduce((s,d) => s+(d.valor||0),0), [despesas]);
 
   const updateDespesa = useMutation({
     mutationFn: ({id,data}) => base44.entities.Despesa.update(id, data),
     onSuccess: () => { refetchAll(); setPagandoModal(null); toast.success('Pagamento registrado!'); },
+    onError: (error) => toast.error('Não foi possível registrar o pagamento: ' + (error?.message || 'Tente novamente.')),
   });
 
   const statusColors = { pago: 'bg-green-100 text-green-700', paga: 'bg-green-100 text-green-700', pendente: 'bg-yellow-100 text-yellow-700', atrasado: 'bg-red-100 text-red-700', cancelado: 'bg-slate-100 text-slate-500' };
@@ -151,7 +152,7 @@ export default function AbaContasPagar({ despesas, refetchAll }) {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setPagandoModal(null)}>Cancelar</Button>
-            <Button className="bg-green-600 hover:bg-green-700" onClick={() => updateDespesa.mutate({ id: pagandoModal.despesa.id, data: { status: 'pago', data_pagamento: pagandoModal.dataPagamento }})}>
+            <Button className="bg-green-600 hover:bg-green-700" disabled={updateDespesa.isPending || !pagandoModal?.dataPagamento} onClick={() => updateDespesa.mutate({ id: pagandoModal.despesa.id, data: { status: 'pago', data_pagamento: pagandoModal.dataPagamento }})}>
               <CheckCircle className="w-4 h-4 mr-1"/>Confirmar
             </Button>
           </DialogFooter>
