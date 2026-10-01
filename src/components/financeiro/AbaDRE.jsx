@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { FileDown } from 'lucide-react';
+import { toast } from 'sonner';
+import { gerarPdfDRE } from './pdfDRE';
 import moment from 'moment';
 import 'moment/locale/pt-br';
 moment.locale('pt-br');
@@ -78,6 +81,29 @@ export default function AbaDRE({ despesas, receitas, comissoes, lotesComissaoCon
     return Object.entries(map).sort((a,b) => b[1]-a[1]);
     }, [despesas, periodo, filterFilial]);
 
+  const nomeFilial = filterFilial === 'todas'
+    ? 'Consolidado (Grupo)'
+    : (filiais.find(f => f.id === filterFilial)?.nome || 'Filial');
+
+  const handleGerarPdf = () => {
+    try {
+      const doc = gerarPdfDRE({
+        periodo,
+        filialNome: nomeFilial,
+        linhas,
+        despesasPorCategoria,
+        receitasBrutas,
+        despesasOperacionais,
+      });
+      const sufixo = filterFilial === 'todas' ? '' : `_${nomeFilial.replace(/[^\w]+/g, '-')}`;
+      doc.save(`DRE_${periodo}${sufixo}.pdf`);
+      toast.success('DRE gerada em PDF.');
+    } catch (e) {
+      console.error('Erro ao gerar PDF do DRE:', e);
+      toast.error('Não foi possível gerar o PDF do DRE.');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
@@ -97,6 +123,13 @@ export default function AbaDRE({ despesas, receitas, comissoes, lotesComissaoCon
             </SelectContent>
           </Select>
         )}
+        <button
+          onClick={handleGerarPdf}
+          className="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-medium transition-colors ml-auto"
+        >
+          <FileDown className="w-4 h-4" />
+          Gerar PDF
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
