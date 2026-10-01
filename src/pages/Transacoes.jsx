@@ -156,8 +156,8 @@ export default function Transacoes() {
         <TabsList className="flex flex-wrap h-auto gap-1 mb-6 bg-slate-100 p-1 rounded-xl">
           <TabsTrigger value="dashboard" className="rounded-lg text-xs sm:text-sm">📊 Dashboard</TabsTrigger>
           <TabsTrigger value="transacoes" className="rounded-lg text-xs sm:text-sm">💳 Transações</TabsTrigger>
-          <TabsTrigger value="receber" className="rounded-lg text-xs sm:text-sm">📥 A Receber</TabsTrigger>
-          <TabsTrigger value="pagar" className="rounded-lg text-xs sm:text-sm">📤 A Pagar</TabsTrigger>
+          <TabsTrigger value="receber" className="rounded-lg text-xs sm:text-sm">📥 Contas a Receber</TabsTrigger>
+          <TabsTrigger value="pagar" className="rounded-lg text-xs sm:text-sm">📤 Contas a Pagar</TabsTrigger>
           <TabsTrigger value="comissoes" className="rounded-lg text-xs sm:text-sm">💰 Comissões</TabsTrigger>
           <TabsTrigger value="dre" className="rounded-lg text-xs sm:text-sm">📋 DRE</TabsTrigger>
           <TabsTrigger value="conciliacao" className="rounded-lg text-xs sm:text-sm">🔗 Conciliação</TabsTrigger>
