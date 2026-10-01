@@ -62,7 +62,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
     responsavel_nome: '',
     comprovante_url: '',
     observacao: '',
-    foiPaga: true,
+    foiPaga: false,
     despesaFixa: false,
     repetir: false,
     repeticoes: 2,
@@ -179,9 +179,10 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Despesa.create(data),
+    onError: (error) => toast.error('Não foi possível salvar a despesa: ' + (error?.message || 'Tente novamente.')),
     onSuccess: () => {
-      queryClient.invalidateQueries(['despesas']);
-      queryClient.invalidateQueries(['despesas-transacoes']);
+      queryClient.invalidateQueries({ queryKey: ['despesas'] });
+      queryClient.invalidateQueries({ queryKey: ['despesas-transacoes'] });
       toast.success('Despesa lançada com sucesso!');
       onOpenChange(false);
       resetForm();
@@ -191,9 +192,10 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Despesa.update(id, data),
+    onError: (error) => toast.error('Não foi possível atualizar a despesa: ' + (error?.message || 'Tente novamente.')),
     onSuccess: () => {
-      queryClient.invalidateQueries(['despesas']);
-      queryClient.invalidateQueries(['despesas-transacoes']);
+      queryClient.invalidateQueries({ queryKey: ['despesas'] });
+      queryClient.invalidateQueries({ queryKey: ['despesas-transacoes'] });
       toast.success('Despesa atualizada com sucesso!');
       onOpenChange(false);
       resetForm();
@@ -216,7 +218,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
       responsavel_nome: '',
       comprovante_url: '',
       observacao: '',
-      foiPaga: true,
+      foiPaga: false,
       despesaFixa: false,
       repetir: false,
       repeticoes: 2,
@@ -346,8 +348,8 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
       for (const d of todas) {
         await base44.entities.Despesa.create(d);
       }
-      queryClient.invalidateQueries(['despesas']);
-      queryClient.invalidateQueries(['despesas-transacoes']);
+      queryClient.invalidateQueries({ queryKey: ['despesas'] });
+      queryClient.invalidateQueries({ queryKey: ['despesas-transacoes'] });
       toast.success(`${todas.length} despesa(s) lançadas com sucesso!`);
       onOpenChange(false);
       resetForm();
