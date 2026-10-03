@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Search, X, Minimize2, ChevronLeft, Camera } from 'lucide-react';
 import MensagemItem from '@/components/chat/MensagemItem';
+import { filtrarMensagensVisiveis } from '@/components/chat/mensagensVisiveis';
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import AvatarContato from '@/components/chat/AvatarContato';
 import { toast } from 'sonner';
@@ -388,7 +389,7 @@ export default function ChatFlutuante({ empresaId, user, captureTargetRef, captu
                     </div>
                   ) : (
                     <div className="space-y-1 pb-2">
-                      {mensagens.map(msg => (
+                      {filtrarMensagensVisiveis(mensagens).map(msg => (
                         <MensagemItem key={msg.id} mensagem={msg} conversaId={conversaId} />
                       ))}
                     </div>

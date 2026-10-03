@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { isSameDay, isToday, isYesterday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import MensagemItem from './MensagemItem';
+import { filtrarMensagensVisiveis } from './mensagensVisiveis';
 import GrupoImagens from './GrupoImagens';
 import { X, Forward } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -50,7 +51,8 @@ function agruparMensagens(mensagens) {
 }
 
 export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar, onSelecionarOpcaoLista, modoSelecao = false, idsSelecionados = new Set(), onToggleSelecao = null, onEncaminhar = null, onCancelarSelecao = null, onConfirmarSelecao = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null }) {
-  const grupos = modoSelecao ? mensagens.map(msg => ({ type: 'mensagem', msg })) : agruparMensagens(mensagens);
+  const visiveis = filtrarMensagensVisiveis(mensagens);
+  const grupos = modoSelecao ? visiveis.map(msg => ({ type: 'mensagem', msg })) : agruparMensagens(visiveis);
 
   return (
     <div className="space-y-3 pb-4">

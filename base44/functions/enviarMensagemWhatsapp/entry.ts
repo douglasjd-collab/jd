@@ -778,6 +778,9 @@ Deno.serve(async (req) => {
                 atendente_nome: nomeAtendente,
                 tipo_conteudo: 'texto',
                 texto: textoEnviar,
+                // A legenda já acompanha o balão do PDF — este registro existe apenas
+                // para o histórico/anti-duplicidade e não vira um segundo balão no chat.
+                mensagem_tecnica: true,
                 provider: 'dapi',
                 download_status: 'nao_aplicavel',
                 whatsapp_message_id: textoFollowUpId,

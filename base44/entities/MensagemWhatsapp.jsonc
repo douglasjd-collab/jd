@@ -205,6 +205,11 @@
       "type": "string",
       "format": "date-time",
       "description": "Data da conclus\u00e3o da an\u00e1lise de \u00e1udio pela IA"
+    },
+    "mensagem_tecnica": {
+      "type": "boolean",
+      "default": false,
+      "description": "Mensagem auxiliar enviada em conjunto com um arquivo (a legenda do PDF, que a D-API n\u00e3o aceita no envio do documento). Fica registrada no hist\u00f3rico mas n\u00e3o \u00e9 exibida como bal\u00e3o pr\u00f3prio no chat \u2014 o texto j\u00e1 aparece dentro do bal\u00e3o do arquivo."
     }
   },
   "required": [

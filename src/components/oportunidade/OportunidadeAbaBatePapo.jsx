@@ -7,6 +7,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import MensagemItem from '@/components/chat/MensagemItem';
+import { filtrarMensagensVisiveis } from '@/components/chat/mensagensVisiveis';
 import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import AgendarMensagemModal from '@/components/chat/AgendarMensagemModal';
 import AgendarReuniaoModal from '@/components/chat/AgendarReuniaoModal';
@@ -217,7 +218,7 @@ export default function OportunidadeAbaBatePapo({ oportunidade, currentUser }) {
                 <div className="flex items-center justify-center h-32">
                   <div className="bg-white rounded-xl px-4 py-2 text-xs text-slate-500 shadow-sm">Nenhuma mensagem ainda</div>
                 </div>
-              ) : mensagens.map(msg => (
+              ) : filtrarMensagensVisiveis(mensagens).map(msg => (
                 <MensagemItem key={msg.id} mensagem={msg} conversaId={conversaId} />
               ))}
             </div>
