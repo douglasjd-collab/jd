@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useBuscaClienteComissoesPagas } from '@/hooks/useBuscaClienteComissoesPagas';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip, FileSpreadsheet, FileText, ExternalLink, Trash2, ArrowUpCircle } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip, FileSpreadsheet, FileText, ExternalLink, Trash2, ArrowUpCircle, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -371,7 +372,7 @@ function ModalAnexarComprovante({ lote, onClose, onConfirm, loading }) {
   );
 }
 
-function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar, mostrarQuitacao, isMaster, onAnexarComprovante, podeQuitar, onExcluir }) {
+function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprogramar, mostrarQuitacao, isMaster, onAnexarComprovante, podeQuitar, onExcluir, headerExtra }) {
   const total = lotes.reduce((acc, l) => ({
     valor: acc.valor + (l._valor || 0),
     acrescimos: acc.acrescimos + (l.acrescimos || 0),
@@ -381,8 +382,11 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-slate-700">{titulo}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-base font-semibold text-slate-700">{titulo}</h2>
+          {headerExtra}
+        </div>
         {lotes.length > 0 && (
           <div className="flex gap-2">
             <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7" onClick={() => exportarCSV(titulo, lotes, colunas, mostrarQuitacao)}>
@@ -502,7 +506,17 @@ export default function Saques() {
   const [lancandoFinanceiro, setLancandoFinanceiro] = useState(false);
   // Mês de referência (padrão: mês atual) — alterável mês a mês
   const [mesFiltro, setMesFiltro] = useState(() => format(new Date(), 'yyyy-MM'));
+  // Busca única no relatório pago: nome do cliente, CPF ou contrato
+  const [busca, setBusca] = useState('');
+  const [buscaDebounced, setBuscaDebounced] = useState('');
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const timer = setTimeout(() => setBuscaDebounced(busca.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [busca]);
+
+  const buscaAtiva = buscaDebounced.length >= 2;
 
   useEffect(() => { loadUser(); }, []);
 
@@ -823,6 +837,25 @@ export default function Saques() {
   const programados = todos.filter(l => l.status !== 'quitado');
   const quitados = todos.filter(l => l.status === 'quitado');
 
+  // Busca o cliente dentro do relatório pago (nome, CPF ou contrato)
+  const { empLoteIds, consLoteIds, legadoKeys, buscando } = useBuscaClienteComissoesPagas({
+    ativo: buscaAtiva,
+    termo: buscaDebounced,
+    lotesEmp: lotesEmpNorm,
+    lotesConsorcio,
+    propostasLegado,
+  });
+
+  const loteCombinaBusca = (l) => {
+    if (l._tipo === 'emp') return empLoteIds.has(l.id);
+    if (l._tipo === 'consorcio') return consLoteIds.has(l.id);
+    if (l.isLegado) return legadoKeys.has(l.id);
+    return false;
+  };
+
+  const programadosFiltrados = !buscaAtiva ? programados : programados.filter(loteCombinaBusca);
+  const quitadosFiltrados = !buscaAtiva ? quitados : quitados.filter(loteCombinaBusca);
+
   const totalProgramado = programados.reduce((a, l) => a + l._total, 0);
   const totalQuitado = quitados.reduce((a, l) => a + l._total, 0);
 
@@ -860,6 +893,26 @@ export default function Saques() {
           <p className="text-sm text-slate-500 mt-0.5">Histórico de comissões programadas e quitadas</p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <Input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar cliente, CPF ou contrato"
+              className="h-9 w-64 pl-8 pr-8 text-sm"
+            />
+            {busca && (
+              <button
+                type="button"
+                onClick={() => setBusca('')}
+                title="Limpar busca"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+          {buscando && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
           <Label htmlFor="mes-comissoes" className="text-xs text-slate-500 whitespace-nowrap">Mês:</Label>
           <Input
             id="mes-comissoes"
@@ -925,9 +978,10 @@ export default function Saques() {
         <div className="space-y-8">
           <TabelaLotes
             titulo="Comissões Programadas"
-            lotes={programados}
+            lotes={programadosFiltrados}
             colunas={colunasProgr}
-            emptyMsg="Nenhuma comissão programada"
+            headerExtra={buscaAtiva ? <span className="text-xs font-normal text-slate-500">{programadosFiltrados.length} encontrada(s)</span> : null}
+            emptyMsg={buscaAtiva ? 'Nenhuma comissão programada encontrada para esta busca' : 'Nenhuma comissão programada'}
             cor="bg-slate-700"
             onQuitar={setLoteParaQuitar}
             mostrarQuitacao={false}
@@ -955,9 +1009,10 @@ export default function Saques() {
           )}
           <TabelaLotes
             titulo="Comissões Quitadas"
-            lotes={quitados}
+            lotes={quitadosFiltrados}
             colunas={colunasQuit}
-            emptyMsg="Nenhuma comissão quitada"
+            headerExtra={buscaAtiva ? <span className="text-xs font-normal text-slate-500">{quitadosFiltrados.length} encontrada(s)</span> : null}
+            emptyMsg={buscaAtiva ? 'Nenhuma comissão paga encontrada para esta busca' : 'Nenhuma comissão quitada'}
             cor="bg-slate-700"
             onQuitar={() => {}}
             onReprogramar={isMaster ? setLoteParaReprogramar : undefined}
