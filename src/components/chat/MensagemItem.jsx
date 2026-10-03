@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Forward, Copy, Pin, Pencil, Check, ArrowUpRight } from 'lucide-react';
+import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Forward, Copy, Pin, Pencil, Check, ArrowUpRight, Smile } from 'lucide-react';
 import VideoMensagem from './VideoMensagem';
 import FilaEnvioBadge from './FilaEnvioBadge';
+import ReacaoRapidaBar from './ReacaoRapidaBar';
 import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
 import { resolverTipoConteudo } from './tipoMidiaMensagem';
 import { baixarArquivo } from './baixarArquivo';
@@ -14,7 +15,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export default function MensagemItem({ mensagem, conversaId, conversa = null, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null, modoSelecao = false, selecionada = false, onToggleSelecao = null, onEncaminhar = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null }) {
+export default function MensagemItem({ mensagem, conversaId, conversa = null, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null, modoSelecao = false, selecionada = false, onToggleSelecao = null, onEncaminhar = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null, onReagir = null }) {
   // Corrige URLs com espaços não codificados (ex: pastas "CRM JD"), que quebram <img>/<audio>/<video>
   const sanitizeUrl = (url) => (typeof url === 'string' ? url.replace(/ /g, '%20') : url);
 
@@ -58,6 +59,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
   const [imagemAberta, setImagemAberta] = useState(false);
   const [deletando, setDeletando] = useState(false);
   const [velocidadeAudio, setVelocidadeAudio] = useState(1);
+  const [barReacaoFixa, setBarReacaoFixa] = useState(false);
   const [contatoModalAberto, setContatoModalAberto] = useState(false);
   const [contatoExtraido, setContatoExtraido] = useState(null);
   const [statusAtual, setStatusAtual] = useState(mensagem.status);
@@ -1106,8 +1108,19 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
         data-msg-whatsapp-id={mensagem.whatsapp_message_id || undefined}
         data-msg-id={mensagem.id || undefined}
         data-msg-message-id={mensagem.message_id || mensagem.media_id || undefined}
-        className={`flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-lg transition-shadow`}
+        className={`relative flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-lg transition-shadow hover:z-20`}
       >
+      {/* Barra de reações rápidas (aparece ao passar o mouse, como no WhatsApp) */}
+      {onReagir && !modoSelecao && (
+        <div className={`absolute -top-9 z-30 transition-opacity duration-150 ${barReacaoFixa ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} ${isVendedor ? 'right-10' : 'left-11'}`}>
+          <ReacaoRapidaBar
+            onReagir={(emoji) => {
+              setBarReacaoFixa(false);
+              onReagir(mensagem, emoji);
+            }}
+          />
+        </div>
+      )}
       {modoSelecao && (
         <button
           type="button"
@@ -1265,6 +1278,12 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
              <Share2 className="w-4 h-4 mr-2" />
              Encaminhar
            </DropdownMenuItem>
+           {onReagir && (
+             <DropdownMenuItem onClick={() => setBarReacaoFixa(true)}>
+               <Smile className="w-4 h-4 mr-2" />
+               Reagir
+             </DropdownMenuItem>
+           )}
            {isVendedor && mensagem.tipo_conteudo === 'texto' && onEditar && !mensagem.id?.startsWith('temp_') && (
              <DropdownMenuItem onClick={() => onEditar(mensagem)}>
                <Pencil className="w-4 h-4 mr-2" />

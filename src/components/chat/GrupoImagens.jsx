@@ -3,11 +3,12 @@ import { Download, X, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
 import { baixarArquivo } from './baixarArquivo';
+import ReacaoRapidaBar from './ReacaoRapidaBar';
 
 const CELL_SIZE = 160; // px por célula
 const GAP = 3;
 
-export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
+export default function GrupoImagens({ mensagens, conversaId, isVendedor, onReagir = null }) {
   const isUrlValida = (url) => {
     if (!url) return false;
     if (url.endsWith('.enc') || url.includes('.enc?')) return false;
@@ -218,7 +219,13 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
           100% { background-position: 200% 0; }
         }
       `}</style>
-      <div style={{ display: 'flex', justifyContent: isVendedor ? 'flex-end' : 'flex-start', marginBottom: 2 }}>
+      <div className="group relative flex" style={{ justifyContent: isVendedor ? 'flex-end' : 'flex-start', marginBottom: ultima.reaction ? 16 : 2 }}>
+        {/* Barra de reações rápidas (aparece ao passar o mouse, como no WhatsApp) */}
+        {onReagir && (
+          <div className={`absolute -top-9 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-150 ${isVendedor ? 'right-0' : 'left-0'}`}>
+            <ReacaoRapidaBar onReagir={(emoji) => onReagir(ultima, emoji)} />
+          </div>
+        )}
         <div style={{
           borderRadius: BR,
           overflow: 'hidden',
@@ -227,6 +234,15 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor }) {
         }}>
           {grid}
         </div>
+        {ultima.reaction && (
+          <span
+            className={`absolute -bottom-4 ${isVendedor ? 'right-1' : 'left-1'} min-w-7 h-6 px-1.5 inline-flex items-center justify-center rounded-full border border-slate-200 bg-white text-base leading-none shadow-sm z-10`}
+            title="Reação"
+            aria-label={`Reação: ${ultima.reaction}`}
+          >
+            {ultima.reaction}
+          </span>
+        )}
       </div>
 
       {/* Lightbox */}
