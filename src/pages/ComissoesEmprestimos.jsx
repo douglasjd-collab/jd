@@ -1120,6 +1120,7 @@ export default function ComissoesEmprestimos() {
                           <th className="p-3 text-left font-semibold">Tipo</th>
                           <th className="p-3 text-left font-semibold">Banco</th>
                           <th className="p-3 text-left font-semibold">Data Lib.</th>
+                          <th className="p-3 text-right font-semibold">Prazo</th>
                           <th className="p-3 text-right font-semibold">Vl. Base Comissão</th>
                           <th className="p-3 text-right font-semibold">Vl. Líquido</th>
                           <th className="p-3 text-right font-semibold">Vl. Parcela</th>
@@ -1149,6 +1150,9 @@ export default function ComissoesEmprestimos() {
                               {p.emprestimo_data_liberacao
                                 ? moment(p.emprestimo_data_liberacao).format('DD/MM/YYYY')
                                 : p.data_venda ? moment(p.data_venda).format('DD/MM/YYYY') : '-'}
+                            </td>
+                            <td className="p-3 text-right text-slate-600 text-xs font-semibold">
+                              {p.emprestimo_prazo ? `${p.emprestimo_prazo}x` : '-'}
                             </td>
                             <td className="p-3 text-right font-medium">
                               {p.comissao_banco_base_comissao

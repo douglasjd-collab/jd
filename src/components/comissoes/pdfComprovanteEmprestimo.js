@@ -118,7 +118,7 @@ export function gerarPdfComprovanteEmprestimo(opts) {
   const tableStartY = 47;
   doc.autoTable({
     startY: tableStartY,
-    head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. Pago']],
+    head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Prazo', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. Pago']],
     body: itens.map(p => {
       const perc = getPercentualVendedor(p);
       const base = getBaseComissao(p);
@@ -130,6 +130,7 @@ export function gerarPdfComprovanteEmprestimo(opts) {
         getTipoLabel(p.emprestimo_tipo),
         p.administradora_nome || '-',
         p.emprestimo_data_liberacao ? moment(p.emprestimo_data_liberacao).format('DD/MM/YYYY') : '-',
+        p.emprestimo_prazo ? `${p.emprestimo_prazo}x` : '-',
         fmt(p.valor_credito),
         p.valor_liquido ? fmt(p.valor_liquido) : '-',
         p.emprestimo_valor_parcela ? fmt(p.emprestimo_valor_parcela) : '-',
@@ -145,7 +146,8 @@ export function gerarPdfComprovanteEmprestimo(opts) {
       7: { halign: 'right' },
       8: { halign: 'right' },
       9: { halign: 'right' },
-      10: { halign: 'right', textColor: [0, 100, 180], fontStyle: 'bold' },
+      10: { halign: 'right' },
+      11: { halign: 'right', textColor: [0, 100, 180], fontStyle: 'bold' },
     },
     margin: { left: 10, right: 10, top: 47, bottom: 22 },
     repeatTableHeader: true,

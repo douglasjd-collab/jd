@@ -204,10 +204,32 @@ Deno.serve(async (req) => {
             valor_credito: p.valor_credito || 0,
             valor_liquido: p.valor_liquido || null,
             valor_parcela: p.emprestimo_valor_parcela || null,
+            emprestimo_prazo: p.emprestimo_prazo || null,
             percentual_vendedor_pago: p.percentual_comissao_vendedor || 0,
             valor_vendedor_pago: p.valor_comissao_vendedor_pago || p.valor_comissao || 0,
           }));
       }
+
+      // Prazo do contrato: não faz parte do snapshot do item, vem da Proposta vinculada
+      let prazoPorPropostaId = {};
+      let prazoPorContrato = {};
+      const prazoPropostaIds = [...new Set(loteItens.map(i => i.proposta_id).filter(Boolean))];
+      if (prazoPropostaIds.length > 0) {
+        try {
+          const propostasPrazo = await base44.asServiceRole.entities.Proposta.filter(
+            { id: { $in: prazoPropostaIds } }, null, 500
+          );
+          propostasPrazo.forEach(p => {
+            if (!p.emprestimo_prazo) return;
+            prazoPorPropostaId[p.id] = p.emprestimo_prazo;
+            if (p.contrato) prazoPorContrato[String(p.contrato)] = p.emprestimo_prazo;
+          });
+        } catch (e) {
+          console.error('Falha ao buscar o prazo dos contratos do lote', e?.message);
+        }
+      }
+      const prazoDoItem = (item) =>
+        item.emprestimo_prazo || prazoPorPropostaId[item.proposta_id] || prazoPorContrato[String(item.contrato || '')] || null;
 
       // Buscar adiantamentos descontados neste lote
       let adiantamentosDesc = [];
@@ -280,26 +302,31 @@ Deno.serve(async (req) => {
       // ===== TABELA PRINCIPAL =====
       doc.autoTable({
         startY: 47,
-        head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Vl. Bruto', 'Vl. Liquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
-        body: loteItens.map(item => [
-          item.cliente_nome || '-',
-          item.cliente_cpf || '-',
-          item.contrato || '-',
-          getTipoLabel(item.emprestimo_tipo),
-          item.banco || '-',
-          fmtDate(item.data_liberacao),
-          fmt(item.valor_credito),
-          item.valor_liquido ? fmt(item.valor_liquido) : '-',
-          item.valor_parcela ? fmt(item.valor_parcela) : '-',
-          `${Number(item.percentual_vendedor_pago || 0).toFixed(2)}%`,
-          fmt(item.valor_vendedor_pago),
-        ]),
+        head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Prazo', 'Vl. Bruto', 'Vl. Liquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
+        body: loteItens.map(item => {
+          const prazo = prazoDoItem(item);
+          return [
+            item.cliente_nome || '-',
+            item.cliente_cpf || '-',
+            item.contrato || '-',
+            getTipoLabel(item.emprestimo_tipo),
+            item.banco || '-',
+            fmtDate(item.data_liberacao),
+            prazo ? `${prazo}x` : '-',
+            fmt(item.valor_credito),
+            item.valor_liquido ? fmt(item.valor_liquido) : '-',
+            item.valor_parcela ? fmt(item.valor_parcela) : '-',
+            `${Number(item.percentual_vendedor_pago || 0).toFixed(2)}%`,
+            fmt(item.valor_vendedor_pago),
+          ];
+        }),
         styles: { fontSize: 7, cellPadding: 2 },
         headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         columnStyles: {
           6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' },
-          9: { halign: 'right' }, 10: { halign: 'right', textColor: [0, 100, 180], fontStyle: 'bold' }
+          9: { halign: 'right' }, 10: { halign: 'right' },
+          11: { halign: 'right', textColor: [0, 100, 180], fontStyle: 'bold' }
         },
         margin: { left: 10, right: 10 },
       });
