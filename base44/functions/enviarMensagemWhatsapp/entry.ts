@@ -756,45 +756,11 @@ Deno.serve(async (req) => {
           logPromise,
         ]);
         
-        // A D-API não suporta legenda em documentos. Enviar texto adicional
-        // separadamente, mas não repetir o nome do arquivo que já acompanha o PDF.
-        const normalizarNomeDocumento = (valor) => String(valor || '').trim().replace(/^📎\s*/, '').normalize('NFC');
-        const textoEhSomenteNomeArquivo = tipoConteudoDapi === 'pdf' &&
-          normalizarNomeDocumento(textoEnviar) === normalizarNomeDocumento(arquivo?.nome);
-        let textoFollowUpId = null;
-        if (tipoConteudoDapi === 'pdf' && textoEnviar && !textoEhSomenteNomeArquivo) {
-          try {
-            console.log('📝 D-API documento sem caption — enviando texto como follow-up:', textoEnviar.substring(0, 50));
-            const followUpResult = await enviarDapiDireto(conexaoDapi, 'sendText', numeroDapi, textoEnviar, {});
-            if (followUpResult?.success) {
-              textoFollowUpId = followUpResult?.data?.data?.messageId || followUpResult?.data?.messageId || `dapi_txt_${Date.now()}`;
-              // Salvar a mensagem de texto separada no banco
-              await base44.asServiceRole.entities.MensagemWhatsapp.create({
-                conversa_id: conversa_id,
-                empresa_id: empresaId,
-                remetente: 'vendedor',
-                usuario_id: user.id,
-                usuario_nome: nomeAtendente,
-                atendente_nome: nomeAtendente,
-                tipo_conteudo: 'texto',
-                texto: textoEnviar,
-                // A legenda já acompanha o balão do PDF — este registro existe apenas
-                // para o histórico/anti-duplicidade e não vira um segundo balão no chat.
-                mensagem_tecnica: true,
-                provider: 'dapi',
-                download_status: 'nao_aplicavel',
-                whatsapp_message_id: textoFollowUpId,
-                data_envio: new Date().toISOString(),
-                status: 'enviada'
-              });
-              console.log('✅ Texto follow-up enviado após documento:', textoFollowUpId);
-            } else {
-              console.warn('⚠️ Falha ao enviar texto follow-up após documento:', followUpResult?.error);
-            }
-          } catch (followUpErr) {
-            console.warn('⚠️ Erro ao enviar texto follow-up após documento:', followUpErr.message);
-          }
-        }
+        // A D-API anexa a legenda ao próprio documento: a mensagem do arquivo chega
+        // no WhatsApp com o texto junto do PDF (confirmado no histórico da API, que
+        // registra o texto na própria mensagem do documento). Por isso NÃO se envia
+        // mais um segundo balão de texto — era ele que duplicava a mensagem no
+        // WhatsApp do cliente (documento + texto repetido logo abaixo).
         
         console.log('✅ Mensagem D-API salva:', novaMensagem.id);
         
