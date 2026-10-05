@@ -443,9 +443,32 @@ Deno.serve(async (req) => {
             const base64Img = btoa(binary);
             const contentType = comprovanteResp.headers.get('content-type') || 'image/jpeg';
             const imgFormat = contentType.includes('png') ? 'PNG' : 'JPEG';
+            const dataUrlComprovante = `data:${contentType};base64,${base64Img}`;
 
-            // Inserir imagem centralizada
-            doc.addImage(`data:${contentType};base64,${base64Img}`, imgFormat, 30, 18, 237, 155);
+            // Área disponível abaixo do cabeçalho (página A4 paisagem em mm)
+            const areaX = 12;
+            const areaY = 18;
+            const maxLargura = 297 - areaX * 2;
+            const maxAltura = 210 - areaY - 10;
+
+            // Mantém a proporção original do comprovante: ajusta apenas para caber na folha,
+            // sem esticar/achatar e sem ampliar (imagem ampliada perde nitidez).
+            try {
+              const props = doc.getImageProperties(dataUrlComprovante);
+              const escala = Math.min(maxLargura / props.width, maxAltura / props.height, 1);
+              const imgLargura = props.width * escala;
+              const imgAltura = props.height * escala;
+              doc.addImage(
+                dataUrlComprovante, imgFormat,
+                (297 - imgLargura) / 2,
+                areaY + (maxAltura - imgAltura) / 2,
+                imgLargura, imgAltura
+              );
+            } catch (_) {
+              // Sem as dimensões originais: informa largura 0 para a própria jsPDF calcular
+              // a largura proporcional à altura máxima.
+              doc.addImage(dataUrlComprovante, imgFormat, areaX, areaY, 0, maxAltura);
+            }
           }
           // Para comprovante PDF, não é possível mesclar facilmente — ignora silenciosamente
         } catch (_) {
