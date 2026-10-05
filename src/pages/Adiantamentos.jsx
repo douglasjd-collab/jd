@@ -1,58 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertCircle, Plus, Loader2, Search, Wallet, CheckCircle2, XCircle, Clock } from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import moment from 'moment';
-import 'moment/locale/pt-br';
-moment.locale('pt-br');
+import { Plus, Loader2, Wallet, CheckCircle2, Clock } from 'lucide-react';
+import { toast } from 'sonner';
+import FiltrosAdiantamentos from '@/components/adiantamentos/FiltrosAdiantamentos';
+import AdiantamentoTabela from '@/components/adiantamentos/AdiantamentoTabela';
+import AdiantamentoCard from '@/components/adiantamentos/AdiantamentoCard';
+import AdiantamentoFormModal from '@/components/adiantamentos/AdiantamentoFormModal';
+import AdiantamentoDetalhesModal from '@/components/adiantamentos/AdiantamentoDetalhesModal';
+import { fmt, escapeRegex, nomeRecebedor } from '@/components/adiantamentos/adiantamentoHelpers';
 
-const fmt = (v) => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-const STATUS_COLORS = {
-  pendente: 'bg-orange-100 text-orange-700',
-  descontado: 'bg-green-100 text-green-700',
-  cancelado: 'bg-slate-100 text-slate-500',
+const FILTROS_INICIAIS = {
+  busca: '',
+  status: 'pendente',
+  pessoaTipo: 'todos',
+  recebedor: 'todos',
+  dataInicio: '',
+  dataFim: '',
 };
-
-const PERFIS_ADIANTAMENTO = [
-  { value: 'parceiro', label: 'Parceiro' },
-  { value: 'vendedor', label: 'Vendedor' },
-  { value: 'colaborador', label: 'Colaborador' },
-  { value: 'colaborador_vendedor', label: 'Colaborador/Vendedor' },
-  { value: 'gerente', label: 'Gerente' },
-  { value: 'admin', label: 'Administrador' },
-];
-
-const PESSOA_LABELS = Object.fromEntries(PERFIS_ADIANTAMENTO.map(p => [p.value, p.label]));
 
 export default function Adiantamentos() {
   const [user, setUser] = useState(null);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('pendente');
-  const [modalOpen, setModalOpen] = useState(false);
+  const [filtros, setFiltros] = useState(FILTROS_INICIAIS);
+  const [formOpen, setFormOpen] = useState(false);
   const [editando, setEditando] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState({
-    pessoa_tipo: 'vendedor',
-    colaborador_id: '',
-    colaborador_nome: '',
-    parceiro_id: '',
-    parceiro_nome: '',
-    valor: '',
-    data: moment().format('YYYY-MM-DD'),
-    motivo: '',
-    observacoes: '',
-    status: 'pendente',
-  });
-
+  const [detalhesId, setDetalhesId] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
@@ -74,13 +48,62 @@ export default function Adiantamentos() {
   const perfilUsuario = user?.perfil || (user?.role === 'admin' ? 'admin' : '');
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(perfilUsuario);
 
-  const { data: adiantamentos = [], isLoading } = useQuery({
-    queryKey: ['adiantamentos', user?.empresa_id, user?.colaborador_id, isAdmin],
-    queryFn: () => {
-      const filtro = {};
-      if (user?.empresa_id) filtro.empresa_id = user.empresa_id;
-      if (!isAdmin) filtro.colaborador_id = user.colaborador_id || user.id;
-      return base44.entities.Adiantamento.filter(filtro, '-data', 500);
+  const baseFiltro = useMemo(() => {
+    const f = {};
+    if (user?.empresa_id) f.empresa_id = user.empresa_id;
+    if (user && !isAdmin) f.colaborador_id = user.colaborador_id || user.id;
+    return f;
+  }, [user, isAdmin]);
+
+  // Resumo geral (não muda com os filtros) — mesmas regras atuais: soma do valor por status
+  const { data: resumo } = useQuery({
+    queryKey: ['adiantamentos-resumo', baseFiltro],
+    queryFn: () => base44.entities.Adiantamento.aggregate({ query: baseFiltro, groupBy: 'status', sum: 'valor' }),
+    enabled: !!user,
+  });
+  const somaPorStatus = (status) => resumo?.rows?.find(r => r.status === status)?.sum_valor || 0;
+  const totalPendente = somaPorStatus('pendente');
+  const totalDescontado = somaPorStatus('descontado');
+
+  const { data: adiantamentos = [], isLoading, isFetching } = useQuery({
+    queryKey: ['adiantamentos', baseFiltro, filtros],
+    queryFn: async () => {
+      const query = { ...baseFiltro };
+      if (filtros.status !== 'todos') query.status = filtros.status;
+      if (filtros.pessoaTipo !== 'todos') query.pessoa_tipo = filtros.pessoaTipo;
+      if (filtros.dataInicio || filtros.dataFim) {
+        query.data = {
+          ...(filtros.dataInicio ? { $gte: filtros.dataInicio } : {}),
+          ...(filtros.dataFim ? { $lte: filtros.dataFim } : {}),
+        };
+      }
+
+      const condicoes = [];
+      if (filtros.recebedor !== 'todos') {
+        condicoes.push({ $or: [{ colaborador_nome: filtros.recebedor }, { parceiro_nome: filtros.recebedor }] });
+      }
+      const busca = filtros.busca.trim();
+      if (busca) {
+        const regex = { $regex: escapeRegex(busca), $options: 'i' };
+        condicoes.push({ $or: [{ colaborador_nome: regex }, { parceiro_nome: regex }, { motivo: regex }] });
+      }
+      if (condicoes.length) query.$and = condicoes;
+
+      const pagina = await base44.entities.Adiantamento.filter(query, { sort: '-data', limit: 500 });
+      return pagina.items || [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: recebedores = [] } = useQuery({
+    queryKey: ['adiantamentos-recebedores', baseFiltro],
+    queryFn: async () => {
+      const [c, p] = await Promise.all([
+        base44.entities.Adiantamento.filter(baseFiltro, { distinct: 'colaborador_nome' }),
+        base44.entities.Adiantamento.filter(baseFiltro, { distinct: 'parceiro_nome' }),
+      ]);
+      return [...new Set([...(c.items || []), ...(p.items || [])].filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, 'pt-BR'));
     },
     enabled: !!user,
   });
@@ -105,332 +128,133 @@ export default function Adiantamentos() {
     enabled: !!user && isAdmin,
   });
 
-  const filtered = adiantamentos.filter(a => {
-    if (statusFilter !== 'todos' && a.status !== statusFilter) return false;
-    if (search) {
-      const t = search.toLowerCase();
-      return (
-        (a.colaborador_nome || a.parceiro_nome || '').toLowerCase().includes(t) ||
-        (a.motivo || '').toLowerCase().includes(t)
-      );
-    }
-    return true;
-  });
-
-  const totalPendente = adiantamentos.filter(a => a.status === 'pendente').reduce((acc, a) => acc + (a.valor || 0), 0);
-  const totalDescontado = adiantamentos.filter(a => a.status === 'descontado').reduce((acc, a) => acc + (a.valor || 0), 0);
-
-  const abrirModal = (adi = null) => {
-    if (adi) {
-      setEditando(adi);
-      setForm({
-        pessoa_tipo: adi.pessoa_tipo || 'vendedor',
-        colaborador_id: adi.colaborador_id || '',
-        colaborador_nome: adi.colaborador_nome || '',
-        parceiro_id: adi.parceiro_id || '',
-        parceiro_nome: adi.parceiro_nome || '',
-        valor: String(adi.valor || ''),
-        data: adi.data || moment().format('YYYY-MM-DD'),
-        motivo: adi.motivo || '',
-        observacoes: adi.observacoes || '',
-        status: adi.status || 'pendente',
-      });
-    } else {
-      setEditando(null);
-      setForm({
-        pessoa_tipo: 'vendedor',
-        colaborador_id: '',
-        colaborador_nome: '',
-        parceiro_id: '',
-        parceiro_nome: '',
-        valor: '',
-        data: moment().format('YYYY-MM-DD'),
-        motivo: '',
-        observacoes: '',
-      });
-    }
-    setModalOpen(true);
+  const invalidar = () => {
+    queryClient.invalidateQueries({ queryKey: ['adiantamentos'] });
+    queryClient.invalidateQueries({ queryKey: ['adiantamentos-resumo'] });
+    queryClient.invalidateQueries({ queryKey: ['adiantamentos-recebedores'] });
   };
 
-  const handleSalvar = async () => {
-    if (!form.valor || parseFloat(form.valor) <= 0) { toast.error('Informe o valor'); return; }
-    if (!form.data) { toast.error('Informe a data'); return; }
-    if (!form.colaborador_id && !form.parceiro_id) {
-      toast.error(`Selecione o ${(PESSOA_LABELS[form.pessoa_tipo] || 'beneficiário').toLowerCase()}`);
-      return;
-    }
+  const abrirNovo = () => { setEditando(null); setFormOpen(true); };
+  const abrirEdicao = (adi) => { setDetalhesId(null); setEditando(adi); setFormOpen(true); };
+  const abrirDetalhes = (adi) => setDetalhesId(adi.id);
 
-    setIsSaving(true);
-    try {
-      const data = {
-        empresa_id: user.empresa_id,
-        pessoa_tipo: form.pessoa_tipo,
-        colaborador_id: form.colaborador_id || null,
-        colaborador_nome: form.colaborador_nome || null,
-        parceiro_id: form.parceiro_id || null,
-        parceiro_nome: form.parceiro_nome || null,
-        valor: parseFloat(form.valor),
-        data: form.data,
-        motivo: form.motivo || '',
-        observacoes: form.observacoes || '',
-        status: form.status || editando?.status || 'pendente',
-        // Limpar data_desconto ao reabrir
-        ...(form.status === 'pendente' ? { data_desconto: null, lote_pagamento_id: null } : {}),
-      };
-      if (editando) {
-        await base44.entities.Adiantamento.update(editando.id, data);
-        toast.success('Adiantamento atualizado!');
-      } else {
-        await base44.entities.Adiantamento.create(data);
-        toast.success('Adiantamento registrado!');
-      }
-      queryClient.invalidateQueries(['adiantamentos']);
-      setModalOpen(false);
-    } catch (err) {
-      toast.error('Erro ao salvar');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const adiantamentoDetalhes = adiantamentos.find(a => a.id === detalhesId) || null;
 
   const handleCancelar = async (adi) => {
-    if (!confirm('Cancelar este adiantamento?')) return;
-    await base44.entities.Adiantamento.update(adi.id, { status: 'cancelado' });
-    queryClient.invalidateQueries(['adiantamentos']);
-    toast.success('Adiantamento cancelado');
+    if (!confirm(`Cancelar o adiantamento de ${nomeRecebedor(adi)}?`)) return;
+    try {
+      await base44.entities.Adiantamento.update(adi.id, { status: 'cancelado' });
+      invalidar();
+      toast.success('Adiantamento cancelado');
+    } catch (e) {
+      toast.error('Não foi possível cancelar o adiantamento.');
+    }
   };
 
-  if (!user) return <div className="p-6 flex items-center gap-2 text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>;
+  const salvarComprovantes = async (adi, lista) => {
+    await base44.entities.Adiantamento.update(adi.id, { comprovantes_json: JSON.stringify(lista) });
+    invalidar();
+  };
+
+  const filtrosAtivos = Object.keys(FILTROS_INICIAIS).some(k => filtros[k] !== FILTROS_INICIAIS[k]);
+
+  if (!user) {
+    return <div className="p-6 flex items-center gap-2 text-slate-500"><Loader2 className="w-4 h-4 animate-spin" /> Carregando...</div>;
+  }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 lg:p-6 max-w-7xl mx-auto space-y-5">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Adiantamentos</h1>
+          <h1 className="text-xl lg:text-2xl font-bold text-slate-900">Adiantamentos</h1>
           <p className="text-slate-500 text-sm mt-1">Gerencie adiantamentos para parceiros, vendedores, colaboradores, gerentes e administradores.</p>
         </div>
         {isAdmin && (
-          <Button onClick={() => abrirModal()} className="bg-[#10353C] hover:bg-[#1a5060] text-white">
+          <Button onClick={abrirNovo} className="bg-[#10353C] hover:bg-[#1a5060] text-white flex-shrink-0">
             <Plus className="w-4 h-4 mr-2" /> Novo Adiantamento
           </Button>
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* Indicadores */}
+      <div className="grid grid-cols-2 gap-3 lg:gap-4">
         <Card className="p-4 flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center">
+          <div className="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
             <Clock className="w-5 h-5 text-orange-600" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-slate-500">Total Pendente</p>
-            <p className="text-lg font-bold text-orange-700">{fmt(totalPendente)}</p>
+            <p className="text-base lg:text-lg font-bold text-orange-700 truncate">{fmt(totalPendente)}</p>
           </div>
         </Card>
         <Card className="p-4 flex items-center gap-4">
-          <div className="w-11 h-11 rounded-xl bg-green-100 flex items-center justify-center">
+          <div className="w-11 h-11 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
             <CheckCircle2 className="w-5 h-5 text-green-600" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-slate-500">Total Descontado</p>
-            <p className="text-lg font-bold text-green-700">{fmt(totalDescontado)}</p>
+            <p className="text-base lg:text-lg font-bold text-green-700 truncate">{fmt(totalDescontado)}</p>
           </div>
         </Card>
       </div>
 
-      {/* Filtros */}
-      <div className="flex gap-3">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <Input placeholder="Buscar por nome ou motivo..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="pendente">⏳ Pendentes</SelectItem>
-            <SelectItem value="descontado">✅ Descontados</SelectItem>
-            <SelectItem value="cancelado">❌ Cancelados</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      {/* Busca e filtros */}
+      <FiltrosAdiantamentos filtros={filtros} onChange={setFiltros} recebedores={recebedores} />
 
       {/* Lista */}
       {isLoading ? (
-        <Card className="p-8 text-center text-slate-400"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />Carregando...</Card>
-      ) : filtered.length === 0 ? (
+        <Card className="p-8 text-center text-slate-400">
+          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />Carregando...
+        </Card>
+      ) : adiantamentos.length === 0 ? (
         <Card className="p-8 text-center text-slate-400">
           <Wallet className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p>Nenhum adiantamento encontrado</p>
+          <p>Nenhum adiantamento encontrado{filtrosAtivos ? ' com os filtros aplicados' : ''}</p>
         </Card>
       ) : (
-        <div className="space-y-2">
-          {filtered.map(a => {
-            let historicoDescontos = [];
-            try { historicoDescontos = JSON.parse(a.historico_descontos || '[]'); } catch {}
-            return (
-            <Card key={a.id} className="p-4">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-700 flex-shrink-0">
-                  {(a.colaborador_nome || a.parceiro_nome || '?').charAt(0).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-slate-800">{a.colaborador_nome || a.parceiro_nome || '-'}</p>
-                    <Badge className={`text-xs ${a.pessoa_tipo === 'parceiro' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {PESSOA_LABELS[a.pessoa_tipo] || (a.parceiro_id ? 'Parceiro' : 'Colaborador')}
-                    </Badge>
-                    <Badge className={`text-xs ${STATUS_COLORS[a.status]}`}>
-                      {a.status === 'pendente' ? '⏳ Pendente' : a.status === 'descontado' ? '✅ Descontado' : '❌ Cancelado'}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
-                    <span>{moment(a.data).format('DD/MM/YYYY')}</span>
-                    {a.motivo && <><span>•</span><span>{a.motivo}</span></>}
-                    {a.status === 'descontado' && a.data_desconto && (
-                      <><span>•</span><span className="text-green-600">Descontado em {moment(a.data_desconto).format('DD/MM/YYYY')}</span></>
-                    )}
-                  </div>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="font-bold text-lg text-slate-800">{fmt(a.valor)}</p>
-                </div>
-                {isAdmin && a.status === 'pendente' && (
-                  <div className="flex gap-1 flex-shrink-0">
-                    <Button size="sm" variant="outline" onClick={() => abrirModal(a)} className="h-8 px-2 text-xs">Editar</Button>
-                    <Button size="sm" variant="outline" onClick={() => handleCancelar(a)} className="h-8 px-2 text-xs text-red-600 hover:text-red-700">Cancelar</Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Histórico de descontos parciais */}
-              {historicoDescontos.length > 0 && (
-                <div className="mt-3 ml-14 border-l-2 border-orange-200 pl-3 space-y-1">
-                  <p className="text-xs font-semibold text-orange-700 mb-1">Histórico de Descontos Parciais</p>
-                  {historicoDescontos.map((h, i) => (
-                    <div key={i} className="flex items-center gap-3 text-xs text-slate-600">
-                      <span className="w-1.5 h-1.5 rounded-full bg-orange-400 flex-shrink-0" />
-                      <span className="font-semibold text-orange-700">{fmt(h.valor)}</span>
-                      <span className="text-slate-400">•</span>
-                      <span>{moment(h.data_desconto).format('DD/MM/YYYY')}</span>
-                      <span className="text-slate-400">•</span>
-                      <span className="font-mono text-slate-500">{h.lote_codigo || h.lote_id}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Card>
-            );
-          })}
-        </div>
+        <>
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <span>{adiantamentos.length} adiantamento{adiantamentos.length > 1 ? 's' : ''}</span>
+            {isFetching && <Loader2 className="w-3 h-3 animate-spin" />}
+          </div>
+          <AdiantamentoTabela
+            adiantamentos={adiantamentos}
+            podeGerenciar={isAdmin}
+            onAbrir={abrirDetalhes}
+            onEditar={abrirEdicao}
+            onAnexar={abrirEdicao}
+            onCancelar={handleCancelar}
+          />
+          <AdiantamentoCard
+            adiantamentos={adiantamentos}
+            podeGerenciar={isAdmin}
+            onAbrir={abrirDetalhes}
+            onEditar={abrirEdicao}
+            onAnexar={abrirEdicao}
+            onCancelar={handleCancelar}
+          />
+        </>
       )}
 
-      {/* Modal */}
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{editando ? 'Editar Adiantamento' : 'Novo Adiantamento'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Tipo de Pessoa *</Label>
-              <Select value={form.pessoa_tipo} onValueChange={v => setForm(f => ({ ...f, pessoa_tipo: v, colaborador_id: '', colaborador_nome: '', parceiro_id: '', parceiro_nome: '' }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PERFIS_ADIANTAMENTO.map(perfil => (
-                    <SelectItem key={perfil.value} value={perfil.value}>{perfil.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+      <AdiantamentoFormModal
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        adiantamento={editando}
+        user={user}
+        colaboradores={colaboradores}
+        parceiros={parceiros}
+        onSalvo={invalidar}
+      />
 
-            {form.pessoa_tipo === 'parceiro' ? (
-              <div>
-                <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Parceiro *</Label>
-                <Select
-                  value={form.colaborador_id ? `colaborador:${form.colaborador_id}` : form.parceiro_id ? `empresa:${form.parceiro_id}` : ''}
-                  onValueChange={v => {
-                    const [origem, id] = v.split(':');
-                    if (origem === 'colaborador') {
-                      const c = colaboradores.find(x => x.id === id);
-                      setForm(f => ({ ...f, colaborador_id: id, colaborador_nome: c?.nome || '', parceiro_id: '', parceiro_nome: '' }));
-                    } else {
-                      const p = parceiros.find(x => x.id === id);
-                      setForm(f => ({ ...f, parceiro_id: id, parceiro_nome: p?.nome || '', colaborador_id: '', colaborador_nome: '' }));
-                    }
-                  }}
-                >
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                  <SelectContent>
-                    {colaboradores.filter(c => c.perfil === 'parceiro').map(c => (
-                      <SelectItem key={`colaborador:${c.id}`} value={`colaborador:${c.id}`}>{c.nome}</SelectItem>
-                    ))}
-                    {parceiros.map(p => (
-                      <SelectItem key={`empresa:${p.id}`} value={`empresa:${p.id}`}>{p.nome} — Empresa Parceira</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <div>
-                <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">{PESSOA_LABELS[form.pessoa_tipo]} *</Label>
-                <Select value={form.colaborador_id} onValueChange={v => {
-                  const c = colaboradores.find(x => x.id === v);
-                  setForm(f => ({ ...f, colaborador_id: v, colaborador_nome: c?.nome || '', parceiro_id: '', parceiro_nome: '' }));
-                }}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                  <SelectContent>
-                    {colaboradores
-                      .filter(c => c.perfil === form.pessoa_tipo)
-                      .map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Valor (R$) *</Label>
-                <Input type="number" min="0" step="0.01" placeholder="0,00" value={form.valor} onChange={e => setForm(f => ({ ...f, valor: e.target.value }))} />
-              </div>
-              <div>
-                <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Data *</Label>
-                <Input type="date" value={form.data} onChange={e => setForm(f => ({ ...f, data: e.target.value }))} />
-              </div>
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Motivo</Label>
-              <Input placeholder="Ex: Adiantamento de salário, auxílio..." value={form.motivo} onChange={e => setForm(f => ({ ...f, motivo: e.target.value }))} />
-            </div>
-
-            <div>
-              <Label className="text-xs font-semibold text-slate-500 mb-1.5 block">Observações</Label>
-              <Input placeholder="Observações adicionais..." value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
-            </div>
-
-            {editando?.status === 'descontado' && (
-              <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 space-y-2">
-                <p className="text-xs font-semibold text-orange-700">⚠️ Este adiantamento está marcado como descontado. Para reabrir (ex: desconto parcial), altere o status abaixo:</p>
-                <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="descontado">✅ Descontado</SelectItem>
-                    <SelectItem value="pendente">⏳ Pendente (reabrir)</SelectItem>
-                    <SelectItem value="cancelado">❌ Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-          <DialogFooter className="gap-2 mt-2">
-            <Button variant="outline" onClick={() => setModalOpen(false)} disabled={isSaving}>Cancelar</Button>
-            <Button onClick={handleSalvar} disabled={isSaving} className="bg-[#10353C] hover:bg-[#1a5060] text-white">
-              {isSaving ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Salvando...</> : 'Salvar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <AdiantamentoDetalhesModal
+        open={!!adiantamentoDetalhes}
+        onOpenChange={(v) => !v && setDetalhesId(null)}
+        adiantamento={adiantamentoDetalhes}
+        podeGerenciar={isAdmin}
+        onEditar={abrirEdicao}
+        onCancelar={handleCancelar}
+        onSalvarComprovantes={salvarComprovantes}
+      />
     </div>
   );
 }

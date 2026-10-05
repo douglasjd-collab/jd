@@ -36,7 +36,7 @@
     },
     "valor": {
       "type": "number",
-      "description": "Valor do adiantamento"
+      "description": "Valor do adiantamento (quando h\u00e1 desconto parcial, este campo passa a representar o saldo restante e o valor descontado fica em historico_descontos)"
     },
     "data": {
       "type": "string",
@@ -72,6 +72,10 @@
     "historico_descontos": {
       "type": "string",
       "description": "JSON array com hist\u00f3rico de descontos parciais: [{valor, data_desconto, lote_codigo, lote_id}]"
+    },
+    "comprovantes_json": {
+      "type": "string",
+      "description": "JSON array com os comprovantes anexados ao adiantamento (opcional, n\u00e3o altera status nem valores): [{id, nome, url, tipo, tamanho, data_upload, enviado_por}]. Aceita JPG, PNG e PDF."
     }
   },
   "required": [
