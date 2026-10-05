@@ -23,6 +23,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Upload, Loader2, AlertTriangle, Eye, Trash2 } from 'lucide-react';
+import { construirIndiceTipos, resolverTipoImportacao } from '@/components/importacao/tiposEmprestimoMatch';
+import { processarTiposDaImportacao, aplicarTipoNaProposta } from '@/components/importacao/pendenciasVinculacao';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
@@ -99,6 +101,16 @@ export default function ImportacaoComissaoEmprestimo() {
     },
   });
 
+  // Tipos de empréstimo cadastrados: reconhecem a descrição de tipo que vem no arquivo
+  const { data: tipos = [] } = useQuery({
+    queryKey: ['tipos-emprestimo-importacao', empresaIdParam],
+    enabled: !!empresaIdParam,
+    queryFn: async () => {
+      const lista = await base44.entities.TipoEmprestimo.filter({ empresa_id: empresaIdParam, ativo: true }, 'nome');
+      return lista || [];
+    },
+  });
+
   const handleFileUpload = async (e) => {
     const uploadedFiles = Array.from(e.target.files || []);
     if (!uploadedFiles.length) return;
@@ -140,6 +152,7 @@ export default function ImportacaoComissaoEmprestimo() {
     let totalProcessados = 0;
     let totalDivergencias = 0;
     let totalValor = 0;
+    let totalPendentesTipo = 0;
     const erros = [];
 
     for (let i = 0; i < uploadedFiles.length; i++) {
@@ -171,10 +184,11 @@ export default function ImportacaoComissaoEmprestimo() {
           file_name: uploadedFile.name,
           items,
           empresaIdFinal: empresaIdParaProcessar,
-          onResult: (p, d, v) => {
+          onResult: (p, d, v, pendentes) => {
             totalProcessados += p;
             totalDivergencias += d;
             totalValor += v;
+            totalPendentesTipo += pendentes || 0;
           }
         });
       } catch (err) {
@@ -188,6 +202,9 @@ export default function ImportacaoComissaoEmprestimo() {
     setFiles([]);
     queryClient.invalidateQueries();
 
+    if (totalPendentesTipo > 0) {
+      toast.warning(`${totalPendentesTipo} registro(s) com tipo de empréstimo pendente de vinculação. Confira em Cadastros > Tipos de Empréstimo.`);
+    }
     if (erros.length) {
       toast.warning(`Lote concluído com erros em ${erros.length} arquivo(s). Processados: ${totalProcessados}`);
     } else {
@@ -215,12 +232,16 @@ export default function ImportacaoComissaoEmprestimo() {
     let processados = 0, divergencias = 0, valorTotal = 0;
     const recebimentosParaCriar = [];
     const itemMotivos = {};
+    // Reconhecimento do tipo de empréstimo informado no arquivo (códigos, nomes e aliases)
+    const indiceTipos = construirIndiceTipos(tipos);
+    let registrosPendentesTipo = 0;
 
     for (let idx = 0; idx < items.length; idx++) {
       const item = items[idx];
       const contratoRaw = String(item.contrato || item.numero_ade || '').trim();
       const cpfRaw = String(item.cpf || '').trim();
       const dataRecebimento = item.data_recebimento || '';
+      const resolucaoTipo = resolverTipoImportacao({ descricao: item.tipo_consignado, origem: item.banco, indice: indiceTipos });
       let propostaEncontrada = null;
       let motivoDivergencia = '';
 
@@ -303,6 +324,17 @@ export default function ImportacaoComissaoEmprestimo() {
             recebimentosParaCriar.map(({ _valor_bruto, _valor_liquido, _valor_parcela, ...r }) => r)
           );
 
+      // Reconhece o tipo de cada recebimento e registra as descrições pendentes de vinculação
+      const { tipoPorVenda, registrosPendentes } = await processarTiposDaImportacao({
+        empresa_id: empresaIdFinal,
+        importacao_id: importacao.id,
+        origemPadrao: empresaParceira?.nome,
+        items,
+        recebimentos: recebimentosCriados,
+        indiceTipos,
+      });
+      registrosPendentesTipo += registrosPendentes;
+
       // Criar ComissaoAPagar para cada recebimento
       const comissoesAPagar = recebimentosCriados.map(rec => ({
         empresa_id: rec.empresa_id,
@@ -367,6 +399,7 @@ export default function ImportacaoComissaoEmprestimo() {
           if (info.valor_liquido) upd.valor_liquido = info.valor_liquido;
           if (info.valor_base_comissao) upd.comissao_banco_base_comissao = info.valor_base_comissao;
           if (info.valor_parcela) upd.emprestimo_valor_parcela = info.valor_parcela;
+          aplicarTipoNaProposta(upd, tipoPorVenda.get(vendaId));
           await base44.entities.Proposta.update(vendaId, upd);
         }
       }
@@ -433,6 +466,9 @@ export default function ImportacaoComissaoEmprestimo() {
       let divergencias = 0;
       let valorTotal = 0;
       const recebimentosParaCriar = [];
+      // Reconhecimento do tipo de empréstimo informado no arquivo (códigos, nomes e aliases)
+      const indiceTipos = construirIndiceTipos(tipos);
+      let registrosPendentesTipo = 0;
 
       const itemMotivos = {}; // guarda motivo por index do item
       for (let idx = 0; idx < previewData.items.length; idx++) {
@@ -440,6 +476,7 @@ export default function ImportacaoComissaoEmprestimo() {
         const contratoRaw = String(item.contrato || item.numero_ade || '').trim();
         const cpfRaw = String(item.cpf || '').trim();
         const dataRecebimento = item.data_recebimento || '';
+        const resolucaoTipo = resolverTipoImportacao({ descricao: item.tipo_consignado, origem: item.banco, indice: indiceTipos });
         let propostaEncontrada = null;
         let motivoDivergencia = '';
 
@@ -499,6 +536,8 @@ export default function ImportacaoComissaoEmprestimo() {
               valor_a_pagar: valorRecebido,
               status_recebimento: 'recebida',
               status_pagamento: 'a_pagar',
+              tipo_consignado_original: resolucaoTipo?.descricaoOriginal || undefined,
+              tipo_emprestimo_slug: resolucaoTipo?.tipo?.slug || undefined,
             };
             const obs = [item.banco, item.convenio, item.tipo_consignado].filter(Boolean).join(' | ');
             if (obs) recObj.observacoes = obs;
@@ -546,6 +585,17 @@ export default function ImportacaoComissaoEmprestimo() {
       if (recebimentosParaCriar.length > 0) {
         const recebimentosData = recebimentosParaCriar.map(({ _itemIdx, ...rest }) => rest);
         const recebimentosCriados = await base44.entities.RecebimentoComissao.bulkCreate(recebimentosData);
+
+        // Reconhece o tipo de cada recebimento e registra as descrições pendentes de vinculação
+        const { tipoPorVenda, registrosPendentes } = await processarTiposDaImportacao({
+          empresa_id: empresaIdFinal,
+          importacao_id: importacao.id,
+          origemPadrao: empresaParceira?.nome,
+          items: previewData.items,
+          recebimentos: recebimentosCriados,
+          indiceTipos,
+        });
+        registrosPendentesTipo += registrosPendentes;
 
         // Criar ComissaoAPagar para cada recebimento
         const comissoesAPagar = recebimentosCriados.map(rec => {
@@ -614,6 +664,7 @@ export default function ImportacaoComissaoEmprestimo() {
             if (info.valor_liquido) upd.valor_liquido = info.valor_liquido;
             if (info.valor_base_comissao) upd.comissao_banco_base_comissao = info.valor_base_comissao;
             if (info.valor_parcela) upd.emprestimo_valor_parcela = info.valor_parcela;
+            aplicarTipoNaProposta(upd, tipoPorVenda.get(vendaId));
             await base44.entities.Proposta.update(vendaId, upd);
           }
         }
@@ -647,6 +698,9 @@ export default function ImportacaoComissaoEmprestimo() {
       setSelectedLayout('');
       setSelectedEmpresaParceira('');
       
+      if (registrosPendentesTipo > 0) {
+        toast.warning(`${registrosPendentesTipo} registro(s) com tipo de empréstimo pendente de vinculação. Confira em Cadastros > Tipos de Empréstimo.`);
+      }
       toast.success(`✅ Importação concluída: ${processados} processados, ${divergencias} divergências`);
     } catch (error) {
       toast.error('Erro ao processar importação');

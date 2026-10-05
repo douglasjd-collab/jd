@@ -79,6 +79,14 @@
       "type": "number",
       "description": "Valor calculado para pagamento (valor_recebido * percentual / 100)"
     },
+    "tipo_consignado_original": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o do tipo do empr\u00e9stimo exatamente como veio no arquivo de importa\u00e7\u00e3o (preserva o texto original recebido)"
+    },
+    "tipo_emprestimo_slug": {
+      "type": "string",
+      "description": "Slug do TipoEmprestimo reconhecido para este recebimento. Fica vazio enquanto a descri\u00e7\u00e3o estiver pendente de vincula\u00e7\u00e3o."
+    },
     "status_recebimento": {
       "type": "string",
       "enum": [

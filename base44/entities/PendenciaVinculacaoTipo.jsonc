@@ -1,0 +1,131 @@
+{
+  "name": "PendenciaVinculacaoTipo",
+  "type": "object",
+  "description": "Descri\u00e7\u00f5es de tipo de empr\u00e9stimo recebidas em importa\u00e7\u00f5es de comiss\u00e3o que ainda n\u00e3o t\u00eam v\u00ednculo com um TipoEmprestimo cadastrado. Agrupa ocorr\u00eancias da mesma descri\u00e7\u00e3o e origem, guarda a refer\u00eancia aos registros envolvidos e o hist\u00f3rico da vincula\u00e7\u00e3o manual.",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "descricao_original": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o exatamente como veio no arquivo de importa\u00e7\u00e3o. Quando o arquivo n\u00e3o informa o tipo, recebe \"Tipo n\u00e3o informado\"."
+    },
+    "descricao_chave": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o normalizada (sem acentos, min\u00fascula, espa\u00e7os reduzidos) usada para agrupar pend\u00eancias iguais"
+    },
+    "origem": {
+      "type": "string",
+      "description": "Banco/origem da importa\u00e7\u00e3o (ou nome da empresa parceira quando o arquivo n\u00e3o traz banco)"
+    },
+    "origem_chave": {
+      "type": "string",
+      "description": "Origem normalizada usada para agrupar pend\u00eancias iguais"
+    },
+    "sem_descricao": {
+      "type": "boolean",
+      "default": false,
+      "description": "True quando o arquivo n\u00e3o trouxe a descri\u00e7\u00e3o do tipo. Nesses casos nenhum alias vazio \u00e9 criado."
+    },
+    "quantidade": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade de registros afetados por esta pend\u00eancia"
+    },
+    "primeira_ocorrencia": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora da primeira ocorr\u00eancia da descri\u00e7\u00e3o"
+    },
+    "ultima_ocorrencia": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora da \u00faltima ocorr\u00eancia da descri\u00e7\u00e3o"
+    },
+    "registros_json": {
+      "type": "string",
+      "description": "JSON array com os registros envolvidos: [{recebimento_id, proposta_id, contrato, cliente_nome, data_recebimento, valor_recebido}]"
+    },
+    "ultima_importacao_id": {
+      "type": "string",
+      "description": "ID da \u00faltima Importacao que registrou esta pend\u00eancia"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "resolvida"
+      ],
+      "default": "pendente",
+      "description": "pendente = aguardando vincula\u00e7\u00e3o manual; resolvida = tipos j\u00e1 aplicados nas propostas"
+    },
+    "tipo_id": {
+      "type": "string",
+      "description": "ID do TipoEmprestimo escolhido na vincula\u00e7\u00e3o"
+    },
+    "tipo_nome": {
+      "type": "string",
+      "description": "Nome do tipo escolhido (snapshot para hist\u00f3rico)"
+    },
+    "tipo_slug": {
+      "type": "string",
+      "description": "Slug do tipo escolhido (snapshot para hist\u00f3rico)"
+    },
+    "alias_salvo": {
+      "type": "string",
+      "description": "V\u00ednculo salvo no tipo escolhido (origem|descri\u00e7\u00e3o normalizados, ou apenas a descri\u00e7\u00e3o quando n\u00e3o h\u00e1 origem)"
+    },
+    "vinculado_por_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio que realizou a vincula\u00e7\u00e3o"
+    },
+    "vinculado_por_nome": {
+      "type": "string",
+      "description": "Nome do usu\u00e1rio que realizou a vincula\u00e7\u00e3o"
+    },
+    "vinculado_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora da vincula\u00e7\u00e3o"
+    },
+    "registros_falha_json": {
+      "type": "string",
+      "description": "JSON array com os IDs de propostas que n\u00e3o puderam ser atualizadas na vincula\u00e7\u00e3o (falha parcial)"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "descricao_original",
+    "descricao_chave",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.empresa_id": "{{user.data.empresa_id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "super_admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "data.empresa_id": "{{user.data.empresa_id}}"
+    },
+    "update": {
+      "data.empresa_id": "{{user.data.empresa_id}}"
+    },
+    "delete": {
+      "data.empresa_id": "{{user.data.empresa_id}}"
+    }
+  }
+}

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Loader2, X, Tag } from 'lucide-react';
 import { toast } from 'sonner';
+import PendentesVinculacaoSection from '@/components/importacao/PendentesVinculacaoSection';
 
 const TIPOS_PADRAO = [
   { nome: 'Novo', slug: 'NOVO', aliases_importacao: ['NOVO', 'Novo', 'novo'] },
@@ -184,6 +185,12 @@ export default function TiposEmprestimo() {
         backTo="Cadastros"
       />
 
+      <PendentesVinculacaoSection
+        empresaId={empresaId}
+        tipos={tipos}
+        onAtualizado={() => queryClient.invalidateQueries({ queryKey: ['tipos-emprestimo', empresaId] })}
+      />
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2"><Tag className="w-5 h-5" /> Tipos Cadastrados</CardTitle>
@@ -223,6 +230,19 @@ export default function TiposEmprestimo() {
                         {tipo.aliases_importacao.map((a, i) => (
                           <Badge key={i} variant="secondary" className="text-xs">{a}</Badge>
                         ))}
+                      </div>
+                    )}
+                    {tipo.aliases_por_origem?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        <span className="text-xs text-slate-500 mr-1">Vinculados por banco:</span>
+                        {tipo.aliases_por_origem.map((a, i) => {
+                          const [origem, descricao] = String(a).split('|');
+                          return (
+                            <Badge key={i} variant="outline" className="text-xs border-blue-200 text-blue-800 bg-blue-50">
+                              {origem} · {descricao}
+                            </Badge>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
