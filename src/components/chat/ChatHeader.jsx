@@ -163,6 +163,8 @@ _Cashback sujeito às regras da campanha._`;
         status: 'encerrada',
         responsavel_id: null,
         responsavel_nome: null,
+        responsavel_expira_em: null,
+        atendimento_transferido_para_id: null,
         atendimento_prioritario: false,
         prioritario_removido_por_id: finalizadoPorId,
         prioritario_removido_por_nome: finalizadoPorNome,
@@ -176,6 +178,8 @@ _Cashback sujeito às regras da campanha._`;
               status: 'encerrada',
               responsavel_id: null,
               responsavel_nome: null,
+              responsavel_expira_em: null,
+              atendimento_transferido_para_id: null,
               atendimento_prioritario: false,
               prioritario_removido_por_id: finalizadoPorId,
               prioritario_removido_por_nome: finalizadoPorNome,
@@ -183,6 +187,7 @@ _Cashback sujeito às regras da campanha._`;
             }
           : c)
       );
+      queryClient.invalidateQueries({ queryKey: ['contadores-bate-papo', empresaId] });
       setFinalizarModalOpen(false);
       setConversaSelecionada(null);
       toast.success(enviarMensagem
