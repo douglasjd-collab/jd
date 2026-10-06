@@ -62,18 +62,13 @@ async function exportarLinhaPDF(lote) {
 }
 
 async function exportarLinhaPDFUnico(lote) {
-  // Lotes legado: sem backend, usa PDF simples
-  if (lote.isLegado) {
-    await exportarLinhaPDFSimples(lote);
-    return;
-  }
-
-  // Emprestimos e Consorcio com ID real: busca comprovante do backend
-  if (lote._tipo === 'emp' || lote._tipo === 'consorcio') {
+  // Todos os pagamentos, inclusive antigos, usam o relatório detalhado.
+  if (lote.isLegado || lote._tipo === 'emp' || lote._tipo === 'consorcio') {
     try {
       const res = await base44.functions.invoke('baixarComprovanteComissao', {
         lote_id: lote.id,
-        tipo: lote._tipo,
+        tipo: lote.isLegado ? 'emp-legado' : lote._tipo,
+        ...(lote.isLegado ? { vendedor_id: lote.vendedor_id, data_pagamento: lote.data_pagamento } : {}),
       });
 
       // Para consorcio: retorna HTML para abrir/imprimir
@@ -107,8 +102,10 @@ async function exportarLinhaPDFUnico(lote) {
         URL.revokeObjectURL(url);
         return;
       }
+      throw new Error('O servidor não retornou o relatório detalhado.');
     } catch (e) {
-      // fallback para PDF simples
+      toast.error(e?.response?.data?.error || e.message || 'Erro ao gerar relatório detalhado.');
+      return;
     }
   }
 
