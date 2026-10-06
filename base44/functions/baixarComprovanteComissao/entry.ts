@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { lote_id, tipo } = await req.json();
+    const { lote_id, tipo, vendedor_id, data_pagamento } = await req.json();
     if (!lote_id || !tipo) return Response.json({ error: 'lote_id e tipo sao obrigatorios' }, { status: 400 });
 
     // ─── CONSÓRCIO: retorna o relatorio_html armazenado ────────────────────────
@@ -176,19 +176,36 @@ Deno.serve(async (req) => {
     }
 
     // ─── EMPRÉSTIMOS: busca lote + snapshots ComissaoEmprestimoPaga ────────────
-    if (tipo === 'emp') {
-      const lotes = await base44.asServiceRole.entities.LotePagamentoComissaoEmprestimo.filter({ id: lote_id });
-      const lote = lotes?.[0];
+    if (tipo === 'emp' || tipo === 'emp-legado') {
+      const legado = tipo === 'emp-legado';
+      let propostasLegado = [];
+      let lote;
+      if (legado) {
+        if (!vendedor_id || !data_pagamento) return Response.json({ error: 'Vendedor e data do pagamento antigo são obrigatórios.' }, { status: 400 });
+        // Usa o cliente autenticado: permissões de leitura das propostas são preservadas.
+        const filter = { produto: 'emprestimo', vendedor_id, comissao_vendedor_paga: true, comissao_vendedor_data_pagamento: data_pagamento };
+        if (user.empresa_id) filter.empresa_id = user.empresa_id;
+        propostasLegado = (await base44.entities.Proposta.filter(filter, '-data_venda', 1000)).filter(p => !p.lote_pagamento_id);
+        if (!propostasLegado.length) return Response.json({ error: 'Pagamento antigo não encontrado ou sem acesso.' }, { status: 404 });
+        lote = { empresa_id: propostasLegado[0].empresa_id, vendedor_id, vendedor_nome: propostasLegado[0].vendedor_nome,
+          data_pagamento, lote_codigo: `LEG-${String(vendedor_id).slice(-4)}-${data_pagamento.replace(/-/g, '')}`,
+          valor_total: propostasLegado.reduce((sum, p) => sum + (p.valor_comissao_vendedor_pago ?? p.valor_comissao ?? 0), 0),
+          comprovante_url: propostasLegado.find(p => p.comissao_vendedor_comprovante_url)?.comissao_vendedor_comprovante_url,
+          quantidade_propostas: propostasLegado.length, acrescimos: 0, descontos: 0 };
+      } else {
+        const lotes = await base44.asServiceRole.entities.LotePagamentoComissaoEmprestimo.filter({ id: lote_id });
+        lote = lotes?.[0];
+      }
       if (!lote) return Response.json({ error: 'Lote nao encontrado' }, { status: 404 });
 
       // Buscar snapshots dos itens do lote (novo sistema)
-      let loteItens = await base44.asServiceRole.entities.ComissaoEmprestimoPaga.filter(
+      let loteItens = legado ? [] : await base44.asServiceRole.entities.ComissaoEmprestimoPaga.filter(
         { lote_pagamento_id: lote_id }, '-created_date', 500
       );
 
       // Fallback: lotes antigos não têm ComissaoEmprestimoPaga, busca nas Propostas
       if (loteItens.length === 0 && lote.vendedor_id && lote.data_pagamento) {
-        const propostasLote = await base44.asServiceRole.entities.Proposta.filter({
+        const propostasLote = legado ? propostasLegado : await base44.asServiceRole.entities.Proposta.filter({
           empresa_id: lote.empresa_id,
           vendedor_id: lote.vendedor_id,
           comissao_vendedor_paga: true,
@@ -197,7 +214,9 @@ Deno.serve(async (req) => {
         loteItens = propostasLote
           .filter(p => p.produto === 'emprestimo' || p.emprestimo_tipo)
           .map(p => ({
+            proposta_id: p.id,
             cliente_nome: p.cliente_nome,
+            cliente_cpf: p.cliente_cpf,
             contrato: p.contrato,
             emprestimo_tipo: p.emprestimo_tipo,
             banco: p.administradora_nome || p.empresa_parceira_nome,
@@ -207,7 +226,7 @@ Deno.serve(async (req) => {
             valor_parcela: p.emprestimo_valor_parcela || null,
             emprestimo_prazo: p.emprestimo_prazo || null,
             percentual_vendedor_pago: p.percentual_comissao_vendedor || 0,
-            valor_vendedor_pago: p.valor_comissao_vendedor_pago || p.valor_comissao || 0,
+            valor_vendedor_pago: p.valor_comissao_vendedor_pago ?? p.valor_comissao ?? 0,
           }));
       }
 
