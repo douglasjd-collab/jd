@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const empresaId = body.empresa_id;
-    const limit = body.limit || 10000;
+    const limit = Math.min(Math.max(Number(body.limit) || 200, 50), 2000);
 
     if (!empresaId) {
       return Response.json({ error: 'empresa_id required' }, { status: 400 });
@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
       { empresa_id: empresaId },
       '-data_ultima_mensagem',
-      Math.max(limit, 10000)
+      limit
     );
 
     // Filtrar grupos bloqueados
@@ -37,12 +37,25 @@ Deno.serve(async (req) => {
       return true;
     });
 
-    // Buscar todos os contatos da empresa
-    const contatos = await base44.asServiceRole.entities.ContatoWhatsapp.filter(
-      { empresa_id: empresaId },
-      '-created_date',
-      10000
-    );
+    // Buscar somente os contatos relacionados ao lote atual de conversas.
+    // Evita baixar toda a base de contatos a cada atualização do Bate-papo.
+    const telefonesDoLote = Array.from(new Set(
+      conversas.flatMap(c => {
+        const tel = String(c.cliente_telefone || '').replace(/\D/g, '');
+        if (!tel) return [];
+        const lista = [tel];
+        if (tel.startsWith('55') && tel.length === 13) lista.push(tel.slice(0, 4) + tel.slice(5));
+        if (tel.startsWith('55') && tel.length === 12) lista.push(tel.slice(0, 4) + '9' + tel.slice(4));
+        return lista;
+      })
+    ));
+    const contatos = telefonesDoLote.length
+      ? await base44.asServiceRole.entities.ContatoWhatsapp.filter(
+          { empresa_id: empresaId, telefone: { $in: telefonesDoLote } },
+          '-created_date',
+          Math.min(Math.max(telefonesDoLote.length * 2, 100), 4000)
+        )
+      : [];
 
     // Criar mapa de telefone -> contato para lookup O(1)
     // Indexar por múltiplas variações para maximizar match
