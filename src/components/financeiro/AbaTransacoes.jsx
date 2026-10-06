@@ -58,7 +58,10 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, lotesComi
       _status: quitado ? 'pago' : 'agendado',
       _origem: 'lote_comissao',
       descricao: `Lote Comissão ${l.vendedor_nome || ''} (${l.lote_code || ''})`,
-      valor: l.total_pago,
+      valor: l.total_liquido ?? Math.max(
+        0,
+        (l.total_bruto ?? l.total_pago ?? 0) + (l.acrescimos || 0) - (l.descontos || 0) - (l.imposto_valor || 0)
+      ),
       data: dataRef,
       categoria: 'Comissão',
       produto: 'Consórcio',
