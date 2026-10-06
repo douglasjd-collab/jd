@@ -4,7 +4,7 @@
   "automations": [
     {
       "name": "Processador central otimizado",
-      "description": "Verifica filas leves e só invoca rotinas quando existe trabalho pendente.",
+      "description": "ÚNICO agendador oficial. A cada 5 minutos verifica filas leves e só invoca rotinas quando existe trabalho pendente.",
       "type": "scheduled",
       "schedule_mode": "recurring",
       "schedule_type": "cron",
