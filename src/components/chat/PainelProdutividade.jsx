@@ -58,11 +58,11 @@ export default function PainelProdutividade({ empresaId, onClose }) {
     try {
       const [colabs, convs, msgs, tars, ops, agd] = await Promise.all([
         base44.entities.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome', 100),
-        base44.entities.ConversaWhatsapp.filter({ empresa_id: empresaId }, '-updated_date', 2000),
-        base44.entities.MensagemWhatsapp.filter({ empresa_id: empresaId, remetente: 'vendedor' }, '-data_envio', 3000),
-        base44.entities.Tarefa.filter({ empresa_id: empresaId }, '-created_date', 1000),
-        base44.entities.Oportunidade.filter({ empresa_id: empresaId }, '-created_date', 1000),
-        base44.entities.Agenda.filter({ empresa_id: empresaId }, '-created_date', 500),
+        base44.entities.ConversaWhatsapp.filter({ empresa_id: empresaId }, '-updated_date', 500),
+        base44.entities.MensagemWhatsapp.filter({ empresa_id: empresaId, remetente: 'vendedor', data_envio: { $gte: getPeriodStart().toISOString() } }, '-data_envio', 1000),
+        base44.entities.Tarefa.filter({ empresa_id: empresaId, created_date: { $gte: getPeriodStart().toISOString() } }, '-created_date', 500),
+        base44.entities.Oportunidade.filter({ empresa_id: empresaId, created_date: { $gte: getPeriodStart().toISOString() } }, '-created_date', 500),
+        base44.entities.Agenda.filter({ empresa_id: empresaId, created_date: { $gte: getPeriodStart().toISOString() } }, '-created_date', 300),
       ]);
       setColaboradores(colabs || []);
       setConversas(convs || []);
