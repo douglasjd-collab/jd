@@ -274,6 +274,7 @@ export default function BatePapo() {
     }
   };
   const [searchConversas, setSearchConversas] = useState('');
+  const [buscaGlobal, setBuscaGlobal] = useState('');
   const [limiteConversas, setLimiteConversas] = useState(200);
   const [limiteMensagens, setLimiteMensagens] = useState(100);
   const iniciouLimiteConversasRef = useRef(false);
@@ -667,6 +668,11 @@ export default function BatePapo() {
   const { colaboradores: colaboradoresTarefa, clientes: clientesTarefa, statusList: statusListTarefa, setores: setoresTarefa, subsetores: subsetoresTarefa } = useTarefaFormData(empresaId);
   const tiposListTarefa = [];
 
+  useEffect(() => {
+    const timer = setTimeout(() => setBuscaGlobal(searchConversas.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [searchConversas]);
+
   const { data: conversas = [], refetch: refetchConversas } = useQuery({
     queryKey: ['conversas-whatsapp', empresaId],
     enabled: !!empresaId,
@@ -705,6 +711,23 @@ export default function BatePapo() {
     refetchInterval: 60000,  // Tempo real cuida das mudanças; consulta completa de segurança a cada 60s
     placeholderData: (prev) => prev,
   });
+
+  const { data: conversasBusca = [], isFetching: buscandoConversas } = useQuery({
+    queryKey: ['busca-conversas-global', empresaId, buscaGlobal],
+    enabled: !!empresaId && buscaGlobal.length >= 2,
+    staleTime: 30000,
+    queryFn: async () => {
+      const resp = await base44.functions.invoke('buscarConversasGlobal', { empresa_id: empresaId, q: buscaGlobal, limit: 100 });
+      const lista = resp?.data?.conversas || [];
+      setContatosWhatsapp(prev => {
+        const novo = { ...prev };
+        lista.forEach(c => { if (c.contato) novo[c.id] = c.contato; });
+        return novo;
+      });
+      return lista;
+    },
+  });
+  const conversasFonte = buscaGlobal.length >= 2 ? conversasBusca : conversas;
 
   const { data: mensagens = [], isLoading: loadingMensagens, refetch: refetchMensagens } = useQuery({
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
@@ -1633,7 +1656,7 @@ export default function BatePapo() {
 
 
 
-  const conversasFiltradas = conversas
+  const conversasFiltradas = conversasFonte
     .filter(c => {
       if (!c || !c.id) return false;
       const temIdentificador = c.cliente_telefone || c.whatsapp_id;
@@ -2044,6 +2067,8 @@ export default function BatePapo() {
                     <div className="flex items-center justify-center h-32 text-slate-400">
                       <MessageCircle className="w-8 h-8 opacity-40" />
                     </div>
+                  ) : buscandoConversas && buscaGlobal ? (
+                    <div className="flex items-center justify-center h-20 text-slate-400 gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Pesquisando em toda a base...</div>
                   ) : <>
                     {conversasFiltradas.map((c) => {
                       const naoLidas = naoLidasPorConversa[c.id] ?? 0;
@@ -2249,9 +2274,9 @@ export default function BatePapo() {
                                   </div>
                                   );
                                   })}
-                    {conversas.length >= limiteConversas && limiteConversas < 2000 && (
+                    {!buscaGlobal && conversas.length >= limiteConversas && (
                       <div className="flex justify-center py-3">
-                        <Button variant="outline" size="sm" onClick={() => setLimiteConversas(v => Math.min(v + 200, 2000))}>
+                        <Button variant="outline" size="sm" onClick={() => setLimiteConversas(v => v + 200)}>
                           Carregar conversas anteriores
                         </Button>
                       </div>
@@ -2399,7 +2424,7 @@ export default function BatePapo() {
                       ) : (
                         <ListaMensagens
                           mensagens={mensagens}
-                          temMais={mensagens.filter(m => !m.id?.startsWith('temp_')).length >= limiteMensagens && limiteMensagens < 2000}
+                          temMais={mensagens.filter(m => !m.id?.startsWith('temp_')).length >= limiteMensagens}
                           onCarregarAnteriores={carregarMensagensAnteriores}
                           conversaSelecionada={conversaSelecionada}
                           isGrupo={isGrupo(conversaSelecionada)}
