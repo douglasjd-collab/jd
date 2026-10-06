@@ -126,6 +126,10 @@
       "type": "number",
       "default": 0,
       "description": "Valor do imposto descontado do pagamento"
+    },
+    "total_liquido": {
+      "type": "number",
+      "description": "Valor l\u00edquido efetivamente pago ap\u00f3s adiantamentos, imposto e acr\u00e9scimos"
     }
   },
   "required": [
