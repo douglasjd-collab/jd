@@ -878,16 +878,21 @@ export default function BatePapo() {
       // e entra em "Todos"/"Em Atend." sem precisar recarregar a página).
       const conv = event.data;
       if (conv?.id) {
-        queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
-          Array.isArray(old) ? old.map((c) => (c.id === conv.id ? { ...c, ...conv } : c)) : old);
+        queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) => {
+          if (!Array.isArray(old)) return old;
+          const existe = old.some(c => c.id === conv.id);
+          if (existe) return old.map(c => c.id === conv.id ? { ...c, ...conv } : c);
+          return event.type === 'create' ? [conv, ...old].slice(0, limiteConversas) : old;
+        });
       }
-      refetchConversasComDebounce();
+      // Updates já chegam completos pela assinatura; criação reconcilia o contato em segundo plano.
+      if (event.type === 'create') refetchConversasComDebounce();
     });
     const unsubTarefa = base44.entities.Tarefa.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ['microtarefas-chat', empresaId] });
     });
     return () => { unsubConv(); unsubTarefa(); };
-  }, [empresaId, refetchConversasComDebounce, queryClient]);
+  }, [empresaId, limiteConversas, refetchConversasComDebounce, queryClient]);
 
 
 
