@@ -95,7 +95,6 @@ const MENU_ESTRUTURA = [
       { key: 'financeiro:ComissoesPagar',          label: 'Comissões a Pagar (Consórcio)' },
       { key: 'financeiro:ComissoesEmprestimos',    label: 'Comissões a Pagar (Empréstimos)' },
       { key: 'financeiro:Adiantamentos',           label: 'Adiantamentos' },
-      { key: 'financeiro:ComissoesPagas',          label: 'Comissões Pagas (Consórcio)' },
       { key: 'financeiro:Saques',                  label: 'Comissões (Pagas e Agendadas)' },
     ],
   },

@@ -355,7 +355,7 @@ export default function RelatoriosFinanceiros() {
           </Card>
         </Link>
 
-        <Link to={createPageUrl('ComissoesPagas')}>
+        <Link to={createPageUrl('Saques')}>
           <Card className={`p-4 hover:shadow-lg transition-all cursor-pointer ${darkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'hover:border-red-200'}`}>
             <div className="flex items-center gap-3">
               <div className="p-2 bg-red-100 rounded-lg">

@@ -404,8 +404,8 @@ export default function ComissoesPagar() {
       setAdiantamentosSelecionados(new Set());
       setAdiantamentosVendedor([]);
       setVendedorModal(null);
-      // Redirecionar para Comissões Pagas
-      setTimeout(() => { window.location.href = createPageUrl('ComissoesPagas'); }, 1200);
+      // Redirecionar para a aba unificada de Comissões (Pagas e Agendadas)
+      setTimeout(() => { window.location.href = createPageUrl('Saques'); }, 1200);
     } catch (err) {
       console.error(err);
       toast.error('Erro ao processar pagamento');
