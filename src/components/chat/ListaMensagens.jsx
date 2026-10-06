@@ -51,13 +51,20 @@ function agruparMensagens(mensagens) {
   return grupos;
 }
 
-export default function ListaMensagens({ mensagens, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar, onSelecionarOpcaoLista, modoSelecao = false, idsSelecionados = new Set(), onToggleSelecao = null, onEncaminhar = null, onCancelarSelecao = null, onConfirmarSelecao = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null }) {
+export default function ListaMensagens({ mensagens, temMais = false, onCarregarAnteriores = null, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar, onSelecionarOpcaoLista, modoSelecao = false, idsSelecionados = new Set(), onToggleSelecao = null, onEncaminhar = null, onCancelarSelecao = null, onConfirmarSelecao = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null }) {
   const reagir = useReagirMensagem({ conversa: conversaSelecionada, isGrupo });
   const visiveis = filtrarMensagensVisiveis(mensagens);
   const grupos = modoSelecao ? visiveis.map(msg => ({ type: 'mensagem', msg })) : agruparMensagens(visiveis);
 
   return (
     <div className="space-y-3 pb-4">
+      {temMais && onCarregarAnteriores && (
+        <div className="flex justify-center py-2">
+          <Button variant="outline" size="sm" onClick={onCarregarAnteriores}>
+            Carregar mensagens anteriores
+          </Button>
+        </div>
+      )}
       {grupos.map((item, gi) => {
         const primeiraMsg = item.type === 'grupo_imagens' ? item.msgs[0] : item.msg;
         const dataMsg = new Date(primeiraMsg.data_envio || primeiraMsg.created_date);
