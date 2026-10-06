@@ -1109,7 +1109,10 @@ async function processMessageSent(base44, body, connection) {
   if (!connection) return { handled: false, reason: 'connection not found' };
   
   const messageData = body.data || body.message || body;
-  const externalMessageId = messageData.id || messageData.messageId;
+  const externalMessageId = messageData.key?.id || messageData.message?.key?.id || messageData.id || messageData.messageId || messageData.message_id || messageData.external_message_id;
+  if (typeof externalMessageId !== 'string' || !externalMessageId.trim()) {
+    return { handled: false, reason: 'message id missing' };
+  }
   // "to" pode chegar como texto (telefone/JID) ou como objeto { jid, name } dependendo do aparelho.
   // Quando vinha como objeto, o código estourava "to?.replace is not a function" e o evento de
   // mensagem enviada era descartado — a mensagem ficava travada como "pendente" no CRM.
@@ -1118,6 +1121,7 @@ async function processMessageSent(base44, body, connection) {
   
   // Buscar mensagem pelo external_message_id
   const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+    empresa_id: connection.empresa_id,
     whatsapp_message_id: externalMessageId
   });
   
@@ -1153,9 +1157,13 @@ async function processMessageDelivered(base44, body, connection) {
   if (!connection) return { handled: false, reason: 'connection not found' };
   
   const messageData = body.data || body.message || body;
-  const externalMessageId = messageData.id || messageData.messageId;
+  const externalMessageId = messageData.key?.id || messageData.message?.key?.id || messageData.id || messageData.messageId || messageData.message_id || messageData.external_message_id;
+  if (typeof externalMessageId !== 'string' || !externalMessageId.trim()) {
+    return { handled: false, reason: 'message id missing' };
+  }
   
   const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+    empresa_id: connection.empresa_id,
     whatsapp_message_id: externalMessageId
   });
   
@@ -1181,9 +1189,13 @@ async function processMessageRead(base44, body, connection) {
   if (!connection) return { handled: false, reason: 'connection not found' };
   
   const messageData = body.data || body.message || body;
-  const externalMessageId = messageData.id || messageData.messageId;
+  const externalMessageId = messageData.key?.id || messageData.message?.key?.id || messageData.id || messageData.messageId || messageData.message_id || messageData.external_message_id;
+  if (typeof externalMessageId !== 'string' || !externalMessageId.trim()) {
+    return { handled: false, reason: 'message id missing' };
+  }
   
   const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+    empresa_id: connection.empresa_id,
     whatsapp_message_id: externalMessageId
   });
   
@@ -1208,9 +1220,13 @@ async function processMessageDeleted(base44, body, connection) {
   if (!connection) return { handled: false, reason: 'connection not found' };
   
   const messageData = body.data || body.message || body;
-  const externalMessageId = messageData.id || messageData.messageId;
+  const externalMessageId = messageData.key?.id || messageData.message?.key?.id || messageData.id || messageData.messageId || messageData.message_id || messageData.external_message_id;
+  if (typeof externalMessageId !== 'string' || !externalMessageId.trim()) {
+    return { handled: false, reason: 'message id missing' };
+  }
   
   const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+    empresa_id: connection.empresa_id,
     whatsapp_message_id: externalMessageId
   });
   
