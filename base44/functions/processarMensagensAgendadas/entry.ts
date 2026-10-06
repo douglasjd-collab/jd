@@ -5,6 +5,7 @@ import {
   enviarViaMetaOficial,
   enviarViaDapi,
 } from '../../shared/mensagensAgendadasShared.ts';
+import { obterTrava, liberarTrava } from '../../shared/consumoControlShared.ts';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Processa UMA mensagem agendada (envia + registra + atualiza status).
@@ -17,7 +18,12 @@ import {
 //  - Texto final resolvido ({{1}} → primeiro nome atual do cliente) no histórico.
 // ─────────────────────────────────────────────────────────────────────────
 export async function processarMensagemIndividual(base44, msg): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  // 1) Lock atômico: só processa se status === 'agendada'. Troca para
+  const nomeTrava = `mensagemAgendada_${msg.id}`;
+  const obteveTrava = await obterTrava(base44, nomeTrava, 15);
+  if (!obteveTrava) return { success: false, error: 'Mensagem já está sendo processada' };
+
+  try {
+  // 1) Lock por status: só processa se status === 'agendada'. Troca para
   //    'processando' para impedir disparo duplicado caso a automação rode
   //    duas vezes no mesmo horário. Se já está em 'processando', pula.
   try {
@@ -147,6 +153,9 @@ export async function processarMensagemIndividual(base44, msg): Promise<{ succes
       erro_detalhe: err.message,
     }).catch(() => {});
     return { success: false, error: err.message };
+  }
+  } finally {
+    await liberarTrava(base44, nomeTrava);
   }
 }
 
