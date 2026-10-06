@@ -2381,6 +2381,8 @@ export default function BatePapo() {
                       ) : (
                         <ListaMensagens
                           mensagens={mensagens}
+                          temMais={mensagens.filter(m => !m.id?.startsWith('temp_')).length >= limiteMensagens && limiteMensagens < 2000}
+                          onCarregarAnteriores={() => setLimiteMensagens(v => Math.min(v + 100, 2000))}
                           conversaSelecionada={conversaSelecionada}
                           isGrupo={isGrupo(conversaSelecionada)}
                           onResponder={setMensagemParaResponder}
