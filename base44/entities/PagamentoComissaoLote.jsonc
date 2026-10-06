@@ -107,6 +107,25 @@
     "meu_financeiro_receita_id": {
       "type": "string",
       "description": "ID da receita vinculada no Meu Financeiro"
+    },
+    "total_bruto": {
+      "type": "number",
+      "description": "Valor bruto das comiss\u00f5es antes dos descontos"
+    },
+    "imposto_cobrado": {
+      "type": "boolean",
+      "default": false,
+      "description": "Indica se houve desconto de imposto no pagamento"
+    },
+    "imposto_percentual": {
+      "type": "number",
+      "default": 0,
+      "description": "Percentual de imposto aplicado sobre o valor bruto das comiss\u00f5es"
+    },
+    "imposto_valor": {
+      "type": "number",
+      "default": 0,
+      "description": "Valor do imposto descontado do pagamento"
     }
   },
   "required": [
