@@ -43,6 +43,7 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
   const [saving, setSaving] = useState(false);
   const [agendados, setAgendados] = useState([]);
   const [loadingAgendados, setLoadingAgendados] = useState(false);
+  const [ultimaVerificacaoAgendador, setUltimaVerificacaoAgendador] = useState(null);
 
   // Mídia
   const [arquivo, setArquivo] = useState(null); // File object
@@ -128,12 +129,20 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
     if (!conversa?.id) return;
     setLoadingAgendados(true);
     try {
-      const lista = await base44.entities.MensagemAgendada.filter(
-        { conversa_id: conversa.id },
-        '-created_date',
-        50
-      );
+      const [lista, logs] = await Promise.all([
+        base44.entities.MensagemAgendada.filter(
+          { conversa_id: conversa.id },
+          '-created_date',
+          50
+        ),
+        base44.entities.ConsumoIntegracaoLog.filter(
+          { funcao_nome: 'processarRotinasOtimizadas' },
+          '-created_date',
+          1
+        ).catch(() => []),
+      ]);
       setAgendados(lista.filter(a => a.status !== 'cancelada'));
+      setUltimaVerificacaoAgendador(logs?.[0]?.created_date || null);
     } catch (e) {
       console.error(e);
     } finally {
@@ -593,6 +602,15 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
           </div>
         ) : (
           <div className="space-y-2 mt-1 max-h-96 overflow-y-auto">
+            <div className={`rounded-lg border px-3 py-2 text-xs ${
+              ultimaVerificacaoAgendador && Date.now() - new Date(ultimaVerificacaoAgendador).getTime() <= 10 * 60 * 1000
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'border-amber-200 bg-amber-50 text-amber-700'
+            }`}>
+              {ultimaVerificacaoAgendador
+                ? `Agendador verificado em ${format(new Date(ultimaVerificacaoAgendador), 'dd/MM/yyyy HH:mm')}`
+                : 'Aguardando a primeira verificação registrada do agendador.'}
+            </div>
             {loadingAgendados ? (
               <p className="text-center text-slate-400 py-4">Carregando...</p>
             ) : agendados.length === 0 ? (
@@ -617,6 +635,9 @@ export default function AgendarMensagemModal({ open, onOpenChange, conversa, cur
                         <video src={a.arquivo_url} className="w-full max-h-24 rounded mb-1" />
                       )}
                       <p className="text-sm text-slate-800">{a.mensagem}</p>
+                      {a.status === 'agendada' && a.proxima_execucao && Date.now() - new Date(a.proxima_execucao).getTime() > 10 * 60 * 1000 && (
+                        <p className="text-xs font-semibold text-red-600 mt-1">⚠️ Envio atrasado há mais de 10 minutos</p>
+                      )}
                       {/* Prévia da variável {{1}} resolvida — o backend usa o
                           primeiro nome real do cliente no disparo, mas a UI
                           mostra o texto aprovado (com {{1}}) + esta linha. */}
