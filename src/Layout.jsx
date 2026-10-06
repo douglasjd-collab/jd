@@ -96,6 +96,54 @@ export default function Layout({ children, currentPageName }) {
     loadLogo();
   }, []);
 
+  // Contingência do agendador: enquanto houver uma sessão ativa no CRM,
+  // verifica pendências vencidas e aciona o processador dedicado.
+  // A trava no backend impede duplicidade entre abas, usuários e o cron.
+  useEffect(() => {
+    if (!user) return;
+
+    const chaveUltimaVerificacao = 'mensagens_agendadas_heartbeat';
+    const verificarAgendamentos = async () => {
+      if (document.visibilityState === 'hidden') return;
+
+      const agora = Date.now();
+      const ultima = Number(localStorage.getItem(chaveUltimaVerificacao) || 0);
+      if (agora - ultima < 45000) return;
+      localStorage.setItem(chaveUltimaVerificacao, String(agora));
+
+      try {
+        const pendentes = await base44.entities.MensagemAgendada.filter(
+          {
+            status: 'agendada',
+            proxima_execucao: { $lte: new Date().toISOString() },
+          },
+          'proxima_execucao',
+          1
+        );
+
+        if (pendentes.length > 0) {
+          await base44.functions.invoke('processarMensagensAgendadas', {
+            origem: 'heartbeat_crm',
+          });
+        }
+      } catch (error) {
+        console.error('Falha no heartbeat de mensagens agendadas:', error);
+      }
+    };
+
+    void verificarAgendamentos();
+    const intervalo = window.setInterval(verificarAgendamentos, 60000);
+    const aoVoltarParaAba = () => {
+      if (document.visibilityState === 'visible') void verificarAgendamentos();
+    };
+    document.addEventListener('visibilitychange', aoVoltarParaAba);
+
+    return () => {
+      window.clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', aoVoltarParaAba);
+    };
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     // Buscar comissões pendentes (vendedores com comissão do banco recebida mas não paga ao vendedor)
