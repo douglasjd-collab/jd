@@ -2026,7 +2026,8 @@ export default function BatePapo() {
                     <div className="flex items-center justify-center h-32 text-slate-400">
                       <MessageCircle className="w-8 h-8 opacity-40" />
                     </div>
-                  ) : conversasFiltradas.map((c) => {
+                  ) : <>
+                    {conversasFiltradas.map((c) => {
                       const naoLidas = naoLidasPorConversa[c.id] ?? 0;
                        const isSelecionada = conversaSelecionada?.id === c.id;
                        const isApiOficial = c.provider === 'whatsapp_meta'
@@ -2229,8 +2230,15 @@ export default function BatePapo() {
                                   </div>
                                   </div>
                                   );
-                                  })
-                  }
+                                  })}
+                    {conversas.length >= limiteConversas && limiteConversas < 2000 && (
+                      <div className="flex justify-center py-3">
+                        <Button variant="outline" size="sm" onClick={() => setLimiteConversas(v => Math.min(v + 200, 2000))}>
+                          Carregar conversas anteriores
+                        </Button>
+                      </div>
+                    )}
+                  </>}
                 </div>
               </div>
             </CardContent>
