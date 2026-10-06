@@ -53,6 +53,10 @@ export default function ComissoesPagar() {
   const [adiantamentosVendedor, setAdiantamentosVendedor] = useState([]);
   const [adiantamentosSelecionados, setAdiantamentosSelecionados] = useState(new Set());
 
+  // Imposto descontado no pagamento
+  const [cobrarImposto, setCobrarImposto] = useState(false);
+  const [percentualImposto, setPercentualImposto] = useState('');
+
   const queryClient = useQueryClient();
 
   useEffect(() => { loadUser(); }, []);
@@ -173,20 +177,42 @@ export default function ComissoesPagar() {
     setFormaPagamento('PIX');
     setObservacao('');
     setAdiantamentosSelecionados(new Set());
+    setCobrarImposto(false);
+    setPercentualImposto('');
 
-    // Buscar adiantamentos pendentes do vendedor (match por colaborador_id ou nome)
+    // Buscar adiantamentos pendentes do vendedor. O vendedor_id das comissões
+    // pode ser o id do Colaborador ou o user_id; os dois precisam ser aceitos.
     try {
       const filtroAdi = { status: 'pendente' };
       if (user?.empresa_id) filtroAdi.empresa_id = user.empresa_id;
       const adis = await base44.entities.Adiantamento.filter(filtroAdi);
-      const nomeVendedor = (vendedor.vendedor_nome || '').toLowerCase().trim();
+
+      const idsVendedor = new Set([vendedor.vendedor_id].filter(Boolean));
+      try {
+        let colabs = await base44.entities.Colaborador.filter({ id: vendedor.vendedor_id });
+        if (!colabs || colabs.length === 0) {
+          colabs = await base44.entities.Colaborador.filter({ user_id: vendedor.vendedor_id });
+        }
+        (colabs || []).forEach(c => {
+          if (c.id) idsVendedor.add(c.id);
+          if (c.user_id) idsVendedor.add(c.user_id);
+        });
+      } catch {}
+
+      const normalizarNome = (nome) => String(nome || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase().replace(/\s+/g, ' ').trim();
+      const nomeVendedor = normalizarNome(vendedor.vendedor_nome);
+
       const adisDoVendedor = adis.filter(a =>
-        a.colaborador_id === vendedor.vendedor_id ||
-        (a.colaborador_nome || '').toLowerCase().trim() === nomeVendedor ||
-        (a.parceiro_nome || '').toLowerCase().trim() === nomeVendedor
+        idsVendedor.has(a.colaborador_id) ||
+        idsVendedor.has(a.parceiro_id) ||
+        normalizarNome(a.colaborador_nome) === nomeVendedor ||
+        normalizarNome(a.parceiro_nome) === nomeVendedor
       );
       setAdiantamentosVendedor(adisDoVendedor);
-    } catch {
+    } catch (error) {
+      console.error('Erro ao buscar adiantamentos do vendedor:', error);
       setAdiantamentosVendedor([]);
     }
 
