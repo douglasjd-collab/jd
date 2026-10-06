@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
         },
         {
           $set: { status: 'ativa', ultimo_remetente: 'cliente' },
-          $unset: { responsavel_id: '', responsavel_nome: '', responsavel_expira_em: '' },
+          $unset: { responsavel_id: '', responsavel_nome: '', responsavel_expira_em: '', atendimento_transferido_para_id: '' },
         }
       );
       totalLimpos += resp?.modified_count || resp?.n || 0;
