@@ -344,6 +344,15 @@ export default function ComissoesPagar() {
       const lotes = await base44.entities.PagamentoComissaoLote.filter({ empresa_id: user.empresa_id });
       const loteCode = `EMPAY${String(lotes.length + 1).padStart(4, '0')}`;
       const totalPago = paraPagar.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
+      const percentualImpostoAplicado = cobrarImposto
+        ? Math.min(100, Math.max(0, Number(String(percentualImposto).replace(',', '.')) || 0))
+        : 0;
+      const valorImposto = totalPago * (percentualImpostoAplicado / 100);
+      const descontoAdiantamentosAplicado = Math.min(
+        totalAdiantamentosDesc,
+        Math.max(0, totalPago - valorImposto)
+      );
+      const totalLiquidoPagamento = Math.max(0, totalPago - valorImposto - descontoAdiantamentosAplicado);
 
       // Buscar filial do vendedor/parceiro para vincular a comissão paga à filial no DRE
       let filialId = null;
@@ -366,8 +375,13 @@ export default function ComissoesPagar() {
         filial_id: filialId, filial_nome: filialNome,
         vendedor_id: vendedorModal.vendedor_id, vendedor_nome: vendedorModal.vendedor_nome,
         data_pagamento: dataPagamento, forma_pagamento: formaPagamento,
-        total_itens: paraPagar.length, total_pago: totalPago,
-        descontos: totalAdiantamentosDesc,
+        total_itens: paraPagar.length,
+        total_bruto: totalPago,
+        total_pago: totalLiquidoPagamento,
+        descontos: descontoAdiantamentosAplicado,
+        imposto_cobrado: cobrarImposto && percentualImpostoAplicado > 0,
+        imposto_percentual: percentualImpostoAplicado,
+        imposto_valor: valorImposto,
         observacao,
         gerado_por_id: user.colaborador_id, gerado_por_nome: user.full_name,
         comissoes_ids: JSON.stringify(paraPagar.map(c => c.id)), email_enviado: false,
@@ -379,7 +393,9 @@ export default function ComissoesPagar() {
         .map(id => adiantamentosVendedor.find(a => a.id === id))
         .filter(Boolean);
 
-      let saldoDisponivel = totalPago;
+      // O imposto é descontado primeiro; adiantamentos só podem consumir
+      // o saldo que ainda estará disponível para pagamento ao vendedor.
+      let saldoDisponivel = Math.max(0, totalPago - valorImposto);
       for (const adi of adisDesc) {
         if (saldoDisponivel <= 0) break;
         const valorDescontar = Math.min(adi.valor, saldoDisponivel);
@@ -424,11 +440,16 @@ export default function ComissoesPagar() {
       await gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode);
       queryClient.invalidateQueries(['comissoes-a-pagar']);
       const msgAdis = adisDesc.length > 0 ? ` ${adisDesc.length} adiantamento(s) descontado(s).` : '';
-      toast.success(`✅ ${paraPagar.length} comissão(ões) paga(s)! PDF gerado.${msgAdis}`);
+      const msgImposto = valorImposto > 0
+        ? ` Imposto de ${percentualImpostoAplicado.toFixed(2)}% descontado (${fmt(valorImposto)}).`
+        : '';
+      toast.success(`✅ ${paraPagar.length} comissão(ões) paga(s)! Líquido: ${fmt(totalLiquidoPagamento)}.${msgImposto}${msgAdis}`);
       setPagarModal(false);
       setModalSelecionados(new Set());
       setAdiantamentosSelecionados(new Set());
       setAdiantamentosVendedor([]);
+      setCobrarImposto(false);
+      setPercentualImposto('');
       setVendedorModal(null);
       // Redirecionar para a aba unificada de Comissões (Pagas e Agendadas)
       setTimeout(() => { window.location.href = createPageUrl('Saques'); }, 1200);
@@ -477,6 +498,19 @@ export default function ComissoesPagar() {
     .map(id => adiantamentosVendedor.find(a => a.id === id))
     .filter(Boolean)
     .reduce((acc, a) => acc + (a.valor || 0), 0);
+
+  const percentualImpostoNumero = cobrarImposto
+    ? Math.min(100, Math.max(0, Number(String(percentualImposto).replace(',', '.')) || 0))
+    : 0;
+  const valorImpostoCalculado = totalModalSelecionado * (percentualImpostoNumero / 100);
+  const adiantamentoAplicadoCalculado = Math.min(
+    totalAdiantamentosDesc,
+    Math.max(0, totalModalSelecionado - valorImpostoCalculado)
+  );
+  const totalLiquidoCalculado = Math.max(
+    0,
+    totalModalSelecionado - valorImpostoCalculado - adiantamentoAplicadoCalculado
+  );
 
   const toggleAdiantamento = (id) => {
     const s = new Set(adiantamentosSelecionados);
