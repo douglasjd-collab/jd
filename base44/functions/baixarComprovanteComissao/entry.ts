@@ -108,7 +108,9 @@ async function reconstruirRelatorioConsorcio(base44, lote) {
   const subtotal = itens.reduce((acc, i) => acc + i.valor, 0);
   const totalAdiantamentos = adiantamentosLote.reduce((acc, a) => acc + (a.valor || 0), 0) || (lote.descontos || 0);
   const acrescimos = lote.acrescimos || 0;
-  const totalLiquido = Math.max(0, subtotal - totalAdiantamentos + acrescimos);
+  const impostoPercentual = lote.imposto_percentual || 0;
+  const impostoValor = lote.imposto_valor || 0;
+  const totalLiquido = Math.max(0, subtotal - totalAdiantamentos - impostoValor + acrescimos);
 
   return gerarRelatorioComissaoConsorcioHTML({
     loteCode: lote.lote_code,
@@ -125,6 +127,8 @@ async function reconstruirRelatorioConsorcio(base44, lote) {
     itens,
     subtotal,
     totalAdiantamentos,
+    impostoPercentual,
+    impostoValor,
     acrescimos,
     totalLiquido,
     adiantamentos: adiantamentosLote.map((a) => ({ valor: a.valor, data: a.data_desconto || a.data, motivo: a.motivo })),
