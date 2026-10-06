@@ -795,11 +795,63 @@ export default function ComissoesPagar() {
               })}
               {totalAdiantamentosDesc > 0 && (
                 <p className="text-xs text-orange-700 font-semibold pt-1">
-                  Desconto total: {fmt(totalAdiantamentosDesc)} · Valor líquido a pagar: {fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc))}
+                  Desconto selecionado: {fmt(adiantamentoAplicadoCalculado)} · Valor líquido após todos os descontos: {fmt(totalLiquidoCalculado)}
                 </p>
               )}
             </div>
           )}
+
+          {/* Desconto de imposto */}
+          <div className="border border-blue-200 rounded-lg bg-blue-50 p-3 space-y-3">
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="cobrar-imposto-consorcio"
+                checked={cobrarImposto}
+                onCheckedChange={(checked) => {
+                  setCobrarImposto(checked === true);
+                  if (checked !== true) setPercentualImposto('');
+                }}
+              />
+              <div className="flex-1">
+                <Label htmlFor="cobrar-imposto-consorcio" className="font-semibold text-blue-900 cursor-pointer">
+                  Cobrar imposto
+                </Label>
+                <p className="text-xs text-blue-700 mt-0.5">
+                  O percentual será calculado sobre o valor bruto das comissões.
+                </p>
+              </div>
+            </div>
+
+            {cobrarImposto && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+                <div>
+                  <Label className="text-xs text-blue-800">Percentual do imposto</Label>
+                  <div className="relative mt-1">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      inputMode="decimal"
+                      placeholder="Ex.: 6"
+                      value={percentualImposto}
+                      onChange={(e) => setPercentualImposto(e.target.value)}
+                      className="pr-8 bg-white"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">%</span>
+                  </div>
+                </div>
+                <div className="text-sm">
+                  <p className="text-xs text-slate-500">Valor do imposto</p>
+                  <p className="font-bold text-red-600">{fmt(valorImpostoCalculado)}</p>
+                </div>
+                <div className="text-sm">
+                  <p className="text-xs text-slate-500">Após imposto</p>
+                  <p className="font-bold text-blue-800">{fmt(Math.max(0, totalModalSelecionado - valorImpostoCalculado))}</p>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="border-t pt-3 space-y-3">
             <div className="flex items-center justify-between text-sm">
@@ -812,9 +864,15 @@ export default function ComissoesPagar() {
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-800 text-base">
                 Total a pagar: <span className="text-[#10353C]">{fmt(totalModalSelecionado)}</span>
-                {totalAdiantamentosDesc > 0 && (
-                  <span className="ml-3 text-sm text-orange-600 font-semibold">
-                    − {fmt(totalAdiantamentosDesc)} (adiantamentos) = <span className="text-green-700">{fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc))}</span>
+                {(valorImpostoCalculado > 0 || adiantamentoAplicadoCalculado > 0) && (
+                  <span className="ml-3 text-sm font-semibold">
+                    {valorImpostoCalculado > 0 && (
+                      <span className="text-red-600"> − {fmt(valorImpostoCalculado)} (imposto)</span>
+                    )}
+                    {adiantamentoAplicadoCalculado > 0 && (
+                      <span className="text-orange-600"> − {fmt(adiantamentoAplicadoCalculado)} (adiantamentos)</span>
+                    )}
+                    <span className="text-green-700"> = {fmt(totalLiquidoCalculado)} líquido</span>
                   </span>
                 )}
               </span>
@@ -840,12 +898,18 @@ export default function ComissoesPagar() {
 
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setPagarModal(false)} disabled={isPaying}>Cancelar</Button>
-            <Button disabled={modalSelecionados.size === 0 || isPaying} onClick={handleConfirmarPagamento}
+            <Button
+              disabled={
+                modalSelecionados.size === 0 ||
+                isPaying ||
+                (cobrarImposto && (percentualImpostoNumero <= 0 || percentualImpostoNumero > 100))
+              }
+              onClick={handleConfirmarPagamento}
               className="bg-[#10353C] hover:bg-[#1a5060] text-white">
               {isPaying ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processando...</>
               ) : (
-                <><CheckCircle2 className="w-4 h-4 mr-2" />Pagar {modalSelecionados.size} contrato(s) ({fmt(Math.max(0, totalModalSelecionado - totalAdiantamentosDesc))})</>
+                <><CheckCircle2 className="w-4 h-4 mr-2" />Pagar {modalSelecionados.size} contrato(s) ({fmt(totalLiquidoCalculado)})</>
               )}
             </Button>
           </DialogFooter>
