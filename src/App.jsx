@@ -12,6 +12,7 @@ import ConfiguracaoTarefas from './pages/ConfiguracaoTarefas';
 import ContatosCRM from './pages/ContatosCRM';
 import ConfiguracaoApi from './pages/ConfiguracaoApi';
 import Adiantamentos from './pages/Adiantamentos';
+import CompactChatShell from './components/chat/CompactChatShell';
 
 import HistoricoImportacaoPropostas from './pages/HistoricoImportacaoPropostas';
 import TesteWebhookWhatsApp from './pages/TesteWebhookWhatsApp';
@@ -64,9 +65,12 @@ const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 
-const LayoutWrapper = ({ children, currentPageName }) => Layout ?
-  <Layout currentPageName={currentPageName}>{children}</Layout>
-  : <>{children}</>;
+const LayoutWrapper = ({ children, currentPageName }) => {
+  const compactChat = currentPageName === 'BatePapo'
+    && new URLSearchParams(window.location.search).get('jd_compact') === '1';
+  if (compactChat) return <CompactChatShell>{children}</CompactChatShell>;
+  return Layout ? <Layout currentPageName={currentPageName}>{children}</Layout> : <>{children}</>;
+};
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
