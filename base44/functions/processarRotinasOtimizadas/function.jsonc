@@ -4,12 +4,12 @@
   "automations": [
     {
       "name": "Processador central otimizado",
-      "description": "ÚNICO agendador oficial. A cada 5 minutos verifica filas leves e só invoca rotinas quando existe trabalho pendente.",
+      "description": "Processador central disponível para acionamento manual; o envio agendado usa automação dedicada.",
       "type": "scheduled",
       "schedule_mode": "recurring",
       "schedule_type": "cron",
       "cron_expression": "*/5 * * * *",
-      "is_active": true
+      "is_active": false
     }
   ]
 }
