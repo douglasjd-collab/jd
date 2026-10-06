@@ -5,7 +5,6 @@
     "condition": null,
     "config": {
       "trigger_type": "scheduled",
-      "is_active": false,
       "events": [],
       "schedule_mode": "interval",
       "cron_expression": null,
