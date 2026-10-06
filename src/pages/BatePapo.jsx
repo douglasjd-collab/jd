@@ -1350,8 +1350,7 @@ export default function BatePapo() {
       }).catch(() => {});
     };
 
-    atualizarStatus();
-    // Polling a cada 60s (reduzido de 10s) para pegar status atualizados — ACKs vêm via subscription
+    // ACKs chegam pela assinatura em tempo real; a reconciliação completa fica apenas como segurança.
     const intervalo = setInterval(atualizarStatus, 60000);
     return () => clearInterval(intervalo);
   }, [conversaSelecionada?.id, empresaId]);
