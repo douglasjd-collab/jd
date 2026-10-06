@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const empresaId = body.empresa_id;
-    const limit = Math.min(Math.max(Number(body.limit) || 200, 50), 2000);
+    const limit = Math.min(Math.max(Number(body.limit) || 200, 50), 10000);
 
     if (!empresaId) {
       return Response.json({ error: 'empresa_id required' }, { status: 400 });
