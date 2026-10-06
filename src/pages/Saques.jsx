@@ -64,7 +64,7 @@ async function exportarLinhaPDF(lote) {
 async function exportarLinhaPDFUnico(lote) {
   // Lotes legado: sem backend, usa PDF simples
   if (lote.isLegado) {
-    exportarLinhaPDFSimples(lote);
+    await exportarLinhaPDFSimples(lote);
     return;
   }
 
@@ -115,7 +115,7 @@ async function exportarLinhaPDFUnico(lote) {
   exportarLinhaPDFSimples(lote);
 }
 
-function exportarLinhaPDFSimples(lote) {
+async function exportarLinhaPDFSimples(lote) {
   const doc = new jsPDF({ orientation: 'landscape' });
   doc.setFontSize(14);
   doc.text('Relatório de Comissão', 14, 16);
@@ -138,6 +138,32 @@ function exportarLinhaPDFSimples(lote) {
     lote.status === 'quitado' ? 'Quitado' : 'Programado',
   ];
   autoTable(doc, { head: [colunas], body: [row], startY: 34, styles: { fontSize: 9 } });
+  if (lote.comprovante_url) {
+    try {
+      const { PDFDocument } = await import('pdf-lib');
+      const response = await fetch(lote.comprovante_url);
+      if (!response.ok) throw new Error(`Comprovante indisponível (HTTP ${response.status}).`);
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const report = await PDFDocument.load(doc.output('arraybuffer'));
+      if (new TextDecoder().decode(bytes.slice(0, 5)) === '%PDF-') {
+        const receipt = await PDFDocument.load(bytes);
+        for (const page of await report.copyPages(receipt, receipt.getPageIndices())) report.addPage(page);
+      } else {
+        const png = bytes[0] === 137 && bytes[1] === 80;
+        const image = png ? await report.embedPng(bytes) : await report.embedJpg(bytes);
+        const page = report.addPage([841.89, 595.28]);
+        const size = image.scale(Math.min(801.89 / image.width, 555.28 / image.height));
+        page.drawImage(image, { x: (841.89 - size.width) / 2, y: (595.28 - size.height) / 2, width: size.width, height: size.height });
+      }
+      const blob = new Blob([await report.save()], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = `Comissao_${lote._protocolo}.pdf`; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      toast.error(`Não foi possível incluir o comprovante: ${error.message}`);
+    }
+    return;
+  }
   doc.save(`Comissao_${lote._protocolo}.pdf`);
 }
 
@@ -673,17 +699,23 @@ export default function Saques() {
   const handleAnexarComprovante = async (lote, comprovanteUrl) => {
     setAnexandoComprovante(true);
     try {
-      if (lote._tipo === 'emp') {
-        await base44.entities.LotePagamentoComissaoEmprestimo.update(lote.id, { comprovante_url: comprovanteUrl });
+      if (lote.isLegado) {
+        if (!lote.proposta_ids?.length) throw new Error('Nenhuma proposta vinculada ao pagamento antigo.');
+        for (const id of lote.proposta_ids) {
+          await base44.entities.Proposta.update(id, { comissao_vendedor_comprovante_url: comprovanteUrl });
+        }
+      } else if (lote._tipo === 'emp') {
+        await base44.entities.LotePagamentoComissaoEmprestimo.update(lote.id, { comprovante_url: comprovanteUrl, comprovante_anexado: true });
       } else {
         await base44.entities.PagamentoComissaoLote.update(lote.id, { comprovante_url: comprovanteUrl });
       }
       queryClient.invalidateQueries({ queryKey: ['lotes-emp'] });
       queryClient.invalidateQueries({ queryKey: ['lotes-consorcio'] });
+      queryClient.invalidateQueries({ queryKey: ['propostas-emp-pagas-legado-saques'] });
       toast.success('Comprovante anexado com sucesso!');
       setLoteParaComprovante(null);
-    } catch {
-      toast.error('Erro ao anexar comprovante');
+    } catch (error) {
+      toast.error(error?.response?.data?.message || error.message || 'Erro ao anexar comprovante');
     } finally {
       setAnexandoComprovante(false);
     }
@@ -800,8 +832,12 @@ export default function Saques() {
         _vendedor: isMaster ? (p.vendedor_nome || 'Sem Vendedor') : undefined,
         _tipo: 'emp-legado',
         isLegado: true,
+        proposta_ids: [],
+        comprovante_url: null,
       };
     }
+    legadoGrupos[key].proposta_ids.push(p.id);
+    if (p.comissao_vendedor_comprovante_url) legadoGrupos[key].comprovante_url = p.comissao_vendedor_comprovante_url;
     const val = p.valor_comissao_vendedor_pago || p.valor_comissao || 0;
     legadoGrupos[key]._valor += val;
     legadoGrupos[key]._total += val;
