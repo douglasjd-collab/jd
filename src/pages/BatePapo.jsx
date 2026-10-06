@@ -115,6 +115,7 @@ export default function BatePapo() {
        ultimo_remetente: conversa?.ultimo_remetente || null,
      });
 
+     if (conversaSelecionadaId !== conversa?.id) setLimiteMensagens(100);
      setConversaSelecionada(conversa);
      // Só ativar mobileViewChat se for dispositivo mobile E abrirMobile for true
      if (abrirMobile && window.innerWidth < 1024) setMobileViewChat(true);
