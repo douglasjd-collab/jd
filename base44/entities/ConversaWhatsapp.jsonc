@@ -125,6 +125,10 @@
       "type": "string",
       "description": "Nome do atendente atual"
     },
+    "atendimento_transferido_para_id": {
+      "type": "string",
+      "description": "ID do respons\u00e1vel que recebeu a transfer\u00eancia. Identifica Transferidos sem encerrar a conversa; v\u00e1lido enquanto coincidir com o respons\u00e1vel atual."
+    },
     "responsavel_expira_em": {
       "type": "string",
       "format": "date-time",
