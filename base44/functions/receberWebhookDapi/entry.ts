@@ -155,6 +155,21 @@ Deno.serve(async (req) => {
         await processarConfirmacaoEnvio(base44, connection, data);
         break;
         
+      case 'message.update': {
+        const items = Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : [data]);
+        for (const item of items) {
+          const states = [item?.update?.status, item?.status, item?.messageStatus, item?.ack,
+            ...(Array.isArray(item?.MessageUpdate) ? item.MessageUpdate.map(u => u?.status) : [])]
+            .filter(v => typeof v === 'string').map(v => v.toUpperCase().trim());
+          if (states.some(s => ['READ', 'PLAYED', 'VIEWED', 'LIDA'].includes(s))) {
+            await atualizarStatusMensagem(base44, connection, item, 'lida');
+          } else if (states.some(s => ['DELIVERY_ACK', 'DELIVERED', 'DEVICE_READ', 'ENTREGUE'].includes(s))) {
+            await atualizarStatusMensagem(base44, connection, item, 'entregue');
+          }
+        }
+        break;
+      }
+
       case 'message.delivered':
         await atualizarStatusMensagem(base44, connection, data, 'entregue');
         break;
