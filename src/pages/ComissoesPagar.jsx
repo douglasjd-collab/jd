@@ -219,9 +219,20 @@ export default function ComissoesPagar() {
     setPagarModal(true);
   };
 
-  const gerarPDF = async (comissoesLista, vendedorInfo, dataPagamento, formaPagto, loteCode) => {
+  const gerarPDF = async (
+    comissoesLista,
+    vendedorInfo,
+    dataPagamento,
+    formaPagto,
+    loteCode,
+    descontoAdiantamentos = 0,
+    impostoPerc = 0,
+    impostoValor = 0,
+    totalLiquidoOverride = null
+  ) => {
     const doc = new jsPDF({ orientation: 'landscape' });
     const totalPago = comissoesLista.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
+    const totalLiquidoRelatorio = totalLiquidoOverride ?? Math.max(0, totalPago - descontoAdiantamentos - impostoValor);
 
     // Buscar nome real e PIX do vendedor via Colaborador
     let nomeVendedorReal = vendedorInfo?.vendedor_nome || '-';
@@ -288,15 +299,25 @@ export default function ComissoesPagar() {
 
     const infoY = 26 + boxHeight + 8;
     doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-    doc.text('Total Pago ao Corretor:', 14, infoY);
+    doc.text('Valor bruto das comissões:', 14, infoY);
     doc.setTextColor(0, 80, 180); doc.text(fmt(totalPago), 80, infoY);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    const descontosTexto = [
+      descontoAdiantamentos > 0 ? `Adiantamentos: -${fmt(descontoAdiantamentos)}` : '',
+      impostoValor > 0 ? `Imposto (${Number(impostoPerc).toFixed(2)}%): -${fmt(impostoValor)}` : '',
+    ].filter(Boolean).join('  |  ');
+    if (descontosTexto) doc.text(descontosTexto, 14, infoY + 6);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(20, 110, 60);
+    doc.text(`Valor líquido a pagar: ${fmt(totalLiquidoRelatorio)}`, 160, infoY + (descontosTexto ? 6 : 0));
     doc.setTextColor(0, 0, 0);
     if (observacao) {
       doc.setFont('helvetica', 'normal'); doc.text(`Obs: ${observacao}`, 160, infoY);
     }
 
     doc.autoTable({
-      startY: infoY + 8,
+      startY: infoY + (descontosTexto ? 12 : 8),
       head: [['Cliente', 'Grupo/Cota', 'Parcela', 'Data Rec.', 'Vl. Crédito', '% s/ Crédito', 'Vl. a Pagar', 'Administradora']],
       body: comissoesLista.map(c => {
         const credito = getCredito(c);
@@ -437,7 +458,17 @@ export default function ComissoesPagar() {
         }
       }
 
-      await gerarPDF(paraPagar, vendedorModal, dataPagamento, formaPagamento, loteCode);
+      await gerarPDF(
+        paraPagar,
+        vendedorModal,
+        dataPagamento,
+        formaPagamento,
+        loteCode,
+        descontoAdiantamentosAplicado,
+        percentualImpostoAplicado,
+        valorImposto,
+        totalLiquidoPagamento
+      );
       queryClient.invalidateQueries(['comissoes-a-pagar']);
       const msgAdis = adisDesc.length > 0 ? ` ${adisDesc.length} adiantamento(s) descontado(s).` : '';
       const msgImposto = valorImposto > 0
