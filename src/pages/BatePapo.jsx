@@ -439,12 +439,22 @@ export default function BatePapo() {
       let hasMore = true;
       while (hasMore) {
         const resp = await base44.entities.ConversaWhatsapp.updateMany(
-          { empresa_id: empresaId, status: 'encerrada', responsavel_id: { $exists: true, $ne: null } },
-          { $unset: { responsavel_id: "", responsavel_nome: "", responsavel_expira_em: "" } }
+          {
+            empresa_id: empresaId,
+            status: 'ativa',
+            atendimento_transferido_para_id: { $exists: true, $ne: null },
+            responsavel_expira_em: { $gt: new Date().toISOString() },
+            $expr: { $eq: ['$atendimento_transferido_para_id', '$responsavel_id'] },
+          },
+          {
+            $set: { status: 'encerrada', atendimento_prioritario: false },
+            $unset: { responsavel_id: '', responsavel_nome: '', responsavel_expira_em: '', atendimento_transferido_para_id: '' },
+          }
         );
         hasMore = !!resp?.has_more;
       }
       toast.success('✅ Conversas transferidas encerradas');
+      queryClient.invalidateQueries({ queryKey: ['contadores-bate-papo', empresaId] });
       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
       refetchConversas();
     } catch (e) {
@@ -465,13 +475,19 @@ export default function BatePapo() {
         tarefa => !['concluida', 'concluido', 'arquivado', 'arquivada', 'cancelada', 'cancelado'].includes(tarefa.status)
       );
 
-      await base44.entities.ConversaWhatsapp.update(conversa.id, {
+      const dadosTransferencia = {
         responsavel_id: colaborador.id,
         responsavel_nome: colaborador.nome,
-        responsavel_expira_em: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // prazo máximo do atendimento: 24h
-        status: 'encerrada',
-        ultimo_remetente: 'vendedor',
-      });
+        responsavel_expira_em: new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString(),
+        atendimento_transferido_para_id: colaborador.id,
+        status: 'ativa',
+      };
+      await base44.entities.ConversaWhatsapp.update(conversa.id, dadosTransferencia);
+      queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
+        (Array.isArray(old) ? old : []).map(c => c.id === conversa.id ? { ...c, ...dadosTransferencia } : c)
+      );
+      setConversaSelecionada(prev => prev?.id === conversa.id ? { ...prev, ...dadosTransferencia } : prev);
+      queryClient.invalidateQueries({ queryKey: ['contadores-bate-papo', empresaId] });
 
       if (microtarefasPendentes.length > 0) {
         await Promise.all(microtarefasPendentes.map(tarefa =>
@@ -484,7 +500,6 @@ export default function BatePapo() {
 
       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
       queryClient.invalidateQueries({ queryKey: ['microtarefas-chat', empresaId] });
-      if (conversaSelecionada?.id === conversa.id) setConversaSelecionada(null);
 
       if (microtarefasPendentes.length > 0) {
         toast.success(`✅ Atendimento transferido para ${colaborador.nome}. ${microtarefasPendentes.length} microtarefa${microtarefasPendentes.length === 1 ? '' : 's'} atribuída${microtarefasPendentes.length === 1 ? '' : 's'} ao novo responsável.`);
@@ -1651,8 +1666,8 @@ export default function BatePapo() {
   const estaEmAtendimentoFiltro = (c) => c.status === 'ativa' && !estaEmEsperaFiltro(c);
 
   // Contadores por aba — campanhas (sem resposta) não entram nos filtros principais
-  const ehTransferidaAtiva = (c) => !isGrupo(c) && c.status === 'encerrada' && !!c.responsavel_id && atendenteDentroDoTempo(c);
-  const ehFinalizada = (c) => !isGrupo(c) && c.status === 'encerrada' && (!c.responsavel_id || !atendenteDentroDoTempo(c));
+  const ehTransferidaAtiva = (c) => !isGrupo(c) && c.status === 'ativa' && !!c.responsavel_id && c.atendimento_transferido_para_id === c.responsavel_id && atendenteDentroDoTempo(c);
+  const ehFinalizada = (c) => !isGrupo(c) && c.status === 'encerrada';
   const contadoresLocais = {
     todas: conversas.filter(c => c.status !== 'campanha' && c.bloqueado !== true && c.bloqueado !== 'true').length,
     espera: conversasValidas.filter(c => estaEmEsperaFiltro(c)).length,
