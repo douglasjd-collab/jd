@@ -328,6 +328,9 @@ async function processEvent(base44, eventType, body, connection, empresaId) {
     case 'messages.sent':
       return await processMessageSent(base44, body, connection);
     
+    case 'message.update':
+      return await processMessageStatusUpdate(base44, body, connection);
+
     case 'message.delivered':
       return await processMessageDelivered(base44, body, connection);
     
@@ -1148,6 +1151,25 @@ async function processMessageSent(base44, body, connection) {
     connection.empresa_id,
     externalMessageId
   );
+}
+
+// Atualizações de status podem chegar em lote ou dentro de update.status.
+// Só confirma entrega/leitura quando o provedor informa explicitamente esse estado.
+async function processMessageStatusUpdate(base44, body, connection) {
+  const data = body.data || body.message || body;
+  const updates = Array.isArray(data) ? data : (Array.isArray(data.messages) ? data.messages : [data]);
+  const results = [];
+  for (const item of updates) {
+    const statuses = [item?.update?.status, item?.status, item?.messageStatus, item?.ack,
+      ...(Array.isArray(item?.MessageUpdate) ? item.MessageUpdate.map(u => u?.status) : [])]
+      .filter(v => typeof v === 'string').map(v => v.toUpperCase().trim());
+    if (statuses.some(s => ['READ', 'PLAYED', 'VIEWED', 'LIDA'].includes(s))) {
+      results.push(await processMessageRead(base44, { data: item }, connection));
+    } else if (statuses.some(s => ['DELIVERY_ACK', 'DELIVERED', 'DEVICE_READ', 'ENTREGUE'].includes(s))) {
+      results.push(await processMessageDelivered(base44, { data: item }, connection));
+    }
+  }
+  return { handled: results.some(r => r.handled), results };
 }
 
 /**
