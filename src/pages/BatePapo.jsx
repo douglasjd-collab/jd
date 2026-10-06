@@ -96,6 +96,15 @@ export default function BatePapo() {
   const [empresaId, setEmpresaId] = useState(null);
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
 
+  // Confirma o carregamento ao painel JD, sem transmitir dados do atendimento.
+  useEffect(() => {
+    if (!user || window.parent === window) return;
+    const params = new URLSearchParams(window.location.search);
+    const origin = params.get('jd_extension_origin');
+    if (params.get('jd_compact') !== '1' || !/^chrome-extension:\/\/[a-p]{32}$/.test(origin || '')) return;
+    window.parent.postMessage({ type: 'JD_CHAT_READY', version: 1 }, origin);
+  }, [user]);
+
   const conversaSelecionadaId = conversaSelecionada?.id || null;
   const isInstagram = (c) => c?.cliente_telefone?.startsWith('ig_') || c?.instancia === 'INSTAGRAM' || c?.tipo_conexao === 'instagram';
 
