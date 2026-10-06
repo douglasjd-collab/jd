@@ -151,8 +151,7 @@ export default function BatePapo() {
       }
     }
 
-    // Invalida cache e força refetch IMEDIATO
-    queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversa.id] });
+    // A troca do conversation_id já dispara uma única consulta pelo React Query.
 
     // Buscar oportunidade associada ao contato
     try {
@@ -1255,6 +1254,7 @@ export default function BatePapo() {
   }, []);
 
   const scrollAreaRef = React.useRef(null);
+  const restaurarScrollHistoricoRef = React.useRef(null);
 
   const localizarMensagem = React.useMemo(
     () => criarLocalizarMensagem(queryClient, conversaSelecionadaId),
@@ -1276,8 +1276,23 @@ export default function BatePapo() {
 
   React.useEffect(() => {
     if (!mensagens.length) return;
+    const anterior = restaurarScrollHistoricoRef.current;
+    if (anterior && scrollAreaRef.current) {
+      const viewport = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) requestAnimationFrame(() => {
+        viewport.scrollTop = viewport.scrollHeight - anterior.scrollHeight + anterior.scrollTop;
+        restaurarScrollHistoricoRef.current = null;
+      });
+      return;
+    }
     fazerScrollParaFim();
   }, [mensagens, fazerScrollParaFim]);
+
+  const carregarMensagensAnteriores = React.useCallback(() => {
+    const viewport = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (viewport) restaurarScrollHistoricoRef.current = { scrollHeight: viewport.scrollHeight, scrollTop: viewport.scrollTop };
+    setLimiteMensagens(v => v + 100);
+  }, []);
 
   // Ao abrir conversa, forçar refetch do histórico e forçar atualização de status
   React.useEffect(() => {
@@ -1286,13 +1301,7 @@ export default function BatePapo() {
     // Sair do modo encaminhar ao trocar de conversa
     cancelarEncaminhar();
 
-    // Invalidar query para forçar novo fetch
-    queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionada.id] });
-    
-    setTimeout(() => {
-      refetchMensagens?.().catch(e => console.error('Erro no refetch:', e));
-      setTimeout(fazerScrollParaFim, 300);
-    }, 100);
+    // A consulta do histórico já ocorre automaticamente ao mudar de conversa.
 
     // Forçar atualização de status das mensagens enviadas via Evolution API
     const atualizarStatus = () => {
@@ -2391,7 +2400,7 @@ export default function BatePapo() {
                         <ListaMensagens
                           mensagens={mensagens}
                           temMais={mensagens.filter(m => !m.id?.startsWith('temp_')).length >= limiteMensagens && limiteMensagens < 2000}
-                          onCarregarAnteriores={() => setLimiteMensagens(v => Math.min(v + 100, 2000))}
+                          onCarregarAnteriores={carregarMensagensAnteriores}
                           conversaSelecionada={conversaSelecionada}
                           isGrupo={isGrupo(conversaSelecionada)}
                           onResponder={setMensagemParaResponder}
