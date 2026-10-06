@@ -202,12 +202,15 @@ export default function ComissoesPagasEmprestimos() {
   };
 
   const gerarPDF = async (lote) => {
-    // Lotes não-legado: usa backend para garantir relatório correto
-    if (!lote.isLegado && lote.id) {
+    // Todos os lotes usam o mesmo gerador no backend. Assim, relatórios novos
+    // e antigos mantêm a estrutura visual padronizada e incluem o comprovante.
+    if (lote.id) {
       try {
         const res = await base44.functions.invoke('baixarComprovanteComissao', {
           lote_id: lote.id,
-          tipo: 'emp',
+          tipo: lote.isLegado ? 'emp-legado' : 'emp',
+          vendedor_id: lote.vendedor_id,
+          data_pagamento: lote.data_pagamento,
         });
         if (res.data?.pdf_base64) {
           const a = document.createElement('a');
@@ -224,7 +227,7 @@ export default function ComissoesPagasEmprestimos() {
       }
     }
 
-    // Lotes legado: gerar PDF localmente
+    // Fallback local apenas se o lote não tiver identificador
     const loteItens = lote.isLegado
       ? (lote.propostas || []).map(p => ({
           cliente_nome: p.cliente_nome,
