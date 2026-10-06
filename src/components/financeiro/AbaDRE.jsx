@@ -35,7 +35,10 @@ export default function AbaDRE({ despesas, receitas, comissoes, lotesComissaoCon
     const lotesConsorcio = filtrarPorPeriodo(
       (lotesComissaoConsorcio || []).filter(l => l.status === 'quitado'),
       'data_quitacao'
-    ).reduce((s,l) => s + (l.total_pago || l.valor_total || 0), 0);
+    ).reduce((s,l) => s + (
+      l.total_liquido ??
+      Math.max(0, (l.total_bruto ?? l.total_pago ?? l.valor_total ?? 0) + (l.acrescimos || 0) - (l.descontos || 0) - (l.imposto_valor || 0))
+    ), 0);
 
     const lotesEmprestimo = filtrarPorPeriodo(
       (lotesComissaoEmprestimo || []).filter(l => l.status === 'quitado'),
