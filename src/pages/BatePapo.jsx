@@ -277,6 +277,8 @@ export default function BatePapo() {
   const [searchConversas, setSearchConversas] = useState('');
   const [limiteConversas, setLimiteConversas] = useState(200);
   const [limiteMensagens, setLimiteMensagens] = useState(100);
+  const iniciouLimiteConversasRef = useRef(false);
+  const iniciouLimiteMensagensRef = useRef(false);
   const [filtroStatus, setFiltroStatus] = useState('todas');
   const [filtroPrioridade, setFiltroPrioridade] = useState('todos'); // 'todos' | 'prioritarios'
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
@@ -762,8 +764,14 @@ export default function BatePapo() {
   });
 
   // Recarregar somente quando o usuário pedir mais itens, mantendo a mesma chave de cache.
-  useEffect(() => { if (empresaId) refetchConversas(); }, [limiteConversas]);
-  useEffect(() => { if (conversaSelecionadaId) refetchMensagens(); }, [limiteMensagens, conversaSelecionadaId]);
+  useEffect(() => {
+    if (!iniciouLimiteConversasRef.current) { iniciouLimiteConversasRef.current = true; return; }
+    if (empresaId) refetchConversas();
+  }, [limiteConversas]);
+  useEffect(() => {
+    if (!iniciouLimiteMensagensRef.current) { iniciouLimiteMensagensRef.current = true; return; }
+    if (conversaSelecionadaId) refetchMensagens();
+  }, [limiteMensagens]);
 
   // Buscar mensagens não lidas do banco e montar contadores por conversa
   const conversaIdsKey = useMemo(() => conversas.map(c => c.id).filter(Boolean).sort().join('|'), [conversas]);
