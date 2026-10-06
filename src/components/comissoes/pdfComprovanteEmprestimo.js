@@ -73,20 +73,24 @@ export function gerarPdfComprovanteEmprestimo(opts) {
   const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
   const totalLiquido = Math.max(0, totalBruto - totalAdiantamentos + acrescimoVal);
 
-  // ===== HEADER verde institucional =====
+  // ===== CABEÇALHO — mesmo padrão do relatório de consórcio =====
   doc.setFillColor(16, 53, 60);
   doc.rect(0, 0, pageWidth, 22, 'F');
 
+  let tituloX = 12;
   if (logoUrl) {
-    try { doc.addImage(logoUrl, 'PNG', 7, 3, 40, 16); } catch (_) { /* silencioso */ }
+    try {
+      doc.addImage(logoUrl, 'PNG', 7, 3, 40, 16);
+      tituloX = 50;
+    } catch (_) { /* silencioso */ }
   }
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-  doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO — EMPRÉSTIMOS', pageWidth / 2, 10, { align: 'center' });
+  doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO', tituloX, 10);
   doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-  doc.setTextColor(200, 220, 220);
-  doc.text(`Lote: ${loteCode}  |  Gerado em: ${moment().format('DD/MM/YYYY [às] HH:mm')}`, pageWidth / 2, 17, { align: 'center' });
+  doc.setTextColor(207, 224, 224);
+  doc.text(`Protocolo: ${loteCode}  |  Emitido em: ${moment().format('DD/MM/YYYY [às] HH:mm')}`, tituloX, 17);
 
   // ===== BLOCO DE INFORMAÇÕES (4 colunas) =====
   doc.setTextColor(0, 0, 0);
@@ -101,9 +105,8 @@ export function gerarPdfComprovanteEmprestimo(opts) {
   cols.forEach((col, i) => {
     const x = 10 + colW * i;
     doc.setFillColor(245, 247, 250);
-    doc.rect(x, infoY, colW - 2, 16, 'F');
     doc.setDrawColor(200, 215, 230); doc.setLineWidth(0.4);
-    doc.rect(x, infoY, colW - 2, 16);
+    doc.roundedRect(x, infoY, colW - 2, 16, 1, 1, 'FD');
     doc.setFontSize(6); doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 120, 140);
     doc.text(col.label, x + 3, infoY + 5);
@@ -114,8 +117,26 @@ export function gerarPdfComprovanteEmprestimo(opts) {
     doc.text(displayValue, x + 3, infoY + 12);
   });
 
+  // PIX/CPF e total pago, como no relatório de consórcio.
+  let detalhesY = 48;
+  doc.setTextColor(31, 41, 55);
+  doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+  const dadosVendedor = [];
+  if (pix?.chave) dadosVendedor.push(`PIX: ${mascararChavePix(pix.chave, pix.tipo)}`);
+  if (pix?.titularDocumento) dadosVendedor.push(`CPF/CNPJ: ${mascararDocumento(pix.titularDocumento)}`);
+  if (dadosVendedor.length > 0) {
+    doc.text(dadosVendedor.join('  |  '), 10, detalhesY);
+    detalhesY += 6;
+  }
+  doc.setFontSize(8.5);
+  doc.text('Total pago ao corretor:', 10, detalhesY);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 80, 180);
+  doc.text(fmt(totalLiquido), 45, detalhesY);
+  doc.setTextColor(31, 41, 55);
+
   // ===== TABELA PRINCIPAL =====
-  const tableStartY = 47;
+  const tableStartY = detalhesY + 5;
   doc.autoTable({
     startY: tableStartY,
     head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Prazo', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. Pago']],
