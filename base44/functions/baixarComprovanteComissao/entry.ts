@@ -261,44 +261,65 @@ Deno.serve(async (req) => {
       const totalAdiantamentos = adiantamentosDesc.reduce((acc, a) => acc + (a.valor || 0), 0);
       const totalLiquido = lote.valor_total ?? Math.max(0, subtotal - totalAdiantamentos);
 
-      // Buscar logo configurada
+      // Buscar logo configurada e dados do vendedor para manter o mesmo
+      // padrão visual e informativo do relatório de consórcio.
       let logoConfigurada = null;
       try {
         const configs = await base44.asServiceRole.entities.ConfiguracaoSistema.filter({ chave: 'logo_url' });
         if (configs && configs.length > 0 && configs[0].valor) logoConfigurada = configs[0].valor;
       } catch (_) {}
 
-      // Gerar PDF com mesmo layout visual da 1ª via
+      let vendedorNome = lote.vendedor_nome || '-';
+      let vendedorCpf = '';
+      let vendedorPix = '';
+      if (lote.vendedor_id) {
+        try {
+          let colabs = await base44.asServiceRole.entities.Colaborador.filter({ id: lote.vendedor_id });
+          if (!colabs || colabs.length === 0) {
+            colabs = await base44.asServiceRole.entities.Colaborador.filter({ user_id: lote.vendedor_id });
+          }
+          if (colabs && colabs.length > 0) {
+            vendedorNome = colabs[0].nome || vendedorNome;
+            vendedorCpf = colabs[0].cpf || '';
+            vendedorPix = colabs[0].pix_chave || colabs[0].chave_pix || '';
+          }
+        } catch (_) {}
+      }
+
+      // Gerar PDF com a mesma estrutura visual do relatório de consórcio
       const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
 
-      // ===== HEADER =====
+      // ===== CABEÇALHO — mesmo padrão do relatório de consórcio =====
       doc.setFillColor(16, 53, 60);
       doc.rect(0, 0, pageWidth, 22, 'F');
 
+      let tituloX = 12;
       if (logoConfigurada) {
-        try { doc.addImage(logoConfigurada, 'PNG', 7, 3, 40, 16); } catch (_) {}
+        try {
+          doc.addImage(logoConfigurada, 'PNG', 7, 3, 40, 16);
+          tituloX = 50;
+        } catch (_) {}
       }
 
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-      doc.text('COMPROVANTE DE PAGAMENTO DE COMISSAO — EMPRESTIMOS', 165, 10, { align: 'center' });
+      doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO', tituloX, 10);
       doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-      doc.setTextColor(200, 220, 220);
-      doc.text(`Lote: ${lote.lote_codigo || lote_id}  |  Gerado em: ${fmtDateTime(new Date())}`, 165, 17, { align: 'center' });
+      doc.setTextColor(207, 224, 224);
+      doc.text(`Protocolo: ${lote.lote_codigo || lote_id}  |  Emitido em: ${fmtDateTime(new Date())}`, tituloX, 17);
 
-      // Marca 2ª VIA
       doc.setFontSize(8); doc.setTextColor(255, 180, 180);
       doc.setFont('helvetica', 'bold');
-      doc.text('2a VIA', pageWidth - 8, 10, { align: 'right' });
+      doc.text('2ª VIA', pageWidth - 8, 10, { align: 'right' });
 
       // ===== BLOCO DE INFORMAÇÕES (4 colunas) =====
       doc.setTextColor(0, 0, 0);
       const infoY = 26;
       const colW = (pageWidth - 20) / 4;
       const cols = [
-        { label: 'VENDEDOR', value: lote.vendedor_nome || '-' },
+        { label: 'VENDEDOR', value: vendedorNome },
         { label: 'DATA PAGAMENTO', value: fmtDate(lote.data_pagamento) },
         { label: 'FORMA PAGAMENTO', value: lote.forma_pagamento || '-' },
         { label: 'QTD. ITENS', value: String(loteItens.length || lote.quantidade_propostas || 0) },
@@ -306,10 +327,9 @@ Deno.serve(async (req) => {
       cols.forEach((col, i) => {
         const x = 10 + colW * i;
         doc.setFillColor(245, 247, 250);
-        doc.rect(x, infoY, colW - 2, 16, 'F');
         doc.setDrawColor(200, 215, 230);
         doc.setLineWidth(0.4);
-        doc.rect(x, infoY, colW - 2, 16);
+        doc.roundedRect(x, infoY, colW - 2, 16, 1, 1, 'FD');
         doc.setFontSize(6); doc.setFont('helvetica', 'bold');
         doc.setTextColor(100, 120, 140);
         doc.text(col.label, x + 3, infoY + 5);
@@ -319,9 +339,27 @@ Deno.serve(async (req) => {
         doc.text(displayValue, x + 3, infoY + 12);
       });
 
+      // PIX/CPF e total pago, como no relatório de consórcio.
+      let detalhesY = 48;
+      doc.setTextColor(31, 41, 55);
+      doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
+      const dadosVendedor = [];
+      if (vendedorPix) dadosVendedor.push(`PIX: ${vendedorPix}`);
+      if (vendedorCpf) dadosVendedor.push(`CPF: ${vendedorCpf}`);
+      if (dadosVendedor.length > 0) {
+        doc.text(dadosVendedor.join('  |  '), 10, detalhesY);
+        detalhesY += 6;
+      }
+      doc.setFontSize(8.5);
+      doc.text('Total pago ao corretor:', 10, detalhesY);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 80, 180);
+      doc.text(fmt(totalLiquido), 45, detalhesY);
+      doc.setTextColor(31, 41, 55);
+
       // ===== TABELA PRINCIPAL =====
       doc.autoTable({
-        startY: 47,
+        startY: detalhesY + 5,
         head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Prazo', 'Vl. Bruto', 'Vl. Liquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
         body: loteItens.map(item => {
           const prazo = prazoDoItem(item);
@@ -352,7 +390,7 @@ Deno.serve(async (req) => {
       });
 
       const tableEndY = doc.lastAutoTable.finalY;
-      const sectionY = tableEndY + 12;
+      const sectionY = tableEndY + 8;
 
       // ===== LAYOUT LADO A LADO: RESUMO FINANCEIRO (esq) + DETALHES ACRÉSCIMOS (dir) =====
       const colEsqX = 10;
@@ -391,11 +429,15 @@ Deno.serve(async (req) => {
       const sepY = sectionY + 12 + resumoLinhas.length * lineH + 2;
       doc.setDrawColor(180, 195, 210); doc.setLineWidth(0.3);
       doc.line(colEsqX + boxPad, sepY, colEsqX + colEsqW - boxPad, sepY);
-      const liqBoxY = sepY + 4;
-      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-      doc.setTextColor(40, 40, 40);
-      doc.text('VALOR LIQUIDO A PAGAR', colEsqX + boxPad, liqBoxY + 4);
-      doc.text(fmt(totalLiquido), colEsqX + colEsqW - boxPad, liqBoxY + 4, { align: 'right' });
+      const liqBoxY = sepY + 1;
+      doc.setFillColor(230, 240, 255);
+      doc.rect(colEsqX, liqBoxY, colEsqW, 12, 'F');
+      doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+      doc.setTextColor(16, 53, 60);
+      doc.text('VALOR LÍQUIDO A PAGAR', colEsqX + boxPad, liqBoxY + 8);
+      doc.setFontSize(10);
+      doc.setTextColor(0, 80, 180);
+      doc.text(fmt(totalLiquido), colEsqX + colEsqW - boxPad, liqBoxY + 8, { align: 'right' });
 
       // Caixa direita: Detalhes Acréscimos
       const dirContentH = resumoContentH;
@@ -431,7 +473,11 @@ Deno.serve(async (req) => {
       doc.line(10, footerY, pageWidth - 10, footerY);
       doc.setFontSize(6.2); doc.setTextColor(100, 100, 100); doc.setFont('helvetica', 'normal');
       doc.text('Comprovante emitido eletronicamente.', 10, footerY + 3.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(16, 53, 60);
       doc.text('JD PROMOTORA', 148, footerY + 3.5, { align: 'center' });
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
       doc.text(`Gerado em: ${fmtDateTime(new Date())}`, pageWidth - 10, footerY + 3.5, { align: 'right' });
 
       let comprovantePdfBytes = null;
