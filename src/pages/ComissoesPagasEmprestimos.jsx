@@ -216,8 +216,11 @@ export default function ComissoesPagasEmprestimos() {
           a.click();
           return;
         }
+        throw new Error('O servidor não retornou o relatório.');
       } catch (e) {
-        console.error('Erro ao buscar PDF do backend, gerando localmente...', e);
+        console.error('Erro ao gerar relatório com comprovante:', e);
+        toast.error(e?.response?.data?.error || e.message || 'Não foi possível gerar o relatório com o comprovante. Tente novamente.');
+        return;
       }
     }
 
