@@ -37,6 +37,8 @@ export function gerarRelatorioComissaoConsorcioHTML(dados) {
     itens = [],
     subtotal = 0,
     totalAdiantamentos = 0,
+    impostoPercentual = 0,
+    impostoValor = 0,
     acrescimos = 0,
     totalLiquido = 0,
     adiantamentos = [],
@@ -146,6 +148,7 @@ export function gerarRelatorioComissaoConsorcioHTML(dados) {
       <h2>Resumo Financeiro</h2>
       <div class="linha"><span>Subtotal de Comissões</span><span>${esc(fmt(subtotal))}</span></div>
       <div class="linha"><span class="neg">(-) Adiantamentos</span><span class="neg">${esc(fmt(totalAdiantamentos))}</span></div>
+      ${impostoValor > 0 ? `<div class="linha"><span class="neg">(-) Imposto (${esc(Number(impostoPercentual).toFixed(2))}%)</span><span class="neg">${esc(fmt(impostoValor))}</span></div>` : ''}
       <div class="linha"><span>(+) Acréscimos</span><span>${esc(fmt(acrescimos))}</span></div>
       <div class="linha liquido"><span>Valor Líquido a Pagar</span><span>${esc(fmt(totalLiquido))}</span></div>
     </div>
