@@ -843,8 +843,11 @@ export default function Saques() {
   const normalizarCons = (l) => ({
     ...l,
     _protocolo: l.lote_code || `CONS${l.id?.slice(-6)}`,
-    _valor: l.total_pago || 0,
-    _total: (l.total_pago || 0) + (l.acrescimos || 0) - (l.descontos || 0),
+    _valor: l.total_bruto ?? l.total_pago ?? 0,
+    _total: l.total_liquido ?? Math.max(
+      0,
+      (l.total_bruto ?? l.total_pago ?? 0) + (l.acrescimos || 0) - (l.descontos || 0) - (l.imposto_valor || 0)
+    ),
     _data_quitacao: l.data_quitacao,
     _vendedor: isMaster ? l.vendedor_nome : undefined,
     _tipo: 'consorcio',
