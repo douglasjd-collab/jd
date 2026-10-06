@@ -9,7 +9,7 @@
       "schedule_mode": "recurring",
       "schedule_type": "cron",
       "cron_expression": "*/5 * * * *",
-      "is_active": false
+      "is_active": true
     }
   ]
 }
