@@ -188,8 +188,12 @@ export default function BatePapo() {
       return;
     }
 
-    // Buscar foto com múltiplas tentativas — rigoroso
+    // Foto e contato já disponíveis no cache: não consultar novamente a API a cada clique.
     if (!empresaId) return;
+    const fotoCacheKey = `chat_foto_${conversa.id}`;
+    const fotoConsultadaEm = Number(localStorage.getItem(fotoCacheKey) || 0);
+    const temFotoEmCache = !!(contatosWhatsapp[conversa.id]?.foto_url || conversa.foto_url);
+    if (temFotoEmCache && Date.now() - fotoConsultadaEm < 7 * 24 * 60 * 60 * 1000) return;
 
     try {
       if (isGrupo(conversa)) {
@@ -258,7 +262,8 @@ export default function BatePapo() {
               }
             }));
             // Atualizar também a conversa para a lista manter a foto após recarregar.
-            await base44.entities.ConversaWhatsapp.update(conversa.id, {
+            localStorage.setItem(fotoCacheKey, String(Date.now()));
+            base44.entities.ConversaWhatsapp.update(conversa.id, {
               foto_url: resp.data.foto_url
             }).catch(() => {});
           }
@@ -269,6 +274,8 @@ export default function BatePapo() {
     }
   };
   const [searchConversas, setSearchConversas] = useState('');
+  const [limiteConversas, setLimiteConversas] = useState(200);
+  const [limiteMensagens, setLimiteMensagens] = useState(100);
   const [filtroStatus, setFiltroStatus] = useState('todas');
   const [filtroPrioridade, setFiltroPrioridade] = useState('todos'); // 'todos' | 'prioritarios'
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
@@ -665,7 +672,7 @@ export default function BatePapo() {
     queryFn: async () => {
       if (!empresaId) return [];
       console.log(`📞 Buscando conversas para empresa: ${empresaId}`);
-      const resp = await base44.functions.invoke('buscarConversasComContatos', { empresa_id: empresaId, limit: 10000 });
+      const resp = await base44.functions.invoke('buscarConversasComContatos', { empresa_id: empresaId, limit: limiteConversas });
       const data = resp?.data?.conversas || [];
       
       // Atualizar cache de contatos — incluir foto_url da conversa como fallback
@@ -693,7 +700,7 @@ export default function BatePapo() {
       });
       return data.filter(c => c.id && c.cliente_telefone);
     },
-    refetchInterval: 15000,  // Polling da lista de conversas a cada 15 segundos
+    refetchInterval: 60000,  // Tempo real cuida das mudanças; consulta completa de segurança a cada 60s
     placeholderData: (prev) => prev,
   });
 
@@ -708,7 +715,7 @@ export default function BatePapo() {
       const msgs = await base44.entities.MensagemWhatsapp.filter(
         { conversa_id: conversaSelecionadaId },
         '-data_envio',
-        1000
+        limiteMensagens
       );
       console.log(`✅ Carregadas ${msgs.length} mensagens para conversa ${conversaSelecionadaId}`);
 
@@ -745,7 +752,7 @@ export default function BatePapo() {
       return [...ordenadas, ...bolhasPendentesNaLista(conversaSelecionadaId, ordenadas)];
     },
     staleTime: 0,
-    refetchInterval: 5000,
+    refetchInterval: 30000,
     placeholderData: (prev) => {
       // Manter dados anteriores mas remover msgs temp_ se já tiver dados reais
       if (!prev) return prev;
@@ -753,7 +760,12 @@ export default function BatePapo() {
     },
   });
 
+  // Recarregar somente quando o usuário pedir mais itens, mantendo a mesma chave de cache.
+  useEffect(() => { if (empresaId) refetchConversas(); }, [limiteConversas]);
+  useEffect(() => { if (conversaSelecionadaId) refetchMensagens(); }, [limiteMensagens, conversaSelecionadaId]);
+
   // Buscar mensagens não lidas do banco e montar contadores por conversa
+  const conversaIdsKey = useMemo(() => conversas.map(c => c.id).filter(Boolean).sort().join('|'), [conversas]);
   useEffect(() => {
     if (!empresaId || conversas.length === 0) return;
 
@@ -761,9 +773,9 @@ export default function BatePapo() {
     const abertaId = conversaSelecionadaId;
 
     base44.entities.MensagemWhatsapp.filter(
-      { remetente: 'cliente' },
+      { empresa_id: empresaId, remetente: 'cliente', status: { $ne: 'lida' } },
       '-data_envio',
-      5000
+      1000
     ).then(msgs => {
       const contadores = {};
       msgs.forEach(m => {
@@ -776,7 +788,7 @@ export default function BatePapo() {
       // Manter contadores zerados para conversa aberta
       setNaoLidasPorConversa(prev => ({ ...contadores, [abertaId]: 0 }));
     }).catch(() => {});
-  }, [empresaId, conversas, conversaSelecionadaId]);
+  }, [empresaId, conversaIdsKey, conversaSelecionadaId]);
 
   // Selecionar conversa inicial quando a lista carrega
   useEffect(() => {
@@ -940,7 +952,7 @@ export default function BatePapo() {
       refetchConversasComDebounce();
 
       // Refetch mensagens da conversa aberta — apenas 1 vez, sem duplicatas
-      if (conversaAtualId) {
+      if (conversaAtualId && msgData?.conversa_id === conversaAtualId) {
         queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
         // Scroll para o final após refetch
         setTimeout(() => {
