@@ -910,8 +910,8 @@ async function processarChatsUpdate(base44, connection, data) {
 // preenchido e status "entregue" (dois traços cinza em vez do azul).
 async function atualizarStatusMensagem(base44, connection, data, statusInterno) {
   try {
-    const wamid = data?.key?.id || data?.id;
-    if (!wamid) return;
+    const wamid = data?.key?.id || data?.message?.key?.id || data?.id || data?.messageId || data?.message_id || data?.external_message_id;
+    if (typeof wamid !== 'string' || !wamid.trim()) return;
 
     const patch = { $set: { status: statusInterno } };
     if (statusInterno === 'entregue') patch.$set.entregue_em = new Date().toISOString();
