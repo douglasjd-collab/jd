@@ -184,8 +184,24 @@ export default function ComissoesPagar() {
     // pode ser o id do Colaborador ou o user_id; os dois precisam ser aceitos.
     try {
       const filtroAdi = { status: 'pendente' };
-      if (user?.empresa_id) filtroAdi.empresa_id = user.empresa_id;
-      const adis = await base44.entities.Adiantamento.filter(filtroAdi);
+      const filtroAdiFuncionario = { status: 'Pendente' };
+      if (user?.empresa_id) {
+        filtroAdi.empresa_id = user.empresa_id;
+        filtroAdiFuncionario.empresa_id = user.empresa_id;
+      }
+      const [adisNovos, adisFuncionarios] = await Promise.all([
+        base44.entities.Adiantamento.filter(filtroAdi),
+        base44.entities.AdiantamentoFuncionario.filter(filtroAdiFuncionario),
+      ]);
+      const adis = [
+        ...(adisNovos || []).map(a => ({ ...a, _origem_adiantamento: 'adiantamento' })),
+        ...(adisFuncionarios || []).map(a => ({
+          ...a,
+          motivo: a.descricao || 'Adiantamento de funcionário',
+          pessoa_tipo: 'colaborador',
+          _origem_adiantamento: 'funcionario',
+        })),
+      ];
 
       const idsVendedor = new Set([vendedor.vendedor_id].filter(Boolean));
       try {
@@ -424,7 +440,30 @@ export default function ComissoesPagar() {
         const valorRestante = adi.valor - valorDescontar;
         saldoDisponivel -= valorDescontar;
 
-        if (valorRestante > 0.01) {
+        if (adi._origem_adiantamento === 'funcionario') {
+          // Compatibilidade com lançamentos antigos de AdiantamentoFuncionario.
+          if (valorRestante > 0.01) {
+            await base44.entities.AdiantamentoFuncionario.update(adi.id, {
+              valor: valorRestante,
+              status: 'Pendente',
+              descricao: `${adi.descricao || adi.motivo || 'Adiantamento'} — parcialmente descontado no lote ${loteCode}`,
+            });
+            await base44.entities.AdiantamentoFuncionario.create({
+              empresa_id: adi.empresa_id || user.empresa_id,
+              colaborador_id: adi.colaborador_id,
+              colaborador_nome: adi.colaborador_nome,
+              data: adi.data,
+              valor: valorDescontar,
+              descricao: `Desconto parcial no lote ${loteCode}`,
+              status: 'Descontado',
+            });
+          } else {
+            await base44.entities.AdiantamentoFuncionario.update(adi.id, {
+              status: 'Descontado',
+              descricao: `${adi.descricao || adi.motivo || 'Adiantamento'} — descontado no lote ${loteCode}`,
+            });
+          }
+        } else if (valorRestante > 0.01) {
           // Desconto parcial: atualiza adiantamento original com restante + histórico
           let historicoAtual = [];
           try { historicoAtual = JSON.parse(adi.historico_descontos || '[]'); } catch {}
