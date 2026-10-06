@@ -78,7 +78,9 @@ export default function ChatMessageFooter({
                 status: 'ativa',
                 ...dadosCanal,
                 responsavel_id: null,
+                responsavel_nome: null,
                 responsavel_expira_em: null,
+                atendimento_transferido_para_id: null,
               });
               queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
               selecionarConversa({
@@ -86,7 +88,9 @@ export default function ChatMessageFooter({
                 status: 'ativa',
                 ...dadosCanal,
                 responsavel_id: null,
+                responsavel_nome: null,
                 responsavel_expira_em: null,
+                atendimento_transferido_para_id: null,
               });
               toast.success('✅ Conversa reaberta!');
             }}
