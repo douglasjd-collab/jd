@@ -98,13 +98,15 @@ export default function ConversaContextMenu({
   // Conversa pessoal
   return (
     <>
-      {conversa.status === 'encerrada' && conversa.responsavel_id && (
+      {conversa.status === 'ativa' && (
         <DropdownMenuItem
           onClick={async () => {
             queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
-              old.map(cv => cv.id === conversa.id ? { ...cv, responsavel_id: null, responsavel_expira_em: null } : cv)
+              old.map(cv => cv.id === conversa.id ? { ...cv, status: 'encerrada', responsavel_id: null, responsavel_nome: null, responsavel_expira_em: null, atendimento_transferido_para_id: null, atendimento_prioritario: false } : cv)
             );
-            await base44.entities.ConversaWhatsapp.update(conversa.id, { responsavel_id: null, responsavel_expira_em: null });
+            await base44.entities.ConversaWhatsapp.update(conversa.id, { status: 'encerrada', responsavel_id: null, responsavel_nome: null, responsavel_expira_em: null, atendimento_transferido_para_id: null, atendimento_prioritario: false });
+            queryClient.invalidateQueries({ queryKey: ['contadores-bate-papo', empresaId] });
+            if (conversaSelecionada?.id === conversa.id) setConversaSelecionada(null);
             toast.success('✅ Conversa finalizada e movida para Finalizados');
           }}
           className="text-red-600 focus:text-red-700"
@@ -113,13 +115,13 @@ export default function ConversaContextMenu({
           Finalizar conversa
         </DropdownMenuItem>
       )}
-      {conversa.status === 'encerrada' && !conversa.responsavel_id && (
+      {conversa.status === 'encerrada' && (
         <DropdownMenuItem
           onClick={async () => {
             queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
-              old.map(cv => cv.id === conversa.id ? { ...cv, status: 'ativa', responsavel_id: null, responsavel_expira_em: null } : cv)
+              old.map(cv => cv.id === conversa.id ? { ...cv, status: 'ativa', responsavel_id: null, responsavel_nome: null, responsavel_expira_em: null, atendimento_transferido_para_id: null } : cv)
             );
-            await base44.entities.ConversaWhatsapp.update(conversa.id, { status: 'ativa', responsavel_id: null, responsavel_expira_em: null });
+            await base44.entities.ConversaWhatsapp.update(conversa.id, { status: 'ativa', responsavel_id: null, responsavel_nome: null, responsavel_expira_em: null, atendimento_transferido_para_id: null });
             toast.success('✅ Conversa reaberta');
           }}
           className="text-emerald-600 focus:text-emerald-700"
