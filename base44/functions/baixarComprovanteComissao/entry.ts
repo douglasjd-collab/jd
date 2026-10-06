@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 import { jsPDF } from 'npm:jspdf@2.5.2';
+import { PDFDocument } from 'npm:pdf-lib@1.17.1';
 import 'npm:jspdf-autotable@3.8.4';
 import { gerarRelatorioComissaoConsorcioHTML } from '../../shared/relatorioComissaoConsorcioShared.ts';
 
@@ -414,15 +415,18 @@ Deno.serve(async (req) => {
       doc.text('JD PROMOTORA', 148, footerY + 3.5, { align: 'center' });
       doc.text(`Gerado em: ${fmtDateTime(new Date())}`, pageWidth - 10, footerY + 3.5, { align: 'right' });
 
+      let comprovantePdfBytes = null;
       // Se houver comprovante de pagamento, adicionar como página seguinte
       if (lote.comprovante_url) {
         try {
           const comprovanteResp = await fetch(lote.comprovante_url);
+          if (!comprovanteResp.ok) throw new Error(`Falha ao carregar comprovante: HTTP ${comprovanteResp.status}`);
           const comprovanteBuffer = await comprovanteResp.arrayBuffer();
           const comprovanteBytes = new Uint8Array(comprovanteBuffer);
 
-          const isPdf = lote.comprovante_url.toLowerCase().includes('.pdf') ||
-            comprovanteResp.headers.get('content-type')?.includes('application/pdf');
+          const isPdf = new TextDecoder().decode(comprovanteBytes.slice(0, 5)) === '%PDF-' ||
+            comprovanteResp.headers.get('content-type')?.includes('application/pdf') ||
+            /\.pdf(?:$|[?#])/i.test(lote.comprovante_url);
 
           if (!isPdf) {
             // Imagem: adicionar nova página e inserir imagem centralizada
@@ -470,14 +474,24 @@ Deno.serve(async (req) => {
               doc.addImage(dataUrlComprovante, imgFormat, areaX, areaY, 0, maxAltura);
             }
           }
-          // Para comprovante PDF, não é possível mesclar facilmente — ignora silenciosamente
-        } catch (_) {
-          // Se falhar ao carregar o comprovante, continua sem ele
+          if (isPdf) comprovantePdfBytes = comprovanteBytes;
+        } catch (error) {
+          throw new Error(`Não foi possível incluir o comprovante de pagamento. ${error.message}`);
         }
       }
 
       // Retorna PDF como base64
-      const pdfBase64 = doc.output('datauristring');
+      let pdfBase64 = doc.output('datauristring');
+      if (comprovantePdfBytes) {
+        const relatorio = await PDFDocument.load(doc.output('arraybuffer'));
+        const comprovante = await PDFDocument.load(comprovantePdfBytes);
+        const paginas = await relatorio.copyPages(comprovante, comprovante.getPageIndices());
+        for (const pagina of paginas) relatorio.addPage(pagina);
+        const bytes = await relatorio.save();
+        let binary = '';
+        for (const byte of bytes) binary += String.fromCharCode(byte);
+        pdfBase64 = `data:application/pdf;base64,${btoa(binary)}`;
+      }
       return Response.json({ pdf_base64: pdfBase64, filename: `comissao_emp_${(lote.vendedor_nome || 'vendedor').replace(/\s+/g, '_')}_${lote.data_pagamento?.replace(/-/g, '') || 'data'}_2via.pdf` });
     }
 
