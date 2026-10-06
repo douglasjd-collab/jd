@@ -664,6 +664,20 @@ export default function BatePapo() {
     },
   });
 
+  const { data: contadoresGlobais = {} } = useQuery({
+    queryKey: ['contadores-bate-papo', empresaId, user?.colaborador_id || user?.id],
+    enabled: !!empresaId && !!user,
+    staleTime: 300000,
+    refetchInterval: 300000,
+    queryFn: async () => {
+      const resp = await base44.functions.invoke('buscarContadoresBatePapo', {
+        empresa_id: empresaId,
+        responsavel_id: user?.colaborador_id || user?.id,
+      });
+      return resp?.data?.contadores || {};
+    },
+  });
+
   // Dados para o modal de criar tarefa
   const { colaboradores: colaboradoresTarefa, clientes: clientesTarefa, statusList: statusListTarefa, setores: setoresTarefa, subsetores: subsetoresTarefa } = useTarefaFormData(empresaId);
   const tiposListTarefa = [];
@@ -1640,7 +1654,7 @@ export default function BatePapo() {
   // Contadores por aba — campanhas (sem resposta) não entram nos filtros principais
   const ehTransferidaAtiva = (c) => !isGrupo(c) && c.status === 'encerrada' && !!c.responsavel_id && atendenteDentroDoTempo(c);
   const ehFinalizada = (c) => !isGrupo(c) && c.status === 'encerrada' && (!c.responsavel_id || !atendenteDentroDoTempo(c));
-  const contadores = {
+  const contadoresLocais = {
     todas: conversas.filter(c => c.status !== 'campanha' && c.bloqueado !== true && c.bloqueado !== 'true').length,
     espera: conversasValidas.filter(c => estaEmEsperaFiltro(c)).length,
     ativa: conversasValidas.filter(c => estaEmAtendimentoFiltro(c)).length,
@@ -1652,6 +1666,12 @@ export default function BatePapo() {
     prioritarios: conversasValidas.filter(c => c.atendimento_prioritario).length,
     microtarefas: Object.keys(microtarefasPorConversa).length,
     funil: conversas.filter(c => !isGrupo(c) && c.status !== 'campanha' && estaNoFunil(c)).length,
+  };
+  const contadores = {
+    ...contadoresLocais,
+    ...contadoresGlobais,
+    microtarefas: contadoresLocais.microtarefas,
+    funil: contadoresLocais.funil,
   };
 
 
