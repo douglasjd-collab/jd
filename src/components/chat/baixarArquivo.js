@@ -19,6 +19,8 @@ function dispararDownload(href, nome) {
   a.href = href;
   a.download = nome || 'arquivo';
   a.rel = 'noopener';
+  // Permite que o navegador trate o arquivo fora do painel incorporado.
+  a.target = '_blank';
   a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
