@@ -48,8 +48,7 @@ export async function baixarArquivo(url, nomeArquivo) {
     } catch {
       // URL sem permissão de CORS (ex: mídia da D-API): abre em nova aba, como antes.
       // Nada é salvo automaticamente — o download só ocorre pela ação do usuário.
-      window.open(url, '_blank');
-      return true;
+      return false; // Não informar sucesso quando nenhum arquivo foi salvo.
     }
   } finally {
     setTimeout(() => baixamentosEmAndamento.delete(chave), 1500);
