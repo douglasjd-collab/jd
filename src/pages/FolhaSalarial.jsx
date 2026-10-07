@@ -60,11 +60,12 @@ export default function FolhaSalarialPage() {
     base44.auth.me().then(me => {
       setUser(me);
       carregar(me);
-    });
+    }).catch(e=>{toast.error(e.message || 'Não foi possível carregar.');setLoading(false);});
   }, []);
 
   const carregar = async (me) => {
     setLoading(true);
+    try {
     const filtro = me?.empresa_id ? { empresa_id: me.empresa_id } : {};
     const [f, c, unidades] = await Promise.all([
       base44.entities.FolhaSalarial.filter(filtro, '-created_date', 500),
@@ -74,7 +75,8 @@ export default function FolhaSalarialPage() {
     setFolhas(f);
     setColaboradores(c);
     setFiliais(unidades);
-    setLoading(false);
+    } catch(e) {toast.error(e.message || 'Não foi possível carregar as folhas.');}
+    finally {setLoading(false);}
   };
 
   const abrirNova = () => {
@@ -210,7 +212,11 @@ export default function FolhaSalarialPage() {
     if (pago(faltaModal)>0) return toast.error('Folha com pagamentos não pode receber novos descontos.');
     if (!faltaData) return toast.error('Informe a data da falta');
     setSavingFalta(true);
+    try {
+    const atual=await base44.entities.FolhaSalarial.get(faltaModal.id);
+    if(pago(atual)>0) throw new Error('Esta folha já possui pagamentos.');
     const { itens, total } = calcDescontoFalta();
+    if(total > moeda(atual.valor_liquido)) throw new Error('O desconto ultrapassa o valor líquido.');
     const dataFormatada = format(new Date(faltaData + 'T00:00:00'), 'dd/MM/yyyy');
     const linhasObs = itens.map(i => `• ${i.label}: -${fmt(i.valor)}`).join('\n');
     const novaLinhaObs = `Falta em ${dataFormatada}:\n${linhasObs}\nTotal descontado: -${fmt(total)}`;
@@ -219,18 +225,19 @@ export default function FolhaSalarialPage() {
 
     await base44.entities.FolhaSalarial.update(faltaModal.id, {
       dias_trabalhados: Math.max(0, (faltaModal.dias_trabalhados || 30) - 1),
-      descontos: arredondar(descontosTotal(faltaModal) + total),
-      descontos_itens:[...(faltaModal.descontos_itens || (moeda(faltaModal.descontos)>0 ? [{id:crypto.randomUUID(),descricao:'Desconto anterior',valor:moeda(faltaModal.descontos)}] : [])),...itens.map(i=>({id:crypto.randomUUID(),descricao:i.label,valor:arredondar(i.valor)}))],
-      valor_liquido: (faltaModal.valor_liquido || 0) - total,
+      descontos: arredondar(descontosTotal(atual) + total),
+      descontos_itens:[...(atual.descontos_itens || (moeda(atual.descontos)>0 ? [{id:crypto.randomUUID(),descricao:'Desconto anterior',valor:moeda(atual.descontos)}] : [])),...itens.map(i=>({id:crypto.randomUUID(),descricao:i.label,valor:arredondar(i.valor)}))],
+      valor_liquido: arredondar((atual.valor_liquido || 0) - total),
       observacoes: novaObs,
     });
     toast.success(`Falta lançada — desconto total de ${fmt(total)}`);
-    setSavingFalta(false);
     setFaltaModal(null);
     setFaltaData('');
     setFaltaDSR(false);
     setFaltaFeriado(false);
     carregar(user);
+    } catch(e) {toast.error(e.message || 'Não foi possível lançar a falta.');}
+    finally {setSavingFalta(false);}
   };
 
   const excluirFolha = async (folha) => {
@@ -409,7 +416,7 @@ export default function FolhaSalarialPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Mês de Referência *</Label>
-                <Input value={form.mes_referencia} onChange={e => setForm({...form, mes_referencia: e.target.value})} placeholder="04/2026" />
+                <Input value={form.mes_referencia} onChange={e => {const ref=e.target.value; const config=inssConfigurado(colaboradores.find(c=>c.id===form.colaborador_id),ref);setForm({...form,mes_referencia:ref,inss_valor:String(config?.valor || 0),inss_vigencia:config?.vigencia || (ref.length===7 ? ref.slice(3)+'-'+ref.slice(0,2) : form.inss_vigencia)});}} placeholder="04/2026" />
               </div>
               <div>
                 <Label>Data de Pagamento</Label>
