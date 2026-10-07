@@ -11,7 +11,10 @@ import { Plus, FileText, Download, CheckCircle, DollarSign, Eye, Pencil, Trash2,
 import PreRelatorioModal from '@/components/folha/PreRelatorioModal';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import jsPDF from 'jspdf';
+import DescontosFolha from '@/components/folha/DescontosFolha';
+import PagamentoFolhaModal from '@/components/folha/PagamentoFolhaModal';
+import { gerarContracheque } from '@/components/folha/gerarContracheque';
+import { moeda, liquido as calcLiquido, descontosTotal, pago, saldo, inssConfigurado, arredondar } from '@/components/folha/folhaCalculos';
 
 const STATUS_CORES = {
   Rascunho: 'bg-gray-100 text-gray-600',
@@ -24,20 +27,13 @@ const STATUS_CORES = {
 const emptyForm = {
   colaborador_id: '', mes_referencia: '', data_pagamento: '',
   salario_base: '', dias_trabalhados: '30', valor_comissao: '0',
-  bonificacoes: '0', adiantamentos: '0', descontos: '0', observacoes: ''
+  bonificacoes: '0', adiantamentos: '0', descontos: '0', descontos_itens: [], inss_valor: '0', inss_vigencia: '', salvar_inss: false, observacoes: ''
 };
-
-function calcLiquido(form) {
-  const base = parseFloat(form.salario_base) || 0;
-  const com = parseFloat(form.valor_comissao) || 0;
-  const bon = parseFloat(form.bonificacoes) || 0;
-  const adi = parseFloat(form.adiantamentos) || 0;
-  const des = parseFloat(form.descontos) || 0;
-  return base + com + bon - adi - des;
-}
 
 export default function FolhaSalarialPage() {
   const [user, setUser] = useState(null);
+  const [filiais, setFiliais] = useState([]);
+  const [pagamentoModal, setPagamentoModal] = useState(null);
   const [folhas, setFolhas] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,17 +66,19 @@ export default function FolhaSalarialPage() {
   const carregar = async (me) => {
     setLoading(true);
     const filtro = me?.empresa_id ? { empresa_id: me.empresa_id } : {};
-    const [f, c] = await Promise.all([
+    const [f, c, unidades] = await Promise.all([
       base44.entities.FolhaSalarial.filter(filtro, '-created_date', 500),
-      base44.entities.FuncionarioColaborador.filter(filtro, 'nome', 200)
+      base44.entities.FuncionarioColaborador.filter(filtro, 'nome', 200),
+      base44.entities.Filial.filter(filtro, 'nome', 200)
     ]);
     setFolhas(f);
     setColaboradores(c);
+    setFiliais(unidades);
     setLoading(false);
   };
 
   const abrirNova = () => {
-    setForm(emptyForm);
+    setForm({...emptyForm,mes_referencia:format(new Date(),'MM/yyyy'),inss_vigencia:format(new Date(),'yyyy-MM')});
     setModalOpen(true);
   };
 
@@ -99,151 +97,67 @@ export default function FolhaSalarialPage() {
       ...f,
       colaborador_id: colabId,
       salario_base: String(c.salario_base || ''),
-      adiantamentos: String(totalAdiantamentos)
+      adiantamentos: String(totalAdiantamentos),
+      inss_valor: String(inssConfigurado(c,f.mes_referencia)?.valor || 0),
+      inss_vigencia: inssConfigurado(c,f.mes_referencia)?.vigencia || f.inss_vigencia
     }));
   };
 
+  const dadosForm = f => ({
+    mes_referencia:f.mes_referencia, data_pagamento:f.data_pagamento || null,
+    salario_base:moeda(f.salario_base),dias_trabalhados:moeda(f.dias_trabalhados),
+    valor_comissao:moeda(f.valor_comissao),bonificacoes:moeda(f.bonificacoes),
+    adiantamentos:moeda(f.adiantamentos),descontos:descontosTotal(f),
+    descontos_itens:Array.isArray(f.descontos_itens) ? f.descontos_itens.map(i=>({...i,valor:moeda(i.valor)})) : (moeda(f.descontos)>0 ? [{id:crypto.randomUUID(),descricao:'Desconto anterior',valor:moeda(f.descontos)}] : []),
+    inss_valor:moeda(f.inss_valor),inss_vigencia:f.inss_vigencia,
+    valor_liquido:calcLiquido(f),observacoes:f.observacoes
+  });
+  const validar = f => {
+    if(!/^\d{2}\/\d{4}$/.test(f.mes_referencia) || Number(f.mes_referencia.slice(0,2))<1 || Number(f.mes_referencia.slice(0,2))>12) throw new Error('Informe a competência no formato MM/AAAA.');
+    if(['salario_base','valor_comissao','bonificacoes','adiantamentos','inss_valor'].some(k=>moeda(f[k])<0) || (f.descontos_itens || []).some(i=>!i.descricao.trim() || moeda(i.valor)<0)) throw new Error('Revise os valores e as descrições dos descontos.');
+    if(moeda(f.dias_trabalhados)<0 || moeda(f.dias_trabalhados)>31 || calcLiquido(f)<0) throw new Error('Revise os dias trabalhados e o valor líquido.');
+    if(f.salvar_inss && !/^\d{4}-\d{2}$/.test(f.inss_vigencia)) throw new Error('Informe a vigência do INSS.');
+  };
+  const guardarINSS = async f => {
+    if(!f.salvar_inss) return;
+    const c = await base44.entities.FuncionarioColaborador.get(f.colaborador_id);
+    const configs = (c.inss_configuracoes || []).filter(i=>i.vigencia !== f.inss_vigencia);
+    await base44.entities.FuncionarioColaborador.update(c.id,{inss_configuracoes:[...configs,{vigencia:f.inss_vigencia,valor:moeda(f.inss_valor)}]});
+  };
   const salvar = async () => {
-    if (!form.colaborador_id || !form.mes_referencia) return toast.error('Preencha colaborador e mês');
+    if(saving) return;
+    if(!form.colaborador_id) return toast.error('Selecione o funcionário.');
     setSaving(true);
-    const colab = colaboradores.find(c => c.id === form.colaborador_id);
-    const liquido = calcLiquido(form);
-    const payload = {
-      empresa_id: user?.empresa_id,
-      colaborador_id: form.colaborador_id,
-      colaborador_nome: colab?.nome || '',
-      mes_referencia: form.mes_referencia,
-      data_pagamento: form.data_pagamento || null,
-      salario_base: parseFloat(form.salario_base) || 0,
-      dias_trabalhados: parseFloat(form.dias_trabalhados) || 30,
-      valor_comissao: parseFloat(form.valor_comissao) || 0,
-      bonificacoes: parseFloat(form.bonificacoes) || 0,
-      adiantamentos: parseFloat(form.adiantamentos) || 0,
-      descontos: parseFloat(form.descontos) || 0,
-      valor_liquido: liquido,
-      status: 'Rascunho',
-      observacoes: form.observacoes
-    };
-    await base44.entities.FolhaSalarial.create(payload);
-    toast.success('Folha criada!');
-    setSaving(false);
-    setModalOpen(false);
-    carregar(user);
+    try {
+      validar(form);
+      await guardarINSS(form);
+      const colab=colaboradores.find(c=>c.id===form.colaborador_id);
+      await base44.entities.FolhaSalarial.create({...dadosForm(form),empresa_id:user?.empresa_id,colaborador_id:form.colaborador_id,colaborador_nome:colab?.nome || '',status:'Rascunho'});
+      toast.success('Folha criada!');setModalOpen(false);await carregar(user);
+    } catch(e) {toast.error(e.message || 'Não foi possível salvar a folha.');}
+    finally {setSaving(false);}
   };
-
   const atualizarStatus = async (folha, novoStatus) => {
-    const hoje = new Date().toISOString().split('T')[0];
-
-    // Se Paga → criar despesa de pagamento de salário
-    if (novoStatus === 'Paga' && !folha.transacao_id) {
-      const despesa = await base44.entities.Despesa.create({
-        empresa_id: folha.empresa_id,
-        descricao: `Pagamento de Salário - ${folha.colaborador_nome} - ${folha.mes_referencia}`,
-        valor: folha.valor_liquido,
-        data: folha.data_pagamento || hoje,
-        data_vencimento: folha.data_pagamento || hoje,
-        data_pagamento: folha.data_pagamento || hoje,
-        categoria: 'Folha Salarial',
-        status: 'pago',
-        responsavel_id: folha.colaborador_id,
-        responsavel_nome: folha.colaborador_nome || '',
-        observacao: `Ref: ${folha.mes_referencia}`,
-      });
-      await base44.entities.FolhaSalarial.update(folha.id, { status: novoStatus, transacao_id: despesa.id });
-    } else {
-      await base44.entities.FolhaSalarial.update(folha.id, { status: novoStatus });
-    }
-
-    toast.success(`Status atualizado para ${novoStatus}`);
-    carregar(user);
+    if(novoStatus === 'Paga') return setPagamentoModal(folha);
+    try {
+      await base44.entities.FolhaSalarial.update(folha.id,{status:novoStatus});
+      toast.success('Status atualizado');await carregar(user);
+    } catch(e) {toast.error(e.message || 'Não foi possível atualizar.');}
   };
-
-  const gerarPDF = async (folha) => {
+  const gerarPDF = async folha => {
     setGerandoPdf(folha.id);
-    const colab = colaboradores.find(c => c.id === folha.colaborador_id);
-    const doc = new jsPDF();
-
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RECIBO DE PAGAMENTO DE SALÁRIO', 20, 20);
-
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text('EMPRESA: JD PROMOTORA', 20, 32);
-    doc.text('CNPJ: 28.845.490/0001-46', 20, 40);
-
-    doc.line(20, 46, 190, 46);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('COLABORADOR:', 20, 54);
-    doc.setFont('helvetica', 'normal');
-    doc.text(folha.colaborador_nome || '-', 70, 54);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('CPF:', 20, 62);
-    doc.setFont('helvetica', 'normal');
-    doc.text(colab?.cpf || '-', 70, 62);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('CARGO:', 20, 70);
-    doc.setFont('helvetica', 'normal');
-    doc.text(colab?.cargo || '-', 70, 70);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text('MÊS DE REFERÊNCIA:', 20, 78);
-    doc.setFont('helvetica', 'normal');
-    doc.text(folha.mes_referencia || '-', 90, 78);
-
-    doc.line(20, 84, 190, 84);
-
-    const fmt = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-
-    let y = 94;
-    const linha = (label, valor, bold = false) => {
-      if (bold) doc.setFont('helvetica', 'bold');
-      else doc.setFont('helvetica', 'normal');
-      doc.text(label, 20, y);
-      doc.text(fmt(valor), 150, y, { align: 'right' });
-      y += 9;
-    };
-
-    linha('SALÁRIO BASE:', folha.salario_base);
-    linha(`DIAS TRABALHADOS: ${folha.dias_trabalhados || 30}`, '');
-    linha('COMISSÕES:', folha.valor_comissao);
-    linha('BONIFICAÇÕES:', folha.bonificacoes);
-
-    doc.line(20, y, 190, y); y += 6;
-
-    linha('ADIANTAMENTOS (-):', folha.adiantamentos);
-    linha('DESCONTOS (-):', folha.descontos);
-
-    doc.line(20, y, 190, y); y += 6;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('VALOR LÍQUIDO:', 20, y);
-    doc.text(fmt(folha.valor_liquido), 190, y, { align: 'right' });
-    y += 12;
-
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    if (folha.data_pagamento) {
-      doc.text(`DATA DO PAGAMENTO: ${format(new Date(folha.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy')}`, 20, y);
-      y += 10;
-    }
-
-    doc.line(20, y, 190, y); y += 16;
-
-    doc.text('Declaro que recebi o valor acima descrito.', 20, y); y += 16;
-
-    doc.text('ASSINATURA: _______________________________', 20, y);
-
-    doc.save(`recibo_${folha.colaborador_nome?.replace(/ /g, '_')}_${folha.mes_referencia?.replace('/', '-')}.pdf`);
-    setGerandoPdf(null);
-    toast.success('PDF gerado!');
+    try {
+      const empresa = await base44.entities.Empresa.get(folha.empresa_id);
+      const c = colaboradores.find(c=>c.id===folha.colaborador_id) || {};
+      const resultado=await gerarContracheque(folha,c,empresa);
+      toast.success('Contracheque gerado!');
+      if(!resultado.logoCarregado) toast.info('O logo não pôde ser carregado. Confira o logo no cadastro da empresa.');
+    } catch(e) {toast.error(e.message || 'Não foi possível gerar o contracheque.');}
+    finally {setGerandoPdf(null);}
   };
 
   const abrirEditar = (folha) => {
+    if(pago(folha)>0) return toast.error('Esta folha já possui pagamentos. Os valores estão bloqueados.');
     setEditForm({
       colaborador_id: folha.colaborador_id,
       mes_referencia: folha.mes_referencia,
@@ -254,30 +168,25 @@ export default function FolhaSalarialPage() {
       bonificacoes: String(folha.bonificacoes || '0'),
       adiantamentos: String(folha.adiantamentos || '0'),
       descontos: String(folha.descontos || '0'),
+      descontos_itens:folha.descontos_itens,
+      inss_valor:String(folha.inss_valor || 0),inss_vigencia:folha.inss_vigencia || '',salvar_inss:false,
       observacoes: folha.observacoes || ''
     });
     setEditModal(folha);
   };
 
   const salvarEdicao = async () => {
+    if(savingEdit) return;
     setSavingEdit(true);
-    const liquido = calcLiquido(editForm);
-    await base44.entities.FolhaSalarial.update(editModal.id, {
-      mes_referencia: editForm.mes_referencia,
-      data_pagamento: editForm.data_pagamento || null,
-      salario_base: parseFloat(editForm.salario_base) || 0,
-      dias_trabalhados: parseFloat(editForm.dias_trabalhados) || 30,
-      valor_comissao: parseFloat(editForm.valor_comissao) || 0,
-      bonificacoes: parseFloat(editForm.bonificacoes) || 0,
-      adiantamentos: parseFloat(editForm.adiantamentos) || 0,
-      descontos: parseFloat(editForm.descontos) || 0,
-      valor_liquido: liquido,
-      observacoes: editForm.observacoes
-    });
-    toast.success('Folha atualizada!');
-    setSavingEdit(false);
-    setEditModal(null);
-    carregar(user);
+    try {
+      validar(editForm);
+      const atual=await base44.entities.FolhaSalarial.get(editModal.id);
+      if(pago(atual)>0) throw new Error('Esta folha já possui pagamentos.');
+      await guardarINSS(editForm);
+      await base44.entities.FolhaSalarial.update(editModal.id,dadosForm(editForm));
+      toast.success('Folha atualizada!');setEditModal(null);await carregar(user);
+    } catch(e) {toast.error(e.message || 'Não foi possível salvar.');}
+    finally {setSavingEdit(false);}
   };
 
   const calcDescontoFalta = () => {
@@ -298,6 +207,7 @@ export default function FolhaSalarialPage() {
 
   const lancarFalta = async () => {
     if (!faltaModal) return;
+    if (pago(faltaModal)>0) return toast.error('Folha com pagamentos não pode receber novos descontos.');
     if (!faltaData) return toast.error('Informe a data da falta');
     setSavingFalta(true);
     const { itens, total } = calcDescontoFalta();
@@ -309,7 +219,8 @@ export default function FolhaSalarialPage() {
 
     await base44.entities.FolhaSalarial.update(faltaModal.id, {
       dias_trabalhados: Math.max(0, (faltaModal.dias_trabalhados || 30) - 1),
-      descontos: (faltaModal.descontos || 0) + total,
+      descontos: arredondar(descontosTotal(faltaModal) + total),
+      descontos_itens:[...(faltaModal.descontos_itens || (moeda(faltaModal.descontos)>0 ? [{id:crypto.randomUUID(),descricao:'Desconto anterior',valor:moeda(faltaModal.descontos)}] : [])),...itens.map(i=>({id:crypto.randomUUID(),descricao:i.label,valor:arredondar(i.valor)}))],
       valor_liquido: (faltaModal.valor_liquido || 0) - total,
       observacoes: novaObs,
     });
@@ -323,6 +234,8 @@ export default function FolhaSalarialPage() {
   };
 
   const excluirFolha = async (folha) => {
+    const atual=await base44.entities.FolhaSalarial.get(folha.id);
+    if(pago(atual)>0) return toast.error('Folhas com pagamentos não podem ser excluídas.');
     await base44.entities.FolhaSalarial.delete(folha.id);
     toast.success('Folha excluída!');
     setConfirmDelete(null);
@@ -339,7 +252,7 @@ export default function FolhaSalarialPage() {
   });
 
   const totalMes = filtradas.reduce((s, f) => s + (f.valor_liquido || 0), 0);
-  const totalPagas = filtradas.filter(f => f.status === 'Paga' || f.status === 'Assinada').reduce((s, f) => s + (f.valor_liquido || 0), 0);
+  const totalPagas = filtradas.reduce((s, f) => s + pago(f), 0);
 
   return (
     <div className="space-y-6">
@@ -434,7 +347,8 @@ export default function FolhaSalarialPage() {
                       <td className="p-3">{fmt(f.salario_base)}</td>
                       <td className="p-3 font-bold text-green-700">{fmt(f.valor_liquido)}</td>
                       <td className="p-3">
-                        <Badge className={STATUS_CORES[f.status] || 'bg-gray-100 text-gray-600'}>{f.status}</Badge>
+                        <Badge className={STATUS_CORES[f.status] || 'bg-gray-100 text-gray-600'}>{pago(f)>0 && saldo(f)>0 ? 'Parcialmente paga' : f.status}</Badge>
+                        <p className="text-xs text-slate-500 mt-1">Pago: {fmt(pago(f))} · Saldo: {fmt(saldo(f))}</p>
                       </td>
                       <td className="p-3">
                         <div className="flex gap-1 flex-wrap">
@@ -448,7 +362,7 @@ export default function FolhaSalarialPage() {
                             <Button size="sm" variant="outline" className="text-xs" onClick={() => atualizarStatus(f, 'Gerada')}>Gerar</Button>
                           )}
                           {f.status === 'Gerada' && (
-                            <Button size="sm" className="text-xs bg-green-600 hover:bg-green-700" onClick={() => atualizarStatus(f, 'Paga')}>Pagar</Button>
+                            <Button size="sm" className="text-xs bg-green-600 hover:bg-green-700" onClick={() => atualizarStatus(f, 'Paga')}>{pago(f)>0 ? 'Pagar saldo' : 'Fazer pagamento'}</Button>
                           )}
                           {f.status === 'Paga' && (
                             <Button size="sm" variant="outline" className="text-xs" onClick={() => atualizarStatus(f, 'Assinada')}>Assinar</Button>
@@ -473,6 +387,7 @@ export default function FolhaSalarialPage() {
         </CardContent>
       </Card>
 
+      {pagamentoModal && <PagamentoFolhaModal folha={pagamentoModal} filiais={filiais} onClose={()=>setPagamentoModal(null)} onPaid={()=>carregar(user)} />}
       {/* Modal Nova Folha */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
@@ -504,7 +419,7 @@ export default function FolhaSalarialPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Salário Base</Label>
-                <Input type="number" value={form.salario_base} onChange={e => setForm({...form, salario_base: e.target.value})} />
+                <Input inputMode="decimal" value={form.salario_base} onChange={e => setForm({...form, salario_base: e.target.value})} />
               </div>
               <div>
                 <Label>Dias Trabalhados</Label>
@@ -514,24 +429,18 @@ export default function FolhaSalarialPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Comissões (+)</Label>
-                <Input type="number" value={form.valor_comissao} onChange={e => setForm({...form, valor_comissao: e.target.value})} />
+                <Input inputMode="decimal" value={form.valor_comissao} onChange={e => setForm({...form, valor_comissao: e.target.value})} />
               </div>
               <div>
                 <Label>Bonificações (+)</Label>
-                <Input type="number" value={form.bonificacoes} onChange={e => setForm({...form, bonificacoes: e.target.value})} />
+                <Input inputMode="decimal" value={form.bonificacoes} onChange={e => setForm({...form, bonificacoes: e.target.value})} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Adiantamentos (-)</Label>
-                <Input type="number" value={form.adiantamentos} onChange={e => setForm({...form, adiantamentos: e.target.value})} />
-              </div>
-              <div>
-                <Label>Descontos (-)</Label>
-                <Input type="number" value={form.descontos} onChange={e => setForm({...form, descontos: e.target.value})} />
-              </div>
-            </div>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+            <div><Label>Adiantamentos anteriores (-)</Label>
+              <Input inputMode="decimal" value={form.adiantamentos} onChange={e => setForm({...form,adiantamentos:e.target.value})}/>
+              <p className="text-xs text-slate-500">Já descontados do líquido. Registre a quinzena atual no botão Fazer pagamento.</p></div>
+              <DescontosFolha form={form} onChange={setForm} />
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
               <p className="text-sm text-slate-500">Valor Líquido</p>
               <p className="text-2xl font-bold text-green-700">
                 {Number(calcLiquido(form)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
@@ -583,7 +492,7 @@ export default function FolhaSalarialPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Salário Base</Label>
-                  <Input type="number" value={editForm.salario_base} onChange={e => setEditForm({...editForm, salario_base: e.target.value})} />
+                  <Input inputMode="decimal" value={editForm.salario_base} onChange={e => setEditForm({...editForm, salario_base: e.target.value})} />
                 </div>
                 <div>
                   <Label>Dias Trabalhados</Label>
@@ -593,23 +502,17 @@ export default function FolhaSalarialPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Comissões (+)</Label>
-                  <Input type="number" value={editForm.valor_comissao} onChange={e => setEditForm({...editForm, valor_comissao: e.target.value})} />
+                  <Input inputMode="decimal" value={editForm.valor_comissao} onChange={e => setEditForm({...editForm, valor_comissao: e.target.value})} />
                 </div>
                 <div>
                   <Label>Bonificações (+)</Label>
-                  <Input type="number" value={editForm.bonificacoes} onChange={e => setEditForm({...editForm, bonificacoes: e.target.value})} />
+                  <Input inputMode="decimal" value={editForm.bonificacoes} onChange={e => setEditForm({...editForm, bonificacoes: e.target.value})} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Adiantamentos (-)</Label>
-                  <Input type="number" value={editForm.adiantamentos} onChange={e => setEditForm({...editForm, adiantamentos: e.target.value})} />
-                </div>
-                <div>
-                  <Label>Descontos (-)</Label>
-                  <Input type="number" value={editForm.descontos} onChange={e => setEditForm({...editForm, descontos: e.target.value})} />
-                </div>
-              </div>
+              <div><Label>Adiantamentos anteriores (-)</Label>
+              <Input inputMode="decimal" value={editForm.adiantamentos} onChange={e => setEditForm({...editForm,adiantamentos:e.target.value})}/>
+              <p className="text-xs text-slate-500">Já descontados do líquido. Registre a quinzena atual no botão Fazer pagamento.</p></div>
+              <DescontosFolha form={editForm} onChange={setEditForm} />
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
                 <p className="text-sm text-slate-500">Valor Líquido</p>
                 <p className="text-2xl font-bold text-green-700">
@@ -761,9 +664,14 @@ export default function FolhaSalarialPage() {
               <div className="flex justify-between"><span className="text-slate-500">Bonificações</span><span className="text-green-600">+{fmt(viewModal.bonificacoes)}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Adiantamentos</span><span className="text-red-500">-{fmt(viewModal.adiantamentos)}</span></div>
               <div className="flex justify-between"><span className="text-slate-500">Descontos</span><span className="text-red-500">-{fmt(viewModal.descontos)}</span></div>
+              <div className="flex justify-between"><span>INSS</span><span>-{fmt(viewModal.inss_valor)}</span></div>
+              {(viewModal.descontos_itens || []).map(i=><div key={i.id} className="flex justify-between text-sm"><span>{i.descricao}</span><span>-{fmt(i.valor)}</span></div>)}
               <div className="border-t pt-3 flex justify-between font-bold text-lg">
                 <span>Valor Líquido</span><span className="text-green-700">{fmt(viewModal.valor_liquido)}</span>
               </div>
+              <div className="flex justify-between"><span>Pago</span><strong>{fmt(pago(viewModal))}</strong></div>
+              <div className="flex justify-between"><span>Saldo a pagar</span><strong>{fmt(saldo(viewModal))}</strong></div>
+              {(viewModal.pagamentos || []).map(p=><div key={p.id} className="rounded bg-slate-50 p-2 text-sm">{p.tipo} · {p.data.split('-').reverse().join('/')} · {fmt(p.valor)}</div>)}
               {viewModal.data_pagamento && (
                 <div className="flex justify-between text-sm"><span className="text-slate-500">Data Pagamento</span><span>{format(new Date(viewModal.data_pagamento + 'T00:00:00'), 'dd/MM/yyyy')}</span></div>
               )}
