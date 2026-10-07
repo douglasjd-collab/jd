@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { X, ZoomIn, ZoomOut, RotateCcw, Download } from 'lucide-react';
 
-export default function ImagemZoom({ url, onClose }) {
+export default function ImagemZoom({ url, onClose, onDownload }) {
   const [zoom, setZoom] = useState(1);
   return createPortal(
     <div className="fixed inset-0 bg-black/90 z-[9999] flex flex-col" role="dialog" aria-label="Visualizar imagem">
@@ -11,6 +11,7 @@ export default function ImagemZoom({ url, onClose }) {
         <span>{Math.round(zoom * 100)}%</span>
         <button aria-label="Aumentar zoom" onClick={() => setZoom(z => Math.min(5, z + .5))}><ZoomIn /></button>
         <button aria-label="Restaurar tamanho" onClick={() => setZoom(1)}><RotateCcw /></button>
+        {onDownload && <button aria-label="Baixar imagem" onClick={onDownload}><Download /></button>}
         <button aria-label="Fechar imagem" onClick={onClose}><X /></button>
       </div>
       <div className="flex-1 overflow-auto p-4" onClick={onClose}>
