@@ -695,23 +695,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
               )}
             </div>
             {imagemAberta && mediaUrl && (
-              <div
-                className="fixed inset-0 bg-black/90 flex items-center justify-center z-[9999] p-4"
-                onClick={() => setImagemAberta(false)}
-              >
-                <button
-                  onClick={() => setImagemAberta(false)}
-                  className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 rounded-full p-2 transition-colors z-10"
-                >
-                  <X className="w-6 h-6 text-white" />
-                </button>
-                <img
-                  src={mediaUrl}
-                  alt="Imagem ampliada"
-                  className="max-w-full max-h-[90vh] rounded-lg object-contain"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
+              <ImagemZoom url={mediaUrl} onClose={() => setImagemAberta(false)} />
             )}
           </div>
         );
