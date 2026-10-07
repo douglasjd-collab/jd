@@ -37,7 +37,7 @@ export async function gerarContracheque(f,c,e) {
  const itens=[['Salário base',f.salario_base,0],['Comissões',f.valor_comissao,0],['Bonificações',f.bonificacoes,0],['Adiantamentos anteriores',0,f.adiantamentos],
  ...(Array.isArray(f.descontos_itens)?f.descontos_itens.map(i=>[i.descricao,0,i.valor]):[['Outros descontos',0,f.descontos]]),['INSS',0,f.inss_valor]];
  for(const [nome,v,d] of itens){
-  doc.setFontSize(9);const linhas=doc.splitTextToSize(String(nome||'Desconto'),90);const altura=Math.max(9,linhas.length*4+3);
+  doc.setFontSize(9);const linhas=doc.splitTextToSize(String(nome||'Desconto'),90);const altura=Math.max(7,linhas.length*4+2);
   if(y+altura>260){doc.addPage();y=22;cabecalho();}
   texto(linhas,18,y,9);texto(fmt(v),145,y,9,false,[45,55,65],{align:'right'});texto(fmt(d),192,y,9,false,[45,55,65],{align:'right'});
   y+=altura;doc.setDrawColor(225,230,235);doc.line(14,y-5,196,y-5);
@@ -45,11 +45,11 @@ export async function gerarContracheque(f,c,e) {
  pagina(55);
  texto('Totais',18,y,10,true);texto(fmt(moeda(f.salario_base)+moeda(f.valor_comissao)+moeda(f.bonificacoes)),145,y,10,true,teal,{align:'right'});texto(fmt(moeda(f.adiantamentos)+descontosTotal(f)+moeda(f.inss_valor)),192,y,10,true,teal,{align:'right'});y+=12;
  for(const [i,label,v] of [[0,'LÍQUIDO DO MÊS',f.valor_liquido],[1,'PAGO',pago(f)],[2,'SALDO A PAGAR',saldo(f)]]){const x=14+i*62;doc.setFillColor(...(i===0?green:[241,245,249]));doc.roundedRect(x,y,58,24,2,2,'F');texto(label,x+4,y+8,8,true,i===0?[255,255,255]:teal);texto(fmt(v),x+4,y+18,12,true,i===0?[255,255,255]:teal);}
- y+=35;
+ y+=31;
  if(f.pagamentos?.length){pagina(15);texto('Pagamentos registrados',16,y,11,true,teal);y+=8;for(const p of f.pagamentos){pagina(10);texto(dataBR(p.data)+' · '+p.tipo,16,y,9);texto(fmt(p.valor),194,y,9,true,teal,{align:'right'});y+=8;}}
  if(f.observacoes){pagina(20);texto('Observações',16,y,10,true);y+=6;for(const linha of doc.splitTextToSize(f.observacoes,178)){pagina(6);texto(linha,16,y,9);y+=5;}y+=5;}
- pagina(40);y+=8;
- texto(pago(f)>0?'Recebimento dos valores registrados acima:':'Demonstrativo de valores. Pagamento ainda não registrado.',16,y,9);y+=20;
+ pagina(30);y+=4;
+ texto(pago(f)>0?'Recebimento dos valores registrados acima:':'Demonstrativo de valores. Pagamento ainda não registrado.',16,y,9);y+=16;
  doc.setDrawColor(...teal);doc.line(35,y,175,y);texto('Assinatura do funcionário',105,y+6,9,false,[100,110,120],{align:'center'});
  for(let p=1;p<=doc.getNumberOfPages();p++){doc.setPage(p);texto('JD Promotora · Contracheque · '+f.mes_referencia,16,285,8,false,[100,110,120]);texto(p+' / '+doc.getNumberOfPages(),194,285,8,false,[100,110,120],{align:'right'});}
  doc.save('contracheque_'+String(f.colaborador_nome||'funcionario').replace(/[^\p{L}\p{N}]+/gu,'_')+'_'+f.mes_referencia.replace('/','-')+'.pdf');
