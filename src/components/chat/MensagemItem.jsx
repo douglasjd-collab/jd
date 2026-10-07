@@ -401,6 +401,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
     // Salva o arquivo uma única vez, com o nome correto (sem abrir abas).
     const baixou = await baixarArquivo(urlFinal, mensagem.arquivo_nome || nomeArquivo);
     if (!baixou) toast.error('Não foi possível baixar o arquivo.');
+    return baixou;
   };
 
   const handleTranscrever = async () => {
