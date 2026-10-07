@@ -651,10 +651,13 @@ export default function SimuladorNormal() {
         0
       );
 
-      // Se houver reduzida, o "no ato" deve ser a soma das reduzidas.
-      // Senão, deve ser a parcela total cheia.
+      // Respeitar a opção escolhida pelo usuário no simulador.
+      // A existência de uma parcela reduzida não deve substituir a parcela cheia
+      // quando "Parcela Normal" estiver selecionada.
+      const parcela_reduzida_selecionada =
+        usarParcelaReduzida && primeira_parcela_reduzida_total > 0;
       const primeira_parcela_no_ato =
-        primeira_parcela_reduzida_total > 0 ? primeira_parcela_reduzida_total : parcelaTotal;
+        parcela_reduzida_selecionada ? primeira_parcela_reduzida_total : parcelaTotal;
 
       const simulacao = await base44.entities.Simulacao.create({
         empresa_id: colab.empresa_id,
@@ -667,7 +670,7 @@ export default function SimuladorNormal() {
         prazo_original: resultado.prazoOriginal,
         novo_prazo: resultado.novoPrazo,
         nova_parcela: resultado.novaParcela,
-        parcela_reduzida: primeira_parcela_reduzida_total > 0,
+        parcela_reduzida: parcela_reduzida_selecionada,
         primeira_parcela_reduzida_total: primeira_parcela_reduzida_total,
         primeira_parcela_no_ato: primeira_parcela_no_ato,
         saldo_apos_contemplacao: resultado.saldoDevedor,
