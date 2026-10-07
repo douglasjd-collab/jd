@@ -81,6 +81,59 @@
     "observacoes": {
       "type": "string",
       "description": "Observa\u00e7\u00f5es"
+    },
+    "descontos_itens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "descricao": {
+            "type": "string"
+          },
+          "valor": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "inss_valor": {
+      "type": "number",
+      "default": 0
+    },
+    "inss_vigencia": {
+      "type": "string"
+    },
+    "pagamentos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "valor": {
+            "type": "number"
+          },
+          "data": {
+            "type": "string"
+          },
+          "despesa_id": {
+            "type": "string"
+          },
+          "comprovante_url": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "filial_id": {
+      "type": "string"
     }
   },
   "required": [
