@@ -49,10 +49,23 @@ function substituirTempIdPorReal(queryClient, conversaId, tempId, realId, extras
     if (!Array.isArray(old)) return old;
     const idx = old.findIndex((m) => m.id === tempId);
     if (idx < 0) return old;
-    const patched = { ...old[idx], id: realId, fila_envio_estado: null, ...extras };
-    const novo = [...old];
-    novo[idx] = patched;
-    return novo;
+    if (!realId) return old;
+    const whatsappId = extras?.whatsapp_message_id;
+    const mesmoRegistro = (m) => m.id === realId ||
+      (whatsappId && m.whatsapp_message_id === whatsappId);
+    const existente = old.find((m, i) => i !== idx && mesmoRegistro(m));
+    const prioridade = { pendente: 0, enviada: 1, entregue: 2, lida: 3 };
+    const status = existente && (prioridade[existente.status] ?? -1) > (prioridade[extras?.status] ?? -1)
+      ? existente.status : extras?.status;
+    const patched = {
+      ...old[idx], ...extras, ...existente, id: realId,
+      status: status || existente?.status || old[idx].status,
+      fila_envio_estado: null, fila_envio_progresso: null, fila_envio_erro: null,
+    };
+    return old.flatMap((m, i) => {
+      if (i === idx) return [patched];
+      return mesmoRegistro(m) ? [] : [m];
+    });
   });
 }
 
