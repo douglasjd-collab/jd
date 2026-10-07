@@ -5,7 +5,7 @@ const dataBR = s => s ? s.split('-').reverse().join('/') : '—';
 export async function gerarContracheque(f,c,e) {
  const doc=new jsPDF(); const teal=[16,53,60]; const green=[27,139,105];
  let y=18;
- const texto=(s,x,yy,size=10,bold=false,color=[45,55,65],opts={})=>{doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.setTextColor(...color);doc.text(String(s||'—'),x,yy,opts);};
+ const texto=(s,x,yy,size=10,bold=false,color=[45,55,65],opts={})=>{doc.setFont('helvetica',bold?'bold':'normal');doc.setFontSize(size);doc.setTextColor(...color);doc.text(Array.isArray(s)?s:String(s||'—'),x,yy,opts);};
  const bloco=(s,x,yy,w,size=10)=>{doc.setFontSize(size);const linhas=doc.splitTextToSize(String(s||'—'),w);texto(linhas,x,yy,size);return linhas.length*size*0.4;};
  const pagina=altura=>{if(y+altura>265){doc.addPage();y=22;}};
  doc.setFillColor(...teal);doc.rect(0,0,210,48,'F');
