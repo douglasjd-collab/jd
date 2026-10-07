@@ -10,9 +10,10 @@ export async function gerarContracheque(f,c,e) {
  const pagina=altura=>{if(y+altura>265){doc.addPage();y=22;}};
  doc.setFillColor(...teal);doc.rect(0,0,210,48,'F');
  let logo=false;
- if(e.logo_url) {
+ const logoUrl=e.logo_url || 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6950a9860c8af0e2ff10fc9e/1b5f2d0a1_JDPromotoraICON3.png';
+ if(logoUrl) {
   try {
-   const img=await new Promise((resolve,reject)=>{const i=new Image();i.crossOrigin='anonymous';const t=setTimeout(()=>reject(new Error('Logo indisponível')),8000);i.onload=()=>{clearTimeout(t);resolve(i);};i.onerror=()=>{clearTimeout(t);reject(new Error('Logo indisponível'));};i.src=e.logo_url;});
+   const img=await new Promise((resolve,reject)=>{const i=new Image();i.crossOrigin='anonymous';const t=setTimeout(()=>reject(new Error('Logo indisponível')),8000);i.onload=()=>{clearTimeout(t);resolve(i);};i.onerror=()=>{clearTimeout(t);reject(new Error('Logo indisponível'));};i.src=logoUrl;});
    const canvas=document.createElement('canvas');canvas.width=img.width;canvas.height=img.height;canvas.getContext('2d').drawImage(img,0,0);
    const h=Math.min(28,30*img.height/img.width),w=h*img.width/img.height;
    doc.setFillColor(255,255,255);doc.roundedRect(14,9,36,32,3,3,'F');doc.addImage(canvas.toDataURL('image/png'),'PNG',17+(30-w)/2,11+(28-h)/2,w,h);logo=true;
@@ -26,7 +27,8 @@ export async function gerarContracheque(f,c,e) {
  texto('CNPJ: '+(e.cpf_cnpj||'Não informado'),16,y,9);y+=7;
  const endereco=[e.endereco_rua,e.endereco_numero,e.endereco_complemento,[e.endereco_cidade,e.endereco_estado].filter(Boolean).join('/'),e.endereco_cep && 'CEP '+e.endereco_cep].filter(Boolean).join(', ');
  y+=bloco(endereco||'Endereço não informado',16,y,178,9)+7;
- doc.setFillColor(241,245,249);doc.roundedRect(14,y-3,182,31,2,2,'F');
+ doc.setFillColor(241,245,249);doc.setFontSize(12);const nomeAltura=doc.splitTextToSize(String(f.colaborador_nome || '—'),174).length*4.8;
+ doc.roundedRect(14,y-3,182,31+Math.max(0,nomeAltura-4.8),2,2,'F');
  y+=bloco(f.colaborador_nome,18,y+4,174,12)+8;
  texto('CPF: '+(c.cpf||'—'),18,y,9);texto('Admissão: '+dataBR(c.data_admissao),120,y,9);y+=7;
  y+=bloco('Cargo: '+(c.cargo||'—')+'  ·  Dias: '+(f.dias_trabalhados ?? 30),18,y,172,9)+12;
