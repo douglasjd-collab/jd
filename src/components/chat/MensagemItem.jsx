@@ -695,7 +695,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
               )}
             </div>
             {imagemAberta && mediaUrl && (
-              <ImagemZoom url={mediaUrl} onClose={() => setImagemAberta(false)} />
+              <ImagemZoom url={mediaUrl} onClose={() => setImagemAberta(false)} onDownload={() => handleDownload(mediaUrl, mensagem.arquivo_nome)} />
             )}
           </div>
         );
@@ -1061,7 +1061,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
           )}
         </div>
         {imagemAberta && mediaUrl && (
-          <ImagemZoom url={mediaUrl} onClose={() => setImagemAberta(false)} />
+          <ImagemZoom url={mediaUrl} onClose={() => setImagemAberta(false)} onDownload={() => handleDownload(mediaUrl, mensagem.arquivo_nome)} />
         )}
         {isVendedor && atalhoEncaminhar}
         <DropdownMenu>
