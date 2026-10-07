@@ -3,6 +3,7 @@ import { Download, X, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
 import { baixarArquivo } from './baixarArquivo';
+import ImagemZoom from './ImagemZoom';
 import ReacaoRapidaBar from './ReacaoRapidaBar';
 
 const CELL_SIZE = 160; // px por célula
@@ -246,31 +247,7 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor, onReag
       </div>
 
       {/* Lightbox */}
-      {imagemAberta && (
-        <div
-          style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 16 }}
-          onClick={() => setImagemAberta(null)}
-        >
-          <button
-            onClick={() => setImagemAberta(null)}
-            style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', padding: 8, cursor: 'pointer' }}
-          >
-            <X style={{ width: 24, height: 24, color: '#fff' }} />
-          </button>
-          <button
-            onClick={e => { e.stopPropagation(); baixarArquivo(imagemAberta); }}
-            style={{ position: 'absolute', top: 16, right: 64, background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', padding: 8, cursor: 'pointer' }}
-          >
-            <Download style={{ width: 24, height: 24, color: '#fff' }} />
-          </button>
-          <img
-            src={imagemAberta}
-            alt="Imagem"
-            style={{ maxWidth: '100%', maxHeight: '90vh', borderRadius: 8, objectFit: 'contain' }}
-            onClick={e => e.stopPropagation()}
-          />
-        </div>
-      )}
+      {imagemAberta && <ImagemZoom url={imagemAberta} onClose={() => setImagemAberta(null)} /> }
     </>
   );
 }
