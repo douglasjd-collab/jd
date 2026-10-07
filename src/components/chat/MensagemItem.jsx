@@ -291,7 +291,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
     }).catch(err => {
       console.warn('baixarMidia falhou:', err?.message);
     }).finally(() => setLoadingMedia(false));
-  }, [mensagem.id]);
+  }, [mensagem.id, mensagem.arquivo_url, mensagem.media_id, mensagem.download_status, tipoConteudo]);
 
   // Quando o banco atualizar arquivo_url (ex: download feito em background), refletir no estado
   // Mas não re-setar URL que já falhou (causaria loop)
@@ -398,7 +398,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
     }
     
     // Salva o arquivo uma única vez, com o nome correto (sem abrir abas).
-    const baixou = await baixarArquivo(urlFinal, nomeArquivo || mensagem.arquivo_nome);
+    const baixou = await baixarArquivo(urlFinal, mensagem.arquivo_nome || nomeArquivo);
     if (!baixou) toast.error('Não foi possível baixar o arquivo.');
   };
 
@@ -672,7 +672,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                     onClick={() => setImagemAberta(true)}
                   />
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleDownload(mediaUrl, `imagem_${mensagem.id}.jpg`); }}
+                    onClick={(e) => { e.stopPropagation(); handleDownload(mediaUrl, mensagem.arquivo_nome); }}
                     className="absolute bottom-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
                     title="Baixar imagem"
                   >
@@ -1042,7 +1042,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                     )}
                   </div>
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleDownload(mediaUrl, `imagem_${mensagem.id}.jpg`); }}
+                    onClick={(e) => { e.stopPropagation(); handleDownload(mediaUrl, mensagem.arquivo_nome); }}
                     className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
                   >
                     <Download className="w-3.5 h-3.5" />
