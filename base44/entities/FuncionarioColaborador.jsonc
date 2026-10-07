@@ -91,6 +91,20 @@
     "observacoes": {
       "type": "string",
       "description": "Observa\u00e7\u00f5es"
+    },
+    "inss_configuracoes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "vigencia": {
+            "type": "string"
+          },
+          "valor": {
+            "type": "number"
+          }
+        }
+      }
     }
   },
   "required": [
