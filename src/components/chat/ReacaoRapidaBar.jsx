@@ -4,11 +4,27 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 // Emojis simples: a API do WhatsApp aceita uma única reação por mensagem.
 const EMOJIS = [
-  '👍', '❤️', '😂', '😮', '😢', '🙏',
-  '😍', '😘', '🥰', '😎', '🤩', '😉', '😜',
-  '🤔', '😅', '😭', '😡', '😴', '🤯', '🥳',
-  '🙌', '👏', '👊', '✌️', '🤝', '💪',
-  '🔥', '✨', '🎉', '💯', '✅', '⭐', '📌',
+  // Mais usadas
+  '👍', '👎', '❤️', '😂', '🤣', '😮', '😢', '🙏',
+  '😍', '😘', '🥰', '😎', '🤩', '😉', '😜', '🤔',
+  '😅', '😊', '😁', '😭', '😡', '😤', '😴', '🤯',
+  '🥳', '😱', '🤭', '🤫', '🙄', '😬', '🤡', '👻',
+
+  // Mãos e gestos
+  '👉', '👈', '👆', '👇', '☝️', '👋', '🤚', '🖐️',
+  '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤙', '👏',
+  '🙌', '👐', '🤝', '👊', '✊', '💪', '🫶',
+
+  // Corações e símbolos
+  '💙', '💚', '💛', '🧡', '💜', '🖤', '🤍', '💔',
+  '💕', '💖', '💘', '💯', '✅', '❌', '⚠️', '❓',
+  '❗', '⭐', '✨', '🔥', '💥', '💤', '📌', '🎯',
+
+  // Natureza, comemoração e objetos
+  '☀️', '🌙', '🌈', '⚡', '🌹', '🌻', '🍀', '🎉',
+  '🎊', '🎁', '🏆', '🥇', '⚽', '🚗', '🏍️', '💰',
+  '💵', '💳', '📱', '📞', '🔔', '🔑', '🔒', '🔫',
+  '🔪', '🛡️', '💣', '🚀', '✈️', '🏠', '⌛',
 ];
 
 export default function ReacaoRapidaBar({ onReagir }) {
@@ -37,7 +53,7 @@ export default function ReacaoRapidaBar({ onReagir }) {
         side="top"
         sideOffset={6}
         onClick={(e) => e.stopPropagation()}
-        className="w-auto max-w-[272px] p-2 rounded-xl shadow-xl"
+        className="w-[272px] max-h-[280px] overflow-y-auto p-2 rounded-xl shadow-xl"
       >
         <div className="grid grid-cols-7 gap-0.5">
           {EMOJIS.map((emoji) => (
