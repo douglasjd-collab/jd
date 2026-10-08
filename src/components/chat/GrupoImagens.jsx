@@ -221,20 +221,20 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor, onReag
         }
       `}</style>
       <div className="group relative flex" style={{ justifyContent: isVendedor ? 'flex-end' : 'flex-start', marginBottom: ultima.reaction ? 16 : 2 }}>
-        {onReagir && (
-          <div className="relative w-0 self-center overflow-visible z-30">
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150">
+        <div className="relative">
+          {onReagir && (
+            <div className="absolute -left-3 -top-3 z-30 opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150">
               <ReacaoRapidaBar onReagir={(emoji) => onReagir(ultima, emoji)} />
             </div>
+          )}
+          <div style={{
+            borderRadius: BR,
+            overflow: 'hidden',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+            // Sem background, sem borda azul — imagem limpa
+          }}>
+            {grid}
           </div>
-        )}
-        <div style={{
-          borderRadius: BR,
-          overflow: 'hidden',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
-          // Sem background, sem borda azul — imagem limpa
-        }}>
-          {grid}
         </div>
         {ultima.reaction && (
           <span
