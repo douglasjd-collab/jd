@@ -95,6 +95,17 @@ export default function BatePapo() {
   const [user, setUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
+  const manterListaAposFinalizacaoRef = useRef(false);
+
+  const voltarParaListaAposFinalizacao = () => {
+    manterListaAposFinalizacaoRef.current = true;
+    localStorage.removeItem('ultimaConversaId');
+    setMobileViewChat(false);
+    setConversaSelecionada(null);
+    setMensagemParaResponder(null);
+    setInfoLeadAberto(false);
+    setCoachIAOpen(false);
+  };
 
   // Confirma o carregamento ao painel JD, sem transmitir dados do atendimento.
   useEffect(() => {
@@ -863,6 +874,7 @@ export default function BatePapo() {
   useEffect(() => {
     if (conversas.length === 0) return;
     if (!conversaSelecionada) {
+      if (manterListaAposFinalizacaoRef.current) return;
       // Verificar se há conversa_id na URL (vindo do botão "Conversar" de contato compartilhado)
       const urlParams = new URLSearchParams(window.location.search);
       const conversaIdUrl = urlParams.get('conversa_id');
@@ -2360,6 +2372,7 @@ export default function BatePapo() {
                 refetchMensagens={refetchMensagens}
                 queryClient={queryClient}
                 setConversaSelecionada={setConversaSelecionada}
+                onConversaFinalizada={voltarParaListaAposFinalizacao}
                 onAgendarMensagem={setAgendarMensagemModal}
                 setFunilModalOpen={setFunilModalOpen}
                 oportunidadeAtual={oportunidadeAtual}
