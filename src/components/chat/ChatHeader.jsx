@@ -60,6 +60,7 @@ export default function ChatHeader({
   localizarMensagem,
   onEncaminharMensagem,
   onEnviarMensagemFinalizacao,
+  onConversaFinalizada,
 }) {
   const [buscaAtiva, setBuscaAtiva] = useState(false);
   const [galeriaAberta, setGaleriaAberta] = useState(false);
@@ -189,7 +190,11 @@ _Cashback sujeito às regras da campanha._`;
       );
       queryClient.invalidateQueries({ queryKey: ['contadores-bate-papo', empresaId] });
       setFinalizarModalOpen(false);
-      setConversaSelecionada(null);
+      if (onConversaFinalizada) {
+        onConversaFinalizada(conversaId);
+      } else {
+        setConversaSelecionada(null);
+      }
       toast.success(enviarMensagem
         ? 'Mensagem enviada e conversa finalizada'
         : 'Conversa finalizada sem enviar mensagem'
