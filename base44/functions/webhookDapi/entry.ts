@@ -737,8 +737,14 @@ async function processMessageReceived(base44, body, connection, empresaId) {
       const canalTravado = conversa.locked_provider === true;
       // connection_id amarra a conversa à conexão (D-API Oficial / Douglas) que recebeu
       // a última mensagem — usado no envio para escolher o canal certo (multi-D-API).
+      // O nome editado no CRM prevalece sobre o nome recebido do WhatsApp.
+      const variantesNome = new Set([fromPhone]);
+      if (fromPhone.startsWith('55') && fromPhone.length === 13) variantesNome.add(fromPhone.slice(0, 4) + fromPhone.slice(5));
+      if (fromPhone.startsWith('55') && fromPhone.length === 12) variantesNome.add(fromPhone.slice(0, 4) + '9' + fromPhone.slice(4));
+      const contatosNomeFixo = await base44.asServiceRole.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, telefone: { $in: [...variantesNome] }, nome_fixo: true }, '-updated_date', 1);
+      const nomeFixoCRM = contatosNomeFixo[0]?.nome;
       const atualizarConversa = {
-        cliente_nome: fromName,
+        cliente_nome: nomeFixoCRM || fromName,
         last_inbound_provider: 'dapi',
         cliente_respondeu: true,
         connection_id: connection.id
