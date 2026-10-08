@@ -513,8 +513,14 @@ async function processarMensagemRecebida(base44, connection, data) {
       // Canal de ENVIO travado manualmente pelo usuário (seletor do chat) — não sobrescrever.
       const canalTravadoDapi = conversa.locked_provider === true;
 
+      // O nome editado no CRM prevalece sobre o nome recebido do WhatsApp.
+      const variantesNome = new Set([telefone]);
+      if (telefone.startsWith('55') && telefone.length === 13) variantesNome.add(telefone.slice(0, 4) + telefone.slice(5));
+      if (telefone.startsWith('55') && telefone.length === 12) variantesNome.add(telefone.slice(0, 4) + '9' + telefone.slice(4));
+      const contatosNomeFixo = await base44.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, telefone: { $in: [...variantesNome] }, nome_fixo: true }, '-updated_date', 1);
+      const nomeFixoCRM = contatosNomeFixo[0]?.nome;
       const atualizarConversa = {
-        cliente_nome: nomeContato,
+        cliente_nome: nomeFixoCRM || nomeContato,
         last_inbound_provider: 'dapi',
         cliente_respondeu: true
       };
