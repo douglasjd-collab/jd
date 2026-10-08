@@ -1093,17 +1093,6 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
         data-msg-message-id={mensagem.message_id || mensagem.media_id || undefined}
         className={`relative flex ${isVendedor ? 'justify-end' : 'justify-start'} gap-2 group animate-in fade-in slide-in-from-bottom-2 duration-300 rounded-lg transition-shadow hover:z-20`}
       >
-      {/* Barra de reações rápidas (aparece ao passar o mouse, como no WhatsApp) */}
-      {onReagir && !modoSelecao && (
-        <div className={`absolute -top-9 z-30 transition-opacity duration-150 ${barReacaoFixa ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} ${isVendedor ? 'right-10' : 'left-11'}`}>
-          <ReacaoRapidaBar
-            onReagir={(emoji) => {
-              setBarReacaoFixa(false);
-              onReagir(mensagem, emoji);
-            }}
-          />
-        </div>
-      )}
       {modoSelecao && (
         <button
           type="button"
@@ -1117,6 +1106,18 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
         </button>
       )}
       {!isVendedor && atalhoEncaminhar}
+      {onReagir && !modoSelecao && (
+        <div className="relative w-0 self-center overflow-visible z-30">
+          <div className={`absolute right-1 top-1/2 -translate-y-1/2 transition-all duration-150 ${barReacaoFixa ? 'opacity-100 scale-100' : 'opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100'}`}>
+            <ReacaoRapidaBar
+              onReagir={(emoji) => {
+                setBarReacaoFixa(false);
+                onReagir(mensagem, emoji);
+              }}
+            />
+          </div>
+        </div>
+      )}
       <div
         onClick={modoSelecao ? () => onToggleSelecao?.(mensagem.id) : undefined}
         className={`relative max-w-md rounded-2xl shadow-sm ${mensagem.reaction ? 'mb-3 ' : ''}${
