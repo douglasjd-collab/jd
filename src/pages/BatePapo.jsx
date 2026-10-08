@@ -318,27 +318,38 @@ export default function BatePapo() {
   };
 
   const salvarContatoCrm = async () => {
-    if (!salvarCrmModal) return;
+    if (!salvarCrmModal || salvandoCrm || !nomeContatoEdit.trim()) return;
     setSalvandoCrm(true);
-    const { conversa, contato } = salvarCrmModal;
+    const { conversa } = salvarCrmModal;
+    let contato = salvarCrmModal.contato;
+    const nomeSalvo = nomeContatoEdit.trim();
     const telefoneLimpo = conversa.cliente_telefone.replace(/\D/g, '');
     try {
+      if (!contato?.id) {
+        const variantes = new Set([telefoneLimpo]);
+        if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 13) variantes.add(telefoneLimpo.slice(0, 4) + telefoneLimpo.slice(5));
+        if (telefoneLimpo.startsWith('55') && telefoneLimpo.length === 12) variantes.add(telefoneLimpo.slice(0, 4) + '9' + telefoneLimpo.slice(4));
+        const existentes = await base44.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, telefone: { $in: [...variantes] } }, '-updated_date', 20);
+        contato = existentes.find(c => c.nome_fixo) || existentes[0] || contato;
+      }
       let contatoSalvo;
       if (contato?.id) {
         // Atualizar nome do contato existente — marcar como fixo para não ser sobrescrito por sincronizações
-        await base44.entities.ContatoWhatsapp.update(contato.id, { nome: nomeContatoEdit, nome_fixo: true });
-        contatoSalvo = { ...contato, nome: nomeContatoEdit, nome_fixo: true };
+        await base44.entities.ContatoWhatsapp.update(contato.id, { nome: nomeSalvo, nome_fixo: true });
+        contatoSalvo = { ...contato, nome: nomeSalvo, nome_fixo: true };
       } else {
         // Criar novo contato no CRM — marcar como fixo
         contatoSalvo = await base44.entities.ContatoWhatsapp.create({
           empresa_id: empresaId,
           telefone: telefoneLimpo,
-          nome: nomeContatoEdit,
+          nome: nomeSalvo,
           nome_fixo: true,
         });
       }
       // Atualizar nome na conversa também
-      await base44.entities.ConversaWhatsapp.update(conversa.id, { cliente_nome: nomeContatoEdit });
+      await base44.entities.ConversaWhatsapp.update(conversa.id, { cliente_nome: nomeSalvo });
+      setConversaSelecionada(prev => prev?.id === conversa.id ? { ...prev, cliente_nome: nomeSalvo } : prev);
+      queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) => old.map(c => c.id === conversa.id ? { ...c, cliente_nome: nomeSalvo, contato: contatoSalvo } : c));
       // Sincronizar estado local
       setContatosWhatsapp(prev => ({ ...prev, [conversa.id]: contatoSalvo }));
       queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
@@ -2002,7 +2013,7 @@ export default function BatePapo() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Contact className="w-4 h-4" />
-                {salvarCrmModal?.contato?.id ? 'Editar contato no CRM' : 'Salvar contato no CRM'}
+                Editar contato
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3 py-2">
@@ -2026,7 +2037,7 @@ export default function BatePapo() {
               <Button variant="outline" onClick={() => setSalvarCrmModal(null)}>Cancelar</Button>
               <Button onClick={salvarContatoCrm} disabled={salvandoCrm || !nomeContatoEdit.trim()} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">
                 {salvandoCrm ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                {salvarCrmModal?.contato?.id ? 'Salvar alterações' : 'Salvar no CRM'}
+                Salvar alterações
               </Button>
             </DialogFooter>
           </DialogContent>
