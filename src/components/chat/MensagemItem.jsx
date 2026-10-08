@@ -1106,18 +1106,6 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
         </button>
       )}
       {!isVendedor && atalhoEncaminhar}
-      {onReagir && !modoSelecao && (
-        <div className="relative w-0 self-center overflow-visible z-30">
-          <div className={`absolute right-1 top-1/2 -translate-y-1/2 transition-all duration-150 ${barReacaoFixa ? 'opacity-100 scale-100' : 'opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100'}`}>
-            <ReacaoRapidaBar
-              onReagir={(emoji) => {
-                setBarReacaoFixa(false);
-                onReagir(mensagem, emoji);
-              }}
-            />
-          </div>
-        </div>
-      )}
       <div
         onClick={modoSelecao ? () => onToggleSelecao?.(mensagem.id) : undefined}
         className={`relative max-w-md rounded-2xl shadow-sm ${mensagem.reaction ? 'mb-3 ' : ''}${
@@ -1128,6 +1116,16 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
             : 'bg-white text-slate-900 rounded-bl-md border border-slate-200 px-4 py-3'
         }${modoSelecao ? ' cursor-pointer' : ''}${modoSelecao && selecionada ? ' ring-2 ring-emerald-500' : ''}`}
       >
+        {onReagir && !modoSelecao && (
+          <div className={`absolute -left-3 -top-3 z-30 transition-all duration-150 ${barReacaoFixa ? 'opacity-100 scale-100' : 'opacity-0 scale-90 group-hover:opacity-100 group-hover:scale-100'}`}>
+            <ReacaoRapidaBar
+              onReagir={(emoji) => {
+                setBarReacaoFixa(false);
+                onReagir(mensagem, emoji);
+              }}
+            />
+          </div>
+        )}
         {/* Nome do remetente em grupos com avatar */}
         {isGrupo && mensagem.remetente_nome && (
           <div className="flex items-center gap-2 mb-1 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => {
