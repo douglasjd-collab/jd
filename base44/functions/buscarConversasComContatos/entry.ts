@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
     for (const c of contatos) {
       if (c.telefone) {
         for (const v of variantes(c.telefone)) {
-          if (!contatoMap[v]) contatoMap[v] = c;
+          if (!contatoMap[v] || (c.nome_fixo && !contatoMap[v].nome_fixo)) contatoMap[v] = c;
         }
       }
     }
@@ -134,7 +134,7 @@ Deno.serve(async (req) => {
 
       return {
         id: conversa.id || '',
-        cliente_nome: conversa.cliente_nome || '',
+        cliente_nome: contato?.nome_fixo && contato.nome ? contato.nome : (conversa.cliente_nome || ''),
         cliente_telefone: conversa.cliente_telefone || '',
         whatsapp_id: (conversa.whatsapp_id || '').toLowerCase(),
         ultima_mensagem: conversa.ultima_mensagem || '',
@@ -165,6 +165,7 @@ Deno.serve(async (req) => {
         contato: contato ? {
           id: contato.id,
           nome: contato.nome,
+          nome_fixo: !!contato.nome_fixo,
           telefone: contato.telefone,
           foto_url: contato.foto_url,
           ultima_atualizacao: contato.ultima_atualizacao
