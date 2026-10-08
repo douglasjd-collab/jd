@@ -741,7 +741,7 @@ async function processMessageReceived(base44, body, connection, empresaId) {
       const variantesNome = new Set([fromPhone]);
       if (fromPhone.startsWith('55') && fromPhone.length === 13) variantesNome.add(fromPhone.slice(0, 4) + fromPhone.slice(5));
       if (fromPhone.startsWith('55') && fromPhone.length === 12) variantesNome.add(fromPhone.slice(0, 4) + '9' + fromPhone.slice(4));
-      const contatosNomeFixo = await base44.asServiceRole.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, telefone: { $in: [...variantesNome] }, nome_fixo: true }, '-updated_date', 1);
+      const contatosNomeFixo = await base44.asServiceRole.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, telefone: { $in: [...variantesNome] }, nome_fixo: true }, '-updated_date', 1).catch(() => [{ nome: conversa.cliente_nome }]);
       const nomeFixoCRM = contatosNomeFixo[0]?.nome;
       const atualizarConversa = {
         cliente_nome: nomeFixoCRM || fromName,
