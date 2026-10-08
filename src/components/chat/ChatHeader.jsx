@@ -620,11 +620,11 @@ _Cashback sujeito às regras da campanha._`;
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
                 <Contact className="mr-2 h-3.5 w-3.5" />
-                {contatosWhatsapp[conversaSelecionada?.id]?.id ? 'Editar contato no CRM' : 'Salvar contato no CRM'}
+                {contatosWhatsapp[conversaSelecionada?.id]?.id ? 'Editar contato' : 'Salvar contato no CRM'}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => abrirSalvarCrm(conversaSelecionada)}>
                 <Pencil className="mr-2 h-3.5 w-3.5" />
-                Alterar nome do contato
+                Editar contato
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => {
                 setContatoParaTags(conversaSelecionada);
