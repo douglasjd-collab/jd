@@ -4,7 +4,7 @@ import { Plus, X } from 'lucide-react';
 
 export default function ImageEditorThumbnails({
   paginas, indiceAtual, setIndiceAtual, onRemover, onAdicionarMais, legenda, setLegenda, fileInputRef,
-  onEnviarEnter, enviando,
+  onEnviarEnter, enviando, acaoLabel = 'envia', permitirAdicionar = true,
 }) {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -34,13 +34,15 @@ export default function ImageEditorThumbnails({
               </button>
             </div>
           ))}
-          <button onClick={onAdicionarMais} className="w-14 h-14 rounded-lg border-2 border-dashed border-slate-600 flex items-center justify-center flex-shrink-0 hover:border-blue-500">
-            <Plus className="w-5 h-5 text-slate-500" />
-          </button>
+          {permitirAdicionar && (
+            <button onClick={onAdicionarMais} className="w-14 h-14 rounded-lg border-2 border-dashed border-slate-600 flex items-center justify-center flex-shrink-0 hover:border-blue-500">
+              <Plus className="w-5 h-5 text-slate-500" />
+            </button>
+          )}
         </div>
       )}
       <div className="flex items-center gap-2">
-        {paginas.length === 1 && (
+        {paginas.length === 1 && permitirAdicionar && (
           <Button size="icon" variant="ghost" className="text-slate-300 hover:bg-slate-800 flex-shrink-0" onClick={onAdicionarMais} title="Adicionar mais imagens">
             <Plus className="w-4 h-4" />
           </Button>
@@ -49,7 +51,7 @@ export default function ImageEditorThumbnails({
           value={legenda}
           onChange={(e) => setLegenda(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Digite uma mensagem (Enter envia, Shift+Enter quebra linha)"
+          placeholder={`Digite uma mensagem (Enter ${acaoLabel}, Shift+Enter quebra linha)`}
           rows={2}
           className="flex-1 min-h-[72px] max-h-40 overflow-y-auto resize-none rounded-md bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 text-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
