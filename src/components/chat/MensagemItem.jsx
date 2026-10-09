@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Forward, Copy, Pin, Pencil, Check, ArrowUpRight, Smile } from 'lucide-react';
 import VideoMensagem from './VideoMensagem';
 import ImagemZoom from './ImagemZoom';
+import PdfVisualizador from './PdfVisualizador';
 import FilaEnvioBadge from './FilaEnvioBadge';
 import ReacaoRapidaBar from './ReacaoRapidaBar';
 import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
@@ -56,7 +57,6 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
   );
   const [transcrevendo, setTranscrevendo] = useState(false);
   const [pdfAberto, setPdfAberto] = useState(false);
-  const [pdfCarregado, setPdfCarregado] = useState(false);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const [erroPdf, setErroPdf] = useState('');
   const [imagemAberta, setImagemAberta] = useState(false);
@@ -913,7 +913,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
               )}
             </div>
 
-            <Dialog open={pdfAberto} onOpenChange={(v) => { setPdfAberto(v); if (!v) setPdfCarregado(false); }}>
+            <Dialog open={pdfAberto} onOpenChange={setPdfAberto}>
               <DialogContent className="max-w-4xl w-full h-[90vh] p-0 overflow-hidden flex flex-col [&>button.absolute]:hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b bg-white shrink-0">
                   <div className="flex items-center gap-2">
@@ -948,26 +948,11 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                     <button onClick={() => baixarPdfDialog(urlDoc, nomeDoc)} className="underline hover:text-red-700">Tentar novamente</button>
                   </div>
                 )}
-                <div className="flex-1 overflow-hidden relative">
-                  {urlDoc ? (
-                    <>
-                      {!pdfCarregado && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white z-10 gap-3">
-                          <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
-                          <p className="text-sm text-slate-500">Carregando documento...</p>
-                          <a href={urlDoc} target="_blank" rel="noopener noreferrer">
-                            <Button size="sm" variant="outline" className="gap-1.5 text-xs mt-2"><Download className="w-3.5 h-3.5" /> Abrir em nova aba</Button>
-                          </a>
-                        </div>
-                      )}
-                      <iframe
-                        key={urlDoc}
-                        src={`${urlDoc}#toolbar=1&navpanes=0&view=FitH`}
-                        className="w-full h-full border-0 bg-white"
-                        title={nomeDoc}
-                        onLoad={() => setPdfCarregado(true)}
-                      />
-                    </>
+                <div className="flex-1 min-h-0 overflow-hidden relative">
+                  {urlDoc && isPdf ? (
+                    <PdfVisualizador url={urlDoc} />
+                  ) : urlDoc ? (
+                    <iframe src={urlDoc} className="w-full h-full border-0" title={nomeDoc} />
                   ) : (
                     <div className="flex items-center justify-center h-full text-slate-400">
                       <p>Documento não disponível</p>
