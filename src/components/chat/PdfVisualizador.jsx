@@ -72,7 +72,7 @@ export default function PdfVisualizador({ url }) {
   const stop = () => { drag.current = null; setDragging(false); };
   const reset = () => { setZoom(1); container.current.scrollTo(0, 0); };
   return (
-    <div className="h-full flex flex-col min-h-0">
+    <div className="h-full flex flex-col min-h-0 relative">
       <div className="flex flex-wrap items-center justify-center gap-2 p-2 border-b bg-slate-50 shrink-0 text-xs">
         <button disabled={!pdf || page <= 1} onClick={() => {setPage(p => p - 1); container.current.scrollTo(0, 0);}} aria-label="Página anterior">◀</button>
         <span>Página {page} de {pdf?.numPages || '…'}</span>
@@ -83,8 +83,8 @@ export default function PdfVisualizador({ url }) {
         <button onClick={reset} className="border rounded px-2 py-1">Ajustar</button>
         <span>Segure e arraste para mover</span>
       </div>
-      {busy && <p role="status" className="text-xs text-center py-1">Carregando página…</p>}
-      {error && <p role="alert" className="text-xs text-red-600 p-2">{error}</p>}
+      {busy && <p role="status" className="absolute bottom-2 left-2 z-10 bg-white rounded px-2 py-1 text-xs pointer-events-none">Carregando página…</p>}
+      {error && <p role="alert" className="absolute bottom-2 left-2 z-10 bg-white rounded text-xs text-red-600 p-2">{error}</p>}
       <div ref={container} data-jd-pdf-pan className="flex-1 min-h-0 overflow-auto bg-slate-200"
         style={{ cursor: dragging ? 'grabbing' : 'grab', touchAction: 'none', userSelect: 'none' }}
         onPointerDown={e => {
