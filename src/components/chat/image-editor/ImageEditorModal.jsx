@@ -27,6 +27,7 @@ async function resolverUrlSegura(url) {
 
 export default function ImageEditorModal({
   open, onClose, imagensIniciais = [], nomeCliente, onEnviar, empresaId, conversaId, user, mensagemOrigemId,
+  modoAplicar = false, onAplicar = null,
 }) {
   const canvasElRef = useRef(null);
   const fabricRef = useRef(null);
@@ -548,6 +549,18 @@ export default function ImageEditorModal({
     setEnviando(true);
     try {
       const atualizadas = salvarPaginaAtualNoState();
+
+      if (modoAplicar) {
+        const pagina = atualizadas[indiceAtual];
+        const dataUrl = await renderizarParaExport(pagina);
+        const { nome, tipo } = dataUrlParaArquivo(dataUrl, 'imagem_editada.png');
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], nome, { type: tipo });
+        await onAplicar?.(file);
+        onClose();
+        return;
+      }
+
       for (let i = 0; i < atualizadas.length; i++) {
         const pagina = atualizadas[i];
         const dataUrl = await renderizarParaExport(pagina);
@@ -564,7 +577,9 @@ export default function ImageEditorModal({
       }
       onClose();
     } catch (e) {
-      setErro(e.message || 'Erro ao enviar a imagem. A edição foi mantida — tente novamente.');
+      setErro(e.message || (modoAplicar
+        ? 'Erro ao aplicar a edição. A imagem original foi mantida.'
+        : 'Erro ao enviar a imagem. A edição foi mantida — tente novamente.'));
     } finally {
       setEnviando(false);
     }
@@ -593,6 +608,7 @@ export default function ImageEditorModal({
         onFlipV={() => aplicarTransformacao('flip-v')}
         qualidade={qualidade}
         setQualidade={setQualidade}
+        acaoLabel={modoAplicar ? 'Aplicar edição' : 'Enviar'}
       />
       <ImageEditorToolbar
         tool={tool} setTool={setTool}
@@ -627,6 +643,8 @@ export default function ImageEditorModal({
         fileInputRef={fileInputRef}
         onEnviarEnter={handleEnviar}
         enviando={enviando}
+        acaoLabel={modoAplicar ? 'aplica a edição' : 'envia'}
+        permitirAdicionar={!modoAplicar}
       />
     </div>
   );
