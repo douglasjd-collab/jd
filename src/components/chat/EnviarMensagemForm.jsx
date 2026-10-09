@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Plus, Camera } from 'lucide-react';
 import MensagensRapidasModal from './MensagensRapidasModal';
 import TemplateMetaModal from './TemplateMetaModal';
-import ImageEditorModal from './image-editor/ImageEditorModal';
 import StickerPicker from './StickerPicker';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
@@ -31,8 +30,6 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const [mensagensRapidasOpen, setMensagensRapidasOpen] = useState(false);
   const [templateMetaOpen, setTemplateMetaOpen] = useState(false);
   const [menuPlusOpen, setMenuPlusOpen] = useState(false);
-  const [imagensParaEditor, setImagensParaEditor] = useState([]);
-  const [editorAberto, setEditorAberto] = useState(false);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -88,11 +85,6 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     });
   }, [mensagensRapidasAtalho]);
 
-  const abrirEditorComArquivos = (files) => {
-    setImagensParaEditor(files.map((file) => ({ file })));
-    setEditorAberto(true);
-  };
-
   const [showEmoji, setShowEmoji] = useState(false);
 
   const capturarCamera = async () => {
@@ -112,7 +104,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       canvas.toBlob((blob) => {
         if (blob) {
           const file = new File([blob], `foto_camera_${Date.now()}.png`, { type: 'image/png' });
-          abrirEditorComArquivos([file]);
+          setArquivos((prev) => [...prev, file]);
         }
       }, 'image/png');
     } catch (err) {
@@ -412,13 +404,9 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     if (aceitos.length < files.length) {
       setErro('Alguns arquivos não são suportados e foram ignorados.');
     }
-    // Imagens (png/jpg/jpeg/webp) abrem o Editor Inteligente de Imagens antes do envio
-    const imagens = aceitos.filter(f => TIPOS_IMAGEM.includes(f.type));
-    const outros = aceitos.filter(f => !TIPOS_IMAGEM.includes(f.type));
-    if (imagens.length > 0) abrirEditorComArquivos(imagens);
-    if (outros.length > 0) {
-      setArquivos(prev => [...prev, ...outros]);
-    }
+    // Todos os arquivos entram diretamente como anexos.
+    // O editor só abre quando o usuário escolher explicitamente "Editar".
+    setArquivos(prev => [...prev, ...aceitos]);
     // Reset input para permitir selecionar os mesmos arquivos novamente
     e.target.value = '';
   };
@@ -427,7 +415,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     e.preventDefault();
     const files = Array.from(e.dataTransfer?.files || []);
     const imagens = files.filter(f => TIPOS_IMAGEM.includes(f.type));
-    if (imagens.length > 0) abrirEditorComArquivos(imagens);
+    if (imagens.length > 0) setArquivos(prev => [...prev, ...imagens]);
   };
 
   const removerArquivo = (idx) => {
@@ -490,16 +478,6 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       telefoneDestino={telefoneDestino}
       conversaId={conversaId}
       onEnviado={onTemplateEnviado}
-    />
-    <ImageEditorModal
-      open={editorAberto}
-      onClose={() => { setEditorAberto(false); setImagensParaEditor([]); }}
-      imagensIniciais={imagensParaEditor}
-      nomeCliente={nomeCliente || telefoneDestino}
-      empresaId={empresaId}
-      conversaId={conversaId}
-      user={{ full_name: nomeUsuario }}
-      onEnviar={onEnviar}
     />
     <form onSubmit={handleEnviar} className="bg-white border-t p-3 relative" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
       {erro && (
@@ -750,7 +728,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
                     if (file) {
                       const ext = item.type.split('/')[1] || 'png';
                       const nomeFile = new File([file], `imagem_colada.${ext}`, { type: item.type });
-                      abrirEditorComArquivos([nomeFile]);
+                      setArquivos((prev) => [...prev, nomeFile]);
                     }
                     break;
                   }
