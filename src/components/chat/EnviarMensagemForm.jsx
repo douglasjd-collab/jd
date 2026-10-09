@@ -3,10 +3,11 @@ import heic2any from 'heic2any';
 import { encodeFloat32ToMp3 } from '@/utils/converterAudioParaMp3';
 import { iniciarGravador } from '@/utils/audioRecorder';
 import { Button } from '@/components/ui/button';
-import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Plus, Camera } from 'lucide-react';
+import { Send, Paperclip, Smile, AlertCircle, Mic, X, PenLine, Zap, FileText, Plus, Camera, Pencil } from 'lucide-react';
 import MensagensRapidasModal from './MensagensRapidasModal';
 import TemplateMetaModal from './TemplateMetaModal';
 import StickerPicker from './StickerPicker';
+import ImageEditorModal from './image-editor/ImageEditorModal';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -21,6 +22,8 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     return localStorage.getItem('chat_assinatura') === 'true';
   });
   const [arquivos, setArquivos] = useState([]);
+  const [arquivoEditandoIndex, setArquivoEditandoIndex] = useState(null);
+  const [editorAberto, setEditorAberto] = useState(false);
   const [showScroll, setShowScroll] = useState(false);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [erro, setErro] = useState(null);
@@ -422,6 +425,22 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     setArquivos(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const abrirEditorDoAnexo = (idx) => {
+    setArquivoEditandoIndex(idx);
+    setEditorAberto(true);
+  };
+
+  const fecharEditorDoAnexo = () => {
+    setEditorAberto(false);
+    setArquivoEditandoIndex(null);
+  };
+
+  const aplicarEdicaoNoAnexo = (fileEditado) => {
+    setArquivos(prev => prev.map((arquivo, idx) => (
+      idx === arquivoEditandoIndex ? fileEditado : arquivo
+    )));
+  };
+
   const quickRepliesFiltered = texto === '/'
     ? quickReplies
     : quickReplies.filter(r => r.atalho.startsWith(texto.toLowerCase()));
@@ -479,6 +498,18 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       conversaId={conversaId}
       onEnviado={onTemplateEnviado}
     />
+    <ImageEditorModal
+      open={editorAberto}
+      onClose={fecharEditorDoAnexo}
+      imagensIniciais={arquivoEditandoIndex !== null && arquivos[arquivoEditandoIndex]
+        ? [{ file: arquivos[arquivoEditandoIndex] }]
+        : []}
+      nomeCliente={nomeCliente}
+      empresaId={empresaId}
+      conversaId={conversaId}
+      modoAplicar
+      onAplicar={aplicarEdicaoNoAnexo}
+    />
     <form onSubmit={handleEnviar} className="bg-white border-t p-3 relative" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
       {erro && (
         <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
@@ -524,9 +555,20 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       {arquivos.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {arquivos.map((f, i) => (
-            <div key={i} className="flex items-center gap-1 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1 text-xs text-blue-800 max-w-[200px]">
+            <div key={i} className="flex items-center gap-1 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1 text-xs text-blue-800 max-w-[260px]">
               <span className="truncate flex-1">{f.name}</span>
-              <button type="button" onClick={() => removerArquivo(i)} className="text-blue-400 hover:text-red-500 flex-shrink-0 ml-1">
+              {TIPOS_IMAGEM.includes(f.type) && (
+                <button
+                  type="button"
+                  onClick={() => abrirEditorDoAnexo(i)}
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded text-blue-600 hover:bg-blue-100 flex-shrink-0"
+                  title="Editar imagem antes de enviar"
+                >
+                  <Pencil className="w-3 h-3" />
+                  Editar
+                </button>
+              )}
+              <button type="button" onClick={() => removerArquivo(i)} className="text-blue-400 hover:text-red-500 flex-shrink-0 ml-1" title="Remover anexo">
                 <X className="w-3 h-3" />
               </button>
             </div>
