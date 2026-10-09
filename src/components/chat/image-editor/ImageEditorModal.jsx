@@ -417,14 +417,62 @@ export default function ImageEditorModal({
   const renderizarParaExport = async (pagina) => {
     const canvas = fabricRef.current;
     const isAtual = pagina.id === activePageIdRef.current;
-    const multiplier = qualidadeParaMultiplier(qualidade) * (pagina.multiplier || 1);
+    const multiplierQualidade = qualidadeParaMultiplier(qualidade);
+
     if (isAtual) {
-      return exportarCanvasDataUrl(canvas, multiplier);
+      return exportarCanvasDataUrl(canvas, multiplierQualidade * (pagina.multiplier || 1));
     }
-    const staticCanvas = new fabric.StaticCanvas(null, { width: pagina.workWidth, height: pagina.workHeight });
-    await new Promise((resolve) => staticCanvas.loadFromJSON(pagina.json, resolve));
+
+    // A imagem pode ainda não ter sido aberta no editor. Nesse caso ela não
+    // possui JSON/dimensões; carregamos o arquivo original em um canvas temporário
+    // em vez de chamar loadFromJSON(null), que deixava o envio múltiplo travado.
+    if (!pagina.json || !pagina.workWidth || !pagina.workHeight) {
+      const urlSegura = await resolverUrlSegura(pagina.urlOriginal);
+      const imgEl = await new Promise((resolve, reject) => {
+        const img = new window.Image();
+        const timer = setTimeout(() => reject(new Error('Tempo esgotado ao preparar uma das imagens.')), 20000);
+        img.onload = () => {
+          clearTimeout(timer);
+          resolve(img);
+        };
+        img.onerror = () => {
+          clearTimeout(timer);
+          reject(new Error('Não foi possível preparar uma das imagens.'));
+        };
+        img.src = urlSegura;
+      });
+
+      const scale = Math.min(1, WORKING_MAX_DIM / Math.max(imgEl.width, imgEl.height));
+      const workWidth = Math.max(1, Math.round(imgEl.width * scale));
+      const workHeight = Math.max(1, Math.round(imgEl.height * scale));
+      const staticCanvas = new fabric.StaticCanvas(null, { width: workWidth, height: workHeight });
+      const fabricImage = new fabric.Image(imgEl, { scaleX: scale, scaleY: scale });
+      staticCanvas.setBackgroundImage(fabricImage, staticCanvas.renderAll.bind(staticCanvas));
+      staticCanvas.renderAll();
+      const dataUrl = staticCanvas.toDataURL({
+        format: 'png',
+        multiplier: multiplierQualidade * (scale > 0 ? 1 / scale : 1),
+      });
+      staticCanvas.dispose();
+      return dataUrl;
+    }
+
+    const staticCanvas = new fabric.StaticCanvas(null, {
+      width: pagina.workWidth,
+      height: pagina.workHeight,
+    });
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Tempo esgotado ao preparar uma das imagens.')), 20000);
+      staticCanvas.loadFromJSON(pagina.json, () => {
+        clearTimeout(timer);
+        resolve();
+      });
+    });
     staticCanvas.renderAll();
-    const dataUrl = staticCanvas.toDataURL({ format: 'png', multiplier });
+    const dataUrl = staticCanvas.toDataURL({
+      format: 'png',
+      multiplier: multiplierQualidade * (pagina.multiplier || 1),
+    });
     staticCanvas.dispose();
     return dataUrl;
   };
@@ -503,8 +551,16 @@ export default function ImageEditorModal({
       for (let i = 0; i < atualizadas.length; i++) {
         const pagina = atualizadas[i];
         const dataUrl = await renderizarParaExport(pagina);
-        const { base64, nome, tipo } = dataUrlParaArquivo(dataUrl, `imagem_editada_${i + 1}.png`);
-        await onEnviar({ texto: pagina.legenda || (i === 0 ? legenda : ''), arquivo: { base64, nome, tipo } });
+        const { nome, tipo } = dataUrlParaArquivo(dataUrl, `imagem_editada_${i + 1}.png`);
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], nome, { type: tipo });
+
+        // Entrega o File real à fila. Assim cada imagem é enviada ao storage
+        // sem transportar um Base64 grande na chamada do backend.
+        onEnviar({
+          texto: pagina.legenda || (i === 0 ? legenda : ''),
+          arquivo: { file, nome, tipo, tamanho: file.size },
+        });
       }
       onClose();
     } catch (e) {
