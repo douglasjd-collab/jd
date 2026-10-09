@@ -429,7 +429,10 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
           console.warn('Erro ao obter URL permanente do PDF:', e);
         }
       }
-      const ok = await baixarArquivo(urlFinal, nome);
+      // REGRA: usa o nome original do arquivo (nunca renomeia). Se não houver nome
+      // original, baixarArquivo cai para o nome real da URL (storage), nunca um
+      // nome genérico como "Documento PDF".
+      const ok = await baixarArquivo(urlFinal, mensagem.arquivo_nome);
       if (!ok) setErroPdf('Não foi possível baixar o arquivo. Tente novamente.');
     } catch {
       setErroPdf('Não foi possível baixar o arquivo. Tente novamente.');
@@ -842,7 +845,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
             mediaUrl={mediaUrl}
             loadingMedia={loadingMedia}
             onCarregar={handleCarregarMidia}
-            onDownload={() => handleDownload(mediaUrl, mensagem.arquivo_nome || `video_${mensagem.id}.mp4`)}
+            onDownload={() => handleDownload(mediaUrl, mensagem.arquivo_nome)}
             onErro={() => { urlFalhouRef.current = mediaUrl; setMediaUrl(null); }}
             arquivoNome={mensagem.arquivo_nome}
             texto={mensagem.texto}
@@ -898,7 +901,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                   )}
                 </div>
                 {urlDoc && (
-                  <button onClick={(e) => { e.stopPropagation(); handleDownload(urlDoc, nomeDoc); }} className="flex-shrink-0 hover:opacity-70 transition-opacity" title="Baixar arquivo">
+                  <button onClick={(e) => { e.stopPropagation(); handleDownload(urlDoc, mensagem.arquivo_nome); }} className="flex-shrink-0 hover:opacity-70 transition-opacity" title="Baixar arquivo">
                     <Download className="w-4 h-4" />
                   </button>
                 )}
@@ -1339,8 +1342,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
            </DropdownMenuItem>
            {(tipoConteudo === 'audio' || tipoConteudo === 'imagem' || tipoConteudo === 'pdf' || tipoConteudo === 'documento' || tipoConteudo === 'video') && mediaUrl && (
              <DropdownMenuItem onClick={() => {
-               const ext = tipoConteudo === 'audio' ? 'mp3' : tipoConteudo === 'imagem' ? 'jpg' : tipoConteudo === 'video' ? 'mp4' : 'pdf';
-               handleDownload(mediaUrl, mensagem.arquivo_nome || `${tipoConteudo}_${mensagem.id}.${ext}`);
+               handleDownload(mediaUrl, mensagem.arquivo_nome);
              }}>
                <Download className="w-4 h-4 mr-2" />
                Baixar arquivo
