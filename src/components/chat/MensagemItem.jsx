@@ -57,6 +57,8 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
   const [transcrevendo, setTranscrevendo] = useState(false);
   const [pdfAberto, setPdfAberto] = useState(false);
   const [pdfCarregado, setPdfCarregado] = useState(false);
+  const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const [erroPdf, setErroPdf] = useState('');
   const [imagemAberta, setImagemAberta] = useState(false);
   const [deletando, setDeletando] = useState(false);
   const [velocidadeAudio, setVelocidadeAudio] = useState(1);
@@ -399,9 +401,41 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
     }
     
     // Salva o arquivo uma única vez, com o nome correto (sem abrir abas).
+    toast.message('Baixando...');
     const baixou = await baixarArquivo(urlFinal, mensagem.arquivo_nome || nomeArquivo);
-    if (!baixou) toast.error('Não foi possível baixar o arquivo.');
+    if (baixou) toast.success('Arquivo baixado');
+    else toast.error('Não foi possível baixar o arquivo. Tente novamente.');
     return baixou;
+  };
+
+  // Download do PDF dentro do visualizador: feedback "Baixando..." inline + erro com
+  // tentar novamente, sem toasts (o feedback fica no próprio diálogo).
+  const baixarPdfDialog = async (url, nome) => {
+    if (baixandoPdf || !url) return;
+    setBaixandoPdf(true);
+    setErroPdf('');
+    try {
+      let urlFinal = sanitizeUrl(url);
+      const isPermanente = url.includes('base44') || url.includes('supabase') || url.includes('amazonaws');
+      if (!isPermanente) {
+        try {
+          const res = await base44.functions.invoke('baixarMidiaWhatsApp', {
+            mensagem_id: mensagem.id,
+            arquivo_url: url,
+            conversa_id: conversaId || mensagem.conversa_id,
+          });
+          if (res?.data?.arquivo_url) urlFinal = sanitizeUrl(res.data.arquivo_url);
+        } catch (e) {
+          console.warn('Erro ao obter URL permanente do PDF:', e);
+        }
+      }
+      const ok = await baixarArquivo(urlFinal, nome);
+      if (!ok) setErroPdf('Não foi possível baixar o arquivo. Tente novamente.');
+    } catch {
+      setErroPdf('Não foi possível baixar o arquivo. Tente novamente.');
+    } finally {
+      setBaixandoPdf(false);
+    }
   };
 
   const handleTranscrever = async () => {
@@ -885,8 +919,15 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                   </div>
                   <div className="flex items-center gap-2">
                     {urlDoc && (
-                      <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => handleDownload(urlDoc, nomeDoc)}>
-                        <Download className="w-3.5 h-3.5" /> Baixar
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-xs"
+                        disabled={baixandoPdf}
+                        onClick={() => baixarPdfDialog(urlDoc, nomeDoc)}
+                      >
+                        {baixandoPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                        {baixandoPdf ? 'Baixando...' : 'Baixar'}
                       </Button>
                     )}
                     <button
@@ -898,6 +939,12 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                     </button>
                   </div>
                 </div>
+                {erroPdf && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-red-50 text-xs text-red-600 border-b border-red-100">
+                    <span className="flex-1 truncate">{erroPdf}</span>
+                    <button onClick={() => baixarPdfDialog(urlDoc, nomeDoc)} className="underline hover:text-red-700">Tentar novamente</button>
+                  </div>
+                )}
                 <div className="flex-1 overflow-hidden relative">
                   {urlDoc ? (
                     <>
@@ -912,8 +959,8 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                       )}
                       <iframe
                         key={urlDoc}
-                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(urlDoc)}&embedded=true`}
-                        className="w-full h-full border-0"
+                        src={`${urlDoc}#toolbar=1&navpanes=0&view=FitH`}
+                        className="w-full h-full border-0 bg-white"
                         title={nomeDoc}
                         onLoad={() => setPdfCarregado(true)}
                       />
