@@ -6,6 +6,7 @@ export default function ImageEditorHeader({
   nomeCliente, onClose, onUndo, onRedo, canUndo, canRedo, onRestaurar,
   onSalvarRascunho, onBaixar, onEnviar, enviando, salvando,
   onRotateLeft, onRotateRight, onFlipH, onFlipV, qualidade, setQualidade,
+  acaoLabel = 'Enviar',
 }) {
   return (
     <div className="bg-slate-900 text-white border-b border-slate-800">
@@ -34,7 +35,7 @@ export default function ImageEditorHeader({
         </Button>
         <Button size="sm" className="bg-[#23BE84] hover:bg-[#1da570] gap-1.5 text-xs flex-shrink-0" onClick={onEnviar} disabled={enviando}>
           {enviando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-          Enviar
+          {acaoLabel}
         </Button>
       </div>
 
