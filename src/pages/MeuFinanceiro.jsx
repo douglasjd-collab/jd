@@ -13,6 +13,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 import TransacoesTab from '@/components/meu_financeiro/TransacoesTab';
 import DRETab from '@/components/meu_financeiro/DRETab';
 import FormModalFinanceiro from '@/components/meu_financeiro/FormModalFinanceiro';
+import FabNovoLancamento from '@/components/meu_financeiro/FabNovoLancamento';
 import { format, startOfMonth, endOfMonth, subMonths, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -89,7 +90,7 @@ export default function MeuFinanceiro() {
       </div>
 
       <Tabs value={aba} onValueChange={setAba}>
-        <TabsContent value="dashboard"><DashboardTab user={user} refreshKey={refreshKey} /></TabsContent>
+        <TabsContent value="dashboard"><DashboardTab user={user} refreshKey={refreshKey} onSaved={onSaved} /></TabsContent>
         <TabsContent value="transacoes"><TransacoesTab user={user} refreshKey={refreshKey} onSaved={onSaved} /></TabsContent>
         <TabsContent value="receitas"><ReceitasTab user={user} refreshKey={refreshKey} onSaved={onSaved} /></TabsContent>
         <TabsContent value="despesas"><DespesasTab user={user} refreshKey={refreshKey} onSaved={onSaved} /></TabsContent>
@@ -104,7 +105,7 @@ export default function MeuFinanceiro() {
 // ─── Dashboard ─────────────────────────────────────────────
 const PIE_COLORS = ['#22c55e', '#f97316', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#eab308'];
 
-function DashboardTab({ user, refreshKey }) {
+function DashboardTab({ user, refreshKey, onSaved }) {
   const [receitas, setReceitas] = useState([]);
   const [despesas, setDespesas] = useState([]);
   const [contas, setContas] = useState([]);
@@ -215,7 +216,7 @@ function DashboardTab({ user, refreshKey }) {
   if (loading) return <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
 
   return (
-    <div className="space-y-5 mt-4">
+    <div className="space-y-5 mt-4 pb-24">
       {/* Filtros e Alertas */}
       <div className="flex flex-wrap items-center gap-3">
         <Select value={mesFiltro} onValueChange={setMesFiltro}>
@@ -375,6 +376,9 @@ function DashboardTab({ user, refreshKey }) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Botão + de novo lançamento (receita/despesa) */}
+      <FabNovoLancamento user={user} onSaved={() => { carregar(); onSaved?.(); }} />
     </div>
   );
 }
