@@ -23,9 +23,30 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Dados preenchidos pelo admin no momento do convite (ConvitePendente).
+    // IMPORTANTE: consultar ANTES de resolver a empresa, porque o usuário convidado
+    // ainda não tem empresa_id no próprio cadastro — é justamente aqui que ele é vinculado.
+    let dadosConvite = null;
+    let convitePendenteId = null;
+    let conviteEmpresaId = null;
+    try {
+      const pendentes = await base44.asServiceRole.entities.ConvitePendente.filter({ email: user.email });
+      const pendenteAtivo = pendentes?.find(p => p.status === 'pendente') || pendentes?.[0];
+      if (pendenteAtivo) {
+        convitePendenteId = pendenteAtivo.id;
+        conviteEmpresaId = pendenteAtivo.empresa_id || null;
+        if (pendenteAtivo.dados_json) {
+          dadosConvite = JSON.parse(pendenteAtivo.dados_json);
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao buscar convite pendente:', e);
+    }
+
     // Em um SaaS:
     // - super_admin: vinculado a empresa SUPER_ADMIN (a que cria subcontas)
     // - admin/vendedor em subconta: vinculado à sua própria empresa
+    // - convidado: vinculado à empresa definida no convite pelo admin
     
     let empresa;
     
@@ -42,8 +63,9 @@ Deno.serve(async (req) => {
       }
       empresa = empresasSuper[0];
     } else {
-      // Admin/vendedor normal: buscar empresa do Colaborador existente OU empresa vinculada ao user
-      let empresaId = user.empresa_id;
+      // Admin/vendedor normal: empresa do próprio usuário OU a empresa definida pelo
+      // admin no convite (o convidado ainda não tem empresa_id no próprio cadastro)
+      let empresaId = user.empresa_id || dadosConvite?.empresa_id || conviteEmpresaId;
       
       if (!empresaId) {
         // Se não tiver empresa_id, não pode criar colaborador (deve ser vinculado na subconta)
@@ -69,22 +91,9 @@ Deno.serve(async (req) => {
     // Determinar perfil: super_admin OU usar perfil do user
     const perfilFinal = user.perfil === 'super_admin' ? 'super_admin' : (user.perfil || 'vendedor');
 
-    // Verificar se existem dados preenchidos pelo admin no momento do convite (ConvitePendente).
-    // Se existirem, usá-los para criar o Colaborador completo — evita perda dos dados preenchidos.
-    let dadosConvite = null;
-    let convitePendenteId = null;
-    try {
-      const pendentes = await base44.asServiceRole.entities.ConvitePendente.filter({ email: user.email });
-      const pendenteAtivo = pendentes?.find(p => p.status === 'pendente') || pendentes?.[0];
-      if (pendenteAtivo && pendenteAtivo.dados_json) {
-        dadosConvite = JSON.parse(pendenteAtivo.dados_json);
-        convitePendenteId = pendenteAtivo.id;
-      }
-    } catch (e) {
-      console.error('Erro ao buscar convite pendente:', e);
-    }
+    // Os dados do convite pendente já foram carregados no início desta função.
 
-    // Se há dados do convite e ele definiu uma empresa, usar essa empresa (sobrescreve a detecção automática)
+    // Se o convite definiu uma empresa, ela tem prioridade sobre a detecção automática
     let empresaFinal = empresa;
     if (dadosConvite?.empresa_id && user.perfil !== 'super_admin') {
       try {
@@ -156,7 +165,22 @@ Deno.serve(async (req) => {
       } catch (e) {}
     }
 
-    const novoColaborador = await base44.entities.Colaborador.create(colaboradorData);
+    // Service role: o convidado ainda não tem empresa_id no próprio cadastro, então a
+    // criação não pode depender das regras de acesso do registro dele.
+    const novoColaborador = await base44.asServiceRole.entities.Colaborador.create(colaboradorData);
+
+    // Vincular empresa/perfil no cadastro do usuário (usado pelas regras de acesso do sistema)
+    try {
+      const userAtual = await base44.asServiceRole.entities.User.get(user.id);
+      if (userAtual?.empresa_id !== empresaFinal.id) {
+        await base44.asServiceRole.entities.User.update(user.id, {
+          empresa_id: empresaFinal.id,
+          empresa_nome: empresaFinal.nome,
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao vincular empresa ao usuário:', e);
+    }
 
     // Marcar convite pendente como consumido
     if (convitePendenteId) {
