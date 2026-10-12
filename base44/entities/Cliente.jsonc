@@ -118,6 +118,10 @@
       "type": "string",
       "description": "Complemento residencial (PF)"
     },
+    "res_ponto_referencia": {
+      "type": "string",
+      "description": "Ponto de refer\u00eancia do endere\u00e7o residencial (PF)"
+    },
     "res_bairro": {
       "type": "string",
       "description": "Bairro residencial (PF)"

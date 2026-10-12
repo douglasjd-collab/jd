@@ -977,6 +977,11 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                          <Input {...register('res_complemento')} className={clsConfianca('res_complemento')} />
                        </div>
 
+                       <div className="col-span-2">
+                         <Label>Ponto de Referência</Label>
+                         <Input {...register('res_ponto_referencia')} placeholder="Ex.: próximo à praça, ao lado do mercado" className={clsConfianca('res_ponto_referencia')} />
+                       </div>
+
                        <div>
                          <Label>Bairro</Label>
                          <Input {...register('res_bairro')} className={clsConfianca('res_bairro')} />
