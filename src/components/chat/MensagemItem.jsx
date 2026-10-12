@@ -8,6 +8,7 @@ import ReacaoRapidaBar from './ReacaoRapidaBar';
 import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
 import { resolverTipoConteudo } from './tipoMidiaMensagem';
 import { baixarArquivo } from './baixarArquivo';
+import { nomeArquivoEfetivo } from './nomeArquivoEfetivo';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { base44 } from '@/api/base44Client';
@@ -402,7 +403,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
     
     // Salva o arquivo uma única vez, com o nome correto (sem abrir abas).
     toast.message('Baixando...');
-    const baixou = await baixarArquivo(urlFinal, mensagem.arquivo_nome || nomeArquivo);
+    const baixou = await baixarArquivo(urlFinal, nomeArquivoEfetivo(mensagem) || nomeArquivo);
     if (baixou) toast.success('Arquivo baixado');
     else toast.error('Não foi possível baixar o arquivo. Tente novamente.');
     return baixou;
@@ -432,7 +433,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
       // REGRA: usa o nome original do arquivo (nunca renomeia). Se não houver nome
       // original, baixarArquivo cai para o nome real da URL (storage), nunca um
       // nome genérico como "Documento PDF".
-      const ok = await baixarArquivo(urlFinal, mensagem.arquivo_nome);
+      const ok = await baixarArquivo(urlFinal, nomeArquivoEfetivo(mensagem));
       if (!ok) setErroPdf('Não foi possível baixar o arquivo. Tente novamente.');
     } catch {
       setErroPdf('Não foi possível baixar o arquivo. Tente novamente.');
@@ -711,7 +712,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                     onClick={() => setImagemAberta(true)}
                   />
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleDownload(mediaUrl, mensagem.arquivo_nome); }}
+                    onClick={(e) => { e.stopPropagation(); handleDownload(mediaUrl, nomeArquivoEfetivo(mensagem)); }}
                     className="absolute bottom-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
                     title="Baixar imagem"
                   >
@@ -733,7 +734,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
               )}
             </div>
             {imagemAberta && mediaUrl && (
-              <ImagemZoom url={mediaUrl} onClose={() => setImagemAberta(false)} onDownload={() => handleDownload(mediaUrl, mensagem.arquivo_nome)} />
+              <ImagemZoom url={mediaUrl} onClose={() => setImagemAberta(false)} onDownload={() => handleDownload(mediaUrl, nomeArquivoEfetivo(mensagem))} />
             )}
           </div>
         );
@@ -856,7 +857,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
       case 'pdf':
       case 'documento': {
         const urlDoc = mediaUrl;
-        const nomeDoc = mensagem.arquivo_nome || 'Documento PDF';
+        const nomeDoc = nomeArquivoEfetivo(mensagem) || 'Documento PDF';
         const isPdf = tipoConteudo === 'pdf'
           || nomeDoc.toLowerCase().endsWith('.pdf')
           || mensagem.mime_type === 'application/pdf'
@@ -901,7 +902,7 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                   )}
                 </div>
                 {urlDoc && (
-                  <button onClick={(e) => { e.stopPropagation(); handleDownload(urlDoc, mensagem.arquivo_nome); }} className="flex-shrink-0 hover:opacity-70 transition-opacity" title="Baixar arquivo">
+                  <button onClick={(e) => { e.stopPropagation(); handleDownload(urlDoc, nomeArquivoEfetivo(mensagem)); }} className="flex-shrink-0 hover:opacity-70 transition-opacity" title="Baixar arquivo">
                     <Download className="w-4 h-4" />
                   </button>
                 )}
