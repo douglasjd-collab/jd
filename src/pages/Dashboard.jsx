@@ -272,19 +272,26 @@ export default function Dashboard() {
     return true;
   }), [vendas, isVendedor, isGerente, user, filtroVendedor, filtroFilial]);
 
-  // Indicador operacional de Transferências de cota (não é vendas)
+  // Indicador operacional de Transferências de cota (não é vendas).
+  // Considera apenas as transferências dentro do período selecionado,
+  // para não exibir transferências antigas de outros meses.
   const transferenciasResumo = useMemo(() => {
-    const pendentes = transferenciasCota.filter(t => ['aguardando_aprovacao', 'aguardando_documentos'].includes(t.situacao));
-    const aprovadas = transferenciasCota.filter(t => t.situacao === 'aprovada' && !t.estornado);
-    const canceladas = transferenciasCota.filter(t => ['cancelada', 'reprovada'].includes(t.situacao));
+    const noPeriodo = transferenciasCota.filter(t => {
+      const dataRef = t.data_efetiva || t.data_solicitacao || (t.created_date || '').slice(0, 10);
+      if (!dataRef) return false;
+      return dataRef >= periodo.inicio && dataRef <= periodo.fim;
+    });
+    const pendentes = noPeriodo.filter(t => ['aguardando_aprovacao', 'aguardando_documentos'].includes(t.situacao));
+    const aprovadas = noPeriodo.filter(t => t.situacao === 'aprovada' && !t.estornado);
+    const canceladas = noPeriodo.filter(t => ['cancelada', 'reprovada'].includes(t.situacao));
     return {
-      total: transferenciasCota.length,
+      total: noPeriodo.length,
       valorTotal: aprovadas.reduce((a, t) => a + (t.valor_credito_novo ?? t.valor_credito_anterior ?? 0), 0),
       pendentes: pendentes.length,
       aprovadas: aprovadas.length,
       canceladas: canceladas.length,
     };
-  }, [transferenciasCota]);
+  }, [transferenciasCota, periodo]);
 
   const oportunidadesFiltradas = useMemo(() => oportunidades.filter(o => {
     if ((isVendedor || isParceiro) && user?.colaborador_id && o.vendedor_id !== user.colaborador_id) return false;
