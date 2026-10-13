@@ -1,3 +1,4 @@
+import { mesclarHistoricoMensagens } from '@/components/chat/cacheMensagens';
 import useNotasConversa from '@/components/chat/useNotasConversa';
 import NotasConversaEditor from '@/components/chat/NotasConversaEditor';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -155,8 +156,7 @@ export default function BatePapo() {
       return nova;
     });
 
-    // Marcar conversa como lida (background)
-    marcarConversaComoLida(conversa.id);
+    // A leitura será gravada depois que o histórico estiver disponível.
 
     // Marca como "Em Atendimento" ao abrir quando há cliente esperando resposta
     if (!isGrupo(conversa) && conversa.status === 'ativa') {
@@ -812,56 +812,40 @@ export default function BatePapo() {
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
       if (!conversaSelecionadaId) return [];
-      // Equivalente a: SELECT id, conversation_id, whatsapp_message_id, remetente, texto,
-      // tipo_conteudo, arquivo_url, status, data_envio, created_date FROM mensagem_whatsapp
-      // WHERE conversa_id = :conversaSelecionadaId ORDER BY data_envio DESC LIMIT 1000;
-      const msgs = await base44.entities.MensagemWhatsapp.filter(
-        { conversa_id: conversaSelecionadaId },
-        '-data_envio',
-        limiteMensagens
+      const key = ['mensagens-whatsapp', conversaSelecionadaId];
+      const cache = (queryClient.getQueryData(key) || []).filter(m =>
+        m.conversa_id === conversaSelecionadaId && !m.id?.startsWith('temp_')
       );
-      console.log(`✅ Carregadas ${msgs.length} mensagens para conversa ${conversaSelecionadaId}`);
-
-      // ───────── ETAPA 11 — Comparar conversation IDs ─────────
-      // O conversation_id usado pelo backend ao salvar deve ser IGUAL ao conversation_id
-      // usado pelo front para buscar e ao exibido no card. Se三者 forem diferentes, é aqui.
-      console.log(`🔍 [ETAPA 11] Comparação de conversation IDs`, {
-        conversation_id_card: conversaSelecionada?.id || null,
-        session_id_card: conversaSelecionada?.instancia || null,
-        telefone_card: conversaSelecionada?.cliente_telefone || null,
-        conversation_id_usado_no_query: conversaSelecionadaId,
-        iguais_card_vs_query: conversaSelecionada?.id === conversaSelecionadaId,
-        total_mensagens_no_banco: msgs.length,
-        amostra_primeiras_3: msgs.slice(-3).map(m => ({
-          id: m.id,
-          conversa_id: m.conversa_id,
-          remetente: m.remetente,
-          whatsapp_message_id: m.whatsapp_message_id,
-          texto: String(m.texto || '').slice(0, 30),
-          data_envio: m.data_envio,
-        })),
-      });
-
-      // ───────── ETAPA 13 — Filtros incorretos no front ─────────
-      // O front não adiciona filtros extras (empresa, status, deleted/archive); só filtra por
-      // conversa_id. Se aparecer zero aqui por outro motivo, será detectado.
-      console.log(`🔍 [ETAPA 13] Query SEM filtros adicionais — apenas conversa_id=${conversaSelecionadaId}`);
-      // Remover msgs temp_ do cache ao fazer o fetch real (evita duplicatas)
-      const ordenadas = [...msgs].reverse();
-      // Recolar as bolhas que ainda estão saindo: elas existem apenas no cache
-      // local e, sem isso, cada recarga da lista (polling de 5s + subscription
-      // de novas mensagens) apagava a mensagem da tela — ela "sumia" no envio e
-      // só reaparecia como enviada quando o banco devolvia o registro real.
+      const ultimaCriacao = cache.map(m => m.created_date).filter(Boolean).sort().at(-1);
+      const carregarAnteriores = limiteMensagens > 100 && cache.length < limiteMensagens;
+      const incremental = cache.length > 0 && ultimaCriacao && !carregarAnteriores;
+      // Buscar por criação também captura mensagens antigas importadas depois.
+      const filtro = incremental
+        ? {conversa_id: conversaSelecionadaId, created_date: {$gte: ultimaCriacao}}
+        : {conversa_id: conversaSelecionadaId};
+      const msgs = await base44.entities.MensagemWhatsapp.filter(
+        filtro, incremental ? '-created_date' : '-data_envio', incremental ? 1000 : limiteMensagens
+      );
+      // Relê o cache após a consulta: eventos que chegaram durante a busca são preservados.
+      const atuais = (queryClient.getQueryData(key) || []).filter(m =>
+        m.conversa_id === conversaSelecionadaId && !m.id?.startsWith('temp_')
+      );
+      const ordenadas = mesclarHistoricoMensagens(atuais, msgs);
       return [...ordenadas, ...bolhasPendentesNaLista(conversaSelecionadaId, ordenadas)];
     },
-    staleTime: 0,
-    refetchInterval: 30000,
-    placeholderData: (prev) => {
-      // Manter dados anteriores mas remover msgs temp_ se já tiver dados reais
-      if (!prev) return prev;
-      return prev.filter(m => !m.id?.startsWith('temp_'));
-    },
+    staleTime: 30000,
+    gcTime: Infinity,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: false,
+    // Sem placeholder de outra conversa: o cache é isolado por conversation ID.
   });
+
+  const ultimaMensagemVisivelId = mensagens.at(-1)?.id || '';
+  useEffect(() => {
+    if (!conversaSelecionadaId || loadingMensagens || !mensagens.length) return;
+    marcarConversaComoLida(conversaSelecionadaId);
+  }, [conversaSelecionadaId, loadingMensagens, ultimaMensagemVisivelId]);
+
 
   // Recarregar somente quando o usuário pedir mais itens, mantendo a mesma chave de cache.
   useEffect(() => {
@@ -1071,9 +1055,15 @@ export default function BatePapo() {
       // Sempre refetch conversas para atualizar última mensagem (com debounce para evitar 429)
       refetchConversasComDebounce();
 
-      // Refetch mensagens da conversa aberta — apenas 1 vez, sem duplicatas
+      // Inserir o evento no cache da conversa, inclusive se ela não estiver aberta.
+      if (msgData?.id && msgData?.conversa_id && (!msgData.empresa_id || msgData.empresa_id === empresaId)) {
+        const key = ['mensagens-whatsapp', msgData.conversa_id];
+        // Não criar um histórico incompleto para conversa ainda nunca carregada.
+        if (queryClient.getQueryData(key)) {
+          queryClient.setQueryData(key, old => mesclarHistoricoMensagens(old || [], [msgData]));
+        }
+      }
       if (conversaAtualId && msgData?.conversa_id === conversaAtualId) {
-        queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conversaAtualId] });
         // Scroll para o final após refetch
         setTimeout(() => {
           if (scrollAreaRef.current) {
