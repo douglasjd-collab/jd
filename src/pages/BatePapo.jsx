@@ -748,7 +748,7 @@ export default function BatePapo() {
   const tiposListTarefa = [];
 
   useEffect(() => {
-    const timer = setTimeout(() => setBuscaGlobal(searchConversas.trim()), 350);
+    const timer = setTimeout(() => setBuscaGlobal(searchConversas.trim()), 250);
     return () => clearTimeout(timer);
   }, [searchConversas]);
 
@@ -806,7 +806,10 @@ export default function BatePapo() {
       return lista;
     },
   });
-  const conversasFonte = buscaGlobal.length >= 2 ? conversasBusca : conversas;
+  // Resultados locais aparecem no primeiro toque; a busca global apenas complementa.
+  const conversasFonte = searchConversas.trim().length >= 2
+    ? [...new Map([...conversas, ...conversasBusca].map(c => [c.id, c])).values()]
+    : conversas;
 
   const { data: mensagens = [], isLoading: loadingMensagens, refetch: refetchMensagens } = useQuery({
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
@@ -1745,12 +1748,13 @@ export default function BatePapo() {
 
       // Pesquisa dentro do filtro ativo — inclui nome do contato no CRM (que pode ter apelidos)
       if (searchConversas) {
-        const q = searchConversas.toLowerCase();
+        const normalizarBusca = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        const q = normalizarBusca(searchConversas);
         const tel = (c.cliente_telefone || '').replace(/\D/g, '');
         const telQ = searchConversas.replace(/\D/g, '');
-        const nomeCache = (contatosWhatsapp[c.id]?.nome || '').toLowerCase();
-        const nomeConv = (c.cliente_nome || '').toLowerCase();
-        const whatsappId = (c.whatsapp_id || '').toLowerCase();
+        const nomeCache = normalizarBusca(contatosWhatsapp[c.id]?.nome || c.contato?.nome);
+        const nomeConv = normalizarBusca(c.cliente_nome);
+        const whatsappId = normalizarBusca(c.whatsapp_id);
         const match =
           nomeCache.includes(q) ||
           nomeConv.includes(q) ||
@@ -2148,9 +2152,8 @@ export default function BatePapo() {
                     <div className="flex items-center justify-center h-32 text-slate-400">
                       <MessageCircle className="w-8 h-8 opacity-40" />
                     </div>
-                  ) : buscandoConversas && buscaGlobal ? (
-                    <div className="flex items-center justify-center h-20 text-slate-400 gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Pesquisando em toda a base...</div>
                   ) : <>
+                    {buscandoConversas && buscaGlobal && <div className="flex items-center justify-center py-2 text-xs text-slate-400 gap-2"><Loader2 className="w-3 h-3 animate-spin"/>Buscando mais resultados...</div>}
                     {conversasFiltradas.map((c) => {
                       const naoLidas = naoLidasPorConversa[c.id] ?? 0;
                        const isSelecionada = conversaSelecionada?.id === c.id;
