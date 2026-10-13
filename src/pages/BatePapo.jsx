@@ -1,3 +1,5 @@
+import useNotasConversa from '@/components/chat/useNotasConversa';
+import NotasConversaEditor from '@/components/chat/NotasConversaEditor';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { marcarConversaComoLida } from '@/components/chat/marcarConversaComoLida';
@@ -418,6 +420,15 @@ export default function BatePapo() {
   const [encaminharModalOpen, setEncaminharModalOpen] = useState(false);
 
   const dapiCall = useDapiCall();
+  const [notaEditando, setNotaEditando] = useState(null);
+  const notasChat = useNotasConversa(conversaSelecionada, user, empresaId);
+  useEffect(() => { setNotaEditando(null); }, [conversaSelecionada?.id]);
+  const excluirNotaChat = async (nota) => {
+    if (!confirm('Excluir esta nota?')) return;
+    try { await notasChat.excluir(nota); toast.success('Nota excluída'); }
+    catch(e) { toast.error('Não foi possível excluir a nota'); }
+  };
+
 
   // Botão "Ligar" do chat: sempre pergunta se é via WhatsApp ou via Operadora (ambas usam D-API)
   const dapiChamadaAtivaVisivel = ['calling', 'ringing', 'connected'].includes(dapiCall.status);
@@ -1678,6 +1689,10 @@ export default function BatePapo() {
     } catch (e) { toast.error('Erro ao editar: ' + e.message); } finally { setSalvandoMicrotarefa(false); }
   };
 
+  const mensagensComNotas = React.useMemo(() => [...mensagens, ...notasChat.notas.map(n => ({
+    id: 'nota_' + n.id, data_envio: n.created_date, _notaInterna: n
+  }))].sort((a,b) => new Date(a.data_envio || a.created_date) - new Date(b.data_envio || b.created_date)), [mensagens, notasChat.notas]);
+
   // Conversas válidas — exclui grupos, broadcast e LID (apenas contatos individuais)
   const conversasValidas = React.useMemo(() => conversas.filter(c => {
     if (!c || !c.id || !c.cliente_telefone) return false;
@@ -2490,7 +2505,7 @@ export default function BatePapo() {
                             <p className="text-sm text-slate-500">Carregando mensagens...</p>
                           </div>
                         </div>
-                      ) : mensagens.length === 0 ? (
+                      ) : mensagensComNotas.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-slate-400">
                           <div className="text-center">
                             <MessageCircle className="w-12 h-12 mx-auto mb-2 opacity-40" />
@@ -2499,7 +2514,9 @@ export default function BatePapo() {
                         </div>
                       ) : (
                         <ListaMensagens
-                          mensagens={mensagens}
+                          mensagens={mensagensComNotas}
+                          onEditarNota={setNotaEditando}
+                          onExcluirNota={excluirNotaChat}
                           temMais={mensagens.filter(m => !m.id?.startsWith('temp_')).length >= limiteMensagens}
                           onCarregarAnteriores={carregarMensagensAnteriores}
                           conversaSelecionada={conversaSelecionada}
@@ -2524,6 +2541,7 @@ export default function BatePapo() {
                       )}
                     </ScrollArea>
 
+                    {!modoEncaminhar && <NotasConversaEditor key={conversaSelecionada.id} salvar={notasChat.salvar} notaEditando={notaEditando} onFecharEdicao={() => setNotaEditando(null)} total={notasChat.notas.length} erro={notasChat.error}/>}
                     {/* Input de mensagem (oculto durante modo de seleção/encaminhar) */}
                     {!modoEncaminhar && (
                     <ChatMessageFooter

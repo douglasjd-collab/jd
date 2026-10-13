@@ -1,3 +1,4 @@
+import NotaConversaCard from './NotaConversaCard';
 import React from 'react';
 import { format } from 'date-fns';
 import { isSameDay, isToday, isYesterday } from 'date-fns';
@@ -51,7 +52,7 @@ function agruparMensagens(mensagens) {
   return grupos;
 }
 
-export default function ListaMensagens({ mensagens, temMais = false, onCarregarAnteriores = null, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar, onSelecionarOpcaoLista, modoSelecao = false, idsSelecionados = new Set(), onToggleSelecao = null, onEncaminhar = null, onCancelarSelecao = null, onConfirmarSelecao = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null }) {
+export default function ListaMensagens({ onEditarNota, onExcluirNota, mensagens, temMais = false, onCarregarAnteriores = null, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar, onSelecionarOpcaoLista, modoSelecao = false, idsSelecionados = new Set(), onToggleSelecao = null, onEncaminhar = null, onCancelarSelecao = null, onConfirmarSelecao = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null }) {
   const reagir = useReagirMensagem({ conversa: conversaSelecionada, isGrupo });
   const visiveis = filtrarMensagensVisiveis(mensagens);
   const grupos = modoSelecao ? visiveis.map(msg => ({ type: 'mensagem', msg })) : agruparMensagens(visiveis);
@@ -89,6 +90,10 @@ export default function ListaMensagens({ mensagens, temMais = false, onCarregarA
             <div className="flex-1 h-px bg-slate-300/50" />
           </div>
         ) : null;
+
+        if (item.msg?._notaInterna) {
+          return <div key={item.msg.id}>{separador}<NotaConversaCard nota={item.msg._notaInterna} user={user} onEditar={onEditarNota} onExcluir={onExcluirNota}/></div>;
+        }
 
         if (item.type === 'grupo_imagens') {
           const isVendedor = item.msgs[0].remetente === 'vendedor';
