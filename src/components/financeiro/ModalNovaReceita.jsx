@@ -125,7 +125,7 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
     mutationFn: (data) => base44.entities.Receita.create(data),
     onSuccess: (salva) => {
       // Mostrar imediatamente o registro confirmado pelo servidor, sem esperar refetch.
-      queryClient.setQueriesData({ queryKey: ['receitas-transacoes'] }, (old) => {
+      queryClient.setQueryData(['receitas-transacoes', user?.empresa_id], (old) => {
         if (!Array.isArray(old)) return old;
         if (user?.empresa_id && salva.empresa_id !== user.empresa_id) return old;
         return [salva, ...old.filter(r => r.id !== salva.id)];
@@ -146,7 +146,7 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
     mutationFn: ({ id, data }) => base44.entities.Receita.update(id, data),
     onSuccess: (salva) => {
       // Mostrar imediatamente o registro confirmado pelo servidor, sem esperar refetch.
-      queryClient.setQueriesData({ queryKey: ['receitas-transacoes'] }, (old) => {
+      queryClient.setQueryData(['receitas-transacoes', user?.empresa_id], (old) => {
         if (!Array.isArray(old)) return old;
         if (user?.empresa_id && salva.empresa_id !== user.empresa_id) return old;
         return [salva, ...old.filter(r => r.id !== salva.id)];
