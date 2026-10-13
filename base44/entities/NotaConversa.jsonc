@@ -1,0 +1,111 @@
+{
+  "name": "NotaConversa",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "conversa_id": {
+      "type": "string"
+    },
+    "texto": {
+      "type": "string",
+      "maxLength": 10000
+    },
+    "visibilidade": {
+      "type": "string",
+      "enum": [
+        "interna",
+        "privada"
+      ],
+      "default": "interna"
+    },
+    "autor_nome": {
+      "type": "string"
+    },
+    "tipo_conexao": {
+      "type": "string"
+    },
+    "colaborador_conversa_id": {
+      "type": "string"
+    },
+    "editada_em": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "conversa_id",
+    "texto",
+    "visibilidade"
+  ],
+  "rls": {
+    "create": {
+      "data.empresa_id": "{{user.data.empresa_id}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "$and": [
+            {
+              "data.visibilidade": "interna"
+            },
+            {
+              "data.empresa_id": "{{user.data.empresa_id}}"
+            },
+            {
+              "$or": [
+                {
+                  "data.tipo_conexao": {
+                    "$ne": "usuario"
+                  }
+                },
+                {
+                  "data.colaborador_conversa_id": ""
+                },
+                {
+                  "data.colaborador_conversa_id": "{{user.data.colaborador_id}}"
+                },
+                {
+                  "user_condition": {
+                    "data.perfil": "admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "data.perfil": "gerente"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "data.perfil": "funcionario"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "data.perfil": "super_admin"
+                  }
+                },
+                {
+                  "user_condition": {
+                    "data.perfil": "master"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "created_by": "{{user.email}}"
+    },
+    "delete": {
+      "created_by": "{{user.email}}"
+    }
+  }
+}
