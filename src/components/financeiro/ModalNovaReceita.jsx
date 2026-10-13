@@ -1,3 +1,4 @@
+import { produtoDaReceita } from './produtoReceita';
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -122,9 +123,15 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Receita.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['receitas']);
-      queryClient.invalidateQueries(['receitas-transacoes']);
+    onSuccess: (salva) => {
+      // Mostrar imediatamente o registro confirmado pelo servidor, sem esperar refetch.
+      queryClient.setQueriesData({ queryKey: ['receitas-transacoes'] }, (old) => {
+        if (!Array.isArray(old)) return old;
+        if (user?.empresa_id && salva.empresa_id !== user.empresa_id) return old;
+        return [salva, ...old.filter(r => r.id !== salva.id)];
+      });
+      queryClient.invalidateQueries({ queryKey: ['receitas'] });
+      queryClient.invalidateQueries({ queryKey: ['receitas-transacoes'] });
       toast.success('Receita lançada com sucesso!');
       onOpenChange(false);
       resetForm();
@@ -137,9 +144,15 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Receita.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['receitas']);
-      queryClient.invalidateQueries(['receitas-transacoes']);
+    onSuccess: (salva) => {
+      // Mostrar imediatamente o registro confirmado pelo servidor, sem esperar refetch.
+      queryClient.setQueriesData({ queryKey: ['receitas-transacoes'] }, (old) => {
+        if (!Array.isArray(old)) return old;
+        if (user?.empresa_id && salva.empresa_id !== user.empresa_id) return old;
+        return [salva, ...old.filter(r => r.id !== salva.id)];
+      });
+      queryClient.invalidateQueries({ queryKey: ['receitas'] });
+      queryClient.invalidateQueries({ queryKey: ['receitas-transacoes'] });
       toast.success('Receita atualizada com sucesso!');
       onOpenChange(false);
       resetForm();
@@ -211,6 +224,7 @@ export default function ModalNovaReceita({ open, onOpenChange, user, onSuccess, 
       descricao: formData.descricao,
       categoria_id: formData.categoria_id,
       categoria_nome: categoria?.nome || '',
+      produto: receitaParaEditar?.produto || produtoDaReceita({ categoria_nome: categoria?.nome }),
       subcategoria_id: formData.subcategoria_id || null,
       subcategoria_nome: subcategoria?.nome || null,
       valor,

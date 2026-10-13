@@ -1,3 +1,4 @@
+import { produtoDaReceita } from './produtoReceita';
 import React, { useState, useMemo } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
@@ -92,13 +93,13 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, lotesComi
 
   const allTransacoes = useMemo(() => [
     ...despesas.map(d => ({ ...d, _id: 'despesa_' + d.id, _tipo: 'despesa', _status: getStatusDespesa(d) })),
-    ...receitas.map(r => ({ ...r, _id: 'receita_' + r.id, _tipo: 'receita', _status: r.status || 'pendente' })),
+    ...receitas.map(r => ({ ...r, produto: produtoDaReceita(r), _id: 'receita_' + r.id, _tipo: 'receita', _status: r.status || 'pendente' })),
     ...lotesConsorcioComoTransacoes,
     ...lotesEmprestimoComoTransacoes,
   ].sort((a, b) => {
     const da = a.data_vencimento || a.data || '';
     const db = b.data_vencimento || b.data || '';
-    return db.localeCompare(da);
+    return db.localeCompare(da) || (b.created_date || '').localeCompare(a.created_date || '');
   }), [despesas, receitas, lotesConsorcioComoTransacoes, lotesEmprestimoComoTransacoes, hoje]);
 
   const filtered = useMemo(() => allTransacoes.filter(t => {
@@ -107,7 +108,7 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, lotesComi
     if (filterProduto !== 'todos' && (t.produto || 'Outros') !== filterProduto) return false;
     if (search) {
       const s = search.toLowerCase();
-      return (t.descricao||'').toLowerCase().includes(s) || (t.categoria||'').toLowerCase().includes(s) || (t.cliente_nome||t.responsavel_nome||'').toLowerCase().includes(s);
+      return (t.descricao||'').toLowerCase().includes(s) || (t.categoria||t.categoria_nome||'').toLowerCase().includes(s) || (t.cliente_nome||t.responsavel_nome||'').toLowerCase().includes(s);
     }
     return true;
   }), [allTransacoes, filterType, filterStatus, filterProduto, search]);
