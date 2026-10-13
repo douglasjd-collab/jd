@@ -319,6 +319,9 @@ Deno.serve(async (req) => {
         status: 'enviada',
       });
 
+      await marcarRecebidasAteResposta(base44.asServiceRole.entities, novaMensagem.empresa_id, conversa_id, novaMensagem.data_envio)
+        .catch(e => console.error('⚠️ Erro ao confirmar leitura após resposta:', e.message));
+
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
         ...camposReaberturaConversa,
         ultima_mensagem: mensagem_texto.trim().substring(0, 100),
@@ -471,7 +474,10 @@ Deno.serve(async (req) => {
         });
         console.log(`✅ Reação "${emojiReacao}" aplicada à mensagem ${original.id}`);
 
-        await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+        await marcarRecebidasAteResposta(base44.asServiceRole.entities, novaMensagem.empresa_id, conversa_id, novaMensagem.data_envio)
+        .catch(e => console.error('⚠️ Erro ao confirmar leitura após resposta:', e.message));
+
+      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
           ultima_mensagem: emojiReacao,
           data_ultima_mensagem: new Date().toISOString(),
           ultimo_remetente: 'vendedor'
@@ -745,6 +751,9 @@ Deno.serve(async (req) => {
           data_envio: new Date().toISOString(),
           status: 'enviada'
         });
+
+        await marcarRecebidasAteResposta(base44.asServiceRole.entities, empresaId, conversa_id, novaMensagem.data_envio)
+          .catch(e => console.error('⚠️ Erro ao confirmar leitura após resposta D-API:', e.message));
 
         await Promise.all([
           // Atualiza a conversa em paralelo (última mensagem da lista de conversas)
@@ -1187,6 +1196,9 @@ Deno.serve(async (req) => {
 
       // Atualizar última mensagem da conversa mantendo o tipo_conexao correto
       // CRÍTICO: não alterar tipo_conexao aqui — ele só deve mudar via ação manual do usuário
+      await marcarRecebidasAteResposta(base44.asServiceRole.entities, novaMensagem.empresa_id, conversa_id, novaMensagem.data_envio)
+        .catch(e => console.error('⚠️ Erro ao confirmar leitura após resposta:', e.message));
+
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
         ...camposReaberturaConversa,
         ultima_mensagem: (mensagem_texto || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
