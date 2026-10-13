@@ -1,5 +1,6 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import React, { useEffect, useState, useRef } from 'react';
-import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Forward, Copy, Pin, Pencil, Check, ArrowUpRight, Smile } from 'lucide-react';
+import { Plus, FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Forward, Copy, Pin, Pencil, Check, ArrowUpRight, Smile } from 'lucide-react';
 import VideoMensagem from './VideoMensagem';
 import ImagemZoom from './ImagemZoom';
 import PdfMensagemDialog from '@/components/chat/PdfMensagemDialog';
@@ -18,7 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-export default function MensagemItem({ mensagem, conversaId, conversa = null, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null, modoSelecao = false, selecionada = false, onToggleSelecao = null, onEncaminhar = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null, onReagir = null }) {
+export default function MensagemItem({ onAdicionarNota = null, mensagem, conversaId, conversa = null, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null, modoSelecao = false, selecionada = false, onToggleSelecao = null, onEncaminhar = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null, onReagir = null }) {
   // Corrige URLs com espaços não codificados (ex: pastas "CRM JD"), que quebram <img>/<audio>/<video>
   const sanitizeUrl = (url) => (typeof url === 'string' ? url.replace(/ /g, '%20') : url);
 
@@ -1226,6 +1227,18 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
 
       {isVendedor && atalhoEncaminhar}
 
+      {onAdicionarNota && !modoSelecao && !mensagem.id?.startsWith('temp_') && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button type="button" aria-label="Inserir anotação" title="Inserir anotação"
+              className="self-center shrink-0 rounded-full w-7 h-7 flex items-center justify-center text-amber-700 bg-amber-50 hover:bg-amber-200 focus-visible:ring-2 focus-visible:ring-amber-400 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 transition-opacity"
+              onClick={() => onAdicionarNota(mensagem)}>
+              <Plus className="w-4 h-4"/>
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>Inserir anotação</TooltipContent>
+        </Tooltip>
+      )}
       {/* Menu de ações - aparecer ao hover */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

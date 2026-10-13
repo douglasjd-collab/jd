@@ -27,7 +27,7 @@ export default function useNotasConversa(conversa, user, empresaId) {
     });
   }, [conversa?.id, empresaId, user?.id, queryClient]);
   const refresh = () => queryClient.invalidateQueries({queryKey: key});
-  const salvar = async (texto, visibilidade, nota) => {
+  const salvar = async (texto, visibilidade, nota, referencia) => {
     const conteudo = texto.trim();
     if (!conteudo || conteudo.length > 10000) throw new Error('Escreva uma nota de até 10.000 caracteres.');
     const atual = await base44.entities.ConversaWhatsapp.get(conversa.id);
@@ -38,6 +38,8 @@ export default function useNotasConversa(conversa, user, empresaId) {
     } else {
       await base44.entities.NotaConversa.create({
         empresa_id: atual.empresa_id, conversa_id: atual.id, texto: conteudo, visibilidade,
+        mensagem_referencia_id: referencia?.id || '',
+        mensagem_referencia_texto: (referencia?.texto || '').slice(0, 500),
         autor_nome: user.nome_perfil || user.full_name || user.email,
         tipo_conexao: atual.tipo_conexao || 'empresa',
         colaborador_conversa_id: atual.colaborador_id || ''

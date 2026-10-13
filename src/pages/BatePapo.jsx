@@ -421,8 +421,9 @@ export default function BatePapo() {
 
   const dapiCall = useDapiCall();
   const [notaEditando, setNotaEditando] = useState(null);
+  const [notaReferencia, setNotaReferencia] = useState(null);
   const notasChat = useNotasConversa(conversaSelecionada, user, empresaId);
-  useEffect(() => { setNotaEditando(null); }, [conversaSelecionada?.id]);
+  useEffect(() => { setNotaEditando(null); setNotaReferencia(null); }, [conversaSelecionada?.id]);
   const excluirNotaChat = async (nota) => {
     if (!confirm('Excluir esta nota?')) return;
     try { await notasChat.excluir(nota); toast.success('Nota excluída'); }
@@ -2505,6 +2506,7 @@ export default function BatePapo() {
                       ) : (
                         <ListaMensagens
                           mensagens={mensagensComNotas}
+                          onAdicionarNota={setNotaReferencia}
                           onEditarNota={setNotaEditando}
                           onExcluirNota={excluirNotaChat}
                           temMais={mensagens.filter(m => !m.id?.startsWith('temp_')).length >= limiteMensagens}
@@ -2531,7 +2533,7 @@ export default function BatePapo() {
                       )}
                     </ScrollArea>
 
-                    {!modoEncaminhar && <NotasConversaEditor key={conversaSelecionada.id} salvar={notasChat.salvar} notaEditando={notaEditando} onFecharEdicao={() => setNotaEditando(null)} total={notasChat.notas.length} erro={notasChat.error}/>}
+                    {!modoEncaminhar && <NotasConversaEditor key={conversaSelecionada.id} salvar={notasChat.salvar} notaEditando={notaEditando} referencia={notaReferencia} onFecharEdicao={() => { setNotaEditando(null); setNotaReferencia(null); }} total={notasChat.notas.length} erro={notasChat.error}/>}
                     {/* Input de mensagem (oculto durante modo de seleção/encaminhar) */}
                     {!modoEncaminhar && (
                     <ChatMessageFooter

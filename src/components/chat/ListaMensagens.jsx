@@ -52,7 +52,7 @@ function agruparMensagens(mensagens) {
   return grupos;
 }
 
-export default function ListaMensagens({ onEditarNota, onExcluirNota, mensagens, temMais = false, onCarregarAnteriores = null, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar, onSelecionarOpcaoLista, modoSelecao = false, idsSelecionados = new Set(), onToggleSelecao = null, onEncaminhar = null, onCancelarSelecao = null, onConfirmarSelecao = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null }) {
+export default function ListaMensagens({ onAdicionarNota, onEditarNota, onExcluirNota, mensagens, temMais = false, onCarregarAnteriores = null, conversaSelecionada, isGrupo, onResponder, user, mensagensEndRef, onEditarReenviar, onSelecionarOpcaoLista, modoSelecao = false, idsSelecionados = new Set(), onToggleSelecao = null, onEncaminhar = null, onCancelarSelecao = null, onConfirmarSelecao = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null }) {
   const reagir = useReagirMensagem({ conversa: conversaSelecionada, isGrupo });
   const visiveis = filtrarMensagensVisiveis(mensagens);
   const grupos = modoSelecao ? visiveis.map(msg => ({ type: 'mensagem', msg })) : agruparMensagens(visiveis);
@@ -115,6 +115,7 @@ export default function ListaMensagens({ onEditarNota, onExcluirNota, mensagens,
             {separador}
             <MensagemItem
               mensagem={item.msg}
+              onAdicionarNota={onAdicionarNota}
               conversaId={conversaSelecionada?.id}
               conversa={conversaSelecionada}
               isGrupo={isGrupo}

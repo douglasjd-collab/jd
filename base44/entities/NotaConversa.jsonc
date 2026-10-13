@@ -32,6 +32,12 @@
     "editada_em": {
       "type": "string",
       "format": "date-time"
+    },
+    "mensagem_referencia_id": {
+      "type": "string"
+    },
+    "mensagem_referencia_texto": {
+      "type": "string"
     }
   },
   "required": [

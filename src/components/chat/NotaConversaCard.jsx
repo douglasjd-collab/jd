@@ -13,6 +13,7 @@ export default function NotaConversaCard({nota, user, onEditar, onExcluir}) {
         <button type="button" aria-label="Excluir nota" onClick={() => onExcluir(nota)}><Trash2 size={14}/></button>
       </div>}
     </div>
+    {nota.mensagem_referencia_texto && <blockquote className="mt-2 border-l-2 border-amber-400 pl-2 text-xs text-amber-800 whitespace-pre-wrap break-words">{nota.mensagem_referencia_texto}</blockquote>}
     <p className="mt-2 whitespace-pre-wrap break-words text-sm">{nota.texto}</p>
     <p className="mt-2 text-[11px] text-amber-800">{nota.autor_nome} · {new Date(nota.created_date).toLocaleString('pt-BR')}{nota.editada_em ? ' · editada' : ''}</p>
   </article>;
