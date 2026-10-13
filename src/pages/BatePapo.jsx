@@ -380,6 +380,13 @@ export default function BatePapo() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversaTarefa?.id]);
   const [transferirModal, setTransferirModal] = useState(null); // conversa a transferir
+  const [revisaoLeitura, setRevisaoLeitura] = useState(0);
+  const timerLeituraRef = React.useRef(null);
+  const reconciliarLeitura = React.useCallback(() => {
+    clearTimeout(timerLeituraRef.current);
+    timerLeituraRef.current = setTimeout(() => setRevisaoLeitura(v => v + 1), 350);
+  }, []);
+  useEffect(() => () => clearTimeout(timerLeituraRef.current), []);
   const [naoLidasPorConversa, setNaoLidasPorConversa] = useState({}); // { conversaId: count }
   const [marcadasNaoLidasManual, setMarcadasNaoLidasManual] = useState(new Set()); // IDs marcadas manualmente como não lido
   const [gruposBloqueadosOpen, setGruposBloqueadosOpen] = useState(false);
@@ -856,18 +863,20 @@ export default function BatePapo() {
   }, [limiteMensagens]);
 
   // Buscar mensagens não lidas do banco e montar contadores por conversa
-  const conversaIdsKey = useMemo(() => conversas.map(c => c.id).filter(Boolean).sort().join('|'), [conversas]);
+  const conversaIdsKey = useMemo(() => conversas.filter(c => c.id).map(c => [c.id, c.data_ultima_mensagem, c.ultimo_remetente].join(':')).sort().join('|'), [conversas]);
   useEffect(() => {
     if (!empresaId || conversas.length === 0) return;
 
     const conversaIds = conversas.filter(c => c.id).map(c => c.id);
     const abertaId = conversaSelecionadaId;
 
-    base44.entities.MensagemWhatsapp.filter(
+    let cancelado = false;
+    const timer = setTimeout(() => base44.entities.MensagemWhatsapp.filter(
       { empresa_id: empresaId, remetente: 'cliente', status: { $ne: 'lida' } },
       '-data_envio',
       1000
     ).then(msgs => {
+      if (cancelado) return;
       const contadores = {};
       msgs.forEach(m => {
         if (!m.conversa_id) return;
@@ -878,8 +887,9 @@ export default function BatePapo() {
       });
       // Manter contadores zerados para conversa aberta
       setNaoLidasPorConversa(prev => ({ ...contadores, [abertaId]: 0 }));
-    }).catch(() => {});
-  }, [empresaId, conversaIdsKey, conversaSelecionadaId]);
+    }).catch(() => {}), 350);
+    return () => { cancelado = true; clearTimeout(timer); };
+  }, [empresaId, conversaIdsKey, conversaSelecionadaId, revisaoLeitura]);
 
   // Selecionar conversa inicial quando a lista carrega
   useEffect(() => {
@@ -1012,6 +1022,8 @@ export default function BatePapo() {
       if (event.type !== 'update') return;
       const msgData = event.data;
       if (!msgData?.id || !msgData?.conversa_id) return;
+      if (msgData.empresa_id && msgData.empresa_id !== empresaId) return;
+      if (msgData.remetente === 'cliente' && msgData.status === 'lida') reconciliarLeitura();
 
       console.log(`🟢 Update msg via subscription: ${msgData.id} → status: ${msgData.status}`);
 
@@ -1031,7 +1043,7 @@ export default function BatePapo() {
       });
     });
     return unsub;
-  }, [empresaId, queryClient]);
+  }, [empresaId, queryClient, reconciliarLeitura]);
 
   useEffect(() => {
     if (!empresaId || !refetchConversas) return;
@@ -1061,7 +1073,7 @@ export default function BatePapo() {
       }
 
       // Atualizar contador de não lidas e marcar último remetente como cliente
-      if (msgData?.remetente === 'cliente' && msgData?.conversa_id) {
+      if (msgData?.remetente === 'cliente' && msgData?.status !== 'lida' && msgData?.conversa_id) {
         const conversaAtualId = conversaSelecionadaIdRef.current;
         if (msgData.conversa_id !== conversaAtualId) {
           setNaoLidasPorConversa(prev => {
@@ -1075,10 +1087,7 @@ export default function BatePapo() {
           // Conversa aberta: garantir que o contador seja 0
           setNaoLidasPorConversa(prev => ({ ...prev, [conversaAtualId]: 0 }));
         }
-        // Marcar último remetente como cliente (conversa volta para "em espera" se responsável expirou)
-        base44.entities.ConversaWhatsapp.update(msgData.conversa_id, {
-          ultimo_remetente: 'cliente',
-        }).catch(() => {});
+        // O webhook mantém o resumo; um evento antigo não deve sobrescrever uma resposta nova.
 
       }
 

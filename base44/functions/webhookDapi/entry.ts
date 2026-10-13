@@ -551,6 +551,7 @@ async function processMessageReceived(base44, body, connection, empresaId) {
         whatsapp_message_id: externalMessageId
       }, '-created_date', 1);
       if (jaRegistrada && jaRegistrada.length > 0) {
+        await marcarRecebidasAteResposta(base44.asServiceRole.entities, empresaId, jaRegistrada[0].conversa_id, jaRegistrada[0].data_envio);
         return { handled: false, reason: 'mensagem própria já registrada (enviada via CRM)' };
       }
     }
@@ -1097,17 +1098,7 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
   // Marcar todas as mensagens do cliente anteriores como lidas.
   // Se o atendente respondeu pelo celular, ele obrigatoriamente leu as mensagens do cliente.
   try {
-    const naoLidas = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
-      conversa_id: conversa.id,
-      remetente: 'cliente'
-    }, '-created_date', 200);
-    if (naoLidas && naoLidas.length > 0) {
-      const paraMarcar = naoLidas.filter(m => m.status !== 'lida').map(m => ({ id: m.id, status: 'lida', lida_em: new Date(timestamp).toISOString() }));
-      if (paraMarcar.length > 0) {
-        await base44.asServiceRole.entities.MensagemWhatsapp.bulkUpdate(paraMarcar);
-        console.log(`✅ [Webhook D-API] ${paraMarcar.length} mensagens do cliente marcadas como lidas (resposta via celular)`);
-      }
-    }
+      await marcarRecebidasAteResposta(base44.asServiceRole.entities, empresaId, conversa.id, timestamp);
   } catch (e) {
     console.error(`⚠️ [Webhook D-API] Erro ao marcar mensagens do cliente como lidas:`, e.message);
   }
@@ -1147,6 +1138,7 @@ async function processMessageSent(base44, body, connection) {
       status: { $nin: ['enviada', 'entregue', 'lida'] }
     }, { $set: { status: 'enviada' } });
     
+    await marcarRecebidasAteResposta(base44.asServiceRole.entities, connection.empresa_id, msg.conversa_id, msg.data_envio);
     return { handled: true, messageId: externalMessageId, status: 'enviada' };
   }
   

@@ -474,10 +474,7 @@ Deno.serve(async (req) => {
         });
         console.log(`✅ Reação "${emojiReacao}" aplicada à mensagem ${original.id}`);
 
-        await marcarRecebidasAteResposta(base44.asServiceRole.entities, novaMensagem.empresa_id, conversa_id, novaMensagem.data_envio)
-        .catch(e => console.error('⚠️ Erro ao confirmar leitura após resposta:', e.message));
-
-      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+        await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
           ultima_mensagem: emojiReacao,
           data_ultima_mensagem: new Date().toISOString(),
           ultimo_remetente: 'vendedor'
