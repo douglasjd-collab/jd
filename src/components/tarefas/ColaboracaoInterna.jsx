@@ -4,6 +4,7 @@ import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
 import { base44 } from '@/api/base44Client';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseDataSegura } from '@/components/utils/dataUtc';
 import {
   Send, Paperclip, AtSign, Smile, X, UserPlus, MessageSquare,
   ArrowRightLeft, FileText, ThumbsUp, Heart, HandMetal, Plus, Check
@@ -62,7 +63,7 @@ function UserAvatar({ nome, foto, size = 'md', showStatus = false, online = fals
 function formatarHora(dateStr) {
   if (!dateStr) return '';
   try {
-    const d = new Date(dateStr);
+    const d = parseDataSegura(dateStr);
     const agora = new Date();
     const diffH = (agora - d) / 1000 / 60 / 60;
     if (diffH < 24) return format(d, 'HH:mm');
@@ -197,7 +198,7 @@ function ItemHistorico({ item }) {
         <p className="text-sm text-slate-700 leading-snug">{item.descricao}</p>
         <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
           <span className="font-medium text-slate-500">{item.usuario_nome}</span>
-          · {item.created_date ? formatDistanceToNow(new Date(item.created_date), { addSuffix: true, locale: ptBR }) : ''}
+          · {item.created_date ? formatDistanceToNow(parseDataSegura(item.created_date), { addSuffix: true, locale: ptBR }) : ''}
         </p>
       </div>
     </div>
@@ -330,7 +331,7 @@ function RecentActivity({ tarefaId }) {
             <div className="flex-1 min-w-0">
               <p className="text-xs text-slate-600 leading-snug line-clamp-2">{h.descricao}</p>
               <p className="text-xs text-slate-400 mt-0.5">
-                {h.created_date ? formatDistanceToNow(new Date(h.created_date), { addSuffix: true, locale: ptBR }) : ''}
+                {h.created_date ? formatDistanceToNow(parseDataSegura(h.created_date), { addSuffix: true, locale: ptBR }) : ''}
               </p>
             </div>
           </div>
@@ -389,7 +390,7 @@ export default function ColaboracaoInterna({ tarefa, currentUser, colaboradores 
   const timeline = [
     ...comentarios.map(c => ({ ...c, _tipo: 'comentario' })),
     ...historico.map(h => ({ ...h, _tipo: 'historico' })),
-  ].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+  ].sort((a, b) => parseDataSegura(a.created_date) - parseDataSegura(b.created_date));
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

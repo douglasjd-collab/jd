@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { parseDataSegura } from '@/components/utils/dataUtc';
 import {
   X, Calendar, User, Tag, CheckSquare, MessageSquare, Clock, AlertTriangle, Paperclip, FileText, Download,
   Sparkles, AlertCircle, Timer, CheckCircle2, Zap, RefreshCw, Loader2, ChevronDown, Check, UserPlus, Search
@@ -535,7 +536,7 @@ export default function TarefaDetalhesModal({
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-slate-800 truncate">{a.nome}</p>
                           <p className="text-xs text-slate-400">
-                            {a.usuario_nome} · {a.created_date ? format(new Date(a.created_date), 'dd/MM/yyyy HH:mm') : ''}
+                            {a.usuario_nome} · {a.created_date ? format(parseDataSegura(a.created_date), 'dd/MM/yyyy HH:mm') : ''}
                           </p>
                         </div>
                         <a
@@ -641,7 +642,7 @@ export default function TarefaDetalhesModal({
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-slate-700">{h.descricao}</p>
                           <p className="text-xs text-slate-400 mt-0.5">
-                            {h.usuario_nome} · {h.created_date ? format(new Date(h.created_date), 'dd/MM/yyyy HH:mm') : ''}
+                            {h.usuario_nome} · {h.created_date ? format(parseDataSegura(h.created_date), 'dd/MM/yyyy HH:mm') : ''}
                           </p>
                         </div>
                       </div>

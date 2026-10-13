@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, Paperclip, AtSign, Smile, X, UserPlus } from 'lucide-react';
 import { format } from 'date-fns';
+import { parseDataSegura } from '@/components/utils/dataUtc';
 
 function getInitials(name = '') {
   const parts = (name || '').trim().split(/\s+/);
@@ -11,7 +12,7 @@ function getInitials(name = '') {
 function formatarHora(dateStr) {
   if (!dateStr) return '';
   try {
-    const d = new Date(dateStr);
+    const d = parseDataSegura(dateStr);
     return format(d, 'dd/MM HH:mm');
   } catch { return ''; }
 }
