@@ -848,8 +848,8 @@ export default function BatePapo() {
   const ultimaMensagemVisivelId = mensagens.at(-1)?.id || '';
   useEffect(() => {
     if (!conversaSelecionadaId || loadingMensagens || !mensagens.length) return;
-    marcarConversaComoLida(conversaSelecionadaId);
-  }, [conversaSelecionadaId, loadingMensagens, ultimaMensagemVisivelId]);
+    marcarConversaComoLida(conversaSelecionadaId).then(reconciliarLeitura);
+  }, [conversaSelecionadaId, loadingMensagens, ultimaMensagemVisivelId, reconciliarLeitura]);
 
 
   // Recarregar somente quando o usuário pedir mais itens, mantendo a mesma chave de cache.
