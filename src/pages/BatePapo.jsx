@@ -2152,7 +2152,7 @@ export default function BatePapo() {
                          || c.canal_origem === 'meta'
                          || c.tipo_conexao === 'meta_oficial'
                          || c.instancia === 'META_OFICIAL';
-                       const mostrarBadge = !isSelecionada && c.status !== 'encerrada' && (naoLidas > 0 || estaEmEspera(c));
+                       const mostrarBadge = !isSelecionada && c.status !== 'encerrada' && naoLidas > 0;
                       const cache = contatosWhatsapp[c.id];
                       const nomeEhId = !cache?.nome || cache?.nome?.startsWith('Instagram ') || cache?.nome === c.cliente_telefone;
                       const nome = (!nomeEhId && cache?.nome) || c.cliente_nome || c.cliente_telefone;
@@ -2277,7 +2277,7 @@ export default function BatePapo() {
                               <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
                                 {mostrarBadge && conversaSelecionada?.id !== c.id && (
                                   <span className="jd-chat-badge">
-                                    {naoLidas > 0 ? naoLidas : '!'}
+                                    {naoLidas}
                                   </span>
                                 )}
                                 {marcadasNaoLidasManual.has(c.id) && (

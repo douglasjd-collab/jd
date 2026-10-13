@@ -1,18 +1,22 @@
 import { base44 } from '@/api/base44Client';
 
-/**
- * Marca todas as mensagens de cliente como lidas ao abrir a conversa
- */
+/** Confirma a leitura até a abertura, sem consumir mensagens novas posteriores. */
 export const marcarConversaComoLida = async (conversaId) => {
+  const corte = new Date().toISOString();
   try {
-    const msgs = await base44.entities.MensagemWhatsapp.filter({
-      conversa_id: conversaId,
-      remetente: 'cliente',
-      status: { $ne: 'lida' }
-    }, null, 1000);
-
-    for (const msg of msgs) {
-      await base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida' }).catch(() => {});
+    while (true) {
+      const msgs = await base44.entities.MensagemWhatsapp.filter({
+        conversa_id: conversaId,
+        remetente: 'cliente',
+        status: { $ne: 'lida' },
+        data_envio: { $lte: corte }
+      }, 'data_envio', 100);
+      if (!msgs.length) return;
+      for (let i = 0; i < msgs.length; i += 5) {
+        await Promise.all(msgs.slice(i, i + 5).map(msg =>
+          base44.entities.MensagemWhatsapp.update(msg.id, { status: 'lida', lida_em: corte })
+        ));
+      }
     }
   } catch (e) {
     console.warn('Erro ao marcar conversa como lida:', e);
