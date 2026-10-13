@@ -1,3 +1,4 @@
+import { dataHistorico } from '@/components/chat/dataHistorico';
 import { mesclarHistoricoMensagens } from '@/components/chat/cacheMensagens';
 import useNotasConversa from '@/components/chat/useNotasConversa';
 import NotasConversaEditor from '@/components/chat/NotasConversaEditor';
@@ -1684,8 +1685,8 @@ export default function BatePapo() {
   };
 
   const mensagensComNotas = React.useMemo(() => [...mensagens, ...notasChat.notas.map(n => ({
-    id: 'nota_' + n.id, data_envio: n.created_date, _notaInterna: n
-  }))].sort((a,b) => new Date(a.data_envio || a.created_date) - new Date(b.data_envio || b.created_date)), [mensagens, notasChat.notas]);
+    id: 'nota_' + n.id, data_envio: dataHistorico(n.created_date).toISOString(), _notaInterna: n
+  }))].sort((a,b) => dataHistorico(a.data_envio || a.created_date) - dataHistorico(b.data_envio || b.created_date)), [mensagens, notasChat.notas]);
 
   // Conversas válidas — exclui grupos, broadcast e LID (apenas contatos individuais)
   const conversasValidas = React.useMemo(() => conversas.filter(c => {

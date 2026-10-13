@@ -1,3 +1,4 @@
+import { dataHistorico } from './dataHistorico';
 // Mescla por ID sem apagar histórico nem regredir recibos atualizados em tempo real.
 export function mesclarHistoricoMensagens(anteriores = [], novas = []) {
   const prioridade = {pendente: 0, enviada: 1, entregue: 2, lida: 3};
@@ -9,6 +10,6 @@ export function mesclarHistoricoMensagens(anteriores = [], novas = []) {
     porId.set(msg.id, {...anterior, ...msg, status});
   }
   return [...porId.values()].sort((a,b) =>
-    new Date(a.data_envio || a.created_date) - new Date(b.data_envio || b.created_date)
+    dataHistorico(a.data_envio || a.created_date) - dataHistorico(b.data_envio || b.created_date)
   );
 }
