@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { startCallRingback } from './callRingback';
 import { base44 } from '@/api/base44Client';
 
 // Worklet que converte Float32 (navegador) <-> Int16 (rede) para as Ligações por
@@ -69,8 +70,15 @@ export default function useDapiCall() {
   const micStreamRef = useRef(null);
   const nodeRef = useRef(null);
   const canSendRef = useRef(false);
+  const ringbackStopRef = useRef(null);
+  const pararSomChamada = useCallback(() => {
+    ringbackStopRef.current?.();
+    ringbackStopRef.current = null;
+  }, []);
+
 
   const limpar = useCallback(() => {
+    pararSomChamada();
     try { wsRef.current?.close(); } catch (_) {}
     wsRef.current = null;
     try { micStreamRef.current?.getTracks().forEach((t) => t.stop()); } catch (_) {}
@@ -80,7 +88,9 @@ export default function useDapiCall() {
     nodeRef.current = null;
     canSendRef.current = false;
     setMutado(false);
-  }, []);
+  }, [pararSomChamada]);
+
+  useEffect(() => () => limpar(), [limpar]);
 
   const encerrar = useCallback(() => {
     limpar();
@@ -100,6 +110,13 @@ export default function useDapiCall() {
     setStatus('calling');
     setVia(viaEscolhida);
     try {
+      // Criar/resumir o áudio no clique do usuário para permitir reprodução na extensão.
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioContextClass({ sampleRate: 16000 });
+      audioCtxRef.current = ctx;
+      ringbackStopRef.current = startCallRingback(ctx);
+      await ctx.resume();
+
       const resp = await base44.functions.invoke('iniciarChamadaDapi', {
         via: viaEscolhida,
         connectionId,
@@ -112,8 +129,6 @@ export default function useDapiCall() {
       ws.binaryType = 'arraybuffer';
       wsRef.current = ws;
 
-      const ctx = new AudioContext({ sampleRate: 16000 });
-      audioCtxRef.current = ctx;
       const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
       const workletUrl = URL.createObjectURL(blob);
       await ctx.audioWorklet.addModule(workletUrl);
@@ -152,6 +167,7 @@ export default function useDapiCall() {
               break;
             case 'accepted':
             case 'connected':
+              pararSomChamada();
               canSendRef.current = true;
               setStatus('connected');
               break;
@@ -172,6 +188,12 @@ export default function useDapiCall() {
         }
       };
 
+      ws.onclose = () => {
+        if (wsRef.current !== ws) return;
+        setStatus('ended');
+        limpar();
+      };
+
       ws.onerror = () => {
         setErro('Erro de conexão com a chamada');
         setStatus('error');
@@ -182,7 +204,7 @@ export default function useDapiCall() {
       setStatus('error');
       limpar();
     }
-  }, [limpar]);
+  }, [limpar, pararSomChamada]);
 
   return { status, erro, mutado, via, iniciar, encerrar, alternarMudo };
 }
