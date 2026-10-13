@@ -878,12 +878,8 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
                   <span className="text-xs text-slate-500">Carregar documento</span>
                 </button>
               ) : urlDoc && isPdf ? (
-                <div className="relative w-full h-36 bg-slate-100 flex items-center justify-center overflow-hidden">
-                  <iframe
-                    src={`${urlDoc}#page=1&view=FitH&toolbar=0&scrollbar=0&navpanes=0`}
-                    className="w-full h-full border-0 pointer-events-none"
-                    title="preview-pdf"
-                  />
+                <div className="relative w-full h-36 bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center overflow-hidden">
+                  <FileText className="w-12 h-12 text-red-400" />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/10 opacity-0 hover:opacity-100 transition-opacity">
                     <Maximize2 className="w-8 h-8 text-white drop-shadow" />
                   </div>

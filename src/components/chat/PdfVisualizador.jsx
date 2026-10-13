@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { base44 } from '@/api/base44Client';
+import { Loader2 } from 'lucide-react';
 
 export default function PdfVisualizador({ url, mensagemId }) {
   const container = useRef(null);
@@ -11,35 +12,41 @@ export default function PdfVisualizador({ url, mensagemId }) {
   const [zoom, setZoom] = useState(1);
   const [size, setSize] = useState({ width: 600, height: 700 });
   const [busy, setBusy] = useState(true);
+  const [preparando, setPreparando] = useState(false);
   const [error, setError] = useState('');
   const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     let disposed = false, loading;
-    setPdf(null); setPage(1); setZoom(1); setError(''); setBusy(true);
+    setPdf(null); setPage(1); setZoom(1); setError(''); setBusy(true); setPreparando(false);
     (async () => {
-      // O storage da D-API permite iframe, mas não fetch no navegador (sem CORS).
-      // Preparar uma URL do CRM somente ao abrir o visualizador, sem salvar no dispositivo.
       let urlPdf = url;
+      // D-API storage (backblazeb2) bloqueia fetch no navegador (sem CORS).
+      // Passa pelo proxy do CRM, que baixa e re-envia para o storage público.
+      // Após a primeira vez, a mensagem já fica com arquivo_url base44 (rápido).
       if (mensagemId && /backblazeb2\.com/i.test(url)) {
+        setPreparando(true);
         const result = await base44.functions.invoke('baixarMidiaWhatsApp', { mensagem_id: mensagemId });
         if (!result.data?.ok || !result.data?.arquivo_url) throw new Error(result.data?.error || 'PDF indisponível');
         urlPdf = result.data.arquivo_url;
+        if (disposed) return;
+        setPreparando(false);
       }
       const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
       if (disposed) return;
       pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-      loading = pdfjs.getDocument({ url: urlPdf, isEvalSupported: false });
+      loading = pdfjs.getDocument({ url: urlPdf, isEvalSupported: false, disableAutoFetch: true, disableStream: false });
       const document = await loading.promise;
       if (!disposed) setPdf(document);
     })().catch(() => {
-      if (!disposed) { setError('Não foi possível abrir o PDF. Tente novamente ou use Baixar.'); setBusy(false); }
+      if (!disposed) { setError('Não foi possível abrir o PDF. Tente novamente ou use Baixar.'); setBusy(false); setPreparando(false); }
     });
     return () => { disposed = true; loading?.destroy(); };
   }, [url, mensagemId]);
 
   useEffect(() => {
     const node = container.current;
+    if (!node) return;
     const observer = new ResizeObserver(([entry]) => setSize({
       width: entry.contentRect.width, height: entry.contentRect.height,
     }));
@@ -58,7 +65,6 @@ export default function PdfVisualizador({ url, mensagemId }) {
       const fit = Math.min(Math.max(100, size.width - 32) / base.width, Math.max(100, size.height - 32) / base.height);
       const view = documentPage.getViewport({ scale: fit * zoom });
       const node = canvas.current;
-      // Cap backing pixels to avoid excessive memory on high zoom.
       const ratio = Math.min(window.devicePixelRatio || 1, 2, 4096 / Math.max(view.width, view.height));
       node.width = Math.ceil(view.width * ratio);
       node.height = Math.ceil(view.height * ratio);
@@ -92,7 +98,12 @@ export default function PdfVisualizador({ url, mensagemId }) {
         <button onClick={reset} className="border rounded px-2 py-1">Ajustar</button>
         <span>Segure e arraste para mover</span>
       </div>
-      {busy && <p role="status" className="absolute bottom-2 left-2 z-10 bg-white rounded px-2 py-1 text-xs pointer-events-none">Carregando página…</p>}
+      {(preparando || (busy && !pdf)) && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-white/80 backdrop-blur-sm">
+          <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+          <p className="text-sm text-slate-600">{preparando ? 'Preparando PDF...' : 'Carregando página...'}</p>
+        </div>
+      )}
       {error && <p role="alert" className="absolute bottom-2 left-2 z-10 bg-white rounded text-xs text-red-600 p-2">{error}</p>}
       <div ref={container} data-jd-pdf-pan className="flex-1 min-h-0 overflow-auto bg-slate-200"
         style={{ cursor: dragging ? 'grabbing' : 'grab', touchAction: 'none', userSelect: 'none' }}
