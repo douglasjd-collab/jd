@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 import { enviarDapiDireto } from '../../shared/dapiEnvioShared.ts';
 import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.ts';
+import { marcarRecebidasAteResposta } from '../../shared/leituraRespostaShared.ts';
 
 Deno.serve(async (req) => {
   console.log('='.repeat(80));
