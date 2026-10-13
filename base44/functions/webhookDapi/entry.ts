@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { processReactionDapi } from '../../shared/reactionDapiShared.ts';
 import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.ts';
+import { metadadosMidiaDapi } from '../../shared/nomeMidiaShared.ts';
 
 /**
  * Webhook Oficial D-API - Endpoint Público
@@ -85,7 +86,7 @@ async function registrarDiagnostico(base44, traceId, etapa, dados) {
   }
 }
 
-Deno.serve(async (req) => {
+export default async function(req) {
   const startTime = Date.now();
   const webhookId = crypto.randomUUID();
   
@@ -280,7 +281,7 @@ Deno.serve(async (req) => {
       timestamp: new Date().toISOString()
     }, { status: erroTransitorio(error.message) ? 500 : 200 });
   }
-});
+}
 
 // Falhas transitórias (limite de tráfego de leitura do banco, timeout, conexão) não podem
 // descartar uma mensagem: nesses casos o webhook responde 5xx para a D-API reenviar o evento,
@@ -829,6 +830,7 @@ async function processMessageReceived(base44, body, connection, empresaId) {
     tipo_conteudo: crmMessageType,
     texto: content,
     arquivo_url: mediaUrl,
+    ...metadadosMidiaDapi(data, crmMessageType, content, mediaUrl),
     provider: 'dapi',
     resposta_para_texto: respostaParaTexto,
     resposta_para_nome: respostaParaNome,
@@ -1063,6 +1065,7 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
     tipo_conteudo: crmMessageType,
     texto: content,
     arquivo_url: mediaUrl,
+    ...metadadosMidiaDapi(data, crmMessageType, content, mediaUrl),
     provider: 'dapi',
     whatsapp_message_id: externalMessageId || `dapi_out_phone_${Date.now()}`,
     status: 'enviada',

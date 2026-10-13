@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { FileText, Loader2, Download, FileAudio, Mic, X, Maximize2, Trash2, MoreVertical, Reply, Share2, Forward, Copy, Pin, Pencil, Check, ArrowUpRight, Smile } from 'lucide-react';
 import VideoMensagem from './VideoMensagem';
 import ImagemZoom from './ImagemZoom';
-import PdfVisualizador from './PdfVisualizador';
+import PdfMensagemDialog from '@/components/chat/PdfMensagemDialog';
 import FilaEnvioBadge from './FilaEnvioBadge';
 import ReacaoRapidaBar from './ReacaoRapidaBar';
 import { renderTextWithLinks } from '@/components/utils/renderTextWithLinks';
@@ -914,54 +914,9 @@ export default function MensagemItem({ mensagem, conversaId, conversa = null, is
               )}
             </div>
 
-            <Dialog open={pdfAberto} onOpenChange={setPdfAberto}>
-              <DialogContent className="max-w-4xl w-full h-[90vh] p-0 overflow-hidden flex flex-col [&>button.absolute]:hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b bg-white shrink-0">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-red-500" />
-                    <span className="font-medium text-sm truncate max-w-xs">{nomeDoc}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {urlDoc && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1.5 text-xs"
-                        disabled={baixandoPdf}
-                        onClick={() => baixarPdfDialog(urlDoc, nomeDoc)}
-                      >
-                        {baixandoPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                        {baixandoPdf ? 'Baixando...' : 'Baixar'}
-                      </Button>
-                    )}
-                    <button
-                      onClick={() => setPdfAberto(false)}
-                      className="flex items-center justify-center w-8 h-8 rounded-full border border-slate-300 hover:bg-slate-100 transition-colors"
-                      aria-label="Fechar"
-                    >
-                      <X className="w-4 h-4 text-slate-600" />
-                    </button>
-                  </div>
-                </div>
-                {erroPdf && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-red-50 text-xs text-red-600 border-b border-red-100">
-                    <span className="flex-1 truncate">{erroPdf}</span>
-                    <button onClick={() => baixarPdfDialog(urlDoc, nomeDoc)} className="underline hover:text-red-700">Tentar novamente</button>
-                  </div>
-                )}
-                <div className="flex-1 min-h-0 overflow-hidden relative">
-                  {urlDoc && isPdf ? (
-                    <PdfVisualizador url={urlDoc} />
-                  ) : urlDoc ? (
-                    <iframe src={urlDoc} className="w-full h-full border-0" title={nomeDoc} />
-                  ) : (
-                    <div className="flex items-center justify-center h-full text-slate-400">
-                      <p>Documento não disponível</p>
-                    </div>
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
+            <PdfMensagemDialog open={pdfAberto} onOpenChange={setPdfAberto}
+              url={urlDoc} nome={nomeDoc} isPdf={isPdf} mensagemId={mensagem.id}
+              baixando={baixandoPdf} erro={erroPdf} onBaixar={() => baixarPdfDialog(urlDoc, nomeDoc)} />
           </div>
         );
       }

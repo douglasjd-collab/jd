@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { X, Download, MapPin, Forward } from 'lucide-react';
 import { formatarDataHora, iconeArquivo, formatarBytes } from './helpers';
 import { baixarArquivo } from '../baixarArquivo';
+import { nomeArquivoEfetivo } from '@/components/chat/nomeArquivoEfetivo';
 
 /**
  * Visualizador inline de PDF dentro do CRM, sem forçar download.
@@ -12,8 +13,7 @@ export default function VisualizadorPdf({ mensagem, onFechar, onLocalizarMensage
   if (!mensagem?.arquivo_url) return null;
   const remetenteLabel = mensagem.remetente === 'vendedor' ? 'Enviado' : 'Recebido';
   // Fallback: nome real chega via caption (texto) quando arquivo_nome está vazio
-  const nomeExibicao = mensagem.arquivo_nome
-    || (mensagem.texto && mensagem.texto.trim() ? mensagem.texto.trim() : 'Documento.pdf');
+  const nomeExibicao = nomeArquivoEfetivo(mensagem) || 'Documento.pdf';
 
   return (
     <Dialog open onOpenChange={(v) => !v && onFechar()}>

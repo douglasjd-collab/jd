@@ -1,6 +1,7 @@
-import { createClient } from 'npm:@base44/sdk@0.8.31';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { processReactionDapi } from '../../shared/reactionDapiShared.ts';
 import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.ts';
+import { metadadosMidiaDapi } from '../../shared/nomeMidiaShared.ts';
 
 /**
  * Webhook D-API - Recebe eventos de conexão em tempo real
@@ -32,13 +33,11 @@ import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.t
  * }
  */
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     // Não requer autenticação de usuário - é um webhook público
-    const base44 = createClient({
-      appUrl: Deno.env.get('BASE44_APP_URL'),
-      serviceRole: true
-    });
+    const client = createClientFromRequest(req);
+    const base44 = { entities: client.asServiceRole.entities, asServiceRole: client.asServiceRole };
     
     const payload = await req.json().catch(() => ({}));
 
@@ -228,7 +227,7 @@ Deno.serve(async (req) => {
       error: error.message 
     }, { status: 200 });
   }
-});
+}
 
 // Extrai texto/nome da mensagem citada (reply) quando o remetente respondeu citando outra mensagem.
 // Formato real da D-API: data.contextInfo = { participant, quoted_message: { body, type }, quoted_message_id, stanza_id }
@@ -587,6 +586,7 @@ async function processarMensagemRecebida(base44, connection, data) {
       tipo_conteudo,
       texto,
       arquivo_url,
+      ...metadadosMidiaDapi(data, tipo_conteudo, texto, arquivo_url),
       provider: 'dapi',
       resposta_para_texto: respostaParaTexto,
       resposta_para_nome: respostaParaNome,
@@ -689,6 +689,7 @@ async function processarMensagemEnviadaPeloCelular(base44, connection, data, tel
       tipo_conteudo,
       texto,
       arquivo_url,
+      ...metadadosMidiaDapi(data, tipo_conteudo, texto, arquivo_url),
       provider: 'dapi',
       whatsapp_message_id: wamid || `dapi_out_phone_${Date.now()}`,
       data_envio: timestamp,

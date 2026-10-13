@@ -15,11 +15,13 @@ const EXT_RE = /\.(pdf|jpe?g|png|gif|webp|mp4|mov|avi|mp3|ogg|m4a|wav|webm|opus|
 export function nomeArquivoEfetivo(mensagem) {
   if (!mensagem) return '';
   const direto = String(mensagem.arquivo_nome || '').trim();
-  if (direto && direto !== 'Documento' && direto !== 'Documento PDF') return direto;
+  if (direto && direto !== 'Documento' && direto !== 'Documento PDF' && !/^media_[a-f\d]+\./i.test(direto)) return direto;
   const t = String(mensagem.texto || '').trim();
   if (!t) return '';
   // Remove prefixos de emoji/símbolo (📎 etc.) e espaços de borda
   const limpo = t.replace(/^[^\p{L}\p{N}\s]+/u, '').trim();
   if (limpo && EXT_RE.test(limpo)) return limpo;
+  const pdf = mensagem.tipo_conteudo === 'pdf' || mensagem.mime_type === 'application/pdf' || /\.pdf(?:[?#]|$)/i.test(mensagem.arquivo_url || '');
+  if (pdf && ['pdf', 'documento'].includes(mensagem.tipo_conteudo) && limpo.length <= 200 && !/[\r\n]/.test(limpo) && !/^(Documento(?: PDF)?|Mensagem)$/i.test(limpo)) return `${limpo}.pdf`;
   return '';
 }

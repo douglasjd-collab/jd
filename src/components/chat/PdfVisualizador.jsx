@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+import { base44 } from '@/api/base44Client';
 
-export default function PdfVisualizador({ url }) {
+export default function PdfVisualizador({ url, mensagemId }) {
   const container = useRef(null);
   const canvas = useRef(null);
   const drag = useRef(null);
@@ -17,17 +18,25 @@ export default function PdfVisualizador({ url }) {
     let disposed = false, loading;
     setPdf(null); setPage(1); setZoom(1); setError(''); setBusy(true);
     (async () => {
-      const pdfjs = await import('pdfjs-dist');
+      // O storage da D-API permite iframe, mas não fetch no navegador (sem CORS).
+      // Preparar uma URL do CRM somente ao abrir o visualizador, sem salvar no dispositivo.
+      let urlPdf = url;
+      if (mensagemId && /backblazeb2\.com/i.test(url)) {
+        const result = await base44.functions.invoke('baixarMidiaWhatsApp', { mensagem_id: mensagemId });
+        if (!result.data?.ok || !result.data?.arquivo_url) throw new Error(result.data?.error || 'PDF indisponível');
+        urlPdf = result.data.arquivo_url;
+      }
+      const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
       if (disposed) return;
       pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-      loading = pdfjs.getDocument({ url, isEvalSupported: false });
+      loading = pdfjs.getDocument({ url: urlPdf, isEvalSupported: false });
       const document = await loading.promise;
       if (!disposed) setPdf(document);
     })().catch(() => {
       if (!disposed) { setError('Não foi possível abrir o PDF. Tente novamente ou use Baixar.'); setBusy(false); }
     });
     return () => { disposed = true; loading?.destroy(); };
-  }, [url]);
+  }, [url, mensagemId]);
 
   useEffect(() => {
     const node = container.current;

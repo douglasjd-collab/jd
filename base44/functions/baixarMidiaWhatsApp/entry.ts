@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { nomeOriginalMidia } from '../../shared/nomeMidiaShared.ts';
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -17,6 +18,10 @@ Deno.serve(async (req) => {
     const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ id: mensagem_id });
     const mensagem = mensagens?.[0];
     if (!mensagem) return Response.json({ error: 'Mensagem não encontrada' }, { status: 404 });
+    const nomeOriginal = nomeOriginalMidia(mensagem);
+    if (nomeOriginal && nomeOriginal !== mensagem.arquivo_nome) {
+      await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagem_id, { arquivo_nome: nomeOriginal });
+    }
 
     // Se já tem URL permanente do nosso storage, verificar se o arquivo é válido antes de retornar
     const urlAtual = mensagem.arquivo_url;
@@ -33,7 +38,7 @@ Deno.serve(async (req) => {
         const ct = headRes.headers.get('content-type') || '';
         const isValido = headRes.status === 200 && size > 1000 && !ct.startsWith('text/plain');
         if (isValido) {
-          return Response.json({ ok: true, arquivo_url: urlAtual });
+          return Response.json({ ok: true, arquivo_url: urlAtual, arquivo_nome: nomeOriginal });
         }
         console.warn(`⚠️ URL do storage inválida (status=${headRes.status}, size=${size}, ct=${ct}) — rebaixando...`);
       } catch (e) {
@@ -308,7 +313,7 @@ Deno.serve(async (req) => {
       // Método 2: URL estável que não seja enc — retornar diretamente
       if (!base64Data && isUrlEstavel) {
         console.log(`✅ URL estável retornada diretamente: ${urlAtual}`);
-        return Response.json({ ok: true, arquivo_url: urlAtual });
+        return Response.json({ ok: true, arquivo_url: urlAtual, arquivo_nome: nomeOriginal });
       }
 
       // Método 3: Download direto da URL (enc ou outra)
@@ -404,13 +409,14 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Arquivo corrompido ou vazio' }, { status: 400 });
     }
 
+    if (bytes[0] === 37 && bytes[1] === 80 && bytes[2] === 68 && bytes[3] === 70) mimeType = 'application/pdf';
     const blob = new Blob([bytes], { type: mimeType });
     const extRaw = mimeType.split('/')[1]?.split(';')[0] || 'bin';
     const extMap = { 'jpeg': 'jpg', 'mpeg': 'mp3', 'x-m4a': 'm4a', 'ogg': 'ogg', 'webm': 'webm', 'mp4': 'mp4', 'png': 'png', 'gif': 'gif', 'webp': 'webp', 'pdf': 'pdf' };
     const ext = extMap[extRaw] || extRaw;
-    const file = new File([blob], `media_${mensagem_id}.${ext}`, { type: mimeType });
+    const file = new File([blob], nomeOriginal || `media_${mensagem_id}.${ext}`, { type: mimeType });
 
-    const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file });
+    const uploadRes = await base44.asServiceRole.integrations.Core.UploadPublicFile({ file });
     if (!uploadRes?.file_url) {
       return Response.json({ error: 'Upload para storage falhou' }, { status: 500 });
     }
@@ -426,14 +432,16 @@ Deno.serve(async (req) => {
     // Salvar URL permanente na mensagem e marcar como baixado
     await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagem_id, {
       arquivo_url: uploadRes.file_url,
+      ...(nomeOriginal ? { arquivo_nome: nomeOriginal } : {}),
+      mime_type: mimeType,
       download_status: 'baixado'
     });
 
     console.log(`✅ Mídia salva permanentemente: ${uploadRes.file_url} (${uploadSize} bytes)`);
-    return Response.json({ ok: true, arquivo_url: uploadRes.file_url });
+    return Response.json({ ok: true, arquivo_url: uploadRes.file_url, arquivo_nome: nomeOriginal });
 
   } catch (error) {
     console.error('❌ Erro:', error.message);
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}
