@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { processReactionDapi } from '../../shared/reactionDapiShared.ts';
 import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.ts';
+import { marcarRecebidasAteResposta } from '../../shared/leituraRespostaShared.ts';
 import { metadadosMidiaDapi } from '../../shared/nomeMidiaShared.ts';
 
 /**
