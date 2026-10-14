@@ -35,6 +35,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const [menuPlusOpen, setMenuPlusOpen] = useState(false);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+  const formRef = useRef(null);
 
   const { data: mensagensRapidasAtalho = [] } = useQuery({
     queryKey: ['mensagens-rapidas', empresaId],
@@ -186,6 +187,24 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [menuPlusOpen]);
+
+  // Adaptar a barra de composição ao teclado virtual (fallback iOS/Safari sem interactive-widget):
+  // mantém a barra acima do teclado sem deslocar horizontalmente a conversa.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const formEl = formRef.current;
+    if (!vv || !formEl) return;
+    const onResize = () => {
+      const kb = window.innerHeight - vv.height - vv.offsetTop;
+      formEl.style.transform = kb > 4 ? `translateY(${-kb}px)` : '';
+    };
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
+    return () => {
+      vv.removeEventListener('resize', onResize);
+      vv.removeEventListener('scroll', onResize);
+    };
+  }, []);
 
   // Lista de emojis nativos para o picker
   const EMOJIS = ['😀','😁','😂','🤣','😊','😍','😘','😉','😎','🤔','🙃','😅','😢','😭','😡','👍','👎','🙏','👏','💪','❤️','🧡','💛','💚','💙','💜','🖤','✅','❌','⭐','🎉','🔥','💯','🙏','👀','🤝','🤙','✌️','🤞','🙏🏽'];
@@ -510,7 +529,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       modoAplicar
       onAplicar={aplicarEdicaoNoAnexo}
     />
-    <form onSubmit={handleEnviar} className="bg-white border-t p-3 relative" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
+    <form ref={formRef} onSubmit={handleEnviar} className="bg-white border-t p-3 relative overflow-x-hidden max-w-full box-border" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
       {erro && (
         <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -621,7 +640,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
           </Button>
         </div>
       ) : (
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2 max-w-full">
           {/* Botão + com menu popup */}
           <div className="relative pb-1 menu-plus-container">
             <Button

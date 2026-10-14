@@ -224,3 +224,11 @@
 }
 
 .scroll-bottom-btn:hover { transform: scale(1.08); box-shadow: 0 4px 12px rgba(0,0,0,0.22); }
+
+/* === Responsividade iOS/Safari — barra de composição do Bate-Papo === */
+/* Previne auto-zoom do iOS ao focar o campo (font-size mínimo 16px no mobile) */
+@media (max-width: 1023px) {
+  .msg-textarea { font-size: 16px !important; }
+}
+/* Evita overflow horizontal no container raiz do bate-papo (iPhone) */
+#batepapo-root { overflow-x: hidden; }
