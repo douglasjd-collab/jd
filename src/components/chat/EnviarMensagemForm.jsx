@@ -535,7 +535,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
       modoAplicar
       onAplicar={aplicarEdicaoNoAnexo}
     />
-    <form ref={formRef} onSubmit={handleEnviar} className="bg-white border-t p-3 relative overflow-x-hidden max-w-full box-border" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
+    <form ref={formRef} onSubmit={handleEnviar} className="bg-white border-t p-3 relative max-w-full box-border" onDrop={handleDrop} onDragOver={(e) => e.preventDefault()}>
       {erro && (
         <div className="flex items-center gap-2 mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
