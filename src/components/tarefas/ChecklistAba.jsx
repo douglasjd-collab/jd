@@ -6,14 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Plus, Trash2, LayoutList, UserPlus } from 'lucide-react';
 import AvalistaChecklistGrupo from './AvalistaChecklistGrupo';
 
+const AZUL = '#334e80';
+const BORDA = '#dce4f2';
+
 // Estrutura do checklist (JSON no campo tarefa.checklist):
-// [{ id, texto, checked, grupo? }]
+// [{ id, texto, checked, grupo?, marker? }]
 // - Itens sem "grupo" → checklist principal
-// - Itens com "grupo" → agrupados por avalista
+// - Itens com "grupo" → agrupados (Cliente, Avalista, Participante, etc.)
+// - Itens com marker=true → marcador que mantém o grupo vazio visível/persistido
 
 export default function ChecklistAba({ checklist, empresaId, onUpdate }) {
   const [novoItem, setNovoItem] = useState('');
   const [showTemplates, setShowTemplates] = useState(false);
+  const [criandoGrupo, setCriandoGrupo] = useState(false);
+  const [nomeNovoGrupo, setNomeNovoGrupo] = useState('');
 
   const { data: templates = [] } = useQuery({
     queryKey: ['checklist-templates', empresaId],
@@ -21,8 +27,8 @@ export default function ChecklistAba({ checklist, empresaId, onUpdate }) {
     queryFn: () => base44.entities.ChecklistTemplate.filter({ empresa_id: empresaId }, 'nome'),
   });
 
-  // Separar principal de avalistas
-  const itensPrincipal = checklist.filter(i => !i.grupo);
+  // Separar principal de grupos (marcadores não são itens visíveis do principal)
+  const itensPrincipal = checklist.filter(i => !i.grupo && !i.marker);
   const grupos = [...new Set(checklist.map(i => i.grupo).filter(Boolean))];
 
   const checkDone = itensPrincipal.filter(i => i.checked).length;
@@ -55,30 +61,27 @@ export default function ChecklistAba({ checklist, empresaId, onUpdate }) {
     setShowTemplates(false);
   };
 
-  const handleAdicionarAvalista = () => {
-    // Nome padrão: "Avalista" + próximo número
-    const existentes = grupos.filter(g => /^Avalista \d+$/.test(g)).map(g => parseInt(g.split(' ')[1], 10));
-    const prox = existentes.length > 0 ? Math.max(...existentes) + 1 : 1;
-    const nome = `Avalista ${prox}`;
-    // Cria o grupo com um item inicial vazio? Não — apenas cria o grupo.
-    // Para garantir que o grupo apareça mesmo sem itens, adicionamos um item placeholder removível.
-    // Melhor: o grupo só aparece se tiver itens. Então adicionamos um item inicial editável.
-    // Mas o usuário pode querer criar vazio. Solução: adicionamos um item "RG" como sugestão.
+  const handleCriarGrupo = () => {
+    const nome = nomeNovoGrupo.trim();
+    if (!nome) return;
+    // Se o nome já existe, apenas fecha
+    if (grupos.includes(nome)) { setNomeNovoGrupo(''); setCriandoGrupo(false); return; }
+    // Cria o grupo com um marcador vazio para mantê-lo visível/persistido
     onUpdate([
       ...checklist,
-      { id: `${Date.now()}_rg`, texto: 'RG', checked: false, grupo: nome },
-      { id: `${Date.now()}_comp`, texto: 'Comprovante de residência', checked: false, grupo: nome },
-      { id: `${Date.now()}_email`, texto: 'Email', checked: false, grupo: nome },
+      { id: `gmarker_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, texto: '', checked: false, grupo: nome, marker: true },
     ]);
+    setNomeNovoGrupo('');
+    setCriandoGrupo(false);
   };
 
   const handleRemoverGrupo = (grupo) => {
+    // Remove todos os itens (e o marcador) daquele grupo
     onUpdate(checklist.filter(i => i.grupo !== grupo));
   };
 
   const handleRenomearGrupo = (grupoAntigo, grupoNovo) => {
-    // Não precisa atualizar aqui — o filho já atualizou via onUpdate com os itens renomeados
-    // Mas se o novo nome colidir com grupo existente, os itens se mesclam (aceitável)
+    // O filho já atualizou os itens via onUpdate; nada a fazer aqui.
   };
 
   return (
@@ -164,12 +167,12 @@ export default function ChecklistAba({ checklist, empresaId, onUpdate }) {
         )}
       </div>
 
-      {/* Avalistas */}
+      {/* Grupos de Checklist (Cliente, Avalista, Participante, etc.) */}
       {grupos.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-            <UserPlus className="w-4 h-4 text-blue-600" />
-            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Avalistas</h3>
+            <UserPlus className="w-4 h-4" style={{ color: AZUL }} />
+            <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: AZUL }}>Grupos de Checklist</h3>
           </div>
 
           <div className="space-y-3">
@@ -187,14 +190,38 @@ export default function ChecklistAba({ checklist, empresaId, onUpdate }) {
         </div>
       )}
 
-      {/* Botão adicionar avalista */}
-      <button
-        onClick={handleAdicionarAvalista}
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-colors text-sm font-medium"
-      >
-        <UserPlus className="w-4 h-4" />
-        Adicionar Avalista
-      </button>
+      {/* Adicionar grupo (com nome editável) */}
+      {criandoGrupo ? (
+        <div className="flex gap-2 p-3 rounded-xl border-2 border-dashed" style={{ borderColor: BORDA }}>
+          <input
+            autoFocus
+            type="text"
+            placeholder="Nome do grupo (ex: Cliente, Avalista, Participante...)"
+            value={nomeNovoGrupo}
+            onChange={e => setNomeNovoGrupo(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleCriarGrupo(); if (e.key === 'Escape') { setCriandoGrupo(false); setNomeNovoGrupo(''); } }}
+            className="flex-1 text-sm border rounded-lg px-3 py-2 outline-none bg-white placeholder:text-slate-400"
+            style={{ borderColor: BORDA }}
+          />
+          <Button size="sm" onClick={handleCriarGrupo} disabled={!nomeNovoGrupo.trim()} className="flex-shrink-0">
+            Adicionar
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => { setCriandoGrupo(false); setNomeNovoGrupo(''); }} className="flex-shrink-0">
+            Cancelar
+          </Button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setCriandoGrupo(true)}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed transition-colors text-sm font-medium"
+          style={{ borderColor: BORDA, color: AZUL }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#f5f8fc'; e.currentTarget.style.borderColor = '#c4d4ec'; }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = BORDA; }}
+        >
+          <UserPlus className="w-4 h-4" />
+          Adicionar Grupo
+        </button>
+      )}
     </div>
   );
 }

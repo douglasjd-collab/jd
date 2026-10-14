@@ -195,7 +195,7 @@ export default function TarefaDetalhesModal({
   const abas = [
     { key: 'detalhes', label: 'Detalhes', icon: Tag },
     { key: 'comentarios', label: 'Comentários', icon: MessageSquare, badge: comentarios.length },
-    { key: 'checklist', label: 'Checklist', icon: CheckSquare, badge: checklistItems.length > 0 ? `${checklistItems.filter(i => i.checked).length}/${checklistItems.length}` : null },
+    { key: 'checklist', label: 'Checklist', icon: CheckSquare, badge: checklistItems.filter(i => !i.marker).length > 0 ? `${checklistItems.filter(i => !i.marker && i.checked).length}/${checklistItems.filter(i => !i.marker).length}` : null },
     { key: 'anexos', label: 'Anexos', icon: Paperclip, badge: anexos.length || null },
     { key: 'historico', label: 'Histórico', icon: Clock },
   ];

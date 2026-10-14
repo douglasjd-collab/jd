@@ -49,8 +49,8 @@ export default function TarefaCard({ tarefa, onEdit, onDelete, onVerDetalhes, on
   // Checklist
   let checklist = [];
   try { checklist = tarefa.checklist ? JSON.parse(tarefa.checklist) : []; } catch {}
-  const checkTotal = checklist.length;
-  const checkDone  = checklist.filter(i => i.checked).length;
+  const checkTotal = checklist.filter(i => !i.marker).length;
+  const checkDone  = checklist.filter(i => !i.marker && i.checked).length;
 
   // Anexos
   let anexos = [];
