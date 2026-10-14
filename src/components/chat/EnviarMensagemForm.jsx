@@ -16,6 +16,12 @@ const TIPOS_IMAGEM = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 const MAX_HEIGHT = 256;
 const LINE_HEIGHT = 24;
 
+// Dispositivos de toque (celular/tablet): a tecla "Return/Enter" do teclado
+// virtual serve para descer a linha, não para enviar. O envio fica no botão.
+const isTouchDevice = () =>
+  typeof window !== 'undefined' &&
+  (navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches);
+
 export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUsuario = '', empresaId = null, telefoneDestino = null, nomeCliente = null, conversaId = null, onTemplateEnviado = null, scriptExterno = null, coachIAOpen = false, setCoachIAOpen = null }) {
   const [texto, setTexto] = useState('');
   const [assinaturaAtiva, setAssinaturaAtiva] = useState(() => {
@@ -754,7 +760,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
               value={texto}
               onChange={handleChange}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
+                if (e.key === 'Enter' && !e.shiftKey && !isTouchDevice()) {
                   e.preventDefault();
                   if (showQuickReplies && quickRepliesFiltered.length > 0) {
                     handleSelectQuickReply(quickRepliesFiltered[0]);
