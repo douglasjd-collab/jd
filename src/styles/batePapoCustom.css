@@ -1,7 +1,7 @@
 /* Estilos do Bate-Papo (extraídos do BatePapo.jsx) */
 
 @media (min-width: 1024px) { #batepapo-root { left: 18rem !important; } }
-@media (max-width: 1023px) { #batepapo-root { top: 3.5rem !important; padding: 0 !important; } }
+@media (max-width: 1023px) { #batepapo-root { top: 0 !important; padding: 0 !important; } }
 #batepapo-root > div > div { border-radius: 0 !important; }
 
 .jd-messenger-sidebar {

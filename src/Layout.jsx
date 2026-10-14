@@ -600,7 +600,8 @@ export default function Layout({ children, currentPageName }) {
         }
       `}</style>
 
-      {/* Mobile Header */}
+      {/* Mobile Header — oculto no Bate-papo para ganhar espaço vertical no chat */}
+      {currentPageName !== 'BatePapo' && (
       <header className="lg:hidden bg-[#10353C] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-50">
         <button onClick={() => setSidebarOpen(true)} className="p-2">
           <Menu className="w-6 h-6" />
@@ -608,6 +609,7 @@ export default function Layout({ children, currentPageName }) {
         <h1 className="font-semibold text-lg">CRM Consórcio</h1>
         <div className="w-10" />
       </header>
+      )}
 
       {/* Sidebar Overlay */}
       {sidebarOpen && (

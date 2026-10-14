@@ -87,8 +87,7 @@ import EditarMensagemModal from '@/components/chat/EditarMensagemModal';
 import { criarLocalizarMensagem } from '@/components/chat/localizarMensagemNoHistorico';
 import EstrelaPrioridadeButton from '@/components/chat/EstrelaPrioridadeButton';
 import BatePapoAbas from '@/components/chat/BatePapoAbas';
-import useClientesNoFunil from '@/hooks/useClientesNoFunil';
-import '@/styles/batePapoCustom.css';
+import useClientesNoFunil from '@/hooks/useClientesNoFunil'; import useSwipeBack from '@/components/chat/useSwipeBack'; import '@/styles/batePapoCustom.css';
 import MicrotarefasConversa from '@/components/chat/MicrotarefasConversa';
 
 function classNames(...classes) {
@@ -403,8 +402,7 @@ export default function BatePapo() {
   const [agendarMensagemModal, setAgendarMensagemModal] = useState(null); // conversa
   const [agendadasOpen, setAgendadasOpen] = useState(false);
   const [agendarReuniaoModal, setAgendarReuniaoModal] = useState(null); // conversa
-  const [mobileViewChat, setMobileViewChat] = useState(false); // mobile: false=lista, true=chat
-  const [produtividadeOpen, setProdutividadeOpen] = useState(false);
+  const [mobileViewChat, setMobileViewChat] = useState(false); const swipeBack = useSwipeBack(() => setMobileViewChat(false)); const [produtividadeOpen, setProdutividadeOpen] = useState(false);
   const [coachIAOpen, setCoachIAOpen] = useState(false);
   const [coachIATab, setCoachIATab] = useState('agora');
   const abrirCadastroIA = useCallback(() => {
@@ -2484,8 +2482,7 @@ export default function BatePapo() {
           ]}
         />
 
-                {/* Área principal: mensagens + painel lead lado a lado */}
-                <div className="relative flex flex-1 overflow-hidden">
+                {/* Área principal: mensagens + painel lead lado a lado */}<div className="relative flex flex-1 overflow-hidden lg:touch-none" onTouchStart={swipeBack.onTouchStart} onTouchEnd={swipeBack.onTouchEnd}>
                   {/* Mensagens */}
                   <div className="flex flex-1 flex-col overflow-hidden">
                     <ScrollArea ref={scrollAreaRef} className="flex-1 px-2 sm:px-6 pt-4" style={{
