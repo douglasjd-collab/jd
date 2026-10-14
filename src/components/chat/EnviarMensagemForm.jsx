@@ -728,20 +728,8 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
             )}
           </div>
 
-          {/* Botão Mensagens Rápidas */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => setMensagensRapidasOpen(true)}
-            className="rounded-full w-10 h-10 bg-slate-100 hover:bg-yellow-100 text-slate-600 hover:text-yellow-600 flex-shrink-0 mb-0.5"
-            title="Mensagens Rápidas"
-          >
-            <Zap className="w-5 h-5" />
-          </Button>
-
-          {/* Textarea + Figurinha dentro do mesmo quadro */}
-          <div className="flex-1 flex items-end gap-1 rounded-2xl border border-slate-300 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 bg-white overflow-visible">
+          {/* Textarea + Figurinha dentro do mesmo quadro (min-w-0 evita overflow no mobile) */}
+          <div className="flex-1 min-w-0 flex items-end gap-1 rounded-2xl border border-slate-300 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 bg-white overflow-visible">
             <textarea
               ref={textareaRef}
               value={texto}
@@ -790,28 +778,30 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
             <StickerPicker onEnviar={onEnviar} isLoading={isLoading} />
           </div>
 
-          {/* Botão gravar áudio */}
-          <Button
-            type="button"
-            onClick={iniciarGravacao}
-            disabled={isLoading}
-            className="rounded-full w-10 h-10 bg-slate-100 hover:bg-slate-200 flex-shrink-0 mb-0.5"
-            size="icon"
-            title="Gravar áudio"
-            variant="ghost"
-          >
-            <Mic className="w-5 h-5 text-slate-600" />
-          </Button>
-
-          {/* Botão enviar */}
-          <Button
-            type="submit"
-            disabled={(!texto.trim() && arquivos.length === 0) || isLoading}
-            className="rounded-full w-10 h-10 bg-blue-500 hover:bg-blue-600 shadow-md flex-shrink-0 mb-0.5"
-            size="icon"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+          {/* Botão gravar áudio (vazio) / Enviar (com texto) — estilo WhatsApp */}
+          {texto.trim() || arquivos.length > 0 ? (
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="rounded-full w-10 h-10 bg-blue-500 hover:bg-blue-600 shadow-md flex-shrink-0 mb-0.5"
+              size="icon"
+              title="Enviar"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              onClick={iniciarGravacao}
+              disabled={isLoading}
+              className="rounded-full w-10 h-10 bg-slate-100 hover:bg-slate-200 flex-shrink-0 mb-0.5"
+              size="icon"
+              title="Gravar áudio"
+              variant="ghost"
+            >
+              <Mic className="w-5 h-5 text-slate-600" />
+            </Button>
+          )}
         </div>
       )}
     </form>
