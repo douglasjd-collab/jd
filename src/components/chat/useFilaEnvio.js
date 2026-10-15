@@ -49,7 +49,7 @@ function substituirTempIdPorReal(queryClient, conversaId, tempId, realId, extras
     if (!Array.isArray(old)) return old;
     const idx = old.findIndex((m) => m.id === tempId);
     if (idx < 0) return old;
-    if (!realId) return old;
+    const idFinal = realId || tempId;
     const whatsappId = extras?.whatsapp_message_id;
     const mesmoRegistro = (m) => m.id === realId ||
       (whatsappId && m.whatsapp_message_id === whatsappId);
@@ -58,7 +58,7 @@ function substituirTempIdPorReal(queryClient, conversaId, tempId, realId, extras
     const status = existente && (prioridade[existente.status] ?? -1) > (prioridade[extras?.status] ?? -1)
       ? existente.status : extras?.status;
     const patched = {
-      ...old[idx], ...extras, ...existente, id: realId,
+      ...old[idx], ...extras, ...existente, id: idFinal,
       status: status || existente?.status || old[idx].status,
       fila_envio_estado: null, fila_envio_progresso: null, fila_envio_erro: null,
     };
@@ -386,7 +386,7 @@ async function rodarPipeline(tempId, queryClient, pipelineRefs) {
       return;
     }
 
-    const realId = resp.data.message_id || resp.data.whatsapp_id || null;
+    const realId = resp.data.message_id || null;
     const whatsappId = resp.data.whatsapp_id || null;
 
     // Stage 3: enviada — substitui o tempId pelo ID real no cache
@@ -397,6 +397,7 @@ async function rodarPipeline(tempId, queryClient, pipelineRefs) {
       whatsapp_message_id: whatsappId,
       status: 'enviada',
       provider: resp.data.provider || null,
+      ...(resp.data.arquivo_url ? { arquivo_url: resp.data.arquivo_url } : {}),
     });
 
     // Atualiza a "última mensagem" da conversa no cache (mesmo efeito do
