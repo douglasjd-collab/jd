@@ -817,7 +817,7 @@ export default function BatePapo() {
       if (!conversaSelecionadaId) return [];
       const key = ['mensagens-whatsapp', conversaSelecionadaId];
       const cache = (queryClient.getQueryData(key) || []).filter(m =>
-        m.conversa_id === conversaSelecionadaId && !m.id?.startsWith('temp_')
+        m.conversa_id === conversaSelecionadaId && !/^(temp_|tmp_)/.test(m.id || '')
       );
       const ultimaCriacao = cache.map(m => m.created_date).filter(Boolean).sort().at(-1);
       const carregarAnteriores = limiteMensagens > 100 && cache.length < limiteMensagens;
@@ -831,7 +831,7 @@ export default function BatePapo() {
       );
       // Relê o cache após a consulta: eventos que chegaram durante a busca são preservados.
       const atuais = (queryClient.getQueryData(key) || []).filter(m =>
-        m.conversa_id === conversaSelecionadaId && !m.id?.startsWith('temp_')
+        m.conversa_id === conversaSelecionadaId && !/^(temp_|tmp_)/.test(m.id || '')
       );
       const ordenadas = mesclarHistoricoMensagens(atuais, msgs);
       return [...ordenadas, ...bolhasPendentesNaLista(conversaSelecionadaId, ordenadas)];
