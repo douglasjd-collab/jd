@@ -28,7 +28,8 @@ export function construirBolhaOtimista(envio) {
     arquivo_nome: arquivo?.nome || null,
     arquivo_url: arquivo?.url || null,
     data_envio: new Date(envio.criadoEm || Date.now()).toISOString(),
-    status: 'pendente',
+    status: ['enviada', 'entregue', 'lida'].includes(envio.estado) ? envio.estado : 'pendente',
+    whatsapp_message_id: envio.whatsappId || null,
     // Campos transitórios (somente client-side) — não existem no banco.
     fila_envio_estado: envio.estado || 'preparando',
     fila_envio_progresso: envio.progresso || 0,
