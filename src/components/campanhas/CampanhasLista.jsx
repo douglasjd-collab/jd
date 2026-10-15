@@ -15,7 +15,6 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import EditarCampanhaModal from './EditarCampanhaModal';
 
-const STATUS_LIST = ['rascunho', 'agendada', 'executando', 'concluida', 'cancelada', 'pausada', 'erro'];
 const FILTROS_RAPIDOS = [
   { id: 'todos', label: 'Todas' },
   { id: 'agendada', label: 'Agendadas' },
@@ -51,11 +50,6 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
     enabled: !!detalhe?.id,
     refetchInterval: detalhe?.status === 'executando' ? 3000 : false,
   });
-
-  const campanhaEmAndamento = useMemo(
-    () => (campanhas || []).find((c) => ['executando', 'agendada'].includes(c.status)) || null,
-    [campanhas]
-  );
 
   const filtradas = useMemo(() => {
     return (campanhas || []).filter((c) => {
@@ -288,9 +282,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
               </tr>
             </thead>
             <tbody>
-              {filtradas.map((c) => {
-                const conv = c.total_destinatarios > 0 ? (c.vendas_realizadas / c.total_destinatarios) * 100 : 0;
-                return (
+              {filtradas.map((c) => (
                   <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
                     <Td>
                       <p className="font-medium text-slate-800">{c.nome}</p>
@@ -332,12 +324,11 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                       </div>
                     </Td>
                   </tr>
-                );
-              })}
+              ))}
               {filtradas.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-slate-400">
-                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Nenhuma campanha found com esses filtros.'}
+                  <td colSpan={9} className="text-center py-10 text-slate-400">
+                    {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Nenhuma campanha encontrada com esses filtros.'}
                   </td>
                 </tr>
               )}
