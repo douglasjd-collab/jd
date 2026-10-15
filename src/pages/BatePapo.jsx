@@ -826,12 +826,12 @@ export default function BatePapo() {
       const ultimaCriacao = cache.map(m => m.created_date).filter(Boolean).sort().at(-1);
       const carregarAnteriores = limiteMensagens > 100 && cache.length < limiteMensagens;
       const incremental = cache.length > 0 && ultimaCriacao && !carregarAnteriores;
-      // Buscar por criação também captura mensagens antigas importadas depois.
+      // Buscar alterações também captura recibos novos de mensagens já existentes.
       const filtro = incremental
-        ? {conversa_id: conversaSelecionadaId, created_date: {$gte: ultimaCriacao}}
+        ? {conversa_id: conversaSelecionadaId, updated_date: {$gte: ultimaCriacao}}
         : {conversa_id: conversaSelecionadaId};
       const msgs = await base44.entities.MensagemWhatsapp.filter(
-        filtro, incremental ? '-created_date' : '-data_envio', incremental ? 1000 : limiteMensagens
+        filtro, incremental ? '-updated_date' : '-data_envio', incremental ? 1000 : limiteMensagens
       );
       // Relê o cache após a consulta: eventos que chegaram durante a busca são preservados.
       const atuais = (queryClient.getQueryData(key) || []).filter(m =>
@@ -1030,9 +1030,19 @@ export default function BatePapo() {
     if (!empresaId) return;
     const unsub = base44.entities.MensagemWhatsapp.subscribe((event) => {
       if (event.type !== 'update') return;
-      const msgData = event.data;
-      if (!msgData?.id || !msgData?.conversa_id) return;
+      const msgData = { ...event.data, id: event.data?.id || event.id };
+      if (!msgData.id) return;
       if (msgData.empresa_id && msgData.empresa_id !== empresaId) return;
+      // Eventos de atualização podem conter só ID e campos alterados.
+      // Recuperar o destino pelo cache, sem descartar o recibo nem fazer nova consulta.
+      if (!msgData.conversa_id) {
+        for (const [key, historico] of queryClient.getQueriesData({queryKey: ['mensagens-whatsapp']})) {
+          if (!Array.isArray(historico)) continue;
+          const local = historico.find(m => m.id === msgData.id);
+          if (local) { msgData.conversa_id = local.conversa_id || key[1]; break; }
+        }
+      }
+      if (!msgData.conversa_id) return;
       if (msgData.remetente === 'cliente' && msgData.status === 'lida') reconciliarLeitura();
 
       console.log(`🟢 Update msg via subscription: ${msgData.id} → status: ${msgData.status}`);
