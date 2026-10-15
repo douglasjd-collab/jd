@@ -156,13 +156,14 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
           cliente_nome: d.cliente_nome,
         }));
         await base44.entities.Campanha.update(c.id, { status: 'executando' });
-        await base44.functions.invoke('dispararCampanhaMetaOficial', {
+        const resposta = await base44.functions.invoke('dispararCampanhaMetaOficial', {
           empresa_id: c.empresa_id,
           template_name: c.template_nome,
           template_language: c.template_language || 'pt_BR',
           template_header_type: '',
           template_header_url: '',
           template_botoes: [],
+          variaveis: c.template_variables_json ? JSON.parse(c.template_variables_json) : {},
           contatos,
           nome_campanha: c.nome,
           delay_segundos: c.velocidade_envio ? Math.max(1, Math.round(60 / c.velocidade_envio)) : 5,
@@ -171,7 +172,30 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
           pausar_apos: c.pausa_apos || 0,
           duracao_pausa: c.duracao_pausa_min || 0,
         });
-        toast.success(`Reenvio iniciado somente para ${falhados.length} destinatário(s).`);
+        const resultados = resposta?.data?.resultados || [];
+        for (const resultado of resultados) {
+          const statusDestino = resultado.status === 'enviada' ? 'enviada' : 'falhou';
+          await base44.entities.CampanhaDestinatario.updateMany(
+            { campanha_id: c.id, telefone: resultado.telefone, status: 'na_fila' },
+            { $set: {
+              status: statusDestino,
+              data_envio: statusDestino === 'enviada' ? new Date().toISOString() : null,
+              whatsapp_message_id: resultado.message_id || null,
+              erro_mensagem: statusDestino === 'falhou' ? (resultado.motivo || 'Falha no reenvio') : null,
+            } }
+          );
+        }
+        const destinatariosAtualizados = await base44.entities.CampanhaDestinatario.filter({ campanha_id: c.id }, null, 500);
+        const totalEnviados = destinatariosAtualizados.filter((d) => ['enviada', 'entregue', 'lida'].includes(d.status)).length;
+        const totalFalhas = destinatariosAtualizados.filter((d) => d.status === 'falhou').length;
+        const aguardando = destinatariosAtualizados.some((d) => d.status === 'na_fila');
+        await base44.entities.Campanha.update(c.id, {
+          enviados: totalEnviados,
+          falhas: totalFalhas,
+          status: aguardando ? 'pausada' : totalFalhas ? 'erro' : 'concluida',
+          fim_execucao: new Date().toISOString(),
+        });
+        toast.success(`Reenvio concluído: ${resultados.filter((r) => r.status === 'enviada').length} enviado(s), ${resultados.filter((r) => r.status !== 'enviada').length} falha(s).`);
       }
       queryClient.invalidateQueries(['campanhas-lista', empresaId]);
       queryClient.invalidateQueries(['campanhas-dashboard', empresaId]);
