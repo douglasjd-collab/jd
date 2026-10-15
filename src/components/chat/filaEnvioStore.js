@@ -150,6 +150,7 @@ export function setEnviada(tempId, realId, whatsappId, estadoFinal) {
     realId: realId || null,
     whatsappId: whatsappId || null,
     progresso: 100,
+    erro: null,
   });
 }
 
