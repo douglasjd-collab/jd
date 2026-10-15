@@ -14,6 +14,14 @@ const withTimeout = <T>(promise: Promise<T>, ms: number, message: string): Promi
 };
 const primeiroNome = (nome = "") => String(nome).trim().split(/\s+/)[0] || "cliente";
 const somenteDigitos = (valor = "") => String(valor).replace(/\D/g, "");
+const telefoneInternacionalDapiBrasil = (valor = "") => {
+  const digitos = somenteDigitos(valor);
+  // A D-API espera DDI + DDD + número, sem sinal de +.
+  // Aceita também o formato nacional salvo no CRM, adicionando o DDI do Brasil.
+  if (digitos.startsWith("55") && [12, 13].includes(digitos.length)) return digitos;
+  if ([10, 11].includes(digitos.length)) return `55${digitos}`;
+  throw new Error("Telefone inválido: informe DDD e número brasileiro com 10 ou 11 dígitos.");
+};
 
 async function marcarComoConversaDeCampanha(base44: any, campanha: any, destinatario: any, texto: string) {
   const telefone = somenteDigitos(destinatario.telefone);
@@ -106,6 +114,8 @@ async function processarCampanha(base44: any, campanha: any, campanhaId: string)
 
     let atrasoDeErroAplicado = false;
     try {
+      // Mantém o cadastro original no CRM e normaliza só o destino enviado à D-API.
+      payload.phoneNumber = telefoneInternacionalDapiBrasil(destinatario.telefone);
       const resposta: any = await withTimeout(
         base44.asServiceRole.functions.invoke("whatsappService", payload),
         60000,
