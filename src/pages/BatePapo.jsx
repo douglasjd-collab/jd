@@ -889,7 +889,12 @@ export default function BatePapo() {
       if (cancelado) return;
       const contadores = {};
       msgs.forEach(m => {
-        if (!m.conversa_id) return;
+        if (!m.conversa_id || m.remetente !== 'cliente') return;
+        const resumo = conversas.find(c => c.id === m.conversa_id);
+        // Uma resposta enviada já cobriu as mensagens anteriores, mesmo que
+        // o webhook de leitura ainda esteja processando ou chegue fora de ordem.
+        if (resumo?.ultimo_remetente === 'vendedor' &&
+            new Date(m.data_envio).getTime() <= new Date(resumo.data_ultima_mensagem).getTime()) return;
         if (m.conversa_id === abertaId) return; // conversa aberta não conta
         if (!conversaIds.includes(m.conversa_id)) return; // só desta empresa
         if (m.status === 'lida') return; // já lida, não conta
@@ -1073,7 +1078,14 @@ export default function BatePapo() {
       if (event.type !== 'create') return;
 
       const msgData = event.data;
+      if (!msgData || msgData.empresa_id !== empresaId) return;
       const conversaAtualId = conversaSelecionadaIdRef.current;
+      const resumoAtual = conversasRef.current.find(c => c.id === msgData.conversa_id);
+      const recebidaAntesDaResposta = msgData.remetente === 'cliente' &&
+        resumoAtual?.ultimo_remetente === 'vendedor' &&
+        new Date(msgData.data_envio).getTime() <= new Date(resumoAtual.data_ultima_mensagem).getTime();
+      // Reconciliar também quando a resposta veio pelo celular/WhatsApp.
+      if (msgData.remetente === 'vendedor') reconciliarLeitura();
 
       console.log(`🔄 Nova mensagem: ${msgData?.id} para conversa ${msgData?.conversa_id}, conversa aberta: ${conversaAtualId}`);
 
@@ -1099,7 +1111,7 @@ export default function BatePapo() {
       }
 
       // Atualizar contador de não lidas e marcar último remetente como cliente
-      if (msgData?.remetente === 'cliente' && msgData?.status !== 'lida' && msgData?.conversa_id) {
+      if (msgData?.remetente === 'cliente' && !recebidaAntesDaResposta && msgData?.status !== 'lida' && msgData?.conversa_id) {
         const conversaAtualId = conversaSelecionadaIdRef.current;
         if (msgData.conversa_id !== conversaAtualId) {
           setNaoLidasPorConversa(prev => {
@@ -1118,7 +1130,7 @@ export default function BatePapo() {
       }
 
       // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem
-      if (msgData?.remetente === 'cliente' && msgData?.id) {
+      if (msgData?.remetente === 'cliente' && !recebidaAntesDaResposta && msgData?.status !== 'lida' && msgData?.id) {
         // Checar se já notificou esta mensagem
         if (notificadasRef.current.has(msgData.id)) return;
         notificadasRef.current.add(msgData.id);
