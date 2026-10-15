@@ -7,7 +7,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url, template_botoes = [], conversa_id, texto_preview, delay_segundos = 5, pausar_apos = 0, duracao_pausa = 60, nome_campanha = '', job_id = '' } = await req.json();
+    const { empresa_id, template_name, template_language = 'pt_BR', variaveis = {}, contatos = [], template_header_type, template_header_url, template_botoes = [], conversa_id, texto_preview, delay_segundos = 5, delay_min_segundos, delay_max_segundos, pausar_apos = 0, duracao_pausa = 60, nome_campanha = '', job_id = '' } = await req.json();
 
     if (!empresa_id || !template_name || contatos.length === 0) {
       return Response.json({ error: 'empresa_id, template_name e contatos são obrigatórios' }, { status: 400 });
@@ -58,6 +58,14 @@ Deno.serve(async (req) => {
     let enviados = 0;
     let erros = 0;
     const resultados = [];
+    const minConfigurado = Number(delay_min_segundos);
+    const maxConfigurado = Number(delay_max_segundos);
+    const temFaixaAleatoria = Number.isFinite(minConfigurado) && minConfigurado > 0 &&
+      Number.isFinite(maxConfigurado) && maxConfigurado >= minConfigurado;
+    const atrasoLegadoMs = Math.max(1000, (Number(delay_segundos) || 5) * 1000);
+    const intervaloMinMs = temFaixaAleatoria ? Math.max(1000, Math.min(120000, minConfigurado * 1000)) : atrasoLegadoMs;
+    const intervaloMaxMs = temFaixaAleatoria ? Math.max(intervaloMinMs, Math.min(120000, maxConfigurado * 1000)) : atrasoLegadoMs;
+    const proximoIntervaloMs = () => Math.floor(intervaloMinMs + Math.random() * (intervaloMaxMs - intervaloMinMs + 1));
 
     // ── Detectar conexão D-API Cloud ativa ──
     // Ordem de prioridade (fonte de verdade = a conversa):
@@ -540,14 +548,20 @@ Deno.serve(async (req) => {
         resultados.push({ telefone: numeroLimpo, status: 'erro', motivo: e.message });
       }
 
-      // Delay configurável entre envios
-      const delayMs = Math.max(1000, (Number(delay_segundos) || 5) * 1000);
-      await new Promise(r => setTimeout(r, delayMs));
+      // Intervalo aleatório entre contatos; não espera depois do último.
+      if (resultados.length < contatos.length) await new Promise(r => setTimeout(r, proximoIntervaloMs()));
 
-      // Pausa automática a cada N mensagens
-      if (pausar_apos > 0 && (enviados + erros) % pausar_apos === 0 && (enviados + erros) > 0) {
-        const pausaMs = Math.max(10000, (Number(duracao_pausa) || 60) * 1000);
-        console.log(`⏸️ Pausa automática de ${pausaMs / 1000}s após ${enviados + erros} mensagens`);
+      // Pausa após a quantidade configurada de mensagens enviadas com sucesso.
+      const pausaAposEnvios = Math.max(0, Number(pausar_apos) || 0);
+      if (
+        resultados.length < contatos.length &&
+        pausaAposEnvios > 0 &&
+        enviados > 0 &&
+        enviados % pausaAposEnvios === 0
+      ) {
+        const minutosPausa = Math.max(1, Number(duracao_pausa) || 10);
+        const pausaMs = minutosPausa * 60 * 1000;
+        console.log(`⏸️ Pausa automática de ${minutosPausa} minutos após ${enviados} envios bem-sucedidos`);
         await new Promise(r => setTimeout(r, pausaMs));
       }
     }
