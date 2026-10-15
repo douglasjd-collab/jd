@@ -69,6 +69,20 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
         setSalvando(false);
         return;
       }
+      if (podeEditarConteudo && campanha.canal === 'whatsapp_nao_oficial') {
+        const minimo = Number(form.intervalo_min_segundos);
+        const maximo = Number(form.intervalo_max_segundos);
+        if (!Number.isFinite(minimo) || minimo < 1 || !Number.isFinite(maximo) || maximo < minimo) {
+          toast.error('Confira o intervalo: o máximo deve ser igual ou maior que o mínimo.');
+          setSalvando(false);
+          return;
+        }
+        if (form.mensagem_tipo !== 'texto' && !String(form.midia_url || '').trim()) {
+          toast.error('Informe a URL da imagem ou do vídeo.');
+          setSalvando(false);
+          return;
+        }
+      }
       const update = {
         nome: form.nome?.trim() || campanha.nome,
         descricao: form.descricao,
@@ -218,25 +232,7 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
             </div>
           )}
 
-          {podeEditarConteudo && campanha.canal === 'whatsapp_nao_oficial' && <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label>Pausar após N envios</Label>
-              <Input
-                type="number"
-                value={form.pausa_apos}
-                onChange={(e) => setForm({ ...form, pausa_apos: e.target.value })}
-                placeholder="0 = sem pausa"
-              />
-            </div>
-            <div>
-              <Label>Duração da pausa (min)</Label>
-              <Input
-                type="number"
-                value={form.duracao_pausa_min}
-                onChange={(e) => setForm({ ...form, duracao_pausa_min: e.target.value })}
-              />
-            </div>
-          </div>
+
         </div>
 
         <DialogFooter>
