@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+
+// Mantém a proteção mesmo ao fechar o chat e montar outro cabeçalho.
+const finalizacoesPendentes = new Set();
 import { base44 } from '@/api/base44Client';
 import { Button } from "@/components/ui/button";
 import {
@@ -141,13 +144,26 @@ _Cashback sujeito às regras da campanha._`;
 
   const concluirFinalizacao = async ({ enviarMensagem = false } = {}) => {
     if (finalizando || !conversaSelecionada?.id) return;
+    if (finalizacoesPendentes.has(conversaSelecionada.id)) {
+      toast.info('Esta conversa já está sendo finalizada.');
+      return;
+    }
     if (enviarMensagem && !mensagemFinalizacao.trim()) {
       toast.error('Digite a mensagem de finalização.');
       return;
     }
 
     const conversaId = conversaSelecionada.id;
+    finalizacoesPendentes.add(conversaId);
     setFinalizando(true);
+    const avisoId = toast.loading('Finalizando conversa…');
+    // Libera a navegação; a confirmação só será exibida após gravar no banco.
+    setFinalizarModalOpen(false);
+    if (onConversaFinalizada) {
+      onConversaFinalizada(conversaId);
+    } else {
+      setConversaSelecionada(null);
+    }
     try {
       if (enviarMensagem) {
         if (!onEnviarMensagemFinalizacao) {
@@ -189,19 +205,15 @@ _Cashback sujeito às regras da campanha._`;
           : c)
       );
       queryClient.invalidateQueries({ queryKey: ['contadores-bate-papo', empresaId] });
-      setFinalizarModalOpen(false);
-      if (onConversaFinalizada) {
-        onConversaFinalizada(conversaId);
-      } else {
-        setConversaSelecionada(null);
-      }
       toast.success(enviarMensagem
         ? 'Mensagem enviada e conversa finalizada'
-        : 'Conversa finalizada sem enviar mensagem'
+        : 'Conversa finalizada sem enviar mensagem',
+        { id: avisoId }
       );
     } catch (error) {
-      toast.error('Não foi possível finalizar: ' + (error?.message || 'erro desconhecido'));
+      toast.error('Não foi possível finalizar a conversa. Ela continua na lista: ' + (error?.message || 'erro desconhecido'), { id: avisoId });
     } finally {
+      finalizacoesPendentes.delete(conversaId);
       setFinalizando(false);
     }
   };
