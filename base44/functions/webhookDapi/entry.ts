@@ -519,7 +519,8 @@ async function processMessageReceived(base44, body, connection, empresaId) {
   }
 
   const data = body.data || body.message || body;
-  const isFromMe = data?.fromMe === true || data?.key?.fromMe === true;
+  const isFromMe = [data?.fromMe, data?.key?.fromMe, data?.from_me, data?.isFromMe]
+      .some(value => value === true || value === 1 || value === 'true' || value === '1');
 
   if (data?.is_group === true || String(data?.from?.jid || '').includes('@g.us')) {
     await registrarDiagnostico(base44, _traceId, 4, {
