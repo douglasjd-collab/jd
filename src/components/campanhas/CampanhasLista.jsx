@@ -364,7 +364,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
       </Card>
 
       <Dialog open={!!detalhe} onOpenChange={(o) => !o && setDetalhe(null)}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{detalhe?.nome}</DialogTitle>
           </DialogHeader>
