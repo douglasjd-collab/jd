@@ -106,7 +106,7 @@ async function processarCampanha(base44: any, campanha: any, campanhaId: string)
 
     let atrasoDeErroAplicado = false;
     try {
-      const resposta = await withTimeout(
+      const resposta: any = await withTimeout(
         base44.asServiceRole.functions.invoke("whatsappService", payload),
         60000,
         "A integração não respondeu em 60 segundos. Confira o WhatsApp antes de tentar novamente."
