@@ -367,6 +367,35 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                   <p className="text-slate-700">{detalhe.descricao}</p>
                 </div>
               )}
+              {detalhe.mensagem_texto && (
+                <div className="col-span-2 rounded-md bg-slate-50 p-3">
+                  <p className="text-xs text-slate-500 mb-1">Mensagem</p>
+                  <p className="text-slate-700 whitespace-pre-wrap">{detalhe.mensagem_texto}</p>
+                </div>
+              )}
+              <div className="col-span-2 border-t pt-3 mt-1">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-slate-800">Destinatários</h3>
+                  <span className="text-xs text-slate-500">{destinatariosDetalhe.length} registros</span>
+                </div>
+                {carregandoDestinatarios ? <p className="text-sm text-slate-500">Carregando destinatários…</p> : (
+                  <div className="max-h-64 overflow-y-auto rounded-md border border-slate-200 divide-y divide-slate-100">
+                    {destinatariosDetalhe.map((dest) => (
+                      <div key={dest.id} className="flex items-start justify-between gap-3 p-2.5 text-sm">
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-800 truncate">{dest.cliente_nome || 'Sem nome'}</p>
+                          <p className="text-xs text-slate-500">{dest.telefone || 'Sem telefone'}</p>
+                          {dest.erro_mensagem && <p className="text-xs text-red-600 mt-1 break-words">Erro: {dest.erro_mensagem}</p>}
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${['enviada', 'entregue', 'lida'].includes(dest.status) ? 'bg-emerald-100 text-emerald-700' : dest.status === 'falhou' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                          {dest.status || '—'}
+                        </span>
+                      </div>
+                    ))}
+                    {!destinatariosDetalhe.length && <p className="p-3 text-sm text-slate-500">Nenhum destinatário registrado.</p>}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
