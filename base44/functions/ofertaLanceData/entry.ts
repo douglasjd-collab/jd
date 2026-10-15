@@ -1,8 +1,8 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 
 // Somente os campos usados na tela de Oferta de Lance. As entidades têm dezenas
 // de campos: trazer o registro completo de milhares de cartas sobrecarrega o banco
-// e é uma das causas de timeout na hora de gravar a oferta.
+// e é uma das causas do timeout na hora de gravar a oferta.
 const CAMPOS_VENDA = [
   'cliente_id', 'cliente_nome', 'cliente_cpf', 'empresa_id', 'grupo', 'cota',
   'status', 'prazo', 'valorCredito', 'administradora_nome', 'vendedor_nome', 'observacao_lance',
@@ -17,6 +17,12 @@ const CAMPOS_OFERTA = [
   'usuario_nome', 'observacao', 'historico_alteracoes',
 ];
 
+// A consulta pode devolver uma página ({ items }) ou a lista direta, conforme a versão do SDK.
+const extrairLista = (resultado) => {
+  if (Array.isArray(resultado)) return resultado;
+  return resultado?.items || [];
+};
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -30,17 +36,17 @@ Deno.serve(async (req) => {
     const { competencia } = body;
 
     // Buscar vendas da entidade Venda (legado)
-    const vendasLegado = await base44.asServiceRole.entities.Venda.list({
+    const vendasLegado = extrairLista(await base44.asServiceRole.entities.Venda.list({
       sort: '-created_date',
       limit: 2000,
       fields: CAMPOS_VENDA,
-    });
+    }));
 
     // Buscar propostas de consórcio da entidade Proposta (atual)
-    const propostas = await base44.asServiceRole.entities.Proposta.filter(
+    const propostas = extrairLista(await base44.asServiceRole.entities.Proposta.filter(
       { produto: 'consorcio' },
       { sort: '-created_date', limit: 2000, fields: CAMPOS_PROPOSTA }
-    );
+    ));
 
     // Normalizar propostas para o mesmo formato das vendas legadas
     const propostasNormalizadas = propostas.map(p => ({
@@ -58,11 +64,11 @@ Deno.serve(async (req) => {
 
     // Buscar TODAS as ofertas (não filtra por competência) — as ofertas devem persistir
     // ao virar o mês. O frontend separa por competência para determinar pendentes.
-    const ofertas = await base44.asServiceRole.entities.OfertaLance.list({
+    const ofertas = extrairLista(await base44.asServiceRole.entities.OfertaLance.list({
       sort: '-data_oferta',
       limit: 2000,
       fields: CAMPOS_OFERTA,
-    });
+    }));
 
     // Enriquecer ofertas com dados da venda
     const ofertasEnriquecidas = ofertas.map(oferta => {

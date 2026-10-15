@@ -58,6 +58,10 @@ import PopupChamadaRecebida from '@/components/chat/PopupChamadaRecebida';
 import CampanhaMonitorGlobal from '@/components/campanhas/CampanhaMonitorGlobal';
 import ChatFlutuante from '@/components/chat/ChatFlutuante';
 
+// Consultas com opções ({ limit, fields }) devolvem uma página ({ items });
+// consultas posicionais devolvem a lista direta.
+const listaDe = (resultado) => (Array.isArray(resultado) ? resultado : (resultado?.items || []));
+
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
@@ -150,7 +154,13 @@ export default function Layout({ children, currentPageName }) {
     const isAdminPerfil = ['master', 'super_admin', 'admin'].includes(user.perfil);
     if (isAdminPerfil) {
       const filtroBase = user.empresa_id ? { empresa_id: user.empresa_id } : {};
-      base44.entities.Proposta.filter(filtroBase, null, 3000).then(propostas => {
+      // Traz apenas os campos usados na contagem — evita carregar milhares de
+      // propostas completas em cada troca de tela.
+      base44.entities.Proposta.filter(filtroBase, {
+        limit: 3000,
+        fields: ['produto', 'comissao_banco_recebida', 'comissao_vendedor_paga', 'vendedor_id'],
+      }).then(resposta => {
+        const propostas = listaDe(resposta);
         const comPendencia = propostas.filter(p =>
           p.produto !== 'consorcio' && p.produto !== 'financiamento' &&
           p.comissao_banco_recebida === true &&
@@ -163,7 +173,11 @@ export default function Layout({ children, currentPageName }) {
 
       // Consórcio: ComissaoAPagar pendentes com grupo/cota
       const filtroConsorcio = user.empresa_id ? { empresa_id: user.empresa_id } : {};
-      base44.entities.ComissaoAPagar.filter(filtroConsorcio, null, 2000).then(comissoes => {
+      base44.entities.ComissaoAPagar.filter(filtroConsorcio, {
+        limit: 2000,
+        fields: ['grupo', 'cota', 'status_pagamento', 'vendedor_id'],
+      }).then(resposta => {
+        const comissoes = listaDe(resposta);
         const pendentesConsorcio = comissoes.filter(c =>
           c.grupo && c.cota &&
           ['a_pagar', 'a_apagar', 'pendente'].includes(c.status_pagamento)
@@ -178,8 +192,13 @@ export default function Layout({ children, currentPageName }) {
     if (!user) return;
     const filtroEmpresa = user.empresa_id ? { empresa_id: user.empresa_id } : {};
     if (user.empresa_id) {
-      base44.entities.MensagemWhatsapp.filter({ ...filtroEmpresa, remetente: 'cliente' }, '-data_envio', 500)
-        .then(msgs => {
+      base44.entities.MensagemWhatsapp.filter({ ...filtroEmpresa, remetente: 'cliente' }, {
+        sort: '-data_envio',
+        limit: 500,
+        fields: ['status'],
+      })
+        .then(resposta => {
+          const msgs = listaDe(resposta);
           const naoLidas = msgs.filter(m => m.status !== 'lida').length;
           setMensagensNaoLidas(naoLidas);
         }).catch(() => {});
@@ -190,7 +209,11 @@ export default function Layout({ children, currentPageName }) {
     if (!user) return;
     const agora = new Date().toISOString();
     const filtroAgenda = user.empresa_id ? { empresa_id: user.empresa_id } : {};
-    base44.entities.Agenda.filter(filtroAgenda, null, 500).then(items => {
+    base44.entities.Agenda.filter(filtroAgenda, {
+      limit: 500,
+      fields: ['status', 'inicio'],
+    }).then(resposta => {
+      const items = listaDe(resposta);
       const agendados = items.filter(a => a.status === 'agendado' || a.status === 'confirmado').length;
       const atrasados = items.filter(a =>
         (a.status === 'agendado' || a.status === 'confirmado') && a.inicio && a.inicio < agora
@@ -205,7 +228,12 @@ export default function Layout({ children, currentPageName }) {
     const hoje = new Date().toLocaleDateString('fr-CA'); // YYYY-MM-DD local
     const filtro = user.empresa_id ? { empresa_id: user.empresa_id } : {};
     const isAdminPerfil = ['master', 'super_admin', 'admin'].includes(user.perfil);
-    base44.entities.Tarefa.filter(filtro, '-created_date', 500).then(tarefas => {
+    base44.entities.Tarefa.filter(filtro, {
+      sort: '-created_date',
+      limit: 500,
+      fields: ['status', 'data_conclusao_prevista', 'responsavel_principal_id', 'responsaveis_ids', 'created_date'],
+    }).then(resposta => {
+      const tarefas = listaDe(resposta);
       const vencidas = tarefas.filter(t => {
         if (!t.data_conclusao_prevista || t.data_conclusao_prevista >= hoje) return false;
         if (t.status === 'concluido' || t.status === 'arquivado') return false;
