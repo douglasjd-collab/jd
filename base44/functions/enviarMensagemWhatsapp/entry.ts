@@ -730,7 +730,11 @@ Deno.serve(async (req) => {
         // Gravar a mensagem é o passo crítico. O log de auditoria e o resumo da lista de
         // conversas são secundários: se qualquer um deles falhar, o envio não pode voltar
         // como erro (a mensagem já saiu) nem deixar de ser gravado e sumir do Bate-Papo.
-        const novaMensagem = await base44.asServiceRole.entities.MensagemWhatsapp.create({
+        // O eco pode chegar antes da resposta HTTP da D-API.
+        const ecos = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+          empresa_id: empresaId, conversa_id, whatsapp_message_id: messageIdDapi,
+        }, '-created_date', 1);
+        const dadosMensagemDapi = {
           conversa_id: conversa_id,
           empresa_id: empresaId,
           remetente: 'vendedor',
@@ -750,7 +754,13 @@ Deno.serve(async (req) => {
           whatsapp_message_id: messageIdDapi,
           data_envio: new Date().toISOString(),
           status: 'enviada'
-        });
+        };
+        const novaMensagem = ecos?.[0]
+          ? await base44.asServiceRole.entities.MensagemWhatsapp.update(ecos[0].id, {
+              usuario_id: user.id, usuario_nome: nomeAtendente, atendente_nome: nomeAtendente,
+              ...(arquivoUrlDapi ? {arquivo_url: arquivoUrlDapi} : {}),
+            })
+          : await base44.asServiceRole.entities.MensagemWhatsapp.create(dadosMensagemDapi);
 
         confirmacaoDapi.message_id = novaMensagem.id;
 
