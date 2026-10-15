@@ -370,13 +370,28 @@ export default function OfertaLance() {
     queryFn: () => base44.entities.StatusProposta.filter({ tipo: 'principal', ativo: true }, 'ordem', 50),
   });
 
+  // Atualiza só a cota já carregada, sem executar novamente a carga completa.
+  const aplicarStatusLocal = (vendaId, novoStatus) => {
+    queryClient.setQueriesData({ queryKey: ['oferta-lance-data'] }, dados =>
+      dados ? {
+        ...dados,
+        vendas: (dados.vendas || []).map(item =>
+          item.id === vendaId ? { ...item, status: novoStatus } : item
+        ),
+      } : dados
+    );
+  };
+
   const handleAlterarStatus = async (venda, novoStatus) => {
     if (novoStatus === venda.status || statusEmAndamento.current.has(venda.id)) return;
     statusEmAndamento.current.add(venda.id);
     setStatusSalvando(prev => ({ ...prev, [venda.id]: true }));
+
+    // Mostra o novo status na hora e grava no banco em segundo plano: a gravação
+    // pode demorar e não deve travar a tela.
+    aplicarStatusLocal(venda.id, novoStatus);
+
     try {
-      // Impede que uma consulta anterior sobrescreva o status recém-gravado.
-      await queryClient.cancelQueries({ queryKey: ['oferta-lance-data'] });
       if (venda.produto === 'consorcio') {
         await base44.entities.Proposta.update(venda.id, { status: novoStatus });
       } else {
@@ -385,18 +400,13 @@ export default function OfertaLance() {
           prazo: Number(venda.prazo || venda.prazo_meses || 1),
         });
       }
-      // Atualizar só a cota salva, sem executar novamente a carga completa.
-      queryClient.setQueriesData({ queryKey: ['oferta-lance-data'] }, dados =>
-        dados ? {
-          ...dados,
-          vendas: (dados.vendas || []).map(item =>
-            item.id === venda.id ? { ...item, status: novoStatus } : item
-          ),
-        } : dados
-      );
+      // Impede que uma carga em andamento (mais lenta) sobrescreva o status já gravado.
+      queryClient.cancelQueries({ queryKey: ['oferta-lance-data'] }, { revert: false });
+      aplicarStatusLocal(venda.id, novoStatus);
       toast.success('Status atualizado!');
     } catch (error) {
       console.error('Erro ao alterar status da cota:', error);
+      aplicarStatusLocal(venda.id, venda.status);
       toast.error('Não foi possível salvar o status. Tente novamente.');
     } finally {
       statusEmAndamento.current.delete(venda.id);
@@ -696,7 +706,7 @@ export default function OfertaLance() {
                 ? "border-orange-300 bg-orange-100 text-orange-700"
                 : "border-slate-200 text-slate-700"
             )}>
-              {statusSalvando[row.id] ? 'Salvando…' : row.status}
+              {row.status}
               {statusSalvando[row.id]
                 ? <Loader2 className="w-3 h-3 animate-spin" />
                 : <ChevronDown className="w-3 h-3 text-slate-400" />}
