@@ -56,7 +56,7 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
 
   if (!form) return null;
 
-  const podeEditarConteudo = ['rascunho', 'agendada'].includes(campanha?.status)
+  const podeEditarConteudo = ['rascunho', 'agendada', 'pausada'].includes(campanha?.status)
     && Number(campanha?.enviados || 0) === 0
     && Number(campanha?.falhas || 0) === 0;
   const podeEditarAgendamento = ['rascunho', 'agendada'].includes(campanha?.status);
