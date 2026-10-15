@@ -111,9 +111,36 @@ async function processarCampanha(base44: any, campanha: any, campanhaId: string)
         60000,
         "A integração não respondeu em 60 segundos. Confira o WhatsApp antes de tentar novamente."
       );
-      const data = resposta?.data || resposta;
-      if (data?.success === false) throw new Error(data?.error || "Falha informada pela D-API");
-      const messageId = data?.messageId || data?.message_id || data?.data?.messageId || data?.data?.id || "";
+      // whatsappService devolve sucesso no envelope da função, mas a resposta real
+      // da D-API fica aninhada em data.data. Validar todas as camadas evita marcar
+      // como enviada uma mensagem que recebeu HTTP 4xx/5xx do provedor.
+      const envelope = resposta?.data || resposta;
+      const resultadoApi = envelope?.data || envelope;
+      const corpoApi = resultadoApi?.data || resultadoApi;
+      const camadasResposta = [envelope, resultadoApi, corpoApi].filter(Boolean);
+      const falhaApi = camadasResposta.find((camada) =>
+        camada.success === false ||
+        (Number.isFinite(Number(camada.httpStatus)) && Number(camada.httpStatus) >= 400)
+      );
+      if (falhaApi) {
+        throw new Error(
+          falhaApi.error ||
+          falhaApi.message ||
+          resultadoApi?.error ||
+          corpoApi?.error ||
+          "Falha informada pela D-API"
+        );
+      }
+      const messageId =
+        corpoApi?.messageId ||
+        corpoApi?.message_id ||
+        corpoApi?.id ||
+        corpoApi?.key?.id ||
+        corpoApi?.message?.id ||
+        resultadoApi?.messageId ||
+        resultadoApi?.message_id ||
+        resultadoApi?.id ||
+        "";
       await base44.asServiceRole.entities.CampanhaDestinatario.update(destinatario.id, {
         status: "enviada",
         data_envio: new Date().toISOString(),
