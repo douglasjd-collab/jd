@@ -69,6 +69,14 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
         setSalvando(false);
         return;
       }
+      if (podeEditarAgendamento && form.status === 'agendada') {
+        const horario = new Date(`${form.agendada_para_data}T${form.agendada_para_hora}:00`);
+        if (horario.getTime() <= Date.now()) {
+          toast.error('Escolha um horário futuro para agendar a campanha.');
+          setSalvando(false);
+          return;
+        }
+      }
       if (podeEditarConteudo && campanha.canal === 'whatsapp_nao_oficial') {
         const minimo = Number(form.intervalo_min_segundos);
         const maximo = Number(form.intervalo_max_segundos);
