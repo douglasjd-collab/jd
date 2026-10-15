@@ -1241,6 +1241,9 @@ export default function BatePapo() {
       toast.error(errorMsg);
     },
     onSuccess: async (data, variables) => {
+      // O encerramento tem sua própria confirmação e não precisa consultar ACKs
+      // ou recarregar mensagens de um chat que já foi fechado.
+      if (variables.finalizarAposEnvio) return;
       // No envio de encerramento, não reatribuir o atendente: a finalização
       // seguinte precisa manter responsavel_id vazio para ir direto a "Finalizados".
       if (conversaSelecionada && !variables.finalizarAposEnvio) {
