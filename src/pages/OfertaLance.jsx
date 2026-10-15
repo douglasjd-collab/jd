@@ -68,6 +68,8 @@ export default function OfertaLance() {
   const [templatePadrao, setTemplatePadrao] = useState(TEMPLATE_PADRAO_LANCE); // template salvo
   const [salvandoPadrao, setSalvandoPadrao] = useState(false);
   const queryClient = useQueryClient();
+  const [statusSalvando, setStatusSalvando] = useState({});
+  const statusEmAndamento = React.useRef(new Set());
 
   // Carregar template salvo do ConfiguracaoSistema ao montar
   useEffect(() => {
@@ -361,18 +363,41 @@ export default function OfertaLance() {
   });
 
   const handleAlterarStatus = async (venda, novoStatus) => {
-    // Rows vêm de Proposta (produto='consorcio') ou Venda (legado)
-    if (venda.produto === 'consorcio') {
-      await base44.entities.Proposta.update(venda.id, { status: novoStatus });
-    } else {
-      // Venda legado exige prazo obrigatório — repassar o valor existente
-      await base44.entities.Venda.update(venda.id, {
-        status: novoStatus,
-        prazo: Number(venda.prazo || venda.prazo_meses || 1),
+    if (novoStatus === venda.status || statusEmAndamento.current.has(venda.id)) return;
+    statusEmAndamento.current.add(venda.id);
+    setStatusSalvando(prev => ({ ...prev, [venda.id]: true }));
+    try {
+      // Impede que uma consulta anterior sobrescreva o status recém-gravado.
+      await queryClient.cancelQueries({ queryKey: ['oferta-lance-data'] });
+      if (venda.produto === 'consorcio') {
+        await base44.entities.Proposta.update(venda.id, { status: novoStatus });
+      } else {
+        await base44.entities.Venda.update(venda.id, {
+          status: novoStatus,
+          prazo: Number(venda.prazo || venda.prazo_meses || 1),
+        });
+      }
+      // Atualizar só a cota salva, sem executar novamente a carga completa.
+      queryClient.setQueriesData({ queryKey: ['oferta-lance-data'] }, dados =>
+        dados ? {
+          ...dados,
+          vendas: (dados.vendas || []).map(item =>
+            item.id === venda.id ? { ...item, status: novoStatus } : item
+          ),
+        } : dados
+      );
+      toast.success('Status atualizado!');
+    } catch (error) {
+      console.error('Erro ao alterar status da cota:', error);
+      toast.error('Não foi possível salvar o status. Tente novamente.');
+    } finally {
+      statusEmAndamento.current.delete(venda.id);
+      setStatusSalvando(prev => {
+        const next = { ...prev };
+        delete next[venda.id];
+        return next;
       });
     }
-    queryClient.invalidateQueries({ queryKey: ['oferta-lance-data'] });
-    toast.success('Status atualizado!');
   };
 
   // Buscar vendas e ofertas via função backend (contorna problema de empresa_id)
@@ -616,14 +641,16 @@ export default function OfertaLance() {
       cell: (row) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className={cn(
+            <button type="button" disabled={!!statusSalvando[row.id]} aria-busy={!!statusSalvando[row.id]} className={cn(
               "flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium capitalize hover:bg-slate-50 transition-colors",
               row.status === 'em_atraso'
                 ? "border-orange-300 bg-orange-100 text-orange-700"
                 : "border-slate-200 text-slate-700"
             )}>
-              {row.status}
-              <ChevronDown className="w-3 h-3 text-slate-400" />
+              {statusSalvando[row.id] ? 'Salvando…' : row.status}
+              {statusSalvando[row.id]
+                ? <Loader2 className="w-3 h-3 animate-spin" />
+                : <ChevronDown className="w-3 h-3 text-slate-400" />}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
@@ -636,7 +663,7 @@ export default function OfertaLance() {
               { value: 'doc_pendentes', label: 'Doc. Pendentes' },
               { value: 'contemplada', label: 'Contemplada' },
             ].map(s => (
-              <DropdownMenuItem key={s.value} onClick={() => handleAlterarStatus(row, s.value)}>
+              <DropdownMenuItem key={s.value} disabled={!!statusSalvando[row.id] || s.value === row.status} onClick={() => handleAlterarStatus(row, s.value)}>
                 {s.label}
               </DropdownMenuItem>
             ))}
