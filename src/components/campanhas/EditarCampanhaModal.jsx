@@ -16,8 +16,6 @@ import { Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
-const STATUS_OPCOES = ['rascunho', 'agendada', 'executando', 'pausada', 'concluida', 'cancelada', 'erro'];
-
 function isoToCampos(isoStr) {
   if (!isoStr) return { data: '', hora: '' };
   try {
@@ -45,6 +43,11 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
       status: campanha.status || 'rascunho',
       agendada_para_data: data,
       agendada_para_hora: hora,
+      mensagem_tipo: campanha.mensagem_tipo || 'texto',
+      mensagem_texto: campanha.mensagem_texto || '',
+      midia_url: campanha.midia_url || '',
+      intervalo_min_segundos: campanha.intervalo_min_segundos ?? 5,
+      intervalo_max_segundos: campanha.intervalo_max_segundos ?? 10,
       velocidade_envio: campanha.velocidade_envio ?? 60,
       pausa_apos: campanha.pausa_apos ?? '',
       duracao_pausa_min: campanha.duracao_pausa_min ?? '',
@@ -53,21 +56,42 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
 
   if (!form) return null;
 
+  const podeEditarConteudo = ['rascunho', 'agendada'].includes(campanha?.status)
+    && Number(campanha?.enviados || 0) === 0
+    && Number(campanha?.falhas || 0) === 0;
+  const podeEditarAgendamento = ['rascunho', 'agendada'].includes(campanha?.status);
+
   const submit = async () => {
     setSalvando(true);
     try {
+      if (form.status === 'agendada' && (!form.agendada_para_data || !form.agendada_para_hora)) {
+        toast.error('Informe a data e o horário da campanha agendada.');
+        setSalvando(false);
+        return;
+      }
       const update = {
         nome: form.nome?.trim() || campanha.nome,
         descricao: form.descricao,
-        status: form.status,
-        velocidade_envio: Number(form.velocidade_envio) || 60,
-        pausa_apos: form.pausa_apos === '' ? null : Number(form.pausa_apos),
-        duracao_pausa_min: form.duracao_pausa_min === '' ? null : Number(form.duracao_pausa_min),
       };
-      if (form.agendada_para_data && form.agendada_para_hora) {
-        update.agendada_para = new Date(`${form.agendada_para_data}T${form.agendada_para_hora}:00`).toISOString();
-      } else {
-        update.agendada_para = null;
+      if (podeEditarAgendamento) {
+        update.status = form.status;
+        if (form.status === 'agendada' && form.agendada_para_data && form.agendada_para_hora) {
+          update.agendada_para = new Date(`${form.agendada_para_data}T${form.agendada_para_hora}:00`).toISOString();
+        } else {
+          update.agendada_para = null;
+        }
+      }
+      if (podeEditarConteudo) {
+        update.velocidade_envio = Number(form.velocidade_envio) || 60;
+        update.intervalo_min_segundos = Number(form.intervalo_min_segundos) || 5;
+        update.intervalo_max_segundos = Number(form.intervalo_max_segundos) || 10;
+        update.pausa_apos = form.pausa_apos === '' ? null : Number(form.pausa_apos);
+        update.duracao_pausa_min = form.duracao_pausa_min === '' ? null : Number(form.duracao_pausa_min);
+        if (campanha.canal === 'whatsapp_nao_oficial') {
+          update.mensagem_tipo = form.mensagem_tipo;
+          update.mensagem_texto = form.mensagem_texto;
+          update.midia_url = form.mensagem_tipo === 'texto' ? null : form.midia_url;
+        }
       }
       await base44.entities.Campanha.update(campanha.id, update);
       toast.success('Campanha atualizada');
@@ -108,49 +132,93 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label>Status</Label>
-              <select
-                value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value })}
-                className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white"
-              >
-                {STATUS_OPCOES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Mensagens por minuto</Label>
-              <Input
-                type="number"
-                value={form.velocidade_envio}
-                onChange={(e) => setForm({ ...form, velocidade_envio: e.target.value })}
-              />
-            </div>
-          </div>
+          {podeEditarAgendamento ? (
+            <>
+              <div>
+                <Label>Status</Label>
+                <select
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white"
+                >
+                  <option value="rascunho">Rascunho</option>
+                  <option value="agendada">Agendada</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label>Data agendada</Label>
+                  <Input type="date" value={form.agendada_para_data} onChange={(e) => setForm({ ...form, agendada_para_data: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Hora agendada</Label>
+                  <Input type="time" value={form.agendada_para_hora} onChange={(e) => setForm({ ...form, agendada_para_hora: e.target.value })} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+              Status: {campanha.status}. Esta campanha já teve processamento; mensagem, público e agendamento estão bloqueados para preservar o histórico.
+            </p>
+          )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label>Data agendada</Label>
-              <Input
-                type="date"
-                value={form.agendada_para_data}
-                onChange={(e) => setForm({ ...form, agendada_para_data: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label>Hora agendada</Label>
-              <Input
-                type="time"
-                value={form.agendada_para_hora}
-                onChange={(e) => setForm({ ...form, agendada_para_hora: e.target.value })}
-              />
-            </div>
-          </div>
+          {podeEditarConteudo && campanha.canal === 'whatsapp_nao_oficial' && (
+            <>
+              <div>
+                <Label>Tipo da mensagem</Label>
+                <select value={form.mensagem_tipo} onChange={(e) => setForm({ ...form, mensagem_tipo: e.target.value })} className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white">
+                  <option value="texto">Texto</option>
+                  <option value="imagem_texto">Imagem e texto</option>
+                  <option value="video_texto">Vídeo e texto</option>
+                </select>
+              </div>
+              <div>
+                <Label>Mensagem</Label>
+                <Textarea rows={5} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })} placeholder="Texto enviado aos destinatários" />
+              </div>
+              {form.mensagem_tipo !== 'texto' && (
+                <div>
+                  <Label>URL da mídia</Label>
+                  <Input value={form.midia_url} onChange={(e) => setForm({ ...form, midia_url: e.target.value })} placeholder="https://..." />
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label>Intervalo mínimo (segundos)</Label>
+                  <Input type="number" min="1" value={form.intervalo_min_segundos} onChange={(e) => setForm({ ...form, intervalo_min_segundos: e.target.value })} />
+                </div>
+                <div>
+                  <Label>Intervalo máximo (segundos)</Label>
+                  <Input type="number" min={form.intervalo_min_segundos || 1} value={form.intervalo_max_segundos} onChange={(e) => setForm({ ...form, intervalo_max_segundos: e.target.value })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label>Pausar após N envios</Label>
+                  <Input type="number" min="1" value={form.pausa_apos} onChange={(e) => setForm({ ...form, pausa_apos: e.target.value })} placeholder="50" />
+                </div>
+                <div>
+                  <Label>Duração da pausa (min)</Label>
+                  <Input type="number" min="0" value={form.duracao_pausa_min} onChange={(e) => setForm({ ...form, duracao_pausa_min: e.target.value })} />
+                </div>
+              </div>
+            </>
+          )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {podeEditarConteudo && campanha.canal !== 'whatsapp_nao_oficial' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <Label>Mensagens por minuto</Label>
+                <Input type="number" min="1" value={form.velocidade_envio} onChange={(e) => setForm({ ...form, velocidade_envio: e.target.value })} />
+              </div>
+              <div>
+                <Label>Pausar após N envios</Label>
+                <Input type="number" min="1" value={form.pausa_apos} onChange={(e) => setForm({ ...form, pausa_apos: e.target.value })} />
+              </div>
+            </div>
+          )}
+
+          {podeEditarConteudo && campanha.canal === 'whatsapp_nao_oficial' && <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <Label>Pausar após N envios</Label>
               <Input
