@@ -570,7 +570,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         velocidade_envio: Number(form.velocidade_envio) || 60,
         intervalo_min_segundos: Number(form.intervalo_min_segundos) || 5,
         intervalo_max_segundos: Number(form.intervalo_max_segundos) || 10,
-        pausa_apos: form.pausa_apos ? Number(form.pausa_apos) : 50,
+        pausa_apos: Math.max(1, Number(form.pausa_apos) || 50),
         duracao_pausa_min: Number(form.duracao_pausa_min) || 0,
         agendada_para: agendadaPara,
         config_json: configJson,
