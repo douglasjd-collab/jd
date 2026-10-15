@@ -16,6 +16,14 @@ import { format } from 'date-fns';
 import EditarCampanhaModal from './EditarCampanhaModal';
 
 const STATUS_LIST = ['rascunho', 'agendada', 'executando', 'concluida', 'cancelada', 'pausada', 'erro'];
+const FILTROS_RAPIDOS = [
+  { id: 'todos', label: 'Todas' },
+  { id: 'agendada', label: 'Agendadas' },
+  { id: 'executando', label: 'Em andamento' },
+  { id: 'pausada', label: 'Pausadas' },
+  { id: 'falhas', label: 'Com falhas' },
+  { id: 'concluida', label: 'Concluídas' },
+];
 
 export default function CampanhasLista({ empresaId, user, onNova }) {
   const [search, setSearch] = useState('');
@@ -33,6 +41,16 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
     enabled: !!empresaId,
     refetchInterval: 3000,
   });
+  const { data: destinatariosDetalhe = [], isLoading: carregandoDestinatarios } = useQuery({
+    queryKey: ['campanha-destinatarios-detalhe', detalhe?.id],
+    queryFn: () => base44.entities.CampanhaDestinatario.filter(
+      { campanha_id: detalhe.id },
+      'created_date',
+      500
+    ),
+    enabled: !!detalhe?.id,
+    refetchInterval: detalhe?.status === 'executando' ? 3000 : false,
+  });
 
   const campanhaEmAndamento = useMemo(
     () => (campanhas || []).find((c) => ['executando', 'agendada'].includes(c.status)) || null,
@@ -42,9 +60,12 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
   const filtradas = useMemo(() => {
     return (campanhas || []).filter((c) => {
       const matchSearch = !search || (c.nome || '').toLowerCase().includes(search.toLowerCase());
-      const matchStatus = filtroStatus === 'todos' || c.status === filtroStatus;
+      const matchStatus = filtroStatus === 'todos'
+        || (filtroStatus === 'falhas' ? Number(c.falhas || 0) > 0 || c.status === 'erro' : c.status === filtroStatus);
       return matchSearch && matchStatus;
-    });
+    }).sort((a, b) => filtroStatus === 'agendada'
+      ? new Date(a.agendada_para || 0) - new Date(b.agendada_para || 0)
+      : new Date(b.created_date || 0) - new Date(a.created_date || 0));
   }, [campanhas, search, filtroStatus]);
 
   const duplicar = async (c) => {
@@ -93,66 +114,74 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
   };
 
   const reenviar = async (c) => {
-    if (!c.template_nome) {
+    const falhados = await base44.entities.CampanhaDestinatario.filter(
+      { campanha_id: c.id, status: 'falhou' },
+      'created_date',
+      500
+    );
+    if (!falhados.length) {
+      toast.info('Esta campanha não tem destinatários com falha.');
+      return;
+    }
+    const naFila = c.canal === 'whatsapp_nao_oficial'
+      ? await base44.entities.CampanhaDestinatario.filter({ campanha_id: c.id, status: 'na_fila' }, null, 500)
+      : [];
+    const mensagemConfirmacao = c.canal === 'whatsapp_nao_oficial'
+      ? `Reenviar ${falhados.length} falha(s) e continuar com ${naFila.length} destinatário(s) ainda não processado(s) em "${c.nome}"?`
+      : `Reenviar somente os ${falhados.length} destinatário(s) que falharam em "${c.nome}"?`;
+    if (!confirm(mensagemConfirmacao)) return;
+    if (c.canal !== 'whatsapp_nao_oficial' && !c.template_nome) {
       toast.error('Campanha não possui template vinculado');
       return;
     }
-    if (!confirm(`Reenviar a campanha "${c.nome}"? Apenas os destinatários que falharam serão reencaminhados.`)) return;
+
     setReenviando(c.id);
     try {
-      // 1) Resetar destinatários com falha para a fila
       await base44.entities.CampanhaDestinatario.updateMany(
         { campanha_id: c.id, status: 'falhou' },
-        { $set: { status: 'na_fila', erro_mensagem: '' } }
+        { $set: { status: 'na_fila', data_envio: null, whatsapp_message_id: null } }
       );
-      // 2) Buscar os destinatários na fila que ainda não foram enviados
-      const naFila = await base44.entities.CampanhaDestinatario.filter(
-        { campanha_id: c.id, status: 'na_fila' },
-        null, 500
-      );
-      if (naFila.length === 0) {
-        toast.info('Nenhum destinatário na fila para reenvio.');
-        setReenviando(null);
-        return;
-      }
-      // 3) Buscar dados do template (header/botoes) para o disparo
-      let headerType = '';
-      let headerUrl = '';
-      let botoes = [];
-      if (c.template_id) {
+
+      if (c.canal === 'whatsapp_nao_oficial') {
+        await base44.entities.Campanha.update(c.id, {
+          status: 'executando',
+          falhas: 0,
+          fim_execucao: null,
+        });
         try {
-          const tpl = await base44.entities.WhatsappTemplate.get(c.template_id);
-          headerType = tpl?.header_type || '';
-          headerUrl = tpl?.header_media_url || '';
-          botoes = tpl?.buttons_json ? JSON.parse(tpl.buttons_json) : [];
-        } catch {}
+          await base44.functions.invoke('dispararCampanhaNaoOficial', { campanha_id: c.id });
+        } catch (e) {
+          await base44.entities.Campanha.update(c.id, { status: 'pausada' }).catch(() => {});
+          throw e;
+        }
+        toast.success(`Reenvio iniciado: ${falhados.length} falha(s), além dos destinatários que aguardavam na fila.`);
+      } else {
+        const contatos = falhados.map((d) => ({
+          telefone: d.telefone,
+          cliente_id: d.cliente_id,
+          cliente_nome: d.cliente_nome,
+        }));
+        await base44.entities.Campanha.update(c.id, { status: 'executando' });
+        await base44.functions.invoke('dispararCampanhaMetaOficial', {
+          empresa_id: c.empresa_id,
+          template_name: c.template_nome,
+          template_language: c.template_language || 'pt_BR',
+          template_header_type: '',
+          template_header_url: '',
+          template_botoes: [],
+          contatos,
+          nome_campanha: c.nome,
+          delay_segundos: c.velocidade_envio ? Math.max(1, Math.round(60 / c.velocidade_envio)) : 5,
+          delay_min_segundos: c.intervalo_min_segundos,
+          delay_max_segundos: c.intervalo_max_segundos,
+          pausar_apos: c.pausa_apos || 0,
+          duracao_pausa: c.duracao_pausa_min || 0,
+        });
+        toast.success(`Reenvio iniciado somente para ${falhados.length} destinatário(s).`);
       }
-      // 4) Marcar campanha como executando
-      await base44.entities.Campanha.update(c.id, { status: 'executando' });
-      // 5) Disparar
-      const contatos = naFila.map((d) => ({
-        telefone: d.telefone,
-        cliente_id: d.cliente_id,
-        cliente_nome: d.cliente_nome,
-      }));
-      await base44.functions.invoke('dispararCampanhaMetaOficial', {
-        empresa_id: c.empresa_id,
-        template_name: c.template_nome,
-        template_language: c.template_language || 'pt_BR',
-        template_header_type: headerType,
-        template_header_url: headerUrl,
-        template_botoes: botoes,
-        contatos,
-        nome_campanha: c.nome,
-        delay_segundos: c.velocidade_envio ? Math.max(1, Math.round(60 / c.velocidade_envio)) : 5,
-        delay_min_segundos: c.intervalo_min_segundos,
-        delay_max_segundos: c.intervalo_max_segundos,
-        pausar_apos: c.pausa_apos || 0,
-        duracao_pausa: c.duracao_pausa_min || 0,
-      });
-      toast.success(`Reenvio iniciado para ${naFila.length} destinatário(s).`);
       queryClient.invalidateQueries(['campanhas-lista', empresaId]);
       queryClient.invalidateQueries(['campanhas-dashboard', empresaId]);
+      queryClient.invalidateQueries(['campanha-monitor-global', empresaId]);
     } catch (e) {
       toast.error('Erro ao reenviar: ' + (e.message || 'desconhecido'));
     } finally {
@@ -208,8 +237,8 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
       </div>
 
       <Card className="border border-slate-200 shadow-sm">
-        <CardContent className="p-3 flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[220px]">
+        <CardContent className="p-3 space-y-3">
+          <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
               value={search}
@@ -218,16 +247,27 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
               className="pl-9"
             />
           </div>
-          <select
-            value={filtroStatus}
-            onChange={(e) => setFiltroStatus(e.target.value)}
-            className="border border-slate-200 rounded-md px-3 py-2 text-sm bg-white"
-          >
-            <option value="todos">Todos status</option>
-            {STATUS_LIST.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {FILTROS_RAPIDOS.map((filtro) => {
+              const quantidade = filtro.id === 'todos'
+                ? campanhas.length
+                : filtro.id === 'falhas'
+                  ? campanhas.filter((c) => Number(c.falhas || 0) > 0 || c.status === 'erro').length
+                  : campanhas.filter((c) => c.status === filtro.id).length;
+              return (
+                <Button
+                  key={filtro.id}
+                  type="button"
+                  size="sm"
+                  variant={filtroStatus === filtro.id ? 'default' : 'outline'}
+                  onClick={() => setFiltroStatus(filtro.id)}
+                  className="whitespace-nowrap"
+                >
+                  {filtro.label}<span className="ml-1.5 opacity-75">{quantidade}</span>
+                </Button>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
 
@@ -240,9 +280,10 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                 <Th>Criador</Th>
                 <Th>Template</Th>
                 <Th>Status</Th>
+                <Th>Agendamento</Th>
                 <Th className="text-right">Total</Th>
                 <Th className="text-right">Enviadas</Th>
-                <Th className="text-right">Conversão</Th>
+                <Th className="text-right">Falhas</Th>
                 <Th className="text-center">Ações</Th>
               </tr>
             </thead>
@@ -258,17 +299,22 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                     <Td>{c.criador_nome || '-'}</Td>
                     <Td>{c.template_nome || '-'}</Td>
                     <Td><StatusBadge status={c.status} /></Td>
+                    <Td>
+                      {c.status === 'agendada' && c.agendada_para
+                        ? <span className="text-sm font-medium text-blue-700">{format(new Date(c.agendada_para), 'dd/MM/yyyy HH:mm')}</span>
+                        : <span className="text-xs text-slate-400">{c.inicio_execucao ? format(new Date(c.inicio_execucao), 'dd/MM/yyyy HH:mm') : '—'}</span>}
+                    </Td>
                     <Td className="text-right">{c.total_destinatarios || 0}</Td>
                     <Td className="text-right">{c.enviados || 0}</Td>
-                    <Td className="text-right">{conv.toFixed(1)}%</Td>
+                    <Td className="text-right">{c.falhas || 0}</Td>
                     <Td>
                       <div className="flex items-center justify-center gap-1">
                         <IconBtn title="Visualizar" onClick={() => setDetalhe(c)}><Eye className="w-4 h-4" /></IconBtn>
                         <IconBtn title="Editar" onClick={() => setEditando(c)}><Pencil className="w-4 h-4" /></IconBtn>
                         <IconBtn
-                          title="Reenviar campanha"
+                          title="Reenviar falhas"
                           onClick={() => reenviar(c)}
-                          disabled={reenviando === c.id || !c.template_nome}
+                          disabled={reenviando === c.id || Number(c.falhas || 0) <= 0 || (c.canal !== 'whatsapp_nao_oficial' && !c.template_nome)}
                         >
                           {reenviando === c.id
                             ? <Loader2 className="w-4 h-4 animate-spin" />
