@@ -144,8 +144,10 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
         contatos,
         nome_campanha: c.nome,
         delay_segundos: c.velocidade_envio ? Math.max(1, Math.round(60 / c.velocidade_envio)) : 5,
+        delay_min_segundos: c.intervalo_min_segundos,
+        delay_max_segundos: c.intervalo_max_segundos,
         pausar_apos: c.pausa_apos || 0,
-        duracao_pausa: c.duracao_pausa_min || 60,
+        duracao_pausa: c.duracao_pausa_min || 0,
       });
       toast.success(`Reenvio iniciado para ${naFila.length} destinatário(s).`);
       queryClient.invalidateQueries(['campanhas-lista', empresaId]);
