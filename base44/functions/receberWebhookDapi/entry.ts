@@ -346,7 +346,8 @@ async function processarMensagemRecebida(base44, connection, data) {
     // Mensagem enviada pelo próprio número (fromMe): se já foi registrada pelo envio via CRM, ignorar (eco).
     // Se ainda não existir, foi enviada direto pelo celular/WhatsApp e precisa ser salva no histórico.
     // IMPORTANTE: para fromMe, "data.from" é o PRÓPRIO número (quem enviou) — o contato/chat está em "data.to".
-    const isFromMe = data?.fromMe === true || data?.key?.fromMe === true;
+    const isFromMe = [data?.fromMe, data?.key?.fromMe, data?.from_me, data?.isFromMe]
+      .some(value => value === true || value === 1 || value === 'true' || value === '1');
     if (isFromMe) {
       const remoteJidFromMe = data?.to?.jid || data?.key?.remoteJid || data?.chatId || data?.jid || '';
       const telefoneFromMe = String(remoteJidFromMe).replace(/@.*/g, '').replace(/\D/g, '');
