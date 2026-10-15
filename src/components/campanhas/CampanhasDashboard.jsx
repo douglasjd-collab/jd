@@ -112,7 +112,7 @@ export default function CampanhasDashboard({ empresaId, user, onNova }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Dashboard de Campanhas</h1>
-          <p className="text-sm text-slate-500">Indicadores de campanhas via WhatsApp API Oficial</p>
+          <p className="text-sm text-slate-500">Indicadores de campanhas via WhatsApp</p>
         </div>
         <div className="flex items-center gap-2">
           {PERIODOS.map((p) => (
