@@ -53,6 +53,7 @@ import EnviarMensagemForm from '@/components/chat/EnviarMensagemForm';
 import { useFilaEnvio } from '@/components/chat/useFilaEnvio';
 import { temPendentesGlobal } from '@/components/chat/filaEnvioStore';
 import { bolhasPendentesNaLista } from '@/components/chat/bolhaOtimista';
+import { lerHistoricoSessao, salvarHistoricoSessao } from '@/components/chat/historicoSessao';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageFooter from '@/components/chat/ChatMessageFooter';
 import ConversaContextMenu from '@/components/chat/ConversaContextMenu';
@@ -810,8 +811,11 @@ export default function BatePapo() {
     ? [...new Map([...conversas, ...conversasBusca].map(c => [c.id, c])).values()]
     : conversas;
 
+  const escopoHistorico = empresaId && user?.id ? JSON.stringify([empresaId, user.id, user.colaborador_id || '']) : null;
   const { data: mensagens = [], isLoading: loadingMensagens, refetch: refetchMensagens } = useQuery({
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
+    initialData: () => lerHistoricoSessao(escopoHistorico, conversaSelecionadaId),
+    initialDataUpdatedAt: 0,
     enabled: !!conversaSelecionadaId,
     queryFn: async () => {
       if (!conversaSelecionadaId) return [];
@@ -842,6 +846,12 @@ export default function BatePapo() {
     refetchOnWindowFocus: false,
     // Sem placeholder de outra conversa: o cache é isolado por conversation ID.
   });
+
+  useEffect(() => {
+    if (!escopoHistorico || !conversaSelecionadaId || !mensagens.length) return;
+    const timer = setTimeout(() => salvarHistoricoSessao(escopoHistorico, conversaSelecionadaId, mensagens), 200);
+    return () => clearTimeout(timer);
+  }, [escopoHistorico, conversaSelecionadaId, mensagens]);
 
   const ultimaMensagemVisivelId = mensagens.at(-1)?.id || '';
   useEffect(() => {
