@@ -262,10 +262,9 @@ Deno.serve(async (req) => {
             );
             if (conversas.length > 0) {
               convId = conversas[0].id;
+              // Uma campanha não altera o canal de atendimento já escolhido.
               await base44.asServiceRole.entities.ConversaWhatsapp.update(convId, {
-                status: 'campanha', origem: 'campanha', tipo_conexao: 'meta_oficial',
-                canal_origem: 'meta', provider: 'whatsapp_meta',
-                phone_number_id_meta: phoneNumberId,
+                status: 'campanha', origem: 'campanha',
               }).catch(() => {});
             } else {
               const nova = await base44.asServiceRole.entities.ConversaWhatsapp.create({
@@ -467,14 +466,10 @@ Deno.serve(async (req) => {
           );
           if (conversas.length > 0) {
             convId = conversas[0].id;
-            // Marcar conversa existente como campanha
+            // Preservar canal e conexão existentes; troca de canal é manual.
             await base44.asServiceRole.entities.ConversaWhatsapp.update(convId, {
               status: 'campanha',
               origem: 'campanha',
-              tipo_conexao: 'meta_oficial',
-              canal_origem: 'meta',
-              provider: 'whatsapp_meta',
-              phone_number_id_meta: phoneNumberId,
             }).catch(() => {});
           } else {
             // Criar nova conversa como campanha
