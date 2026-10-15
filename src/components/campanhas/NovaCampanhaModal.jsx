@@ -777,7 +777,7 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
         <Label className="block mb-2">Tipo de API *</Label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <button type="button" onClick={() => setForm({ ...form, canal_tipo: 'nao_oficial', conn_selecionada: '', template_id: '' })}
-            className={`p-3 rounded-lg border text-left ${form.canal_tipo === 'nao_oficial' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'}`}>
+            className={`min-h-[84px] rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${form.canal_tipo === 'nao_oficial' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-sm">D-API não oficial</p>
@@ -787,7 +787,7 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
             </div>
           </button>
           <button type="button" onClick={() => setForm({ ...form, canal_tipo: 'oficial', conn_selecionada: '', template_id: '' })}
-            className={`p-3 rounded-lg border text-left ${form.canal_tipo === 'oficial' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'}`}>
+            className={`min-h-[84px] rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${form.canal_tipo === 'oficial' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-sm">Meta oficial</p>
@@ -800,9 +800,9 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
       </div>
 
       <div>
-        <Label>Canal de envio *</Label>
+        <Label className="mb-1 block">Canal de envio *</Label>
         <select value={form.conn_selecionada || ''} onChange={(e) => setForm({ ...form, conn_selecionada: e.target.value, template_id: '' })}
-          className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white">
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100">
           <option value="">Selecione a conexão…</option>
           {(connections || []).map((c) => (
             <option key={c.id} value={c.id}>{c.nome || c.session_id} {c.phone_number ? `· ${c.phone_number}` : ''}</option>
@@ -811,17 +811,17 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
       </div>
 
       {form.canal_tipo === 'nao_oficial' ? (
-        <div className="space-y-3 border rounded-xl p-4 bg-slate-50">
+        <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <div>
             <Label className="block mb-2">Formato da mensagem *</Label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {[
                 { id: 'texto', label: 'Apenas texto', Icon: FileText },
                 { id: 'imagem_texto', label: 'Imagem + texto', Icon: ImageIcon },
                 { id: 'video_texto', label: 'Vídeo + texto', Icon: Video },
               ].map(({ id: tipo, label, Icon }) => (
                 <button key={tipo} type="button" onClick={() => setForm({ ...form, mensagem_tipo: tipo, midia_url: '', midia_nome: '' })}
-                  className={`p-3 rounded-lg border text-xs font-medium flex flex-col items-center gap-1 ${form.mensagem_tipo === tipo ? 'border-emerald-500 bg-white text-emerald-700' : 'border-slate-200 bg-white'}`}>
+                  className={`flex min-h-[76px] items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${form.mensagem_tipo === tipo ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}>
                   <Icon className="w-5 h-5" />{label}
                 </button>
               ))}
@@ -841,7 +841,7 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
           )}
           <div>
             <Label>Texto da mensagem *</Label>
-            <div className="flex items-center gap-1 border border-slate-200 border-b-0 rounded-t-md bg-slate-50 p-1">
+            <div className="flex items-center gap-1 rounded-t-lg border border-slate-200 border-b-0 bg-slate-50 px-2 py-1.5">
               <button type="button" title="Negrito" aria-label="Aplicar negrito" onMouseDown={(e) => e.preventDefault()} onClick={() => formatarMensagem('*')}
                 className="inline-flex items-center justify-center h-8 w-8 rounded hover:bg-white text-slate-700">
                 <Bold className="w-4 h-4" />
@@ -852,10 +852,13 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
               </button>
               <span className="text-[11px] text-slate-500 ml-1">Selecione um trecho ou posicione o cursor.</span>
             </div>
-            <Textarea ref={mensagemRef} rows={6} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })}
-              className="rounded-t-none"
+            <Textarea ref={mensagemRef} rows={5} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })}
+              className="min-h-[140px] resize-y rounded-t-none border-slate-200 shadow-sm focus-visible:ring-emerald-500"
               placeholder={"Olá, {nome}!\nHoje é o vencimento da sua parcela.\nSe já realizou o pagamento, desconsidere esta mensagem."} />
-            <p className="text-[11px] text-slate-500 mt-1">Use <strong>{'{nome}'}</strong> para inserir o primeiro nome do cliente. O WhatsApp exibirá os trechos entre *asteriscos* em negrito e entre _sublinhados_ em itálico.</p>
+            <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] text-slate-500">Use <strong>{'{nome}'}</strong> para inserir o primeiro nome. O WhatsApp exibirá *negrito* e _itálico_.</p>
+              <p className="shrink-0 text-[11px] tabular-nums text-slate-500">{(form.mensagem_texto || '').length} caracteres</p>
+            </div>
           </div>
         </div>
       ) : (
