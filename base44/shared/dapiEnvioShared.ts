@@ -42,6 +42,11 @@ function montarPayloadDapi(action, sessionId, numero, texto, params) {
   }
 }
 
+// Limite de espera da resposta da D-API. Sem isso, uma resposta que nunca chega
+// deixa a chamada pendurada: o atendente fica com "Enviando..." na tela sem saber
+// se a mensagem saiu. A D-API responde normalmente em ~1s.
+const DAPI_TIMEOUT_MS = 20000;
+
 export async function enviarDapiDireto(conexao, action, numero, texto, params) {
   let baseUrl = String(conexao?.base_url || 'https://api.d-api.cloud').trim();
   if (/\/functions\/(receberWebhookDapi|webhookDapi)/i.test(baseUrl) || /\/webhook/i.test(baseUrl)) {
@@ -61,11 +66,26 @@ export async function enviarDapiDireto(conexao, action, numero, texto, params) {
   const body = montarPayloadDapi(action, String(conexao?.session_id || '').trim(), numero, texto, params || {});
   const startTime = Date.now();
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Authorization': apiKey, 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  let response;
+  try {
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Authorization': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(DAPI_TIMEOUT_MS),
+    });
+  } catch (e) {
+    const expirou = e?.name === 'TimeoutError' || e?.name === 'AbortError';
+    return {
+      success: false,
+      error: expirou
+        ? `A D-API não respondeu em ${Math.round(DAPI_TIMEOUT_MS / 1000)}s. A mensagem pode não ter sido enviada — confirme no WhatsApp antes de tentar novamente.`
+        : `Falha de conexão com a D-API: ${e?.message || 'erro desconhecido'}`,
+      httpStatus: 0,
+      responseTime: Date.now() - startTime,
+      endpoint,
+    };
+  }
 
   const responseData = await response.json().catch(() => ({}));
   const responseTime = Date.now() - startTime;

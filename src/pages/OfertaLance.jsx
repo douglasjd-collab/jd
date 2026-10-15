@@ -172,11 +172,17 @@ export default function OfertaLance() {
       const tel = String(comprovante.telefone).replace(/\D/g, '');
 
       // Este fluxo deve sair obrigatoriamente pela API não oficial (D-API).
-      const conexoesDapi = await base44.entities.WhatsappConnection.filter({
+      // Só os campos usados para escolher a conexão: carregar as conexões
+      // completas atrasa o envio desnecessariamente.
+      const conexoesDapi = (await base44.entities.WhatsappConnection.filter({
         empresa_id: empresaId,
         provider_type: 'dapi',
         is_active: true
-      }, '-created_date', 50);
+      }, {
+        sort: '-created_date',
+        limit: 50,
+        fields: ['status', 'is_default', 'session_id', 'phone_number', 'base_url'],
+      }))?.items || [];
       const conexaoDapi =
         conexoesDapi?.find(c => c.is_default && c.status === 'conectado') ||
         conexoesDapi?.find(c => c.status === 'conectado') ||
@@ -250,7 +256,7 @@ export default function OfertaLance() {
       closeForm();
     } catch (e) {
       console.error('Erro ao enviar comprovante:', e);
-      toast.error('Erro ao enviar pelo CRM: ' + (e.message || 'Erro desconhecido'));
+      toast.error('Erro ao enviar pelo CRM: ' + (e?.response?.data?.error || e.message || 'Erro desconhecido'));
     } finally {
       setEnviandoComprovante(false);
     }
