@@ -58,7 +58,7 @@ function substituirTempIdPorReal(queryClient, conversaId, tempId, realId, extras
     const status = existente && (prioridade[existente.status] ?? -1) > (prioridade[extras?.status] ?? -1)
       ? existente.status : extras?.status;
     const patched = {
-      ...old[idx], ...extras, ...existente, id: idFinal,
+      ...old[idx], ...extras, ...existente, id: existente?.id || idFinal,
       status: status || existente?.status || old[idx].status,
       fila_envio_estado: null, fila_envio_progresso: null, fila_envio_erro: null,
     };
@@ -389,6 +389,12 @@ async function rodarPipeline(tempId, queryClient, pipelineRefs) {
     const realId = resp.data.message_id || null;
     const whatsappId = resp.data.whatsapp_id || null;
 
+    if (arquivoPayload?.url || resp.data.arquivo_url) {
+      fila.patch(tempId, { arquivo: {
+        ...envio0.arquivo,
+        url: resp.data.arquivo_url || arquivoPayload.url,
+      } });
+    }
     // Stage 3: enviada — substitui o tempId pelo ID real no cache
     fila.setEnviada(tempId, realId, whatsappId, 'enviada');
 
