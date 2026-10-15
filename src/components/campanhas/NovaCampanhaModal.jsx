@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import {
   ArrowRight,
   ArrowLeft,
@@ -32,6 +33,7 @@ import {
   WalletCards,
   Bold,
   Italic,
+  Smile,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -44,6 +46,13 @@ import TemplatePreview from '@/components/templates/TemplatePreview';
 // 'APPROVED' (retorno cru da Meta), 'approved' (D-API lowercased), 'Aprovado'.
 const STATUS_APROVADO_RE = /^(aprovado|approved)$/i;
 const isTemplateAprovado = (s = '') => STATUS_APROVADO_RE.test(String(s || ''));
+
+const EMOJIS_CAMPANHA = [
+  '😊', '😀', '👋', '🙏', '🤝', '👍', '🎉', '✨',
+  '❤️', '💚', '💙', '👏', '🙌', '✅', '🔔', '📢',
+  '📅', '📲', '📞', '💬', '💰', '🎁', '🚗', '🏠',
+  '🏍️', '🛡️', '⭐', '📌', '🧾', '☀️', '💡', '😉',
+];
 
 const STEPS = [
   { id: 1, label: 'Template', icon: FileText },
@@ -725,6 +734,21 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
     ? (selecionado?.display_name || selecionado?.name || 'Selecione um template')
     : ({ texto: 'Apenas texto', imagem_texto: 'Imagem + texto', video_texto: 'Vídeo + texto' }[form.mensagem_tipo] || 'Apenas texto');
 
+  const inserirEmoji = (emoji) => {
+    const campo = mensagemRef.current;
+    const texto = form.mensagem_texto || '';
+    const inicio = campo?.selectionStart ?? texto.length;
+    const fim = campo?.selectionEnd ?? inicio;
+    const novoTexto = texto.slice(0, inicio) + emoji + texto.slice(fim);
+    setForm({ ...form, mensagem_texto: novoTexto });
+    requestAnimationFrame(() => {
+      if (!campo) return;
+      campo.focus();
+      const cursor = inicio + emoji.length;
+      campo.setSelectionRange(cursor, cursor);
+    });
+  };
+
   const formatarMensagem = (marcador) => {
     const campo = mensagemRef.current;
     if (!campo) return;
@@ -850,6 +874,37 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
                 className="inline-flex items-center justify-center h-8 w-8 rounded hover:bg-white text-slate-700">
                 <Italic className="w-4 h-4" />
               </button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    title="Inserir emoji"
+                    aria-label="Abrir seletor de emojis"
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded text-slate-700 transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  >
+                    <Smile className="h-4 w-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" side="bottom" className="w-72 p-3" aria-label="Seletor de emojis">
+                  <p className="mb-2 text-xs font-semibold text-slate-700">Inserir emoji</p>
+                  <div className="grid max-h-52 grid-cols-6 gap-1 overflow-y-auto">
+                    {EMOJIS_CAMPANHA.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        title={emoji}
+                        aria-label={`Inserir emoji ${emoji}`}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => inserirEmoji(emoji)}
+                        className="flex h-9 w-9 items-center justify-center rounded-md text-xl transition hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <span className="ml-2 text-[11px] text-slate-500">Selecione um trecho ou posicione o cursor.</span>
             </div>
             <Textarea ref={mensagemRef} rows={5} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })}
