@@ -183,7 +183,17 @@
     "velocidade_envio": {
       "type": "number",
       "default": 60,
-      "description": "Mensagens por minuto"
+      "description": "Mensagens por minuto (legado)"
+    },
+    "intervalo_min_segundos": {
+      "type": "number",
+      "default": 5,
+      "description": "Menor intervalo aleat\u00f3rio entre mensagens, em segundos"
+    },
+    "intervalo_max_segundos": {
+      "type": "number",
+      "default": 10,
+      "description": "Maior intervalo aleat\u00f3rio entre mensagens, em segundos"
     },
     "pausa_apos": {
       "type": "number",
