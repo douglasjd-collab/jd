@@ -628,14 +628,15 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>Nova Campanha</DialogTitle>
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-6xl max-h-[94vh] flex flex-col gap-4 overflow-hidden">
+        <DialogHeader className="shrink-0 space-y-1">
+          <DialogTitle className="text-2xl">Nova campanha</DialogTitle>
+          <p className="text-sm text-slate-500">Configure o disparo em etapas.</p>
         </DialogHeader>
 
         <Stepper step={step} />
 
-        <div className="min-h-[260px] max-h-[60vh] overflow-y-auto pr-1 -mr-1">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
           {step === 1 && (
             <Step1
               form={form}
@@ -665,7 +666,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
           {step === 6 && <Step6 form={form} template={templateSelecionado} preview={preview} user={user} />}
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t">
+        <div className="flex shrink-0 items-center justify-between pt-3 border-t bg-white">
           <Button variant="outline" onClick={voltar} disabled={step === 1}>
             <ArrowLeft className="w-4 h-4 mr-1.5" /> Voltar
           </Button>
@@ -687,19 +688,23 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
 
 function Stepper({ step }) {
   return (
-    <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1">
+    <div className="flex shrink-0 items-center gap-2 overflow-x-auto pb-1">
       {STEPS.map((s, i) => {
         const ativo = step === s.id;
         const feito = step > s.id;
         return (
           <React.Fragment key={s.id}>
-            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium ${
-              ativo ? 'bg-emerald-600 text-white' : feito ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+            <div className={`flex shrink-0 items-center gap-2 rounded-full px-2 py-1.5 text-xs font-semibold ${
+              ativo ? 'text-emerald-800' : feito ? 'text-emerald-700' : 'text-slate-500'
             }`}>
-              {feito ? <Check className="w-3.5 h-3.5" /> : <s.icon className="w-3.5 h-3.5" />}
-              {s.label}
+              <span className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs ${
+                ativo ? 'border-emerald-600 bg-emerald-600 text-white' : feito ? 'border-emerald-200 bg-emerald-100 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500'
+              }`}>
+                {feito ? <Check className="w-3.5 h-3.5" /> : s.id}
+              </span>
+              <span>{s.label}</span>
             </div>
-            {i < STEPS.length - 1 && <div className="w-4 h-px bg-slate-200" />}
+            {i < STEPS.length - 1 && <div className="h-px w-5 shrink-0 bg-slate-200" />}
           </React.Fragment>
         );
       })}
