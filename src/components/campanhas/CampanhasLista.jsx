@@ -131,12 +131,11 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
 
     setReenviando(c.id);
     try {
-      await base44.entities.CampanhaDestinatario.updateMany(
-        { campanha_id: c.id, status: 'falhou' },
-        { $set: { status: 'na_fila', data_envio: null, whatsapp_message_id: null } }
-      );
-
       if (c.canal === 'whatsapp_nao_oficial') {
+        await base44.entities.CampanhaDestinatario.updateMany(
+          { campanha_id: c.id, status: 'falhou' },
+          { $set: { status: 'na_fila', data_envio: null, whatsapp_message_id: null } }
+        );
         await base44.entities.Campanha.update(c.id, {
           status: 'executando',
           falhas: 0,
@@ -176,7 +175,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
         for (const resultado of resultados) {
           const statusDestino = resultado.status === 'enviada' ? 'enviada' : 'falhou';
           await base44.entities.CampanhaDestinatario.updateMany(
-            { campanha_id: c.id, telefone: resultado.telefone, status: 'na_fila' },
+            { campanha_id: c.id, telefone: resultado.telefone, status: 'falhou' },
             { $set: {
               status: statusDestino,
               data_envio: statusDestino === 'enviada' ? new Date().toISOString() : null,
@@ -201,6 +200,9 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
       queryClient.invalidateQueries(['campanhas-dashboard', empresaId]);
       queryClient.invalidateQueries(['campanha-monitor-global', empresaId]);
     } catch (e) {
+      if (c.canal !== 'whatsapp_nao_oficial') {
+        await base44.entities.Campanha.update(c.id, { status: 'pausada' }).catch(() => {});
+      }
       toast.error('Erro ao reenviar: ' + (e.message || 'desconhecido'));
     } finally {
       setReenviando(null);
