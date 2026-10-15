@@ -719,6 +719,11 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
     ? (templates || []).filter((t) => !t.connection_id || t.connection_id === form.conn_selecionada)
     : (templates || []);
   const selecionado = templatesVisiveis.find((t) => t.id === form.template_id) || null;
+  const conexaoSelecionada = (connections || []).find((c) => c.id === form.conn_selecionada) || null;
+  const tipoApiResumo = form.canal_tipo === 'oficial' ? 'Meta oficial' : 'D-API não oficial';
+  const formatoResumo = form.canal_tipo === 'oficial'
+    ? (selecionado?.display_name || selecionado?.name || 'Selecione um template')
+    : ({ texto: 'Apenas texto', imagem_texto: 'Imagem + texto', video_texto: 'Vídeo + texto' }[form.mensagem_tipo] || 'Apenas texto');
 
   const formatarMensagem = (marcador) => {
     const campo = mensagemRef.current;
@@ -755,8 +760,9 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
   };
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+      <div className="min-w-0 space-y-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
           <Label>Nome da campanha *</Label>
           <Input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder="Ex: Vencimento Canopus" />
@@ -772,13 +778,23 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <button type="button" onClick={() => setForm({ ...form, canal_tipo: 'nao_oficial', conn_selecionada: '', template_id: '' })}
             className={`p-3 rounded-lg border text-left ${form.canal_tipo === 'nao_oficial' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'}`}>
-            <p className="font-semibold text-sm">API não oficial — JD/D-API</p>
-            <p className="text-xs text-slate-500">Mensagem criada na hora, sem template aprovado.</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold text-sm">D-API não oficial</p>
+                <p className="mt-1 text-xs text-slate-500">Mensagem criada na hora, sem template aprovado.</p>
+              </div>
+              {form.canal_tipo === 'nao_oficial' && <Check className="h-5 w-5 shrink-0 text-emerald-700" />}
+            </div>
           </button>
           <button type="button" onClick={() => setForm({ ...form, canal_tipo: 'oficial', conn_selecionada: '', template_id: '' })}
             className={`p-3 rounded-lg border text-left ${form.canal_tipo === 'oficial' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'}`}>
-            <p className="font-semibold text-sm">API Oficial — Meta</p>
-            <p className="text-xs text-slate-500">Utiliza template previamente aprovado.</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-semibold text-sm">Meta oficial</p>
+                <p className="mt-1 text-xs text-slate-500">Utiliza template previamente aprovado.</p>
+              </div>
+              {form.canal_tipo === 'oficial' && <Check className="h-5 w-5 shrink-0 text-emerald-700" />}
+            </div>
           </button>
         </div>
       </div>
@@ -866,6 +882,38 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
           {selecionado && <TemplatePreview tipo={selecionado.type || selecionado.header_type || 'TEXT'} headerMediaUrl={selecionado.header_media_url || ''} bodyText={selecionado.body_text || ''} footerText={selecionado.footer_text || ''} />}
         </div>
       )}
+      </div>
+
+      <aside className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 lg:sticky lg:top-0">
+        <div className="mb-4">
+          <h3 className="text-base font-semibold text-slate-800">Resumo da campanha</h3>
+          <p className="mt-1 text-xs text-slate-500">Confira as informações deste disparo.</p>
+        </div>
+        <div className="space-y-4">
+          <ResumoItem label="Nome da campanha" value={form.nome?.trim() || '—'} />
+          {form.descricao?.trim() && <ResumoItem label="Descrição" value={form.descricao.trim()} />}
+          <ResumoItem label="Tipo de API" value={tipoApiResumo} />
+          <ResumoItem
+            label="Canal de envio"
+            value={conexaoSelecionada ? (conexaoSelecionada.nome || conexaoSelecionada.session_id || 'Conexão selecionada') : 'Selecione uma conexão'}
+            detalhe={conexaoSelecionada?.phone_number || ''}
+          />
+          <ResumoItem label={form.canal_tipo === 'oficial' ? 'Template' : 'Formato da mensagem'} value={form.canal_tipo === 'oficial' ? formatoResumo : formatoResumo} />
+          {form.canal_tipo === 'nao_oficial' && (
+            <ResumoItem label="Texto da mensagem" value={form.mensagem_texto?.trim() || 'Escreva a mensagem da campanha'} compacto />
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function ResumoItem({ label, value, detalhe, compacto = false }) {
+  return (
+    <div className="border-t border-slate-200 pt-3 first:border-0 first:pt-0">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className={`mt-1 font-medium text-slate-800 break-words ${compacto ? 'line-clamp-4 whitespace-pre-wrap text-sm' : 'text-sm'}`}>{value}</p>
+      {detalhe && <p className="mt-1 text-xs text-slate-500">{detalhe}</p>}
     </div>
   );
 }
