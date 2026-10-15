@@ -931,10 +931,33 @@ async function processarChatsUpdate(base44, connection, data) {
 // podem ser processados em paralelo — lendo antes de gravar, os dois passavam na
 // verificação e o "entregue" gravava por último, deixando a mensagem com lida_em
 // preenchido e status "entregue" (dois traços cinza em vez do azul).
+
+// Expand each receipt independently; keep envelope fields for batched IDs.
+function expandReceiptItems(data) {
+  if (Array.isArray(data)) return data.flatMap(expandReceiptItems);
+  if (!data || typeof data !== 'object') return [];
+  for (const field of ['messages', 'updates', 'receipts']) {
+    if (Array.isArray(data[field])) {
+      const { [field]: children, ...parent } = data;
+      return children.flatMap(child => expandReceiptItems(typeof child === 'string'
+        ? { ...parent, id: child } : { ...parent, ...child }));
+    }
+  }
+  for (const field of ['messageIds', 'message_ids', 'ids', 'keys']) {
+    if (Array.isArray(data[field])) {
+      const { [field]: ids, ...parent } = data;
+      return ids.flatMap(id => expandReceiptItems(typeof id === 'string'
+        ? { ...parent, id } : { ...parent, key: id }));
+    }
+  }
+  return [data];
+}
+
 async function atualizarStatusMensagem(base44, connection, data, statusInterno) {
   try {
-    if (Array.isArray(data)) {
-      for (const item of data) await atualizarStatusMensagem(base44, connection, item, statusInterno);
+    const items = expandReceiptItems(data);
+    if (items.length !== 1 || items[0] !== data) {
+      for (const item of items) await atualizarStatusMensagem(base44, connection, item, statusInterno);
       return;
     }
     const wamid = data?.key?.id || data?.message?.key?.id || data?.id || data?.messageId || data?.message_id || data?.external_message_id;
