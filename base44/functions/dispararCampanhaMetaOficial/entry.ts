@@ -548,22 +548,23 @@ Deno.serve(async (req) => {
         resultados.push({ telefone: numeroLimpo, status: 'erro', motivo: e.message });
       }
 
-      // Intervalo aleatório entre contatos; não espera depois do último.
-      if (resultados.length < contatos.length) await new Promise(r => setTimeout(r, proximoIntervaloMs()));
-
       // Pausa após a quantidade configurada de mensagens enviadas com sucesso.
       const pausaAposEnvios = Math.max(0, Number(pausar_apos) || 0);
+      const minutosPausaConfigurados = Number(duracao_pausa) || 0;
       if (
         resultados.length < contatos.length &&
         pausaAposEnvios > 0 &&
+        minutosPausaConfigurados > 0 &&
         enviados > 0 &&
         enviados % pausaAposEnvios === 0
       ) {
-        const minutosPausa = Math.max(1, Number(duracao_pausa) || 10);
-        const pausaMs = minutosPausa * 60 * 1000;
-        console.log(`⏸️ Pausa automática de ${minutosPausa} minutos após ${enviados} envios bem-sucedidos`);
+        const pausaMs = minutosPausaConfigurados * 60 * 1000;
+        console.log(`⏸️ Pausa automática de ${minutosPausaConfigurados} minutos após ${enviados} envios bem-sucedidos`);
         await new Promise(r => setTimeout(r, pausaMs));
       }
+
+      // Sorteia o tempo antes do próximo contato; não espera depois do último.
+      if (resultados.length < contatos.length) await new Promise(r => setTimeout(r, proximoIntervaloMs()));
     }
 
     // Marcar job como concluído
