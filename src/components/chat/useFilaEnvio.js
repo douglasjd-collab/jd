@@ -70,13 +70,22 @@ function substituirTempIdPorReal(queryClient, conversaId, tempId, realId, extras
 }
 
 function atualizarEnvioCache(queryClient, envio) {
+  // emit() pode ser reentrante: outro ouvinte já avançou o mesmo envio.
+  envio = fila.getEnvio(envio.tempId);
+  if (!envio) return;
   const key = qkey(envio.conversaId);
   queryClient.setQueryData(key, (old = []) => {
     if (!Array.isArray(old)) return old;
     const idx = old.findIndex((m) => m.id === envio.tempId);
     if (idx < 0) return old;
     const novo = [...old];
-    novo[idx] = { ...novo[idx], fila_envio_estado: envio.estado, fila_envio_progresso: envio.progresso, fila_envio_erro: envio.erro };
+    const confirmado = ['enviada', 'entregue', 'lida'].includes(envio.estado);
+    novo[idx] = { ...novo[idx],
+      ...(confirmado ? { status: envio.estado, whatsapp_message_id: envio.whatsappId || novo[idx].whatsapp_message_id } : {}),
+      fila_envio_estado: confirmado ? null : envio.estado,
+      fila_envio_progresso: confirmado ? null : envio.progresso,
+      fila_envio_erro: confirmado ? null : envio.erro,
+    };
     return novo;
   });
 }
