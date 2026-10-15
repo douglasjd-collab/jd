@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+import { waitUntil } from 'base44:runtime';
 
 import { enviarDapiDireto } from '../../shared/dapiEnvioShared.ts';
 import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.ts';
@@ -752,11 +753,16 @@ Deno.serve(async (req) => {
         });
 
         confirmacaoDapi.message_id = novaMensagem.id;
-        await marcarRecebidasAteResposta(base44.asServiceRole.entities, empresaId, conversa_id, novaMensagem.data_envio)
-          .catch(e => console.error('⚠️ Erro ao confirmar leitura após resposta D-API:', e.message));
 
-        await Promise.all([
-          // Atualiza a conversa em paralelo (última mensagem da lista de conversas)
+        // O atendente está esperando a confirmação do envio (o "Enviando..." da bolha só
+        // sai quando esta resposta chega). Os passos acessórios — marcar as mensagens do
+        // cliente como lidas, atualizar o resumo da lista de conversas e gravar o log de
+        // auditoria — não podem segurar essa resposta: a mensagem já saiu para o cliente
+        // (a bolha ficava em "Enviando..." depois de o cliente já ter recebido). Rode-os
+        // depois de responder, com a garantia de que o Worker continua até terminarem.
+        waitUntil(Promise.all([
+          marcarRecebidasAteResposta(base44.asServiceRole.entities, empresaId, conversa_id, novaMensagem.data_envio)
+            .catch(e => console.error('⚠️ Erro ao confirmar leitura após resposta D-API:', e.message)),
           base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
             ...camposReaberturaConversa,
             ultima_mensagem: (textoEnviar || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
@@ -764,16 +770,16 @@ Deno.serve(async (req) => {
             ultimo_remetente: 'vendedor',
           }).catch((e) => console.error('⚠️ Erro ao atualizar resumo da conversa:', e.message)),
           logPromise,
-        ]);
-        
+        ]));
+
         // A D-API anexa a legenda ao próprio documento: a mensagem do arquivo chega
         // no WhatsApp com o texto junto do PDF (confirmado no histórico da API, que
         // registra o texto na própria mensagem do documento). Por isso NÃO se envia
         // mais um segundo balão de texto — era ele que duplicava a mensagem no
         // WhatsApp do cliente (documento + texto repetido logo abaixo).
-        
+
         console.log('✅ Mensagem D-API salva:', novaMensagem.id);
-        
+
         return Response.json({ 
           success: true,
           message_id: novaMensagem.id,
@@ -1208,15 +1214,19 @@ Deno.serve(async (req) => {
 
       // Atualizar última mensagem da conversa mantendo o tipo_conexao correto
       // CRÍTICO: não alterar tipo_conexao aqui — ele só deve mudar via ação manual do usuário
-      await marcarRecebidasAteResposta(base44.asServiceRole.entities, novaMensagem.empresa_id, conversa_id, novaMensagem.data_envio)
-        .catch(e => console.error('⚠️ Erro ao confirmar leitura após resposta:', e.message));
-
-      await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
-        ...camposReaberturaConversa,
-        ultima_mensagem: (mensagem_texto || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
-        data_ultima_mensagem: new Date().toISOString(),
-        ultimo_remetente: 'vendedor',
-      });
+      // A confirmação ao atendente não espera os passos acessórios (leitura das
+      // mensagens do cliente + resumo da lista): a mensagem já saiu e eles seguem
+      // depois da resposta, com o Worker mantido vivo até terminarem.
+      waitUntil(Promise.all([
+        marcarRecebidasAteResposta(base44.asServiceRole.entities, novaMensagem.empresa_id, conversa_id, novaMensagem.data_envio)
+          .catch(e => console.error('⚠️ Erro ao confirmar leitura após resposta:', e.message)),
+        base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
+          ...camposReaberturaConversa,
+          ultima_mensagem: (mensagem_texto || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
+          data_ultima_mensagem: new Date().toISOString(),
+          ultimo_remetente: 'vendedor',
+        }).catch(e => console.error('⚠️ Erro ao atualizar resumo da conversa:', e.message)),
+      ]));
 
       console.log('✅ Mensagem salva:', novaMensagem.id);
 
