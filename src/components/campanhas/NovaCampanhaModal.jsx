@@ -841,7 +841,7 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
           )}
           <div>
             <Label>Texto da mensagem *</Label>
-            <div className="flex items-center gap-1 rounded-t-lg border border-slate-200 border-b-0 bg-slate-50 px-2 py-1.5">
+            <div className="flex flex-wrap items-center gap-1 rounded-t-lg border border-slate-200 border-b-0 bg-slate-50 px-2 py-1.5">
               <button type="button" title="Negrito" aria-label="Aplicar negrito" onMouseDown={(e) => e.preventDefault()} onClick={() => formatarMensagem('*')}
                 className="inline-flex items-center justify-center h-8 w-8 rounded hover:bg-white text-slate-700">
                 <Bold className="w-4 h-4" />
@@ -850,7 +850,7 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
                 className="inline-flex items-center justify-center h-8 w-8 rounded hover:bg-white text-slate-700">
                 <Italic className="w-4 h-4" />
               </button>
-              <span className="text-[11px] text-slate-500 ml-1">Selecione um trecho ou posicione o cursor.</span>
+              <span className="ml-2 text-[11px] text-slate-500">Selecione um trecho ou posicione o cursor.</span>
             </div>
             <Textarea ref={mensagemRef} rows={5} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })}
               className="min-h-[140px] resize-y rounded-t-none border-slate-200 shadow-sm focus-visible:ring-emerald-500"
@@ -901,7 +901,7 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
             value={conexaoSelecionada ? (conexaoSelecionada.nome || conexaoSelecionada.session_id || 'Conexão selecionada') : 'Selecione uma conexão'}
             detalhe={conexaoSelecionada?.phone_number || ''}
           />
-          <ResumoItem label={form.canal_tipo === 'oficial' ? 'Template' : 'Formato da mensagem'} value={form.canal_tipo === 'oficial' ? formatoResumo : formatoResumo} />
+          <ResumoItem label={form.canal_tipo === 'oficial' ? 'Template' : 'Formato da mensagem'} value={formatoResumo} />
           {form.canal_tipo === 'nao_oficial' && (
             <ResumoItem label="Texto da mensagem" value={form.mensagem_texto?.trim() || 'Escreva a mensagem da campanha'} compacto />
           )}
