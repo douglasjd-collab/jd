@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Eye, Copy, Ban, Download, BarChart3, Loader2, RotateCw, Pencil, Minus, Maximize2, GripVertical } from 'lucide-react';
+import { Plus, Search, Eye, Copy, Ban, Download, BarChart3, Loader2, RotateCw, Pencil, Minus, Maximize2, GripVertical, Play } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import EditarCampanhaModal from './EditarCampanhaModal';
@@ -23,6 +23,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
   const [detalhe, setDetalhe] = useState(null);
   const [copiando, setCopiando] = useState(false);
   const [reenviando, setReenviando] = useState(null);
+  const [retomando, setRetomando] = useState(null);
   const [editando, setEditando] = useState(null);
   const queryClient = useQueryClient();
 
@@ -159,6 +160,41 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
     }
   };
 
+  const retomarNaoOficial = async (c) => {
+    const naFila = await base44.entities.CampanhaDestinatario.filter(
+      { campanha_id: c.id, status: 'na_fila' },
+      null,
+      500
+    );
+    if (!naFila.length) {
+      toast.info('Não há destinatários na fila para continuar.');
+      return;
+    }
+    if (!confirm(`Retomar "${c.nome}" para ${naFila.length} destinatário(s) que ainda estão na fila?`)) return;
+
+    setRetomando(c.id);
+    try {
+      await base44.entities.Campanha.update(c.id, {
+        status: 'executando',
+        fim_execucao: null,
+      });
+      try {
+        await base44.functions.invoke('dispararCampanhaNaoOficial', { campanha_id: c.id });
+      } catch (e) {
+        await base44.entities.Campanha.update(c.id, { status: 'pausada' }).catch(() => {});
+        throw e;
+      }
+      toast.success(`Envio retomado para ${naFila.length} destinatário(s) na fila.`);
+      queryClient.invalidateQueries(['campanhas-lista', empresaId]);
+      queryClient.invalidateQueries(['campanhas-dashboard', empresaId]);
+      queryClient.invalidateQueries(['campanha-monitor-global', empresaId]);
+    } catch (e) {
+      toast.error('Erro ao retomar: ' + (e.message || 'desconhecido'));
+    } finally {
+      setRetomando(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -238,7 +274,12 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                             ? <Loader2 className="w-4 h-4 animate-spin" />
                             : <RotateCw className="w-4 h-4" />}
                         </IconBtn>
-                        <IconBtn title="Duplicar" onClick={() => duplicar(c)} disabled={copiando}><Copy className="w-4 h-4" /></IconBtn>
+                        {c.status === 'pausada' && c.canal === 'whatsapp_nao_oficial' && (
+                          <IconBtn title="Retomar envio" onClick={() => retomarNaoOficial(c)} disabled={retomando === c.id}>
+                            {retomando === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                          </IconBtn>
+                        )}
+                        <IconBtn title="Duplicar" onClick={() => duplicar(c)} disabled={copiando}> <Copy className="w-4 h-4" /></IconBtn>
                         <IconBtn title="Cancelar" onClick={() => cancelar(c)} disabled={c.status === 'cancelada' || c.status === 'concluida'}><Ban className="w-4 h-4" /></IconBtn>
                         <IconBtn title="Exportar" onClick={() => toast.info('Exportação em breve')}><Download className="w-4 h-4" /></IconBtn>
                         <IconBtn title="Relatório" onClick={() => toast.info('Relatórios em breve')}><BarChart3 className="w-4 h-4" /></IconBtn>
