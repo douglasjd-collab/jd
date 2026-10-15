@@ -98,8 +98,10 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     agendada_para_data: '',
     agendada_para_hora: '',
     velocidade_envio: 60,
-    pausa_apos: '',
-    duracao_pausa_min: '',
+    intervalo_min_segundos: 5,
+    intervalo_max_segundos: 10,
+    pausa_apos: '50',
+    duracao_pausa_min: '0',
   });
 
   useEffect(() => {
@@ -142,8 +144,10 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         agendada_para_data: '',
         agendada_para_hora: '',
         velocidade_envio: 60,
-        pausa_apos: '',
-        duracao_pausa_min: '',
+        intervalo_min_segundos: 5,
+        intervalo_max_segundos: 10,
+        pausa_apos: '50',
+        duracao_pausa_min: '0',
       });
     }
   }, [open]);
@@ -564,8 +568,10 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         status: form.agendamento === 'agendar' ? 'agendada' : 'rascunho',
         total_destinatarios: vistos.size,
         velocidade_envio: Number(form.velocidade_envio) || 60,
-        pausa_apos: form.pausa_apos ? Number(form.pausa_apos) : null,
-        duracao_pausa_min: form.duracao_pausa_min ? Number(form.duracao_pausa_min) : null,
+        intervalo_min_segundos: Number(form.intervalo_min_segundos) || 5,
+        intervalo_max_segundos: Number(form.intervalo_max_segundos) || 10,
+        pausa_apos: form.pausa_apos ? Number(form.pausa_apos) : 50,
+        duracao_pausa_min: Number(form.duracao_pausa_min) || 0,
         agendada_para: agendadaPara,
         config_json: configJson,
       });
@@ -1206,16 +1212,44 @@ function Step5({ form, setForm }) {
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <Label>Mensagens por minuto</Label>
-            <Input type="number" value={form.velocidade_envio} onChange={(e) => setForm({ ...form, velocidade_envio: e.target.value })} />
+            <Label>Intervalo aleatório entre mensagens</Label>
+            <select
+              value={`${form.intervalo_min_segundos}-${form.intervalo_max_segundos}`}
+              onChange={(e) => {
+                const [min, max] = e.target.value.split('-').map(Number);
+                setForm({ ...form, intervalo_min_segundos: min, intervalo_max_segundos: max });
+              }}
+              className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="5-10">Aleatório entre 5 e 10 segundos</option>
+              <option value="11-20">Aleatório entre 11 e 20 segundos</option>
+              <option value="21-30">Aleatório entre 21 e 30 segundos</option>
+            </select>
           </div>
           <div>
-            <Label>Pausar após N envios</Label>
-            <Input type="number" value={form.pausa_apos} onChange={(e) => setForm({ ...form, pausa_apos: e.target.value })} placeholder="0 = sem pausa" />
+            <Label>Pausar a cada quantas mensagens?</Label>
+            <Input
+              type="number"
+              min="1"
+              value={form.pausa_apos}
+              onChange={(e) => setForm({ ...form, pausa_apos: e.target.value })}
+              placeholder="50"
+            />
+            <p className="mt-1 text-xs text-slate-500">Conta somente as mensagens enviadas com sucesso.</p>
           </div>
           <div>
-            <Label>Duração da pausa (min)</Label>
-            <Input type="number" value={form.duracao_pausa_min} onChange={(e) => setForm({ ...form, duracao_pausa_min: e.target.value })} />
+            <Label>Duração da pausa</Label>
+            <select
+              value={form.duracao_pausa_min || '0'}
+              onChange={(e) => setForm({ ...form, duracao_pausa_min: e.target.value })}
+              className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="0">Sem pausa automática</option>
+              <option value="10">10 minutos</option>
+              <option value="20">20 minutos</option>
+              <option value="30">30 minutos</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500">Depois da pausa, o envio continua automaticamente.</p>
           </div>
         </div>
       </div>
@@ -1239,8 +1273,13 @@ function Step6({ form, template, preview, user }) {
           <Row label="Filtros" value={resumoFiltros(form)} />
           <Row label="Prontos p/ envio" value={preview?.prontos_envio ?? '-'} />
           <Row label="Agendamento" value={form.agendamento === 'agora' ? 'Imediato' : `${form.agendada_para_data} ${form.agendada_para_hora}`} />
-          <Row label="Velocidade" value={`${form.velocidade_envio || 60} msg/min`} />
-          {form.pausa_apos && <Row label="Pausa" value={`Após ${form.pausa_apos} envios · ${form.duracao_pausa_min || 0} min`} />}
+          <Row label="Intervalo entre mensagens" value={`Aleatório entre ${form.intervalo_min_segundos} e ${form.intervalo_max_segundos} segundos`} />
+          <Row
+            label="Pausa automática"
+            value={Number(form.duracao_pausa_min) > 0
+              ? `A cada ${Number(form.pausa_apos) || 50} envios · ${form.duracao_pausa_min} min`
+              : 'Desativada'}
+          />
           <Row label="Empresa" value={empresaIdShort(user)} />
           <Row label="Responsável" value={user?.full_name || user?.email} />
         </CardContent>
