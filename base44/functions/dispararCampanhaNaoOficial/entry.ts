@@ -1,6 +1,15 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const withTimeout = <T>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout>;
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+};
 const primeiroNome = (nome = "") => String(nome).trim().split(/\s+/)[0] || "cliente";
 const somenteDigitos = (valor = "") => String(valor).replace(/\D/g, "");
 
@@ -55,8 +64,15 @@ async function processarCampanha(base44: any, campanha: any, campanhaId: string)
 
   let enviados = Number(campanha.enviados || 0);
   let falhas = Number(campanha.falhas || 0);
-  const porMinuto = Math.max(1, Math.min(60, Number(campanha.velocidade_envio || 1)));
-  const delayMs = Math.max(1000, Math.round(60000 / porMinuto));
+  const minConfigurado = Number(campanha.intervalo_min_segundos);
+  const maxConfigurado = Number(campanha.intervalo_max_segundos);
+  const temFaixaAleatoria = Number.isFinite(minConfigurado) && minConfigurado > 0 &&
+    Number.isFinite(maxConfigurado) && maxConfigurado >= minConfigurado;
+  const porMinutoLegado = Math.max(1, Math.min(60, Number(campanha.velocidade_envio || 60)));
+  const atrasoLegadoMs = Math.max(1000, Math.round(60000 / porMinutoLegado));
+  const intervaloMinMs = temFaixaAleatoria ? Math.max(1000, Math.min(120000, minConfigurado * 1000)) : atrasoLegadoMs;
+  const intervaloMaxMs = temFaixaAleatoria ? Math.max(intervaloMinMs, Math.min(120000, maxConfigurado * 1000)) : atrasoLegadoMs;
+  const proximoIntervaloMs = () => Math.floor(intervaloMinMs + Math.random() * (intervaloMaxMs - intervaloMinMs + 1));
   const pausarApos = Math.max(0, Number(campanha.pausa_apos || 0));
   const duracaoPausaMs = Math.max(0, Number(campanha.duracao_pausa_min || 0)) * 60000;
   let enviadosNestaExecucao = 0;
@@ -86,8 +102,13 @@ async function processarCampanha(base44: any, campanha: any, campanhaId: string)
       payload.text = texto;
     }
 
+    let atrasoDeErroAplicado = false;
     try {
-      const resposta = await base44.asServiceRole.functions.invoke("whatsappService", payload);
+      const resposta = await withTimeout(
+        base44.asServiceRole.functions.invoke("whatsappService", payload),
+        60000,
+        "A integração não respondeu em 60 segundos. Confira o WhatsApp antes de tentar novamente."
+      );
       const data = resposta?.data || resposta;
       if (data?.success === false) throw new Error(data?.error || "Falha informada pela D-API");
       const messageId = data?.messageId || data?.message_id || data?.data?.messageId || data?.data?.id || "";
@@ -106,17 +127,17 @@ async function processarCampanha(base44: any, campanha: any, campanhaId: string)
         status: "falhou",
         erro_mensagem: error instanceof Error ? error.message : String(error),
       });
-      // Recuo operacional após erro do provedor.
-      await sleep(Math.max(5000, delayMs));
+      // Recuo operacional após erro do provedor; o erro fica registrado e a fila continua.
+      await sleep(Math.max(5000, proximoIntervaloMs()));
+      atrasoDeErroAplicado = true;
     }
 
     await base44.asServiceRole.entities.Campanha.update(campanhaId, { enviados, falhas });
 
     if (pausarApos > 0 && enviadosNestaExecucao > 0 && enviadosNestaExecucao % pausarApos === 0 && duracaoPausaMs > 0) {
       await sleep(duracaoPausaMs);
-    } else if (delayMs > 0) {
-      await sleep(delayMs);
     }
+    if (!atrasoDeErroAplicado) await sleep(proximoIntervaloMs());
   }
 
   const restantes = await base44.asServiceRole.entities.CampanhaDestinatario.filter(
