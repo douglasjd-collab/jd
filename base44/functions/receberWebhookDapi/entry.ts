@@ -159,7 +159,7 @@ export default async function(req) {
       case 'message.update': {
         const items = Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : [data]);
         for (const item of items) {
-          const states = [item?.update?.status, item?.status, item?.messageStatus, item?.ack,
+          const states = [item?.update?.status, item?.status, item?.messageStatus, (typeof item?.ack === 'string' && !/^\d+$/.test(item.ack) ? item.ack : null),
             ...(Array.isArray(item?.MessageUpdate) ? item.MessageUpdate.map(u => u?.status) : [])]
             .filter(v => typeof v === 'string' || typeof v === 'number').map(v => String(v).toUpperCase().trim());
           if (states.some(s => ['READ', 'READ_ACK', 'PLAYED', 'PLAYED_ACK', 'VIEWED', 'LIDA', '4', '5'].includes(s))) {
@@ -687,7 +687,12 @@ async function processarMensagemEnviadaPeloCelular(base44, connection, data, tel
       console.log('✅ Conversa criada a partir de mensagem enviada pelo celular:', conversa.id);
     }
 
-    await base44.entities.MensagemWhatsapp.create({
+    // Revalidar imediatamente antes de gravar: o envio HTTP pode ter terminado
+    // durante o processamento do eco.
+    const jaExiste = wamid ? await base44.entities.MensagemWhatsapp.filter({
+      empresa_id: empresaId, conversa_id: conversa.id, whatsapp_message_id: wamid,
+    }, '-created_date', 1) : [];
+    if (!jaExiste.length) await base44.entities.MensagemWhatsapp.create({
       conversa_id: conversa.id,
       empresa_id: empresaId,
       remetente: 'vendedor',
