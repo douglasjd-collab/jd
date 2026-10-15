@@ -2,13 +2,15 @@ import { createClientFromRequest } from "npm:@base44/sdk";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const withTimeout = <T>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
-  let timer: ReturnType<typeof setTimeout>;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => {
       timer = setTimeout(() => reject(new Error(message)), ms);
     }),
-  ]).finally(() => clearTimeout(timer));
+  ]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
 };
 const primeiroNome = (nome = "") => String(nome).trim().split(/\s+/)[0] || "cliente";
 const somenteDigitos = (valor = "") => String(valor).replace(/\D/g, "");
