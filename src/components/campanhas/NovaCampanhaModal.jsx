@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -30,6 +30,8 @@ import {
   Video,
   Upload,
   WalletCards,
+  Bold,
+  Italic,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -707,10 +709,27 @@ function Stepper({ step }) {
 
 function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, connections }) {
   const [uploading, setUploading] = useState(false);
+  const mensagemRef = useRef(null);
   const templatesVisiveis = form.conn_selecionada
     ? (templates || []).filter((t) => !t.connection_id || t.connection_id === form.conn_selecionada)
     : (templates || []);
   const selecionado = templatesVisiveis.find((t) => t.id === form.template_id) || null;
+
+  const formatarMensagem = (marcador) => {
+    const campo = mensagemRef.current;
+    if (!campo) return;
+    const inicio = campo.selectionStart ?? form.mensagem_texto.length;
+    const fim = campo.selectionEnd ?? inicio;
+    const texto = form.mensagem_texto || '';
+    const selecionado = texto.slice(inicio, fim);
+    const novoTexto = texto.slice(0, inicio) + marcador + selecionado + marcador + texto.slice(fim);
+    setForm({ ...form, mensagem_texto: novoTexto });
+    requestAnimationFrame(() => {
+      campo.focus();
+      const cursor = selecionado ? fim + marcador.length * 2 : inicio + marcador.length;
+      campo.setSelectionRange(cursor, cursor);
+    });
+  };
 
   const uploadMidia = async (file) => {
     if (!file) return;
@@ -801,9 +820,21 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
           )}
           <div>
             <Label>Texto da mensagem *</Label>
-            <Textarea rows={6} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })}
+            <div className="flex items-center gap-1 border border-slate-200 border-b-0 rounded-t-md bg-slate-50 p-1">
+              <button type="button" title="Negrito" aria-label="Aplicar negrito" onMouseDown={(e) => e.preventDefault()} onClick={() => formatarMensagem('*')}
+                className="inline-flex items-center justify-center h-8 w-8 rounded hover:bg-white text-slate-700">
+                <Bold className="w-4 h-4" />
+              </button>
+              <button type="button" title="Itálico" aria-label="Aplicar itálico" onMouseDown={(e) => e.preventDefault()} onClick={() => formatarMensagem('_')}
+                className="inline-flex items-center justify-center h-8 w-8 rounded hover:bg-white text-slate-700">
+                <Italic className="w-4 h-4" />
+              </button>
+              <span className="text-[11px] text-slate-500 ml-1">Selecione um trecho ou posicione o cursor.</span>
+            </div>
+            <Textarea ref={mensagemRef} rows={6} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })}
+              className="rounded-t-none"
               placeholder={"Olá, {nome}!\nHoje é o vencimento da sua parcela.\nSe já realizou o pagamento, desconsidere esta mensagem."} />
-            <p className="text-[11px] text-slate-500 mt-1">Use <strong>{'{nome}'}</strong> para inserir o primeiro nome do cliente.</p>
+            <p className="text-[11px] text-slate-500 mt-1">Use <strong>{'{nome}'}</strong> para inserir o primeiro nome do cliente. O WhatsApp exibirá os trechos entre *asteriscos* em negrito e entre _sublinhados_ em itálico.</p>
           </div>
         </div>
       ) : (
