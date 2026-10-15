@@ -618,6 +618,7 @@ Deno.serve(async (req) => {
         dapiActionParams.contextInfo = dapiContextInfo;
       }
 
+      let confirmacaoDapi = null;
       // Envio direto à D-API (sem a função intermediária whatsappService, que
       // custava ~3s por mensagem e atrasava a confirmação de envio no chat).
       try {
@@ -694,6 +695,7 @@ Deno.serve(async (req) => {
         // Sucesso no envio D-API
         const messageIdDapi = serviceResult?.data?.data?.messageId || serviceResult?.data?.messageId || `dapi_${Date.now()}`;
         
+        confirmacaoDapi = { whatsapp_id: messageIdDapi, message_id: null };
         console.log('✅ Mensagem D-API enviada com sucesso:', {
           messageId: messageIdDapi,
           responseTime,
@@ -749,6 +751,7 @@ Deno.serve(async (req) => {
           status: 'enviada'
         });
 
+        confirmacaoDapi.message_id = novaMensagem.id;
         await marcarRecebidasAteResposta(base44.asServiceRole.entities, empresaId, conversa_id, novaMensagem.data_envio)
           .catch(e => console.error('⚠️ Erro ao confirmar leitura após resposta D-API:', e.message));
 
@@ -779,6 +782,18 @@ Deno.serve(async (req) => {
         });
         
       } catch (serviceError) {
+        // Uma falha de persistência após o aceite não desfaz o envio no WhatsApp.
+        // Preservar o ID para reconciliar com o webhook, sem oferecer reenvio.
+        if (confirmacaoDapi) {
+          console.error('⚠️ D-API confirmou envio; sincronização CRM falhou:', serviceError.message);
+          return Response.json({
+            success: true,
+            ...confirmacaoDapi,
+            provider: 'dapi',
+            sync_pending: !confirmacaoDapi.message_id,
+            arquivo_url: arquivoUrlDapi || null,
+          });
+        }
         console.error('❌ Erro ao chamar whatsappService D-API:', serviceError.message);
         return Response.json({ 
           error: 'Erro ao enviar mensagem via D-API: ' + serviceError.message,
