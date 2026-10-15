@@ -330,12 +330,15 @@ async function processEvent(base44, eventType, body, connection, empresaId) {
     case 'messages.sent':
       return await processMessageSent(base44, body, connection);
     
+    case 'messages.update':
     case 'message.update':
       return await processMessageStatusUpdate(base44, body, connection);
 
+    case 'messages.delivered':
     case 'message.delivered':
       return await processMessageDelivered(base44, body, connection);
     
+    case 'messages.read':
     case 'message.read':
       return await processMessageRead(base44, body, connection);
     
