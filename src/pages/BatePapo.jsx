@@ -812,7 +812,7 @@ export default function BatePapo() {
     : conversas;
 
   const escopoHistorico = empresaId && user?.id ? JSON.stringify([empresaId, user.id, user.colaborador_id || '']) : null;
-  const { data: mensagens = [], isLoading: loadingMensagens, refetch: refetchMensagens } = useQuery({
+  const { data: mensagensCache = [], isLoading: loadingMensagens, refetch: refetchMensagens } = useQuery({
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
     initialData: () => lerHistoricoSessao(escopoHistorico, conversaSelecionadaId),
     initialDataUpdatedAt: 0,
@@ -846,6 +846,8 @@ export default function BatePapo() {
     refetchOnWindowFocus: false,
     // Sem placeholder de outra conversa: o cache é isolado por conversation ID.
   });
+
+  const mensagens = React.useMemo(() => mesclarHistoricoMensagens([], mensagensCache), [mensagensCache]);
 
   useEffect(() => {
     if (!escopoHistorico || !conversaSelecionadaId || !mensagens.length) return;
