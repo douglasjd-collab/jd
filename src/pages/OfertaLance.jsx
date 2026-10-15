@@ -48,6 +48,14 @@ Com essa oferta, sua cota passa a concorrer também na modalidade de lance fixo,
 
 Agora é só aguardar o resultado da assembleia. Estamos na torcida por você! 🍀`;
 
+// Erros momentâneos do banco (timeout de consulta/conexão) não podem impedir o
+// registro da oferta — identificamos o erro para tentar novamente com segurança.
+const PADROES_TIMEOUT_BANCO = ['timed out', 'timeout', 'etimedout', 'econnreset', 'mongonetworkerror', 'server selection'];
+const isErroTimeoutBanco = (error) => {
+  const msg = String(error?.message || error || '').toLowerCase();
+  return PADROES_TIMEOUT_BANCO.some(p => msg.includes(p));
+};
+
 export default function OfertaLance() {
   const [currentUser, setCurrentUser] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -408,6 +416,10 @@ export default function OfertaLance() {
       console.log('[OfertaLance] Debug:', res.data?.debug);
       return res.data || { vendas: [], ofertas: [] };
     },
+    // A carga é pesada (todas as cartas + todas as ofertas): não repetir a cada
+    // troca de janela, evitando sobrecarregar o banco desnecessariamente.
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const todasVendas = dadosLance.vendas || [];
@@ -445,10 +457,35 @@ export default function OfertaLance() {
         throw new Error('Já existe oferta de lance registrada para esta carta neste mês.');
       }
 
-      return await base44.entities.OfertaLance.create(data);
+      try {
+        return await base44.entities.OfertaLance.create(data);
+      } catch (error) {
+        if (!isErroTimeoutBanco(error)) throw error;
+        // O banco pode responder com timeout mesmo depois de gravar o registro.
+        // Conferimos antes de repetir, para não duplicar a oferta.
+        const jaSalvo = await base44.entities.OfertaLance.filter(
+          { venda_id: data.venda_id, competencia: data.competencia },
+          null,
+          1
+        );
+        if (jaSalvo?.length > 0) return jaSalvo[0];
+        await new Promise(r => setTimeout(r, 1500));
+        return await base44.entities.OfertaLance.create(data);
+      }
     },
-    onSuccess: async (_resp, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['oferta-lance-data'] });
+    onSuccess: async (resp, variables) => {
+      // Atualiza a lista já carregada em vez de recarregar todas as cartas do banco
+      const ofertaSalva = { ...variables, ...(resp || {}) };
+      queryClient.setQueriesData({ queryKey: ['oferta-lance-data'] }, dados => {
+        if (!dados) return dados;
+        const ofertas = dados.ofertas || [];
+        if (ofertas.some(o => o.id === ofertaSalva.id)) return dados;
+        const venda = (dados.vendas || []).find(v => v.id === ofertaSalva.venda_id);
+        return {
+          ...dados,
+          ofertas: [{ ...ofertaSalva, administradora_nome: venda?.administradora_nome || '-' }, ...ofertas],
+        };
+      });
       // Buscar telefone do cliente para o comprovante
       let telefone = '';
       if (variables.cliente_id) {
@@ -526,7 +563,19 @@ export default function OfertaLance() {
       historico_alteracoes: JSON.stringify(historico),
     });
 
-    queryClient.invalidateQueries({ queryKey: ['oferta-lance-data'] });
+    queryClient.setQueriesData({ queryKey: ['oferta-lance-data'] }, dados =>
+      dados ? {
+        ...dados,
+        ofertas: (dados.ofertas || []).map(o => o.id === editOferta.id ? {
+          ...o,
+          percentual_lance: percentualNum,
+          valor_lance: valorNovo,
+          tipo_lance: editTipoLance,
+          observacao: editObservacao || null,
+          historico_alteracoes: JSON.stringify(historico),
+        } : o),
+      } : dados
+    );
     toast.success('Lance atualizado com sucesso!');
     setEditOpen(false);
     setEditOferta(null);
