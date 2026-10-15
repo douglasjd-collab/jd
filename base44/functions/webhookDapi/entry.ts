@@ -1159,86 +1159,70 @@ async function processMessageSent(base44, body, connection) {
   );
 }
 
-// Atualizações de status podem chegar em lote ou dentro de update.status.
-// Só confirma entrega/leitura quando o provedor informa explicitamente esse estado.
-async function processMessageStatusUpdate(base44, body, connection) {
-  const data = body.data || body.message || body;
-  const updates = Array.isArray(data) ? data : (Array.isArray(data.messages) ? data.messages : [data]);
-  const results = [];
-  for (const item of updates) {
-    const statuses = [item?.update?.status, item?.status, item?.messageStatus, item?.ack,
-      ...(Array.isArray(item?.MessageUpdate) ? item.MessageUpdate.map(u => u?.status) : [])]
-      .filter(v => typeof v === 'string').map(v => v.toUpperCase().trim());
-    if (statuses.some(s => ['READ', 'PLAYED', 'VIEWED', 'LIDA'].includes(s))) {
-      results.push(await processMessageRead(base44, { data: item }, connection));
-    } else if (statuses.some(s => ['DELIVERY_ACK', 'DELIVERED', 'DEVICE_READ', 'ENTREGUE'].includes(s))) {
-      results.push(await processMessageDelivered(base44, { data: item }, connection));
+
+// Expand each receipt independently; keep envelope fields for batched IDs.
+function expandReceiptItems(data) {
+  if (Array.isArray(data)) return data.flatMap(expandReceiptItems);
+  if (!data || typeof data !== 'object') return [];
+  for (const field of ['messages', 'updates', 'receipts']) {
+    if (Array.isArray(data[field])) {
+      const { [field]: children, ...parent } = data;
+      return children.flatMap(child => expandReceiptItems(typeof child === 'string'
+        ? { ...parent, id: child } : { ...parent, ...child }));
     }
+  }
+  for (const field of ['messageIds', 'message_ids', 'ids', 'keys']) {
+    if (Array.isArray(data[field])) {
+      const { [field]: ids, ...parent } = data;
+      return ids.flatMap(id => expandReceiptItems(typeof id === 'string'
+        ? { ...parent, id } : { ...parent, key: id }));
+    }
+  }
+  return [data];
+}
+
+async function applyMessageReceipt(base44, body, connection, status) {
+  if (!connection) return { handled: false, reason: 'connection not found' };
+  const results = [];
+  for (const item of expandReceiptItems(body.data || body.message || body)) {
+    const id = item.key?.id || item.message?.key?.id || item.id || item.messageId || item.message_id || item.external_message_id;
+    if (typeof id !== 'string' || !id.trim()) continue;
+    const patch = { status, ...(status === 'lida'
+      ? { lida_em: new Date().toISOString() } : { entregue_em: new Date().toISOString() }) };
+    await base44.asServiceRole.entities.MensagemWhatsapp.updateMany({
+      empresa_id: connection.empresa_id,
+      whatsapp_message_id: id,
+      remetente: 'vendedor',
+      status: { $nin: status === 'lida' ? ['lida'] : ['entregue', 'lida'] }
+    }, { $set: patch });
+    results.push({ messageId: id, status });
+  }
+  return { handled: results.length > 0, results };
+}
+
+async function processMessageStatusUpdate(base44, body, connection) {
+  const results = [];
+  for (const item of expandReceiptItems(body.data || body.message || body)) {
+    const values = [item.update?.status, item.status, item.messageStatus,
+      ...(Array.isArray(item.MessageUpdate) ? item.MessageUpdate.map(u => u?.status) : [])]
+      .filter(v => typeof v === 'string' || typeof v === 'number')
+      .map(v => String(v).toUpperCase().trim());
+    // MessageStatus uses 3=delivered, 4=read; ACK uses 2=delivered, 3=read.
+    const ack = item.update?.ack ?? item.ack;
+    const read = values.some(s => ['READ', 'READ_ACK', 'PLAYED', 'PLAYED_ACK', 'VIEWED', 'LIDA', '4', '5'].includes(s))
+      || [3, 4].includes(Number(ack));
+    const delivered = values.some(s => ['DELIVERY_ACK', 'DELIVERED', 'DEVICE_READ', 'ENTREGUE', '3'].includes(s))
+      || Number(ack) === 2;
+    if (read || delivered) results.push(await applyMessageReceipt(base44, { data: item }, connection, read ? 'lida' : 'entregue'));
   }
   return { handled: results.some(r => r.handled), results };
 }
 
-/**
- * Processar message.delivered
- */
 async function processMessageDelivered(base44, body, connection) {
-  if (!connection) return { handled: false, reason: 'connection not found' };
-  
-  const messageData = body.data || body.message || body;
-  const externalMessageId = messageData.key?.id || messageData.message?.key?.id || messageData.id || messageData.messageId || messageData.message_id || messageData.external_message_id;
-  if (typeof externalMessageId !== 'string' || !externalMessageId.trim()) {
-    return { handled: false, reason: 'message id missing' };
-  }
-  
-  const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
-    empresa_id: connection.empresa_id,
-    whatsapp_message_id: externalMessageId
-  });
-  
-  if (mensagens.length > 0) {
-    const msg = mensagens[0];
-    // O filtro de status garante a ordem no banco: um "entregue" que chega depois do
-    // "lida" não sobrescreve mais a leitura.
-    await base44.asServiceRole.entities.MensagemWhatsapp.updateMany({
-      id: msg.id,
-      status: { $nin: ['entregue', 'lida'] }
-    }, { $set: { status: 'entregue', entregue_em: new Date().toISOString() } });
-    
-    return { handled: true, messageId: externalMessageId, status: 'entregue' };
-  }
-  
-  return { handled: false, reason: 'mensagem não encontrada' };
+  return applyMessageReceipt(base44, body, connection, 'entregue');
 }
-
-/**
- * Processar message.read
- */
 async function processMessageRead(base44, body, connection) {
-  if (!connection) return { handled: false, reason: 'connection not found' };
-  
-  const messageData = body.data || body.message || body;
-  const externalMessageId = messageData.key?.id || messageData.message?.key?.id || messageData.id || messageData.messageId || messageData.message_id || messageData.external_message_id;
-  if (typeof externalMessageId !== 'string' || !externalMessageId.trim()) {
-    return { handled: false, reason: 'message id missing' };
-  }
-  
-  const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
-    empresa_id: connection.empresa_id,
-    whatsapp_message_id: externalMessageId
-  });
-  
-  if (mensagens.length > 0) {
-    const msg = mensagens[0];
-    // Idempotente: só grava se ainda não estiver lida.
-    await base44.asServiceRole.entities.MensagemWhatsapp.updateMany({
-      id: msg.id,
-      status: { $nin: ['lida'] }
-    }, { $set: { status: 'lida', lida_em: new Date().toISOString() } });
-    
-    return { handled: true, messageId: externalMessageId, status: 'lida' };
-  }
-  
-  return { handled: false, reason: 'mensagem não encontrada' };
+  return applyMessageReceipt(base44, body, connection, 'lida');
 }
 
 /**
