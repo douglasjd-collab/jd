@@ -155,25 +155,28 @@ export default async function(req) {
         await processarConfirmacaoEnvio(base44, connection, data);
         break;
         
+      case 'messages.update':
       case 'message.update': {
         const items = Array.isArray(data) ? data : (Array.isArray(data?.messages) ? data.messages : [data]);
         for (const item of items) {
           const states = [item?.update?.status, item?.status, item?.messageStatus, item?.ack,
             ...(Array.isArray(item?.MessageUpdate) ? item.MessageUpdate.map(u => u?.status) : [])]
-            .filter(v => typeof v === 'string').map(v => v.toUpperCase().trim());
-          if (states.some(s => ['READ', 'PLAYED', 'VIEWED', 'LIDA'].includes(s))) {
+            .filter(v => typeof v === 'string' || typeof v === 'number').map(v => String(v).toUpperCase().trim());
+          if (states.some(s => ['READ', 'READ_ACK', 'PLAYED', 'PLAYED_ACK', 'VIEWED', 'LIDA', '4', '5'].includes(s))) {
             await atualizarStatusMensagem(base44, connection, item, 'lida');
-          } else if (states.some(s => ['DELIVERY_ACK', 'DELIVERED', 'DEVICE_READ', 'ENTREGUE'].includes(s))) {
+          } else if (states.some(s => ['DELIVERY_ACK', 'DELIVERED', 'DEVICE_READ', 'ENTREGUE', '3'].includes(s))) {
             await atualizarStatusMensagem(base44, connection, item, 'entregue');
           }
         }
         break;
       }
 
+      case 'messages.delivered':
       case 'message.delivered':
         await atualizarStatusMensagem(base44, connection, data, 'entregue');
         break;
         
+      case 'messages.read':
       case 'message.read':
         await atualizarStatusMensagem(base44, connection, data, 'lida');
         break;
@@ -924,6 +927,10 @@ async function processarChatsUpdate(base44, connection, data) {
 // preenchido e status "entregue" (dois traços cinza em vez do azul).
 async function atualizarStatusMensagem(base44, connection, data, statusInterno) {
   try {
+    if (Array.isArray(data)) {
+      for (const item of data) await atualizarStatusMensagem(base44, connection, item, statusInterno);
+      return;
+    }
     const wamid = data?.key?.id || data?.message?.key?.id || data?.id || data?.messageId || data?.message_id || data?.external_message_id;
     if (typeof wamid !== 'string' || !wamid.trim()) return;
 
