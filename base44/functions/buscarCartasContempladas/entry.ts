@@ -278,9 +278,9 @@ function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: numbe
   const adiciona = (itens: any[]) => {
     const credito = somaCredito(itens);
     if (alvo > 0 && (credito < min || credito > max)) return;
+    // A parcela desejada é referência de busca, não filtro: a composição entra mesmo que a
+    // parcela fique um pouco acima ou abaixo, e a ordenação mostra a mais próxima primeiro.
     const parcela = somaParcela(itens);
-    // Só entra o plano que cabe na parcela que o cliente deseja pagar.
-    if (parcelaDesejada > 0 && parcela > parcelaDesejada) return;
     const ordenadas = [...itens].sort((a, b) => Number(b.valor_credito || 0) - Number(a.valor_credito || 0));
     const taxaValores = ordenadas.map((c) => c.taxa).filter((v) => Number.isFinite(Number(v)));
     resultados.push({
@@ -318,14 +318,11 @@ function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: numbe
       for (const itens of nivel) {
         const creditoAtual = somaCredito(itens);
         if (max !== Infinity && creditoAtual >= max) continue;
-        // Somar cartas só aumenta a parcela: se ela já estourou a desejada, a composição não serve mais.
-        if (parcelaDesejada > 0 && somaParcela(itens) >= parcelaDesejada) continue;
         for (const carta of arr) {
           if (itens.some((c) => c.id === carta.id)) continue;
           const credito = creditoAtual + Number(carta.valor_credito || 0);
           if (max !== Infinity && credito > max) continue;
           const composicao = [...itens, carta];
-          if (parcelaDesejada > 0 && somaParcela(composicao) > parcelaDesejada) continue;
           proximo.set(composicao.map((c) => c.id).sort().join("+"), composicao);
         }
       }
@@ -417,15 +414,16 @@ Deno.serve(async (req) => {
     }
 
     const combinacoes = combinarPorAdministradora(cartas, maxCartas, creditoDesejado, toleranciaPct, parcelaDesejada);
-    // Quando o cliente informa a parcela desejada, o plano que mais se aproxima dela vem primeiro.
-    // Em empate de proximidade, a composição com menos cartas entra na frente.
+    // Sem parcela informada a busca segue exatamente como antes: primeiro o plano mais próximo do crédito.
+    // Com parcela informada, o plano cuja parcela total mais se aproxima dela vem primeiro
+    // (não precisa ser exata).
     const porProximidade = [...combinacoes].sort((a, b) =>
       (parcelaDesejada > 0 ? a.diferenca_parcela - b.diferenca_parcela : 0) ||
       a.diferenca_alvo - b.diferenca_alvo ||
       a.quantidade_cartas - b.quantidade_cartas ||
       a.entrada - b.entrada
     );
-    const porParcelaDesejada = [...combinacoes].sort((a, b) =>
+    const porParcelaMaisProxima = [...combinacoes].sort((a, b) =>
       a.diferenca_parcela - b.diferenca_parcela ||
       a.diferenca_alvo - b.diferenca_alvo ||
       a.quantidade_cartas - b.quantidade_cartas
@@ -453,7 +451,7 @@ Deno.serve(async (req) => {
         menor_parcela: porParcela[0] || null,
         menor_taxa: porMenorSaldoEntrada[0] || null,
         mais_proxima: porProximidade[0] || null,
-        parcela_desejada: parcelaDesejada > 0 ? (porParcelaDesejada[0] || null) : null,
+        parcela_mais_proxima: parcelaDesejada > 0 ? (porParcelaMaisProxima[0] || null) : null,
       },
       resultados: porProximidade.slice(0, 150),
     });
