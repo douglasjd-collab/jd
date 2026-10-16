@@ -243,6 +243,13 @@ const normalizeAdmin = (v: string) => {
   return aliases[base] || base;
 };
 
+// Candidatas consideradas por administradora e composições mantidas em cada nível da busca.
+// Mantém a consulta rápida mesmo permitindo composições de até 6 cartas.
+const LIMITE_CARTAS_POR_ADM = 45;
+const LARGURA_BUSCA_NIVEL = 400;
+
+const somaCredito = (itens: any[]) => itens.reduce((soma, c) => soma + Number(c.valor_credito || 0), 0);
+
 function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: number, toleranciaPct: number) {
   const disponiveis = cartas.filter((c) => c.status === "disponivel" && c.valor_credito > 0);
   const grupos = new Map<string, any[]>();
@@ -260,20 +267,21 @@ function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: numbe
   const resultados: any[] = [];
 
   const adiciona = (itens: any[]) => {
-    const credito = itens.reduce((s, c) => s + c.valor_credito, 0);
+    const credito = somaCredito(itens);
     if (alvo > 0 && (credito < min || credito > max)) return;
-    const taxaValores = itens.map((c) => c.taxa).filter((v) => Number.isFinite(Number(v)));
+    const ordenadas = [...itens].sort((a, b) => Number(b.valor_credito || 0) - Number(a.valor_credito || 0));
+    const taxaValores = ordenadas.map((c) => c.taxa).filter((v) => Number.isFinite(Number(v)));
     resultados.push({
-      id: itens.map((c) => c.id).join("+"),
-      administradora: itens[0]?.administradora || "Não informada",
-      quantidade_cartas: itens.length,
-      cartas: itens,
+      id: ordenadas.map((c) => c.id).sort().join("+"),
+      administradora: ordenadas[0]?.administradora || "Não informada",
+      quantidade_cartas: ordenadas.length,
+      cartas: ordenadas,
       valor_credito: credito,
-      entrada: itens.reduce((s, c) => s + c.entrada, 0),
-      valor_parcela: itens.reduce((s, c) => s + c.valor_parcela, 0),
-      saldo_devedor: itens.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
-      parcelas: Math.max(...itens.map((c) => c.parcelas || 0)),
-      taxa: taxaValores.length === itens.length && taxaValores.length > 0
+      entrada: ordenadas.reduce((s, c) => s + c.entrada, 0),
+      valor_parcela: ordenadas.reduce((s, c) => s + c.valor_parcela, 0),
+      saldo_devedor: ordenadas.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
+      parcelas: Math.max(...ordenadas.map((c) => c.parcelas || 0)),
+      taxa: taxaValores.length === ordenadas.length && taxaValores.length > 0
         ? taxaValores.reduce((s, v) => s + Number(v), 0) / taxaValores.length
         : null,
       diferenca_alvo: alvo > 0 ? Math.abs(credito - alvo) : 0,
@@ -284,20 +292,31 @@ function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: numbe
     // Limita o conjunto por administradora aos itens mais próximos do alvo para evitar explosão combinatória.
     const arr = [...arrOriginal]
       .sort((a, b) => Math.abs(a.valor_credito - alvo) - Math.abs(b.valor_credito - alvo))
-      .slice(0, 45);
+      .slice(0, LIMITE_CARTAS_POR_ADM);
 
-    for (let i = 0; i < arr.length; i++) adiciona([arr[i]]);
-    if (maxCartas >= 2) {
-      for (let i = 0; i < arr.length; i++) {
-        for (let j = i + 1; j < arr.length; j++) adiciona([arr[i], arr[j]]);
-      }
-    }
-    if (maxCartas >= 3) {
-      for (let i = 0; i < arr.length; i++) {
-        for (let j = i + 1; j < arr.length; j++) {
-          for (let k = j + 1; k < arr.length; k++) adiciona([arr[i], arr[j], arr[k]]);
+    // Cresce as composições de 1 até maxCartas, mantendo por nível apenas as mais promissoras
+    // (mais próximas do alvo e ainda dentro do teto). Assim o sistema avalia 2, 3, 4, 5 ou 6
+    // cartas e escolhe a melhor composição, sem tentar todas as combinações possíveis.
+    let nivel: any[][] = arr.map((carta) => [carta]);
+    for (const itens of nivel) adiciona(itens);
+
+    for (let tamanho = 2; tamanho <= maxCartas && nivel.length; tamanho++) {
+      const proximo = new Map<string, any[]>();
+      for (const itens of nivel) {
+        const creditoAtual = somaCredito(itens);
+        if (max !== Infinity && creditoAtual >= max) continue;
+        for (const carta of arr) {
+          if (itens.some((c) => c.id === carta.id)) continue;
+          const credito = creditoAtual + Number(carta.valor_credito || 0);
+          if (max !== Infinity && credito > max) continue;
+          const composicao = [...itens, carta];
+          proximo.set(composicao.map((c) => c.id).sort().join("+"), composicao);
         }
       }
+      nivel = [...proximo.values()]
+        .sort((a, b) => Math.abs(somaCredito(a) - alvo) - Math.abs(somaCredito(b) - alvo))
+        .slice(0, LARGURA_BUSCA_NIVEL);
+      for (const itens of nivel) adiciona(itens);
     }
   }
 
@@ -313,7 +332,7 @@ Deno.serve(async (req) => {
     const tipo = body?.tipo === "desagios" ? "desagios" : "contemplados";
     const creditoDesejado = Math.max(0, num(body?.credito_desejado));
     const toleranciaPct = Math.min(50, Math.max(0, num(body?.tolerancia_percentual ?? 10)));
-    const maxCartas = Math.min(3, Math.max(1, Math.trunc(num(body?.max_cartas ?? 3))));
+    const maxCartas = Math.min(6, Math.max(1, Math.trunc(num(body?.max_cartas ?? 6))));
     const categoria = texto(body?.categoria).toLowerCase();
     const administradora = texto(body?.administradora).toLowerCase();
 
@@ -381,7 +400,12 @@ Deno.serve(async (req) => {
     }
 
     const combinacoes = combinarPorAdministradora(cartas, maxCartas, creditoDesejado, toleranciaPct);
-    const porProximidade = [...combinacoes].sort((a, b) => a.diferenca_alvo - b.diferenca_alvo || a.entrada - b.entrada);
+    // Em empate de proximidade, a composição com menos cartas entra na frente.
+    const porProximidade = [...combinacoes].sort((a, b) =>
+      a.diferenca_alvo - b.diferenca_alvo ||
+      a.quantidade_cartas - b.quantidade_cartas ||
+      a.entrada - b.entrada
+    );
     const porEntrada = [...combinacoes].sort((a, b) => a.entrada - b.entrada || a.diferenca_alvo - b.diferenca_alvo);
     const porParcela = [...combinacoes].sort((a, b) => a.valor_parcela - b.valor_parcela || a.diferenca_alvo - b.diferenca_alvo);
     const porMenorSaldoEntrada = [...combinacoes].sort((a, b) =>
