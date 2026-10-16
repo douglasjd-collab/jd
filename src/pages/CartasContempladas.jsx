@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Search, Loader2, WalletCards, Banknote, ReceiptText, Percent, RefreshCw, Layers3, ExternalLink, CheckCircle2, Clock3, AlertTriangle, Copy, Share2, Car, House, Bike, Wrench } from "lucide-react";
+import { Search, Loader2, WalletCards, Banknote, ReceiptText, Percent, Target, RefreshCw, Layers3, ExternalLink, CheckCircle2, Clock3, AlertTriangle, Copy, Share2, Car, House, Bike, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 const moneyBR = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -124,6 +124,7 @@ function RecommendationCard({ icon: Icon, title, result, tone, onOpen }) {
     entrada: "border-emerald-200 bg-emerald-50/60 text-emerald-800",
     parcela: "border-blue-200 bg-blue-50/60 text-blue-800",
     taxa: "border-violet-200 bg-violet-50/60 text-violet-800",
+    desejada: "border-amber-200 bg-amber-50/60 text-amber-800",
   };
   return (
     <Card className={`border-2 ${tones[tone]}`}>
@@ -131,8 +132,9 @@ function RecommendationCard({ icon: Icon, title, result, tone, onOpen }) {
       <CardContent>
         {!result ? <p className="text-sm opacity-70">Nenhuma opção com esse critério disponível.</p> : <>
           <div className="text-xs opacity-80"><AdministradoraIdentidade compact nome={result.administradora} carta={result.cartas?.[0] || result} /></div>
-          <p className="text-xl font-bold mt-1">{moneyBR(tone === "entrada" ? result.entrada : tone === "parcela" ? result.valor_parcela : result.saldo_devedor)}</p>
+          <p className="text-xl font-bold mt-1">{moneyBR(tone === "entrada" ? result.entrada : tone === "taxa" ? result.saldo_devedor : result.valor_parcela)}</p>
           {tone === "taxa" && <p className="text-xs opacity-70 -mt-1">Saldo devedor, priorizando também entrada baixa</p>}
+          {tone === "desejada" && <p className="text-xs opacity-70 -mt-1">Composição mais próxima da parcela informada</p>}
           <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
             <span>Crédito <b>{moneyBR(result.valor_credito)}</b></span><span>Entrada <b>{moneyBR(result.entrada)}</b></span>
             <span>Parcela <b>{moneyBR(result.valor_parcela)}</b></span><span>Prazo <b>{result.parcelas || "—"} meses</b></span>
@@ -148,6 +150,7 @@ export default function CartasContempladas() {
   const [credito, setCredito] = useState(100000);
   const [categoria, setCategoria] = useState("todas");
   const [maxCartas, setMaxCartas] = useState("1");
+  const [parcela, setParcela] = useState(0);
   const [tolerancia, setTolerancia] = useState("10");
   const [tipo, setTipo] = useState("contemplados");
   const [data, setData] = useState(null);
@@ -156,7 +159,7 @@ export default function CartasContempladas() {
   const busca = useMutation({
     mutationFn: async () => {
       const res = await base44.functions.invoke("buscarCartasContempladas", {
-        credito_desejado: Number(credito || 0), categoria, max_cartas: Number(maxCartas), tolerancia_percentual: Number(tolerancia), tipo,
+        credito_desejado: Number(credito || 0), parcela_desejada: Number(parcela || 0), categoria, max_cartas: Number(maxCartas), tolerancia_percentual: Number(tolerancia), tipo,
       });
       return res.data;
     },
@@ -203,8 +206,9 @@ export default function CartasContempladas() {
       <Card className="border-slate-200 shadow-sm">
         <CardContent className="pt-6">
           <div className="flex items-center gap-2 mb-4"><Search className="w-5 h-5 text-red-600"/><h2 className="font-bold text-slate-900">Encontrar melhor carta</h2></div>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3 items-end">
             <div className="md:col-span-2"><Label>Crédito desejado</Label><div className="relative"><span className="absolute left-3 top-2.5 text-sm text-slate-500">R$</span><Input className="pl-10" value={formatInputMoney(credito)} onChange={(e) => setCredito(parseMoney(e.target.value))} placeholder="100.000,00"/></div></div>
+            <div><Label>Parcela desejada (opcional)</Label><div className="relative"><span className="absolute left-3 top-2.5 text-sm text-slate-500">R$</span><Input className="pl-10" value={formatInputMoney(parcela)} onChange={(e) => setParcela(parseMoney(e.target.value))} placeholder="2.500,00"/></div></div>
             <div><Label>Categoria</Label><Select value={categoria} onValueChange={setCategoria}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="todas">Todas</SelectItem><SelectItem value="veículo">Veículos</SelectItem><SelectItem value="imóvel">Imóveis</SelectItem><SelectItem value="moto">Motos</SelectItem><SelectItem value="serviço">Serviços</SelectItem></SelectContent></Select></div>
             <div><Label>Quantidade de cartas</Label><Select value={maxCartas} onValueChange={setMaxCartas}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="1">Somente 1 carta</SelectItem><SelectItem value="2">Até 2 cartas</SelectItem><SelectItem value="3">Até 3 cartas</SelectItem><SelectItem value="4">Até 4 cartas</SelectItem><SelectItem value="5">Até 5 cartas</SelectItem><SelectItem value="6">Até 6 cartas</SelectItem></SelectContent></Select></div>
             <Button className="bg-red-600 hover:bg-red-700" onClick={buscar} disabled={busca.isPending}>{busca.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin"/> : <Search className="w-4 h-4 mr-2"/>}Buscar melhores</Button>
@@ -224,7 +228,8 @@ export default function CartasContempladas() {
       </div>
 
       {data && <>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${data.recomendacoes?.parcela_desejada ? "xl:grid-cols-4" : ""}`}>
+          {data.recomendacoes?.parcela_desejada && <RecommendationCard icon={Target} title="Parcela desejada" result={data.recomendacoes.parcela_desejada} tone="desejada" onOpen={setSelected}/>}
           <RecommendationCard icon={Banknote} title="Menor entrada" result={data.recomendacoes?.menor_entrada} tone="entrada" onOpen={setSelected}/>
           <RecommendationCard icon={ReceiptText} title="Menor parcela" result={data.recomendacoes?.menor_parcela} tone="parcela" onOpen={setSelected}/>
           <RecommendationCard icon={Percent} title="Menor saldo + entrada" result={data.recomendacoes?.menor_taxa} tone="taxa" onOpen={setSelected}/>
@@ -234,7 +239,7 @@ export default function CartasContempladas() {
           <CardHeader className="pb-3"><div className="flex items-center justify-between gap-3"><CardTitle className="text-base flex items-center gap-2"><WalletCards className="w-5 h-5"/>Resultados encontrados</CardTitle><div className="flex items-center gap-2 text-xs text-slate-500"><Badge variant="outline">{data.total_combinacoes} combinações</Badge><Button variant="ghost" size="sm" onClick={buscar}><RefreshCw className="w-4 h-4 mr-1"/>Atualizar</Button></div></div></CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm"><thead className="bg-slate-50 border-y"><tr className="text-left text-slate-500"><th className="p-3">Administradora</th><th className="p-3">Composição</th><th className="p-3">Crédito</th><th className="p-3">Saldo devedor</th><th className="p-3">Entrada</th><th className="p-3">Parcela</th><th className="p-3">Prazo</th><th className="p-3">Taxa</th><th className="p-3"></th></tr></thead><tbody>
-              {resultados.length === 0 ? <tr><td colSpan="9" className="p-8 text-center text-slate-500">Nenhuma combinação encontrada nessa faixa.</td></tr> : resultados.map((r) => <tr key={r.id} className="border-b hover:bg-slate-50"><td className="p-3 font-semibold"><AdministradoraIdentidade compact nome={r.administradora} carta={r.cartas?.[0] || r} /></td><td className="p-3"><Badge variant="outline"><Layers3 className="w-3 h-3 mr-1"/>{r.quantidade_cartas} {r.quantidade_cartas === 1 ? "carta" : "cartas"}</Badge></td><td className="p-3 font-semibold">{moneyBR(r.valor_credito)}</td><td className="p-3 font-semibold text-slate-700">{moneyBR(saldoDevedorTotal(r))}</td><td className="p-3">{moneyBR(r.entrada)}</td><td className="p-3">{moneyBR(r.valor_parcela)}</td><td className="p-3">{r.parcelas || "—"} meses</td><td className="p-3">{pctBR(r.taxa)}</td><td className="p-3"><Button size="sm" variant="outline" onClick={() => setSelected(r)}>Detalhes</Button></td></tr>)}
+              {resultados.length === 0 ? <tr><td colSpan="9" className="p-8 text-center text-slate-500">Nenhuma combinação encontrada com os filtros informados (faixa do crédito e parcela desejada).</td></tr> : resultados.map((r) => <tr key={r.id} className="border-b hover:bg-slate-50"><td className="p-3 font-semibold"><AdministradoraIdentidade compact nome={r.administradora} carta={r.cartas?.[0] || r} /></td><td className="p-3"><Badge variant="outline"><Layers3 className="w-3 h-3 mr-1"/>{r.quantidade_cartas} {r.quantidade_cartas === 1 ? "carta" : "cartas"}</Badge></td><td className="p-3 font-semibold">{moneyBR(r.valor_credito)}</td><td className="p-3 font-semibold text-slate-700">{moneyBR(saldoDevedorTotal(r))}</td><td className="p-3">{moneyBR(r.entrada)}</td><td className="p-3">{moneyBR(r.valor_parcela)}</td><td className="p-3">{r.parcelas || "—"} meses</td><td className="p-3">{pctBR(r.taxa)}</td><td className="p-3"><Button size="sm" variant="outline" onClick={() => setSelected(r)}>Detalhes</Button></td></tr>)}
             </tbody></table>
           </CardContent>
         </Card>

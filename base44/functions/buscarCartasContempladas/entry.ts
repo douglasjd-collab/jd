@@ -249,8 +249,9 @@ const LIMITE_CARTAS_POR_ADM = 45;
 const LARGURA_BUSCA_NIVEL = 400;
 
 const somaCredito = (itens: any[]) => itens.reduce((soma, c) => soma + Number(c.valor_credito || 0), 0);
+const somaParcela = (itens: any[]) => itens.reduce((soma, c) => soma + Number(c.valor_parcela || 0), 0);
 
-function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: number, toleranciaPct: number) {
+function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: number, toleranciaPct: number, parcelaDesejada = 0) {
   const disponiveis = cartas.filter((c) => c.status === "disponivel" && c.valor_credito > 0);
   const grupos = new Map<string, any[]>();
 
@@ -266,9 +267,20 @@ function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: numbe
   const max = alvo > 0 ? alvo + tolerancia : Infinity;
   const resultados: any[] = [];
 
+  // Nota de qualidade da composição: quanto menor, melhor. Quando o cliente informa a parcela
+  // que deseja pagar, ela pesa tanto quanto a proximidade do crédito na escolha das melhores.
+  const pontuacao = (itens: any[]) => {
+    let nota = alvo > 0 ? Math.abs(somaCredito(itens) - alvo) / alvo : 0;
+    if (parcelaDesejada > 0) nota += Math.abs(somaParcela(itens) - parcelaDesejada) / parcelaDesejada;
+    return nota;
+  };
+
   const adiciona = (itens: any[]) => {
     const credito = somaCredito(itens);
     if (alvo > 0 && (credito < min || credito > max)) return;
+    const parcela = somaParcela(itens);
+    // Só entra o plano que cabe na parcela que o cliente deseja pagar.
+    if (parcelaDesejada > 0 && parcela > parcelaDesejada) return;
     const ordenadas = [...itens].sort((a, b) => Number(b.valor_credito || 0) - Number(a.valor_credito || 0));
     const taxaValores = ordenadas.map((c) => c.taxa).filter((v) => Number.isFinite(Number(v)));
     resultados.push({
@@ -278,13 +290,14 @@ function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: numbe
       cartas: ordenadas,
       valor_credito: credito,
       entrada: ordenadas.reduce((s, c) => s + c.entrada, 0),
-      valor_parcela: ordenadas.reduce((s, c) => s + c.valor_parcela, 0),
+      valor_parcela: parcela,
       saldo_devedor: ordenadas.reduce((s, c) => s + Number(c.saldo_devedor || 0), 0),
       parcelas: Math.max(...ordenadas.map((c) => c.parcelas || 0)),
       taxa: taxaValores.length === ordenadas.length && taxaValores.length > 0
         ? taxaValores.reduce((s, v) => s + Number(v), 0) / taxaValores.length
         : null,
       diferenca_alvo: alvo > 0 ? Math.abs(credito - alvo) : 0,
+      diferenca_parcela: parcelaDesejada > 0 ? Math.abs(parcela - parcelaDesejada) : 0,
     });
   };
 
@@ -305,16 +318,19 @@ function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: numbe
       for (const itens of nivel) {
         const creditoAtual = somaCredito(itens);
         if (max !== Infinity && creditoAtual >= max) continue;
+        // Somar cartas só aumenta a parcela: se ela já estourou a desejada, a composição não serve mais.
+        if (parcelaDesejada > 0 && somaParcela(itens) >= parcelaDesejada) continue;
         for (const carta of arr) {
           if (itens.some((c) => c.id === carta.id)) continue;
           const credito = creditoAtual + Number(carta.valor_credito || 0);
           if (max !== Infinity && credito > max) continue;
           const composicao = [...itens, carta];
+          if (parcelaDesejada > 0 && somaParcela(composicao) > parcelaDesejada) continue;
           proximo.set(composicao.map((c) => c.id).sort().join("+"), composicao);
         }
       }
       nivel = [...proximo.values()]
-        .sort((a, b) => Math.abs(somaCredito(a) - alvo) - Math.abs(somaCredito(b) - alvo))
+        .sort((a, b) => pontuacao(a) - pontuacao(b))
         .slice(0, LARGURA_BUSCA_NIVEL);
       for (const itens of nivel) adiciona(itens);
     }
@@ -333,6 +349,7 @@ Deno.serve(async (req) => {
     const creditoDesejado = Math.max(0, num(body?.credito_desejado));
     const toleranciaPct = Math.min(50, Math.max(0, num(body?.tolerancia_percentual ?? 10)));
     const maxCartas = Math.min(6, Math.max(1, Math.trunc(num(body?.max_cartas ?? 6))));
+    const parcelaDesejada = Math.max(0, num(body?.parcela_desejada));
     const categoria = texto(body?.categoria).toLowerCase();
     const administradora = texto(body?.administradora).toLowerCase();
 
@@ -399,12 +416,19 @@ Deno.serve(async (req) => {
       cartas = cartas.filter((c) => normalizaTexto(c.administradora || "").includes(adm));
     }
 
-    const combinacoes = combinarPorAdministradora(cartas, maxCartas, creditoDesejado, toleranciaPct);
+    const combinacoes = combinarPorAdministradora(cartas, maxCartas, creditoDesejado, toleranciaPct, parcelaDesejada);
+    // Quando o cliente informa a parcela desejada, o plano que mais se aproxima dela vem primeiro.
     // Em empate de proximidade, a composição com menos cartas entra na frente.
     const porProximidade = [...combinacoes].sort((a, b) =>
+      (parcelaDesejada > 0 ? a.diferenca_parcela - b.diferenca_parcela : 0) ||
       a.diferenca_alvo - b.diferenca_alvo ||
       a.quantidade_cartas - b.quantidade_cartas ||
       a.entrada - b.entrada
+    );
+    const porParcelaDesejada = [...combinacoes].sort((a, b) =>
+      a.diferenca_parcela - b.diferenca_parcela ||
+      a.diferenca_alvo - b.diferenca_alvo ||
+      a.quantidade_cartas - b.quantidade_cartas
     );
     const porEntrada = [...combinacoes].sort((a, b) => a.entrada - b.entrada || a.diferenca_alvo - b.diferenca_alvo);
     const porParcela = [...combinacoes].sort((a, b) => a.valor_parcela - b.valor_parcela || a.diferenca_alvo - b.diferenca_alvo);
@@ -419,6 +443,7 @@ Deno.serve(async (req) => {
       tipo,
       atualizado_em: new Date().toISOString(),
       credito_desejado: creditoDesejado,
+      parcela_desejada: parcelaDesejada,
       tolerancia_percentual: toleranciaPct,
       total_cartas_recebidas: cartas.length,
       total_combinacoes: combinacoes.length,
@@ -428,6 +453,7 @@ Deno.serve(async (req) => {
         menor_parcela: porParcela[0] || null,
         menor_taxa: porMenorSaldoEntrada[0] || null,
         mais_proxima: porProximidade[0] || null,
+        parcela_desejada: parcelaDesejada > 0 ? (porParcelaDesejada[0] || null) : null,
       },
       resultados: porProximidade.slice(0, 150),
     });
