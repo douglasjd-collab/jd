@@ -1,8 +1,11 @@
+import useStatusPorSetor from './useStatusPorSetor';
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
 export default function SelecionarStatusModal({ open, onOpenChange, tarefa, statusList, onUpdate }) {
+  const filtrarStatusSetor = useStatusPorSetor(tarefa?.empresa_id);
+
   if (!tarefa) return null;
 
   const handleStatusChange = async (novoStatus) => {
@@ -18,7 +21,7 @@ export default function SelecionarStatusModal({ open, onOpenChange, tarefa, stat
         </DialogHeader>
 
         <div className="space-y-2">
-          {statusList.map(status => (
+          {filtrarStatusSetor(statusList, tarefa?.setor_id || tarefa?.setor, tarefa?.status).map(status => (
             <Button
               key={status.slug || status.id}
               onClick={() => handleStatusChange(status.slug || status.nome)}

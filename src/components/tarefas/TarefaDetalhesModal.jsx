@@ -1,3 +1,4 @@
+import useStatusPorSetor from './useStatusPorSetor';
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogClose } from '@/components/ui/dialog';
 import { base44 } from '@/api/base44Client';
@@ -47,6 +48,8 @@ export default function TarefaDetalhesModal({
   open, onOpenChange, tarefa, statusList = [], currentUser,
   onUpdate, colaboradores = [], subsetoresList = [], abaAtiva: abaInicial
 }) {
+  const filtrarStatusSetor = useStatusPorSetor(tarefa?.empresa_id || currentUser?.empresa_id);
+
   const [aba, setAba] = useState(abaInicial || 'detalhes');
   const [participantesSheetOpen, setParticipantesSheetOpen] = useState(false);
   const [atividadeSheetOpen, setAtividadeSheetOpen] = useState(false);
@@ -386,7 +389,7 @@ export default function TarefaDetalhesModal({
                   </button>
                   {statusDropdownOpen && (
                     <div className="absolute z-50 top-full left-0 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
-                      {statusList.map(s => (
+                      {filtrarStatusSetor(statusList, tarefa?.setor_id || tarefa?.setor, tarefa?.status).map(s => (
                         <button
                           key={s.id}
                           onClick={() => handleAlterarStatus(s.slug || s.id)}

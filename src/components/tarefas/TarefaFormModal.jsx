@@ -1,3 +1,4 @@
+import useStatusPorSetor from './useStatusPorSetor';
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,8 @@ function normalize(str) {
 }
 
 export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, colaboradores, clientes, statusList, templates, currentUser, onSaveTemplate, setoresList = [], subsetoresList = [], statusInicial = null, empresaId }) {
+  const filtrarStatusSetor = useStatusPorSetor(empresaId || currentUser?.empresa_id);
+
   const [form, setForm] = useState({});
   const [checklist, setChecklist] = useState([]);
   const [novoItem, setNovoItem] = useState('');
@@ -306,7 +309,8 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
             <div>
               <Label>Setor</Label>
               <Select value={form.setor_id || ''} onValueChange={v => {
-                setForm({ ...form, setor_id: v, subsetor_id: '', subsetor_nome: '' });
+                const opcoes = filtrarStatusSetor(statusList, v);
+                 setForm({ ...form, setor_id: v, subsetor_id: '', subsetor_nome: '', status: opcoes.some(s => (s.slug || s.id) === form.status) ? form.status : (opcoes[0]?.slug || opcoes[0]?.id || '') });
               }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecionar setor" />
@@ -355,7 +359,7 @@ export default function TarefaFormModal({ open, onOpenChange, tarefa, onSave, co
             <Select value={form.status || ''} onValueChange={v => setForm({ ...form, status: v })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {statusList.map(s => <SelectItem key={s.slug || s.id} value={s.slug || s.id}>{s.nome}</SelectItem>)}
+                {filtrarStatusSetor(statusList, form.setor_id, form.status).map(s => <SelectItem key={s.slug || s.id} value={s.slug || s.id}>{s.nome}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

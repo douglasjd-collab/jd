@@ -1,3 +1,4 @@
+import useStatusPorSetor from './useStatusPorSetor';
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,8 @@ export default function SelecionarStatusResponsaveisModal({
   colaboradores,
   onUpdate,
 }) {
+  const filtrarStatusSetor = useStatusPorSetor(tarefa?.empresa_id);
+
   const [statusSelecionado, setStatusSelecionado] = useState(tarefa?.status);
   const [responsaveisSelecionados, setResponsaveisSelecionados] = useState(() => {
     let ids = [];
@@ -84,7 +87,7 @@ export default function SelecionarStatusResponsaveisModal({
           <div>
             <h3 className="text-xs font-semibold text-slate-600 uppercase mb-3">Status</h3>
             <div className="space-y-2">
-              {statusList.map(s => (
+              {filtrarStatusSetor(statusList, tarefa?.setor_id || tarefa?.setor, tarefa?.status).map(s => (
                 <button
                   key={s.slug || s.id}
                   onClick={() => setStatusSelecionado(s.slug)}

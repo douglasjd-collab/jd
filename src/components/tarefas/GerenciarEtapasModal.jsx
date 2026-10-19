@@ -126,7 +126,7 @@ function AbaGlobais({ empresaId, tarefas, statusList, podeEditar, onStatusChange
     enabled: !!empresaId,
     queryFn: async () => {
       const res = await base44.entities.StatusTarefa.filter({ empresa_id: empresaId });
-      return Array.isArray(res) ? res.filter(isStatusValido) : [];
+      return Array.isArray(res) ? res.filter(s => isStatusValido(s) && !s.slug?.startsWith('setor_')) : [];
     },
   });
 
@@ -415,6 +415,38 @@ function AbaGlobais({ empresaId, tarefas, statusList, podeEditar, onStatusChange
    ══════════════════════════════════════════════════════════════ */
 function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, onStatusChanged, queryClient }) {
   const [setorSelecionado, setSetorSelecionado] = useState(null);
+  const [novoStatus, setNovoStatus] = useState({});
+  const [salvando, setSalvando] = useState(false);
+  const [editandoStatus, setEditandoStatus] = useState(null);
+  const criarNoSetor = async (setor) => {
+    const nome = (novoStatus[setor.id] || '').trim();
+    if (!nome || salvando) return;
+    const slugBase = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+    if (!slugBase) return toast.error('Informe um nome válido');
+    const slug = 'setor_' + setor.id + '_' + slugBase;
+    if (statusList.some(s => s.slug === slug)) return toast.error('Este status já existe neste setor');
+    setSalvando(true);
+    try {
+      await base44.entities.StatusTarefa.create({ empresa_id: empresaId, nome, slug, cor: '#3b82f6', ativo: true, ordem: statusList.length + 1 });
+      const cfg = getConfigSetor(setor.id);
+      await salvarConfigSetores({ ...configSetores, [setor.id]: { ...cfg, usar_especificas: true, status_slugs: [...(cfg.usar_especificas ? cfg.status_slugs : statusAtivos.filter(s => !s.slug?.startsWith('setor_')).map(s => s.slug || s.id)), slug] } });
+      queryClient.invalidateQueries({ queryKey: ['status-tarefa'] });
+      setNovoStatus(v => ({ ...v, [setor.id]: '' }));
+      onStatusChanged?.();
+      toast.success('Status criado para ' + setor.nome);
+    } catch (e) { toast.error(e.message || 'Erro ao criar status'); }
+    finally { setSalvando(false); }
+  };
+  const salvarEdicao = async () => {
+    if (!editandoStatus?.nome?.trim()) return toast.error('Informe o nome');
+    try {
+      await base44.entities.StatusTarefa.update(editandoStatus.id, { nome: editandoStatus.nome.trim(), cor: editandoStatus.cor });
+      queryClient.invalidateQueries({ queryKey: ['status-tarefa'] });
+      setEditandoStatus(null);
+      onStatusChanged?.();
+      toast.success('Status atualizado');
+    } catch { toast.error('Erro ao atualizar status'); }
+  };
 
   const setoresAtivos = setoresList.filter(s => s.status !== 'inativo');
   const setoresCombinados = setoresAtivos.length > 0
@@ -444,8 +476,9 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
       } else {
         await base44.entities.ConfiguracaoSistema.create({ empresa_id: empresaId, chave: 'status_por_setor', valor });
       }
-      refetchConfig();
-    } catch { toast.error('Erro ao salvar configuração'); }
+      await refetchConfig();
+      queryClient.invalidateQueries({ queryKey: ['status-por-setor'] });
+    } catch (e) { toast.error('Erro ao salvar configuração'); throw e; }
   };
 
   const statusAtivos = statusList.filter(s => s.ativo !== false);
@@ -457,7 +490,7 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
     const novo = { ...atual, usar_especificas: !atual.usar_especificas };
     if (!atual.usar_especificas && novo.status_slugs.length === 0) {
       // Ao ativar, copia todos os status globais como padrão
-      novo.status_slugs = statusAtivos.map(s => s.slug || s.id);
+      novo.status_slugs = statusAtivos.filter(s => !s.slug?.startsWith('setor_') || s.slug.startsWith('setor_' + setorId + '_')).map(s => s.slug || s.id);
     }
     await salvarConfigSetores({ ...configSetores, [setorId]: novo });
     toast.success(novo.usar_especificas ? 'Etapas específicas ativadas!' : 'Usando etapas globais');
@@ -488,7 +521,7 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
   return (
     <div className="flex-1 min-h-0 overflow-y-auto pr-2">
       <div className="space-y-4 pb-4">
-        <p className="text-xs text-slate-500">Todos os setores usam os status gerais. Ative Específicos para escolher quais status aparecem em cada setor.</p>
+        <p className="text-xs text-slate-500">Crie status próprios para cada setor ou escolha os status existentes. As alterações serão usadas nas tarefas desse setor.</p>
 
         {/* Editor de etapas por setor */}
         <div className="space-y-3">
@@ -510,10 +543,26 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
                     {cfg.usar_especificas ? 'Específicas' : 'Globais'}
                   </label>
                 </div>
+                {podeEditar && (
+                  <div className="flex gap-2 my-3">
+                    <Input placeholder={'Novo status de ' + setor.nome} value={novoStatus[setor.id] || ''} onChange={e => setNovoStatus(v => ({ ...v, [setor.id]: e.target.value }))} onKeyDown={e => e.key === 'Enter' && criarNoSetor(setor)} />
+                    <Button disabled={salvando || !(novoStatus[setor.id] || '').trim()} onClick={() => criarNoSetor(setor)}>Criar status</Button>
+                  </div>
+                )}
+                {editandoStatus && statusDoSetor.some(s => s.id === editandoStatus.id) && (
+                  <div className="flex gap-2 mb-3">
+                    <Input value={editandoStatus.nome} onChange={e => setEditandoStatus(v => ({ ...v, nome: e.target.value }))} />
+                    <input type="color" value={editandoStatus.cor || '#3b82f6'} onChange={e => setEditandoStatus(v => ({ ...v, cor: e.target.value }))} />
+                    <Button onClick={salvarEdicao}>Salvar</Button>
+                    <Button variant="ghost" onClick={() => setEditandoStatus(null)}>Cancelar</Button>
+                  </div>
+                )}
                 {cfg.usar_especificas && (
                   <SetorEtapasEditor
                     setorId={setor.id}
-                    statusAtivos={statusAtivos}
+                    statusAtivos={statusAtivos.filter(s => !s.slug?.startsWith('setor_') || s.slug.startsWith('setor_' + setor.id + '_'))}
+                    podeEditar={podeEditar}
+                    onEdit={setEditandoStatus}
                     statusDoSetor={statusDoSetor}
                     onToggle={podeEditar ? toggleStatusNoSetor : () => {}}
                     onReorder={podeEditar ? reordenarSetor : () => {}}
@@ -528,7 +577,7 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
    );
   }
 
-  function SetorEtapasEditor({ setorId, statusAtivos, statusDoSetor, onToggle, onReorder }) {
+  function SetorEtapasEditor({ setorId, statusAtivos, statusDoSetor, onToggle, onReorder, podeEditar, onEdit }) {
   const statusSlugsNoSetor = statusDoSetor.map(s => s.slug || s.id);
   const statusDisponiveis = statusAtivos.filter(s => !statusSlugsNoSetor.includes(s.slug || s.id));
 
@@ -548,7 +597,7 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
           {(provided) => (
             <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-1">
               {statusDoSetor.map((s, idx) => (
-                <Draggable key={s.slug || s.id} draggableId={`${setorId}-${s.slug || s.id}`} index={idx}>
+                <Draggable key={s.slug || s.id} draggableId={`${setorId}-${s.slug || s.id}`} index={idx} isDragDisabled={!podeEditar}>
                   {(drag) => (
                     <div ref={drag.innerRef} {...drag.draggableProps} className="flex items-center gap-2 p-2 bg-white rounded-lg border text-sm">
                       <div {...drag.dragHandleProps} className="cursor-grab text-slate-300">
@@ -556,6 +605,7 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
                       </div>
                       <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.cor || '#3b82f6' }} />
                       <span className="flex-1">{s.nome}</span>
+                      {podeEditar && s.slug?.startsWith('setor_' + setorId + '_') && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => onEdit(s)} title="Editar status deste setor"><Pencil className="w-3 h-3" /></Button>}
                       <Button size="icon" variant="ghost" className="h-6 w-6 text-red-400 hover:text-red-600" onClick={() => onToggle(setorId, s.slug || s.id, false)}>
                         <X className="w-3 h-3" />
                       </Button>
