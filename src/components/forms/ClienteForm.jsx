@@ -694,24 +694,26 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                   </CardHeader>
                   <CardContent className="pt-3">
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="col-span-2">
-                        <Label htmlFor="apelido">Apelido</Label>
-                        <Input
-                          id="apelido"
-                          {...register('apelido')}
-                          placeholder="Ex: Zé, Duda, Filho do João..."
-                        />
-                      </div>
+                      <div className="col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="sm:col-span-1">
+                          <Label htmlFor="apelido">Apelido</Label>
+                          <Input
+                            id="apelido"
+                            {...register('apelido')}
+                            placeholder="Ex: Zé do Ar"
+                          />
+                        </div>
 
-                      <div className="col-span-2">
-                        <Label htmlFor="nome_completo">Nome Completo *</Label>
-                        <Input
-                          id="nome_completo"
-                          {...register('nome_completo', { required: tipoPessoa === 'Física' && 'Nome é obrigatório' })}
-                          placeholder="Nome completo do cliente"
-                          className={clsConfianca('nome_completo')}
-                        />
-                        {errors.nome_completo && <p className="text-sm text-red-500 mt-1">{errors.nome_completo.message}</p>}
+                        <div className="sm:col-span-2">
+                          <Label htmlFor="nome_completo">Nome Completo *</Label>
+                          <Input
+                            id="nome_completo"
+                            {...register('nome_completo', { required: tipoPessoa === 'Física' && 'Nome é obrigatório' })}
+                            placeholder="Nome completo do cliente"
+                            className={clsConfianca('nome_completo')}
+                          />
+                          {errors.nome_completo && <p className="text-sm text-red-500 mt-1">{errors.nome_completo.message}</p>}
+                        </div>
                       </div>
                       
                       <div>
