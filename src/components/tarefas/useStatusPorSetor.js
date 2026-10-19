@@ -15,6 +15,6 @@ export default function useStatusPorSetor(empresaId) {
     }
     const existente = atual && lista.find(s => (s.slug || s.id) === atual);
     if (existente && !resultado.some(s => (s.slug || s.id) === atual)) resultado = [...resultado, existente];
-    return resultado;
+    return resultado.map(s => ({ ...s, ...cfg?.status_overrides?.[s.slug || s.id] }));
   };
 }

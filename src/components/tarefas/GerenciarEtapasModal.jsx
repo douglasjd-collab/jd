@@ -441,7 +441,19 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
   const salvarEdicao = async () => {
     if (!editandoStatus?.nome?.trim()) return toast.error('Informe o nome');
     try {
-      await base44.entities.StatusTarefa.update(editandoStatus.id, { nome: editandoStatus.nome.trim(), cor: editandoStatus.cor });
+      const setorId = editandoStatus.setorId;
+      const slug = editandoStatus.slug || editandoStatus.id;
+      const cfg = getConfigSetor(setorId);
+      const nome = editandoStatus.nome.trim();
+      const repetido = (cfg.status_slugs || []).some(key => {
+        if (key === slug) return false;
+        const item = statusList.find(s => (s.slug || s.id) === key);
+        return (cfg.status_overrides?.[key]?.nome || item?.nome || '').trim().toLocaleLowerCase('pt-BR') === nome.toLocaleLowerCase('pt-BR');
+      });
+      if (repetido) return toast.error('Já existe um status com esse nome neste setor');
+      await salvarConfigSetores({ ...configSetores, [setorId]: {
+        ...cfg, status_overrides: { ...cfg.status_overrides, [slug]: { nome, cor: editandoStatus.cor } }
+      } });
       queryClient.invalidateQueries({ queryKey: ['status-tarefa'] });
       setEditandoStatus(null);
       onStatusChanged?.();
@@ -518,7 +530,10 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
           {setoresCombinados.map(setor => {
             const cfg = getConfigSetor(setor.id);
             const statusDoSetor = (cfg.status_slugs || [])
-              .map(slug => statusAtivos.find(s => (s.slug || s.id) === slug))
+              .map(slug => {
+                const status = statusAtivos.find(s => (s.slug || s.id) === slug);
+                return status ? { ...status, ...cfg.status_overrides?.[slug] } : null;
+              })
               .filter(Boolean);
             return (
               <div key={setor.id} className="border rounded-lg p-3 bg-slate-50/50">
@@ -539,7 +554,7 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
                     <Button disabled={salvando || !(novoStatus[setor.id] || '').trim()} onClick={() => criarNoSetor(setor)}>Criar status</Button>
                   </div>
                 )}
-                {editandoStatus && statusDoSetor.some(s => s.id === editandoStatus.id) && (
+                {editandoStatus?.setorId === setor.id && (
                   <div className="flex gap-2 mb-3">
                     <Input value={editandoStatus.nome} onChange={e => setEditandoStatus(v => ({ ...v, nome: e.target.value }))} />
                     <input type="color" value={editandoStatus.cor || '#3b82f6'} onChange={e => setEditandoStatus(v => ({ ...v, cor: e.target.value }))} />
@@ -552,7 +567,7 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
                     setorId={setor.id}
                     statusAtivos={statusAtivos.filter(s => !s.slug?.startsWith('setor_') || s.slug.startsWith('setor_' + setor.id + '_'))}
                     podeEditar={podeEditar}
-                    onEdit={setEditandoStatus}
+                    onEdit={s => setEditandoStatus({ ...s, setorId: setor.id })}
                     statusDoSetor={statusDoSetor}
                     onToggle={podeEditar ? toggleStatusNoSetor : () => {}}
                     onReorder={podeEditar ? reordenarSetor : () => {}}
@@ -595,7 +610,7 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
                       </div>
                       <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.cor || '#3b82f6' }} />
                       <span className="flex-1">{s.nome}</span>
-                      {podeEditar && s.slug?.startsWith('setor_' + setorId + '_') && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => onEdit(s)} title="Editar status deste setor"><Pencil className="w-3 h-3" /></Button>}
+                      {podeEditar && <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => onEdit(s)} title="Editar nome e cor neste setor" aria-label={"Editar status " + s.nome}><Pencil className="w-3 h-3" /></Button>}
                       <Button size="icon" variant="ghost" className="h-6 w-6 text-red-400 hover:text-red-600" onClick={() => onToggle(setorId, s.slug || s.id, false)}>
                         <X className="w-3 h-3" />
                       </Button>

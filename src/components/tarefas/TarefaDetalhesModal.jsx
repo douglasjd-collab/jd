@@ -167,7 +167,7 @@ export default function TarefaDetalhesModal({
 
   if (!tarefa) return null;
 
-  const status = statusList.find(s => (s.slug || s.id) === tarefa.status);
+  const status = filtrarStatusSetor(statusList, tarefa.setor_id || tarefa.setor, tarefa.status).find(s => (s.slug || s.id) === tarefa.status);
   const responsavelPrincipal = colaboradores.find(c => c.id === tarefa.responsavel_principal_id);
   let responsaveisIds = [];
   try { responsaveisIds = tarefa.responsaveis_ids ? JSON.parse(tarefa.responsaveis_ids) : []; } catch {}

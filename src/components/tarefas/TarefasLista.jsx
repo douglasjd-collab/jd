@@ -1,3 +1,4 @@
+import useStatusPorSetor from './useStatusPorSetor';
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
@@ -159,7 +160,8 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
   const [tarefaEditando, setTarefaEditando] = useState(null);
   const hoje = format(new Date(), 'yyyy-MM-dd');
 
-  const getStatus = (slug) => statusList.find(s => s.slug === slug);
+  const filtrarStatusSetor = useStatusPorSetor(currentUser?.empresa_id || tarefas[0]?.empresa_id);
+  const getStatus = (slug, tarefa) => filtrarStatusSetor(statusList, tarefa?.setor_id || tarefa?.setor, slug).find(s => (s.slug || s.id) === slug);
 
   const formatarData = (data) => {
     if (!data) return '-';
@@ -173,7 +175,7 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
     tarefa.status !== 'arquivado';
 
   const tarefaSel = selecionada ? tarefas.find(t => t.id === selecionada) : null;
-  const statusSel = tarefaSel ? getStatus(tarefaSel.status) : null;
+  const statusSel = tarefaSel ? getStatus(tarefaSel.status, tarefaSel) : null;
 
   if (tarefas.length === 0) {
     return (
@@ -274,10 +276,10 @@ export default function TarefasLista({ tarefas, statusList, colaboradores = [], 
                     <button
                       onClick={(e) => { e.stopPropagation(); setTarefaStatusModal(tarefa); setStatusModalOpen(true); }}
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-white hover:shadow-sm"
-                      style={{ backgroundColor: getStatus(tarefa.status)?.cor || '#94a3b8' }}
+                      style={{ backgroundColor: getStatus(tarefa.status, tarefa)?.cor || '#94a3b8' }}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
-                      {getStatus(tarefa.status)?.nome || tarefa.status}
+                      {getStatus(tarefa.status, tarefa)?.nome || tarefa.status}
                     </button>
                   </td>
                   <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
