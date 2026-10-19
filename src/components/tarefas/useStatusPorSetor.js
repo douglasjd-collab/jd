@@ -1,14 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { carregarConfigStatusSetor } from './statusSetorConfig';
 
 export default function useStatusPorSetor(empresaId) {
   const { data: config = {} } = useQuery({
     queryKey: ['status-por-setor', empresaId],
     enabled: !!empresaId,
-    queryFn: async () => {
-      const rows = await base44.entities.ConfiguracaoSistema.filter({ empresa_id: empresaId, chave: 'status_por_setor' });
-      try { return JSON.parse(rows[0]?.valor || '{}'); } catch { return {}; }
-    },
+    queryFn: () => carregarConfigStatusSetor(empresaId),
   });
   return (lista = [], setorId, atual) => {
     const cfg = config[setorId];

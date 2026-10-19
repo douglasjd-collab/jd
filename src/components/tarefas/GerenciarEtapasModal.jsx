@@ -1,3 +1,4 @@
+import { carregarConfigStatusSetor, salvarConfigStatusSetor } from './statusSetorConfig';
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -424,12 +425,12 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
     const slugBase = nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_');
     if (!slugBase) return toast.error('Informe um nome válido');
     const slug = 'setor_' + setor.id + '_' + slugBase;
-    if (statusList.some(s => s.slug === slug)) return toast.error('Este status já existe neste setor');
+    const existente = statusList.find(s => s.slug === slug);
     setSalvando(true);
     try {
-      await base44.entities.StatusTarefa.create({ empresa_id: empresaId, nome, slug, cor: '#3b82f6', ativo: true, ordem: statusList.length + 1 });
+      if (!existente) await base44.entities.StatusTarefa.create({ empresa_id: empresaId, nome, slug, cor: '#3b82f6', ativo: true, ordem: statusList.length + 1 });
       const cfg = getConfigSetor(setor.id);
-      await salvarConfigSetores({ ...configSetores, [setor.id]: { ...cfg, usar_especificas: true, status_slugs: [...(cfg.usar_especificas ? cfg.status_slugs : statusAtivos.filter(s => !s.slug?.startsWith('setor_')).map(s => s.slug || s.id)), slug] } });
+      await salvarConfigSetores({ ...configSetores, [setor.id]: { ...cfg, usar_especificas: true, status_slugs: [...(cfg.usar_especificas ? cfg.status_slugs.filter(s => s !== slug) : statusAtivos.filter(s => !s.slug?.startsWith('setor_')).map(s => s.slug || s.id)), slug] } });
       queryClient.invalidateQueries({ queryKey: ['status-tarefa'] });
       setNovoStatus(v => ({ ...v, [setor.id]: '' }));
       onStatusChanged?.();
@@ -456,36 +457,23 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
   const { data: configSetores = {}, refetch: refetchConfig } = useQuery({
     queryKey: ['status-por-setor', empresaId],
     enabled: !!empresaId,
-    queryFn: async () => {
-      try {
-        const configs = await base44.entities.ConfiguracaoSistema.filter({ empresa_id: empresaId, chave: 'status_por_setor' });
-        if (configs.length > 0 && configs[0].valor) {
-          return JSON.parse(configs[0].valor);
-        }
-      } catch {}
-      return {};
-    },
+    queryFn: () => carregarConfigStatusSetor(empresaId),
   });
 
   const salvarConfigSetores = async (novaConfig) => {
-    try {
-      const configs = await base44.entities.ConfiguracaoSistema.filter({ empresa_id: empresaId, chave: 'status_por_setor' });
-      const valor = JSON.stringify(novaConfig);
-      if (configs.length > 0) {
-        await base44.entities.ConfiguracaoSistema.update(configs[0].id, { valor });
-      } else {
-        await base44.entities.ConfiguracaoSistema.create({ empresa_id: empresaId, chave: 'status_por_setor', valor });
-      }
-      await refetchConfig();
-      queryClient.invalidateQueries({ queryKey: ['status-por-setor'] });
-    } catch (e) { toast.error('Erro ao salvar configuração'); throw e; }
+    await salvarConfigStatusSetor(empresaId, novaConfig);
+    queryClient.setQueryData(['status-por-setor', empresaId], novaConfig);
+    await queryClient.invalidateQueries({ queryKey: ['status-por-setor', empresaId] });
   };
 
   const statusAtivos = statusList.filter(s => s.ativo !== false);
 
-  const getConfigSetor = (setorId) => configSetores[setorId] || { usar_especificas: false, status_slugs: [] };
+  const getConfigSetor = (setorId) => ({ usar_especificas: false, status_slugs: [], ...configSetores[setorId] });
 
   const toggleUsarEspecificas = async (setorId) => {
+    if (salvando) return;
+    setSalvando(true);
+    try {
     const atual = getConfigSetor(setorId);
     const novo = { ...atual, usar_especificas: !atual.usar_especificas };
     if (!atual.usar_especificas && novo.status_slugs.length === 0) {
@@ -493,8 +481,10 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
       novo.status_slugs = statusAtivos.filter(s => !s.slug?.startsWith('setor_') || s.slug.startsWith('setor_' + setorId + '_')).map(s => s.slug || s.id);
     }
     await salvarConfigSetores({ ...configSetores, [setorId]: novo });
-    toast.success(novo.usar_especificas ? 'Etapas específicas ativadas!' : 'Usando etapas globais');
+    toast.success(novo.usar_especificas ? 'Status específicos ativados!' : 'Usando status globais');
     onStatusChanged?.();
+    } catch (e) { toast.error(e.message || 'Erro ao configurar setor'); }
+    finally { setSalvando(false); }
   };
 
   const toggleStatusNoSetor = async (setorId, statusSlug, adicionar) => {
@@ -539,7 +529,7 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
                     {cfg.usar_especificas && <Badge className="text-[10px] py-0">Personalizado</Badge>}
                   </div>
                   <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer" title="Usar etapas específicas deste setor">
-                    <Switch checked={cfg.usar_especificas || false} onCheckedChange={() => podeEditar && toggleUsarEspecificas(setor.id)} className="scale-75" />
+                    <Switch disabled={!podeEditar || salvando} checked={cfg.usar_especificas || false} onCheckedChange={() => podeEditar && toggleUsarEspecificas(setor.id)} className="scale-75" />
                     {cfg.usar_especificas ? 'Específicas' : 'Globais'}
                   </label>
                 </div>
