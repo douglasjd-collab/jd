@@ -43,10 +43,11 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
     const cpfMatch = cpfLimpo && c.cpf?.replace(/\D/g, '').includes(cpfLimpo);
     const cnpjMatch = cnpjLimpo && c.pj_cnpj?.replace(/\D/g, '').includes(cnpjLimpo);
     const nomeCompletoMatch = c.nome_completo?.toLowerCase().includes(buscaLower);
+    const apelidoMatch = c.apelido?.toLowerCase().includes(buscaLower);
     const razaoSocialMatch = c.pj_razao_social?.toLowerCase().includes(buscaLower);
     const nomeFantasiaMatch = c.pj_nome_fantasia?.toLowerCase().includes(buscaLower);
     
-    return cpfMatch || cnpjMatch || nomeCompletoMatch || razaoSocialMatch || nomeFantasiaMatch;
+    return cpfMatch || cnpjMatch || nomeCompletoMatch || apelidoMatch || razaoSocialMatch || nomeFantasiaMatch;
   }) : [];
 
   // Limpar busca ao abrir
@@ -145,6 +146,11 @@ export default function ClienteSearchModal({ open, onOpenChange, onSelectCliente
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-slate-900 truncate">
                             {cliente.nome_completo || cliente.pj_razao_social || 'Cliente sem nome'}
+                            {cliente.apelido && (
+                              <span className="ml-2 align-middle text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5">
+                                {cliente.apelido}
+                              </span>
+                            )}
                           </p>
                           <p className="text-xs text-slate-500 font-mono">
                             {cliente.tipo_pessoa === 'Física' ? 'CPF' : 'CNPJ'}: {cliente.cpf || cliente.pj_cnpj || '-'}

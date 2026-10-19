@@ -382,6 +382,7 @@ export default function Clientes() {
     const s = search.toLowerCase();
     if (c.nome?.toLowerCase().includes(s)) return true;
     if (c.nome_completo?.toLowerCase().includes(s)) return true;
+    if (c.apelido?.toLowerCase().includes(s)) return true;
     if (c.email?.toLowerCase().includes(s)) return true;
     if (c.pj_razao_social?.toLowerCase().includes(s)) return true;
     // CPF/CNPJ: comparar sem pontuação
@@ -439,6 +440,11 @@ export default function Clientes() {
       cell: (row) => (
         <p className="font-medium text-slate-900">
           {row.tipo_pessoa === 'Jurídica' ? row.pj_razao_social : (row.nome_completo || row.nome)}
+          {row.apelido && (
+            <span className="ml-2 align-middle text-xs font-semibold text-teal-700 bg-teal-50 border border-teal-200 rounded px-1.5 py-0.5">
+              {row.apelido}
+            </span>
+          )}
         </p>
       )
     },

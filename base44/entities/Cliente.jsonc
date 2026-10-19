@@ -30,6 +30,10 @@
       "type": "string",
       "description": "Nome completo do cliente (PF)"
     },
+    "apelido": {
+      "type": "string",
+      "description": "Apelido do cliente, usado para diferenciar cadastros com o mesmo nome nas buscas"
+    },
     "primeiro_nome": {
       "type": "string",
       "description": "Primeiro nome do cliente (extra\u00eddo automaticamente, usado em templates de mensagem)"

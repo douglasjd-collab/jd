@@ -695,6 +695,15 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
                   <CardContent className="pt-3">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="col-span-2">
+                        <Label htmlFor="apelido">Apelido</Label>
+                        <Input
+                          id="apelido"
+                          {...register('apelido')}
+                          placeholder="Ex: Zé, Duda, Filho do João..."
+                        />
+                      </div>
+
+                      <div className="col-span-2">
                         <Label htmlFor="nome_completo">Nome Completo *</Label>
                         <Input
                           id="nome_completo"
