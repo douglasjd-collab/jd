@@ -1,3 +1,4 @@
+import useStatusPorSetor from '@/components/tarefas/useStatusPorSetor';
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { base44 } from '@/api/base44Client';
@@ -113,6 +114,8 @@ export default function Tarefas() {
 
   const empresaId = currentUser?.empresa_id;
   const hoje = format(new Date(), 'yyyy-MM-dd');
+  const filtrarStatusSetor = useStatusPorSetor(empresaId);
+  useEffect(() => { setFiltroStatus('todos'); }, [filtroSetor]);
 
   const { data: statusCustom = [] } = useQuery({
     queryKey: ['status-tarefa', empresaId],
@@ -451,7 +454,7 @@ export default function Tarefas() {
         <div className="flex items-center gap-2 min-w-max">
           <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroStatus} onChange={e => setFiltroStatus(e.target.value)}>
             <option value="todos">Status</option>
-            {statusList.filter(s => s && s.nome).map(s => <option key={s.slug || s.id || s.nome} value={s.slug || s.nome}>{s.nome}</option>)}
+            {(filtroSetor === 'todos' ? statusList : filtrarStatusSetor(statusList, filtroSetor)).filter(s => s && s.nome).map(s => <option key={s.slug || s.id || s.nome} value={s.slug || s.nome}>{s.nome}</option>)}
           </select>
           <select className="h-8 rounded-lg border px-2 text-xs bg-white" value={filtroPrioridade} onChange={e => setFiltroPrioridade(e.target.value)}>
             <option value="todas">Prioridade</option>
@@ -614,7 +617,7 @@ export default function Tarefas() {
           onMouseMove={handleMouseMove}
           onMouseLeave={stopScroll}
         >
-          {statusList.map(status => {
+          {(filtroSetor === 'todos' ? statusList : filtrarStatusSetor(statusList, filtroSetor)).map(status => {
             const statusKey = status.slug || status.id;
             const colTarefas = tarefasFiltradas.filter(t => t.status === statusKey);
             return (
