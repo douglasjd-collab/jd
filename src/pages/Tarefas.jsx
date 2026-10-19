@@ -49,7 +49,7 @@ export default function Tarefas() {
   const [filtroPrazo, setFiltroPrazo] = useState('todas');
   const [mostrarSoMinhas, setMostrarSoMinhas] = useState(false);
   const [modoVisualizacao, setModoVisualizacao] = useState('lista'); // 'kanban' | 'lista'
-  const [abaAtiva, setAbaAtiva] = useState('andamento'); // 'andamento' | 'finalizados'
+  const [abaAtiva, setAbaAtiva] = useState('andamento'); // 'a_fazer' | 'andamento' | 'finalizados'
   const [configOpen, setConfigOpen] = useState(false);
   const queryClient = useQueryClient();
   const kanbanRef = useRef(null);
@@ -290,6 +290,16 @@ export default function Tarefas() {
   };
 
   const SLUGS_FINALIZADOS = ['concluido', 'arquivado'];
+  const SLUGS_A_FAZER = ['a_fazer'];
+
+  // Agrupamento das abas: A Fazer = ainda não iniciadas; Em andamento = em curso
+  // (inclui aguardando cliente/banco e status personalizados); Finalizados = encerradas.
+  const pertenceAba = (status) => {
+    const finalizado = SLUGS_FINALIZADOS.includes(status);
+    if (abaAtiva === 'finalizados') return finalizado;
+    if (abaAtiva === 'a_fazer') return SLUGS_A_FAZER.includes(status);
+    return !finalizado && !SLUGS_A_FAZER.includes(status);
+  };
 
   // Lista de setores combinada (API + fallback)
   const setoresCombinados = setoresList.length > 0 ? setoresList : SETORES_FALLBACK;
@@ -355,9 +365,7 @@ export default function Tarefas() {
     try { responsaveisIds = t.responsaveis_ids ? JSON.parse(t.responsaveis_ids) : []; } catch {}
     const matchResponsavel = filtroResponsavel === 'todos' || t.responsavel_principal_id === filtroResponsavel || responsaveisIds.includes(filtroResponsavel);
     const matchMinhas = !mostrarSoMinhas || t.responsavel_principal_id === currentUser?.id || responsaveisIds.includes(currentUser?.id);
-    const matchAba = abaAtiva === 'finalizados'
-      ? SLUGS_FINALIZADOS.includes(t.status)
-      : !SLUGS_FINALIZADOS.includes(t.status);
+    const matchAba = pertenceAba(t.status);
     return matchBusca && matchStatus && matchPrioridade && matchResponsavel && matchMinhas && matchAba && matchPrazo(t);
   }).sort((a, b) => Number(Boolean(b.prioridade_destaque)) - Number(Boolean(a.prioridade_destaque)));
 
@@ -419,18 +427,19 @@ export default function Tarefas() {
       {/* Abas + pesquisa em destaque */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1 bg-white border rounded-xl p-1 shadow-sm w-fit">
-          <button
-            onClick={() => setAbaAtiva('andamento')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'andamento' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Em andamento
-          </button>
-          <button
-            onClick={() => setAbaAtiva('finalizados')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === 'finalizados' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Finalizados
-          </button>
+          {[
+            { key: 'a_fazer', label: 'A Fazer' },
+            { key: 'andamento', label: 'Em andamento' },
+            { key: 'finalizados', label: 'Finalizados' },
+          ].map(aba => (
+            <button
+              key={aba.key}
+              onClick={() => setAbaAtiva(aba.key)}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${abaAtiva === aba.key ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              {aba.label}
+            </button>
+          ))}
         </div>
         <div className="relative w-full sm:w-80 lg:w-96">
           <Search className="absolute left-3.5 top-[22px] -translate-y-1/2 w-5 h-5 text-blue-600 pointer-events-none" />
