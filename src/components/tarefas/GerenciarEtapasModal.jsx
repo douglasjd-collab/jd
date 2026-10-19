@@ -30,7 +30,7 @@ function isStatusValido(s) {
 }
 
 export default function GerenciarEtapasModal({ open, onOpenChange, empresaId, currentUser, tarefas = [], setoresList = [], statusList = [], onStatusChanged }) {
-  const [aba, setAba] = useState('globais');
+  const [aba, setAba] = useState('cadastros');
   const queryClient = useQueryClient();
 
   const isAdminPerfil = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
@@ -41,29 +41,37 @@ export default function GerenciarEtapasModal({ open, onOpenChange, empresaId, cu
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent className="max-w-3xl h-[85vh] max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
             <Layers className="w-5 h-5 text-[#1e3a5f]" />
-            Gerencia Setores
+            Setores e status das tarefas
           </DialogTitle>
           <DialogDescription>
-            Gerencie os setores, subcategorias e etapas das tarefas da empresa.
+            Organize os setores, os tipos de serviço e os status das tarefas.
           </DialogDescription>
         </DialogHeader>
 
         {/* Abas */}
-        <div className="flex border-b mb-2 gap-1">
+        <div className="flex border-b mb-2 gap-1 overflow-x-auto shrink-0">
+          <TabButton active={aba === 'cadastros'} onClick={() => setAba('cadastros')}>
+            Setores e subcategorias
+          </TabButton>
           <TabButton active={aba === 'globais'} onClick={() => setAba('globais')}>
-            Etapas Globais
+            Status das tarefas
           </TabButton>
           <TabButton active={aba === 'setores'} onClick={() => setAba('setores')}>
-            Etapas por Setor
+            Status por setor
           </TabButton>
         </div>
 
         {!empresaId ? (
           <p className="text-sm text-slate-500 py-8 text-center">Empresa não identificada.</p>
+        ) : aba === 'cadastros' ? (
+          <div className="flex-1 min-h-0 overflow-y-auto pr-2 pb-4">
+            <p className="text-xs text-slate-500 mb-4">Setor é a área do serviço, como Consórcio. Subcategoria é o tipo de solicitação, como Ativação de cota. O andamento é definido na aba Status das tarefas.</p>
+            <SetoresManager empresaId={empresaId} podeEditar={podeEditar} />
+          </div>
         ) : aba === 'globais' ? (
           <AbaGlobais
             empresaId={empresaId}
@@ -93,7 +101,7 @@ function TabButton({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${
+      className={`px-3 py-2 text-sm font-medium whitespace-nowrap rounded-t-lg border-b-2 transition-colors ${
         active ? 'border-[#1e3a5f] text-[#1e3a5f] bg-white' : 'border-transparent text-slate-500 hover:text-slate-700'
       }`}
     >
@@ -114,7 +122,7 @@ function AbaGlobais({ empresaId, tarefas, statusList, podeEditar, onStatusChange
 
   // Carrega status do banco
   const { data: statusRaw = [] } = useQuery({
-    queryKey: ['status-tarefa', empresaId],
+    queryKey: ['status-tarefa', empresaId, 'gerenciamento'],
     enabled: !!empresaId,
     queryFn: async () => {
       const res = await base44.entities.StatusTarefa.filter({ empresa_id: empresaId });
@@ -176,13 +184,21 @@ function AbaGlobais({ empresaId, tarefas, statusList, podeEditar, onStatusChange
   };
 
   const criarStatus = useMutation({
-    mutationFn: (data) => base44.entities.StatusTarefa.create({
+    mutationFn: (data) => {
+      const nome = data.nome?.trim();
+      const normalizar = v => v.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const slug = normalizar(nome || '').replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+      if (!nome || !slug) throw new Error('Informe um nome válido para o status');
+      if (statusBase.some(s => normalizar(s.nome) === normalizar(nome) || s.slug === slug)) throw new Error('Já existe um status com este nome');
+      return base44.entities.StatusTarefa.create({
       ...data,
       empresa_id: empresaId,
       ativo: true,
       ordem: statusOrdenado.length + 1,
-      slug: data.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
-    }),
+      slug,
+    });
+    },
+    onError: e => toast.error(e.message || 'Erro ao criar status'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['status-tarefa'] });
       setNovoNome('');
@@ -193,7 +209,12 @@ function AbaGlobais({ empresaId, tarefas, statusList, podeEditar, onStatusChange
   });
 
   const atualizarStatus = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.StatusTarefa.update(id, data),
+    mutationFn: ({ id, data }) => {
+      if (!id || !data.nome?.trim()) throw new Error('Informe o nome do status');
+      if (statusBase.some(s => s.id !== id && s.nome.trim().toLocaleLowerCase('pt-BR') === data.nome.trim().toLocaleLowerCase('pt-BR'))) throw new Error('Já existe um status com este nome');
+      return base44.entities.StatusTarefa.update(id, { ...data, nome: data.nome.trim() });
+    },
+    onError: e => toast.error(e.message || 'Erro ao atualizar status'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['status-tarefa'] });
       setEditando(null);
@@ -245,11 +266,11 @@ function AbaGlobais({ empresaId, tarefas, statusList, podeEditar, onStatusChange
   const temNoBanco = statusRaw.length > 0;
 
   return (
-    <ScrollArea className="flex-1 min-h-0 pr-2">
+    <div className="flex-1 min-h-0 overflow-y-auto pr-2">
       <div className="space-y-3 pb-4">
         {/* Cabeçalho */}
         <div className="flex items-center justify-between">
-          <p className="text-xs text-slate-400">Arraste para reordenar as colunas do Kanban.</p>
+          <p className="text-xs text-slate-400">Crie e edite os status usados na lista e no Kanban. Arraste para reordenar.</p>
           <div className="flex items-center gap-2">
             {!temNoBanco && podeEditar && (
               <Button variant="outline" size="sm" onClick={inicializarPadroes} className="text-xs h-7">
@@ -365,12 +386,12 @@ function AbaGlobais({ empresaId, tarefas, statusList, podeEditar, onStatusChange
         {/* Criar nova etapa */}
         {podeEditar && (
           <div className="border rounded-lg p-3 bg-slate-50 space-y-2 mt-2">
-            <Label className="text-xs font-semibold text-slate-600">Nova Etapa</Label>
+            <Label className="text-xs font-semibold text-slate-600">Novo status da tarefa</Label>
             <div className="flex gap-2 items-center">
               <Input
                 value={novoNome}
                 onChange={e => setNovoNome(e.target.value)}
-                placeholder="Nome da etapa"
+                placeholder="Nome do status"
                 className="flex-1 h-8 text-sm"
                 onKeyDown={e => e.key === 'Enter' && novoNome.trim() && criarStatus.mutate({ nome: novoNome.trim(), cor: novaCor })}
               />
@@ -379,13 +400,13 @@ function AbaGlobais({ empresaId, tarefas, statusList, podeEditar, onStatusChange
                 if (!novoNome.trim()) return toast.error('Informe o nome da etapa');
                 criarStatus.mutate({ nome: novoNome.trim(), cor: novaCor });
               }} disabled={criarStatus.isPending} className="bg-[#1e3a5f] hover:bg-[#2a4a73] flex-shrink-0">
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 mr-1" /> Criar status
               </Button>
             </div>
           </div>
         )}
       </div>
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -467,10 +488,7 @@ function AbaSetores({ empresaId, setoresList, statusList, tarefas, podeEditar, o
   return (
     <div className="flex-1 min-h-0 overflow-y-auto pr-2">
       <div className="space-y-4 pb-4">
-        {/* Gerenciador de Setores e Subcategorias */}
-        <div className="border rounded-xl p-3 bg-white">
-          <SetoresManager empresaId={empresaId} podeEditar={podeEditar} />
-        </div>
+        <p className="text-xs text-slate-500">Todos os setores usam os status gerais. Ative Específicos para escolher quais status aparecem em cada setor.</p>
 
         {/* Editor de etapas por setor */}
         <div className="space-y-3">

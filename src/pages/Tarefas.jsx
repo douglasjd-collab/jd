@@ -47,7 +47,7 @@ export default function Tarefas() {
   });
   const [filtroPrazo, setFiltroPrazo] = useState('todas');
   const [mostrarSoMinhas, setMostrarSoMinhas] = useState(false);
-  const [modoVisualizacao, setModoVisualizacao] = useState('kanban'); // 'kanban' | 'lista'
+  const [modoVisualizacao, setModoVisualizacao] = useState('lista'); // 'kanban' | 'lista'
   const [abaAtiva, setAbaAtiva] = useState('andamento'); // 'andamento' | 'finalizados'
   const [configOpen, setConfigOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -121,7 +121,7 @@ export default function Tarefas() {
   });
 
   const statusList = useMemo(() => {
-    const validos = statusCustom.filter(s => s != null && s.nome != null);
+    const validos = statusCustom.filter(s => s != null && s.nome != null && s.ativo !== false);
     if (validos.length > 0) return [...validos].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
     return STATUS_PADRAO;
   }, [statusCustom]);
@@ -408,7 +408,7 @@ export default function Tarefas() {
         {!isParceiro && (
           <Button variant="outline" size="sm" className="gap-1.5 px-2 sm:px-3" onClick={() => setConfigOpen(true)}>
             <Layers className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs">Gerencia Setores</span>
+            <span className="hidden sm:inline text-xs">Setores e status</span>
           </Button>
         )}
       </PageHeader>

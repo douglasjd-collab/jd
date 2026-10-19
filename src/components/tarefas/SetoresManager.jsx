@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 
 export default function SetoresManager({ empresaId, podeEditar = false }) {
   const queryClient = useQueryClient();
+  const [busca, setBusca] = useState('');
   const [novoSetorNome, setNovoSetorNome] = useState('');
   const [criandoSetor, setCriandoSetor] = useState(false);
   const [editandoSetor, setEditandoSetor] = useState(null); // { id, nome, status }
@@ -20,28 +21,40 @@ export default function SetoresManager({ empresaId, podeEditar = false }) {
   const [editandoSub, setEditandoSub] = useState(null); // { id, nome }
 
   const { data: setores = [] } = useQuery({
-    queryKey: ['setores-tarefa', empresaId],
+    queryKey: ['setores-tarefa', empresaId, 'gerenciamento'],
     enabled: !!empresaId,
     queryFn: () => base44.entities.SetorTarefa.filter({ empresa_id: empresaId }, 'nome', 500),
   });
 
   const { data: subsetores = [] } = useQuery({
-    queryKey: ['subsetores-tarefa', empresaId],
+    queryKey: ['subsetores-tarefa', empresaId, 'gerenciamento'],
     enabled: !!empresaId,
     queryFn: () => base44.entities.SubsetorTarefa.filter({ empresa_id: empresaId }, 'nome', 1000),
   });
 
+  const normalizar = nome => (nome || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const validarNome = (nome, lista, id) => {
+    if (!nome?.trim()) throw new Error('Informe um nome');
+    if (lista.some(item => item.id !== id && normalizar(item.nome) === normalizar(nome))) throw new Error('Já existe um cadastro com este nome');
+  };
+  const setoresFiltrados = setores.filter(s => normalizar(s.nome).includes(normalizar(busca)) || subsetores.some(sub => sub.setor_id === s.id && normalizar(sub.nome).includes(normalizar(busca))));
   const subsDoSetor = (setorId) => subsetores.filter(s => s.setor_id === setorId);
 
   // ── Setor CRUD ──
   const criarSetor = useMutation({
-    mutationFn: (nome) => base44.entities.SetorTarefa.create({ empresa_id: empresaId, nome: nome.trim(), status: 'ativo' }),
+    mutationFn: (nome) => {
+      validarNome(nome, setores);
+      return base44.entities.SetorTarefa.create({ empresa_id: empresaId, nome: nome.trim(), status: 'ativo' });
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['setores-tarefa'] }); setNovoSetorNome(''); setCriandoSetor(false); toast.success('Setor criado!'); },
     onError: (e) => toast.error('Erro ao criar setor: ' + (e.message || '')),
   });
 
   const atualizarSetor = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.SetorTarefa.update(id, data),
+    mutationFn: ({ id, data }) => {
+      if (data.nome !== undefined) validarNome(data.nome, setores, id);
+      return base44.entities.SetorTarefa.update(id, data);
+    },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['setores-tarefa'] }); setEditandoSetor(null); toast.success('Setor atualizado!'); },
     onError: (e) => toast.error('Erro ao atualizar: ' + (e.message || '')),
   });
@@ -98,6 +111,7 @@ export default function SetoresManager({ empresaId, podeEditar = false }) {
         )}
       </div>
 
+      <Input value={busca} onChange={e => setBusca(e.target.value)} placeholder="Pesquisar setor ou subcategoria..." aria-label="Pesquisar setor ou subcategoria" />
       {/* Criar setor */}
       {criandoSetor && (
         <div className="flex gap-2 items-center p-2 rounded-lg border bg-slate-50">
@@ -126,9 +140,9 @@ export default function SetoresManager({ empresaId, podeEditar = false }) {
         <p className="text-xs text-slate-400 text-center py-4">Nenhum setor cadastrado. Clique em "Novo Setor" para começar.</p>
       ) : (
         <div className="space-y-2">
-          {setores.map(setor => {
+          {setoresFiltrados.map(setor => {
             const subs = subsDoSetor(setor.id);
-            const isOpen = !!expandido[setor.id];
+            const isOpen = !!expandido[setor.id] || !!busca.trim();
             const isEdit = editandoSetor?.id === setor.id;
             return (
               <div key={setor.id} className="border rounded-lg overflow-hidden">
@@ -231,6 +245,7 @@ export default function SetoresManager({ empresaId, podeEditar = false }) {
                                 <>
                                   <span className="flex-1 text-xs text-slate-700">{sub.nome}</span>
                                   <Switch
+                                    disabled={!podeEditar}
                                     checked={sub.ativo !== false}
                                     onCheckedChange={(v) => atualizarSub.mutate({ id: sub.id, data: { ativo: v } })}
                                     className="scale-50"
