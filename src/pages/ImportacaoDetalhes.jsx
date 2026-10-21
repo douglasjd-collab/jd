@@ -384,7 +384,7 @@ function ItemsTable({ itens, formatCurrency, produto = 'consorcio', showMotivo =
               <TableCell>{item.cota || '-'}</TableCell>
               <TableCell>{item.parcela}</TableCell>
               <TableCell>{formatCurrency(item.valor_recebido)}</TableCell>
-              <TableCell>{vendedorMap[`${item.grupo}|${item.cota}`] || (item.contrato ? vendedorMap[`C:${item.contrato}`] : null) || '-'}</TableCell>
+              <TableCell>{item.vendedor_nome || vendedorMap[`${item.grupo}|${item.cota}`] || (item.contrato ? vendedorMap[`C:${item.contrato}`] : null) || '-'}</TableCell>
               <TableCell><StatusBadge status={item.status} /></TableCell>
               {showMotivo && (
                 <TableCell className="max-w-xs">
