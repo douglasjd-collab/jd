@@ -128,6 +128,12 @@ Deno.serve(async (req) => {
         });
         candidatos = [...unicos.values()];
 
+        // Se há correspondência na empresa da importação, ignora duplicatas
+        // homônimas de outras empresas. Mantém o fallback global quando não há
+        // venda local, desde que reste uma única correspondência.
+        const candidatosEmpresa = candidatos.filter((v: any) => v.empresa_id === importacao.empresa_id);
+        if (candidatosEmpresa.length) candidatos = candidatosEmpresa;
+
         if (candidatos.length !== 1) {
           const motivo = candidatos.length > 1
             ? "Múltiplas vendas encontradas após reprocessamento"
