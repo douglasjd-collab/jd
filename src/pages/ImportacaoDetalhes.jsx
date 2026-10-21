@@ -243,21 +243,21 @@ export default function ImportacaoDetalhes() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-0 shadow-sm bg-slate-50">
           <CardContent className="p-6 text-center">
-            <p className="text-4xl font-bold text-slate-900">{importacao.total_registros || 0}</p>
+            <p className="text-4xl font-bold text-slate-900">{loadingItens ? (importacao.total_registros || 0) : itens.length}</p>
             <p className="text-slate-500 mt-1">Total de Registros</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-sm bg-emerald-50">
           <CardContent className="p-6 text-center">
-            <p className="text-4xl font-bold text-emerald-700">{importacao.registros_processados || 0}</p>
+            <p className="text-4xl font-bold text-emerald-700">{loadingItens ? (importacao.registros_processados || 0) : itensProcessados.length}</p>
             <p className="text-emerald-600 mt-1">Processados</p>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-sm bg-red-50">
           <CardContent className="p-6 text-center">
-            <p className="text-4xl font-bold text-red-700">{importacao.registros_divergencia || 0}</p>
+            <p className="text-4xl font-bold text-red-700">{loadingItens ? (importacao.registros_divergencia || 0) : itensDivergencia.length}</p>
             <p className="text-red-600 mt-1">Divergências</p>
           </CardContent>
         </Card>
