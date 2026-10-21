@@ -222,7 +222,7 @@ export default function ImportacaoComissao() {
         else motivoDivergencia = 'Venda não encontrada pelo contrato';
       } else if (grupoRaw && cotaRaw) {
         const vendasLocal = await base44.entities.VendaConsorcio.filter({ administradora_id: selectedAdmin, ...(empresaIdFinal ? { empresa_id: empresaIdFinal } : {}) });
-        const { venda, motivo } = encontrarVendaEmCache(vendasLocal.map(v => ({ ...v, venda_base_id: v.venda_base_id || v.id })), { grupoRaw, cotaRaw, contrato: '', administradora_id: selectedAdmin });
+        const { venda, motivo } = encontrarVendaEmCache(vendasLocal.map(v => ({ ...v, venda_base_id: v.venda_base_id || v.id })), { grupoRaw, cotaRaw, contrato: '', administradora_id: selectedAdmin, empresa_id: empresaIdFinal });
         vendaConsorcioEncontrada = venda;
         motivoDivergencia = motivo || '';
       } else {
@@ -240,6 +240,7 @@ export default function ImportacaoComissao() {
         cpf: '', contrato, grupo: grupoRaw, cota: cotaRaw,
         parcela: parcelaInformada || 0, valor_recebido: valorRecebido,
         venda_id: vendaConsorcioEncontrada?.venda_base_id, parcela_id: null,
+        vendedor_nome: vendaConsorcioEncontrada?.vendedor_nome || null,
         status: vendaConsorcioEncontrada && !motivoDivergencia ? 'processado' : 'divergencia',
         motivo_divergencia: motivoDivergencia || null
       });
@@ -305,7 +306,7 @@ export default function ImportacaoComissao() {
   };
 
   // Busca em cache local de vendas já carregadas — sem requisições adicionais
-  const encontrarVendaEmCache = (vendas, { grupoRaw, cotaRaw, contrato, administradora_id }) => {
+  const encontrarVendaEmCache = (vendas, { grupoRaw, cotaRaw, contrato, administradora_id, empresa_id }) => {
     const grupoStr = String(grupoRaw ?? '').trim();
     const cotaStr  = String(cotaRaw  ?? '').trim();
     const contratoStr = String(contrato ?? '').trim();
@@ -318,8 +319,12 @@ export default function ImportacaoComissao() {
       return gruposCotasBatem(v.grupo, grupoStr) && gruposCotasBatem(v.cota, cotaStr);
     });
 
-    if (matches.length === 1) return { venda: matches[0], motivo: null };
-    if (matches.length > 1)  return { venda: null, motivo: 'Múltiplas vendas encontradas por grupo/cota' };
+    // Prioriza a venda da empresa selecionada. Só usa o cadastro global se não
+    // houver venda local e existir exatamente uma correspondência global.
+    const matchesEmpresa = empresa_id ? matches.filter(v => v.empresa_id === empresa_id) : matches;
+    const candidatos = matchesEmpresa.length ? matchesEmpresa : matches;
+    if (candidatos.length === 1) return { venda: candidatos[0], motivo: null };
+    if (candidatos.length > 1) return { venda: null, motivo: 'Múltiplas vendas encontradas por grupo/cota' };
     return { venda: null, motivo: 'Venda não encontrada por grupo/cota' };
   };
 
@@ -400,6 +405,7 @@ export default function ImportacaoComissao() {
           cotaRaw,
           contrato,
           administradora_id: selectedAdmin,
+          empresa_id: empresaIdFinal,
         });
         vendaConsorcioEncontrada = venda;
         motivoDivergencia = motivo || (!grupoRaw && !cotaRaw && !contrato ? 'Dados insuficientes (sem contrato nem grupo/cota)' : motivo || '');
@@ -423,6 +429,7 @@ export default function ImportacaoComissao() {
           valor_recebido: valorRecebido,
           venda_id: vendaConsorcioEncontrada?.venda_base_id,
           parcela_id: null,
+          vendedor_nome: vendaConsorcioEncontrada?.vendedor_nome || null,
           status: vendaConsorcioEncontrada && !motivoDivergencia ? 'processado' : 'divergencia',
           motivo_divergencia: motivoDivergencia || null
         });
