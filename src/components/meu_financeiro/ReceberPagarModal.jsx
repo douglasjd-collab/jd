@@ -99,7 +99,7 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
     if (!file) return;
     setUploading(true);
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
       setComprovanteUrl(file_url);
       setComprovanteNome(file.name);
       toast.success('Arquivo enviado!');
@@ -213,7 +213,7 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
     ? 'Salvar alterações'
     : (tipo === 'receita' ? 'Receber receita' : 'Pagar despesa');
 
-  const ConteudoModal = () => (
+  const conteudoModal = (
     <div className="space-y-4">
       {/* Valor e Moeda */}
       <div className="bg-[#F9F7F7] rounded-lg p-4">
@@ -466,7 +466,7 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
             </div>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto px-6 py-4">
-            <ConteudoModal />
+            {conteudoModal}
           </div>
         </SheetContent>
       </Sheet>
@@ -497,7 +497,7 @@ export default function ReceberPagarModal({ open, onClose, item, tipo, user, onC
 
         {/* Body */}
         <div className="px-6 py-4">
-          <ConteudoModal />
+          {conteudoModal}
         </div>
       </DialogContent>
     </Dialog>
