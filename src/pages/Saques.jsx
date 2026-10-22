@@ -412,10 +412,10 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
         </div>
         {lotes.length > 0 && (
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7" onClick={() => exportarCSV(titulo, lotes, colunas, mostrarQuitacao)}>
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7" onClick={() => exportarCSV(titulo, lotes, ['Nº Protocolo', ...colunas], mostrarQuitacao)}>
               <FileSpreadsheet className="w-3.5 h-3.5 text-green-600" /> Excel
             </Button>
-            <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7" onClick={() => exportarPDF(titulo, lotes, colunas, mostrarQuitacao)}>
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7" onClick={() => exportarPDF(titulo, lotes, ['Nº Protocolo', ...colunas], mostrarQuitacao)}>
               <FileText className="w-3.5 h-3.5 text-red-600" /> PDF
             </Button>
           </div>
@@ -425,6 +425,7 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
         <table className="w-full text-sm">
           <thead className={`${cor} text-white`}>
             <tr>
+              <th className={`px-3 py-2 text-left font-medium text-xs uppercase tracking-wide whitespace-nowrap sticky left-0 z-20 ${cor}`}>Nº Protocolo</th>
               {colunas.map(c => (
                 <th key={c} className="px-3 py-2 text-left font-medium text-xs uppercase tracking-wide whitespace-nowrap">{c}</th>
               ))}
@@ -433,12 +434,12 @@ function TabelaLotes({ titulo, lotes, colunas, emptyMsg, cor, onQuitar, onReprog
           <tbody className="divide-y divide-slate-100 bg-white">
             {lotes.length === 0 ? (
               <tr>
-                <td colSpan={colunas.length} className="px-3 py-6 text-center text-slate-400 text-xs">{emptyMsg}</td>
+                <td colSpan={colunas.length + 1} className="px-3 py-6 text-center text-slate-400 text-xs">{emptyMsg}</td>
               </tr>
             ) : (
               lotes.map((l) => (
                 <tr key={l.id} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-3 py-2 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap">{l._protocolo}</td>
+                  <td className="px-3 py-2 font-mono text-xs font-semibold text-slate-700 whitespace-nowrap sticky left-0 z-10 bg-white">{l._protocolo}</td>
                   <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_pagamento)}</td>
                   {mostrarQuitacao && (
                     <td className="px-3 py-2 text-xs whitespace-nowrap">{fmtDate(l.data_quitacao)}</td>
@@ -916,12 +917,12 @@ export default function Saques() {
   const totalQuitado = quitados.reduce((a, l) => a + l._total, 0);
 
   const colunasProgr = isMaster
-    ? ['Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido', 'Vendedor', 'Status / Ações']
-    : ['Nº Protocolo', 'Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido', 'Status / Ações'];
+    ? ['Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido', 'Vendedor', 'Status / Ações']
+    : ['Data Programada', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido', 'Status / Ações'];
 
   const colunasQuit = isMaster
-    ? ['Nº Protocolo', 'Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido', 'Vendedor', 'Status / Ações']
-    : ['Nº Protocolo', 'Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido', 'Status / Ações'];
+    ? ['Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido', 'Vendedor', 'Status / Ações']
+    : ['Data Programada', 'Data Quitação', 'Valor Comissão', 'Acréscimos', 'Descontos', 'Valor Líquido', 'Status / Ações'];
 
   if (loadingUser) {
     return (
