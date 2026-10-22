@@ -175,11 +175,11 @@ export default function Layout({ children, currentPageName }) {
       const filtroConsorcio = user.empresa_id ? { empresa_id: user.empresa_id } : {};
       base44.entities.ComissaoAPagar.filter(filtroConsorcio, {
         limit: 2000,
-        fields: ['grupo', 'cota', 'status_pagamento', 'vendedor_id'],
+        fields: ['grupo', 'cota', 'status_pagamento', 'vendedor_id', 'pagamento_id'],
       }).then(resposta => {
         const comissoes = listaDe(resposta);
         const pendentesConsorcio = comissoes.filter(c =>
-          c.grupo && c.cota &&
+          c.grupo && c.cota && !c.pagamento_id &&
           ['a_pagar', 'a_apagar', 'pendente'].includes(c.status_pagamento)
         );
         const vendedoresUnicos = new Set(pendentesConsorcio.map(c => c.vendedor_id || 'sem-vendedor'));

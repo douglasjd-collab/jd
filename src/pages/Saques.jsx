@@ -649,7 +649,17 @@ export default function Saques() {
           });
         }
       } else {
+        const lote = await base44.entities.PagamentoComissaoLote.get(id);
         await base44.entities.PagamentoComissaoLote.update(id, payload);
+        // Só agora as comissões do consórcio passam de "agendada" para "paga"
+        let comissoesIds = [];
+        try { comissoesIds = lote?.comissoes_ids ? JSON.parse(lote.comissoes_ids) : []; } catch { comissoesIds = []; }
+        for (const cid of comissoesIds) {
+          await base44.entities.ComissaoAPagar.update(cid, {
+            status_pagamento: 'paga',
+            data_pagamento: dataQuitacao,
+          });
+        }
       }
     },
     onSuccess: () => {
@@ -677,7 +687,17 @@ export default function Saques() {
       if (tipo === 'emp') {
         await base44.entities.LotePagamentoComissaoEmprestimo.update(id, payload);
       } else {
+        const lote = await base44.entities.PagamentoComissaoLote.get(id);
         await base44.entities.PagamentoComissaoLote.update(id, payload);
+        // Volta as comissões para aguardando confirmação
+        let comissoesIds = [];
+        try { comissoesIds = lote?.comissoes_ids ? JSON.parse(lote.comissoes_ids) : []; } catch { comissoesIds = []; }
+        for (const cid of comissoesIds) {
+          await base44.entities.ComissaoAPagar.update(cid, {
+            status_pagamento: 'a_pagar',
+            data_pagamento: null,
+          });
+        }
       }
     },
     onSuccess: () => {

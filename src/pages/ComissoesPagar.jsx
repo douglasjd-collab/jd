@@ -118,6 +118,8 @@ export default function ComissoesPagar() {
   const filtered = comissoesVisiveis.filter((c) => {
     if (user?.perfil === 'vendedor' && c.vendedor_id !== user?.id) return false;
     if (user?.empresa_id && c.empresa_id !== user?.empresa_id) return false;
+    // Comissões reservadas em um lote agendado saem da fila de pagamento
+    if (STATUS_A_PAGAR.includes(c.status_pagamento) && c.pagamento_id) return false;
     if (statusFilter === 'a_pagar' && !STATUS_A_PAGAR.includes(c.status_pagamento)) return false;
     if (statusFilter === 'paga' && c.status_pagamento !== 'paga') return false;
     if (mesFilter !== 'todos' && c.data_recebimento) {
@@ -150,7 +152,7 @@ export default function ComissoesPagar() {
   const totalComissoes = comissoesVisiveis.reduce((a, c) => a + (c.valor_a_pagar || 0), 0);
   const pagasEsseMes = comissoesVisiveis.filter(c => c.status_pagamento === 'paga' && c.data_pagamento?.startsWith(mesAtual))
     .reduce((a, c) => a + (c.valor_a_pagar || 0), 0);
-  const pendentes = comissoesVisiveis.filter(c => STATUS_A_PAGAR.includes(c.status_pagamento))
+  const pendentes = comissoesVisiveis.filter(c => STATUS_A_PAGAR.includes(c.status_pagamento) && !c.pagamento_id)
     .reduce((a, c) => a + (c.valor_a_pagar || 0), 0);
 
   const startEditing = (comissao) => { setEditingId(comissao.id); setEditingValue(String(comissao.percentual_comissao || 0)); setEditingError(''); };
@@ -244,7 +246,8 @@ export default function ComissoesPagar() {
     descontoAdiantamentos = 0,
     impostoPerc = 0,
     impostoValor = 0,
-    totalLiquidoOverride = null
+    totalLiquidoOverride = null,
+    adiantamentosLista = []
   ) => {
     const doc = new jsPDF({ orientation: 'landscape' });
     const totalPago = comissoesLista.reduce((acc, c) => acc + (c.valor_a_pagar || 0), 0);
@@ -300,7 +303,7 @@ export default function ComissoesPagar() {
     const boxHeight = pixVendedor ? 28 : 22;
     doc.roundedRect(10, 26, 277, boxHeight, 2, 2, 'F');
     doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-    doc.text('Vendedor:', 14, 33); doc.text('Data Pagamento:', 90, 33);
+    doc.text('Vendedor:', 14, 33); doc.text('Data Programada:', 90, 33);
     doc.text('Forma Pagamento:', 160, 33); doc.text('Qtd. Itens:', 230, 33);
     doc.setFont('helvetica', 'normal');
     doc.text(nomeVendedorReal, 14, 39);
@@ -319,21 +322,52 @@ export default function ComissoesPagar() {
     doc.setTextColor(0, 80, 180); doc.text(fmt(totalPago), 80, infoY);
     doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'normal');
-    const descontosTexto = [
-      descontoAdiantamentos > 0 ? `Adiantamentos: -${fmt(descontoAdiantamentos)}` : '',
-      impostoValor > 0 ? `Imposto (${Number(impostoPerc).toFixed(2)}%): -${fmt(impostoValor)}` : '',
-    ].filter(Boolean).join('  |  ');
+    const descontosTexto = impostoValor > 0
+      ? `Imposto (${Number(impostoPerc).toFixed(2)}%): -${fmt(impostoValor)}`
+      : '';
     if (descontosTexto) doc.text(descontosTexto, 14, infoY + 6);
+    if (descontoAdiantamentos > 0) {
+      doc.text(`Adiantamentos descontados: -${fmt(descontoAdiantamentos)}`, 14, infoY + (descontosTexto ? 11 : 6));
+    }
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(20, 110, 60);
     doc.text(`Valor líquido a pagar: ${fmt(totalLiquidoRelatorio)}`, 160, infoY + (descontosTexto ? 6 : 0));
+    doc.setFontSize(8);
+    doc.setTextColor(180, 90, 0);
+    doc.text('SITUAÇÃO: AGENDADO — aguardando confirmação do pagamento', 160, infoY + (descontosTexto ? 13 : 7));
     doc.setTextColor(0, 0, 0);
     if (observacao) {
-      doc.setFont('helvetica', 'normal'); doc.text(`Obs: ${observacao}`, 160, infoY);
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.text(`Obs: ${observacao}`, 160, infoY);
+    }
+
+    const linhasDesconto = (descontosTexto ? 1 : 0) + (descontoAdiantamentos > 0 ? 1 : 0);
+    let cursorY = infoY + (linhasDesconto > 0 ? 8 + linhasDesconto * 4 : 8);
+
+    // Detalhamento dos adiantamentos descontados neste pagamento
+    if (adiantamentosLista.length > 0) {
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(180, 90, 0);
+      doc.text('Adiantamentos descontados neste pagamento', 14, cursorY);
+      doc.setTextColor(0, 0, 0);
+      doc.autoTable({
+        startY: cursorY + 3,
+        head: [['Data do adiantamento', 'Descrição', 'Valor descontado']],
+        body: adiantamentosLista.map(a => [
+          a.data ? moment(a.data).format('DD/MM/YYYY') : '-',
+          a.motivo || a.observacao || 'Adiantamento',
+          fmt(a._valor_aplicado ?? a.valor),
+        ]),
+        foot: [['', 'Total descontado em adiantamentos', fmt(adiantamentosLista.reduce((acc, a) => acc + (a._valor_aplicado ?? a.valor ?? 0), 0))]],
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [180, 90, 0], textColor: 255, fontStyle: 'bold' },
+        footStyles: { fillColor: [255, 243, 224], fontStyle: 'bold', textColor: [120, 60, 0] },
+        columnStyles: { 2: { halign: 'right' } },
+        margin: { left: 14, right: 14 },
+      });
+      cursorY = doc.lastAutoTable.finalY + 8;
     }
 
     doc.autoTable({
-      startY: infoY + (descontosTexto ? 12 : 8),
+      startY: cursorY,
       head: [['Cliente', 'Grupo/Cota', 'Parcela', 'Data Rec.', 'Vl. Crédito', '% s/ Crédito', 'Vl. a Pagar', 'Administradora']],
       body: comissoesLista.map(c => {
         const credito = getCredito(c);
@@ -372,11 +406,6 @@ export default function ComissoesPagar() {
       if (paraPagar.length === 0) { toast.error('Nenhuma comissão válida'); return; }
 
       const dataPagamento = moment().format('YYYY-MM-DD');
-      for (const c of paraPagar) {
-        await base44.entities.ComissaoAPagar.update(c.id, {
-          status_pagamento: 'paga', data_pagamento: dataPagamento, forma_pagamento: formaPagamento, observacao,
-        });
-      }
 
       const lotes = await base44.entities.PagamentoComissaoLote.filter({ empresa_id: user.empresa_id });
       const loteCode = `EMPAY${String(lotes.length + 1).padStart(4, '0')}`;
@@ -407,7 +436,7 @@ export default function ComissoesPagar() {
         } catch {}
       }
 
-      await base44.entities.PagamentoComissaoLote.create({
+      const lote = await base44.entities.PagamentoComissaoLote.create({
         empresa_id: user.empresa_id, lote_code: loteCode,
         filial_id: filialId, filial_nome: filialNome,
         vendedor_id: vendedorModal.vendedor_id, vendedor_nome: vendedorModal.vendedor_nome,
@@ -423,8 +452,20 @@ export default function ComissoesPagar() {
         observacao,
         gerado_por_id: user.colaborador_id, gerado_por_nome: user.full_name,
         comissoes_ids: JSON.stringify(paraPagar.map(c => c.id)), email_enviado: false,
-        status: 'quitado', data_quitacao: dataPagamento,
+        status: 'programado',
       });
+
+      // As comissões ficam reservadas neste lote e continuam aguardando
+      // a confirmação do pagamento (quitadas depois na tela de Comissões Pagas).
+      for (const c of paraPagar) {
+        await base44.entities.ComissaoAPagar.update(c.id, {
+          data_pagamento: dataPagamento,
+          forma_pagamento: formaPagamento,
+          observacao,
+          pagamento_id: lote.id,
+          protocolo: loteCode,
+        });
+      }
 
       // Descontar adiantamentos selecionados (com suporte a desconto parcial)
       const adisDesc = Array.from(adiantamentosSelecionados)
@@ -434,11 +475,13 @@ export default function ComissoesPagar() {
       // O imposto é descontado primeiro; adiantamentos só podem consumir
       // o saldo que ainda estará disponível para pagamento ao vendedor.
       let saldoDisponivel = Math.max(0, totalPago - valorImposto);
+      const adisAplicados = [];
       for (const adi of adisDesc) {
         if (saldoDisponivel <= 0) break;
         const valorDescontar = Math.min(adi.valor, saldoDisponivel);
         const valorRestante = adi.valor - valorDescontar;
         saldoDisponivel -= valorDescontar;
+        adisAplicados.push({ ...adi, _valor_aplicado: valorDescontar });
 
         if (adi._origem_adiantamento === 'funcionario') {
           // Compatibilidade com lançamentos antigos de AdiantamentoFuncionario.
@@ -507,14 +550,15 @@ export default function ComissoesPagar() {
         descontoAdiantamentosAplicado,
         percentualImpostoAplicado,
         valorImposto,
-        totalLiquidoPagamento
+        totalLiquidoPagamento,
+        adisAplicados
       );
       queryClient.invalidateQueries(['comissoes-a-pagar']);
-      const msgAdis = adisDesc.length > 0 ? ` ${adisDesc.length} adiantamento(s) descontado(s).` : '';
+      const msgAdis = adisAplicados.length > 0 ? ` ${adisAplicados.length} adiantamento(s) descontado(s).` : '';
       const msgImposto = valorImposto > 0
         ? ` Imposto de ${percentualImpostoAplicado.toFixed(2)}% descontado (${fmt(valorImposto)}).`
         : '';
-      toast.success(`✅ ${paraPagar.length} comissão(ões) paga(s)! Líquido: ${fmt(totalLiquidoPagamento)}.${msgImposto}${msgAdis}`);
+      toast.success(`✅ ${paraPagar.length} comissão(ões) agendada(s)! Líquido: ${fmt(totalLiquidoPagamento)}.${msgImposto}${msgAdis} Confirme o pagamento em Comissões Pagas.`);
       setPagarModal(false);
       setModalSelecionados(new Set());
       setAdiantamentosSelecionados(new Set());
@@ -757,7 +801,7 @@ export default function ComissoesPagar() {
         <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-lg">Selecionar Contratos a Pagar</DialogTitle>
-            <p className="text-sm text-slate-500">Selecione as comissões que deseja pagar agora.</p>
+            <p className="text-sm text-slate-500">Selecione as comissões que deseja agendar para pagamento.</p>
           </DialogHeader>
 
           <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
@@ -952,7 +996,7 @@ export default function ComissoesPagar() {
               {isPaying ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Processando...</>
               ) : (
-                <><CheckCircle2 className="w-4 h-4 mr-2" />Pagar {modalSelecionados.size} contrato(s) ({fmt(totalLiquidoCalculado)})</>
+                <><CheckCircle2 className="w-4 h-4 mr-2" />Agendar {modalSelecionados.size} contrato(s) ({fmt(totalLiquidoCalculado)})</>
               )}
             </Button>
           </DialogFooter>
