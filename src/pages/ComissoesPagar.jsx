@@ -754,19 +754,20 @@ export default function ComissoesPagar() {
 
       {/* Modal Selecionar Contratos a Pagar */}
       <Dialog open={pagarModal} onOpenChange={setPagarModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-lg">Selecionar Contratos a Pagar</DialogTitle>
             <p className="text-sm text-slate-500">Selecione as comissões que deseja pagar agora.</p>
           </DialogHeader>
 
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
           <div className="relative mb-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input placeholder="Buscar vendedor, grupo ou cota..." value={modalSearch}
               onChange={e => setModalSearch(e.target.value)} className="pl-9" />
           </div>
 
-          <div className="overflow-y-auto flex-1 border rounded-lg">
+          <div className="overflow-y-auto max-h-64 border rounded-lg">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-white border-b">
                 <tr className="text-slate-600">
@@ -936,8 +937,9 @@ export default function ComissoesPagar() {
               </div>
             </div>
           </div>
+          </div>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 shrink-0 border-t pt-3">
             <Button variant="outline" onClick={() => setPagarModal(false)} disabled={isPaying}>Cancelar</Button>
             <Button
               disabled={
