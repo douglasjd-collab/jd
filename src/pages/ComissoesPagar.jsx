@@ -168,11 +168,11 @@ export default function ComissoesPagar() {
     cancelEditing();
   };
 
-  const abrirModalPagamento = async (vendedor, e) => {
+  const abrirModalPagamento = async (vendedor, e, idsSelecionados = null) => {
     if (e) e.stopPropagation();
     setVendedorModal(vendedor);
     const aPagar = vendedor.comissoes.filter(c => STATUS_A_PAGAR.includes(c.status_pagamento));
-    setModalSelecionados(new Set(aPagar.map(c => c.id)));
+    setModalSelecionados(new Set(idsSelecionados || aPagar.map(c => c.id)));
     setModalSearch('');
     setFormaPagamento('PIX');
     setObservacao('');
@@ -742,6 +742,7 @@ export default function ComissoesPagar() {
                   setFormaPagamento={setFormaPagamento}
                   setObservacao={setObservacao}
                   setPagarModal={setPagarModal}
+                  abrirModalPagamento={abrirModalPagamento}
                   fmt={fmt}
                   formatDateBR={formatDateBR}
                 />}

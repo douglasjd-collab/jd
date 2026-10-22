@@ -11,6 +11,7 @@ export default function VendedorExpandido({
   isAdmin, startEditing, saveEditing, cancelEditing,
   setVendedorModal, setModalSelecionados, setModalSearch,
   setFormaPagamento, setObservacao, setPagarModal,
+  abrirModalPagamento,
   fmt, formatDateBR,
 }) {
   const STATUS_A_PAGAR = ['a_pagar', 'a_apagar', 'pendente'];
@@ -39,12 +40,9 @@ export default function VendedorExpandido({
   const abrirPagamentoSelecionados = (e) => {
     e.stopPropagation();
     const ids = selecionados ? Array.from(selecionados) : [];
-    setVendedorModal(vendedor);
-    setModalSelecionados(new Set(ids));
-    setModalSearch('');
-    setFormaPagamento('PIX');
-    setObservacao('');
-    setPagarModal(true);
+    // Usa o mesmo fluxo do botão "Pagar Comissão" para também carregar
+    // os adiantamentos pendentes do vendedor no modal.
+    abrirModalPagamento(vendedor, e, ids);
   };
 
   const qtdSel = selecionados?.size || 0;
