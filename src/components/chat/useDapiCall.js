@@ -59,6 +59,24 @@ class VoipIO extends AudioWorkletProcessor {
 registerProcessor('voip-io', VoipIO);
 `;
 
+const MOTIVOS_ENCERRAMENTO = {
+  rejected: 'Chamada recusada',
+  no_answer: 'Chamada não atendida',
+  timeout: 'Sem resposta',
+  accepted_elsewhere: 'Atendida em outro dispositivo',
+  terminate: 'Tempo máximo de chamada atingido',
+  ws_closed: 'Conexão da chamada caiu',
+};
+
+function mensagemErro(e) {
+  const nome = e?.name;
+  if (nome === 'NotAllowedError' || nome === 'SecurityError') {
+    return 'Permissão de microfone negada. Libere o microfone para o site e tente novamente.';
+  }
+  if (nome === 'NotFoundError') return 'Nenhum microfone encontrado neste dispositivo.';
+  return e?.message || 'Erro na chamada';
+}
+
 export default function useDapiCall() {
   const [status, setStatus] = useState('idle'); // idle|calling|ringing|connected|ended|error
   const [erro, setErro] = useState(null);
@@ -76,7 +94,6 @@ export default function useDapiCall() {
     ringbackStopRef.current?.();
     ringbackStopRef.current = null;
   }, []);
-
 
   const limpar = useCallback(() => {
     pararSomChamada();
@@ -107,57 +124,138 @@ export default function useDapiCall() {
     setMutado(!track.enabled);
   }, []);
 
+  // Microfone e pipeline de áudio. É preparado ANTES de discar/atender: se o
+  // microfone falhar, nenhuma chamada é criada e nada cai do outro lado.
+  const prepararMidia = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Microfone indisponível. Abra o sistema em uma aba própria e permita o microfone.');
+    }
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioContextClass({ sampleRate: 16000 });
+    audioCtxRef.current = ctx;
+    await ctx.resume();
+
+    const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
+    const workletUrl = URL.createObjectURL(blob);
+    try {
+      await ctx.audioWorklet.addModule(workletUrl);
+    } finally {
+      URL.revokeObjectURL(workletUrl);
+    }
+
+    const mic = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+    micStreamRef.current = mic;
+
+    const node = new AudioWorkletNode(ctx, 'voip-io', {
+      numberOfInputs: 1,
+      numberOfOutputs: 1,
+      outputChannelCount: [1],
+    });
+    nodeRef.current = node;
+    ctx.createMediaStreamSource(mic).connect(node);
+    node.connect(ctx.destination);
+
+    node.port.onmessage = (ev) => {
+      const ws = wsRef.current;
+      if (ev.data?.kind === 'out' && canSendRef.current && ws?.readyState === WebSocket.OPEN) {
+        ws.send(ev.data.pcm);
+      }
+    };
+  }, []);
+
+  // Abre o WebSocket de mídia e liga os eventos de ciclo de vida.
+  // jaAtendida = chamada recebida que já foi atendida por nós (/calls/accept).
+  const conectarMidia = useCallback(async (wsUrl, { jaAtendida = false } = {}) => {
+    const ws = new WebSocket(wsUrl);
+    ws.binaryType = 'arraybuffer';
+    wsRef.current = ws;
+
+    await new Promise((resolve, reject) => {
+      const prazo = setTimeout(() => reject(new Error('Não foi possível abrir o áudio da chamada')), 10000);
+      ws.onopen = () => { clearTimeout(prazo); resolve(); };
+      ws.onerror = () => { clearTimeout(prazo); reject(new Error('Não foi possível abrir o áudio da chamada')); };
+    });
+
+    let conectado = jaAtendida;
+    if (jaAtendida) {
+      canSendRef.current = true;
+      pararSomChamada();
+      setStatus('connected');
+    }
+
+    ws.onmessage = (e) => {
+      if (typeof e.data === 'string') {
+        let msg = {};
+        try { msg = JSON.parse(e.data); } catch (_) { return; }
+        switch (msg.type) {
+          case 'calling':
+            setStatus('calling');
+            break;
+          case 'ringing':
+            setStatus('ringing');
+            break;
+          case 'accepted':
+          case 'connected':
+            pararSomChamada();
+            conectado = true;
+            canSendRef.current = true;
+            setStatus('connected');
+            break;
+          case 'ended': {
+            const motivo = MOTIVOS_ENCERRAMENTO[msg.reason];
+            if (!conectado && motivo) {
+              setErro(motivo);
+              setStatus('error');
+            } else {
+              setStatus('ended');
+            }
+            limpar();
+            break;
+          }
+          case 'error':
+            setErro(msg.msg || msg.code || 'Erro na chamada');
+            setStatus('error');
+            limpar();
+            break;
+          default:
+            break;
+        }
+      } else {
+        nodeRef.current?.port.postMessage({ kind: 'in', pcm: e.data }, [e.data]);
+      }
+    };
+
+    ws.onclose = () => {
+      if (wsRef.current !== ws) return;
+      if (!conectado) {
+        setErro('A ligação foi encerrada antes de conectar');
+        setStatus('error');
+      } else {
+        setStatus('ended');
+      }
+      limpar();
+    };
+
+    ws.onerror = () => {
+      setErro('Erro de conexão com a chamada');
+      setStatus('error');
+      limpar();
+    };
+  }, [limpar, pararSomChamada]);
+
+  // Ligações de saída (WhatsApp via stream ou URA da operadora).
   const iniciar = useCallback(async (viaEscolhida, connectionId, telefone) => {
     if (emChamadaRef.current) return;
     emChamadaRef.current = true;
     setErro(null);
     setStatus('calling');
     setVia(viaEscolhida);
-    let conectado = false;
     try {
-      // Microfone e pipeline de áudio são preparados ANTES de discar. Antes, a
-      // ligação era criada primeiro: se o microfone fosse negado/indisponível,
-      // o canal fosse fechado e a chamada caía/rejeitava na hora do outro lado.
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error('Microfone indisponível. Abra o sistema em uma aba própria e permita o microfone.');
-      }
-
-      // Criar/resumir o áudio no clique do usuário para permitir reprodução na extensão.
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      const ctx = new AudioContextClass({ sampleRate: 16000 });
-      audioCtxRef.current = ctx;
-      await ctx.resume();
-
-      const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
-      const workletUrl = URL.createObjectURL(blob);
-      try {
-        await ctx.audioWorklet.addModule(workletUrl);
-      } finally {
-        URL.revokeObjectURL(workletUrl);
-      }
-
-      const mic = await navigator.mediaDevices.getUserMedia({
-        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
-      micStreamRef.current = mic;
-
-      const node = new AudioWorkletNode(ctx, 'voip-io', {
-        numberOfInputs: 1,
-        numberOfOutputs: 1,
-        outputChannelCount: [1],
-      });
-      nodeRef.current = node;
-      ctx.createMediaStreamSource(mic).connect(node);
-      node.connect(ctx.destination);
-
-      node.port.onmessage = (ev) => {
-        const ws = wsRef.current;
-        if (ev.data?.kind === 'out' && canSendRef.current && ws?.readyState === WebSocket.OPEN) {
-          ws.send(ev.data.pcm);
-        }
-      };
-
-      ringbackStopRef.current = startCallRingback(ctx);
+      await prepararMidia();
+      ringbackStopRef.current = startCallRingback(audioCtxRef.current);
 
       const resp = await base44.functions.invoke('iniciarChamadaDapi', {
         via: viaEscolhida,
@@ -165,98 +263,48 @@ export default function useDapiCall() {
         phone: (telefone || '').replace(/\D/g, ''),
       });
       if (!resp?.data?.success) throw new Error(resp?.data?.error || 'Falha ao iniciar chamada');
-      const { wsUrl } = resp.data;
 
-      const ws = new WebSocket(wsUrl);
-      ws.binaryType = 'arraybuffer';
-      wsRef.current = ws;
-
-      // Só considera a chamada iniciada quando o canal de áudio realmente abriu;
-      // se ele falhar, a ligação é encerrada aqui em vez de ficar muda.
-      await new Promise((resolve, reject) => {
-        const prazo = setTimeout(() => reject(new Error('Não foi possível abrir o áudio da chamada')), 10000);
-        ws.onopen = () => { clearTimeout(prazo); resolve(); };
-        ws.onerror = () => { clearTimeout(prazo); reject(new Error('Não foi possível abrir o áudio da chamada')); };
-      });
-
-      ws.onmessage = (e) => {
-        if (typeof e.data === 'string') {
-          let msg = {};
-          try { msg = JSON.parse(e.data); } catch (_) { return; }
-          switch (msg.type) {
-            case 'calling':
-              setStatus('calling');
-              break;
-            case 'ringing':
-              setStatus('ringing');
-              break;
-            case 'accepted':
-            case 'connected':
-              pararSomChamada();
-              conectado = true;
-              canSendRef.current = true;
-              setStatus('connected');
-              break;
-            case 'ended': {
-              const MOTIVOS = {
-                rejected: 'Chamada recusada pelo contato',
-                no_answer: 'Chamada não atendida',
-                timeout: 'Sem resposta do contato',
-                accepted_elsewhere: 'Atendida em outro dispositivo',
-                terminate: 'Tempo máximo de chamada atingido',
-                ws_closed: 'Conexão da chamada caiu',
-              };
-              const motivo = MOTIVOS[msg.reason];
-              if (!conectado && motivo) {
-                setErro(motivo);
-                setStatus('error');
-              } else {
-                setStatus('ended');
-              }
-              limpar();
-              break;
-            }
-            case 'error':
-              setErro(msg.msg || msg.code || 'Erro na chamada');
-              setStatus('error');
-              limpar();
-              break;
-            default:
-              break;
-          }
-        } else {
-          nodeRef.current?.port.postMessage({ kind: 'in', pcm: e.data }, [e.data]);
-        }
-      };
-
-      ws.onclose = () => {
-        if (wsRef.current !== ws) return;
-        if (!conectado) {
-          setErro('A ligação foi encerrada antes de conectar');
-          setStatus('error');
-        } else {
-          setStatus('ended');
-        }
-        limpar();
-      };
-
-      ws.onerror = () => {
-        setErro('Erro de conexão com a chamada');
-        setStatus('error');
-        limpar();
-      };
+      await conectarMidia(resp.data.wsUrl);
     } catch (e) {
-      const nome = e?.name;
-      const msg = nome === 'NotAllowedError' || nome === 'SecurityError'
-        ? 'Permissão de microfone negada. Libere o microfone para o site e tente novamente.'
-        : nome === 'NotFoundError'
-        ? 'Nenhum microfone encontrado neste dispositivo.'
-        : e.message;
-      setErro(msg);
+      setErro(mensagemErro(e));
       setStatus('error');
       limpar();
     }
-  }, [limpar, pararSomChamada]);
+  }, [prepararMidia, conectarMidia, limpar]);
 
-  return { status, erro, mutado, via, iniciar, encerrar, alternarMudo };
+  // Chamada recebida atendida dentro do CRM (WhatsApp).
+  const atender = useCallback(async (connectionId, callId) => {
+    if (emChamadaRef.current) return;
+    emChamadaRef.current = true;
+    setErro(null);
+    setStatus('calling');
+    setVia('whatsapp');
+    try {
+      await prepararMidia();
+
+      const resp = await base44.functions.invoke('atenderChamadaDapi', {
+        connectionId,
+        callId,
+        acao: 'atender',
+      });
+      if (!resp?.data?.success || !resp.data.wsUrl) {
+        throw new Error(resp?.data?.error || 'Falha ao atender a chamada');
+      }
+
+      await conectarMidia(resp.data.wsUrl, { jaAtendida: true });
+    } catch (e) {
+      setErro(mensagemErro(e));
+      setStatus('error');
+      limpar();
+    }
+  }, [prepararMidia, conectarMidia, limpar]);
+
+  // Recusa a chamada recebida (não precisa de microfone).
+  const recusar = useCallback(async (connectionId, callId) => {
+    try {
+      await base44.functions.invoke('atenderChamadaDapi', { connectionId, callId, acao: 'recusar' });
+    } catch (_) {}
+  }, []);
+
+  return { status, erro, mutado, via, iniciar, atender, recusar, encerrar, alternarMudo };
 }

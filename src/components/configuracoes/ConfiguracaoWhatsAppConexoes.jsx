@@ -46,7 +46,8 @@ import {
   Eye,
   EyeOff,
   RefreshCw,
-  Shield
+  Shield,
+  PhoneIncoming
 } from 'lucide-react';
 import { toast } from 'sonner';
 import LoginMetaOficialButton from './LoginMetaOficialButton';
@@ -452,6 +453,41 @@ export default function ConfiguracaoWhatsApp() {
       setTestFormResult(null);
       setTestFailed(false);
       };
+
+  // Liga/desliga o recebimento de chamadas no CRM. A D-API reinicia a conexão
+  // para aplicar a mudança (alguns segundos sem enviar/receber mensagens).
+  const recebendoChamadas = (connection) => {
+    try {
+      return !!JSON.parse(connection.config_json || '{}').recebimento_chamadas;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const handleToggleRecebimentoChamadas = async (connection) => {
+    const ativo = !recebendoChamadas(connection);
+    const confirmar = window.confirm(
+      ativo
+        ? 'Ativar o recebimento de ligações no CRM?\n\nA conexão reinicia por alguns segundos. Depois disso, as ligações para este número passam a tocar no CRM, com o áudio no navegador.'
+        : 'Desativar o recebimento de ligações no CRM? A conexão reinicia por alguns segundos.'
+    );
+    if (!confirmar) return;
+
+    try {
+      const res = await base44.functions.invoke('configurarRecebimentoChamadas', {
+        connectionId: connection.id,
+        ativo,
+      });
+      if (res?.data?.success) {
+        toast.success(ativo ? 'Recebimento de ligações ativado' : 'Recebimento de ligações desativado');
+        queryClient.invalidateQueries({ queryKey: ['whatsapp-connections'] });
+      } else {
+        toast.error(res?.data?.error || 'Não foi possível alterar o recebimento de ligações');
+      }
+    } catch (e) {
+      toast.error('Não foi possível alterar o recebimento de ligações');
+    }
+  };
 
   const handleEdit = (connection) => {
     setSelectedConnection(connection);
@@ -1015,6 +1051,18 @@ export default function ConfiguracaoWhatsApp() {
                         >
                           <Zap className="w-4 h-4" />
                         </Button>
+                        {connection.provider_type === 'dapi' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleToggleRecebimentoChamadas(connection)}
+                            title={recebendoChamadas(connection)
+                              ? 'Recebimento de ligações no CRM ativado (clique para desativar)'
+                              : 'Ativar recebimento de ligações no CRM'}
+                          >
+                            <PhoneIncoming className={`w-4 h-4 ${recebendoChamadas(connection) ? 'text-green-600' : 'text-slate-400'}`} />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
