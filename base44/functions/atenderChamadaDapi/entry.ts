@@ -33,10 +33,23 @@ Deno.serve(async (req) => {
     const recusar = acao === 'recusar';
     const endpoint = recusar ? '/api/v1/calls/reject' : '/api/v1/calls/accept';
 
+    // A D-API exige o número de quem ligou (campo "from") para recusar a chamada.
+    const body = { sessionId, callId };
+    if (recusar) {
+      const chamada = await base44.asServiceRole.entities.ChamadaVozWhatsapp
+        .filter({ empresa_id: connection.empresa_id, call_id: String(callId) }, '-created_date', 1)
+        .catch(() => []);
+      const telefone = chamada?.[0]?.cliente_telefone;
+      if (!telefone) {
+        return Response.json({ error: 'Número do chamador não encontrado para recusar' }, { status: 404 });
+      }
+      body.from = `${String(telefone).replace(/\D/g, '')}@s.whatsapp.net`;
+    }
+
     const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
       headers: { Authorization: apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId, callId }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(20000),
     });
 

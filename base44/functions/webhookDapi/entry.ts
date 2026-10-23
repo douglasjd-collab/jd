@@ -3,6 +3,7 @@ import { processReactionDapi } from '../../shared/reactionDapiShared.ts';
 import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.ts';
 import { marcarRecebidasAteResposta } from '../../shared/leituraRespostaShared.ts';
 import { metadadosMidiaDapi } from '../../shared/nomeMidiaShared.ts';
+import { registrarChamadaRecebidaDapi, finalizarChamadaDapi } from '../../shared/chamadaDapiShared.ts';
 
 /**
  * Webhook Oficial D-API - Endpoint Público
@@ -77,7 +78,7 @@ async function registrarDiagnostico(base44, traceId, etapa, dados) {
       telefone: etapa === 1 ? (dados?.telefone_normalizado || dados?.telefone_recebido || null) : null,
       conteudo: `etapa=${etapa} ${etapaNome} | trace=${traceId} | event=${event}`,
       mensagem_erro: dados?.erro || null,
-      mensagem_id,
+      mensagem_id: message_id,
       conversa_id: conversation_id,
       instancia: session_id,
       timestamp: new Date().toISOString(),
@@ -355,7 +356,20 @@ async function processEvent(base44, eventType, body, connection, empresaId) {
     
     case 'logged_out':
       return await processLoggedOut(base44, body, connection);
-    
+
+    // Chamada de voz recebida no número da sessão → popup de atendimento no CRM.
+    case 'call.offer':
+    case 'call.ringing':
+      return await registrarChamadaRecebidaDapi(base44, connection, body.data || body);
+
+    // Chamada atendida, recusada, encerrada ou perdida → encerra a oferta.
+    case 'call.ended':
+    case 'call.accepted':
+    case 'call.connected':
+    case 'call.rejected':
+    case 'call.not_answered':
+      return await finalizarChamadaDapi(base44, connection, body.data || body);
+
     default:
       console.log(`ℹ️ Evento não processado: ${eventType}`);
       return { handled: false, event: eventType };
