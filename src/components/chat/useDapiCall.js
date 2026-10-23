@@ -70,6 +70,7 @@ export default function useDapiCall() {
   const micStreamRef = useRef(null);
   const nodeRef = useRef(null);
   const canSendRef = useRef(false);
+  const emChamadaRef = useRef(false);
   const ringbackStopRef = useRef(null);
   const pararSomChamada = useCallback(() => {
     ringbackStopRef.current?.();
@@ -87,6 +88,7 @@ export default function useDapiCall() {
     audioCtxRef.current = null;
     nodeRef.current = null;
     canSendRef.current = false;
+    emChamadaRef.current = false;
     setMutado(false);
   }, [pararSomChamada]);
 
@@ -106,33 +108,33 @@ export default function useDapiCall() {
   }, []);
 
   const iniciar = useCallback(async (viaEscolhida, connectionId, telefone) => {
+    if (emChamadaRef.current) return;
+    emChamadaRef.current = true;
     setErro(null);
     setStatus('calling');
     setVia(viaEscolhida);
+    let conectado = false;
     try {
+      // Microfone e pipeline de áudio são preparados ANTES de discar. Antes, a
+      // ligação era criada primeiro: se o microfone fosse negado/indisponível,
+      // o canal fosse fechado e a chamada caía/rejeitava na hora do outro lado.
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Microfone indisponível. Abra o sistema em uma aba própria e permita o microfone.');
+      }
+
       // Criar/resumir o áudio no clique do usuário para permitir reprodução na extensão.
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       const ctx = new AudioContextClass({ sampleRate: 16000 });
       audioCtxRef.current = ctx;
-      ringbackStopRef.current = startCallRingback(ctx);
       await ctx.resume();
-
-      const resp = await base44.functions.invoke('iniciarChamadaDapi', {
-        via: viaEscolhida,
-        connectionId,
-        phone: (telefone || '').replace(/\D/g, ''),
-      });
-      if (!resp?.data?.success) throw new Error(resp?.data?.error || 'Falha ao iniciar chamada');
-      const { wsUrl } = resp.data;
-
-      const ws = new WebSocket(wsUrl);
-      ws.binaryType = 'arraybuffer';
-      wsRef.current = ws;
 
       const blob = new Blob([WORKLET_CODE], { type: 'application/javascript' });
       const workletUrl = URL.createObjectURL(blob);
-      await ctx.audioWorklet.addModule(workletUrl);
-      URL.revokeObjectURL(workletUrl);
+      try {
+        await ctx.audioWorklet.addModule(workletUrl);
+      } finally {
+        URL.revokeObjectURL(workletUrl);
+      }
 
       const mic = await navigator.mediaDevices.getUserMedia({
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
@@ -149,10 +151,33 @@ export default function useDapiCall() {
       node.connect(ctx.destination);
 
       node.port.onmessage = (ev) => {
-        if (ev.data?.kind === 'out' && canSendRef.current && ws.readyState === WebSocket.OPEN) {
+        const ws = wsRef.current;
+        if (ev.data?.kind === 'out' && canSendRef.current && ws?.readyState === WebSocket.OPEN) {
           ws.send(ev.data.pcm);
         }
       };
+
+      ringbackStopRef.current = startCallRingback(ctx);
+
+      const resp = await base44.functions.invoke('iniciarChamadaDapi', {
+        via: viaEscolhida,
+        connectionId,
+        phone: (telefone || '').replace(/\D/g, ''),
+      });
+      if (!resp?.data?.success) throw new Error(resp?.data?.error || 'Falha ao iniciar chamada');
+      const { wsUrl } = resp.data;
+
+      const ws = new WebSocket(wsUrl);
+      ws.binaryType = 'arraybuffer';
+      wsRef.current = ws;
+
+      // Só considera a chamada iniciada quando o canal de áudio realmente abriu;
+      // se ele falhar, a ligação é encerrada aqui em vez de ficar muda.
+      await new Promise((resolve, reject) => {
+        const prazo = setTimeout(() => reject(new Error('Não foi possível abrir o áudio da chamada')), 10000);
+        ws.onopen = () => { clearTimeout(prazo); resolve(); };
+        ws.onerror = () => { clearTimeout(prazo); reject(new Error('Não foi possível abrir o áudio da chamada')); };
+      });
 
       ws.onmessage = (e) => {
         if (typeof e.data === 'string') {
@@ -168,13 +193,29 @@ export default function useDapiCall() {
             case 'accepted':
             case 'connected':
               pararSomChamada();
+              conectado = true;
               canSendRef.current = true;
               setStatus('connected');
               break;
-            case 'ended':
-              setStatus('ended');
+            case 'ended': {
+              const MOTIVOS = {
+                rejected: 'Chamada recusada pelo contato',
+                no_answer: 'Chamada não atendida',
+                timeout: 'Sem resposta do contato',
+                accepted_elsewhere: 'Atendida em outro dispositivo',
+                terminate: 'Tempo máximo de chamada atingido',
+                ws_closed: 'Conexão da chamada caiu',
+              };
+              const motivo = MOTIVOS[msg.reason];
+              if (!conectado && motivo) {
+                setErro(motivo);
+                setStatus('error');
+              } else {
+                setStatus('ended');
+              }
               limpar();
               break;
+            }
             case 'error':
               setErro(msg.msg || msg.code || 'Erro na chamada');
               setStatus('error');
@@ -190,7 +231,12 @@ export default function useDapiCall() {
 
       ws.onclose = () => {
         if (wsRef.current !== ws) return;
-        setStatus('ended');
+        if (!conectado) {
+          setErro('A ligação foi encerrada antes de conectar');
+          setStatus('error');
+        } else {
+          setStatus('ended');
+        }
         limpar();
       };
 
@@ -200,7 +246,13 @@ export default function useDapiCall() {
         limpar();
       };
     } catch (e) {
-      setErro(e.message);
+      const nome = e?.name;
+      const msg = nome === 'NotAllowedError' || nome === 'SecurityError'
+        ? 'Permissão de microfone negada. Libere o microfone para o site e tente novamente.'
+        : nome === 'NotFoundError'
+        ? 'Nenhum microfone encontrado neste dispositivo.'
+        : e.message;
+      setErro(msg);
       setStatus('error');
       limpar();
     }

@@ -432,7 +432,7 @@ export default function BatePapo() {
 
 
   // Botão "Ligar" do chat: sempre pergunta se é via WhatsApp ou via Operadora (ambas usam D-API)
-  const dapiChamadaAtivaVisivel = ['calling', 'ringing', 'connected'].includes(dapiCall.status);
+  const dapiChamadaAtivaVisivel = ['calling', 'ringing', 'connected', 'error'].includes(dapiCall.status);
 
   const ligarViaWhatsapp = async () => {
     if (!conversaSelecionada?.cliente_telefone) return;
