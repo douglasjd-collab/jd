@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { PhoneIncoming, Phone, X } from 'lucide-react';
 import useDapiCall from '@/components/chat/useDapiCall';
@@ -13,18 +13,50 @@ export default function PopupChamadaRecebida({ user }) {
   const [atendendo, setAtendendo] = useState(false);
   const call = useDapiCall();
 
+  const ignoradasRef = useRef(new Set());
+
+  const considerarChamada = (data) => {
+    if (!data || data.status !== 'recebida') return;
+    if (ignoradasRef.current.has(data.id)) return;
+    // Oferta antiga não é mais atendível
+    const idade = Date.now() - new Date(data.created_date || Date.now()).getTime();
+    if (idade > IDADE_MAXIMA_OFERTA_MS) return;
+    setChamada((atual) => (atual?.id === data.id ? atual : data));
+  };
+
   useEffect(() => {
     if (!user?.empresa_id) return;
     const unsub = base44.entities.ChamadaVozWhatsapp.subscribe((event) => {
-      if (event.type !== 'create') return;
-      const data = event.data;
-      if (data?.empresa_id !== user.empresa_id || data?.status !== 'recebida') return;
-      // Oferta antiga não é mais atendível
-      const idade = Date.now() - new Date(data.created_date || Date.now()).getTime();
-      if (idade > IDADE_MAXIMA_OFERTA_MS) return;
-      setChamada(data);
+      if (event.type !== 'create' && event.type !== 'update') return;
+      if (event.data?.empresa_id !== user.empresa_id) return;
+      considerarChamada(event.data);
     });
     return unsub;
+  }, [user?.empresa_id]);
+
+  // Garantia de entrega: o evento em tempo real pode se perder (aba aberta antes da
+  // chamada, reconexão do canal). Consulta periódica mantém o popup confiável.
+  useEffect(() => {
+    if (!user?.empresa_id) return;
+    let ativo = true;
+
+    const buscarPendentes = async () => {
+      try {
+        const resposta = await base44.entities.ChamadaVozWhatsapp.filter(
+          { empresa_id: user.empresa_id, status: 'recebida' },
+          { sort: '-created_date', limit: 5 }
+        );
+        if (!ativo) return;
+        (resposta?.items || []).forEach(considerarChamada);
+      } catch (_) {}
+    };
+
+    void buscarPendentes();
+    const intervalo = window.setInterval(buscarPendentes, 5000);
+    return () => {
+      ativo = false;
+      window.clearInterval(intervalo);
+    };
   }, [user?.empresa_id]);
 
   useEffect(() => {
@@ -55,6 +87,10 @@ export default function PopupChamadaRecebida({ user }) {
   };
 
   const fechar = () => {
+    if (chamada?.id) {
+      ignoradasRef.current.add(chamada.id);
+      void marcarVisualizada();
+    }
     call.encerrar();
     setAtendendo(false);
     setChamada(null);
