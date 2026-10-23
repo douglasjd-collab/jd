@@ -263,11 +263,12 @@ export default function TarefaDetalhesModal({
           {aba === 'detalhes' && (
             <div className="p-4 lg:p-6 space-y-4 lg:space-y-5 overflow-y-auto flex-1">
               {/* Cliente */}
-              {tarefa.cliente_nome && (
+              {(tarefa.cliente_nome || tarefa.cliente_cpf || tarefa.cliente_telefone || tarefa.senha_gov) && (
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                   <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide mb-2">Cliente</p>
-                  <p className="text-base font-bold text-slate-900 mb-2">{tarefa.cliente_nome}</p>
+                  {tarefa.cliente_nome && <p className="text-base font-bold text-slate-900 mb-2">{tarefa.cliente_nome}</p>}
                   {tarefa.cliente_cpf && <p className="text-sm text-slate-600 mb-1"><span className="font-medium">CPF:</span> {tarefa.cliente_cpf}</p>}
+                  {tarefa.senha_gov && <p className="text-sm text-slate-600 mb-1"><span className="font-medium">Senha INSS:</span> <span className="font-mono font-semibold">{tarefa.senha_gov}</span></p>}
                   {tarefa.cliente_telefone && <p className="text-sm text-slate-600"><span className="font-medium">Tel:</span> {tarefa.cliente_telefone}</p>}
                 </div>
               )}
@@ -473,12 +474,6 @@ export default function TarefaDetalhesModal({
                   <div className="bg-white border rounded-xl p-3">
                     <p className="text-xs text-slate-400 mb-1">Setor</p>
                     <p className="text-sm font-semibold text-slate-800">{tarefa.setor_nome}</p>
-                  </div>
-                )}
-                {tarefa.senha_gov && (
-                  <div className="bg-white border rounded-xl p-3">
-                    <p className="text-xs text-slate-400 mb-1">Senha GOV</p>
-                    <p className="text-sm font-semibold text-slate-800">{tarefa.senha_gov}</p>
                   </div>
                 )}
               </div>
