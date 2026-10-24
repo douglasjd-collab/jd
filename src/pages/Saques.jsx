@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip, FileSpreadsheet, FileText, ExternalLink, Trash2, ArrowUpCircle, Search, X } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, TrendingUp, Paperclip, FileSpreadsheet, FileText, ExternalLink, Trash2, ArrowUpCircle, Search, X, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -251,6 +251,8 @@ function ModalQuitar({ lote, onClose, onConfirm, loading, contas = [] }) {
   const [nomeArquivo, setNomeArquivo] = useState('');
   const [uploadando, setUploadando] = useState(false);
   const [contaBancariaId, setContaBancariaId] = useState('');
+  const [dadosPagamento, setDadosPagamento] = useState(null);
+  const [carregandoDados, setCarregandoDados] = useState(false);
 
   useEffect(() => {
     if (lote) {
@@ -259,6 +261,58 @@ function ModalQuitar({ lote, onClose, onConfirm, loading, contas = [] }) {
       setNomeArquivo('');
       setContaBancariaId('');
     }
+  }, [lote]);
+
+  // Dados bancários de destino do pagamento: usa o snapshot gravado no lote e,
+  // quando ele não existe (lotes antigos), busca o cadastro atual do vendedor.
+  useEffect(() => {
+    let cancelado = false;
+    if (!lote) {
+      setDadosPagamento(null);
+      return;
+    }
+
+    if (lote.pix_chave) {
+      setDadosPagamento({
+        tipo: lote.pix_tipo,
+        chave: lote.pix_chave,
+        titular: lote.pix_titular_nome,
+        documento: lote.pix_titular_documento,
+        instituicao: lote.pix_instituicao,
+      });
+      return;
+    }
+
+    const carregar = async () => {
+      setCarregandoDados(true);
+      setDadosPagamento(null);
+      try {
+        const colabs = lote.vendedor_id
+          ? await base44.entities.Colaborador.filter({ id: lote.vendedor_id })
+          : [];
+        if (cancelado) return;
+        const c = colabs?.[0];
+        if (!c) return;
+        setDadosPagamento({
+          tipo: c.pix_tipo || c.tipo_chave_pix || null,
+          chave: c.pix_chave || c.chave_pix || null,
+          titular: c.pix_titular_nome || c.favorecido_nome || c.nome || null,
+          documento: c.pix_titular_documento || c.favorecido_cpf || c.cpf_cnpj || null,
+          instituicao: c.pix_instituicao || c.banco_nome || c.banco || null,
+          banco: c.banco_nome || c.banco || null,
+          agencia: c.agencia ? `${c.agencia}${c.digito_agencia ? `-${c.digito_agencia}` : ''}` : null,
+          conta: c.conta ? `${c.conta}${c.digito_conta ? `-${c.digito_conta}` : ''}` : null,
+          tipo_conta: c.tipo_conta || null,
+        });
+      } catch {
+        // sem dados cadastrados: a seção mostra o aviso ao usuário
+      } finally {
+        if (!cancelado) setCarregandoDados(false);
+      }
+    };
+
+    carregar();
+    return () => { cancelado = true; };
   }, [lote]);
 
   const handleArquivo = async (e) => {
@@ -285,14 +339,65 @@ function ModalQuitar({ lote, onClose, onConfirm, loading, contas = [] }) {
         <div className="space-y-4 py-2">
           <div>
             <p className="text-sm text-slate-600">Protocolo: <span className="font-semibold">{lote?._protocolo}</span></p>
+            <p className="text-sm text-slate-600">Vendedor: <span className="font-semibold">{lote?.vendedor_nome || '-'}</span></p>
             <p className="text-sm text-slate-600">Valor: <span className="font-semibold">{lote ? fmt(lote._total) : ''}</span></p>
           </div>
+
+          {/* Dados bancários de destino do pagamento (vendedor) */}
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 space-y-1">
+            <p className="text-xs font-semibold text-emerald-800 uppercase tracking-wide">Dados para pagamento do vendedor</p>
+            {carregandoDados ? (
+              <div className="flex items-center gap-2 text-xs text-emerald-700">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Carregando dados bancários...
+              </div>
+            ) : !dadosPagamento || (!dadosPagamento.chave && !dadosPagamento.conta && !dadosPagamento.banco) ? (
+              <p className="text-xs text-amber-700">Vendedor sem dados bancários cadastrados.</p>
+            ) : (
+              <div className="space-y-1 text-xs text-slate-700">
+                {dadosPagamento.chave && (
+                  <div className="flex items-start gap-2">
+                    <span className="font-semibold shrink-0">PIX{dadosPagamento.tipo ? ` (${String(dadosPagamento.tipo).toUpperCase()})` : ''}:</span>
+                    <span className="font-mono break-all">{dadosPagamento.chave}</span>
+                    <button
+                      type="button"
+                      title="Copiar chave PIX"
+                      className="p-1 rounded hover:bg-emerald-100 text-emerald-700 shrink-0"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(String(dadosPagamento.chave));
+                          toast.success('Chave PIX copiada');
+                        } catch {
+                          toast.error('Não foi possível copiar a chave PIX');
+                        }
+                      }}
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                {dadosPagamento.titular && (
+                  <p><span className="font-semibold">Favorecido:</span> {dadosPagamento.titular}{dadosPagamento.documento ? ` — ${dadosPagamento.documento}` : ''}</p>
+                )}
+                {dadosPagamento.instituicao && (
+                  <p><span className="font-semibold">Instituição:</span> {dadosPagamento.instituicao}</p>
+                )}
+                {(dadosPagamento.banco || dadosPagamento.agencia || dadosPagamento.conta) && (
+                  <p>
+                    <span className="font-semibold">Conta:</span>{' '}
+                    {[dadosPagamento.banco, dadosPagamento.agencia && `Ag. ${dadosPagamento.agencia}`, dadosPagamento.conta && `Conta ${dadosPagamento.conta}`, dadosPagamento.tipo_conta].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="space-y-1">
             <Label htmlFor="data_quitacao">Data da Quitação</Label>
             <Input id="data_quitacao" type="date" value={dataQuitacao} onChange={e => setDataQuitacao(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label>Conta Bancária para Retirada <span className="text-red-500">*</span></Label>
+            <Label>Conta Bancária de Origem (empresa) <span className="text-red-500">*</span></Label>
+            <p className="text-xs text-slate-500">Conta de onde sai o pagamento.</p>
             <select
               value={contaBancariaId}
               onChange={e => setContaBancariaId(e.target.value)}
