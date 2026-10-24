@@ -381,16 +381,20 @@ Deno.serve(async (req) => {
       const rowStr = row.join('').trim();
       if (!rowStr) continue;
 
+      let nomeVal     = '';
+      let contratoVal = '';
+      let adeVal      = '';
+
       try {
-        const nomeVal      = colNome      >= 0 ? String(row[colNome]      ?? '').trim() : '';
+        nomeVal            = colNome      >= 0 ? String(row[colNome]      ?? '').trim() : '';
         const cpfVal       = colCpf       >= 0 ? String(row[colCpf]       ?? '').trim() : '';
         const bancoVal     = colBanco     >= 0 ? String(row[colBanco]     ?? '').trim() : '';
         const convenioVal  = colConvenio  >= 0 ? String(row[colConvenio]  ?? '').trim() : '';
         const tipoVal      = colTipo      >= 0 ? String(row[colTipo]      ?? '').trim() : '';
         const valorVal     = colValor     >= 0 ? row[colValor]                           : 0;
         const prazoVal     = colPrazo     >= 0 ? row[colPrazo]                           : null;
-        const adeVal       = colAde       >= 0 ? String(row[colAde]       ?? '').trim() : '';
-        const contratoVal  = colContrato  >= 0 ? String(row[colContrato]  ?? '').trim() : '';
+        adeVal             = colAde       >= 0 ? String(row[colAde]       ?? '').trim() : '';
+        contratoVal        = colContrato  >= 0 ? String(row[colContrato]  ?? '').trim() : '';
         const beneficioVal = colBeneficio >= 0 ? String(row[colBeneficio] ?? '').trim() : '';
         const dataVal      = colData      >= 0 ? row[colData]                            : null;
         const vendedorVal  = colVendedor  >= 0 ? String(row[colVendedor]  ?? '').trim() : '';
