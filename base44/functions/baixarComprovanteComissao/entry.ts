@@ -1,8 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
-import { jsPDF } from 'npm:jspdf@2.5.2';
-import { PDFDocument } from 'npm:pdf-lib@1.17.1';
-import 'npm:jspdf-autotable@3.8.4';
-import { gerarRelatorioComissaoConsorcioHTML } from '../../shared/relatorioComissaoConsorcioShared.ts';
+import { gerarRelatorioComissaoConsorcioHTML, anexarComprovanteHTML } from '../../shared/relatorioComissaoConsorcioShared.ts';
 
 function fmt(v) {
   return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -166,15 +163,8 @@ Deno.serve(async (req) => {
 
       if (!html) return Response.json({ error: 'Relatorio nao disponivel para este lote' }, { status: 404 });
 
-      // Se houver comprovante, injetar imagem antes do </body>
-      if (l.comprovante_url) {
-        const comprovanteSection = `
-            <div style="page-break-before: always; padding: 20px; text-align: center;">
-              <h2 style="font-family: Arial, sans-serif; color: #10353c; border-bottom: 2px solid #10353c; padding-bottom: 8px; margin-bottom: 16px;">Comprovante de Pagamento</h2>
-              <img src="${l.comprovante_url}" style="max-width: 100%; max-height: 80vh; border: 1px solid #ccc; border-radius: 6px;" />
-            </div>`;
-        html = html.replace('</body>', comprovanteSection + '</body>');
-      }
+      // Se houver comprovante, anexar como página seguinte
+      html = anexarComprovanteHTML(html, l.comprovante_url);
 
       return Response.json({ relatorio_html: html });
     }
@@ -290,82 +280,19 @@ Deno.serve(async (req) => {
         } catch (_) {}
       }
 
-      // Gerar PDF com a mesma estrutura visual do relatório de consórcio
-      const doc = new jsPDF({ orientation: 'landscape', format: 'a4' });
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
+      // Mesmo relatório do consórcio: usa o mesmo gerador de HTML, mudando
+      // apenas as colunas da tabela principal.
+      let empresaNome = 'JD PROMOTORA';
+      try {
+        const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: lote.empresa_id });
+        if (empresas && empresas.length > 0) empresaNome = empresas[0].nome_fantasia || empresas[0].nome || empresaNome;
+      } catch (_) {}
 
-      // ===== CABEÇALHO — mesmo padrão do relatório de consórcio =====
-      doc.setFillColor(16, 53, 60);
-      doc.rect(0, 0, pageWidth, 22, 'F');
-
-      let tituloX = 12;
-      if (logoConfigurada) {
-        try {
-          doc.addImage(logoConfigurada, 'PNG', 7, 3, 40, 16);
-          tituloX = 50;
-        } catch (_) {}
-      }
-
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(12); doc.setFont('helvetica', 'bold');
-      doc.text('COMPROVANTE DE PAGAMENTO DE COMISSÃO', tituloX, 10);
-      doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-      doc.setTextColor(207, 224, 224);
-      doc.text(`Protocolo: ${lote.lote_codigo || lote_id}  |  Emitido em: ${fmtDateTime(new Date())}`, tituloX, 17);
-
-      doc.setFontSize(8); doc.setTextColor(255, 180, 180);
-      doc.setFont('helvetica', 'bold');
-      doc.text('2ª VIA', pageWidth - 8, 10, { align: 'right' });
-
-      // ===== BLOCO DE INFORMAÇÕES (4 colunas) =====
-      doc.setTextColor(0, 0, 0);
-      const infoY = 26;
-      const colW = (pageWidth - 20) / 4;
-      const cols = [
-        { label: 'VENDEDOR', value: vendedorNome },
-        { label: 'DATA PAGAMENTO', value: fmtDate(lote.data_pagamento) },
-        { label: 'FORMA PAGAMENTO', value: lote.forma_pagamento || '-' },
-        { label: 'QTD. ITENS', value: String(loteItens.length || lote.quantidade_propostas || 0) },
-      ];
-      cols.forEach((col, i) => {
-        const x = 10 + colW * i;
-        doc.setFillColor(245, 247, 250);
-        doc.setDrawColor(200, 215, 230);
-        doc.setLineWidth(0.4);
-        doc.roundedRect(x, infoY, colW - 2, 16, 1, 1, 'FD');
-        doc.setFontSize(6); doc.setFont('helvetica', 'bold');
-        doc.setTextColor(100, 120, 140);
-        doc.text(col.label, x + 3, infoY + 5);
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-        doc.setTextColor(16, 53, 60);
-        const displayValue = doc.splitTextToSize(col.value, colW - 6)[0] || col.value;
-        doc.text(displayValue, x + 3, infoY + 12);
-      });
-
-      // PIX/CPF e total pago, como no relatório de consórcio.
-      let detalhesY = 48;
-      doc.setTextColor(31, 41, 55);
-      doc.setFontSize(7.5); doc.setFont('helvetica', 'normal');
-      const dadosVendedor = [];
-      if (vendedorPix) dadosVendedor.push(`PIX: ${vendedorPix}`);
-      if (vendedorCpf) dadosVendedor.push(`CPF: ${vendedorCpf}`);
-      if (dadosVendedor.length > 0) {
-        doc.text(dadosVendedor.join('  |  '), 10, detalhesY);
-        detalhesY += 6;
-      }
-      doc.setFontSize(8.5);
-      doc.text('Total pago ao corretor:', 10, detalhesY);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0, 80, 180);
-      doc.text(fmt(totalLiquido), 45, detalhesY);
-      doc.setTextColor(31, 41, 55);
-
-      // ===== TABELA PRINCIPAL =====
-      doc.autoTable({
-        startY: detalhesY + 5,
-        head: [['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Prazo', 'Vl. Bruto', 'Vl. Liquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar']],
-        body: loteItens.map(item => {
+      const tabela = {
+        colunas: ['Cliente', 'CPF', 'Contrato', 'Tipo', 'Banco', 'Data Lib.', 'Prazo', 'Vl. Bruto', 'Vl. Líquido', 'Vl. Parcela', '% Vendedor', 'Vl. a Pagar'],
+        alinhamentos: ['left', 'left', 'left', 'left', 'left', 'left', 'right', 'right', 'right', 'right', 'right', 'right'],
+        colunaDestaque: 11,
+        linhas: loteItens.map((item) => {
           const prazo = prazoDoItem(item);
           return [
             item.cliente_nome || '-',
@@ -382,186 +309,30 @@ Deno.serve(async (req) => {
             fmt(item.valor_vendedor_pago),
           ];
         }),
-        styles: { fontSize: 7, cellPadding: 2 },
-        headStyles: { fillColor: [16, 53, 60], textColor: 255, fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [248, 250, 252] },
-        columnStyles: {
-          6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' },
-          9: { halign: 'right' }, 10: { halign: 'right' },
-          11: { halign: 'right', textColor: [0, 100, 180], fontStyle: 'bold' }
-        },
-        margin: { left: 10, right: 10 },
-      });
+      };
 
-      const tableEndY = doc.lastAutoTable.finalY;
-      const sectionY = tableEndY + 8;
+      const html = anexarComprovanteHTML(gerarRelatorioComissaoConsorcioHTML({
+        loteCode: lote.lote_codigo || lote_id,
+        vendedorNome,
+        vendedorCpf,
+        pix: vendedorPix,
+        dataPagamento: lote.data_pagamento,
+        formaPagamento: lote.forma_pagamento,
+        observacao: lote.observacao,
+        geradoPor: lote.quitado_por_nome,
+        geradoEm: new Date().toLocaleString('pt-BR'),
+        logoUrl: logoConfigurada,
+        empresaNome,
+        tabela,
+        subtotal,
+        totalAdiantamentos,
+        acrescimos: lote.acrescimos || 0,
+        totalLiquido,
+        totalPago: totalLiquido,
+        adiantamentos: adiantamentosDesc.map((a) => ({ valor: a.valor, data: a.data_desconto || a.data, motivo: a.motivo })),
+      }), lote.comprovante_url);
 
-      // ===== LAYOUT LADO A LADO: RESUMO FINANCEIRO (esq) + DETALHES ACRÉSCIMOS (dir) =====
-      const colEsqX = 10;
-      const colEsqW = 130;
-      const colDirX = 148;
-      const colDirW = pageWidth - colDirX - 10;
-      const boxPad = 4;
-      const lineH = 6;
-
-      const resumoLinhas = [
-        { label: 'Subtotal de Comissoes', valor: fmt(subtotal), cor: [0, 100, 180] },
-        { label: '(-) Adiantamentos', valor: fmt(totalAdiantamentos), cor: [200, 100, 0] },
-        { label: '(+) Acrescimos', valor: fmt(0), cor: [60, 60, 60] },
-      ];
-      const resumoContentH = 8 + resumoLinhas.length * lineH + 2 + 14;
-
-      // Caixa esquerda: Resumo Financeiro
-      doc.setFillColor(255, 255, 255);
-      doc.setDrawColor(200, 210, 220);
-      doc.setLineWidth(0.4);
-      doc.roundedRect(colEsqX, sectionY, colEsqW, resumoContentH, 1, 1, 'FD');
-      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-      doc.setTextColor(40, 40, 40);
-      doc.text('RESUMO FINANCEIRO', colEsqX + boxPad, sectionY + 6);
-
-      resumoLinhas.forEach((l, i) => {
-        const ly = sectionY + 12 + i * lineH;
-        doc.setFontSize(7); doc.setFont('helvetica', 'normal');
-        doc.setTextColor(80, 80, 80);
-        doc.text(l.label, colEsqX + boxPad, ly);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...l.cor);
-        doc.text(l.valor, colEsqX + colEsqW - boxPad, ly, { align: 'right' });
-      });
-
-      const sepY = sectionY + 12 + resumoLinhas.length * lineH + 2;
-      doc.setDrawColor(180, 195, 210); doc.setLineWidth(0.3);
-      doc.line(colEsqX + boxPad, sepY, colEsqX + colEsqW - boxPad, sepY);
-      const liqBoxY = sepY + 1;
-      doc.setFillColor(230, 240, 255);
-      doc.rect(colEsqX, liqBoxY, colEsqW, 12, 'F');
-      doc.setFontSize(8); doc.setFont('helvetica', 'bold');
-      doc.setTextColor(16, 53, 60);
-      doc.text('VALOR LÍQUIDO A PAGAR', colEsqX + boxPad, liqBoxY + 8);
-      doc.setFontSize(10);
-      doc.setTextColor(0, 80, 180);
-      doc.text(fmt(totalLiquido), colEsqX + colEsqW - boxPad, liqBoxY + 8, { align: 'right' });
-
-      // Caixa direita: Detalhes Acréscimos
-      const dirContentH = resumoContentH;
-      doc.setFillColor(255, 255, 255);
-      doc.setDrawColor(200, 210, 220); doc.setLineWidth(0.4);
-      doc.roundedRect(colDirX, sectionY, colDirW, dirContentH, 1, 1, 'FD');
-      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-      doc.setTextColor(40, 40, 40);
-      doc.text('DETALHES DOS ACRESCIMOS', colDirX + boxPad, sectionY + 6);
-      doc.setFontSize(6); doc.setFont('helvetica', 'normal');
-      doc.setTextColor(130, 130, 130);
-      doc.text('Acrescimos lancados manualmente.', colDirX + boxPad, sectionY + 11);
-
-      const tblY = sectionY + 15;
-      doc.setFillColor(240, 242, 245);
-      doc.rect(colDirX + boxPad, tblY, colDirW - boxPad * 2, 6, 'F');
-      doc.setFontSize(6); doc.setFont('helvetica', 'bold');
-      doc.setTextColor(80, 80, 80);
-      doc.text('Descricao do Acrescimo', colDirX + boxPad + 2, tblY + 4);
-      doc.text('Tipo', colDirX + boxPad + 70, tblY + 4);
-      doc.text('Valor', colDirX + colDirW - boxPad - 2, tblY + 4, { align: 'right' });
-
-      const totalAcrescimosY = sectionY + dirContentH - 8;
-      doc.setDrawColor(180, 195, 210); doc.setLineWidth(0.3);
-      doc.line(colDirX + boxPad, totalAcrescimosY - 2, colDirX + colDirW - boxPad, totalAcrescimosY - 2);
-      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
-      doc.setTextColor(40, 40, 40);
-      doc.text('TOTAL DE ACRESCIMOS', colDirX + boxPad, totalAcrescimosY + 3);
-      doc.text(fmt(0), colDirX + colDirW - boxPad - 2, totalAcrescimosY + 3, { align: 'right' });
-
-      const footerY = Math.max(sectionY + resumoContentH + 8, pageHeight - 12);
-      doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3);
-      doc.line(10, footerY, pageWidth - 10, footerY);
-      doc.setFontSize(6.2); doc.setTextColor(100, 100, 100); doc.setFont('helvetica', 'normal');
-      doc.text('Comprovante emitido eletronicamente.', 10, footerY + 3.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(16, 53, 60);
-      doc.text('JD PROMOTORA', 148, footerY + 3.5, { align: 'center' });
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 100, 100);
-      doc.text(`Gerado em: ${fmtDateTime(new Date())}`, pageWidth - 10, footerY + 3.5, { align: 'right' });
-
-      let comprovantePdfBytes = null;
-      // Se houver comprovante de pagamento, adicionar como página seguinte
-      if (lote.comprovante_url) {
-        try {
-          const comprovanteResp = await fetch(lote.comprovante_url);
-          if (!comprovanteResp.ok) throw new Error(`Falha ao carregar comprovante: HTTP ${comprovanteResp.status}`);
-          const comprovanteBuffer = await comprovanteResp.arrayBuffer();
-          const comprovanteBytes = new Uint8Array(comprovanteBuffer);
-
-          const isPdf = new TextDecoder().decode(comprovanteBytes.slice(0, 5)) === '%PDF-' ||
-            comprovanteResp.headers.get('content-type')?.includes('application/pdf') ||
-            /\.pdf(?:$|[?#])/i.test(lote.comprovante_url);
-
-          if (!isPdf) {
-            // Imagem: adicionar nova página e inserir imagem centralizada
-            doc.addPage('landscape');
-
-            // Cabeçalho da página do comprovante
-            doc.setFillColor(16, 53, 60);
-            doc.rect(0, 0, 297, 14, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(11); doc.setFont('helvetica', 'bold');
-            doc.text('COMPROVANTE DE PAGAMENTO', 148, 9, { align: 'center' });
-
-            // Converter Uint8Array para base64
-            let binary = '';
-            for (let i = 0; i < comprovanteBytes.length; i++) {
-              binary += String.fromCharCode(comprovanteBytes[i]);
-            }
-            const base64Img = btoa(binary);
-            const contentType = comprovanteResp.headers.get('content-type') || 'image/jpeg';
-            const imgFormat = contentType.includes('png') ? 'PNG' : 'JPEG';
-            const dataUrlComprovante = `data:${contentType};base64,${base64Img}`;
-
-            // Área disponível abaixo do cabeçalho (página A4 paisagem em mm)
-            const areaX = 12;
-            const areaY = 18;
-            const maxLargura = 297 - areaX * 2;
-            const maxAltura = 210 - areaY - 10;
-
-            // Mantém a proporção original do comprovante: ajusta apenas para caber na folha,
-            // sem esticar/achatar e sem ampliar (imagem ampliada perde nitidez).
-            try {
-              const props = doc.getImageProperties(dataUrlComprovante);
-              const escala = Math.min(maxLargura / props.width, maxAltura / props.height, 1);
-              const imgLargura = props.width * escala;
-              const imgAltura = props.height * escala;
-              doc.addImage(
-                dataUrlComprovante, imgFormat,
-                (297 - imgLargura) / 2,
-                areaY + (maxAltura - imgAltura) / 2,
-                imgLargura, imgAltura
-              );
-            } catch (_) {
-              // Sem as dimensões originais: informa largura 0 para a própria jsPDF calcular
-              // a largura proporcional à altura máxima.
-              doc.addImage(dataUrlComprovante, imgFormat, areaX, areaY, 0, maxAltura);
-            }
-          }
-          if (isPdf) comprovantePdfBytes = comprovanteBytes;
-        } catch (error) {
-          throw new Error(`Não foi possível incluir o comprovante de pagamento. ${error.message}`);
-        }
-      }
-
-      // Retorna PDF como base64
-      let pdfBase64 = doc.output('datauristring');
-      if (comprovantePdfBytes) {
-        const relatorio = await PDFDocument.load(doc.output('arraybuffer'));
-        const comprovante = await PDFDocument.load(comprovantePdfBytes);
-        const paginas = await relatorio.copyPages(comprovante, comprovante.getPageIndices());
-        for (const pagina of paginas) relatorio.addPage(pagina);
-        const bytes = await relatorio.save();
-        let binary = '';
-        for (const byte of bytes) binary += String.fromCharCode(byte);
-        pdfBase64 = `data:application/pdf;base64,${btoa(binary)}`;
-      }
-      return Response.json({ pdf_base64: pdfBase64, filename: `comissao_emp_${(lote.vendedor_nome || 'vendedor').replace(/\s+/g, '_')}_${lote.data_pagamento?.replace(/-/g, '') || 'data'}_2via.pdf` });
+      return Response.json({ relatorio_html: html });
     }
 
     return Response.json({ error: 'Tipo invalido' }, { status: 400 });

@@ -212,6 +212,14 @@ export default function ComissoesPagasEmprestimos() {
           vendedor_id: lote.vendedor_id,
           data_pagamento: lote.data_pagamento,
         });
+        // Mesmo relatório do consórcio: HTML aberto para impressão/PDF
+        if (res.data?.relatorio_html) {
+          const win = window.open('', '_blank');
+          win.document.write(res.data.relatorio_html);
+          win.document.close();
+          setTimeout(() => win.print(), 800);
+          return;
+        }
         if (res.data?.pdf_base64) {
           const a = document.createElement('a');
           a.href = res.data.pdf_base64;

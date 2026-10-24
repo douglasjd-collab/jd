@@ -42,18 +42,39 @@ export function gerarRelatorioComissaoConsorcioHTML(dados) {
     acrescimos = 0,
     totalLiquido = 0,
     adiantamentos = [],
+    tabela = null,
+    totalPago = null,
   } = dados || {};
 
-  const linhas = itens.map((i) => `
+  // Tabela principal. Sem `tabela`, usa o padrão do consórcio; empréstimos
+  // passam suas próprias colunas para manter exatamente o mesmo desenho.
+  const colunasTabela = tabela?.colunas?.length
+    ? tabela.colunas
+    : ['Cliente', 'Grupo/Cota', 'Parcela', 'Data Rec.', 'Vl. Crédito', '% s/ Crédito', 'Vl. a Pagar', 'Administradora'];
+  const alinhamentos = tabela?.alinhamentos?.length === colunasTabela.length
+    ? tabela.alinhamentos
+    : colunasTabela.map((_, i) => (i > 3 && i < colunasTabela.length - 1 ? 'right' : 'left'));
+  const colunaDestaque = tabela?.colunaDestaque ?? 6;
+  const linhasTabela = tabela?.linhas?.length
+    ? tabela.linhas
+    : itens.map((i) => [
+        i.cliente,
+        i.grupoCota,
+        i.parcela,
+        fmtDate(i.dataRecebimento),
+        i.credito ? fmt(i.credito) : '-',
+        i.credito && i.percentual ? `${i.percentual.toFixed(2)}%` : '-',
+        fmt(i.valor),
+        i.administradora,
+      ]);
+
+  const cabecalhos = colunasTabela
+    .map((c, i) => `<th class="${alinhamentos[i] === 'right' ? 'right' : ''}">${esc(c)}</th>`)
+    .join('');
+
+  const linhas = linhasTabela.map((linha) => `
         <tr>
-          <td>${esc(i.cliente)}</td>
-          <td>${esc(i.grupoCota)}</td>
-          <td>${esc(i.parcela)}</td>
-          <td>${esc(fmtDate(i.dataRecebimento))}</td>
-          <td class="right">${i.credito ? esc(fmt(i.credito)) : '-'}</td>
-          <td class="right">${i.credito && i.percentual ? esc(i.percentual.toFixed(2) + '%') : '-'}</td>
-          <td class="right val">${esc(fmt(i.valor))}</td>
-          <td>${esc(i.administradora)}</td>
+          ${linha.map((celula, i) => `<td class="${alinhamentos[i] === 'right' ? 'right' : ''}${i === colunaDestaque ? ' val' : ''}">${esc(celula)}</td>`).join('')}
         </tr>`).join('');
 
   const linhasAdiantamentos = adiantamentos.map((a) => `
@@ -117,28 +138,19 @@ export function gerarRelatorioComissaoConsorcioHTML(dados) {
   </div>
   ${pix || vendedorCpf ? `<p class="pix">${pix ? `<b>PIX:</b> ${esc(pix)}` : ''}${pix && vendedorCpf ? ' &nbsp;|&nbsp; ' : ''}${vendedorCpf ? `<b>CPF:</b> ${esc(vendedorCpf)}` : ''}</p>` : ''}
 
-  <p class="total-linha">Total pago ao corretor: <b>${esc(fmt(subtotal))}</b>${observacao ? ` &nbsp;|&nbsp; Obs: ${esc(observacao)}` : ''}</p>
+  <p class="total-linha">Total pago ao corretor: <b>${esc(fmt(totalPago ?? subtotal))}</b>${observacao ? ` &nbsp;|&nbsp; Obs: ${esc(observacao)}` : ''}</p>
 
   <table>
     <thead>
-      <tr>
-        <th>Cliente</th>
-        <th>Grupo/Cota</th>
-        <th>Parcela</th>
-        <th>Data Rec.</th>
-        <th class="right">Vl. Crédito</th>
-        <th class="right">% s/ Crédito</th>
-        <th class="right">Vl. a Pagar</th>
-        <th>Administradora</th>
-      </tr>
+      <tr>${cabecalhos}</tr>
     </thead>
     <tbody>${linhas}
     </tbody>
     <tfoot>
       <tr>
-        <td colspan="6" class="right">Total:</td>
+        <td colspan="${colunaDestaque}" class="right">Total:</td>
         <td class="right val">${esc(fmt(subtotal))}</td>
-        <td></td>
+        ${colunasTabela.slice(colunaDestaque + 1).map(() => '<td></td>').join('')}
       </tr>
     </tfoot>
   </table>
@@ -164,4 +176,15 @@ export function gerarRelatorioComissaoConsorcioHTML(dados) {
   </footer>
 </body>
 </html>`;
+}
+
+// Anexa o comprovante bancário como página seguinte do relatório.
+export function anexarComprovanteHTML(html, comprovanteUrl) {
+  if (!html || !comprovanteUrl) return html;
+  const secao = `
+            <div style="page-break-before: always; padding: 20px; text-align: center;">
+              <h2 style="font-family: Arial, sans-serif; color: #10353c; border-bottom: 2px solid #10353c; padding-bottom: 8px; margin-bottom: 16px;">Comprovante de Pagamento</h2>
+              <img src="${comprovanteUrl}" style="max-width: 100%; max-height: 80vh; border: 1px solid #ccc; border-radius: 6px;" />
+            </div>`;
+  return html.replace('</body>', secao + '</body>');
 }
