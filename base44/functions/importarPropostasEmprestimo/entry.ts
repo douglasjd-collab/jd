@@ -313,7 +313,8 @@ Deno.serve(async (req) => {
       if (!val) return null;
       if (val instanceof Date) return val.toISOString().slice(0, 10);
       const str = String(val).trim();
-      const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+      // Aceita data pura e data com hora ("24/03/2026 11:22")
+      const match = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$/);
       if (match) {
         let [, d, m, y] = match;
         if (y.length === 2) y = '20' + y;
@@ -630,71 +631,48 @@ Deno.serve(async (req) => {
         try {
           let propostaExistente = null;
 
-          // Nível 1: Buscar por contrato NORMALIZADO + banco_id (mais rigoroso)
+          // Busca de duplicidade em memória sobre a lista já carregada no início
+          // (evita várias consultas grandes por linha em arquivos com centenas de linhas)
+
+          // Nível 1: contrato normalizado + banco
           if (contratoFinal && administradoraId) {
-            // Buscar todas as propostas e filtrar manualmente (pois precisa comparar contrato normalizado)
-            const todasProps = toArray(
-              await base44.asServiceRole.entities.Proposta.filter({
-                empresa_id: empresaId,
-                administradora_id: administradoraId,
-                produto: 'emprestimo',
-              }, null, 5000)
-            );
-            propostaExistente = todasProps.find(p => 
+            propostaExistente = propostasExistentes.find(p =>
+              p.administradora_id === administradoraId &&
               normalizarContrato(p.contrato) === contratoFinal
-            );
+            ) || null;
             if (propostaExistente) {
               console.log(`🔍 ENCONTRADA por contrato+banco (normalizado): ${contratoFinal}`);
             }
           }
 
-          // Nível 2: Se não achou, buscar por chave_unica (para futuras importações)
+          // Nível 2: chave_unica
           if (!propostaExistente && chaveUnica) {
-            const resultado = toArray(
-              await base44.asServiceRole.entities.Proposta.filter({
-                empresa_id: empresaId,
-                chave_unica: chaveUnica,
-                produto: 'emprestimo',
-              })
-            );
-            if (resultado.length > 0) {
-              propostaExistente = resultado[0];
+            propostaExistente = propostasExistentes.find(p => p.chave_unica === chaveUnica) || null;
+            if (propostaExistente) {
               console.log(`🔍 ENCONTRADA por chave_unica: ${chaveUnica}`);
             }
           }
 
-          // Nível 3: Buscar por ADE/contrato sem banco (quando banco não foi mapeado)
+          // Nível 3: contrato/ADE quando o banco não foi mapeado
           if (!propostaExistente && contratoFinal && !administradoraId) {
-            const todasSemBanco = toArray(
-              await base44.asServiceRole.entities.Proposta.filter({
-                empresa_id: empresaId,
-                produto: 'emprestimo',
-              }, null, 5000)
-            );
-            propostaExistente = todasSemBanco.find(p =>
+            propostaExistente = propostasExistentes.find(p =>
               normalizarContrato(p.contrato) === contratoFinal ||
               normalizarContrato(p.emprestimo_numero_ade) === contratoFinal
-            );
+            ) || null;
             if (propostaExistente) {
               console.log(`🔍 ENCONTRADA por contrato sem banco: ${contratoFinal}`);
             }
           }
 
-          // Nível 4: Buscar por ADE (emprestimo_numero_ade) + banco_id
+          // Nível 4: ADE + banco
           if (!propostaExistente && adeVal && administradoraId) {
             const adeNorm = normalizarContrato(adeVal);
             if (adeNorm) {
-              const todasAde = toArray(
-                await base44.asServiceRole.entities.Proposta.filter({
-                  empresa_id: empresaId,
-                  administradora_id: administradoraId,
-                  produto: 'emprestimo',
-                }, null, 5000)
-              );
-              propostaExistente = todasAde.find(p =>
-                normalizarContrato(p.emprestimo_numero_ade) === adeNorm ||
-                normalizarContrato(p.contrato) === adeNorm
-              );
+              propostaExistente = propostasExistentes.find(p =>
+                p.administradora_id === administradoraId &&
+                (normalizarContrato(p.emprestimo_numero_ade) === adeNorm ||
+                 normalizarContrato(p.contrato) === adeNorm)
+              ) || null;
               if (propostaExistente) {
                 console.log(`🔍 ENCONTRADA por ADE+banco: ${adeNorm}`);
               }
@@ -790,6 +768,7 @@ Deno.serve(async (req) => {
               }
 
               await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, updateData);
+              Object.assign(propostaExistente, updateData);
               atualizadas++;
               console.log(`✅ ATUALIZADA: ${contratoFinal || nomeVal}`);
             }
@@ -797,6 +776,7 @@ Deno.serve(async (req) => {
             // 🆕 Realmente é nova — CRIAR com segurança
             if (chaveUnica) proposta.chave_unica = chaveUnica;
             const nova = await base44.asServiceRole.entities.Proposta.create(proposta);
+            propostasExistentes.push(nova);
             criadas++;
             propostasCriadasIds.push(nova.id);
             console.log(`🆕 CRIADA: ${contratoFinal || nomeVal}`);
