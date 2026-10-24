@@ -11,6 +11,223 @@ const iguais = (a: unknown, b: unknown) => {
   return !!(da && db && da === db);
 };
 
+// Reprocessa divergências de importação de comissão de EMPRÉSTIMOS:
+// tenta localizar novamente a proposta pelo contrato/ADE (ou CPF) e, se encontrada,
+// lança o recebimento + comissão a pagar sem exigir um novo arquivo.
+async function reprocessarEmprestimos(base44: any, importacao: any, user: any) {
+  const importacaoId = importacao.id;
+  const itens = await base44.asServiceRole.entities.ImportacaoItem.filter(
+    { importacao_id: importacaoId, status: "divergencia" },
+    "linha",
+    2000
+  );
+
+  if (!itens.length) {
+    return {
+      success: true,
+      encontrados: 0,
+      processados: 0,
+      recuperados: 0,
+      permanecem_divergentes: 0,
+      mensagem: "Não há divergências para reprocessar",
+    };
+  }
+
+  const empresaId = importacao.empresa_id;
+  let processados = 0;
+  const detalhes: any[] = [];
+  const propostasAfetadas = new Map<string, any>();
+
+  for (const item of itens) {
+    try {
+      const contrato = norm(item.contrato);
+      let proposta: any = null;
+      let motivo = "";
+
+      if (contrato) {
+        const filtroEmpresa: any = { produto: "emprestimo" };
+        if (empresaId) filtroEmpresa.empresa_id = empresaId;
+
+        let encontradas = await base44.asServiceRole.entities.Proposta.filter({ ...filtroEmpresa, contrato });
+        if (!encontradas.length) encontradas = await base44.asServiceRole.entities.Proposta.filter({ ...filtroEmpresa, emprestimo_numero_ade: contrato });
+        if (!encontradas.length) encontradas = await base44.asServiceRole.entities.Proposta.filter({ produto: "emprestimo", contrato });
+        if (!encontradas.length) encontradas = await base44.asServiceRole.entities.Proposta.filter({ produto: "emprestimo", emprestimo_numero_ade: contrato });
+
+        if (encontradas.length === 1) proposta = encontradas[0];
+        else if (encontradas.length > 1) motivo = "Múltiplas propostas encontradas";
+        else motivo = `Proposta não encontrada (contrato/ADE: ${contrato})`;
+      } else if (normDigits(item.cpf)) {
+        const filtroCpf: any = { cliente_cpf: item.cpf, produto: "emprestimo" };
+        if (empresaId) filtroCpf.empresa_id = empresaId;
+        const encontradas = await base44.asServiceRole.entities.Proposta.filter(filtroCpf);
+        if (encontradas.length === 1) proposta = encontradas[0];
+        else if (encontradas.length > 1) motivo = "Múltiplas propostas encontradas para este CPF";
+        else motivo = "Proposta não encontrada pelo CPF";
+      } else {
+        motivo = "Dados insuficientes (sem contrato nem CPF)";
+      }
+
+      if (!proposta) {
+        await base44.asServiceRole.entities.ImportacaoItem.update(item.id, { motivo_divergencia: motivo });
+        detalhes.push({ linha: item.linha, contrato, status: "divergencia", motivo });
+        continue;
+      }
+
+      const percentual = Number(item.percentual_comissao || 0);
+      let valorRecebido = Number(item.valor_recebido || 0);
+      if (!valorRecebido && percentual > 0 && proposta.valor_credito) {
+        valorRecebido = Number(((Number(proposta.valor_credito) * percentual) / 100).toFixed(2));
+      }
+      const dataRecebimento = item.data_recebimento || new Date().toISOString().slice(0, 10);
+      const hash = `${proposta.id}_${dataRecebimento}_${percentual || valorRecebido}`;
+
+      const recExistente = await base44.asServiceRole.entities.RecebimentoComissao.filter(
+        { hash_duplicidade: hash },
+        "-created_date",
+        1
+      );
+      if (recExistente.length) {
+        const motivoDup = "Recebimento duplicado";
+        await base44.asServiceRole.entities.ImportacaoItem.update(item.id, { motivo_divergencia: motivoDup });
+        detalhes.push({ linha: item.linha, contrato, status: "divergencia", motivo: motivoDup });
+        continue;
+      }
+
+      const recebimento = await base44.asServiceRole.entities.RecebimentoComissao.create({
+        empresa_id: proposta.empresa_id || empresaId,
+        venda_id: proposta.id,
+        cliente_id: proposta.cliente_id || undefined,
+        cliente_nome: proposta.cliente_nome || undefined,
+        vendedor_id: proposta.vendedor_id || undefined,
+        vendedor_nome: proposta.vendedor_nome || undefined,
+        administradora_id: proposta.administradora_id || importacao.administradora_id,
+        administradora_nome: item.banco || proposta.administradora_nome || importacao.administradora_nome || undefined,
+        contrato: proposta.contrato || proposta.emprestimo_numero_ade || contrato || undefined,
+        data_recebimento: dataRecebimento,
+        valor_recebido: valorRecebido,
+        origem_importacao_id: importacaoId,
+        linha_importacao: Number(item.linha || 0),
+        hash_duplicidade: hash,
+        percentual_comissao: percentual,
+        valor_a_pagar: valorRecebido,
+        status_recebimento: "recebida",
+        status_pagamento: "a_pagar",
+        tipo_emprestimo_slug: proposta.emprestimo_tipo || undefined,
+      });
+
+      await base44.asServiceRole.entities.ComissaoAPagar.create({
+        empresa_id: recebimento.empresa_id,
+        recebimento_id: recebimento.id,
+        venda_id: recebimento.venda_id,
+        cliente_id: recebimento.cliente_id,
+        cliente_nome: recebimento.cliente_nome,
+        vendedor_id: recebimento.vendedor_id,
+        vendedor_nome: recebimento.vendedor_nome,
+        administradora_id: recebimento.administradora_id,
+        administradora_nome: recebimento.administradora_nome,
+        contrato: recebimento.contrato,
+        data_recebimento: dataRecebimento,
+        valor_recebido: valorRecebido,
+        percentual_comissao: percentual,
+        valor_a_pagar: valorRecebido,
+        status_pagamento: "a_pagar",
+      });
+
+      await base44.asServiceRole.entities.ImportacaoItem.update(item.id, {
+        venda_id: proposta.id,
+        status: "processado",
+        motivo_divergencia: null,
+        vendedor_nome: proposta.vendedor_nome || null,
+      });
+
+      const acumulado = propostasAfetadas.get(proposta.id) || {
+        proposta,
+        valor: 0,
+        percentual,
+        data: dataRecebimento,
+      };
+      acumulado.valor += valorRecebido;
+      propostasAfetadas.set(proposta.id, acumulado);
+
+      processados++;
+      detalhes.push({ linha: item.linha, contrato, status: "processado" });
+    } catch (erroItem: any) {
+      const motivo = `Erro ao reprocessar: ${erroItem.message}`;
+      await base44.asServiceRole.entities.ImportacaoItem.update(item.id, { motivo_divergencia: motivo }).catch(() => {});
+      detalhes.push({ linha: item.linha, contrato: item.contrato, status: "erro", motivo });
+    }
+  }
+
+  for (const info of propostasAfetadas.values()) {
+    const atual = await base44.asServiceRole.entities.Proposta.get(info.proposta.id);
+    if (!atual) continue;
+    const upd: any = {
+      comissao_banco_recebida: true,
+      valor_comissao: info.valor,
+      comissao_recebida: Number(atual.comissao_recebida || 0) + info.valor,
+      data_comissao_recebida: info.data,
+    };
+    if (info.percentual) upd.percentual_comissao_vendedor = info.percentual;
+    await base44.asServiceRole.entities.Proposta.update(atual.id, upd);
+  }
+
+  const itensAtualizados = await base44.asServiceRole.entities.ImportacaoItem.filter(
+    { importacao_id: importacaoId },
+    "linha",
+    2000
+  );
+  const totalProcessados = itensAtualizados.filter((i: any) => i.status === "processado").length;
+  const totalDivergencias = itensAtualizados.filter((i: any) => i.status === "divergencia").length;
+  const recebimentosImportacao = await base44.asServiceRole.entities.RecebimentoComissao.filter(
+    { origem_importacao_id: importacaoId },
+    null,
+    10000
+  );
+  const novoValorTotal = recebimentosImportacao.reduce(
+    (soma: number, r: any) => soma + Number(r.valor_recebido || 0),
+    0
+  );
+
+  await base44.asServiceRole.entities.Importacao.update(importacaoId, {
+    status: "concluida",
+    registros_processados: totalProcessados,
+    registros_divergencia: totalDivergencias,
+    valor_total: novoValorTotal,
+  });
+
+  const receitas = await base44.asServiceRole.entities.Receita.filter({ importacao_id: importacaoId }, "-created_date", 1);
+  if (receitas.length) {
+    await base44.asServiceRole.entities.Receita.update(receitas[0].id, { valor: novoValorTotal });
+  } else if (novoValorTotal > 0) {
+    const hoje = new Date().toISOString().slice(0, 10);
+    await base44.asServiceRole.entities.Receita.create({
+      empresa_id: importacao.empresa_id,
+      descricao: `Comissão recebida - ${importacao.arquivo_nome || "Importação"} (Empréstimo)`,
+      categoria_id: "69797761ae788b05e2821b4d",
+      categoria_nome: "Empréstimo Consignado",
+      valor: novoValorTotal,
+      data: hoje,
+      data_recebimento: hoje,
+      status: "recebida",
+      origem: "Importação Comissão Empréstimo",
+      importacao_id: importacaoId,
+      usuario_id: user.id,
+      usuario_nome: user.full_name || user.email,
+    });
+  }
+
+  return {
+    success: true,
+    analisados: itens.length,
+    processados,
+    recuperados: 0,
+    permanecem_divergentes: totalDivergencias,
+    total_processados: totalProcessados,
+    valor_total: novoValorTotal,
+    detalhes,
+  };
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -25,8 +242,18 @@ Deno.serve(async (req) => {
 
     const importacao = await base44.asServiceRole.entities.Importacao.get(importacao_id);
     if (!importacao) return Response.json({ error: "Importação não encontrada" }, { status: 404 });
-    if ((importacao.produto || "consorcio") !== "consorcio") {
-      return Response.json({ error: "Esta rotina está disponível apenas para comissão de consórcio" }, { status: 400 });
+    const produtoImportacao = importacao.produto || "consorcio";
+
+    if (produtoImportacao === "emprestimos") {
+      const resultado = await reprocessarEmprestimos(base44, importacao, user);
+      return Response.json(resultado);
+    }
+
+    if (produtoImportacao !== "consorcio") {
+      return Response.json(
+        { error: "Reprocessamento disponível apenas para comissões de consórcio e empréstimos" },
+        { status: 400 }
+      );
     }
 
     const itens = await base44.asServiceRole.entities.ImportacaoItem.filter(

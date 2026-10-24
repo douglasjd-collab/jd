@@ -270,7 +270,7 @@ export default function ImportacaoDetalhes() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <CardTitle>Registros</CardTitle>
-                {produto === 'consorcio' && itensDivergencia.length > 0 && (
+                {itensDivergencia.length > 0 && (
                   <Button
                     size="sm"
                     variant="outline"
