@@ -15,6 +15,14 @@ function fmtDateTime(d) {
   return new Date(d).toLocaleString('pt-BR');
 }
 
+// CPF sempre no mesmo formato no relatório (alguns cadastros guardam só números)
+function fmtCpf(v) {
+  const texto = String(v || '').trim();
+  const digitos = texto.replace(/\D/g, '');
+  if (digitos.length !== 11) return texto || '-';
+  return `${digitos.slice(0, 3)}.${digitos.slice(3, 6)}.${digitos.slice(6, 9)}-${digitos.slice(9)}`;
+}
+
 const TIPO_LABELS = {
   'NOVO': 'Novo', 'novo': 'Novo',
   'REFINANCIAMENTO': 'Refin', 'refinanciamento': 'Refin',
@@ -224,9 +232,13 @@ Deno.serve(async (req) => {
           }));
       }
 
-      // Prazo do contrato: não faz parte do snapshot do item, vem da Proposta vinculada
+      // Prazo do contrato e CPF do cliente não fazem parte do snapshot do item:
+      // vêm da Proposta vinculada (e, quando faltar, do cadastro do Cliente).
       let prazoPorPropostaId = {};
       let prazoPorContrato = {};
+      let cpfPorPropostaId = {};
+      let cpfPorContrato = {};
+      let clienteIdPorPropostaId = {};
       const prazoPropostaIds = [...new Set(loteItens.map(i => i.proposta_id).filter(Boolean))];
       if (prazoPropostaIds.length > 0) {
         try {
@@ -234,9 +246,15 @@ Deno.serve(async (req) => {
             { id: { $in: prazoPropostaIds } }, null, 500
           );
           propostasPrazo.forEach(p => {
-            if (!p.emprestimo_prazo) return;
-            prazoPorPropostaId[p.id] = p.emprestimo_prazo;
-            if (p.contrato) prazoPorContrato[String(p.contrato)] = p.emprestimo_prazo;
+            if (p.cliente_id) clienteIdPorPropostaId[p.id] = p.cliente_id;
+            if (p.cliente_cpf) {
+              cpfPorPropostaId[p.id] = p.cliente_cpf;
+              if (p.contrato) cpfPorContrato[String(p.contrato)] = p.cliente_cpf;
+            }
+            if (p.emprestimo_prazo) {
+              prazoPorPropostaId[p.id] = p.emprestimo_prazo;
+              if (p.contrato) prazoPorContrato[String(p.contrato)] = p.emprestimo_prazo;
+            }
           });
         } catch (e) {
           console.error('Falha ao buscar o prazo dos contratos do lote', e?.message);
@@ -244,6 +262,29 @@ Deno.serve(async (req) => {
       }
       const prazoDoItem = (item) =>
         item.emprestimo_prazo || prazoPorPropostaId[item.proposta_id] || prazoPorContrato[String(item.contrato || '')] || null;
+
+      // Último recurso para o CPF: cadastro do Cliente vinculado à proposta
+      const cpfDiretoDoItem = (item) =>
+        item.cliente_cpf || cpfPorPropostaId[item.proposta_id] || cpfPorContrato[String(item.contrato || '')] || '';
+      let cpfPorClienteId = {};
+      const clientesSemCpf = [...new Set(
+        loteItens
+          .filter(i => !cpfDiretoDoItem(i))
+          .map(i => clienteIdPorPropostaId[i.proposta_id])
+          .filter(Boolean)
+      )];
+      if (clientesSemCpf.length > 0) {
+        try {
+          const clientes = await base44.asServiceRole.entities.Cliente.filter(
+            { id: { $in: clientesSemCpf } }, null, 500
+          );
+          clientes.forEach(c => { if (c.cpf) cpfPorClienteId[c.id] = c.cpf; });
+        } catch (e) {
+          console.error('Falha ao buscar o CPF dos clientes do lote', e?.message);
+        }
+      }
+      const cpfDoItem = (item) =>
+        cpfDiretoDoItem(item) || cpfPorClienteId[clienteIdPorPropostaId[item.proposta_id]] || '';
 
       // Buscar adiantamentos descontados neste lote
       let adiantamentosDesc = [];
@@ -296,7 +337,7 @@ Deno.serve(async (req) => {
           const prazo = prazoDoItem(item);
           return [
             item.cliente_nome || '-',
-            item.cliente_cpf || '-',
+            fmtCpf(cpfDoItem(item)),
             item.contrato || '-',
             getTipoLabel(item.emprestimo_tipo),
             item.banco || '-',

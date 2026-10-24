@@ -134,7 +134,7 @@ export function gerarRelatorioComissaoConsorcioHTML(dados) {
     <div><span>Vendedor</span><strong>${esc(vendedorNome)}</strong></div>
     <div><span>Data Pagamento</span><strong>${esc(fmtDate(dataPagamento))}</strong></div>
     <div><span>Forma Pagamento</span><strong>${esc(formaPagamento || '-')}</strong></div>
-    <div><span>Qtd. Itens</span><strong>${itens.length}</strong></div>
+    <div><span>Qtd. Itens</span><strong>${linhasTabela.length}</strong></div>
   </div>
   ${pix || vendedorCpf ? `<p class="pix">${pix ? `<b>PIX:</b> ${esc(pix)}` : ''}${pix && vendedorCpf ? ' &nbsp;|&nbsp; ' : ''}${vendedorCpf ? `<b>CPF:</b> ${esc(vendedorCpf)}` : ''}</p>` : ''}
 
@@ -179,12 +179,26 @@ export function gerarRelatorioComissaoConsorcioHTML(dados) {
 }
 
 // Anexa o comprovante bancário como página seguinte do relatório.
+// O arquivo pode ser imagem (JPG/PNG) ou PDF — PDF não renderiza em <img>,
+// por isso é exibido em um quadro próprio.
 export function anexarComprovanteHTML(html, comprovanteUrl) {
   if (!html || !comprovanteUrl) return html;
+
+  const url = String(comprovanteUrl).trim();
+  const caminho = url.split('#')[0].split('?')[0].toLowerCase();
+  const ehPdf = caminho.endsWith('.pdf');
+
+  const conteudo = ehPdf
+    ? `<iframe src="${url}" style="width: 100%; height: 78vh; border: 1px solid #ccc; border-radius: 6px;"></iframe>
+              <p style="font-family: Arial, sans-serif; font-size: 10px; color: #64788c; margin-top: 8px;">
+                Se o comprovante não aparecer acima, <a href="${url}" target="_blank" style="color: #0050b4;">clique aqui para abrir em outra aba</a>.
+              </p>`
+    : `<img src="${url}" style="max-width: 100%; max-height: 80vh; border: 1px solid #ccc; border-radius: 6px;" />`;
+
   const secao = `
             <div style="page-break-before: always; padding: 20px; text-align: center;">
               <h2 style="font-family: Arial, sans-serif; color: #10353c; border-bottom: 2px solid #10353c; padding-bottom: 8px; margin-bottom: 16px;">Comprovante de Pagamento</h2>
-              <img src="${comprovanteUrl}" style="max-width: 100%; max-height: 80vh; border: 1px solid #ccc; border-radius: 6px;" />
+              ${conteudo}
             </div>`;
   return html.replace('</body>', secao + '</body>');
 }
