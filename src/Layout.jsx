@@ -54,7 +54,6 @@ import { Toaster, toast } from 'sonner';
 import VendaForm from '@/components/forms/VendaForm';
 import AlertasTarefasPopup from '@/components/tarefas/AlertasTarefasPopup';
 import AlertasTarefasAtrasadas from '@/components/tarefas/AlertasTarefasAtrasadas';
-import PopupChamadaRecebida from '@/components/chat/PopupChamadaRecebida';
 import CampanhaMonitorGlobal from '@/components/campanhas/CampanhaMonitorGlobal';
 import ChatFlutuante from '@/components/chat/ChatFlutuante';
 
@@ -917,9 +916,6 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Alertas de Tarefas Atrasadas */}
       {user && user.perfil !== 'parceiro' && <AlertasTarefasAtrasadas user={user} />}
-
-      {/* Popup de chamada de voz WhatsApp recebida */}
-      {user && user.perfil !== 'parceiro' && <PopupChamadaRecebida user={user} />}
 
       {/* Monitor de campanhas permanece ativo em todas as áreas do CRM */}
       {user?.empresa_id && user.perfil !== 'parceiro' && <CampanhaMonitorGlobal empresaId={user.empresa_id} />}
