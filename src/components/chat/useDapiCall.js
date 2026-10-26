@@ -4,15 +4,22 @@ import { base44 } from '@/api/base44Client';
 
 // Worklet que converte Float32 (navegador) <-> Int16 (rede) para as Ligações por
 // Stream da D-API (PCM s16le, 16kHz, mono, frames de 20ms = 320 amostras).
+// A rede é sempre 16 kHz, mas o AudioContext pode rodar em outra taxa (48 kHz é
+// comum e o Safari/Dockers ignoram a taxa pedida no construtor): por isso o
+// reamostramento acontece aqui dentro, e não no construtor do contexto.
 // Criado via Blob URL (sem depender de arquivo estático em /public).
 const WORKLET_CODE = `
-const FRAME = 320;
-const PREBUFFER = 1600;
+const NET = 16000;      // taxa da rede (D-API)
+const FRAME = 320;      // 20 ms @ 16 kHz
+const PREBUFFER = 1600; // ~100 ms de buffer de recepção
 class VoipIO extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.ring = new Float32Array(16000 * 2);
-    this.wr = 0; this.rd = 0; this.filled = 0; this.primed = false;
+    this.ratio = Math.max(1, sampleRate / NET); // amostras do dispositivo por amostra da rede
+    this.ring = new Float32Array(NET * 2);
+    this.wr = 0; this.rd = 0; this.filled = 0;
+    this.primed = false; this.frac = 0;
+    this.upAcc = 0; this.upCnt = 0;
     this.outAccum = new Float32Array(FRAME); this.outLen = 0;
     this.port.onmessage = (e) => {
       if (e.data?.kind !== 'in') return;
@@ -25,32 +32,46 @@ class VoipIO extends AudioWorkletProcessor {
     };
   }
   process(inputs, outputs) {
+    // Uplink: microfone (taxa do dispositivo) -> 16 kHz -> frames de 320 amostras.
     const mic = inputs[0]?.[0];
     if (mic) {
       for (let i = 0; i < mic.length; i++) {
-        this.outAccum[this.outLen++] = mic[i];
-        if (this.outLen === FRAME) {
-          const i16 = new Int16Array(FRAME);
-          for (let k = 0; k < FRAME; k++) {
-            let v = this.outAccum[k];
-            v = v > 1 ? 1 : v < -1 ? -1 : v;
-            i16[k] = v * 32767;
+        this.upAcc += mic[i];
+        this.upCnt += 1;
+        if (this.upCnt >= this.ratio) {
+          let v = this.upAcc / this.upCnt;
+          this.upAcc = 0;
+          this.upCnt -= this.ratio;
+          v = v > 1 ? 1 : v < -1 ? -1 : v;
+          this.outAccum[this.outLen++] = v;
+          if (this.outLen === FRAME) {
+            const i16 = new Int16Array(FRAME);
+            for (let k = 0; k < FRAME; k++) i16[k] = this.outAccum[k] * 32767;
+            this.port.postMessage({ kind: 'out', pcm: i16.buffer }, [i16.buffer]);
+            this.outLen = 0;
           }
-          this.port.postMessage({ kind: 'out', pcm: i16.buffer }, [i16.buffer]);
-          this.outLen = 0;
         }
       }
     }
+    // Downlink: 16 kHz da rede -> taxa do dispositivo (interpolação linear).
     const out = outputs[0][0];
-    if (!this.primed && this.filled >= PREBUFFER) this.primed = true;
+    const step = NET / sampleRate;
+    const len = this.ring.length;
     for (let i = 0; i < out.length; i++) {
-      if (this.primed && this.filled > 0) {
-        out[i] = this.ring[this.rd];
-        this.rd = (this.rd + 1) % this.ring.length;
-        this.filled--;
-      } else {
-        out[i] = 0;
-        if (this.primed && this.filled === 0) this.primed = false;
+      if (!this.primed) {
+        if (this.filled >= PREBUFFER) this.primed = true;
+        else { out[i] = 0; continue; }
+      }
+      if (this.filled <= 0) { this.primed = false; out[i] = 0; continue; }
+      const a = this.ring[this.rd];
+      const b = this.ring[(this.rd + 1) % len];
+      out[i] = a + (b - a) * this.frac;
+      this.frac += step;
+      if (this.frac >= 1) {
+        const adv = Math.floor(this.frac);
+        this.rd = (this.rd + adv) % len;
+        this.filled = Math.max(0, this.filled - adv);
+        this.frac -= adv;
       }
     }
     return true;
@@ -86,6 +107,9 @@ export default function useDapiCall() {
   const [erro, setErro] = useState(null);
   const [mutado, setMutado] = useState(false);
   const [via, setVia] = useState(null); // 'whatsapp' | 'operadora'
+  // Telemetria da mídia: mostra se o áudio do outro lado está chegando e se o
+  // microfone está saindo. Sem isso não dá para distinguir "conectou" de "mudo".
+  const [audio, setAudio] = useState({ recebidos: 0, enviados: 0, taxa: null });
 
   const wsRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -94,6 +118,9 @@ export default function useDapiCall() {
   const canSendRef = useRef(false);
   const emChamadaRef = useRef(false);
   const ringbackStopRef = useRef(null);
+  const monitorRef = useRef(null);
+  const framesIn = useRef(0);
+  const framesOut = useRef(0);
   const pararSomChamada = useCallback(() => {
     ringbackStopRef.current?.();
     ringbackStopRef.current = null;
@@ -101,6 +128,8 @@ export default function useDapiCall() {
 
   const limpar = useCallback(() => {
     pararSomChamada();
+    clearInterval(monitorRef.current);
+    monitorRef.current = null;
     try { wsRef.current?.close(); } catch (_) {}
     wsRef.current = null;
     try { micStreamRef.current?.getTracks().forEach((t) => t.stop()); } catch (_) {}
@@ -137,7 +166,14 @@ export default function useDapiCall() {
     }
 
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    const ctx = new AudioContextClass({ sampleRate: 16000 });
+    // 16 kHz é o ideal, mas alguns navegadores (Safari/iOS) ignoram ou recusam a
+    // taxa pedida. O worklet reamostra, então qualquer taxa serve.
+    let ctx;
+    try {
+      ctx = new AudioContextClass({ sampleRate: 16000 });
+    } catch (_) {
+      ctx = new AudioContextClass();
+    }
     audioCtxRef.current = ctx;
     await ctx.resume();
 
@@ -166,6 +202,7 @@ export default function useDapiCall() {
     node.port.onmessage = (ev) => {
       const ws = wsRef.current;
       if (ev.data?.kind === 'out' && canSendRef.current && ws?.readyState === WebSocket.OPEN) {
+        framesOut.current += 1;
         ws.send(ev.data.pcm);
       }
     };
@@ -229,9 +266,19 @@ export default function useDapiCall() {
             break;
         }
       } else {
+        framesIn.current += 1;
         nodeRef.current?.port.postMessage({ kind: 'in', pcm: e.data }, [e.data]);
       }
     };
+
+    clearInterval(monitorRef.current);
+    monitorRef.current = setInterval(() => {
+      setAudio({
+        recebidos: framesIn.current,
+        enviados: framesOut.current,
+        taxa: audioCtxRef.current?.sampleRate || null,
+      });
+    }, 1000);
 
     ws.onclose = () => {
       if (wsRef.current !== ws) return;
@@ -263,6 +310,9 @@ export default function useDapiCall() {
     setErro(null);
     setStatus('calling');
     setVia(viaEscolhida);
+    framesIn.current = 0;
+    framesOut.current = 0;
+    setAudio({ recebidos: 0, enviados: 0, taxa: null });
     try {
       await prepararMidia();
       ringbackStopRef.current = startCallRingback(audioCtxRef.current);
@@ -294,6 +344,9 @@ export default function useDapiCall() {
     setErro(null);
     setStatus('calling');
     setVia('whatsapp');
+    framesIn.current = 0;
+    framesOut.current = 0;
+    setAudio({ recebidos: 0, enviados: 0, taxa: null });
     try {
       await prepararMidia();
 
@@ -321,5 +374,5 @@ export default function useDapiCall() {
     await base44.functions.invoke('atenderChamadaDapi', { connectionId, callId, acao: 'recusar' });
   }, []);
 
-  return { status, erro, mutado, via, iniciar, atender, recusar, encerrar, alternarMudo };
+  return { status, erro, mutado, via, audio, iniciar, atender, recusar, encerrar, alternarMudo };
 }

@@ -126,6 +126,7 @@ export default function PopupChamadaRecebida({user}) {
     <div aria-live="polite" className="mt-6 flex items-center justify-center gap-3 font-semibold text-[#008260] sm:text-xl"><BellRing className={'h-8 w-8 '+(ringing?'animate-pulse':'')}/>{connected?'Em ligação':failed?'Ligação encerrada':active?'Atendendo…':'Chamada recebida'}</div>
     <div className="mt-4 flex min-h-7 items-center justify-center gap-2 text-sm text-slate-500 sm:text-base"><Volume2 className="h-5 w-5"/>{ringing&&!soundReady?<button className="font-medium text-emerald-700 underline underline-offset-4" onClick={unlock}>Ativar toque de chamada</button>:soundReady?'Toque ativado':'Toque aguardando ativação'}</div>
     {connected&&<Button variant="outline" className="mt-3" onClick={media.alternarMudo}>{media.mutado?<MicOff className="mr-2 h-4 w-4"/>:<Mic className="mr-2 h-4 w-4"/>}{media.mutado?'Reativar microfone':'Silenciar microfone'}</Button>}
+    {connected&&<p className="mt-2 text-xs text-slate-400">Recebendo áudio do contato: <strong className={media.audio.recebidos>0?'text-emerald-700':'text-amber-700'}>{media.audio.recebidos>0?'sim':'não'}</strong> · Enviando seu microfone: <strong className={media.audio.enviados>0?'text-emerald-700':'text-amber-700'}>{media.audio.enviados>0?'sim':'não'}</strong>{media.audio.taxa?' · áudio a '+media.audio.taxa+' Hz':''}</p>}
     {(error||media.erro)&&<p role="alert" className="mt-3 text-sm text-red-600">{error||media.erro}</p>}
    </div>
    <div className={'mt-3 grid gap-3 '+(ringing?'grid-cols-2':'grid-cols-1')}>
