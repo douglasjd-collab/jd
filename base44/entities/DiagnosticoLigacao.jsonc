@@ -1,0 +1,92 @@
+{
+  "name": "DiagnosticoLigacao",
+  "type": "object",
+  "description": "Registro t\u00e9cnico do canal de m\u00eddia (WebSocket) das liga\u00e7\u00f5es por stream. Guarda o que o provedor realmente entregou durante a chamada, para diagnosticar \u00e1udio em um s\u00f3 sentido.",
+  "properties": {
+    "empresa_id": {
+      "type": "string",
+      "description": "ID da empresa"
+    },
+    "connection_id": {
+      "type": "string",
+      "description": "ID da conex\u00e3o WhatsApp utilizada"
+    },
+    "call_id": {
+      "type": "string",
+      "description": "ID da chamada devolvido pelo provedor"
+    },
+    "direcao": {
+      "type": "string",
+      "enum": [
+        "recebida",
+        "enviada"
+      ],
+      "description": "Se a chamada foi recebida ou iniciada pelo CRM"
+    },
+    "host": {
+      "type": "string",
+      "description": "Host do WebSocket de m\u00eddia aberto"
+    },
+    "caminho": {
+      "type": "string",
+      "description": "Caminho do WebSocket de m\u00eddia (ex: /voip/stream)"
+    },
+    "parametros_url": {
+      "type": "string",
+      "description": "Nomes dos par\u00e2metros presentes na URL do WebSocket (sem valores sens\u00edveis)"
+    },
+    "aberto_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momento em que o WebSocket abriu"
+    },
+    "fechado_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Momento em que o WebSocket fechou"
+    },
+    "duracao_ms": {
+      "type": "number",
+      "description": "Dura\u00e7\u00e3o do canal de m\u00eddia em milissegundos"
+    },
+    "frames_recebidos": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade de frames bin\u00e1rios (\u00e1udio) recebidos do provedor"
+    },
+    "bytes_recebidos": {
+      "type": "number",
+      "default": 0,
+      "description": "Bytes de \u00e1udio recebidos do provedor"
+    },
+    "frames_enviados": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantidade de frames bin\u00e1rios (microfone) enviados ao provedor"
+    },
+    "bytes_enviados": {
+      "type": "number",
+      "default": 0,
+      "description": "Bytes de microfone enviados ao provedor"
+    },
+    "eventos_json": {
+      "type": "string",
+      "description": "JSON array com os frames de texto recebidos no canal de m\u00eddia [{tipo, bruto}]"
+    },
+    "fechamento_codigo": {
+      "type": "number",
+      "description": "C\u00f3digo de fechamento informado pelo WebSocket"
+    },
+    "fechamento_motivo": {
+      "type": "string",
+      "description": "Mensagem de fechamento informada pelo WebSocket"
+    },
+    "erro": {
+      "type": "string",
+      "description": "Erro registrado durante a chamada"
+    }
+  },
+  "required": [
+    "direcao"
+  ]
+}

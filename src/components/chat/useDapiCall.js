@@ -148,6 +148,7 @@ export default function useDapiCall() {
   const framesIn = useRef(0);
   const framesOut = useRef(0);
   const eventosRef = useRef([]);
+  const diagRef = useRef(null);
   const pararSomChamada = useCallback(() => {
     ringbackStopRef.current?.();
     ringbackStopRef.current = null;
@@ -230,6 +231,10 @@ export default function useDapiCall() {
       const ws = wsRef.current;
       if (ev.data?.kind === 'out' && canSendRef.current && ws?.readyState === WebSocket.OPEN) {
         framesOut.current += 1;
+        if (diagRef.current) {
+          diagRef.current.framesOut += 1;
+          diagRef.current.bytesOut += ev.data.pcm?.byteLength || 0;
+        }
         ws.send(ev.data.pcm);
       }
     };
@@ -237,7 +242,25 @@ export default function useDapiCall() {
 
   // Abre o WebSocket de mídia e liga os eventos de ciclo de vida.
   // jaAtendida = chamada recebida que já foi atendida por nós (/calls/accept).
-  const conectarMidia = useCallback(async (wsUrl, { jaAtendida = false } = {}) => {
+  const conectarMidia = useCallback(async (wsUrl, { jaAtendida = false, connectionId = null, callId = null } = {}) => {
+    const abertoEm = new Date().toISOString();
+    let alvo = null;
+    try { alvo = new URL(wsUrl); } catch (_) { alvo = null; }
+    diagRef.current = {
+      direcao: jaAtendida ? 'recebida' : 'enviada',
+      connectionId,
+      callId,
+      host: alvo?.host || 'url-invalida',
+      caminho: alvo?.pathname || '',
+      parametros: alvo ? [...alvo.searchParams.keys()].join(', ') : '',
+      abertoEm,
+      framesIn: 0,
+      bytesIn: 0,
+      framesOut: 0,
+      bytesOut: 0,
+      eventos: [],
+    };
+
     const ws = new WebSocket(wsUrl);
     ws.binaryType = 'arraybuffer';
     wsRef.current = ws;
@@ -261,6 +284,9 @@ export default function useDapiCall() {
         try { msg = JSON.parse(e.data); } catch (_) { return; }
         const tipo = String(msg.type || '');
         if (tipo && !eventosRef.current.includes(tipo)) eventosRef.current = [...eventosRef.current, tipo].slice(-6);
+        if (diagRef.current && diagRef.current.eventos.length < 40) {
+          diagRef.current.eventos.push({ tipo: tipo || '(sem tipo)', bruto: String(e.data).slice(0, 300) });
+        }
         const audioTexto = audioDeFrameTexto(msg);
         if (audioTexto) {
           framesIn.current += 1;
@@ -302,6 +328,10 @@ export default function useDapiCall() {
         }
       } else {
         framesIn.current += 1;
+        if (diagRef.current) {
+          diagRef.current.framesIn += 1;
+          diagRef.current.bytesIn += e.data?.byteLength || e.data?.size || 0;
+        }
         nodeRef.current?.port.postMessage({ kind: 'in', pcm: e.data }, [e.data]);
       }
     };
@@ -316,7 +346,34 @@ export default function useDapiCall() {
       });
     }, 1000);
 
-    ws.onclose = () => {
+    // Diagnóstico do canal de mídia: registra o que o provedor entregou na
+    // chamada para investigar áudio em um só sentido. Nunca interrompe a ligação.
+    const salvarDiagnostico = (codigo, motivo) => {
+      const d = diagRef.current;
+      if (!d) return;
+      diagRef.current = null;
+      base44.entities.DiagnosticoLigacao.create({
+        connection_id: d.connectionId || '',
+        call_id: d.callId || '',
+        direcao: d.direcao,
+        host: d.host,
+        caminho: d.caminho,
+        parametros_url: d.parametros,
+        aberto_em: d.abertoEm,
+        fechado_em: new Date().toISOString(),
+        duracao_ms: Date.now() - new Date(d.abertoEm).getTime(),
+        frames_recebidos: d.framesIn,
+        bytes_recebidos: d.bytesIn,
+        frames_enviados: d.framesOut,
+        bytes_enviados: d.bytesOut,
+        eventos_json: JSON.stringify(d.eventos).slice(0, 4000),
+        fechamento_codigo: Number(codigo) || 0,
+        fechamento_motivo: String(motivo || '').slice(0, 200),
+      }).catch(() => {});
+    };
+
+    ws.onclose = (ev) => {
+      salvarDiagnostico(ev?.code, ev?.reason);
       if (wsRef.current !== ws) return;
       if (!conectado) {
         setErro('A ligação foi encerrada antes de conectar');
@@ -361,7 +418,7 @@ export default function useDapiCall() {
       });
       if (!resp?.data?.success) throw new Error(resp?.data?.error || 'Falha ao iniciar chamada');
 
-      await conectarMidia(resp.data.wsUrl);
+      await conectarMidia(resp.data.wsUrl, { connectionId, callId: resp.data.callId });
     } catch (e) {
       setErro(mensagemErro(e));
       setStatus('error');
@@ -397,7 +454,7 @@ export default function useDapiCall() {
         throw new Error(resp?.data?.error || 'Falha ao atender a chamada');
       }
 
-      await conectarMidia(resp.data.wsUrl, { jaAtendida: true });
+      await conectarMidia(resp.data.wsUrl, { jaAtendida: true, connectionId, callId: resp.data.callId });
       return true;
     } catch (e) {
       setErro(mensagemErro(e));
