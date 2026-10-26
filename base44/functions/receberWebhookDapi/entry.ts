@@ -1,3 +1,4 @@
+import { registrarChamadaRecebidaDapi, finalizarChamadaDapi } from '../../shared/chamadaDapiShared.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { processReactionDapi } from '../../shared/reactionDapiShared.ts';
 import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.ts';
@@ -188,7 +189,13 @@ export default async function(req) {
 
       case 'call.offer':
         console.log('📞 Evento call.offer:', JSON.stringify(data, null, 2));
-        await processarChamadaRecebida(base44, connection, data);
+        await registrarChamadaRecebidaDapi(base44, connection, data);
+        break;
+
+      case 'call.accepted':
+      case 'call.rejected':
+      case 'call.ended':
+        await finalizarChamadaDapi(base44, connection, data, event);
         break;
 
       default:

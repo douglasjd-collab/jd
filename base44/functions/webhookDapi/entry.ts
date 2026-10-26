@@ -359,7 +359,6 @@ async function processEvent(base44, eventType, body, connection, empresaId) {
 
     // Chamada de voz recebida no número da sessão → popup de atendimento no CRM.
     case 'call.offer':
-    case 'call.ringing':
       return await registrarChamadaRecebidaDapi(base44, connection, body.data || body);
 
     // Chamada atendida, recusada, encerrada ou perdida → encerra a oferta.
@@ -368,7 +367,7 @@ async function processEvent(base44, eventType, body, connection, empresaId) {
     case 'call.connected':
     case 'call.rejected':
     case 'call.not_answered':
-      return await finalizarChamadaDapi(base44, connection, body.data || body);
+      return await finalizarChamadaDapi(base44, connection, body.data || body, eventType);
 
     default:
       console.log(`ℹ️ Evento não processado: ${eventType}`);

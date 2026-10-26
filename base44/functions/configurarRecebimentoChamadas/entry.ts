@@ -19,6 +19,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Conexão D-API não encontrada' }, { status: 404 });
     }
 
+    if (!['master','super_admin'].includes(user.perfil) && (connection.empresa_id !== user.empresa_id || !['admin','gerente'].includes(user.perfil))) return Response.json({ error: 'Sem permissão para alterar a conexão' }, { status: 403 });
+
     const { baseUrl, apiKey, sessionId } = resolverConexaoDapi(connection);
     if (!apiKey || !sessionId) {
       return Response.json({ error: 'API Key ou Session ID da conexão não configurados' }, { status: 400 });
