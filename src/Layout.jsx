@@ -72,6 +72,7 @@ export default function Layout({ children, currentPageName }) {
   const [logoUploaderOpen, setLogoUploaderOpen] = useState(false);
   const [editarPerfilOpen, setEditarPerfilOpen] = useState(false);
   const [editarNomeEmpresaOpen, setEditarNomeEmpresaOpen] = useState(false);
+  const [ligacoesOpen, setLigacoesOpen] = useState(false);
   const [novaVendaConsorcioOpen, setNovaVendaConsorcioOpen] = useState(false);
   const [tarefasVencidas, setTarefasVencidas] = useState(0);
   const [tarefasNovas, setTarefasNovas] = useState(0);
@@ -741,6 +742,18 @@ export default function Layout({ children, currentPageName }) {
                     </DropdownMenuItem>
                   )}
 
+                  {user?.empresa_id && user.perfil !== 'parceiro' && (
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setLigacoesOpen(true);
+                      }}
+                    >
+                      <Phone className="w-4 h-4 mr-2" />
+                      Ligações
+                    </DropdownMenuItem>
+                  )}
+
                   <DropdownMenuItem 
                    onSelect={(e) => {
                      e.preventDefault();
@@ -755,8 +768,6 @@ export default function Layout({ children, currentPageName }) {
                   </DropdownMenu>
                   </div>
                   )}
-
-        {user?.empresa_id && user.perfil !== 'parceiro' && <div className="px-4 py-2 text-slate-900"><ConfiguracaoRecebimentoLigacoes user={user}/></div>}
 
         {/* Navigation */}
         <nav className="p-4 space-y-1 overflow-y-auto flex-1">
@@ -907,6 +918,15 @@ export default function Layout({ children, currentPageName }) {
         empresaId={user?.empresa_id}
         onSuccess={loadUser}
       />
+
+      {/* Recebimento de ligações (menu do perfil) */}
+      {user?.empresa_id && user.perfil !== 'parceiro' && (
+        <ConfiguracaoRecebimentoLigacoes
+          user={user}
+          open={ligacoesOpen}
+          onOpenChange={setLigacoesOpen}
+        />
+      )}
 
       {/* Alertas de Tarefas */}
       {user && user.perfil !== 'parceiro' && (

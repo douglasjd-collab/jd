@@ -831,7 +831,7 @@ export default function BatePapo() {
 
   // Confere recibos pendentes uma vez ao abrir a conversa ou após novo envio.
   // A consulta só avança com confirmação real da D-API; não presume entrega.
-  const ultimaSaidaDapi = mensagens.filter(m => m.provider === 'dapi' && m.remetente === 'vendedor' && m.status === 'enviada').at(-1)?.whatsapp_message_id;
+  const ultimaSaidaDapi = mensagens.filter(m => m.provider === 'dapi' && m.remetente === 'vendedor').at(-1)?.whatsapp_message_id;
   useEffect(() => {
     if (!conversaSelecionadaId || !ultimaSaidaDapi) return;
     let cancelado = false;
