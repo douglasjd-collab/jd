@@ -1,0 +1,38 @@
+{
+  "name": "RecebimentoLigacao",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "connection_id": {
+      "type": "string"
+    },
+    "ativo": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "empresa_id",
+    "user_id",
+    "connection_id"
+  ],
+  "security": {
+    "read": {
+      "rule": "return user.role === 'admin' || (record.empresa_id === user.empresa_id && (record.user_id === user.id || ['admin','gerente'].includes(user.perfil))) || ['master','super_admin'].includes(user.perfil);"
+    },
+    "create": {
+      "rule": "return user.role === 'admin';"
+    },
+    "update": {
+      "rule": "return user.role === 'admin';"
+    },
+    "delete": {
+      "rule": "return user.role === 'admin';"
+    }
+  }
+}
