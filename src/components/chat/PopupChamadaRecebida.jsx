@@ -41,13 +41,17 @@ export default function PopupChamadaRecebida({user}) {
    else if(ev.data?.id)receive(ev.data);
    else base44.entities.ChamadaVozWhatsapp.get(ev.id).then(receive).catch(()=>{});
   });
-  // Reconcilia somente ao abrir/reconectar a aba; sem polling.
+  // Reconciliação: além do evento em tempo real, revalida as ofertas pendentes
+  // periodicamente. O evento em tempo real pode não chegar (webhook/realtime) e
+  // sem isso a ligação fica registrada mas o popup não abre.
   const sync=()=>base44.entities.ChamadaVozWhatsapp.filter({empresa_id:user.empresa_id,status:'recebida',created_date:{$gte:new Date(Date.now()-90000).toISOString()}},'-created_date',30).then(rows=>rows.forEach(receive)).catch(()=>{});
   void sync();
   const visible=()=>{if(document.visibilityState==='visible')void sync()};
+  const timer=setInterval(()=>{if(document.visibilityState==='visible')void sync()},4000);
   document.addEventListener('visibilitychange',visible);
-  return ()=>{mounted=false;off();document.removeEventListener('visibilitychange',visible)};
- },[allowed.join(','),user.empresa_id]);
+  window.addEventListener('focus',visible);
+  return ()=>{mounted=false;off();clearInterval(timer);document.removeEventListener('visibilitychange',visible);window.removeEventListener('focus',visible)};
+  },[allowed.join(','),user.empresa_id]);
  const call=active||Object.values(calls).sort((a,b)=>String(a.created_date).localeCompare(String(b.created_date)))[0];
  const ringing=!!call&&!active;
  const unlock=async()=>{
