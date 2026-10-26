@@ -12,7 +12,7 @@
     },
     "connection_id": {
       "type": "string",
-      "description": "ID da conex\u00e3o WhatsApp (D-API) que recebeu a chamada"
+      "description": "ID da conexão WhatsApp (D-API) que recebeu a chamada"
     },
     "call_id": {
       "type": "string",
@@ -30,10 +30,36 @@
       "type": "string",
       "enum": [
         "recebida",
-        "visualizada"
+        "visualizada",
+        "atendendo",
+        "em_atendimento",
+        "encerrada",
+        "recusada",
+        "erro"
       ],
       "default": "recebida",
-      "description": "Se o atendente j\u00e1 visualizou o popup da chamada"
+      "description": "Se o atendente já visualizou o popup da chamada"
+    },
+    "from_jid": {
+      "type": "string"
+    },
+    "oferta_em": {
+      "type": "string"
+    },
+    "atendente_id": {
+      "type": "string"
+    },
+    "atendente_token": {
+      "type": "string"
+    },
+    "erro_aceite": {
+      "type": "string"
+    },
+    "destinatarios": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "required": [
@@ -46,10 +72,10 @@
       "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
     },
     "create": {
-      "rule": "return true;"
+      "rule": "return user.role === 'admin';"
     },
     "update": {
-      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"
+      "rule": "return user.role === 'admin';"
     },
     "delete": {
       "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return user.perfil === 'admin' && record.empresa_id === user.empresa_id;"
