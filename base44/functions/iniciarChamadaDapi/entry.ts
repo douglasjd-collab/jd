@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
+import { resolverConexaoDapi } from '../../shared/dapiConexaoShared.ts';
 
 // Inicia uma ligação de voz via D-API — dois modos possíveis:
 // - via "whatsapp": Ligações por Stream (chamada de voz dentro do WhatsApp)
@@ -34,25 +35,11 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Conexão D-API não encontrada' }, { status: 404 });
       }
 
-      // Descriptografar API Key (mesma lógica usada em whatsappService)
-      let apiKey = connection.api_key_encrypted || '';
-      try {
-        const decoded = atob(apiKey);
-        if (decoded && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decoded.trim())) {
-          apiKey = decoded.trim();
-        } else {
-          apiKey = apiKey.trim();
-        }
-      } catch (_) {
-        apiKey = apiKey.trim();
+      const { baseUrl: rawBaseUrl, apiKey, sessionId } = resolverConexaoDapi(connection);
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+      if (!apiKey || !sessionId) {
+        return Response.json({ error: 'Configure a API Key e a sessão da conexão D-API para fazer ligações.' }, { status: 400 });
       }
-
-      if (!apiKey) {
-        return Response.json({ error: 'API Key da conexão D-API não configurada' }, { status: 400 });
-      }
-
-      const baseUrl = connection.base_url || 'https://api.d-api.cloud';
-      const sessionId = connection.session_id || '';
 
       const response = await fetch(`${baseUrl}/api/v1/calls/stream`, {
         method: 'POST',
@@ -61,18 +48,24 @@ Deno.serve(async (req) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ sessionId, phone: phoneNormalizado }),
+        signal: AbortSignal.timeout(25000),
       });
 
-      const data = await response.json().catch(() => ({}));
-
-      if (!response.ok || !data.success) {
+      const raw = await response.json().catch(() => ({}));
+      const data = raw.data || raw;
+      const motivo = raw.error?.message || raw.error || raw.message || data.error?.message || data.error || data.message;
+      const mensagem = typeof motivo === 'string' ? motivo : '';
+      if (!response.ok || raw.success === false || data.success === false) {
         return Response.json(
-          { error: data.error || `Falha ao iniciar chamada (HTTP ${response.status})` },
+          { error: mensagem || `A D-API não iniciou a ligação (HTTP ${response.status}). Verifique se esta conexão permite chamadas e se há outra ligação em andamento.`, upstream_status: response.status },
           { status: 502 }
         );
       }
-
+      if (typeof data.wsUrl !== 'string' || !/^wss?:\/\//i.test(data.wsUrl)) {
+        return Response.json({ error: mensagem || 'A D-API não retornou o canal de áudio para a ligação. Verifique a disponibilidade de chamadas nesta conexão.' }, { status: 502 });
+      }
       return Response.json({ success: true, via: 'whatsapp', callId: data.callId, wsUrl: data.wsUrl });
+
     }
 
     // via "operadora" (padrão): Ligação URA ao vivo (Bina Inteligente)

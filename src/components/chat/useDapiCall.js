@@ -74,7 +74,8 @@ function mensagemErro(e) {
     return 'Permissão de microfone negada. Libere o microfone para o site e tente novamente.';
   }
   if (nome === 'NotFoundError') return 'Nenhum microfone encontrado neste dispositivo.';
-  return e?.message || 'Erro na chamada';
+  const detalhe = e?.response?.data?.error || e?.response?.data?.message;
+  return (typeof detalhe === 'string' && detalhe) || e?.message || 'Erro na chamada';
 }
 
 export default function useDapiCall() {

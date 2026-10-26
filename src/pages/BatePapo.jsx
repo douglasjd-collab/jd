@@ -432,7 +432,7 @@ export default function BatePapo() {
 
 
   // Botão "Ligar" do chat: sempre pergunta se é via WhatsApp ou via Operadora (ambas usam D-API)
-  const dapiChamadaAtivaVisivel = ['calling', 'ringing', 'connected', 'error'].includes(dapiCall.status);
+  const dapiChamadaAtivaVisivel = ['calling', 'ringing', 'connected'].includes(dapiCall.status);
 
   const ligarViaWhatsapp = async () => {
     if (!conversaSelecionada?.cliente_telefone) return;
@@ -2480,7 +2480,7 @@ export default function BatePapo() {
                     onCriar={criarMicrotarefa} onConcluir={concluirMicrotarefa} onAdiar={adiarMicrotarefa} onEditar={editarMicrotarefa}
                     salvando={salvandoMicrotarefa} user={user} empresaId={empresaId} conversa={conversaSelecionada} novaAcaoRef={novaAcaoRef} />
                 )}
-                {dapiChamadaAtivaVisivel && (
+                {(dapiChamadaAtivaVisivel || dapiCall.status === 'error') && (
                   <DapiCallBar
                     status={dapiCall.status}
                     erro={dapiCall.erro}
