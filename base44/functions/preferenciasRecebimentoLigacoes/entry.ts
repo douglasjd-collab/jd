@@ -20,6 +20,6 @@ Deno.serve(async req => {
    else await db.RecebimentoLigacao.create({...filtro,ativo:p.ativo===true});
   }
   const configs=await db.RecebimentoLigacao.filter({empresa_id:empresa,...(!admin?{user_id:u.id}:{})},'-created_date',3000);
-  return Response.json({success:true,admin,userId:u.id,connections:connections.map(c=>({id:c.id,nome:c.nome,numero:c.numero_telefone,status:c.status,recebimento: (()=>{try{return !!JSON.parse(c.config_json||'{}').recebimento_chamadas}catch{return false}})()})),users:users.map(x=>({id:x.id,nome:x.nome_perfil||x.full_name||x.email})),configs});
+  return Response.json({success:true,admin,userId:u.id,connections:connections.map(c=>({id:c.id,nome:c.nome,numero:c.phone_number,status:c.status,recebimento: (()=>{try{return !!JSON.parse(c.config_json||'{}').recebimento_chamadas}catch{return false}})()})),users:users.map(x=>({id:x.id,nome:x.nome_perfil||x.full_name||x.email})),configs});
  } catch(e) {return Response.json({error:e.message||'Falha ao configurar ligações'},{status:500});}
 });

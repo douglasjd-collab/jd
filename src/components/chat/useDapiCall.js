@@ -78,7 +78,10 @@ function mensagemErro(e) {
   return (typeof detalhe === 'string' && detalhe) || e?.message || 'Erro na chamada';
 }
 
+let chamadaLocalOcupada = null;
+
 export default function useDapiCall() {
+  const donoLocal = useRef(Symbol('chamada'));
   const [status, setStatus] = useState('idle'); // idle|calling|ringing|connected|ended|error
   const [erro, setErro] = useState(null);
   const [mutado, setMutado] = useState(false);
@@ -107,6 +110,7 @@ export default function useDapiCall() {
     nodeRef.current = null;
     canSendRef.current = false;
     emChamadaRef.current = false;
+    if (chamadaLocalOcupada === donoLocal.current) chamadaLocalOcupada = null;
     setMutado(false);
   }, [pararSomChamada]);
 
@@ -249,7 +253,11 @@ export default function useDapiCall() {
 
   // Ligações de saída (WhatsApp via stream ou URA da operadora).
   const iniciar = useCallback(async (viaEscolhida, connectionId, telefone) => {
-    if (emChamadaRef.current) return;
+    if (emChamadaRef.current || chamadaLocalOcupada) {
+      setErro('Já existe uma ligação em andamento nesta aba.');
+      return false;
+    }
+    chamadaLocalOcupada = donoLocal.current;
     emChamadaRef.current = true;
     setErro(null);
     setStatus('calling');
@@ -275,7 +283,11 @@ export default function useDapiCall() {
 
   // Chamada recebida atendida dentro do CRM (WhatsApp).
   const atender = useCallback(async (connectionId, callId) => {
-    if (emChamadaRef.current) return;
+    if (emChamadaRef.current || chamadaLocalOcupada) {
+      setErro('Já existe uma ligação em andamento nesta aba.');
+      return false;
+    }
+    chamadaLocalOcupada = donoLocal.current;
     emChamadaRef.current = true;
     setErro(null);
     setStatus('calling');
@@ -293,18 +305,18 @@ export default function useDapiCall() {
       }
 
       await conectarMidia(resp.data.wsUrl, { jaAtendida: true });
+      return true;
     } catch (e) {
       setErro(mensagemErro(e));
       setStatus('error');
       limpar();
+      return false;
     }
   }, [prepararMidia, conectarMidia, limpar]);
 
   // Recusa a chamada recebida (não precisa de microfone).
   const recusar = useCallback(async (connectionId, callId) => {
-    try {
-      await base44.functions.invoke('atenderChamadaDapi', { connectionId, callId, acao: 'recusar' });
-    } catch (_) {}
+    await base44.functions.invoke('atenderChamadaDapi', { connectionId, callId, acao: 'recusar' });
   }, []);
 
   return { status, erro, mutado, via, iniciar, atender, recusar, encerrar, alternarMudo };

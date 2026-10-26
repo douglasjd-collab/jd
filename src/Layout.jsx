@@ -56,6 +56,8 @@ import AlertasTarefasPopup from '@/components/tarefas/AlertasTarefasPopup';
 import AlertasTarefasAtrasadas from '@/components/tarefas/AlertasTarefasAtrasadas';
 import CampanhaMonitorGlobal from '@/components/campanhas/CampanhaMonitorGlobal';
 import ChatFlutuante from '@/components/chat/ChatFlutuante';
+import PopupChamadaRecebida from '@/components/chat/PopupChamadaRecebida';
+import ConfiguracaoRecebimentoLigacoes from '@/components/chat/ConfiguracaoRecebimentoLigacoes';
 
 // Consultas com opções ({ limit, fields }) devolvem uma página ({ items });
 // consultas posicionais devolvem a lista direta.
@@ -754,6 +756,8 @@ export default function Layout({ children, currentPageName }) {
                   </div>
                   )}
 
+        {user?.empresa_id && user.perfil !== 'parceiro' && <div className="px-4 py-2 text-slate-900"><ConfiguracaoRecebimentoLigacoes user={user}/></div>}
+
         {/* Navigation */}
         <nav className="p-4 space-y-1 overflow-y-auto flex-1">
           {filteredMenuItems.map((item) => (
@@ -916,6 +920,8 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Alertas de Tarefas Atrasadas */}
       {user && user.perfil !== 'parceiro' && <AlertasTarefasAtrasadas user={user} />}
+
+      {user?.empresa_id && user.perfil !== 'parceiro' && <PopupChamadaRecebida user={user}/>}
 
       {/* Monitor de campanhas permanece ativo em todas as áreas do CRM */}
       {user?.empresa_id && user.perfil !== 'parceiro' && <CampanhaMonitorGlobal empresaId={user.empresa_id} />}
