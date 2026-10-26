@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.38';
 import { resolverConexaoDapi } from '../../shared/dapiConexaoShared.ts';
+import { lerRespostaStream } from '../../shared/dapiStreamResposta.ts';
 
 // Inicia uma ligação de voz via D-API — dois modos possíveis:
 // - via "whatsapp": Ligações por Stream (chamada de voz dentro do WhatsApp)
@@ -83,10 +84,11 @@ Deno.serve(async (req) => {
       });
 
       const raw = await response.json().catch(() => ({}));
-      const data = raw.data || raw;
+      const leitura = lerRespostaStream(raw);
+      const data = leitura.stream || raw.data || raw;
       const motivo = raw.error?.message || raw.error || raw.message || data.error?.message || data.error || data.message;
       const mensagem = typeof motivo === 'string' ? motivo : '';
-      if (!response.ok || raw.success === false || data.success === false) {
+      if (!response.ok || leitura.falhou) {
         return Response.json(
           {
             error: [
@@ -104,8 +106,17 @@ Deno.serve(async (req) => {
           { status: 502 }
         );
       }
-      if (typeof data.wsUrl !== 'string' || !/^wss?:\/\//i.test(data.wsUrl)) {
-        return Response.json({ error: mensagem || 'A D-API não retornou o canal de áudio para a ligação. Verifique a disponibilidade de chamadas nesta conexão.' }, { status: 502 });
+      if (!leitura.stream) {
+        const diagnostico = `DAPI_AUDIO_AUSENTE | HTTP ${response.status} | sessão ${sessionId} | ${leitura.estrutura}`;
+        console.error(diagnostico);
+        await base44.asServiceRole.entities.WhatsappConnection.update(connection.id, {
+          last_error_at: new Date().toISOString(),
+          last_error_message: diagnostico,
+        }).catch(() => {});
+        return Response.json({
+          error: `A resposta da D-API não contém o canal de áudio. Conexão: ${connection.nome || sessionId}. HTTP ${response.status}. Diagnóstico: DAPI_AUDIO_AUSENTE.`,
+          code: 'DAPI_AUDIO_AUSENTE',
+        }, { status: 502 });
       }
       return Response.json({ success: true, via: 'whatsapp', callId: data.callId, wsUrl: data.wsUrl });
 
