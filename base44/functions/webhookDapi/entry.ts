@@ -1,3 +1,4 @@
+import { idReciboDapi, expandirRecibosDapi, aplicarReciboDapi } from '../../shared/recibosDapiShared.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { processReactionDapi } from '../../shared/reactionDapiShared.ts';
 import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.ts';
@@ -104,6 +105,7 @@ export default async function(req) {
     return Response.json({
       success: false,
       error: 'Method Not Allowed',
+      receipts: processResult?.results || null,
       webhookId,
       timestamp: new Date().toISOString()
     }, { status: 405 });
@@ -141,7 +143,7 @@ export default async function(req) {
     // conversationId (se existir), telefone e texto (se extraíveis do payload).
     const _dataRaw = body.data || body.message || body || {};
     const _remoteJidRaw = _dataRaw?.from?.jid || _dataRaw?.key?.remoteJid || _dataRaw?.chatId || _dataRaw?.jid || '';
-    const _messageIdRaw = _dataRaw?.id || _dataRaw?.key?.id || _dataRaw?.messageId || _dataRaw?.external_message_id || null;
+    const _messageIdRaw = idReciboDapi(_dataRaw);
     const _telefoneRaw = String(_remoteJidRaw).replace(/@.*/g, '').replace(/\D/g, '') || '';
     const _textoRaw = typeof _dataRaw?.message === 'string' ? _dataRaw.message
       : (_dataRaw?.text || _dataRaw?.content || _dataRaw?.caption || '');
@@ -250,6 +252,7 @@ export default async function(req) {
       handled: !!processResult?.handled,
       conversation_id: processResult?.conversaId || null,
       message_id: processResult?.messageId || null,
+      receipts: processResult?.results || null,
       webhookId,
       timestamp: new Date().toISOString()
     });
@@ -266,6 +269,7 @@ export default async function(req) {
       success: !errorMessage,
       event: eventType,
       sessionId,
+      receipts: processResult?.results || null,
       webhookId,
       timestamp: new Date().toISOString(),
       processed: !!processResult
@@ -279,6 +283,7 @@ export default async function(req) {
     return Response.json({
       success: false,
       error: error.message,
+      receipts: processResult?.results || null,
       webhookId,
       timestamp: new Date().toISOString()
     }, { status: erroTransitorio(error.message) ? 500 : 200 });
@@ -1174,43 +1179,9 @@ async function processMessageSent(base44, body, connection) {
 
 
 // Expand each receipt independently; keep envelope fields for batched IDs.
-function expandReceiptItems(data) {
-  if (Array.isArray(data)) return data.flatMap(expandReceiptItems);
-  if (!data || typeof data !== 'object') return [];
-  for (const field of ['messages', 'updates', 'receipts']) {
-    if (Array.isArray(data[field])) {
-      const { [field]: children, ...parent } = data;
-      return children.flatMap(child => expandReceiptItems(typeof child === 'string'
-        ? { ...parent, id: child } : { ...parent, ...child }));
-    }
-  }
-  for (const field of ['messageIds', 'message_ids', 'ids', 'keys']) {
-    if (Array.isArray(data[field])) {
-      const { [field]: ids, ...parent } = data;
-      return ids.flatMap(id => expandReceiptItems(typeof id === 'string'
-        ? { ...parent, id } : { ...parent, key: id }));
-    }
-  }
-  return [data];
-}
-
+const expandReceiptItems = expandirRecibosDapi;
 async function applyMessageReceipt(base44, body, connection, status) {
-  if (!connection) return { handled: false, reason: 'connection not found' };
-  const results = [];
-  for (const item of expandReceiptItems(body.data || body.message || body)) {
-    const id = item.key?.id || item.message?.key?.id || item.id || item.messageId || item.message_id || item.external_message_id;
-    if (typeof id !== 'string' || !id.trim()) continue;
-    const patch = { status, ...(status === 'lida'
-      ? { lida_em: new Date().toISOString() } : { entregue_em: new Date().toISOString() }) };
-    await base44.asServiceRole.entities.MensagemWhatsapp.updateMany({
-      empresa_id: connection.empresa_id,
-      whatsapp_message_id: id,
-      remetente: 'vendedor',
-      status: { $nin: status === 'lida' ? ['lida'] : ['entregue', 'lida'] }
-    }, { $set: patch });
-    results.push({ messageId: id, status });
-  }
-  return { handled: results.length > 0, results };
+ return aplicarReciboDapi(base44, connection, body.data || body.message || body, status);
 }
 
 async function processMessageStatusUpdate(base44, body, connection) {

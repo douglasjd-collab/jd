@@ -1,3 +1,4 @@
+import { aplicarReciboDapi, expandirRecibosDapi } from '../../shared/recibosDapiShared.ts';
 import { registrarChamadaRecebidaDapi, finalizarChamadaDapi } from '../../shared/chamadaDapiShared.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { processReactionDapi } from '../../shared/reactionDapiShared.ts';
@@ -940,51 +941,8 @@ async function processarChatsUpdate(base44, connection, data) {
 // preenchido e status "entregue" (dois traços cinza em vez do azul).
 
 // Expand each receipt independently; keep envelope fields for batched IDs.
-function expandReceiptItems(data) {
-  if (Array.isArray(data)) return data.flatMap(expandReceiptItems);
-  if (!data || typeof data !== 'object') return [];
-  for (const field of ['messages', 'updates', 'receipts']) {
-    if (Array.isArray(data[field])) {
-      const { [field]: children, ...parent } = data;
-      return children.flatMap(child => expandReceiptItems(typeof child === 'string'
-        ? { ...parent, id: child } : { ...parent, ...child }));
-    }
-  }
-  for (const field of ['messageIds', 'message_ids', 'ids', 'keys']) {
-    if (Array.isArray(data[field])) {
-      const { [field]: ids, ...parent } = data;
-      return ids.flatMap(id => expandReceiptItems(typeof id === 'string'
-        ? { ...parent, id } : { ...parent, key: id }));
-    }
-  }
-  return [data];
-}
+const expandReceiptItems = expandirRecibosDapi;
 
 async function atualizarStatusMensagem(base44, connection, data, statusInterno) {
-  try {
-    const items = expandReceiptItems(data);
-    if (items.length !== 1 || items[0] !== data) {
-      for (const item of items) await atualizarStatusMensagem(base44, connection, item, statusInterno);
-      return;
-    }
-    const wamid = data?.key?.id || data?.message?.key?.id || data?.id || data?.messageId || data?.message_id || data?.external_message_id;
-    if (typeof wamid !== 'string' || !wamid.trim()) return;
-
-    const patch = { $set: { status: statusInterno } };
-    if (statusInterno === 'entregue') patch.$set.entregue_em = new Date().toISOString();
-    if (statusInterno === 'lida') patch.$set.lida_em = new Date().toISOString();
-
-    await base44.entities.MensagemWhatsapp.updateMany({
-      empresa_id: connection.empresa_id,
-      whatsapp_message_id: wamid,
-      // 'lida' nunca é sobrescrita; 'entregue' não retrocede de 'lida'.
-      status: statusInterno === 'lida'
-        ? { $nin: ['lida'] }
-        : { $nin: ['entregue', 'lida'] },
-    }, patch);
-
-    console.log(`✅ Status D-API atualizado: ${wamid} → ${statusInterno}`);
-  } catch (e) {
-    console.error('❌ Erro ao atualizar status D-API:', e.message);
-  }
+ return aplicarReciboDapi(base44, connection, data, statusInterno);
 }
