@@ -272,10 +272,14 @@ export default function useDapiCall() {
     });
 
     let conectado = jaAtendida;
+    let liberarUplink = null;
     if (jaAtendida) {
-      canSendRef.current = true;
       pararSomChamada();
       setStatus('connected');
+      // A D-API orienta enviar o microfone só depois do evento "accepted" no
+      // canal de mídia. Numa chamada recebida esse aviso pode atrasar, então o
+      // prazo abaixo garante que o microfone nunca fique travado.
+      liberarUplink = setTimeout(() => { canSendRef.current = true; }, 1500);
     }
 
     ws.onmessage = (e) => {
@@ -303,6 +307,7 @@ export default function useDapiCall() {
           case 'accepted':
           case 'connected':
             pararSomChamada();
+            clearTimeout(liberarUplink);
             conectado = true;
             canSendRef.current = true;
             setStatus('connected');
@@ -373,6 +378,7 @@ export default function useDapiCall() {
     };
 
     ws.onclose = (ev) => {
+      clearTimeout(liberarUplink);
       salvarDiagnostico(ev?.code, ev?.reason);
       if (wsRef.current !== ws) return;
       if (!conectado) {
@@ -385,6 +391,7 @@ export default function useDapiCall() {
     };
 
     ws.onerror = () => {
+      clearTimeout(liberarUplink);
       setErro('Erro de conexão com a chamada');
       setStatus('error');
       limpar();
