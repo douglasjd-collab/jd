@@ -829,6 +829,20 @@ export default function BatePapo() {
 
   const mensagens = React.useMemo(() => mesclarHistoricoMensagens([], mensagensCache), [mensagensCache]);
 
+  // Confere recibos pendentes uma vez ao abrir a conversa ou após novo envio.
+  // A consulta só avança com confirmação real da D-API; não presume entrega.
+  const ultimaSaidaDapi = mensagens.filter(m => m.provider === 'dapi' && m.remetente === 'vendedor' && m.status === 'enviada').at(-1)?.whatsapp_message_id;
+  useEffect(() => {
+    if (!conversaSelecionadaId || !ultimaSaidaDapi) return;
+    let cancelado = false;
+    const timer = setTimeout(() => {
+      base44.functions.invoke('reconciliarEntregasDapi', { conversaId: conversaSelecionadaId })
+        .then(r => { if (!cancelado && r.data?.updated) void refetchMensagens(); })
+        .catch(() => {});
+    }, 2500);
+    return () => { cancelado = true; clearTimeout(timer); };
+  }, [conversaSelecionadaId, ultimaSaidaDapi]);
+
   useEffect(() => {
     if (!escopoHistorico || !conversaSelecionadaId || !mensagens.length) return;
     const timer = setTimeout(() => salvarHistoricoSessao(escopoHistorico, conversaSelecionadaId, mensagens), 200);
