@@ -255,6 +255,7 @@ export default function useDapiCall() {
   const iniciar = useCallback(async (viaEscolhida, connectionId, telefone) => {
     if (emChamadaRef.current || chamadaLocalOcupada) {
       setErro('Já existe uma ligação em andamento nesta aba.');
+      setStatus('error');
       return false;
     }
     chamadaLocalOcupada = donoLocal.current;
@@ -285,6 +286,7 @@ export default function useDapiCall() {
   const atender = useCallback(async (connectionId, callId) => {
     if (emChamadaRef.current || chamadaLocalOcupada) {
       setErro('Já existe uma ligação em andamento nesta aba.');
+      setStatus('error');
       return false;
     }
     chamadaLocalOcupada = donoLocal.current;
