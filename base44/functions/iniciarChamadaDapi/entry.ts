@@ -41,6 +41,13 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Configure a API Key e a sessão da conexão D-API para fazer ligações.' }, { status: 400 });
       }
 
+      if (/^cloud-/i.test(sessionId)) {
+        return Response.json({
+          error: 'Esta conexão é Cloud API oficial e não permite esta modalidade de ligação. Escolha uma conexão WhatsApp por QR Code no botão Ligar.',
+          code: 'DAPI_CONEXAO_SEM_SUPORTE_VOZ',
+        }, { status: 400 });
+      }
+
       // Consulta somente o estado: nunca encerra a ligação da extensão.
       const consultarEstado = async () => {
         try {

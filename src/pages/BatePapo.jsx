@@ -78,6 +78,7 @@ import AgendarMensagemModal from '@/components/chat/AgendarMensagemModal';
 import MensagensAgendadasModal from '@/components/chat/MensagensAgendadasModal';
 import AgendarReuniaoModal from '@/components/chat/AgendarReuniaoModal';
 import useDapiCall from '@/components/chat/useDapiCall';
+import EscolherConexaoLigacao from '@/components/chat/EscolherConexaoLigacao';
 import DapiCallBar from '@/components/chat/DapiCallBar.jsx';
 import DashboardProdutividade from '@/components/chat/DashboardProdutividade';
 import CoachIAPanel from '@/components/chat/CoachIAPanel';
@@ -420,6 +421,7 @@ export default function BatePapo() {
   const [encaminharModalOpen, setEncaminharModalOpen] = useState(false);
 
   const dapiCall = useDapiCall();
+  const [conversaLigacao, setConversaLigacao] = useState(null);
   const [notaEditando, setNotaEditando] = useState(null);
   const [notaReferencia, setNotaReferencia] = useState(null);
   const notasChat = useNotasConversa(conversaSelecionada, user, empresaId);
@@ -434,19 +436,8 @@ export default function BatePapo() {
   // Botão "Ligar" do chat: sempre pergunta se é via WhatsApp ou via Operadora (ambas usam D-API)
   const dapiChamadaAtivaVisivel = ['calling', 'ringing', 'connected'].includes(dapiCall.status);
 
-  const ligarViaWhatsapp = async () => {
-    if (!conversaSelecionada?.cliente_telefone) return;
-    let connectionId = conversaSelecionada.connection_id;
-    if (!connectionId) {
-      try {
-        const conexoes = await base44.entities.WhatsappConnection.filter(
-          { empresa_id: empresaId, provider_type: 'dapi', is_active: true }, '-created_date', 1
-        );
-        connectionId = conexoes?.[0]?.id;
-      } catch (_) {}
-    }
-    if (!connectionId) { toast.error('Nenhuma conexão D-API ativa encontrada'); return; }
-    await dapiCall.iniciar('whatsapp', connectionId, conversaSelecionada.cliente_telefone);
+  const ligarViaWhatsapp = () => {
+    if (conversaSelecionada?.cliente_telefone) setConversaLigacao(conversaSelecionada);
   };
 
   const ligarViaOperadora = async () => {
@@ -456,19 +447,8 @@ export default function BatePapo() {
 
   // Ligar via WhatsApp para uma conversa específica (usado nas ações mobile,
   // onde a conversa alvo pode não ser a conversaSelecionada).
-  const ligarParaContato = async (conversa) => {
-    if (!conversa?.cliente_telefone) return;
-    let connectionId = conversa.connection_id;
-    if (!connectionId) {
-      try {
-        const conexoes = await base44.entities.WhatsappConnection.filter(
-          { empresa_id: empresaId, provider_type: 'dapi', is_active: true }, '-created_date', 1
-        );
-        connectionId = conexoes?.[0]?.id;
-      } catch (_) {}
-    }
-    if (!connectionId) { toast.error('Nenhuma conexão D-API ativa encontrada'); return; }
-    await dapiCall.iniciar('whatsapp', connectionId, conversa.cliente_telefone);
+  const ligarParaContato = (conversa) => {
+    if (conversa?.cliente_telefone) setConversaLigacao(conversa);
   };
 
   const abrirGruposBloqueados = async () => {
@@ -1847,6 +1827,12 @@ export default function BatePapo() {
 
   return (
     <TooltipProvider>
+      <EscolherConexaoLigacao
+        conversa={conversaLigacao}
+        empresaId={empresaId}
+        aoFechar={() => setConversaLigacao(null)}
+        aoLigar={(connectionId, conversa) => dapiCall.iniciar('whatsapp', connectionId, conversa.cliente_telefone)}
+      />
       {/* Dashboard de Produtividade — fora do batepapo-root para z-index correto */}
       {produtividadeOpen && (
         <DashboardProdutividade
