@@ -41,6 +41,30 @@ Deno.serve(async (req) => {
         return Response.json({ error: 'Configure a API Key e a sessão da conexão D-API para fazer ligações.' }, { status: 400 });
       }
 
+      // Consulta somente o estado: nunca encerra a ligação da extensão.
+      const consultarEstado = async () => {
+        try {
+          const r = await fetch(`${baseUrl}/api/v1/calls/state`, {
+            method: 'POST',
+            headers: { Authorization: apiKey, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId }),
+            signal: AbortSignal.timeout(5000),
+          });
+          if (!r.ok) return '';
+          const json = await r.json().catch(() => ({}));
+          const estado = json.data?.state || json.state || json.data?.status || json.status;
+          return typeof estado === 'string' ? estado.toLowerCase() : '';
+        } catch { return ''; }
+      };
+      const estadoAnterior = await consultarEstado();
+      if (['starting', 'calling', 'ringing', 'active', 'ending'].includes(estadoAnterior)) {
+        return Response.json({
+          error: 'Esta conexão já tem uma ligação em andamento na D-API. Finalize-a no aplicativo em que foi iniciada antes de fazer outra.',
+          code: 'DAPI_CHAMADA_EM_ANDAMENTO',
+          call_state: estadoAnterior,
+        }, { status: 409 });
+      }
+
       const response = await fetch(`${baseUrl}/api/v1/calls/stream`, {
         method: 'POST',
         headers: {
@@ -57,7 +81,19 @@ Deno.serve(async (req) => {
       const mensagem = typeof motivo === 'string' ? motivo : '';
       if (!response.ok || raw.success === false || data.success === false) {
         return Response.json(
-          { error: mensagem || `A D-API não iniciou a ligação (HTTP ${response.status}). Verifique se esta conexão permite chamadas e se há outra ligação em andamento.`, upstream_status: response.status },
+          {
+            error: [
+              mensagem === 'Failed to start streamed call' ? 'A D-API falhou ao iniciar a ligação de saída.' : mensagem || `A D-API não iniciou a ligação (HTTP ${response.status}).`,
+              (() => {
+                const detalhe = raw.details?.message || raw.details?.error || raw.details || data.details?.message || data.details;
+                if (typeof detalhe !== 'string' || detalhe === mensagem) return '';
+                return detalhe.replaceAll(apiKey, '[chave protegida]').slice(0, 400);
+              })(),
+              `Conexão: ${connection.nome || sessionId}. Estado anterior: ${estadoAnterior || 'não informado'}. HTTP D-API: ${response.status}.`,
+            ].filter(Boolean).join(' '),
+            code: 'DAPI_FALHA_INICIAR_SAIDA',
+            upstream_status: response.status,
+          },
           { status: 502 }
         );
       }
