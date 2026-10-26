@@ -105,7 +105,7 @@ export default function PopupChamadaRecebida({user}) {
  };
  const dismiss=()=>{if(active&&!failed)return;if(active)void hangup();else remove(call.id)};
  return <Dialog open onOpenChange={open=>{if(!open)dismiss()}}>
-  <DialogContent onPointerDownOutside={e=>e.preventDefault()} className="z-[110] w-[calc(100vw-32px)] max-w-[540px] max-h-[calc(100dvh-32px)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 text-slate-950 shadow-2xl sm:p-6 [&>button]:hidden">
+  <DialogContent showCloseButton={false} onPointerDownOutside={e=>e.preventDefault()} className="z-[110] w-[calc(100vw-32px)] max-w-[540px] max-h-[calc(100dvh-32px)] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 text-slate-950 shadow-2xl sm:p-6">
    <header className="flex items-center justify-between gap-3">
     <div className="flex items-center gap-3">
      <svg viewBox="0 0 32 32" aria-hidden="true" className="h-11 w-11 shrink-0 text-[#00b85b]" fill="currentColor"><path d="M16 2a14 14 0 0 0-12.1 21L2 30l7.2-1.9A14 14 0 1 0 16 2Z"/><path fill="white" d="M11.1 8.6c-.4-.8-.8-.8-1.1-.8h-.9c-.3 0-.8.1-1.2.6-.4.5-1.6 1.6-1.6 3.8s1.6 4.3 1.9 4.6c.2.3 3.2 4.9 7.8 6.7 3.8 1.5 4.6 1.2 5.4 1.1.8-.1 2.7-1.1 3.1-2.2.4-1.1.4-2 .3-2.2-.1-.2-.4-.3-.9-.6l-3.2-1.5c-.4-.2-.8-.3-1.1.2l-1.5 1.8c-.3.3-.6.4-1 .2a12.1 12.1 0 0 1-3.7-2.3 14.3 14.3 0 0 1-2.5-3.1c-.3-.4 0-.7.2-1l.7-.8.5-.8c.1-.3.1-.6 0-.9l-1.4-3Z"/></svg>
