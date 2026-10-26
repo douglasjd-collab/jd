@@ -618,7 +618,7 @@ Deno.serve(async (req) => {
           'group_participants.join-request',
           'group_participants.join-request.revoked',
           'group_participants.join-request.approved',
-          'call.offer', 'call.accepted', 'call.rejected'
+          'call.offer', 'call.accepted', 'call.rejected', 'call.ended'
         ];
         
         const eventsConfig = {};
