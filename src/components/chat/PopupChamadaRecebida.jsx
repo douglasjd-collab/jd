@@ -12,11 +12,19 @@ export default function PopupChamadaRecebida({user}) {
  const [connections,setConnections]=useState([]);
  const media=useDapiCall(), context=useRef(null),stop=useRef(null),busy=useRef(false),owned=useRef(null),allowedRef=useRef([]),mediaRef=useRef(media);
  mediaRef.current=media;
+ // Liga o aviso de chamada direto pelos cadastros de recebimento do próprio
+ // usuário: se a chamada de configuração falhasse, o popup nunca abria.
  const load=useCallback(async()=>{
-  try{const r=await base44.functions.invoke('preferenciasRecebimentoLigacoes',{empresaId:user.empresa_id});
-   const ids=r.data.configs.filter(x=>x.user_id===user.id&&x.ativo).map(x=>x.connection_id);
-   allowedRef.current=ids;setAllowed(ids);setConnections(r.data.connections||[]);
+  try{
+   const rows=await base44.entities.RecebimentoLigacao.filter({empresa_id:user.empresa_id,user_id:user.id,ativo:true});
+   const lista=Array.isArray(rows)?rows:(rows?.items||[]);
+   const ids=lista.map(x=>x.connection_id).filter(Boolean);
+   allowedRef.current=ids;setAllowed(ids);setError('');
   }catch{setError('Não foi possível verificar o recebimento de ligações')}
+  try{
+   const r=await base44.functions.invoke('preferenciasRecebimentoLigacoes',{empresaId:user.empresa_id});
+   setConnections(r?.data?.connections||[]);
+  }catch{}
  },[user.id,user.empresa_id]);
  useEffect(()=>{
   void load();
