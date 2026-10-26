@@ -1,134 +1,36 @@
-// Chamadas de voz recebidas na sessão D-API (eventos call.offer / call.ended / call.rejected).
-//
-// O popup de chamada recebida do CRM escuta a entidade ChamadaVozWhatsapp em tempo real
-// (evento de criação). Sem este registro a ligação só toca no celular e o CRM não sabe dela.
-// Compartilhado entre os webhooks da D-API (webhookDapi e receberWebhookDapi).
-
-function entidades(base44: any) {
-  return base44?.asServiceRole?.entities || base44?.entities;
-}
-
-// Extrai telefone e callId dos formatos possíveis do payload da D-API.
-function extrairDadosChamada(data: any) {
-  const fromRaw = data?.from?.jid || data?.from || data?.peerJid || data?.callerPn || data?.callerJid || '';
-  const telefone = String(fromRaw).replace(/@.*/g, '').replace(/\D/g, '');
-  const callId = data?.callId || data?.call_id || data?.id || data?.call?.id || null;
-  return { telefone, callId: callId ? String(callId) : null };
-}
-
-/**
- * Registra a oferta de chamada: cria o registro em ChamadaVozWhatsapp (popup do CRM)
- * e a linha "📞 Chamada de voz recebida" no histórico da conversa.
- */
-export async function registrarChamadaRecebidaDapi(base44: any, connection: any, data: any) {
-  try {
-    if (!connection) return { handled: false, reason: 'connection not found' };
-    if (data?.isGroup === true || String(data?.from?.jid || data?.from || '').includes('@g.us')) {
-      return { handled: false, reason: 'chamada de grupo' };
-    }
-
-    const { telefone, callId } = extrairDadosChamada(data);
-    if (!telefone || !callId) {
-      console.error('❌ [Chamada D-API] call.offer sem telefone ou callId');
-      return { handled: false, reason: 'sem telefone ou callId' };
-    }
-
-    const empresaId = connection.empresa_id;
-    const db = entidades(base44);
-
-    // Webhook pode ser reenviado pela D-API — não duplicar a mesma chamada.
-    const existentes = await db.ChamadaVozWhatsapp.filter(
-      { empresa_id: empresaId, call_id: callId },
-      '-created_date',
-      1
-    );
-    if (existentes && existentes.length > 0) {
-      return { handled: true, duplicate: true, callId, conversaId: existentes[0].conversa_id };
-    }
-
-    const timestamp = new Date().toISOString();
-    const conversas = await db.ConversaWhatsapp.filter(
-      { empresa_id: empresaId, cliente_telefone: telefone },
-      '-created_date',
-      1
-    );
-
-    let conversa = conversas?.[0];
-    if (!conversa) {
-      conversa = await db.ConversaWhatsapp.create({
-        empresa_id: empresaId,
-        cliente_telefone: telefone,
-        cliente_nome: data?.from?.name || telefone,
-        whatsapp_id: data?.from?.jid || `${telefone}@s.whatsapp.net`,
-        provider: 'dapi',
-        canal_origem: 'dapi',
-        tipo_conexao: 'usuario',
-        connection_id: connection.id,
-        instancia: connection.session_id,
-        status: 'ativa',
-        ultima_mensagem: '',
-        data_ultima_mensagem: timestamp,
-        ultimo_remetente: 'cliente',
-      });
-    }
-
-    const textoChamada = '📞 Chamada de voz recebida';
-
-    await db.MensagemWhatsapp.create({
-      empresa_id: empresaId,
-      conversa_id: conversa.id,
-      remetente: 'cliente',
-      tipo_conteudo: 'texto',
-      texto: textoChamada,
-      provider: 'dapi',
-      whatsapp_message_id: `call_${callId}`,
-      data_envio: timestamp,
-      status: 'entregue',
-    });
-
-    await db.ConversaWhatsapp.update(conversa.id, {
-      ultima_mensagem: textoChamada,
-      data_ultima_mensagem: timestamp,
-      ultimo_remetente: 'cliente',
-      cliente_respondeu: true,
-    });
-
-    await db.ChamadaVozWhatsapp.create({
-      empresa_id: empresaId,
-      conversa_id: conversa.id,
-      connection_id: connection.id,
-      call_id: callId,
-      cliente_telefone: telefone,
-      cliente_nome: conversa.cliente_nome || telefone,
-      status: 'recebida',
-    });
-
-    console.log('✅ [Chamada D-API] Chamada de voz registrada:', { callId, conversaId: conversa.id });
-    return { handled: true, callId, conversaId: conversa.id };
-  } catch (error: any) {
-    console.error('❌ [Chamada D-API] Erro ao registrar chamada:', error?.message);
-    return { handled: false, error: error?.message };
+// Eventos de voz: criar a oferta antes de processar o histórico da conversa.
+function entidades(b:any){return b?.asServiceRole?.entities||b?.entities}
+export async function registrarChamadaRecebidaDapi(b:any,c:any,d:any){
+ if(!c||d?.isGroup) return {handled:false};
+ const db=entidades(b),callId=String(d?.callId||d?.call_id||'');
+ if(!callId) return {handled:false};
+ const from=typeof d.from==='object'?d.from.jid:d.from||d.callCreator||'';
+ const phone=d.phone || (!String(from).includes('@lid')?String(from).split('@')[0].replace(/\D/g,''):'');
+ const existing=await db.ChamadaVozWhatsapp.filter({empresa_id:c.empresa_id,connection_id:c.id,call_id:callId},'-created_date',1);
+ if(existing.length) return {handled:true,duplicate:true};
+ const configs=await db.RecebimentoLigacao.filter({empresa_id:c.empresa_id,connection_id:c.id,ativo:true},'-created_date',1000);
+ let time=Number(d.timestamp);if(time&&time<1e12)time*=1000;
+ const oferta_em=Number.isFinite(time)&&time>0?new Date(time).toISOString():new Date().toISOString();
+ const call=await db.ChamadaVozWhatsapp.create({empresa_id:c.empresa_id,connection_id:c.id,call_id:callId,cliente_telefone:phone||'Número não identificado',cliente_nome:d.from?.name||phone||'Número não identificado',from_jid:String(from),oferta_em,destinatarios:[...new Set(configs.map(x=>x.user_id))],status:Date.now()-Date.parse(oferta_em)>90000?'encerrada':'recebida'});
+ if(!phone) return {handled:true,callId};
+ try {
+  let conversa=(await db.ConversaWhatsapp.filter({empresa_id:c.empresa_id,cliente_telefone:phone},'-created_date',1))[0];
+  if(!conversa) conversa=await db.ConversaWhatsapp.create({empresa_id:c.empresa_id,cliente_telefone:phone,cliente_nome:phone,whatsapp_id:String(from),provider:'dapi',canal_origem:'dapi',tipo_conexao:'usuario',connection_id:c.id,instancia:c.session_id,status:'ativa',ultima_mensagem:'',data_ultima_mensagem:oferta_em,ultimo_remetente:'cliente'});
+  await db.ChamadaVozWhatsapp.update(call.id,{conversa_id:conversa.id,cliente_nome:conversa.cliente_nome||phone});
+  const messageId='call_'+callId;
+  if(!(await db.MensagemWhatsapp.filter({empresa_id:c.empresa_id,whatsapp_message_id:messageId},'-created_date',1)).length){
+   await db.MensagemWhatsapp.create({empresa_id:c.empresa_id,conversa_id:conversa.id,remetente:'cliente',tipo_conteudo:'texto',texto:'📞 Chamada de voz recebida',provider:'dapi',whatsapp_message_id:messageId,data_envio:oferta_em,status:'entregue'});
+   await db.ConversaWhatsapp.update(conversa.id,{ultima_mensagem:'📞 Chamada de voz recebida',data_ultima_mensagem:oferta_em,ultimo_remetente:'cliente',cliente_respondeu:true});
   }
+ }catch(e){console.error('Histórico da chamada indisponível:',e.message)}
+ return {handled:true,callId};
 }
-
-/**
- * Encerra a oferta de chamada (atendida, recusada ou perdida) para o popup não
- * continuar aparecendo como disponível.
- */
-export async function finalizarChamadaDapi(base44: any, connection: any, data: any) {
-  try {
-    if (!connection) return { handled: false, reason: 'connection not found' };
-    const { callId } = extrairDadosChamada(data);
-    if (!callId) return { handled: false, reason: 'sem callId' };
-
-    const db = entidades(base44);
-    await db.ChamadaVozWhatsapp.updateMany(
-      { empresa_id: connection.empresa_id, call_id: callId, status: 'recebida' },
-      { $set: { status: 'visualizada' } }
-    );
-    return { handled: true, callId };
-  } catch (error: any) {
-    console.error('❌ [Chamada D-API] Erro ao finalizar chamada:', error?.message);
-    return { handled: false, error: error?.message };
-  }
+export async function finalizarChamadaDapi(b:any,c:any,d:any,event='call.ended'){
+ if(!c||!d?.callId) return {handled:false};
+ const db=entidades(b);
+ const filtro:any={empresa_id:c.empresa_id,connection_id:c.id,call_id:String(d.callId)};
+ // Um atendimento fora do CRM só encerra a oferta; não assume mídia local.
+ if(event!=='call.ended') filtro.status={$in:['recebida','visualizada']};
+ const result=await db.ChamadaVozWhatsapp.updateMany(filtro,{$set:{status:'encerrada'}});
+ return {handled:true,updated:result.updated};
 }
