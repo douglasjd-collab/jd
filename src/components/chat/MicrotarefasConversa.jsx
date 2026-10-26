@@ -141,7 +141,7 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
 
   return (
     <>
-      <div className={`mx-3 mt-2 mb-1 rounded-xl border px-3 py-2 shadow-sm ${vencida ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50'}`}>
+      <div className={`min-w-0 flex-1 rounded-xl border px-3 py-2 shadow-sm ${vencida ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50'}`}>
         <div className="flex items-center gap-2">
           <ClipboardList className={`h-4 w-4 shrink-0 ${vencida ? 'text-red-600' : 'text-amber-700'}`} />
           <button onClick={() => setAberto(v => !v)} className="min-w-0 flex-1 text-left">

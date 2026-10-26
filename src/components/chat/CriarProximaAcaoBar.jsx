@@ -12,14 +12,14 @@ import { Plus, TrendingUp, ClipboardList } from 'lucide-react';
  * Reúne as duas ações de acompanhamento do cliente: lançar no Funil de Vendas
  * ou criar uma Tarefa vinculada à conversa.
  */
-export default function CriarProximaAcaoBar({ onAdicionarFunil, onCriarTarefa, oportunidadeAtual }) {
+export default function CriarProximaAcaoBar({ onAdicionarFunil, onCriarTarefa, oportunidadeAtual, className = '' }) {
   return (
-    <div className="shrink-0 border-b border-slate-100 bg-white px-3 py-2">
+    <div className={`flex ${className}`}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-[#ffeeba] bg-[#fff3cd] px-3 py-2 text-xs sm:text-sm font-medium text-[#856404] transition-colors hover:bg-[#fff8e1] active:bg-[#ffefc2]"
+            className="flex h-full w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-[#ffeeba] bg-[#fff3cd] px-3 py-2 text-xs font-medium text-[#856404] transition-colors hover:bg-[#fff8e1] active:bg-[#ffefc2] sm:text-sm"
           >
             <Plus className="h-4 w-4" />
             Criar próxima ação

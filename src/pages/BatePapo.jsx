@@ -2468,17 +2468,10 @@ export default function BatePapo() {
                 }
                 />
                 {!isGrupo(conversaSelecionada) && (
-                  <CriarProximaAcaoBar
-                    oportunidadeAtual={oportunidadeAtual}
-                    onAdicionarFunil={() => setFunilModalOpen(true)}
-                    onCriarTarefa={() => novaAcaoRef.current?.()}
-                  />
-                )}
-                {!isGrupo(conversaSelecionada) && (
-                  <MicrotarefasConversa
-                    tarefas={microtarefasPorConversa[conversaSelecionada.id] || []}
-                    onCriar={criarMicrotarefa} onConcluir={concluirMicrotarefa} onAdiar={adiarMicrotarefa} onEditar={editarMicrotarefa}
-                    salvando={salvandoMicrotarefa} user={user} empresaId={empresaId} conversa={conversaSelecionada} novaAcaoRef={novaAcaoRef} />
+                  <div className="flex shrink-0 items-stretch gap-2 border-b border-slate-100 bg-white px-3 py-2">
+                    <CriarProximaAcaoBar className={(microtarefasPorConversa[conversaSelecionada.id] || []).length ? 'shrink-0' : 'flex-1'} oportunidadeAtual={oportunidadeAtual} onAdicionarFunil={() => setFunilModalOpen(true)} onCriarTarefa={() => novaAcaoRef.current?.()} />
+                    <MicrotarefasConversa tarefas={microtarefasPorConversa[conversaSelecionada.id] || []} onCriar={criarMicrotarefa} onConcluir={concluirMicrotarefa} onAdiar={adiarMicrotarefa} onEditar={editarMicrotarefa} salvando={salvandoMicrotarefa} user={user} empresaId={empresaId} conversa={conversaSelecionada} novaAcaoRef={novaAcaoRef} />
+                  </div>
                 )}
                 {(dapiChamadaAtivaVisivel || dapiCall.status === 'error') && (
                   <DapiCallBar
