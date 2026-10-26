@@ -2,6 +2,32 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { startCallRingback } from './callRingback';
 import { base44 } from '@/api/base44Client';
 
+// O padrão da D-API é áudio em frames binários. Alguns deploys, porém, entregam
+// os blocos de áudio em frames de texto com base64 — sem esse tratamento o som
+// do contato é descartado silenciosamente (o socket fica "conectado e mudo").
+const TIPOS_AUDIO_TEXTO = new Set(['audio', 'audio.chunk', 'audio_chunk', 'call.audio', 'pcm', 'media', 'chunk']);
+function audioDeFrameTexto(msg) {
+  const tipo = String(msg?.type || '').toLowerCase();
+  if (!TIPOS_AUDIO_TEXTO.has(tipo)) return null;
+  const b64 = msg.data || msg.audio || msg.pcm || msg.payload || msg.chunk;
+  if (typeof b64 !== 'string' || b64.length < 16) return null;
+  try {
+    const bin = atob(b64.trim());
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    // Descarta cabeçalho RIFF/WAV quando presente.
+    const inicio = (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) ? 44 : 0;
+    const total = Math.floor((bytes.length - inicio) / 2);
+    if (total <= 0) return null;
+    const pcm = new Int16Array(total);
+    const dv = new DataView(bytes.buffer, bytes.byteOffset + inicio, total * 2);
+    for (let i = 0; i < total; i++) pcm[i] = dv.getInt16(i * 2, true);
+    return pcm;
+  } catch (_) {
+    return null;
+  }
+}
+
 // Worklet que converte Float32 (navegador) <-> Int16 (rede) para as Ligações por
 // Stream da D-API (PCM s16le, 16kHz, mono, frames de 20ms = 320 amostras).
 // A rede é sempre 16 kHz, mas o AudioContext pode rodar em outra taxa (48 kHz é
@@ -109,7 +135,7 @@ export default function useDapiCall() {
   const [via, setVia] = useState(null); // 'whatsapp' | 'operadora'
   // Telemetria da mídia: mostra se o áudio do outro lado está chegando e se o
   // microfone está saindo. Sem isso não dá para distinguir "conectou" de "mudo".
-  const [audio, setAudio] = useState({ recebidos: 0, enviados: 0, taxa: null });
+  const [audio, setAudio] = useState({ recebidos: 0, enviados: 0, taxa: null, eventos: [] });
 
   const wsRef = useRef(null);
   const audioCtxRef = useRef(null);
@@ -121,6 +147,7 @@ export default function useDapiCall() {
   const monitorRef = useRef(null);
   const framesIn = useRef(0);
   const framesOut = useRef(0);
+  const eventosRef = useRef([]);
   const pararSomChamada = useCallback(() => {
     ringbackStopRef.current?.();
     ringbackStopRef.current = null;
@@ -232,6 +259,14 @@ export default function useDapiCall() {
       if (typeof e.data === 'string') {
         let msg = {};
         try { msg = JSON.parse(e.data); } catch (_) { return; }
+        const tipo = String(msg.type || '');
+        if (tipo && !eventosRef.current.includes(tipo)) eventosRef.current = [...eventosRef.current, tipo].slice(-6);
+        const audioTexto = audioDeFrameTexto(msg);
+        if (audioTexto) {
+          framesIn.current += 1;
+          nodeRef.current?.port.postMessage({ kind: 'in', pcm: audioTexto.buffer }, [audioTexto.buffer]);
+          return;
+        }
         switch (msg.type) {
           case 'calling':
             setStatus('calling');
@@ -277,6 +312,7 @@ export default function useDapiCall() {
         recebidos: framesIn.current,
         enviados: framesOut.current,
         taxa: audioCtxRef.current?.sampleRate || null,
+        eventos: eventosRef.current,
       });
     }, 1000);
 
@@ -312,7 +348,8 @@ export default function useDapiCall() {
     setVia(viaEscolhida);
     framesIn.current = 0;
     framesOut.current = 0;
-    setAudio({ recebidos: 0, enviados: 0, taxa: null });
+    eventosRef.current = [];
+    setAudio({ recebidos: 0, enviados: 0, taxa: null, eventos: [] });
     try {
       await prepararMidia();
       ringbackStopRef.current = startCallRingback(audioCtxRef.current);
@@ -346,7 +383,8 @@ export default function useDapiCall() {
     setVia('whatsapp');
     framesIn.current = 0;
     framesOut.current = 0;
-    setAudio({ recebidos: 0, enviados: 0, taxa: null });
+    eventosRef.current = [];
+    setAudio({ recebidos: 0, enviados: 0, taxa: null, eventos: [] });
     try {
       await prepararMidia();
 
