@@ -120,6 +120,21 @@ export default function PopupChamadaRecebida({user}) {
  },[ringing,call?.id]);
  useEffect(()=>()=>{stop.current?.();context.current?.close().catch(()=>{})},[]);
  const remove=id=>{fecharAviso();setCalls(old=>{const n={...old};delete n[id];return n})};
+ // O webhook da D-API não avisa em tempo real: enquanto toca, consulta direto
+ // a API da chamada e encerra o toque assim que ela deixa de existir.
+ useEffect(()=>{
+  if(!ringing||!call?.call_id)return;
+  let vivo=true;
+  const verificar=async()=>{
+   try{
+    const r=await base44.functions.invoke('verificarChamadaDapi',{connectionId:call.connection_id,callId:call.call_id});
+    if(vivo&&r?.data?.ativa===false)remove(call.id);
+   }catch{}
+  };
+  void verificar();
+  const t=setInterval(()=>{void verificar()},2500);
+  return ()=>{vivo=false;clearInterval(t)};
+ },[ringing,call?.id]);
  const answer=async()=>{
   if(busy.current||!call)return;
   busy.current=true;owned.current=call;setActive(call);setError('');remove(call.id);
