@@ -54,6 +54,7 @@ import { Toaster, toast } from 'sonner';
 import VendaForm from '@/components/forms/VendaForm';
 import AlertasTarefasPopup from '@/components/tarefas/AlertasTarefasPopup';
 import AlertasTarefasAtrasadas from '@/components/tarefas/AlertasTarefasAtrasadas';
+import CentralAtendimento from '@/components/atendimento/CentralAtendimento';
 import CampanhaMonitorGlobal from '@/components/campanhas/CampanhaMonitorGlobal';
 import ChatFlutuante from '@/components/chat/ChatFlutuante';
 import PopupChamadaRecebida from '@/components/chat/PopupChamadaRecebida';
