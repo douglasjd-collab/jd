@@ -29,6 +29,13 @@ const MAX_CONVERSAS = 800;
 // conversas antigas que já saíram do fluxo de atendimento.
 const JANELA_ALERTA_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_ITENS = 40;
+// Backlog: conversa ativa mais antiga que a janela de 7 dias e ainda sem
+// registro é coberta por uma varredura rotativa, uma página por chamada.
+const BACKLOG_PAGINA = 40;
+const MAX_BACKLOG_RECALC = 8;
+// Pendências já gravadas nunca saem da lista por idade; este é o teto de
+// conversas antigas carregadas por chamada para reconstruir o item na tela.
+const MAX_BACKLOG_PENDENTES = 200;
 
 const comoLista = (resultado: any): any[] =>
   Array.isArray(resultado) ? resultado : (resultado?.items || []);
@@ -48,6 +55,23 @@ async function carregarRegistro(db: any, empresaId: string, conversaId: string) 
     1
   );
   return comoLista(registros)[0] || null;
+}
+
+function chaveCursorBacklog(empresaId: string) {
+  return `alertas_atendimento_cursor_${empresaId}`;
+}
+
+async function salvarCursorBacklog(db: any, empresaId: string, valor: string | null) {
+  const chave = chaveCursorBacklog(empresaId);
+  const existente = comoLista(await db.ConfiguracaoSistema.filter({ chave }, '-updated_date', 1))[0] || null;
+  const dados = { valor: valor ? String(valor) : '' };
+  if (existente?.id) return db.ConfiguracaoSistema.update(existente.id, dados);
+  return db.ConfiguracaoSistema.create({
+    chave,
+    valor: dados.valor,
+    descricao: 'Cursor da varredura incremental do backlog de atendimento',
+    tipo: 'texto',
+  });
 }
 
 // Finalização reaproveita exatamente a regra já usada no cabeçalho do Bate-papo:
@@ -71,6 +95,123 @@ async function finalizarConversa({ db, conversa, user }: { db: any; conversa: an
   // um novo atendimento do zero.
   const registro = await carregarRegistro(db, conversa.empresa_id, conversa.id);
   if (registro?.id) await db.AtendimentoAlerta.delete(registro.id).catch(() => {});
+}
+
+// ── Retorno agendado: idempotência no servidor ────────────────────────────
+// A chave é estável (conversa) e guarda o ciclo do atendimento. Retry — mesmo
+// com resposta perdida no caminho — reaproveita o compromisso já criado em vez
+// de gerar um segundo. Nada aqui é decidido por id vindo do cliente.
+function chaveRetorno(conversaId: string) {
+  return `retorno_atendimento_${conversaId}`;
+}
+
+async function lerMarcadorRetorno(db: any, conversaId: string) {
+  const registros = comoLista(
+    await db.ConfiguracaoSistema.filter({ chave: chaveRetorno(conversaId) }, '-created_date', 5)
+  );
+  const registro = registros[0] || null;
+  let dados: any = null;
+  try {
+    dados = registro ? JSON.parse(registro.valor || 'null') : null;
+  } catch (_) {
+    dados = null;
+  }
+  return { registro, dados };
+}
+
+async function gravarMarcadorRetorno(db: any, conversaId: string, dados: any) {
+  const { registro } = await lerMarcadorRetorno(db, conversaId);
+  const valor = JSON.stringify(dados);
+  if (registro?.id) return db.ConfiguracaoSistema.update(registro.id, { valor });
+  return db.ConfiguracaoSistema.create({
+    chave: chaveRetorno(conversaId),
+    valor,
+    descricao: 'Controle de duplicidade do retorno agendado pelo alerta de atendimento',
+    tipo: 'texto',
+  });
+}
+
+async function garantirEventoRetorno({ db, conversa, user, motivo, descricao, instante, ciclo }: any) {
+  const empresaId = conversa.empresa_id;
+  const payload = {
+    empresa_id: empresaId,
+    titulo: motivo.substring(0, 120),
+    descricao,
+    tipo: 'reuniao',
+    inicio: new Date(instante).toISOString(),
+    fim: new Date(instante + 30 * 60000).toISOString(),
+    telefone: conversa.cliente_telefone || '',
+    usuario_id: idAtendente(user),
+    usuario_nome: nomeAtendente(user),
+    status: 'agendado',
+  };
+
+  // 1) Mesmo ciclo já tem compromisso salvo → atualiza e reaproveita.
+  const { dados } = await lerMarcadorRetorno(db, conversa.id);
+  if (dados?.ciclo === ciclo && dados?.evento_id) {
+    const salvo = await db.Agenda.get(String(dados.evento_id)).catch(() => null);
+    // Nunca reaproveita compromisso de outra empresa.
+    if (salvo && salvo.empresa_id === empresaId) {
+      await db.Agenda.update(salvo.id, payload);
+      return salvo;
+    }
+  }
+
+  const buscarMesmos = async () =>
+    comoLista(
+      await db.Agenda.filter(
+        {
+          empresa_id: empresaId,
+          tipo: 'reuniao',
+          inicio: payload.inicio,
+          usuario_id: payload.usuario_id,
+          titulo: payload.titulo,
+        },
+        'created_date',
+        5
+      )
+    ).filter((e: any) => e.status !== 'cancelado');
+
+  // 2) Compromisso criado mas marcador não gravado (resposta perdida):
+  // reconhece pelo conteúdo exato antes de criar outro.
+  const existentes = await buscarMesmos();
+  if (existentes.length) {
+    await db.Agenda.update(existentes[0].id, payload);
+    await gravarMarcadorRetorno(db, conversa.id, {
+      ciclo,
+      evento_id: existentes[0].id,
+      conversa_id: conversa.id,
+      inicio: payload.inicio,
+      atualizado_em: new Date().toISOString(),
+    });
+    return existentes[0];
+  }
+
+  const criado = await db.Agenda.create(payload);
+  await gravarMarcadorRetorno(db, conversa.id, {
+    ciclo,
+    evento_id: criado.id,
+    conversa_id: conversa.id,
+    inicio: payload.inicio,
+    criado_em: new Date().toISOString(),
+  });
+
+  // 3) Duplo envio simultâneo: mantém o mais antigo e descarta o excedente.
+  const depois = await buscarMesmos();
+  const maisAntigo = depois[0];
+  if (depois.length > 1 && maisAntigo?.id && maisAntigo.id !== criado.id) {
+    await db.Agenda.delete(criado.id).catch(() => {});
+    await gravarMarcadorRetorno(db, conversa.id, {
+      ciclo,
+      evento_id: maisAntigo.id,
+      conversa_id: conversa.id,
+      inicio: payload.inicio,
+      atualizado_em: new Date().toISOString(),
+    });
+    return maisAntigo;
+  }
+
+  return criado;
 }
 
 export default async function (req: Request): Promise<Response> {
@@ -191,38 +332,34 @@ export default async function (req: Request): Promise<Response> {
           );
         }
 
-        // Retry sem duplicar: se o frontend devolve o evento já criado, reaproveita.
-        let evento: any = null;
-        if (body.evento_id) {
-          evento = await db.Agenda.get(String(body.evento_id)).catch(() => null);
+        // Compromisso garantido no servidor (chave estável por conversa + ciclo):
+        // se a agenda falhar, a conversa continua aberta.
+        let evento: any;
+        try {
+          evento = await garantirEventoRetorno({
+            db,
+            conversa,
+            user,
+            motivo,
+            descricao: String(body.descricao || motivo),
+            instante,
+            ciclo: registro?.atendimento_iniciado_em || conversa.data_ultima_mensagem || '',
+          });
+        } catch (erroAgenda: any) {
+          return Response.json(
+            { error: 'Não foi possível salvar o retorno na agenda: ' + (erroAgenda?.message || 'erro desconhecido') },
+            { status: 502 }
+          );
         }
-        if (!evento) {
-          try {
-            evento = await db.Agenda.create({
-              empresa_id: conversa.empresa_id,
-              titulo: motivo.substring(0, 120),
-              descricao: String(body.descricao || motivo),
-              tipo: 'reuniao',
-              inicio: new Date(instante).toISOString(),
-              fim: new Date(instante + 30 * 60000).toISOString(),
-              telefone: conversa.cliente_telefone || '',
-              usuario_id: idAtendente(user),
-              usuario_nome: nomeAtendente(user),
-              status: 'agendado',
-            });
-          } catch (erroAgenda: any) {
-            // Erro na agenda mantém a conversa aberta.
-            return Response.json(
-              { error: 'Não foi possível salvar o retorno na agenda: ' + (erroAgenda?.message || 'erro desconhecido') },
-              { status: 502 }
-            );
-          }
+
+        if (!evento?.id) {
+          return Response.json({ error: 'O retorno não foi confirmado na agenda. Nada foi finalizado.' }, { status: 502 });
         }
 
         try {
           await finalizarConversa({ db, conversa, user });
         } catch (erroFinalizacao: any) {
-          // O evento permanece salvo; a próxima tentativa reaproveita o mesmo id.
+          // O compromisso permanece salvo e o retry o reaproveita.
           return Response.json(
             {
               error: 'O retorno foi salvo na agenda, mas a conversa não foi finalizada. Tente novamente.',
@@ -242,30 +379,100 @@ export default async function (req: Request): Promise<Response> {
       return Response.json({ error: 'Não foi possível validar suas permissões' }, { status: 503 });
     }
 
-    const conversas = comoLista(
-      await db.ConversaWhatsapp.filter({ empresa_id: empresaId, status: 'ativa' }, '-data_ultima_mensagem', MAX_CONVERSAS)
-    );
-
-    // Janela de alerta: conversas com movimento nos últimos 7 dias. As mais
-    // antigas já estão fora do fluxo (a rotina de inatividade encerra em 5 dias).
-    const limiteJanela = Date.now() - JANELA_ALERTA_MS;
-    const autorizadas = conversas.filter((c) => {
-      if (!podeAcessarConversa(acesso, c)) return false;
-      if (!conversaPertinente(c)) return false;
-      const ultima = c.data_ultima_mensagem ? new Date(c.data_ultima_mensagem).getTime() : NaN;
-      return Number.isFinite(ultima) && ultima >= limiteJanela;
-    });
-
     const registros = comoLista(await db.AtendimentoAlerta.filter({ empresa_id: empresaId }, '-updated_date', 2000));
     const mapa = new Map<string, any>(registros.map((r) => [r.conversa_id, r]));
 
+    const conversas = comoLista(
+      await db.ConversaWhatsapp.filter({ empresa_id: empresaId, status: 'ativa' }, '-data_ultima_mensagem', MAX_CONVERSAS)
+    );
+    const porId = new Map<string, any>(conversas.map((c) => [c.id, c]));
+
+    // Pendência já gravada nunca é ignorada por idade: se o relógio está
+    // correndo, a conversa é carregada mesmo fora da janela recente.
+    const pendentesForaDaPagina = registros
+      .filter((r) => (r.aguardando_desde || r.atendimento_iniciado_em) && !porId.has(r.conversa_id))
+      .slice(0, MAX_BACKLOG_PENDENTES);
+    for (let i = 0; i < pendentesForaDaPagina.length; i += 100) {
+      const ids = pendentesForaDaPagina.slice(i, i + 100).map((r) => r.conversa_id);
+      const lote = comoLista(await db.ConversaWhatsapp.filter({ id: { $in: ids } }, '-data_ultima_mensagem', 100));
+      lote.forEach((c) => porId.set(c.id, c));
+    }
+
+    // Janela recente: recálculo barato dos últimos 7 dias (a rotina de
+    // inatividade encerra conversas paradas há mais tempo). O que está fora da
+    // janela e ainda tem pendência entra pela regra acima; o que está fora e
+    // não tem registro entra pela varredura rotativa mais abaixo.
+    const limiteJanela = Date.now() - JANELA_ALERTA_MS;
+    const ehRecente = (c: any) => {
+      const ultima = c.data_ultima_mensagem ? new Date(c.data_ultima_mensagem).getTime() : NaN;
+      return Number.isFinite(ultima) && ultima >= limiteJanela;
+    };
+
+    const elegiveis = [...porId.values()].filter((c) => conversaPertinente(c));
+    const autorizadas = elegiveis.filter((c) => {
+      if (!podeAcessarConversa(acesso, c)) return false;
+      const registro = mapa.get(c.id);
+      const pendenteGravada = !!(registro && (registro.aguardando_desde || registro.atendimento_iniciado_em));
+      return pendenteGravada || ehRecente(c);
+    });
+
+    // Limpeza de segurança: registro pendente de conversa que saiu do fluxo
+    // (encerrada/bloqueada/grupo) é descartado — independe de quem está vendo.
+    const idsElegiveis = new Set(elegiveis.map((c) => c.id));
+    for (const registro of registros) {
+      if (!(registro.aguardando_desde || registro.atendimento_iniciado_em)) continue;
+      const conversa = porId.get(registro.conversa_id);
+      if (conversa && !idsElegiveis.has(conversa.id)) {
+        await db.AtendimentoAlerta.delete(registro.id).catch(() => {});
+        mapa.delete(registro.conversa_id);
+      }
+    }
+
     // Só recalcula quem ainda não tem registro ou recebeu mensagem nova.
+    // Quem já tem pendência gravada vem primeiro: o alerta vivo não espera fila.
+    const precisaRecalcular = (c: any) => {
+      const registro = mapa.get(c.id);
+      return !registro || registro.marcador !== marcadorConversa(c);
+    };
     const desatualizadas = autorizadas
-      .filter((c) => {
-        const registro = mapa.get(c.id);
-        return !registro || registro.marcador !== marcadorConversa(c);
-      })
+      .filter(precisaRecalcular)
+      .sort(
+        (a, b) =>
+          Number(!!mapa.get(b.id)?.aguardando_desde || !!mapa.get(b.id)?.atendimento_iniciado_em) -
+          Number(!!mapa.get(a.id)?.aguardando_desde || !!mapa.get(a.id)?.atendimento_iniciado_em)
+      )
       .slice(0, MAX_RECALCULOS_POR_CHAMADA);
+
+    // Backlog fora da janela e ainda sem registro: uma página por chamada, com
+    // cursor persistido por empresa. Ao chegar no fim, recomeça da janela —
+    // cobertura completa ao longo do tempo, sem varredura integral por tick.
+    let cursorProximo: string | null | undefined;
+    if (desatualizadas.length < MAX_RECALCULOS_POR_CHAMADA) {
+      const registroCursor =
+        comoLista(
+          await db.ConfiguracaoSistema.filter({ chave: chaveCursorBacklog(empresaId) }, '-updated_date', 1)
+        )[0] || null;
+      const cursorAtual = registroCursor?.valor || new Date(limiteJanela).toISOString();
+      const antigas = comoLista(
+        await db.ConversaWhatsapp.filter(
+          { empresa_id: empresaId, status: 'ativa', data_ultima_mensagem: { $lt: cursorAtual } },
+          '-data_ultima_mensagem',
+          BACKLOG_PAGINA
+        )
+      );
+      antigas.forEach((c) => porId.set(c.id, c));
+      const vagas = Math.min(MAX_BACKLOG_RECALC, MAX_RECALCULOS_POR_CHAMADA - desatualizadas.length);
+      const candidatas = antigas
+        .filter((c) => conversaPertinente(c) && podeAcessarConversa(acesso, c))
+        .filter(precisaRecalcular)
+        .slice(0, vagas);
+      desatualizadas.push(...candidatas);
+      if (antigas.length < BACKLOG_PAGINA) {
+        cursorProximo = null;
+      } else {
+        cursorProximo = antigas[antigas.length - 1]?.data_ultima_mensagem || null;
+      }
+    }
 
     let limiteAtingido = false;
     for (let i = 0; i < desatualizadas.length && !limiteAtingido; i += 3) {
@@ -288,9 +495,13 @@ export default async function (req: Request): Promise<Response> {
       await new Promise((resolve) => setTimeout(resolve, 180));
     }
 
+    if (cursorProximo !== undefined) {
+      await salvarCursorBacklog(db, empresaId, cursorProximo).catch(() => {});
+    }
+
     // Limpeza limitada: registros de conversas que saíram do "em atendimento"
     // (finalizadas/arquivadas) são descartados para o próximo ciclo começar limpo.
-    const idsAtivos = new Set(conversas.map((c) => c.id));
+    const idsAtivos = new Set(porId.keys());
     const orfaos = registros.filter((r) => !idsAtivos.has(r.conversa_id)).slice(0, 200);
     if (orfaos.length) {
       const orfasConversas = comoLista(

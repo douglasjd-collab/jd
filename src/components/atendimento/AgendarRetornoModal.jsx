@@ -61,7 +61,6 @@ export default function AgendarRetornoModal({ open, item, empresaId, onOpenChang
         motivo: motivo.trim(),
         descricao: descricao.trim(),
         inicio: instante.toISOString(),
-        evento_id: eventoCriado || undefined,
       });
       if (resposta?.error) {
         if (resposta.evento_id) setEventoCriado(resposta.evento_id);

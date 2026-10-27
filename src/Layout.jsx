@@ -942,6 +942,9 @@ export default function Layout({ children, currentPageName }) {
       {/* Alertas de Tarefas Atrasadas */}
       {user && user.perfil !== 'parceiro' && <AlertasTarefasAtrasadas user={user} />}
 
+      {/* Central de atendimento: espera > 5 min e revisão de 1 hora */}
+      {user?.empresa_id && user.perfil !== 'parceiro' && <CentralAtendimento user={user} />}
+
       {user?.empresa_id && user.perfil !== 'parceiro' && <PopupChamadaRecebida user={user}/>}
 
       {/* Monitor de campanhas permanece ativo em todas as áreas do CRM */}
