@@ -3,6 +3,7 @@ import { mesclarHistoricoMensagens } from '@/components/chat/cacheMensagens';
 import useNotasConversa from '@/components/chat/useNotasConversa';
 import NotasConversaEditor from '@/components/chat/NotasConversaEditor';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { marcarConversaComoLida } from '@/components/chat/marcarConversaComoLida';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -97,6 +98,7 @@ function classNames(...classes) {
 }
 
 export default function BatePapo() {
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
   const [conversaSelecionada, setConversaSelecionada] = useState(null);
@@ -905,10 +907,38 @@ export default function BatePapo() {
     return () => { cancelado = true; clearTimeout(timer); };
   }, [empresaId, conversaIdsKey, conversaSelecionadaId, revisaoLeitura]);
 
+  // Navegação interna do alerta: usa a conversa em cache e preserva a página.
+  // O id exato é mantido, inclusive para o mesmo contato em conexões diferentes.
+  const selecionarPeloAlertaRef = useRef(selecionarConversa);
+  selecionarPeloAlertaRef.current = selecionarConversa;
+  useEffect(() => {
+    const id = location.state?.atendimentoConversaId;
+    if (!id || !empresaId) return;
+    let cancelado = false;
+    const abrir = async () => {
+      try {
+        const cache = queryClient.getQueryData(['conversas-whatsapp', empresaId]) || [];
+        const conversa = cache.find(c => c.id === id)
+          || await base44.entities.ConversaWhatsapp.get(id);
+        if (cancelado) return;
+        if (!conversa || conversa.empresa_id && conversa.empresa_id !== empresaId) {
+          throw new Error('Conversa indisponível');
+        }
+        manterListaAposFinalizacaoRef.current = false;
+        await selecionarPeloAlertaRef.current(conversa, true, true);
+      } catch (erro) {
+        if (!cancelado) toast.error('Não foi possível abrir a conversa. Tente novamente.');
+      }
+    };
+    abrir();
+    return () => { cancelado = true; };
+  }, [location.key, location.state?.atendimentoConversaId, empresaId, queryClient]);
+
   // Selecionar conversa inicial quando a lista carrega
   useEffect(() => {
     if (conversas.length === 0) return;
     if (!conversaSelecionada) {
+      if (location.state?.atendimentoConversaId) return;
       if (manterListaAposFinalizacaoRef.current) return;
       // Verificar se há conversa_id na URL (vindo do botão "Conversar" de contato compartilhado)
       const urlParams = new URLSearchParams(window.location.search);

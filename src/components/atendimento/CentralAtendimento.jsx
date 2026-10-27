@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { BellRing, ChevronDown, RefreshCw, Settings2, X, Clock, Hourglass } from 'lucide-react';
@@ -19,6 +20,7 @@ const PERFIS_ADMIN = ['admin', 'master', 'super_admin'];
  * consulta — só reabre quando o conjunto pendente muda.
  */
 export default function CentralAtendimento({ user }) {
+  const navigate = useNavigate();
   const empresaId = user?.empresa_id;
   const podeUsar = !!empresaId && user?.perfil !== 'parceiro';
   const { dados, atualizando, buscar } = useAlertasAtendimento({ empresaId, ativo: podeUsar });
@@ -60,7 +62,10 @@ export default function CentralAtendimento({ user }) {
   if (!total && !adiados.length) return null;
 
   const abrirConversa = (item) => {
-    window.location.href = createPageUrl(`BatePapo?conversa_id=${item.conversa_id}`);
+    setAberto(false);
+    navigate(createPageUrl('BatePapo'), {
+      state: { atendimentoConversaId: item.conversa_id },
+    });
   };
 
   const executar = async (payload, mensagemSucesso) => {
