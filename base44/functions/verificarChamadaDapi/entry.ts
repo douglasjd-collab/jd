@@ -2,14 +2,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { resolverConexaoDapi } from '../../shared/dapiConexaoShared.ts';
 
 // O webhook da D-API não avisa em tempo real quando o contato desiste da
-// chamada. Esta verificação consulta o estado da chamada direto na API para o
-// popup parar de tocar no momento em que ela deixa de existir.
-const ENCERRADAS = [
-  'ended', 'end', 'finished', 'terminated', 'rejected', 'reject', 'declined',
-  'missed', 'not_answered', 'notanswered', 'no_answer', 'noanswer', 'timeout',
-  'failed', 'failure', 'cancelled', 'canceled', 'closed', 'hangup', 'hung_up'
-];
-
+// chamada. Esta verificação consulta o estado da chamada direto na API
+// (POST /api/v1/calls/state) para o popup parar de tocar no instante em que ela
+// deixa de existir.
 export default async function (req) {
   try {
     const base44 = createClientFromRequest(req);
@@ -32,40 +27,34 @@ export default async function (req) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { baseUrl, apiKey } = resolverConexaoDapi(conexao);
-    const resposta = await fetch(`${baseUrl}/api/v1/calls/${encodeURIComponent(callId)}`, {
-      headers: { Authorization: apiKey },
+    const { baseUrl, apiKey, sessionId } = resolverConexaoDapi(conexao);
+    if (!sessionId) return Response.json({ ativa: null, status: 'sem_sessao' });
+
+    const resposta = await fetch(`${baseUrl}/api/v1/calls/state`, {
+      method: 'POST',
+      headers: { Authorization: apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId, callId }),
       signal: AbortSignal.timeout(8000)
     });
+    if (!resposta.ok) return Response.json({ ativa: null, status: 'indisponivel' });
+
     const corpo = await resposta.json().catch(() => ({}));
+    const dados = corpo?.data || {};
+    const estado = String(dados.state || '').trim().toLowerCase();
+    const ativa = typeof dados.active === 'boolean' ? dados.active : null;
 
-    // A API só mantém a chamada enquanto ela existe: 404 significa que já caiu.
-    if (resposta.status === 404) {
+    if (ativa === false) {
       await encerrar(base44, conexao, callId);
-      return Response.json({ ativa: false, status: 'encerrada' });
-    }
-    if (!resposta.ok) {
-      return Response.json({ ativa: null, status: 'indisponivel' });
+      return Response.json({ ativa: false, status: estado || 'encerrada' });
     }
 
-    const bruto = String(
-      corpo?.call?.status || corpo?.call?.state || corpo?.data?.status ||
-      corpo?.status || corpo?.state || ''
-    ).trim().toLowerCase();
-
-    if (!bruto) return Response.json({ ativa: null, status: 'desconhecido' });
-
-    if (ENCERRADAS.includes(bruto) || bruto.includes('end') || bruto.includes('reject')) {
-      await encerrar(base44, conexao, callId);
-      return Response.json({ ativa: false, status: bruto });
-    }
-
-    return Response.json({ ativa: true, status: bruto });
+    return Response.json({ ativa, status: estado || 'desconhecido' });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
 }
 
+// Mantém a oferta marcada como encerrada para os outros atendentes.
 async function encerrar(base44: any, conexao: any, callId: string) {
   try {
     await base44.asServiceRole.entities.ChamadaVozWhatsapp.updateMany(

@@ -131,7 +131,8 @@ export default function PopupChamadaRecebida({user}) {
     if(vivo&&r?.data?.ativa===false)remove(call.id);
    }catch{}
   };
-  void verificar();
+  // espera o primeiro ciclo do toque antes de consultar, para não confundir
+  // a chamada que acabou de chegar com uma já encerrada
   const t=setInterval(()=>{void verificar()},2500);
   return ()=>{vivo=false;clearInterval(t)};
  },[ringing,call?.id]);
