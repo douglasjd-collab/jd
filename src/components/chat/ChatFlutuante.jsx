@@ -249,7 +249,7 @@ export default function ChatFlutuante({ empresaId, user, captureTargetRef, captu
     return (
       <button
         onClick={() => { setMinimized(false); setOpen(true); }}
-        className="fixed bottom-6 right-6 z-[9998] w-14 h-14 rounded-full bg-[#25D366] hover:bg-[#1ebe5b] shadow-lg flex items-center justify-center transition-transform hover:scale-110"
+        className="print:hidden fixed bottom-6 right-6 z-[9998] w-14 h-14 rounded-full bg-[#25D366] hover:bg-[#1ebe5b] shadow-lg flex items-center justify-center transition-transform hover:scale-110"
         title="Conversar no WhatsApp"
       >
         <svg viewBox="0 0 24 24" className="w-7 h-7 fill-white" xmlns="http://www.w3.org/2000/svg">
@@ -270,7 +270,7 @@ export default function ChatFlutuante({ empresaId, user, captureTargetRef, captu
       {minimized && (
         <button
           onClick={() => setMinimized(false)}
-          className="fixed bottom-6 right-6 z-[9998] w-14 h-14 rounded-full bg-[#25D366] hover:bg-[#1ebe5b] shadow-lg flex items-center justify-center transition-transform hover:scale-110"
+          className="print:hidden fixed bottom-6 right-6 z-[9998] w-14 h-14 rounded-full bg-[#25D366] hover:bg-[#1ebe5b] shadow-lg flex items-center justify-center transition-transform hover:scale-110"
           title="Reabrir chat"
         >
           <svg viewBox="0 0 24 24" className="w-7 h-7 fill-white" xmlns="http://www.w3.org/2000/svg">
