@@ -221,6 +221,7 @@ export default function CentralAtendimento({ user }) {
         open={!!itemAgendar}
         item={itemAgendar}
         empresaId={empresaId}
+        usuario={user}
         onOpenChange={(v) => !v && setItemAgendar(null)}
         onConcluido={buscar}
       />

@@ -15,7 +15,9 @@ import { Textarea } from '@/components/ui/textarea';
  * aberta; se a finalização falhar, o evento é preservado e a nova tentativa
  * reaproveita o mesmo compromisso (sem duplicar).
  */
-export default function AgendarRetornoModal({ open, item, empresaId, onOpenChange, onConcluido }) {
+export default function AgendarRetornoModal({ open, item, empresaId, usuario, onOpenChange, onConcluido }) {
+  // O retorno é sempre gravado no nome de quem agenda (regra do servidor).
+  const responsavelNome = usuario?.nome_perfil || usuario?.full_name || usuario?.email || '';
   const [motivo, setMotivo] = useState('');
   const [descricao, setDescricao] = useState('');
   const [data, setData] = useState('');
@@ -112,6 +114,15 @@ export default function AgendarRetornoModal({ open, item, empresaId, onOpenChang
               onChange={(e) => setDescricao(e.target.value)}
               disabled={salvando}
             />
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="retorno-responsavel">Responsável pelo retorno</Label>
+            <Input id="retorno-responsavel" value={responsavelNome} readOnly disabled />
+            <p className="text-xs text-slate-500">
+              O compromisso fica no seu nome na Agenda. Para passar a outro atendente, use a transferência
+              do atendimento antes de agendar.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
