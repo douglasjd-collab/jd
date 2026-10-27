@@ -14,7 +14,7 @@ import {
   Calendar,
   ShoppingCart
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO, isValid, differenceInYears } from 'date-fns';
 
 function formatDocumento(value) {
   const digits = String(value || '').replace(/\D/g, '');
@@ -209,6 +209,11 @@ export default function ClienteDetalhes() {
     ? cliente.pj_cnpj 
     : cliente.cpf;
 
+  const nascimento = cliente.data_nascimento ? parseISO(cliente.data_nascimento) : null;
+  const hoje = new Date();
+  const nascimentoValido = nascimento && isValid(nascimento) && nascimento <= hoje;
+  const idade = nascimentoValido ? differenceInYears(hoje, nascimento) : null;
+
   const isPJ = cliente.tipo_pessoa === 'Jurídica';
   const prefixoEndereco = isPJ ? 'pj_' : 'res_';
   const campoEndereco = (campo) => cliente[prefixoEndereco + campo];
@@ -258,8 +263,12 @@ export default function ClienteDetalhes() {
             <CampoCadastro label="Estado / UF" value={campoEndereco('uf')} />
             <CampoCadastro label="CEP" value={formatCep(campoEndereco('cep'))} />
             {!isPJ && (
-              <CampoCadastro label="Data de nascimento" icon={Calendar}
-                value={cliente.data_nascimento ? format(new Date(cliente.data_nascimento), 'dd/MM/yyyy') : null} />
+              <>
+                <CampoCadastro label="Data de nascimento" icon={Calendar}
+                  value={nascimentoValido ? format(nascimento, 'dd/MM/yyyy') : null} />
+                <CampoCadastro label="Idade" icon={Calendar}
+                  value={idade !== null ? `${idade} ${idade === 1 ? 'ano' : 'anos'}` : null} />
+              </>
             )}
             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl min-w-0">
               <span className="text-slate-500">Status</span>
