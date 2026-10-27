@@ -6,7 +6,7 @@ import { createPageUrl } from '@/utils';
 import useAlertasAtendimento from './useAlertasAtendimento';
 import ItemAguardando from './ItemAguardando';
 import ItemRevisao from './ItemRevisao';
-import FinalizarAtendimentoModal from './FinalizarAtendimentoModal';
+import FinalizarAtendimentoDialog from '@/components/chat/FinalizarAtendimentoDialog';
 import AgendarRetornoModal from './AgendarRetornoModal';
 import ConfiguracaoHorarioModal from './ConfiguracaoHorarioModal';
 
@@ -210,12 +210,23 @@ export default function CentralAtendimento({ user }) {
         </div>
       </div>
 
-      <FinalizarAtendimentoModal
+      {/* Mesmo modal principal do Bate-papo: mensagem padrão editável e os três botões.
+          O destino é resolvido pelo id da conversa (e pela conexão dela), não pela tela aberta. */}
+      <FinalizarAtendimentoDialog
         open={!!itemFinalizar}
-        item={itemFinalizar}
+        conversaId={itemFinalizar?.conversa_id}
         empresaId={empresaId}
+        user={user}
+        descricaoExtra={
+          itemFinalizar?.tipo === 'aguardando'
+            ? `O cliente aguarda resposta há ${itemFinalizar.minutos} min. "Enviar e finalizar" responde e encerra; "Finalizar sem enviar" encerra sem responder.`
+            : ''
+        }
         onOpenChange={(v) => !v && setItemFinalizar(null)}
-        onConcluido={buscar}
+        onConcluida={async () => {
+          setItemFinalizar(null);
+          await buscar();
+        }}
       />
       <AgendarRetornoModal
         open={!!itemAgendar}
