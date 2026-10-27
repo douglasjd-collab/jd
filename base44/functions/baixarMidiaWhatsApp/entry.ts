@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { nomeOriginalMidia } from '../../shared/nomeMidiaShared.ts';
+import { carregarConversaAutorizada } from '../../shared/acessoWhatsappShared.ts';
 
 export default async function(req) {
   try {
@@ -18,6 +19,12 @@ export default async function(req) {
     const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ id: mensagem_id });
     const mensagem = mensagens?.[0];
     if (!mensagem) return Response.json({ error: 'Mensagem não encontrada' }, { status: 404 });
+
+    // Anexo só é liberado para quem tem acesso à conversa da mensagem.
+    const autorizado = await carregarConversaAutorizada({ base44, user, conversaId: mensagem.conversa_id });
+    if ('erro' in autorizado) {
+      return Response.json({ error: autorizado.erro }, { status: autorizado.status });
+    }
     const nomeOriginal = nomeOriginalMidia(mensagem);
     if (nomeOriginal && nomeOriginal !== mensagem.arquivo_nome) {
       await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagem_id, { arquivo_nome: nomeOriginal });

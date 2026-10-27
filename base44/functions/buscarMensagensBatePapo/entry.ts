@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { carregarConversaAutorizada } from '../../shared/acessoWhatsappShared.ts';
 
 const MAX_FETCH = 500;
 const URL_REGEX = /(https?:\/\/[^\s]+|www\.[^\s]+)/i;
@@ -31,23 +32,24 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ success: false, error: 'conversa_id obrigatório' }, { status: 400 });
     }
 
-    // Respeita RLS ao buscar a conversa com o token do próprio usuário.
-    // Se não tiver permissão, retorna 404 — não expõe nada de outras empresas.
-    let conversa = null;
-    try { conversa = await base44.entities.ConversaWhatsapp.get(conversa_id); } catch (_) {}
-    if (!conversa) {
-      return Response.json({ success: false, error: 'Conversa não encontrada ou sem permissão' }, { status: 404 });
+    // Autorização por conexão: histórico/busca/galeria somente de conversa
+    // acessível ao usuário (backend valida antes de ler as mensagens).
+    const autorizado = await carregarConversaAutorizada({ base44, user, conversaId: conversa_id });
+    if ('erro' in autorizado) {
+      return Response.json({ success: false, error: autorizado.erro }, { status: autorizado.status });
     }
+    const conversa = autorizado.conversa;
+    const db = base44.asServiceRole.entities;
 
     // ─── MODO LOCALIZAR ─── carrega mensagem alvo + janela ao redor ───
     if (modo === 'localizar' && (mensagem_id || whatsapp_message_id)) {
       let mensagem = null;
       if (mensagem_id) {
-        try { mensagem = await base44.entities.MensagemWhatsapp.get(mensagem_id); } catch (_) {}
+        try { mensagem = await db.MensagemWhatsapp.get(mensagem_id); } catch (_) {}
       }
       if (!mensagem && whatsapp_message_id) {
         try {
-          const encontradas = await base44.entities.MensagemWhatsapp.filter({
+          const encontradas = await db.MensagemWhatsapp.filter({
             conversa_id,
             whatsapp_message_id: String(whatsapp_message_id),
           }, '-data_envio', 1);
@@ -62,14 +64,14 @@ export default async function(req: Request): Promise<Response> {
       let anteriores = [];
       let posteriores = [];
       try {
-        anteriores = await base44.entities.MensagemWhatsapp.filter(
+        anteriores = await db.MensagemWhatsapp.filter(
           { conversa_id, data_envio: { $lt: dataAlvo } },
           '-data_envio',
           Number(contexto_antes) || 30
         );
       } catch (_) {}
       try {
-        posteriores = await base44.entities.MensagemWhatsapp.filter(
+        posteriores = await db.MensagemWhatsapp.filter(
           { conversa_id, data_envio: { $gte: dataAlvo } },
           'data_envio',
           (Number(contexto_depois) || 30) + 1
@@ -117,7 +119,7 @@ export default async function(req: Request): Promise<Response> {
 
     let msgs: any[] = [];
     try {
-      msgs = await base44.entities.MensagemWhatsapp.filter(filter, '-data_envio', MAX_FETCH);
+      msgs = await db.MensagemWhatsapp.filter(filter, '-data_envio', MAX_FETCH);
     } catch (e) {
       // Em vez de propagar 500 (causa toast vermelho e trava as abas da galeria),
       // retorna vazio — o front exibe estado "sem resultados" para o usuário.

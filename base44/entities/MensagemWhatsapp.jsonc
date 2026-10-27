@@ -220,7 +220,7 @@
   ],
   "security": {
     "read": {
-      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return true; return record.empresa_id === user.empresa_id;"
+      "rule": "var u = user || {}; var dados = u.data || {}; var empresa = u.empresa_id || dados.empresa_id; var mapa = {}; try { mapa = JSON.parse(u.whatsapp_permissoes_json || dados.whatsapp_permissoes_json || '{}') || {}; } catch (e) { mapa = {}; } if (u.perfil === 'super_admin' || u.perfil === 'master') return true; if (!empresa) return true; if (record.empresa_id !== empresa) return false; if (Object.keys(mapa).length) return false; return true;"
     },
     "create": {
       "rule": "return true;"

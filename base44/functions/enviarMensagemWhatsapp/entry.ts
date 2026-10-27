@@ -4,6 +4,7 @@ import { waitUntil } from 'base44:runtime';
 import { enviarDapiDireto } from '../../shared/dapiEnvioShared.ts';
 import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.ts';
 import { marcarRecebidasAteResposta } from '../../shared/leituraRespostaShared.ts';
+import { carregarAcessoWhatsapp, podeAcessarConversa } from '../../shared/acessoWhatsappShared.ts';
 
 Deno.serve(async (req) => {
   console.log('='.repeat(80));
@@ -100,6 +101,19 @@ Deno.serve(async (req) => {
     try {
       conversaDoBanco = await base44.asServiceRole.entities.ConversaWhatsapp.get(conversa_id);
     } catch (_) {}
+
+    // Autorização por conexão: só envia em conversa acessível ao usuário.
+    // A conexão usada no envio continua sendo a da própria conversa.
+    if (conversaDoBanco) {
+      const acesso = await carregarAcessoWhatsapp({
+        db: base44.asServiceRole.entities,
+        user,
+        empresaId: conversaDoBanco.empresa_id,
+      });
+      if (!podeAcessarConversa(acesso, conversaDoBanco)) {
+        return Response.json({ error: 'Sem permissão para enviar mensagens nesta conversa', success: false }, { status: 403 });
+      }
+    }
 
     // Garantir empresaId — usar da conversa se não veio no payload nem no user
     if (!empresaId && conversaDoBanco?.empresa_id) {

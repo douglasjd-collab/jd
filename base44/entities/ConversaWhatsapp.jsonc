@@ -117,6 +117,10 @@
       "type": "string",
       "description": "Nome do usu\u00e1rio respons\u00e1vel"
     },
+    "usuario_responsavel_user_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio autenticado dono da conversa (respons\u00e1vel padr\u00e3o da conex\u00e3o). Usado na autoriza\u00e7\u00e3o por conex\u00e3o e na RLS."
+    },
     "responsavel_id": {
       "type": "string",
       "description": "ID do atendente atual (expira em 10 min sem intera\u00e7\u00e3o)"
@@ -124,6 +128,10 @@
     "responsavel_nome": {
       "type": "string",
       "description": "Nome do atendente atual"
+    },
+    "responsavel_user_id": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio autenticado do atendente atual. Usado na autoriza\u00e7\u00e3o por conex\u00e3o e na RLS."
     },
     "atendimento_transferido_para_id": {
       "type": "string",
@@ -133,6 +141,14 @@
       "type": "string",
       "format": "date-time",
       "description": "Quando expira o atendimento ativo (10 min ap\u00f3s \u00faltimo envio)"
+    },
+    "acesso_pontual_user_ids_json": {
+      "type": "string",
+      "description": "JSON array com IDs de usu\u00e1rios que receberam acesso pontual por transfer\u00eancia. Vale enquanto a conversa tiver respons\u00e1vel ativo."
+    },
+    "transferencias_json": {
+      "type": "string",
+      "description": "JSON array com o hist\u00f3rico de transfer\u00eancias [{autor_id, autor_nome, data, origem_connection_id, origem_responsavel_id, origem_responsavel_nome, destino_colaborador_id, destino_user_id, destino_nome}]"
     },
     "tipo_conexao": {
       "type": "string",
@@ -184,7 +200,7 @@
     },
     "instancia": {
       "type": "string",
-      "description": "Nome da inst\u00e2cia Evolution / session_id D-API"
+      "description": "Nome da inst\u00e2ncia Evolution / session_id D-API"
     },
     "instance_id": {
       "type": "string",
@@ -213,13 +229,13 @@
   ],
   "security": {
     "read": {
-      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return true; if (record.empresa_id !== user.empresa_id) return false; if (record.tipo_conexao === 'usuario' && record.colaborador_id) { if (user.perfil === 'admin' || user.perfil === 'gerente' || user.perfil === 'funcionario') return true; return record.colaborador_id === user.colaborador_id; } return true;"
+      "rule": "var u = user || {}; var dados = u.data || {}; var empresa = u.empresa_id || dados.empresa_id; var mapa = {}; try { mapa = JSON.parse(u.whatsapp_permissoes_json || dados.whatsapp_permissoes_json || '{}') || {}; } catch (e) { mapa = {}; } if (u.perfil === 'super_admin' || u.perfil === 'master') return true; if (!empresa) return true; if (record.empresa_id !== empresa) return false; var chaves = Object.keys(mapa); if (!chaves.length) { if (record.tipo_conexao === 'usuario' && record.colaborador_id) { if (['admin','gerente','funcionario'].indexOf(u.perfil) !== -1) return true; return record.colaborador_id === (u.colaborador_id || dados.colaborador_id); } return true; } var nivel = mapa[record.connection_id || ''] || 'sem_acesso'; if (nivel === 'todas') return true; if (nivel !== 'atribuidas') return false; var meus = [u.id, u.user_id, u.colaborador_id, dados.colaborador_id].filter(Boolean); var tem = function (v) { return !!v && meus.indexOf(v) !== -1; }; if (tem(record.usuario_responsavel_id) || tem(record.usuario_responsavel_user_id) || tem(record.responsavel_user_id)) return true; if (!record.responsavel_id) return false; if (tem(record.responsavel_id) || tem(record.atendimento_transferido_para_id)) return true; var pontual = []; try { pontual = JSON.parse(record.acesso_pontual_user_ids_json || '[]') || []; } catch (e) { pontual = []; } for (var i = 0; i < pontual.length; i++) { if (tem(pontual[i])) return true; } return false;"
     },
     "create": {
       "rule": "return true;"
     },
     "update": {
-      "rule": "return true;"
+      "rule": "var u = user || {}; var dados = u.data || {}; var empresa = u.empresa_id || dados.empresa_id; var mapa = {}; try { mapa = JSON.parse(u.whatsapp_permissoes_json || dados.whatsapp_permissoes_json || '{}') || {}; } catch (e) { mapa = {}; } if (u.perfil === 'super_admin' || u.perfil === 'master') return true; if (!empresa) return true; if (record.empresa_id !== empresa) return false; var chaves = Object.keys(mapa); if (!chaves.length) return true; var nivel = mapa[record.connection_id || ''] || 'sem_acesso'; if (nivel === 'todas') return true; if (nivel !== 'atribuidas') return false; var meus = [u.id, u.user_id, u.colaborador_id, dados.colaborador_id].filter(Boolean); var tem = function (v) { return !!v && meus.indexOf(v) !== -1; }; if (tem(record.usuario_responsavel_id) || tem(record.usuario_responsavel_user_id) || tem(record.responsavel_user_id)) return true; if (!record.responsavel_id) return false; if (tem(record.responsavel_id) || tem(record.atendimento_transferido_para_id)) return true; var pontual = []; try { pontual = JSON.parse(record.acesso_pontual_user_ids_json || '[]') || []; } catch (e) { pontual = []; } for (var i = 0; i < pontual.length; i++) { if (tem(pontual[i])) return true; } return false;"
     },
     "delete": {
       "rule": "return user.perfil === 'admin' || user.perfil === 'super_admin';"
