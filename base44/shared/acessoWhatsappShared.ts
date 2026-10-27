@@ -148,3 +148,25 @@ export async function carregarConversaAutorizada({ base44, user, conversaId }: {
 
   return { conversa } as const;
 }
+
+// Responsável padrão das NOVAS conversas de uma conexão (definido na tela de
+// permissões por colaborador). Sem configuração, a conversa nasce sem dono e
+// segue a regra anterior.
+export async function responsavelPadraoDaConexao(db: any, empresaId: string, connectionId: string) {
+  try {
+    const configs = await db.PermissaoWhatsappColaborador.filter(
+      { empresa_id: empresaId, connection_id: connectionId, responsavel_padrao: true, ativo: true },
+      '-updated_date',
+      5
+    );
+    const cfg = configs?.[0];
+    if (!cfg?.colaborador_id) return {};
+    return {
+      usuario_responsavel_id: cfg.colaborador_id,
+      usuario_responsavel_nome: cfg.colaborador_nome || '',
+      usuario_responsavel_user_id: cfg.colaborador_user_id || null,
+    };
+  } catch (_) {
+    return {};
+  }
+}

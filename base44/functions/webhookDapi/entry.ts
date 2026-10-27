@@ -5,6 +5,7 @@ import { novaMensagemDeveReabrir } from '../../shared/reaberturaConversaShared.t
 import { marcarRecebidasAteResposta } from '../../shared/leituraRespostaShared.ts';
 import { metadadosMidiaDapi } from '../../shared/nomeMidiaShared.ts';
 import { registrarChamadaRecebidaDapi, finalizarChamadaDapi } from '../../shared/chamadaDapiShared.ts';
+import { responsavelPadraoDaConexao } from '../../shared/acessoWhatsappShared.ts';
 
 /**
  * Webhook Oficial D-API - Endpoint Público
@@ -728,20 +729,17 @@ async function processMessageReceived(base44, body, connection, empresaId) {
   let _antesUltimaMensagem = null;
   let _antesUltimaMensagemEm = null;
   try {
-    const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
+    // ───────── ETAPA 5 — Localizar a conversa ─────────
+    // Uma conversa por conexão + cliente: o mesmo número falando com dois
+    // WhatsApps da empresa nunca compartilha histórico. Conversas antigas sem
+    // connection_id são reaproveitadas apenas até a primeira mensagem nova.
+    const _todasConversasTelefone = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
       empresa_id: empresaId,
       cliente_telefone: fromPhone
-    }, '-created_date', 1);
-
-    // ───────── ETAPA 5 — Localizar a conversa ─────────
-    // Lista TODAS as conversas com o mesmo telefone para detectar duplicidade.
-    let _todasConversasTelefone = [];
-    try {
-      _todasConversasTelefone = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-        empresa_id: empresaId,
-        cliente_telefone: fromPhone
-      }, '-created_date', 50);
-    } catch (_) {}
+    }, '-created_date', 50);
+    const _daConexao = _todasConversasTelefone.find((c: any) => c.connection_id === connection.id) || null;
+    const _legadaSemConexao = _todasConversasTelefone.find((c: any) => !c.connection_id) || null;
+    const conversas = [_daConexao || _legadaSemConexao].filter(Boolean);
 
     await registrarDiagnostico(base44, _traceId, 5, {
       etapa_nome: conversas.length > 0 ? 'CONVERSA_ENCONTRADA' : 'CONVERSA_NAO_ENCONTRADA',
@@ -815,7 +813,9 @@ async function processMessageReceived(base44, body, connection, empresaId) {
         ultimo_remetente: 'cliente',
         last_inbound_provider: 'dapi',
         cliente_respondeu: true,
-        data_primeira_resposta: new Date().toISOString()
+        data_primeira_resposta: new Date().toISOString(),
+        // Responsável padrão configurado para a conexão (tela de permissões).
+        ...(await responsavelPadraoDaConexao(base44.asServiceRole.entities, empresaId, connection.id))
       });
       _conversaCriada = true;
       console.log(`✅ [Webhook D-API] Conversa criada: ${conversa.id}`);

@@ -164,7 +164,9 @@ async function sincronizarMapaUsuario(db: any, empresaId: string, userId: string
   const restrito = Object.values(mapa).some((n) => n !== 'todas');
   try {
     await db.User.update(userId, {
-      whatsapp_permissoes_json: JSON.stringify(mapa),
+      // Só existe restrição quando alguma conexão não é "todas". Sem restrição o
+      // espelho fica vazio e o usuário mantém o acesso anterior (irrestrito).
+      whatsapp_permissoes_json: restrito ? JSON.stringify(mapa) : '{}',
       whatsapp_restrito: restrito,
     });
   } catch (_) { /* mapa permanece apenas nos registros de permissão */ }

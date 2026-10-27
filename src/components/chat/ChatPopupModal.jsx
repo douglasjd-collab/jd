@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { carregarMensagensConversa } from '@/components/chat/historicoAutorizado';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -80,11 +81,7 @@ export default function ChatPopupModal({ open, onOpenChange, contato, empresaId,
     queryKey: ['mensagens-popup', conversaId],
     enabled: !!conversaId,
     queryFn: async () => {
-      const msgs = await base44.entities.MensagemWhatsapp.filter(
-        { conversa_id: conversaId },
-        '-data_envio',
-        300
-      );
+      const msgs = await carregarMensagensConversa({ user, conversaId, limite: 300 });
       return [...msgs].reverse();
     },
     staleTime: 0,

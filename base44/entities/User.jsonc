@@ -84,6 +84,15 @@
         "inativo"
       ],
       "default": "ativo"
+    },
+    "whatsapp_permissoes_json": {
+      "type": "string",
+      "description": "Espelho (JSON) do n\u00edvel de acesso do usu\u00e1rio por conex\u00e3o de WhatsApp. Gravado apenas pelo backend \u2014 \u00e9 o que a RLS de conversas e mensagens consulta."
+    },
+    "whatsapp_restrito": {
+      "type": "boolean",
+      "default": false,
+      "description": "Verdadeiro quando o usu\u00e1rio tem ao menos uma conex\u00e3o com acesso restrito. Gravado apenas pelo backend."
     }
   },
   "required": [
@@ -91,10 +100,16 @@
   ],
   "security": {
     "read": {
-      "rule": "return true;"
+      "rule": "if (user.role === 'admin') return true; if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (record.id === user.id) return true; var empresa = user.empresa_id || (user.data || {}).empresa_id; if (!empresa) return false; return record.empresa_id === empresa;"
+    },
+    "create": {
+      "rule": "return user.role === 'admin';"
     },
     "update": {
-      "rule": "return true;"
+      "rule": "if (user.role === 'admin') return true; if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (['admin', 'gerente'].indexOf(user.perfil) !== -1) { var empresa = user.empresa_id || (user.data || {}).empresa_id; return !!empresa && record.empresa_id === empresa; } return false;"
+    },
+    "delete": {
+      "rule": "return user.role === 'admin';"
     }
   }
 }

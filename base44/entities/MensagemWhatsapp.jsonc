@@ -223,10 +223,10 @@
       "rule": "var u = user || {}; var dados = u.data || {}; var empresa = u.empresa_id || dados.empresa_id; var mapa = {}; try { mapa = JSON.parse(u.whatsapp_permissoes_json || dados.whatsapp_permissoes_json || '{}') || {}; } catch (e) { mapa = {}; } if (u.perfil === 'super_admin' || u.perfil === 'master') return true; if (!empresa) return true; if (record.empresa_id !== empresa) return false; if (Object.keys(mapa).length) return false; return true;"
     },
     "create": {
-      "rule": "return true;"
+      "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; var empresa = user.empresa_id || (user.data || {}).empresa_id; if (!empresa) return false; return record.empresa_id === empresa;"
     },
     "update": {
-      "rule": "return true;"
+      "rule": "var u = user || {}; var dados = u.data || {}; var empresa = u.empresa_id || dados.empresa_id; var mapa = {}; try { mapa = JSON.parse(u.whatsapp_permissoes_json || dados.whatsapp_permissoes_json || '{}') || {}; } catch (e) { mapa = {}; } if (u.perfil === 'super_admin' || u.perfil === 'master') return true; if (!empresa) return true; if (record.empresa_id !== empresa) return false; if (Object.keys(mapa).length) return false; return true;"
     },
     "delete": {
       "rule": "return user.perfil === 'admin' || user.perfil === 'super_admin';"

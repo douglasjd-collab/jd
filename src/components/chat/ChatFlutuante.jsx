@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { carregarMensagensConversa } from '@/components/chat/historicoAutorizado';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -110,7 +111,7 @@ export default function ChatFlutuante({ empresaId, user, captureTargetRef, captu
     queryKey: ['mensagens-flutuante', conversaId],
     enabled: !!conversaId,
     queryFn: async () => {
-      const msgs = await base44.entities.MensagemWhatsapp.filter({ conversa_id: conversaId }, '-data_envio', 200);
+      const msgs = await carregarMensagensConversa({ user, conversaId, limite: 200 });
       return [...msgs].reverse();
     },
     staleTime: 0,

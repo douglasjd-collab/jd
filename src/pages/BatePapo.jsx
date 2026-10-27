@@ -73,7 +73,7 @@ import FunilSelectionModal from '@/components/chat/FunilSelectionModal';
 import CriarProximaAcaoBar from '@/components/chat/CriarProximaAcaoBar';
 import FunilInfoPanel from '@/components/chat/FunilInfoPanel';
 import PainelInfoLead from '@/components/chat/PainelInfoLead';
-import BatePapoMenu from '@/components/chat/BatePapoMenu';
+import BatePapoMenu from '@/components/chat/BatePapoMenu'; import PermissoesWhatsappModal from '@/components/chat/PermissoesWhatsappModal'; import { carregarMensagensConversa, usuarioRestritoWhatsapp } from '@/components/chat/historicoAutorizado';
 import AgendarMensagemModal from '@/components/chat/AgendarMensagemModal';
 import MensagensAgendadasModal from '@/components/chat/MensagensAgendadasModal';
 import AgendarReuniaoModal from '@/components/chat/AgendarReuniaoModal';
@@ -402,7 +402,7 @@ export default function BatePapo() {
   const [funilModalOpen, setFunilModalOpen] = useState(false);
   const [oportunidadeAtual, setOportunidadeAtual] = useState(null);
   const [agendarMensagemModal, setAgendarMensagemModal] = useState(null); // conversa
-  const [agendadasOpen, setAgendadasOpen] = useState(false);
+  const [agendadasOpen, setAgendadasOpen] = useState(false); const [permissoesOpen, setPermissoesOpen] = useState(false);
   const [agendarReuniaoModal, setAgendarReuniaoModal] = useState(null); // conversa
   const [mobileViewChat, setMobileViewChat] = useState(false); const swipeBack = useSwipeBack(() => setMobileViewChat(false)); const [produtividadeOpen, setProdutividadeOpen] = useState(false);
   const [coachIAOpen, setCoachIAOpen] = useState(false);
@@ -505,14 +505,8 @@ export default function BatePapo() {
         tarefa => !['concluida', 'concluido', 'arquivado', 'arquivada', 'cancelada', 'cancelado'].includes(tarefa.status)
       );
 
-      const dadosTransferencia = {
-        responsavel_id: colaborador.id,
-        responsavel_nome: colaborador.nome,
-        responsavel_expira_em: new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString(),
-        atendimento_transferido_para_id: colaborador.id,
-        status: 'ativa',
-      };
-      await base44.entities.ConversaWhatsapp.update(conversa.id, dadosTransferencia);
+      const resposta = await base44.functions.invoke('transferirAtendimentoWhatsapp', { conversa_id: conversa.id, colaborador_id: colaborador.id });
+      const dadosTransferencia = resposta?.data?.conversa || { responsavel_id: colaborador.id, responsavel_nome: colaborador.nome, atendimento_transferido_para_id: colaborador.id };
       queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
         (Array.isArray(old) ? old : []).map(c => c.id === conversa.id ? { ...c, ...dadosTransferencia } : c)
       );
@@ -796,7 +790,7 @@ export default function BatePapo() {
     queryKey: ['mensagens-whatsapp', conversaSelecionadaId],
     initialData: () => lerHistoricoSessao(escopoHistorico, conversaSelecionadaId),
     initialDataUpdatedAt: 0,
-    enabled: !!conversaSelecionadaId,
+    enabled: !!conversaSelecionadaId && !!user,
     queryFn: async () => {
       if (!conversaSelecionadaId) return [];
       const key = ['mensagens-whatsapp', conversaSelecionadaId];
@@ -810,9 +804,8 @@ export default function BatePapo() {
       const filtro = incremental
         ? {conversa_id: conversaSelecionadaId, updated_date: {$gte: ultimaCriacao}}
         : {conversa_id: conversaSelecionadaId};
-      const msgs = await base44.entities.MensagemWhatsapp.filter(
-        filtro, incremental ? '-updated_date' : '-data_envio', incremental ? 1000 : limiteMensagens
-      );
+      const msgs = await carregarMensagensConversa({ user, conversaId: conversaSelecionadaId,
+        limite: incremental ? 1000 : limiteMensagens, desde: incremental ? ultimaCriacao : undefined });
       // Relê o cache após a consulta: eventos que chegaram durante a busca são preservados.
       const atuais = (queryClient.getQueryData(key) || []).filter(m =>
         m.conversa_id === conversaSelecionadaId && !/^(temp_|tmp_)/.test(m.id || '')
@@ -851,7 +844,7 @@ export default function BatePapo() {
 
   const ultimaMensagemVisivelId = mensagens.at(-1)?.id || '';
   useEffect(() => {
-    if (!conversaSelecionadaId || loadingMensagens || !mensagens.length) return;
+    if (!conversaSelecionadaId || loadingMensagens || !mensagens.length || usuarioRestritoWhatsapp(user)) return;
     marcarConversaComoLida(conversaSelecionadaId).then(reconciliarLeitura);
   }, [conversaSelecionadaId, loadingMensagens, ultimaMensagemVisivelId, reconciliarLeitura]);
 
@@ -869,8 +862,7 @@ export default function BatePapo() {
   // Buscar mensagens não lidas do banco e montar contadores por conversa
   const conversaIdsKey = useMemo(() => conversas.filter(c => c.id).map(c => [c.id, c.data_ultima_mensagem, c.ultimo_remetente].join(':')).sort().join('|'), [conversas]);
   useEffect(() => {
-    if (!empresaId || conversas.length === 0) return;
-
+    if (!empresaId || conversas.length === 0 || usuarioRestritoWhatsapp(user)) return;
     const conversaIds = conversas.filter(c => c.id).map(c => c.id);
     const abertaId = conversaSelecionadaId;
 
@@ -1931,7 +1923,7 @@ export default function BatePapo() {
           empresaId={empresaId}
         />
 
-        <MensagensAgendadasModal open={agendadasOpen} onOpenChange={setAgendadasOpen} empresaId={empresaId} />
+        <MensagensAgendadasModal open={agendadasOpen} onOpenChange={setAgendadasOpen} empresaId={empresaId} /><PermissoesWhatsappModal open={permissoesOpen} onOpenChange={setPermissoesOpen} empresaId={empresaId} />
 
         {/* Modal Encaminhar Mensagens — seleção de destino(s) */}
         <EncaminharMensagensModal
@@ -2128,7 +2120,7 @@ export default function BatePapo() {
                   refetchConversas={refetchConversas}
                   sincronizarTodosContatosEvolution={sincronizarTodosContatosEvolution}
                   sincronizarHistoricoTodasConversas={sincronizarHistoricoTodasConversas}
-                  setAgendadasOpen={setAgendadasOpen}
+                  setAgendadasOpen={setAgendadasOpen} podeGerenciarPermissoes={user?.role === 'admin' || ['admin', 'gerente', 'master', 'super_admin'].includes(user?.perfil)} onAbrirPermissoes={() => setPermissoesOpen(true)}
                 />
               </div>
             </CardHeader>

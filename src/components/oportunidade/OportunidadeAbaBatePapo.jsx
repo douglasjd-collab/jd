@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { carregarMensagensConversa } from '@/components/chat/historicoAutorizado';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, MessageCircle, MoreVertical, BellOff, Tag, CalendarCheck, CalendarClock, CheckSquare, ArrowLeftRight } from 'lucide-react';
@@ -51,7 +52,7 @@ export default function OportunidadeAbaBatePapo({ oportunidade, currentUser }) {
     queryKey: ['mensagens-funil', conversaId],
     enabled: !!conversaId,
     queryFn: async () => {
-      const msgs = await base44.entities.MensagemWhatsapp.filter({ conversa_id: conversaId }, '-data_envio', 200);
+      const msgs = await carregarMensagensConversa({ user: currentUser, conversaId, limite: 200 });
       return [...msgs].reverse();
     },
     staleTime: 0,

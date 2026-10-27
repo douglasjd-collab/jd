@@ -16,6 +16,7 @@ import {
   Trash2,
   Tag,
   CalendarClock,
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
@@ -23,6 +24,8 @@ import { toast } from 'sonner';
 
 export default function BatePapoMenu({
   empresaId,
+  podeGerenciarPermissoes = false,
+  onAbrirPermissoes,
   sincronizando,
   setSincronizando,
   setGerenciamentoTagsOpen,
@@ -76,6 +79,12 @@ export default function BatePapoMenu({
           <CalendarClock className="mr-2 h-4 w-4" />
           Mensagens Agendadas
         </DropdownMenuItem>
+        {podeGerenciarPermissoes && (
+          <DropdownMenuItem onClick={() => onAbrirPermissoes?.()}>
+            <ShieldCheck className="mr-2 h-4 w-4" />
+            Permissões do WhatsApp
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem 
           onClick={handleSincronizarFotosAgressivo}
