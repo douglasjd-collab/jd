@@ -977,6 +977,8 @@ export default function BatePapo() {
         // Atualizar silenciosamente os dados da conversa selecionada (status, última mensagem, etc.)
         setConversaSelecionada(prev => prev ? { ...prev, status: conversaAtualizada.status, ultima_mensagem: conversaAtualizada.ultima_mensagem, data_ultima_mensagem: conversaAtualizada.data_ultima_mensagem, ultimo_remetente: conversaAtualizada.ultimo_remetente, tipo_conexao: conversaAtualizada.tipo_conexao, instancia: conversaAtualizada.instancia, phone_number_id_meta: conversaAtualizada.phone_number_id_meta, canal_atendimento: conversaAtualizada.canal_atendimento, canal_preferencial: conversaAtualizada.canal_preferencial, canal_origem: conversaAtualizada.canal_origem, provider: conversaAtualizada.provider, locked_provider: conversaAtualizada.locked_provider, last_inbound_provider: conversaAtualizada.last_inbound_provider, responsavel_id: conversaAtualizada.responsavel_id, responsavel_nome: conversaAtualizada.responsavel_nome, responsavel_expira_em: conversaAtualizada.responsavel_expira_em, atendimento_transferido_para_id: conversaAtualizada.atendimento_transferido_para_id, atendimento_prioritario: conversaAtualizada.atendimento_prioritario, bloqueado: conversaAtualizada.bloqueado, foto_url: conversaAtualizada.foto_url } : prev);
       } else {
+        // Alerta aponta para o id exato: não trocar por outra conexão do contato.
+        if (location.state?.atendimentoConversaId === conversaSelecionada.id) return;
         // Conversa não existe mais — tentar encontrar pelo telefone
         const mesmTelefone = conversas.find(c =>
           c.cliente_telefone === conversaSelecionada.cliente_telefone
