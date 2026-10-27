@@ -15,8 +15,6 @@ import {
   ShoppingCart
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Link } from 'react-router-dom';
-import { createPageUrl } from '@/utils';
 
 function formatDocumento(value) {
   const digits = String(value || '').replace(/\D/g, '');
@@ -211,19 +209,26 @@ export default function ClienteDetalhes() {
     ? cliente.pj_cnpj 
     : cliente.cpf;
 
-  const telefone = cliente.tipo_pessoa === 'Jurídica'
-    ? (cliente.pj_celular || cliente.pj_telefone_fixo)
-    : (cliente.celular || cliente.telefone_fixo);
+  const isPJ = cliente.tipo_pessoa === 'Jurídica';
+  const prefixoEndereco = isPJ ? 'pj_' : 'res_';
+  const campoEndereco = (campo) => cliente[prefixoEndereco + campo];
+  const email = isPJ ? (cliente.pj_email || cliente.email) : cliente.email;
+  const telefones = [];
+  const numerosVistos = new Set();
+  const adicionarTelefone = (numero, tipo) => {
+    const normalizado = String(numero || '').replace(/\D/g, '');
+    const chave = normalizado.length > 11 && normalizado.startsWith('55') ? normalizado.slice(2) : normalizado;
+    if (!chave || numerosVistos.has(chave)) return;
+    numerosVistos.add(chave);
+    let exibicao = chave;
+    if (chave.length === 11) exibicao = chave.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+    if (chave.length === 10) exibicao = chave.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+    telefones.push(tipo ? `${exibicao} · ${tipo}` : exibicao);
+  };
+  adicionarTelefone(isPJ ? cliente.pj_celular : cliente.celular, 'Celular');
+  adicionarTelefone(isPJ ? cliente.pj_telefone_fixo : cliente.telefone_fixo, 'Fixo');
+  telefonesVinculados.forEach(t => adicionarTelefone(t.telefone, t.tipo));
 
-  const email = cliente.tipo_pessoa === 'Jurídica'
-    ? cliente.pj_email
-    : cliente.email;
-
-  const endereco = cliente.tipo_pessoa === 'Jurídica'
-    ? [cliente.pj_endereco, cliente.pj_numero, cliente.pj_bairro, cliente.pj_cidade, cliente.pj_uf]
-        .filter(Boolean).join(', ')
-    : [cliente.res_endereco, cliente.res_numero, cliente.res_bairro, cliente.res_cidade, cliente.res_uf]
-        .filter(Boolean).join(', ');
 
   return (
     <div className="space-y-6">
@@ -233,66 +238,30 @@ export default function ClienteDetalhes() {
         backTo="Clientes"
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Info do Cliente */}
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-sm xl:col-span-2 min-w-0">
           <CardHeader>
-            <CardTitle>Informações</CardTitle>
+            <CardTitle>Informações cadastrais</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              <User className="w-5 h-5 text-slate-400" />
-              <div>
-                <p className="text-sm text-slate-500">Nome</p>
-                <p className="font-medium">{nomeExibicao || '-'}</p>
-              </div>
-            </div>
-
-            {cliente.senha_gov && (
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                <User className="w-5 h-5 text-slate-400" />
-                <div>
-                  <p className="text-sm text-slate-500">Senha GOV</p>
-                  <p className="font-medium">{cliente.senha_gov}</p>
-                </div>
-              </div>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <CampoCadastro label={isPJ ? 'Razão social' : 'Nome completo'} value={nomeExibicao} icon={User} className="sm:col-span-2" />
+            <CampoCadastro label={isPJ ? 'CNPJ' : 'CPF'} value={formatDocumento(identificacao)} icon={User} />
+            {cliente.senha_gov && <CampoCadastro label="Senha GOV" value={cliente.senha_gov} icon={User} />}
+            <CampoCadastro label="Telefones" value={telefones.join('\n')} icon={Phone} className="sm:col-span-2" />
+            <CampoCadastro label="E-mail" value={email} icon={Mail} className="sm:col-span-2" />
+            <CampoCadastro label="Endereço / Logradouro" value={campoEndereco('endereco')} className="sm:col-span-2" />
+            <CampoCadastro label="Número" value={campoEndereco('numero')} />
+            <CampoCadastro label="Complemento" value={campoEndereco('complemento')} />
+            <CampoCadastro label="Bairro" value={campoEndereco('bairro')} />
+            <CampoCadastro label="Cidade" value={campoEndereco('cidade')} />
+            <CampoCadastro label="Estado / UF" value={campoEndereco('uf')} />
+            <CampoCadastro label="CEP" value={formatCep(campoEndereco('cep'))} />
+            {!isPJ && (
+              <CampoCadastro label="Data de nascimento" icon={Calendar}
+                value={cliente.data_nascimento ? format(new Date(cliente.data_nascimento), 'dd/MM/yyyy') : null} />
             )}
-
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              <Phone className="w-5 h-5 text-slate-400" />
-              <div>
-                <p className="text-sm text-slate-500">Telefone</p>
-                <p className="font-medium">{telefone || '-'}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              <Mail className="w-5 h-5 text-slate-400" />
-              <div>
-                <p className="text-sm text-slate-500">Email</p>
-                <p className="font-medium">{email || '-'}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              <MapPin className="w-5 h-5 text-slate-400" />
-              <div>
-                <p className="text-sm text-slate-500">Endereço</p>
-                <p className="font-medium">{endereco || '-'}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-              <Calendar className="w-5 h-5 text-slate-400" />
-              <div>
-                <p className="text-sm text-slate-500">Data de Nascimento</p>
-                <p className="font-medium">
-                  {cliente.data_nascimento ? format(new Date(cliente.data_nascimento), 'dd/MM/yyyy') : '-'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl min-w-0">
               <span className="text-slate-500">Status</span>
               <StatusBadge status={cliente.status} />
             </div>
@@ -300,7 +269,7 @@ export default function ClienteDetalhes() {
         </Card>
 
         {/* Resumo e Vendas */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="xl:col-span-3 space-y-6 min-w-0">
           {/* Cards resumo */}
           <div className="grid grid-cols-2 gap-4">
             <Card className="border-0 shadow-sm">
