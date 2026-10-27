@@ -11,6 +11,17 @@ export default function useAlertasAtendimento({ empresaId, ativo }) {
   const [dados, setDados] = useState(null);
   const [atualizando, setAtualizando] = useState(false);
   const emAndamento = useRef(false);
+  const [nomesAtuais, setNomesAtuais] = useState({});
+
+  useEffect(() => {
+    setNomesAtuais({});
+    if (!ativo || !empresaId) return;
+    const atualizarNomes = (evento) => {
+      if (evento.detail?.empresaId === empresaId) setNomesAtuais(evento.detail.nomes || {});
+    };
+    window.addEventListener('atendimento:nomes-atualizados', atualizarNomes);
+    return () => window.removeEventListener('atendimento:nomes-atualizados', atualizarNomes);
+  }, [ativo, empresaId]);
 
   const buscar = useCallback(async () => {
     if (!empresaId || emAndamento.current) return;
@@ -45,5 +56,17 @@ export default function useAlertasAtendimento({ empresaId, ativo }) {
     };
   }, [ativo, empresaId, buscar]);
 
-  return { dados, atualizando, buscar };
+  // Sobrepor só a apresentação: nome novo não reinicia relógios nem adiamentos.
+  const dadosAtuais = dados ? {
+    ...dados,
+    ...Object.fromEntries(['aguardando', 'revisao', 'adiados'].map(tipo => [
+      tipo,
+      (dados[tipo] || []).map(item => ({
+        ...item,
+        cliente_nome: nomesAtuais[item.conversa_id] || item.cliente_nome,
+      })),
+    ])),
+  } : null;
+
+  return { dados: dadosAtuais, atualizando, buscar };
 }

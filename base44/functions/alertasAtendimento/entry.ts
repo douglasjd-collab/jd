@@ -517,6 +517,37 @@ export default async function (req: Request): Promise<Response> {
       }
     }
 
+    // Mesma seleção de contato usada por buscarConversasComContatos:
+    // telefone com/sem nono dígito, contato fixo preferido e mais recente.
+    const variantesNome = (telefone: string) => {
+      const tel = String(telefone || '').replace(/\D/g, '');
+      if (!tel) return [];
+      const lista = [tel];
+      if (tel.startsWith('55') && tel.length === 13) lista.push(tel.slice(0, 4) + tel.slice(5));
+      if (tel.startsWith('55') && tel.length === 12) lista.push(tel.slice(0, 4) + '9' + tel.slice(4));
+      return lista;
+    };
+    const telefonesNome = [...new Set(autorizadas.flatMap(c => variantesNome(c.cliente_telefone)))];
+    const contatosNome = telefonesNome.length
+      ? comoLista(await db.ContatoWhatsapp.filter(
+          { empresa_id: empresaId, telefone: { $in: telefonesNome } },
+          '-created_date',
+          Math.min(Math.max(telefonesNome.length * 2, 100), 4000)
+        ))
+      : [];
+    const contatoPorTelefone = new Map<string, any>();
+    for (const contato of contatosNome) {
+      for (const tel of variantesNome(contato.telefone)) {
+        const atual = contatoPorTelefone.get(tel);
+        if (!atual || (contato.nome_fixo && !atual.nome_fixo)) contatoPorTelefone.set(tel, contato);
+      }
+    }
+    const nomeAtual = (conversa: any) => {
+      const contato = variantesNome(conversa.cliente_telefone)
+        .map(tel => contatoPorTelefone.get(tel)).find(Boolean);
+      return contato?.nome || conversa.cliente_nome || conversa.cliente_telefone || '';
+    };
+
     const agora = Date.now();
     const aguardando: any[] = [];
     const revisao: any[] = [];
@@ -529,7 +560,7 @@ export default async function (req: Request): Promise<Response> {
       const item = {
         conversa_id: conversa.id,
         connection_id: conversa.connection_id || '',
-        cliente_nome: registro.cliente_nome || conversa.cliente_nome || conversa.cliente_telefone || '',
+        cliente_nome: nomeAtual(conversa),
         cliente_telefone: registro.cliente_telefone || conversa.cliente_telefone || '',
         status_conversa: conversa.status,
       };

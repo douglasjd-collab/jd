@@ -307,6 +307,19 @@ export default function BatePapo() {
   const [filtroPrioridade, setFiltroPrioridade] = useState('todos'); // 'todos' | 'prioritarios'
   const [novaConversaOpen, setNovaConversaOpen] = useState(false);
   const [contatosWhatsapp, setContatosWhatsapp] = useState({});
+
+  // A central global acompanha o mesmo cache de nomes exibido no atendimento.
+  useEffect(() => {
+    if (!empresaId) return;
+    const nomes = Object.fromEntries(
+      Object.entries(contatosWhatsapp).filter(([, contato]) => contato?.nome)
+        .map(([id, contato]) => [id, contato.nome])
+    );
+    window.dispatchEvent(new CustomEvent('atendimento:nomes-atualizados', {
+      detail: { empresaId, nomes },
+    }));
+  }, [empresaId, contatosWhatsapp]);
+
   const [infoLeadAberto, setInfoLeadAberto] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [mensagemParaResponder, setMensagemParaResponder] = useState(null);
