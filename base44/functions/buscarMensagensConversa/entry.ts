@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.20';
+import { carregarConversaAutorizada } from '../../shared/acessoWhatsappShared.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -11,7 +12,12 @@ Deno.serve(async (req) => {
 
     console.log('🔍 Buscando mensagens da conversa:', conversa_id);
 
-    // Usar asServiceRole para garantir acesso sem restrições de empresa_id
+    // Autorização antes de qualquer leitura com service role.
+    const autorizado = await carregarConversaAutorizada({ base44, user, conversaId: conversa_id });
+    if ('erro' in autorizado) {
+      return Response.json({ error: autorizado.erro }, { status: autorizado.status });
+    }
+
     const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
       { conversa_id },
       'data_envio',

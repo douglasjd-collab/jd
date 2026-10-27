@@ -22,6 +22,9 @@ export interface AcessoWhatsapp {
   mapa: Record<string, NivelWhatsapp>;
   conexoesPermitidas: string[];
   identidades: string[];
+  // true quando não foi possível ler as permissões gravadas. Listagens usam
+  // este sinal para falhar fechado em vez de devolver tudo.
+  erroLeitura?: boolean;
 }
 
 export function parseMapaPermissoes(bruto: any): Record<string, NivelWhatsapp> {
@@ -73,17 +76,25 @@ export async function carregarAcessoWhatsapp({ db, user, empresaId }: { db: any;
   const identidades = await resolverIdentidades(db, user, empresaId);
 
   let configs: any[] = [];
+  let erroLeitura = false;
   try {
     configs = await db.PermissaoWhatsappColaborador.filter(
       { empresa_id: empresaId, colaborador_user_id: user.id, ativo: true },
       '-updated_date',
       500
     );
-  } catch (_) { configs = []; }
+  } catch (_) {
+    configs = [];
+    erroLeitura = true;
+  }
 
   const mapa: Record<string, NivelWhatsapp> = { ...mapaUsuario };
+  // configs vem ordenado do mais recente para o mais antigo: o primeiro
+  // registro de cada conexão é o válido (evita que uma configuração antiga
+  // sobrescreva a atual).
   for (const c of configs) {
     if (!c?.connection_id) continue;
+    if (mapa[c.connection_id]) continue;
     mapa[c.connection_id] = c.nivel_acesso;
   }
 
@@ -92,7 +103,7 @@ export async function carregarAcessoWhatsapp({ db, user, empresaId }: { db: any;
     .filter(([, nivel]) => nivel !== 'sem_acesso')
     .map(([id]) => id);
 
-  return { irrestrito, mapa, conexoesPermitidas, identidades };
+  return { irrestrito, mapa, conexoesPermitidas, identidades, erroLeitura };
 }
 
 export function nivelNaConexao(acesso: AcessoWhatsapp, connectionId?: string | null): NivelWhatsapp {

@@ -9,6 +9,12 @@ Deno.serve(async (req) => {
     const { empresa_id, responsavel_id } = await req.json();
     if (!empresa_id) return Response.json({ error: 'empresa_id required' }, { status: 400 });
 
+    const isGlobal = ['super_admin', 'master'].includes(user.perfil || '');
+    const empresaUsuario = user.empresa_id || user.data?.empresa_id || null;
+    if (!isGlobal && empresaUsuario && empresaUsuario !== empresa_id) {
+      return Response.json({ error: 'Sem permissão para esta empresa' }, { status: 403 });
+    }
+
     const todasConversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
       { empresa_id },
       '-data_ultima_mensagem',
@@ -21,6 +27,11 @@ Deno.serve(async (req) => {
       user,
       empresaId: empresa_id,
     });
+    // Falha fechada: contadores nunca somam conversas sem permissão validada.
+    if (acesso.erroLeitura) {
+      return Response.json({ error: 'Não foi possível validar as permissões' }, { status: 403 });
+    }
+
     const conversas = acesso.irrestrito
       ? todasConversas
       : todasConversas.filter(c => podeAcessarConversa(acesso, c));

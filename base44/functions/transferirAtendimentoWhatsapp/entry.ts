@@ -88,6 +88,11 @@ export default async function (req: Request): Promise<Response> {
       responsavel_id: destino.id,
       responsavel_nome: destino.nome || '',
       responsavel_user_id: destino.user_id,
+      // O dono da conversa acompanha a transferência: sem isso o responsável
+      // anterior manteria acesso pela posse (usado na autorização e na RLS).
+      usuario_responsavel_id: destino.id,
+      usuario_responsavel_nome: destino.nome || '',
+      usuario_responsavel_user_id: destino.user_id,
       responsavel_expira_em: new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString(),
       atendimento_transferido_para_id: destino.id,
       status: 'ativa',

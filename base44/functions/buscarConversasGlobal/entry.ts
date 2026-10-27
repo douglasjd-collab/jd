@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { carregarAcessoWhatsapp, podeAcessarConversa } from '../../shared/acessoWhatsappShared.ts';
 
 const digitos = (v = '') => String(v).replace(/\D/g, '');
 const normalizar = (v = '') => String(v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -15,6 +16,21 @@ Deno.serve(async (req) => {
     const {empresa_id, q = '', limit = 100} = await req.json();
     const termo = String(q).trim().slice(0,100);
     if (!empresa_id || termo.length < 2) return Response.json({conversas:[]});
+    const isGlobal = ['super_admin', 'master'].includes(user.perfil || '');
+    const empresaUsuario = user.empresa_id || user.data?.empresa_id || null;
+    if (!isGlobal && empresaUsuario && empresaUsuario !== empresa_id) {
+      return Response.json({error:'Sem permissão para esta empresa'}, {status:403});
+    }
+    // Falha fechada: busca só responde com permissões validadas.
+    let acesso;
+    try {
+      acesso = await carregarAcessoWhatsapp({db: base44.asServiceRole.entities, user, empresaId: empresa_id});
+    } catch (_) {
+      return Response.json({error:'Não foi possível validar as permissões'}, {status:403});
+    }
+    if (acesso.erroLeitura) {
+      return Response.json({error:'Não foi possível validar as permissões'}, {status:403});
+    }
     const max = Math.min(Math.max(Number(limit) || 100,1),300);
     const numero = digitos(termo);
     const nome = {$regex: regexNome(termo), $options:'i'};
@@ -37,6 +53,7 @@ Deno.serve(async (req) => {
       {empresa_id,cliente_telefone:{$in:telefones}},'-data_ultima_mensagem',max
     ) : [];
     const unicas = [...new Map([...diretas,...porContatos].map(c=>[c.id,c])).values()]
+      .filter(c => acesso.irrestrito || podeAcessarConversa(acesso, c))
       .sort((a,b)=>(b.data_ultima_mensagem || '').localeCompare(a.data_ultima_mensagem || '')).slice(0,max);
     const telefonesResultado = [...new Set(unicas.map(c=>digitos(c.cliente_telefone)).filter(Boolean))];
     const detalhes = telefonesResultado.length ? await entities.ContatoWhatsapp.filter(

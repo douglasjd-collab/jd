@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { carregarAcessoWhatsapp, podeAcessarConversa } from '../../shared/acessoWhatsappShared.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -17,15 +18,48 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'empresa_id required' }, { status: 400 });
     }
 
+    // Empresa: usuário comum só lista a própria empresa.
+    const isGlobal = ['super_admin', 'master'].includes(user.perfil || '');
+    const empresaUsuario = user.empresa_id || user.data?.empresa_id || null;
+    if (!isGlobal && empresaUsuario && empresaUsuario !== empresaId) {
+      return Response.json({ error: 'Sem permissão para esta empresa' }, { status: 403 });
+    }
+
+    // Autorização por colaborador/conexão antes de qualquer busca ou resposta.
+    // Falha fechada: sem permissões validadas, nada é devolvido.
+    let acesso;
+    try {
+      acesso = await carregarAcessoWhatsapp({
+        db: base44.asServiceRole.entities,
+        user,
+        empresaId,
+      });
+    } catch (e) {
+      console.error('Falha ao validar permissões do WhatsApp:', e?.message || e);
+      return Response.json({ error: 'Não foi possível validar as permissões' }, { status: 403 });
+    }
+    if (acesso.erroLeitura) {
+      return Response.json({ error: 'Não foi possível validar as permissões' }, { status: 403 });
+    }
+
+    // Leitura com service role: usuário restrito precisa varrer a empresa para
+    // depois manter só o que ele pode ver (nunca ampliar o limite do resultado).
+    const limiteBusca = acesso.irrestrito ? limit : 10000;
+
     // Buscar TODAS as conversas (exceto grupos bloqueados)
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
       { empresa_id: empresaId },
       '-data_ultima_mensagem',
-      limit
+      limiteBusca
     );
 
+    // Somente conversas autorizadas seguem para deduplicação, contatos e resposta.
+    const visiveis = acesso.irrestrito
+      ? conversas
+      : conversas.filter(c => podeAcessarConversa(acesso, c));
+
     // Filtrar grupos bloqueados
-    const conversasValidas = conversas.filter(c => {
+    const conversasValidas = visiveis.filter(c => {
       // Se é grupo e está bloqueado, descartar
       const isGrupo = (c.cliente_telefone || '').includes('@g.us') || 
                       (c.whatsapp_id || '').includes('@g.us') ||
@@ -40,7 +74,7 @@ Deno.serve(async (req) => {
     // Buscar somente os contatos relacionados ao lote atual de conversas.
     // Evita baixar toda a base de contatos a cada atualização do Bate-papo.
     const telefonesDoLote = Array.from(new Set(
-      conversas.flatMap(c => {
+      visiveis.flatMap(c => {
         const tel = String(c.cliente_telefone || '').replace(/\D/g, '');
         if (!tel) return [];
         const lista = [tel];
@@ -87,7 +121,7 @@ Deno.serve(async (req) => {
     // PASSO 1: Deduplicar — manter a conversa mais recente por telefone
     // Sem buscar mensagens individuais (evita rate limit)
     // ═══════════════════════════════════════════════════════════
-    console.log(`📊 Total conversas carregadas: ${conversas.length} | Válidas (não-bloqueadas): ${conversasValidas.length}`);
+    console.log(`📊 Conversas autorizadas: ${visiveis.length} de ${conversas.length} | Válidas (não-bloqueadas): ${conversasValidas.length}`);
     const conversasPorTelNorm = {};
     for (const conversa of conversasValidas) {
       const tel = conversa.cliente_telefone || '';
