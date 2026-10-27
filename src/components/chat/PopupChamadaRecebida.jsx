@@ -72,7 +72,18 @@ export default function PopupChamadaRecebida({user}) {
   // Reconciliação: além do evento em tempo real, revalida as ofertas pendentes
   // periodicamente. O evento em tempo real pode não chegar (webhook/realtime) e
   // sem isso a ligação fica registrada mas o popup não abre.
-  const sync=()=>base44.entities.ChamadaVozWhatsapp.filter({empresa_id:user.empresa_id,status:'recebida',created_date:{$gte:new Date(Date.now()-90000).toISOString()}},'-created_date',30).then(rows=>rows.forEach(receive)).catch(()=>{});
+  const sync=()=>base44.entities.ChamadaVozWhatsapp.filter({empresa_id:user.empresa_id,status:'recebida',created_date:{$gte:new Date(Date.now()-90000).toISOString()}},'-created_date',30).then(rows=>{
+   const lista=Array.isArray(rows)?rows:(rows?.items||[]);
+   lista.forEach(receive);
+   // Quem saiu da lista de "recebida" foi encerrado pelo contato (ou expirou):
+   // para de tocar na hora, sem depender do evento em tempo real.
+   const vivas=new Set(lista.filter(c=>c.status==='recebida').map(c=>c.id));
+   setCalls(old=>{
+    const next={};let mudou=false;
+    Object.entries(old).forEach(([id,c])=>{if(vivas.has(id))next[id]=c;else mudou=true});
+    return mudou?next:old;
+   });
+  }).catch(()=>{});
   void sync();
   const visible=()=>{if(document.visibilityState==='visible')void sync()};
   // Revalida também com a aba em segundo plano, para o aviso do sistema abrir fora do CRM.
@@ -98,6 +109,8 @@ export default function PopupChamadaRecebida({user}) {
  useEffect(()=>{
   stop.current?.();stop.current=null;
   if(ringing&&soundReady&&context.current?.state==='running')stop.current=startCallRingback(context.current);
+  // Chamada encerrada pelo contato: some o toque e o aviso do sistema junto.
+  if(!ringing){fecharAviso();notificados.current.clear()}
   return ()=>{stop.current?.();stop.current=null};
  },[ringing,call?.id,soundReady]);
  useEffect(()=>{
