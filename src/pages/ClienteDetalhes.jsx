@@ -18,6 +18,30 @@ import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 
+function formatDocumento(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length === 11) return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+  if (digits.length === 14) return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+  return value || 'Não informado';
+}
+
+function formatCep(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits.length === 8 ? digits.replace(/(\d{5})(\d{3})/, '$1-$2') : value;
+}
+
+function CampoCadastro({ label, value, icon: Icon = MapPin, className = '' }) {
+  return (
+    <div className={`flex items-start gap-3 p-3 bg-slate-50 rounded-xl min-w-0 ${className}`}>
+      <Icon className="w-5 h-5 text-slate-400 shrink-0 mt-1" />
+      <div className="min-w-0">
+        <p className="text-sm text-slate-500">{label}</p>
+        <p className="font-medium whitespace-pre-line break-words [overflow-wrap:anywhere]">{value || 'Não informado'}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function ClienteDetalhes() {
   const urlParams = new URLSearchParams(window.location.search);
   const clienteId = urlParams.get('id');
@@ -34,6 +58,12 @@ export default function ClienteDetalhes() {
   const { data: vendas = [], isLoading: loadingVendas } = useQuery({
     queryKey: ['vendas-cliente', clienteId],
     queryFn: () => base44.entities.Venda.filter({ cliente_id: clienteId }),
+    enabled: !!clienteId
+  });
+
+  const { data: telefonesVinculados = [] } = useQuery({
+    queryKey: ['cliente-telefones-detalhes', clienteId],
+    queryFn: () => base44.entities.ClienteTelefone.filter({ cliente_id: clienteId }),
     enabled: !!clienteId
   });
 
@@ -199,7 +229,7 @@ export default function ClienteDetalhes() {
     <div className="space-y-6">
       <PageHeader
         title={nomeExibicao}
-        subtitle={identificacao}
+        subtitle={formatDocumento(identificacao)}
         backTo="Clientes"
       />
 
