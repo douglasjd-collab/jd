@@ -82,7 +82,7 @@ export default function CentralAtendimento({ user }) {
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="print:hidden fixed bottom-24 right-6 z-[9997] flex items-center gap-2 rounded-full bg-[#10353C] px-3.5 py-2 text-white shadow-lg transition-colors hover:bg-[#155059]"
+        className="print:hidden fixed top-24 right-6 z-[9997] flex items-center gap-2 rounded-full bg-[#10353C] px-3.5 py-2 text-white shadow-lg transition-colors hover:bg-[#155059]"
         title="Atendimentos aguardando resposta"
       >
         <BellRing className="h-4 w-4" />
@@ -96,7 +96,7 @@ export default function CentralAtendimento({ user }) {
 
   return (
     <>
-      <div className="print:hidden fixed bottom-24 right-6 z-[9997] w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+      <div className="print:hidden fixed top-24 right-6 z-[9997] w-[380px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
         <div className="flex items-center justify-between bg-[#10353C] px-3 py-2 text-white">
           <div className="flex items-center gap-2">
             <BellRing className="h-4 w-4" />
