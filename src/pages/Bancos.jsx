@@ -232,11 +232,11 @@ export default function Bancos() {
             <Card key={banco.id} className="hover:shadow-md transition-shadow">
               <div className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-4 flex-1">
-                   <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 overflow-hidden border border-slate-200">
+                   <div className="w-14 h-14 rounded-xl bg-white ring-1 ring-slate-200 shadow-sm flex items-center justify-center flex-shrink-0 overflow-hidden">
                      {banco.logo_url ? (
-                       <img src={banco.logo_url} alt={banco.nome} className="w-full h-full object-contain p-1" />
+                       <img src={banco.logo_url} alt={banco.nome} className="w-full h-full object-contain p-1.5" />
                      ) : (
-                       <Building2 className="w-5 h-5 text-green-600" />
+                       <Building2 className="w-6 h-6 text-green-600" />
                      )}
                    </div>
                   <div className="flex-1">
@@ -287,9 +287,9 @@ export default function Bancos() {
             <div>
               <Label>Logo do Banco</Label>
               <div className="flex items-center gap-3 mt-1">
-                <div className="w-14 h-14 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0 bg-slate-50">
+                <div className="w-16 h-16 rounded-xl border border-slate-200 ring-1 ring-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 bg-white shadow-sm">
                   {formData.logo_url ? (
-                    <img src={formData.logo_url} alt="logo" className="w-full h-full object-contain p-1" />
+                    <img src={formData.logo_url} alt="logo" className="w-full h-full object-contain p-2" />
                   ) : (
                     <Building2 className="w-6 h-6 text-slate-300" />
                   )}
