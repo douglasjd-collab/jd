@@ -316,6 +316,7 @@ export default function CentralAtendimento({ user }) {
                     key={conversa.id}
                     conversa={conversa}
                     onAbrir={() => abrirConversa({ conversa_id: conversa.id })}
+                    onAgendar={() => setItemAgendar({ ...conversa, conversa_id: conversa.id })}
                   />
                 ))}
               </div>
