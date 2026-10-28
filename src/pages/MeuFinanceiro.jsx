@@ -12,6 +12,7 @@ import { Loader2, Plus, Pencil, Trash2, TrendingUp, TrendingDown, Wallet, ArrowU
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend } from 'recharts';
 import TransacoesTab from '@/components/meu_financeiro/TransacoesTab';
 import DRETab from '@/components/meu_financeiro/DRETab';
+import RelatoriosComissoesTab from '@/components/meu_financeiro/RelatoriosComissoesTab';
 import FormModalFinanceiro from '@/components/meu_financeiro/FormModalFinanceiro';
 import FabNovoLancamento from '@/components/meu_financeiro/FabNovoLancamento';
 import { format, startOfMonth, endOfMonth, subMonths, parseISO } from 'date-fns';
@@ -32,6 +33,7 @@ const ABAS_OPTIONS = [
   { value: 'contas', label: 'Contas' },
   { value: 'projecao', label: 'Projeção' },
   { value: 'dre', label: 'DRE' },
+  { value: 'relatorios_comissoes', label: 'Relatórios' },
 ];
 
 export default function MeuFinanceiro() {
@@ -97,6 +99,7 @@ export default function MeuFinanceiro() {
         <TabsContent value="contas"><ContasTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="projecao"><ProjecaoTab user={user} refreshKey={refreshKey} /></TabsContent>
         <TabsContent value="dre"><DRETab user={user} refreshKey={refreshKey} /></TabsContent>
+        <TabsContent value="relatorios_comissoes"><RelatoriosComissoesTab user={user} /></TabsContent>
       </Tabs>
     </div>
   );
