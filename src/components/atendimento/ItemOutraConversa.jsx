@@ -6,7 +6,7 @@ import { formatarTelefoneBR } from '@/components/utils/formatarTelefone';
  * Conversa encontrada na busca que não está pendente (cliente já respondido ou
  * atendimento em andamento). Serve só para localizar e abrir o contato.
  */
-export default function ItemOutraConversa({ conversa, onAbrir }) {
+export default function ItemOutraConversa({ conversa, onAbrir, onAgendar }) {
   const respondidoPeloVendedor = conversa.ultimo_remetente === 'vendedor';
   const rotulo = conversa.status === 'encerrada'
     ? 'Encerrada'
@@ -24,7 +24,7 @@ export default function ItemOutraConversa({ conversa, onAbrir }) {
         </span>
       </div>
 
-      <div className="mt-2">
+      <div className="mt-2 flex flex-wrap gap-2">
         <button
           type="button"
           onClick={() => onAbrir(conversa)}
@@ -32,6 +32,9 @@ export default function ItemOutraConversa({ conversa, onAbrir }) {
         >
           <MessageSquare className="h-3.5 w-3.5" />
           Abrir conversa
+        </button>
+        <button type="button" onClick={() => onAgendar(conversa)} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+          Agendar retorno
         </button>
       </div>
     </div>
