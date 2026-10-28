@@ -7,11 +7,15 @@ import { createPageUrl } from '@/utils';
 import useAlertasAtendimento from './useAlertasAtendimento';
 import ItemAguardando from './ItemAguardando';
 import ItemRevisao from './ItemRevisao';
+import ItemOutraConversa from './ItemOutraConversa';
 import FinalizarAtendimentoDialog from '@/components/chat/FinalizarAtendimentoDialog';
 import AgendarRetornoModal from './AgendarRetornoModal';
 import ConfiguracaoHorarioModal from './ConfiguracaoHorarioModal';
 
 const PERFIS_ADMIN = ['admin', 'master', 'super_admin'];
+
+const semAcento = (valor = '') =>
+  String(valor).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
 /**
  * Central compacta de atendimento: reúne clientes que aguardam resposta humana
@@ -34,6 +38,7 @@ export default function CentralAtendimento({ user }) {
   const [processando, setProcessando] = useState('');
   const [busca, setBusca] = useState('');
   const [buscaAberta, setBuscaAberta] = useState(false);
+  const [outras, setOutras] = useState([]);
 
   const aguardando = dados?.aguardando || [];
   const recentes = dados?.recentes || [];
@@ -42,23 +47,63 @@ export default function CentralAtendimento({ user }) {
   const total = aguardando.length + recentes.length + revisao.length;
 
   // Busca por nome ou telefone dentro das pendências listadas.
+  // Nome comparado sem acentos: "joao" encontra "João".
   const filtrarPorBusca = (lista) => {
-    const termo = busca.trim().toLowerCase();
+    const termo = semAcento(busca.trim());
     if (!termo) return lista;
     const digitos = termo.replace(/\D/g, '');
     return lista.filter((i) => {
-      const nome = String(i.cliente_nome || '').toLowerCase();
-      if (nome.includes(termo)) return true;
+      if (semAcento(i.cliente_nome).includes(termo)) return true;
       if (!digitos) return false;
       return String(i.cliente_telefone || '').replace(/\D/g, '').includes(digitos);
     });
   };
+
+  // Contatos que não estão pendentes (cliente já respondido, atendimento em
+  // andamento ou conversa encerrada) só aparecem pela busca — é o caso de quem
+  // procura um cliente específico e ele não está na fila de espera.
+  const idsPendentes = useMemo(
+    () => [...aguardando, ...recentes, ...revisao, ...adiados].map((i) => i.conversa_id).filter(Boolean),
+    [aguardando, recentes, revisao, adiados]
+  );
+  const idsPendentesChave = idsPendentes.join('|');
 
   const aguardandoFiltrado = filtrarPorBusca(aguardando);
   const recentesFiltrado = filtrarPorBusca(recentes);
   const revisaoFiltrado = filtrarPorBusca(revisao);
   const adiadosFiltrado = filtrarPorBusca(adiados);
   const ehAdmin = PERFIS_ADMIN.includes(user?.perfil || '');
+  const termoBusca = busca.trim();
+
+  // Quem não está na fila de espera (já respondido ou em atendimento) é
+  // localizado pela busca global de conversas, que já aplica as permissões
+  // por conexão do WhatsApp.
+  useEffect(() => {
+    if (!podeUsar || termoBusca.length < 2) {
+      setOutras([]);
+      return;
+    }
+    let cancelado = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const { data } = await base44.functions.invoke('buscarConversasGlobal', {
+          empresa_id: empresaId,
+          q: termoBusca,
+          limit: 30,
+        });
+        if (cancelado) return;
+        const pendentes = new Set(idsPendentesChave.split('|'));
+        const encontradas = (data?.conversas || []).filter((c) => !pendentes.has(c.id));
+        setOutras(encontradas.slice(0, 10));
+      } catch {
+        if (!cancelado) setOutras([]);
+      }
+    }, 400);
+    return () => {
+      cancelado = true;
+      window.clearTimeout(timer);
+    };
+  }, [termoBusca, empresaId, podeUsar, idsPendentesChave]);
 
   // Chave do conjunto pendente: usada para abrir sozinho só quando algo novo
   // entra na fila (não a cada poll, render ou recarregamento).
@@ -192,7 +237,7 @@ export default function CentralAtendimento({ user }) {
         )}
 
         <div className="max-h-[55vh] overflow-y-auto">
-          {busca.trim() && !aguardandoFiltrado.length && !recentesFiltrado.length && !revisaoFiltrado.length && !adiadosFiltrado.length && (
+          {termoBusca && !aguardandoFiltrado.length && !recentesFiltrado.length && !revisaoFiltrado.length && !adiadosFiltrado.length && !outras.length && (
             <p className="px-3 py-6 text-center text-xs text-slate-500">Nenhum contato encontrado nas pendências.</p>
           )}
 
@@ -253,6 +298,24 @@ export default function CentralAtendimento({ user }) {
                     onAtender={abrirConversa}
                     onContinuar={(i) => executar({ acao: 'continuar', conversa_id: i.conversa_id }, 'Revisão adiada por 30 minutos')}
                     onFinalizar={(i, opcoes) => (opcoes?.agendar ? setItemAgendar(i) : setItemFinalizar(i))}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {outras.length > 0 && (
+            <div className="border-t border-slate-100">
+              <p className="sticky top-0 z-10 flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-600">
+                <Search className="h-3 w-3" />
+                Outras conversas ({outras.length})
+              </p>
+              <div className="divide-y divide-slate-100">
+                {outras.map((conversa) => (
+                  <ItemOutraConversa
+                    key={conversa.id}
+                    conversa={conversa}
+                    onAbrir={() => abrirConversa({ conversa_id: conversa.id })}
                   />
                 ))}
               </div>
