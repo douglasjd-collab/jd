@@ -44,7 +44,13 @@ export default function CentralAtendimento({ user }) {
   const recentes = dados?.recentes || [];
   const revisao = dados?.revisao || [];
   const adiados = dados?.adiados || [];
-  const total = aguardando.length + recentes.length + revisao.length;
+  // As listas são limitadas pelo servidor; o contador usa os totais completos.
+  const contar = (valor, lista) => Number.isInteger(valor) && valor >= 0 ? valor : lista.length;
+  const total = contar(dados?.total_aguardando, aguardando)
+    + contar(dados?.total_recentes, recentes)
+    + contar(dados?.total_revisao, revisao);
+  const totalAdiados = contar(dados?.total_adiados, adiados);
+  const totalNotificacoes = total + totalAdiados;
 
   // Busca por nome ou telefone dentro das pendências listadas.
   // Nome comparado sem acentos: "joao" encontra "João".
@@ -160,7 +166,7 @@ export default function CentralAtendimento({ user }) {
         <BellRing className="h-4 w-4" />
         <span className="text-xs font-semibold">Atendimento</span>
         <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[11px] font-bold leading-tight">
-          {total + adiados.length}
+          {totalNotificacoes}
         </span>
       </button>
     );
@@ -173,7 +179,7 @@ export default function CentralAtendimento({ user }) {
           <div className="flex items-center gap-2">
             <BellRing className="h-4 w-4" />
             <span className="text-sm font-semibold">Atendimento</span>
-            <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[11px] font-bold">{total + adiados.length}</span>
+            <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[11px] font-bold">{totalNotificacoes}</span>
           </div>
           <div className="flex items-center gap-1">
             <button
