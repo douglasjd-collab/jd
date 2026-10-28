@@ -656,14 +656,15 @@ export default function AgendaPage() {
   const acessoTotal = ['master', 'super_admin', 'admin', 'gerente'].includes(perfilUsuario);
 
   const { data: compromissos = [], isLoading } = useQuery({
-    queryKey: ['agenda', user?.empresa_id, user?.auth_id, acessoTotal],
+    queryKey: ['agenda', user?.empresa_id, user?.auth_id, acessoTotal, perfilUsuario],
     queryFn: () => {
       if (!user) return [];
       if (acessoTotal && user.empresa_id) {
         return base44.entities.Agenda.filter({ empresa_id: user.empresa_id }, 'inicio');
       }
       if (!user.auth_id) return [];
-      const filtro = { usuario_id: user.auth_id };
+      // Perfis sem acesso total veem apenas os agendamentos que eles mesmos criaram/atenderam
+      const filtro = { $or: [{ usuario_id: user.auth_id }, { created_by_id: user.auth_id }] };
       if (user.empresa_id) filtro.empresa_id = user.empresa_id;
       return base44.entities.Agenda.filter(filtro, 'inicio');
     },

@@ -38,6 +38,7 @@ import {
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import AvatarContato from '@/components/chat/AvatarContato';
+import { montarEscopoParceiro, contatoDoParceiro } from '@/components/contatos/escopoParceiro';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
 
 // ─── Tag colors ────────────────────────────────────────────────
@@ -272,6 +273,10 @@ export default function ContatosCRM() {
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   const [empresaId, setEmpresaId] = useState(null);
+  // Parceiro só enxerga os contatos dos clientes dele
+  const [ehParceiro, setEhParceiro] = useState(false);
+  const [escopoParceiro, setEscopoParceiro] = useState(null);
+  const [escopoPronto, setEscopoPronto] = useState(false);
   const [busca, setBusca] = useState('');
   const [filtroTag, setFiltroTag] = useState('todos');
   const [selecionados, setSelecionados] = useState([]);
@@ -350,13 +355,18 @@ export default function ContatosCRM() {
       } else {
         const colabs = await base44.entities.Colaborador.filter({ user_id: me.id, status: 'ativo' });
         if (colabs.length > 0) setEmpresaId(colabs[0].empresa_id);
+        if (colabs[0]?.perfil === 'parceiro') {
+          setEhParceiro(true);
+          setEscopoParceiro(await montarEscopoParceiro(me.id));
+        }
       }
     } catch (e) { console.error(e); }
+    finally { setEscopoPronto(true); }
   };
 
   const { data: totalContatos = 0 } = useQuery({
     queryKey: ['contatos-crm-total', empresaId],
-    enabled: !!empresaId,
+    enabled: !!empresaId && !ehParceiro,
     staleTime: 30000,
     queryFn: async () => {
       // Busca apenas para contar o total real
@@ -366,9 +376,13 @@ export default function ContatosCRM() {
   });
 
   const { data: contatos = [], isLoading, refetch } = useQuery({
-    queryKey: ['contatos-crm', empresaId],
-    enabled: !!empresaId,
-    queryFn: () => base44.entities.ContatoWhatsapp.filter({ empresa_id: empresaId }, 'nome', 9999),
+    queryKey: ['contatos-crm', empresaId, ehParceiro ? 'parceiro' : 'todos'],
+    enabled: !!empresaId && escopoPronto,
+    queryFn: async () => {
+      const lista = await base44.entities.ContatoWhatsapp.filter({ empresa_id: empresaId }, 'nome', 9999);
+      if (!ehParceiro) return lista;
+      return lista.filter(c => contatoDoParceiro(c, escopoParceiro));
+    },
   });
 
   const { data: tags = [] } = useQuery({
