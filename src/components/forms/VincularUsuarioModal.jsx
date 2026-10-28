@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { AlertCircle } from 'lucide-react';
+import { menusPadraoDoPerfil } from './permissoesPerfil';
 
 export default function VincularUsuarioModal({ open, onOpenChange, usuario, empresas, onSuccess }) {
   const [selectedEmpresa, setSelectedEmpresa] = useState('');
@@ -49,6 +50,10 @@ export default function VincularUsuarioModal({ open, onOpenChange, usuario, empr
         cpf_cnpj: usuario.cpf_cnpj || null,
         codigo_vendedor: usuario.codigo_vendedor || null,
       };
+
+      // Perfis com acesso fixo já nascem com o conjunto padrão de menus
+      const menusPadrao = menusPadraoDoPerfil(perfil);
+      if (menusPadrao) dados.menus_permitidos = menusPadrao;
 
       console.log('dados a serem salvos:', dados);
 

@@ -12,6 +12,7 @@ import { Loader2, ShieldCheck, ShieldX, ChevronDown } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { MENUS_PADRAO_PARCEIRO } from './permissoesPerfil';
 
 // Estrutura de menus/submenus — espelha o Layout
 const MENU_ESTRUTURA = [
@@ -147,10 +148,14 @@ export default function GerenciarPermissoesModal({ open, onOpenChange, usuario, 
   const [expandidos, setExpandidos] = useState({});
 
   const TODAS_CHAVES = todasAsChaves();
+  // Parceiro usa o conjunto padrão do sistema: as demais opções ficam bloqueadas.
+  const ehParceiro = usuario?.perfil === 'parceiro';
 
   useEffect(() => {
     if (open && usuario) {
-      if (!usuario.menus_permitidos || usuario.menus_permitidos.length === 0) {
+      if (usuario.perfil === 'parceiro') {
+        setSelecionados(MENUS_PADRAO_PARCEIRO);
+      } else if (!usuario.menus_permitidos || usuario.menus_permitidos.length === 0) {
         setSelecionados(TODAS_CHAVES);
       } else {
         // Compatibilidade: se veio chave antiga sem submenu (ex: 'emprestimos'),
@@ -171,12 +176,14 @@ export default function GerenciarPermissoesModal({ open, onOpenChange, usuario, 
   }, [open, usuario]);
 
   const toggleItem = (key) => {
+    if (ehParceiro) return;
     setSelecionados(prev =>
       prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
     );
   };
 
   const toggleMenuInteiro = (menu) => {
+    if (ehParceiro) return;
     const chaves = chavesDoMenu(menu);
     const todasMarcadas = chaves.every(k => selecionados.includes(k));
     if (todasMarcadas) {
@@ -194,8 +201,8 @@ export default function GerenciarPermissoesModal({ open, onOpenChange, usuario, 
     return 'parcial';
   };
 
-  const marcarTodos = () => setSelecionados(TODAS_CHAVES);
-  const desmarcarTodos = () => setSelecionados([]);
+  const marcarTodos = () => { if (!ehParceiro) setSelecionados(TODAS_CHAVES); };
+  const desmarcarTodos = () => { if (!ehParceiro) setSelecionados([]); };
 
   const toggleExpandido = (key) => {
     setExpandidos(prev => ({ ...prev, [key]: !prev[key] }));
@@ -206,7 +213,7 @@ export default function GerenciarPermissoesModal({ open, onOpenChange, usuario, 
     try {
       const todosPermitidos = selecionados.length === TODAS_CHAVES.length;
       await base44.entities.Colaborador.update(usuario.id, {
-        menus_permitidos: todosPermitidos ? [] : selecionados,
+        menus_permitidos: ehParceiro ? MENUS_PADRAO_PARCEIRO : (todosPermitidos ? [] : selecionados),
       });
       toast.success('Permissões atualizadas com sucesso!');
       onSuccess?.();
@@ -246,16 +253,23 @@ export default function GerenciarPermissoesModal({ open, onOpenChange, usuario, 
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto py-2 space-y-1 px-1">
-          <div className="flex gap-2 mb-3">
-            <Button variant="outline" size="sm" onClick={marcarTodos} className="text-xs">
-              <ShieldCheck className="w-3.5 h-3.5 mr-1 text-green-600" />
-              Liberar todos
-            </Button>
-            <Button variant="outline" size="sm" onClick={desmarcarTodos} className="text-xs">
-              <ShieldX className="w-3.5 h-3.5 mr-1 text-red-500" />
-              Bloquear todos
-            </Button>
-          </div>
+          {ehParceiro ? (
+            <p className="mb-3 text-xs text-slate-600 bg-slate-100 rounded-lg px-3 py-2">
+              Perfil <span className="font-semibold">parceiro</span> usa o padrão do sistema:
+              <span className="font-semibold"> apenas Meu Financeiro</span>. As demais opções ficam bloqueadas.
+            </p>
+          ) : (
+            <div className="flex gap-2 mb-3">
+              <Button variant="outline" size="sm" onClick={marcarTodos} className="text-xs">
+                <ShieldCheck className="w-3.5 h-3.5 mr-1 text-green-600" />
+                Liberar todos
+              </Button>
+              <Button variant="outline" size="sm" onClick={desmarcarTodos} className="text-xs">
+                <ShieldX className="w-3.5 h-3.5 mr-1 text-red-500" />
+                Bloquear todos
+              </Button>
+            </div>
+          )}
 
           <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden">
             {MENU_ESTRUTURA.map((menu) => {
@@ -274,6 +288,7 @@ export default function GerenciarPermissoesModal({ open, onOpenChange, usuario, 
                         // indeterminate visual via data attribute
                         data-state={estado === 'parcial' ? 'indeterminate' : undefined}
                         onCheckedChange={() => toggleMenuInteiro(menu)}
+                        disabled={ehParceiro}
                         className={cn("mt-0.5", estado === 'parcial' && "opacity-70")}
                       />
                       <div className="flex-1 min-w-0">
@@ -319,6 +334,7 @@ export default function GerenciarPermissoesModal({ open, onOpenChange, usuario, 
                                 id={`perm-${sub.key}`}
                                 checked={permitido}
                                 onCheckedChange={() => toggleItem(sub.key)}
+                                disabled={ehParceiro}
                               />
                               <span className={cn(
                                 "text-sm",
@@ -353,6 +369,7 @@ export default function GerenciarPermissoesModal({ open, onOpenChange, usuario, 
                     id={`perm-${menu.key}`}
                     checked={permitido}
                     onCheckedChange={() => toggleItem(menu.key)}
+                    disabled={ehParceiro}
                     className="mt-0.5"
                   />
                   <div className="flex-1 min-w-0">

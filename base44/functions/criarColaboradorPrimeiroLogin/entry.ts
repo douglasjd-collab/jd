@@ -154,6 +154,8 @@ Deno.serve(async (req) => {
       usuario_canopus: dadosConvite?.usuario_canopus || null,
       percentual_comissao_agente: dadosConvite?.percentual_comissao_agente || null,
       evolution_instance_name: dadosConvite?.evolution_instance_name || null,
+      // Parceiro nasce com o padrão de menus do sistema (apenas Meu Financeiro)
+      ...(perfilDoConvite === 'parceiro' ? { menus_permitidos: ['meu_financeiro'] } : {}),
     };
 
     // Gerente vinculado (se vendedor)
