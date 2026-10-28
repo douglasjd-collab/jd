@@ -212,6 +212,10 @@ export default function Layout({ children, currentPageName }) {
     if (!user) return;
     const agora = new Date().toISOString();
     const filtroAgenda = user.empresa_id ? { empresa_id: user.empresa_id } : {};
+    // Perfis sem acesso total contam apenas os próprios compromissos
+    if (!['master', 'super_admin', 'admin', 'gerente'].includes(user.perfil)) {
+      filtroAgenda.$or = [{ usuario_id: user.auth_id }, { created_by_id: user.auth_id }];
+    }
     base44.entities.Agenda.filter(filtroAgenda, {
       limit: 500,
       fields: ['status', 'inicio'],
