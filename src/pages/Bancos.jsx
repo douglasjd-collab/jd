@@ -234,7 +234,7 @@ export default function Bancos() {
                 <div className="flex items-center gap-4 flex-1">
                    <div className="w-14 h-14 rounded-xl bg-white ring-1 ring-slate-200 shadow-sm flex items-center justify-center flex-shrink-0 overflow-hidden">
                      {banco.logo_url ? (
-                       <img src={banco.logo_url} alt={banco.nome} className="w-full h-full object-contain p-1.5" />
+                       <img src={banco.logo_url} alt={banco.nome} className="w-full h-full object-cover" />
                      ) : (
                        <Building2 className="w-6 h-6 text-green-600" />
                      )}
@@ -289,7 +289,7 @@ export default function Bancos() {
               <div className="flex items-center gap-3 mt-1">
                 <div className="w-16 h-16 rounded-xl border border-slate-200 ring-1 ring-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0 bg-white shadow-sm">
                   {formData.logo_url ? (
-                    <img src={formData.logo_url} alt="logo" className="w-full h-full object-contain p-2" />
+                    <img src={formData.logo_url} alt="logo" className="w-full h-full object-cover" />
                   ) : (
                     <Building2 className="w-6 h-6 text-slate-300" />
                   )}
