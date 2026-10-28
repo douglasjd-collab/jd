@@ -39,14 +39,24 @@ Deno.serve(async (req) => {
     };
 
     let resultado;
+    let colaboradorId = colabs?.[0]?.id || null;
     if (colabs?.length) {
       // Atualizar existente
       await base44.asServiceRole.entities.Colaborador.update(colabs[0].id, dados);
       resultado = "Colaborador atualizado";
     } else {
       // Criar novo
-      await base44.asServiceRole.entities.Colaborador.create(dados);
+      const novoColaborador = await base44.asServiceRole.entities.Colaborador.create(dados);
+      colaboradorId = novoColaborador?.id || null;
       resultado = "Colaborador criado";
+    }
+
+    // Vínculo confiável usado pelas regras de acesso das comissões
+    if (colaboradorId) {
+      await base44.asServiceRole.entities.User.update(user.id, {
+        colaborador_id: colaboradorId,
+        escopo_comissoes: "empresa",
+      });
     }
 
     return Response.json({

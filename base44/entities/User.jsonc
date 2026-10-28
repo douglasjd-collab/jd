@@ -85,6 +85,31 @@
       ],
       "default": "ativo"
     },
+    "colaborador_id": {
+      "type": "string",
+      "description": "ID do Colaborador vinculado a este usu\u00e1rio. Gravado apenas pelo backend \u2014 \u00e9 o que a RLS de comiss\u00f5es consulta para liberar somente os registros do pr\u00f3prio c\u00f3digo.",
+      "rls": {
+        "update": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
+    "escopo_comissoes": {
+      "type": "string",
+      "enum": [
+        "empresa"
+      ],
+      "description": "Define acesso total \u00e0s comiss\u00f5es da empresa (master, super_admin, admin e gerente). Vazio para vendedor/parceiro, que s\u00f3 enxergam as pr\u00f3prias comiss\u00f5es. Gravado apenas pelo backend.",
+      "rls": {
+        "update": {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      }
+    },
     "whatsapp_permissoes_json": {
       "type": "string",
       "description": "Espelho (JSON) do n\u00edvel de acesso do usu\u00e1rio por conex\u00e3o de WhatsApp. Gravado apenas pelo backend \u2014 \u00e9 o que a RLS de conversas e mensagens consulta."

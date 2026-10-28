@@ -174,12 +174,18 @@ Deno.serve(async (req) => {
     // Vincular empresa/perfil no cadastro do usuário (usado pelas regras de acesso do sistema)
     try {
       const userAtual = await base44.asServiceRole.entities.User.get(user.id);
+      const escopo = ['master', 'super_admin', 'admin', 'gerente'].includes(novoColaborador?.perfil)
+        ? 'empresa'
+        : '';
+      const atualizacao = {
+        colaborador_id: novoColaborador.id,
+        escopo_comissoes: escopo,
+      };
       if (userAtual?.empresa_id !== empresaFinal.id) {
-        await base44.asServiceRole.entities.User.update(user.id, {
-          empresa_id: empresaFinal.id,
-          empresa_nome: empresaFinal.nome,
-        });
+        atualizacao.empresa_id = empresaFinal.id;
+        atualizacao.empresa_nome = empresaFinal.nome;
       }
+      await base44.asServiceRole.entities.User.update(user.id, atualizacao);
     } catch (e) {
       console.error('Erro ao vincular empresa ao usuário:', e);
     }

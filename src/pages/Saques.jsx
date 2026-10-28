@@ -1152,7 +1152,7 @@ export default function Saques() {
             onExcluir={isMaster ? setLoteParaExcluir : undefined}
           />
           {/* Botão Lançar no Meu Financeiro */}
-          {quitados.filter(l => !l.meu_financeiro_receita_id && !l.isLegado).length > 0 && (
+          {isMaster && quitados.filter(l => !l.meu_financeiro_receita_id && !l.isLegado).length > 0 && (
             <div className="flex items-center gap-2 justify-end">
               <span className="text-xs text-slate-400">{quitados.filter(l => !l.meu_financeiro_receita_id && !l.isLegado).length} comissão(ões) pendente(s) de lançamento</span>
               <Button
@@ -1181,7 +1181,7 @@ export default function Saques() {
             mostrarQuitacao={true}
             isMaster={isMaster}
             podeQuitar={isMaster}
-            onAnexarComprovante={setLoteParaComprovante}
+            onAnexarComprovante={isMaster ? setLoteParaComprovante : undefined}
           />
         </div>
       )}

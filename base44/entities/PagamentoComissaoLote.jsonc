@@ -142,6 +142,52 @@
     "total_pago",
     "gerado_por_id"
   ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "data.escopo_comissoes": "empresa"
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.empresa_id": "{{user.data.empresa_id}}"
+            },
+            {
+              "data.vendedor_id": "{{user.data.colaborador_id}}"
+            }
+          ]
+        },
+        {
+          "$and": [
+            {
+              "data.empresa_id": "{{user.data.empresa_id}}"
+            },
+            {
+              "data.vendedor_id": "{{user.id}}"
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "data.escopo_comissoes": "empresa"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "data.escopo_comissoes": "empresa"
+      }
+    }
+  },
   "security": {
     "read": {
       "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; return record.empresa_id === user.empresa_id;"

@@ -37,6 +37,19 @@ Deno.serve(async (req) => {
       perfil: novoPerfil
     });
 
+    // Manter o escopo de comissões sincronizado com o novo perfil
+    try {
+      const usuarios = await base44.asServiceRole.entities.User.filter({ email });
+      if (usuarios?.[0]?.id) {
+        await base44.asServiceRole.entities.User.update(usuarios[0].id, {
+          colaborador_id: colab.id,
+          escopo_comissoes: ['master', 'super_admin', 'admin', 'gerente'].includes(novoPerfil) ? 'empresa' : '',
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao sincronizar escopo de comissões:', e);
+    }
+
     console.log(`✅ Perfil alterado com sucesso para: ${novoPerfil}`);
 
     return Response.json({

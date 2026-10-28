@@ -112,6 +112,52 @@
     "percentual_comissao",
     "valor_a_pagar"
   ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "data.escopo_comissoes": "empresa"
+          }
+        },
+        {
+          "$and": [
+            {
+              "data.empresa_id": "{{user.data.empresa_id}}"
+            },
+            {
+              "data.vendedor_id": "{{user.data.colaborador_id}}"
+            }
+          ]
+        },
+        {
+          "$and": [
+            {
+              "data.empresa_id": "{{user.data.empresa_id}}"
+            },
+            {
+              "data.vendedor_id": "{{user.id}}"
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "data.escopo_comissoes": "empresa"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "data.escopo_comissoes": "empresa"
+      }
+    }
+  },
   "security": {
     "read": {
       "rule": "if (user.perfil === 'super_admin' || user.perfil === 'master') return true; if (!user.empresa_id) return false; if (['admin', 'gerente', 'colaborador', 'funcionario'].includes(user.perfil)) return record.empresa_id === user.empresa_id; return record.vendedor_id === user.id && record.empresa_id === user.empresa_id;"
