@@ -1098,7 +1098,7 @@ export default function AgendaPage() {
                 <Input
                   type="tel"
                   inputMode="numeric"
-                  maxLength={15}
+                  maxLength={25}
                   value={formData.telefone}
                   onChange={e => setFormData({ ...formData, telefone: formatPhoneBR(e.target.value) })}
                   placeholder="(87) 98127-5628"
