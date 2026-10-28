@@ -550,6 +550,7 @@ export default async function (req: Request): Promise<Response> {
 
     const agora = Date.now();
     const aguardando: any[] = [];
+    const recentes: any[] = [];
     const revisao: any[] = [];
     const adiados: any[] = [];
 
@@ -567,8 +568,13 @@ export default async function (req: Request): Promise<Response> {
 
       if (registro.aguardando_desde) {
         const minutos = minutosDesde(registro.aguardando_desde);
-        if (minutos * 60000 < ESPERA_MINIMA_MS) continue;
         const entrada = { ...item, tipo: 'aguardando', aguardando_desde: registro.aguardando_desde, minutos };
+        // Menos de 5 minutos: o cliente já aparece na lista para ser localizado,
+        // mas ainda não dispara o alerta (nem abre o painel sozinho).
+        if (minutos * 60000 < ESPERA_MINIMA_MS) {
+          recentes.push({ ...entrada, tipo: 'recente' });
+          continue;
+        }
         if (registro.alerta_adiado_ate && new Date(registro.alerta_adiado_ate).getTime() > agora) {
           adiados.push({ ...entrada, adiado_ate: registro.alerta_adiado_ate });
         } else {
@@ -593,6 +599,7 @@ export default async function (req: Request): Promise<Response> {
     // Mais recentes primeiro: são os clientes ainda com conversa viva.
     const porTempo = (a: any, b: any) => a.minutos - b.minutos;
     aguardando.sort(porTempo);
+    recentes.sort(porTempo);
     revisao.sort(porTempo);
     adiados.sort(porTempo);
 
@@ -602,9 +609,11 @@ export default async function (req: Request): Promise<Response> {
     return Response.json({
       horario_config: configHorario,
       aguardando: aguardando.slice(0, MAX_ITENS),
+      recentes: recentes.slice(0, MAX_ITENS),
       revisao: revisao.slice(0, MAX_ITENS),
       adiados: adiados.slice(0, MAX_ITENS),
       total_aguardando: aguardando.length,
+      total_recentes: recentes.length,
       total_revisao: revisao.length,
       total_adiados: adiados.length,
       total: aguardando.length + revisao.length + adiados.length,

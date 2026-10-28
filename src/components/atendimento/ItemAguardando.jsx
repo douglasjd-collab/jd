@@ -7,7 +7,7 @@ import { formatarEspera, horaLocal } from './tempoAtendimento';
  * Cliente aguardando resposta humana. A prioridade aqui é sempre responder:
  * "Atender" abre a conversa na conexão original e "Finalizar" fica secundário.
  */
-export default function ItemAguardando({ item, onAtender, onAdiar, onFinalizar, processando, adiado }) {
+export default function ItemAguardando({ item, onAtender, onAdiar, onFinalizar, processando, adiado, semAdiar }) {
   return (
     <div className={`px-3 py-2.5 ${adiado ? 'opacity-60' : ''}`}>
       <div className="flex items-start justify-between gap-2">
@@ -30,14 +30,16 @@ export default function ItemAguardando({ item, onAtender, onAdiar, onFinalizar, 
           <MessageSquare className="h-3.5 w-3.5" />
           Responder agora
         </button>
-        <button
-          type="button"
-          disabled={processando}
-          onClick={() => onAdiar(item)}
-          className="rounded-md border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
-        >
-          Adiar 5 min
-        </button>
+        {!semAdiar && (
+          <button
+            type="button"
+            disabled={processando}
+            onClick={() => onAdiar(item)}
+            className="rounded-md border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+          >
+            Adiar 5 min
+          </button>
+        )}
         <button
           type="button"
           disabled={processando}

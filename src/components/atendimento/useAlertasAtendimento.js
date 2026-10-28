@@ -59,7 +59,7 @@ export default function useAlertasAtendimento({ empresaId, ativo }) {
   // Sobrepor só a apresentação: nome novo não reinicia relógios nem adiamentos.
   const dadosAtuais = dados ? {
     ...dados,
-    ...Object.fromEntries(['aguardando', 'revisao', 'adiados'].map(tipo => [
+    ...Object.fromEntries(['aguardando', 'recentes', 'revisao', 'adiados'].map(tipo => [
       tipo,
       (dados[tipo] || []).map(item => ({
         ...item,

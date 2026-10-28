@@ -15,7 +15,8 @@ const PERFIS_ADMIN = ['admin', 'master', 'super_admin'];
 
 /**
  * Central compacta de atendimento: reúne clientes que aguardam resposta humana
- * há mais de 5 minutos e atendimentos que completaram 1 hora. Um único painel
+ * (inclusive os de menos de 5 minutos, apenas para localizar) e atendimentos
+ * que completaram 1 hora. Um único painel
  * agrupado (nunca vários popups), com adiamento curto e sem reabrir a cada
  * consulta — só reabre quando o conjunto pendente muda.
  */
@@ -35,9 +36,10 @@ export default function CentralAtendimento({ user }) {
   const [buscaAberta, setBuscaAberta] = useState(false);
 
   const aguardando = dados?.aguardando || [];
+  const recentes = dados?.recentes || [];
   const revisao = dados?.revisao || [];
   const adiados = dados?.adiados || [];
-  const total = aguardando.length + revisao.length;
+  const total = aguardando.length + recentes.length + revisao.length;
 
   // Busca por nome ou telefone dentro das pendências listadas.
   const filtrarPorBusca = (lista) => {
@@ -53,6 +55,7 @@ export default function CentralAtendimento({ user }) {
   };
 
   const aguardandoFiltrado = filtrarPorBusca(aguardando);
+  const recentesFiltrado = filtrarPorBusca(recentes);
   const revisaoFiltrado = filtrarPorBusca(revisao);
   const adiadosFiltrado = filtrarPorBusca(adiados);
   const ehAdmin = PERFIS_ADMIN.includes(user?.perfil || '');
@@ -189,7 +192,7 @@ export default function CentralAtendimento({ user }) {
         )}
 
         <div className="max-h-[55vh] overflow-y-auto">
-          {busca.trim() && !aguardandoFiltrado.length && !revisaoFiltrado.length && !adiadosFiltrado.length && (
+          {busca.trim() && !aguardandoFiltrado.length && !recentesFiltrado.length && !revisaoFiltrado.length && !adiadosFiltrado.length && (
             <p className="px-3 py-6 text-center text-xs text-slate-500">Nenhum contato encontrado nas pendências.</p>
           )}
 
@@ -207,6 +210,27 @@ export default function CentralAtendimento({ user }) {
                     processando={processando === item.conversa_id + 'adiar'}
                     onAtender={abrirConversa}
                     onAdiar={(i) => executar({ acao: 'adiar', conversa_id: i.conversa_id, minutos: 5 }, 'Alerta adiado por 5 minutos')}
+                    onFinalizar={(i, opcoes) => (opcoes?.agendar ? setItemAgendar(i) : setItemFinalizar(i))}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {recentesFiltrado.length > 0 && (
+            <div>
+              <p className="sticky top-0 z-10 flex items-center gap-1.5 border-b border-slate-100 bg-slate-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-600">
+                <Clock className="h-3 w-3" />
+                Aguardando até 5 min ({recentesFiltrado.length})
+              </p>
+              <div className="divide-y divide-slate-100">
+                {recentesFiltrado.map((item) => (
+                  <ItemAguardando
+                    key={item.conversa_id}
+                    item={item}
+                    semAdiar
+                    processando={false}
+                    onAtender={abrirConversa}
                     onFinalizar={(i, opcoes) => (opcoes?.agendar ? setItemAgendar(i) : setItemFinalizar(i))}
                   />
                 ))}
