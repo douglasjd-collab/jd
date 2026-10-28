@@ -47,7 +47,11 @@ function formatDateBR(iso) {
 }
 
 function formatPhoneBR(value = '') {
-  const digits = String(value).replace(/\D/g, '').slice(0, 11);
+  let digits = String(value).replace(/\D/g, '');
+  // Remove o código do país (55) quando vier junto com DDD + número,
+  // para não confundir o país com o DDD e cortar o final do telefone.
+  if (digits.length > 11 && digits.startsWith('55')) digits = digits.slice(2);
+  digits = digits.slice(0, 11);
   if (digits.length <= 2) return digits ? `(${digits}` : '';
   if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
   if (digits.length <= 10) {
