@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { BellRing, ChevronDown, RefreshCw, Settings2, X, Clock, Hourglass } from 'lucide-react';
+import { BellRing, ChevronDown, RefreshCw, Settings2, X, Clock, Hourglass, Search } from 'lucide-react';
 import { createPageUrl } from '@/utils';
 import useAlertasAtendimento from './useAlertasAtendimento';
 import ItemAguardando from './ItemAguardando';
@@ -31,11 +31,30 @@ export default function CentralAtendimento({ user }) {
   const [itemAgendar, setItemAgendar] = useState(null);
   const [horarioOpen, setHorarioOpen] = useState(false);
   const [processando, setProcessando] = useState('');
+  const [busca, setBusca] = useState('');
+  const [buscaAberta, setBuscaAberta] = useState(false);
 
   const aguardando = dados?.aguardando || [];
   const revisao = dados?.revisao || [];
   const adiados = dados?.adiados || [];
   const total = aguardando.length + revisao.length;
+
+  // Busca por nome ou telefone dentro das pendências listadas.
+  const filtrarPorBusca = (lista) => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return lista;
+    const digitos = termo.replace(/\D/g, '');
+    return lista.filter((i) => {
+      const nome = String(i.cliente_nome || '').toLowerCase();
+      if (nome.includes(termo)) return true;
+      if (!digitos) return false;
+      return String(i.cliente_telefone || '').replace(/\D/g, '').includes(digitos);
+    });
+  };
+
+  const aguardandoFiltrado = filtrarPorBusca(aguardando);
+  const revisaoFiltrado = filtrarPorBusca(revisao);
+  const adiadosFiltrado = filtrarPorBusca(adiados);
   const ehAdmin = PERFIS_ADMIN.includes(user?.perfil || '');
 
   // Chave do conjunto pendente: usada para abrir sozinho só quando algo novo
@@ -111,6 +130,17 @@ export default function CentralAtendimento({ user }) {
           <div className="flex items-center gap-1">
             <button
               type="button"
+              onClick={() => {
+                setBuscaAberta((v) => !v);
+                setBusca('');
+              }}
+              className={`rounded p-1 hover:bg-white/10 hover:text-white ${buscaAberta ? 'bg-white/20 text-white' : 'text-white/80'}`}
+              title="Pesquisar contato"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
               onClick={buscar}
               className="rounded p-1 text-white/80 hover:bg-white/10 hover:text-white"
               title="Atualizar agora"
@@ -138,15 +168,39 @@ export default function CentralAtendimento({ user }) {
           </div>
         </div>
 
+        {buscaAberta && (
+          <div className="border-b border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2 py-1.5">
+              <Search className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+              <input
+                autoFocus
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar por nome ou telefone"
+                className="w-full bg-transparent text-xs text-slate-700 outline-none placeholder:text-slate-400"
+              />
+              {busca && (
+                <button type="button" onClick={() => setBusca('')} className="shrink-0 text-slate-400 hover:text-slate-600" title="Limpar busca">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="max-h-[55vh] overflow-y-auto">
-          {aguardando.length > 0 && (
+          {busca.trim() && !aguardandoFiltrado.length && !revisaoFiltrado.length && !adiadosFiltrado.length && (
+            <p className="px-3 py-6 text-center text-xs text-slate-500">Nenhum contato encontrado nas pendências.</p>
+          )}
+
+          {aguardandoFiltrado.length > 0 && (
             <div>
               <p className="sticky top-0 z-10 flex items-center gap-1.5 border-b border-slate-100 bg-amber-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-amber-800">
                 <Clock className="h-3 w-3" />
-                Aguardando resposta ({aguardando.length})
+                Aguardando resposta ({aguardandoFiltrado.length})
               </p>
               <div className="divide-y divide-slate-100">
-                {aguardando.map((item) => (
+                {aguardandoFiltrado.map((item) => (
                   <ItemAguardando
                     key={item.conversa_id}
                     item={item}
@@ -160,14 +214,14 @@ export default function CentralAtendimento({ user }) {
             </div>
           )}
 
-          {revisao.length > 0 && (
+          {revisaoFiltrado.length > 0 && (
             <div>
               <p className="sticky top-0 z-10 flex items-center gap-1.5 border-b border-slate-100 bg-sky-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-sky-800">
                 <Hourglass className="h-3 w-3" />
-                Revisão de 1 hora ({revisao.length})
+                Revisão de 1 hora ({revisaoFiltrado.length})
               </p>
               <div className="divide-y divide-slate-100">
-                {revisao.map((item) => (
+                {revisaoFiltrado.map((item) => (
                   <ItemRevisao
                     key={item.conversa_id}
                     item={item}
@@ -181,19 +235,19 @@ export default function CentralAtendimento({ user }) {
             </div>
           )}
 
-          {adiados.length > 0 && (
+          {adiadosFiltrado.length > 0 && (
             <div className="border-t border-slate-100">
               <button
                 type="button"
                 onClick={() => setMostrarAdiados((v) => !v)}
                 className="flex w-full items-center justify-between px-3 py-1.5 text-[11px] font-semibold text-slate-500 hover:bg-slate-50"
               >
-                <span>{adiados.length} adiado(s) — pendência mantida</span>
+                <span>{adiadosFiltrado.length} adiado(s) — pendência mantida</span>
                 <ChevronDown className={`h-3 w-3 transition-transform ${mostrarAdiados ? 'rotate-180' : ''}`} />
               </button>
-              {mostrarAdiados && (
+              {(mostrarAdiados || !!busca.trim()) && (
                 <div className="divide-y divide-slate-100 border-t border-slate-100">
-                  {adiados.map((item) => (
+                  {adiadosFiltrado.map((item) => (
                     <ItemAguardando
                       key={item.conversa_id}
                       item={item}
