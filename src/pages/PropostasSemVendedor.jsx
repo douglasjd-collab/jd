@@ -153,6 +153,8 @@ export default function PropostasSemVendedor() {
   const bancosUnicos = [...new Set(semVendedor.map(p => p.administradora_nome).filter(Boolean))];
 
   const isAdmin = ['master', 'super_admin', 'admin', 'gerente'].includes(currentUser?.perfil);
+  // Colaboradores e vendedores também podem vincular propostas a um vendedor
+  const podeAtribuir = !!currentUser?.perfil && currentUser.perfil !== 'parceiro';
 
   if (!currentUser) {
     return (
@@ -224,9 +226,10 @@ export default function PropostasSemVendedor() {
       </div>
 
       {/* Atribuição em lote + Sincronização */}
-      {isAdmin && (
+      {podeAtribuir && (
         <div className="space-y-3">
           {/* Sincronização Automática */}
+          {isAdmin && (
           <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl shadow-sm border border-blue-200 p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-200 rounded-lg">
@@ -257,6 +260,7 @@ export default function PropostasSemVendedor() {
               </Button>
             </div>
           </div>
+          )}
 
           {/* Atribuição Manual */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
@@ -308,7 +312,7 @@ export default function PropostasSemVendedor() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100">
-                    {isAdmin && (
+                    {podeAtribuir && (
                       <th className="px-4 py-3 text-left">
                         <Checkbox
                           checked={selectedIds.length === paginated.length && paginated.length > 0}
@@ -325,7 +329,7 @@ export default function PropostasSemVendedor() {
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Valor Liberado</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Status</th>
                     <th className="px-4 py-3 text-left font-semibold text-slate-600">Vendedor</th>
-                    {isAdmin && <th className="px-4 py-3 text-left font-semibold text-slate-600">Ação Rápida</th>}
+                    {podeAtribuir && <th className="px-4 py-3 text-left font-semibold text-slate-600">Ação Rápida</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -337,7 +341,7 @@ export default function PropostasSemVendedor() {
 
                     return (
                       <tr key={p.id} className={`hover:bg-slate-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}>
-                        {isAdmin && (
+                        {podeAtribuir && (
                           <td className="px-4 py-3">
                             <Checkbox checked={isSelected} onCheckedChange={() => toggleSelect(p.id)} />
                           </td>
@@ -376,7 +380,7 @@ export default function PropostasSemVendedor() {
                         <td className="px-4 py-3">
                           <span className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">Sem Vendedor</span>
                         </td>
-                        {isAdmin && (
+                        {podeAtribuir && (
                           <td className="px-4 py-3">
                             <AtribuirVendedorInline
                               proposta={p}
