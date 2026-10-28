@@ -565,8 +565,13 @@ export default function Layout({ children, currentPageName }) {
   const userRole = user?.perfil || 'vendedor';
   const isAdminRole = ['master', 'super_admin', 'admin'].includes(userRole);
 
+  // Menus de gestão são exclusivos de master/admin: nunca aparecem para o parceiro,
+  // mesmo que exista uma permissão antiga salva no cadastro dele.
+  const MENUS_EXCLUSIVOS_GESTAO = ['financeiro', 'cadastros', 'importacao', 'configuracoes', 'funcionarios'];
+
   const filteredMenuItems = menuItems.filter(item => {
     const key = menuPermissaoKey[item.name];
+    if (userRole === 'parceiro' && key && MENUS_EXCLUSIVOS_GESTAO.includes(key)) return false;
     // Menu liberado explicitamente nas permissões do usuário tem prioridade sobre o perfil
     const liberadoPorPermissao = key && temPermissoesCustomizadas && (
       item.submenu
