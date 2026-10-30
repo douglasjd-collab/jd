@@ -75,7 +75,7 @@ export default function AgentesIA() {
       {data?.mais_registros && <p className="text-sm text-amber-800">Exibindo os 500 registros mais recentes desta empresa.</p>}
       {tab === 'configuracao' ? <div className="grid gap-5 lg:grid-cols-2">
         <section className="space-y-4 rounded-xl border bg-white p-6 dark:bg-slate-900"><h2 className="text-lg font-semibold">Conexões e operação</h2><p className="text-sm text-slate-500">OpenAI direta para inteligência. D-API para WhatsApp. O CRM guarda a memória e controla os atendimentos.</p>
-          <div className="rounded-lg bg-slate-50 p-4 text-sm dark:bg-slate-800">Chave OpenAI no servidor: <strong>{data?.integracao?.chave_presente ? 'Presente — ainda não validada' : 'Não configurada'}</strong><p className="mt-2 text-slate-500">A chave deve ser cadastrada nos segredos do servidor como OPENAI_API_KEY. Não cole a chave em treinamentos ou documentos.</p></div>
+          <div className="rounded-lg bg-slate-50 p-4 text-sm dark:bg-slate-800">Chave OpenAI no servidor: <strong>{data?.integracao?.chave_presente ? 'Presente — ainda não validada' : 'Não configurada'}</strong><p className="mt-2 text-slate-500">A chave deve ser cadastrada nos segredos do servidor como OPENAI_API_KEY_AGENTES. Não cole a chave em treinamentos ou documentos.</p></div>
           <p className="text-sm">Voz da IA: <strong>Ponte de áudio pendente de implementação e teste.</strong></p>
           <p className="text-sm">Atendimento automático: <strong>Desativado nesta etapa.</strong></p>
           <Button onClick={() => open(config,'configuracao')}>Configurar regras de operação</Button>
