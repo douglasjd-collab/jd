@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
+import { parseIA, EMPRESA_TESTE_IA, CONEXAO_TESTE_IA, TELEFONES_TESTE_IA } from '../../shared/qualificadorTesteIA.ts';
 
 // Administração apenas. Validação OpenAI é explícita; nenhuma ação envia mensagens ou faz ligações.
 const ADM = ['master', 'super_admin', 'admin'];
@@ -26,6 +27,32 @@ Deno.serve(async (req) => {
     if (!empresa || !empresas.some((e: any) => e.id === empresa)) return fail('Selecione uma empresa autorizada.', 403);
     const records = db.AgenteIARegistro;
     const action = body.acao || 'listar';
+    if (action === 'alternar_agente') {
+      if (typeof body.ativo !== 'boolean') return fail('Estado inválido.');
+      const agente = await records.get(text(body.id, 100));
+      if (!agente || agente.empresa_id !== empresa || agente.tipo !== 'agente') return fail('Agente não autorizado.', 403);
+      const dados = parseIA(agente);
+      if (body.ativo) {
+        if (empresa !== EMPRESA_TESTE_IA || dados.papel !== 'qualificador') return fail('Nesta etapa, somente o Qualificador da JD pode ser ativado para teste.');
+        if (Number(body.versao) !== Number(agente.versao || 1)) return fail('O agente foi alterado. Atualize antes de ativar.', 409);
+        if (!Deno.env.get('OPENAI_API_KEY_AGENTES')?.trim()) return fail('Configure a chave OpenAI dos agentes antes de ativar.');
+        const c = await db.WhatsappConnection.get(CONEXAO_TESTE_IA);
+        if (c.empresa_id !== empresa || c.provider_type !== 'dapi' || !c.is_active || c.status !== 'conectado') return fail('A conexão de teste não está disponível ou conectada.');
+        dados.connection_id = CONEXAO_TESTE_IA;
+        dados.modo = 'teste';
+        dados.telefones_teste = TELEFONES_TESTE_IA;
+        dados.ativado_em = new Date().toISOString();
+      }
+      dados.ativo = body.ativo;
+      const mudanca = { dados_json: JSON.stringify(dados), status: body.ativo ? 'aprovado' : 'desativado',
+        versao: Number(agente.versao || 1) + 1, autor_id: me.id, autor_nome: me.full_name || me.email };
+      await records.create({ empresa_id: empresa, tipo: 'historico', titulo: (body.ativo ? 'Ativação de teste: ' : 'Desativação: ') + agente.titulo,
+        conteudo: body.ativo ? 'Teste restrito à Eduarda, por texto, na conexão Douglas | JD Promotora.' : 'Respostas automáticas desativadas manualmente.',
+        status: 'aprovado', agente_id: agente.id, versao: mudanca.versao,
+        dados_json: JSON.stringify({ anterior: agente, seguinte: { ...agente, ...mudanca } }), autor_id: me.id, autor_nome: me.full_name || me.email });
+      const registro = await records.update(agente.id, mudanca);
+      return Response.json({ success: true, registro });
+    }
     if (action === 'validar_openai') {
       const key = Deno.env.get('OPENAI_API_KEY_AGENTES')?.trim();
       if (!key) return fail('Cadastre OPENAI_API_KEY_AGENTES nos segredos do aplicativo.');
@@ -76,7 +103,7 @@ Deno.serve(async (req) => {
       const cons = await db.WhatsappConnection.filter({ empresa_id: empresa, provider_type: 'dapi', is_active: true }, '-created_date', 100);
       return Response.json({ empresa_id: empresa, empresas, registros: all.slice(0, 500), mais_registros: all.length > 500,
         conexoes: cons.map((c: any) => ({ id: c.id, nome: c.nome || c.session_id || 'WhatsApp', status: c.status })),
-        integracao: { chave_presente: Boolean(Deno.env.get('OPENAI_API_KEY_AGENTES')), atendimento_automatico: false, voz_pronta: false } });
+        integracao: { chave_presente: Boolean(Deno.env.get('OPENAI_API_KEY_AGENTES')), atendimento_automatico: all.some((r: any) => r.tipo === 'agente' && parseIA(r).ativo === true), voz_pronta: false } });
     }
     if (action === 'clientes') {
       const q = text(body.busca, 80);
@@ -103,8 +130,15 @@ Deno.serve(async (req) => {
     let dados;
     try { dados = JSON.parse(source.dados_json || '{}'); } catch { return fail('Configuração inválida.'); }
     if (!dados || Array.isArray(dados) || typeof dados !== 'object') return fail('Configuração inválida.');
-    // Configurações são sempre preparatórias, sem ativação operacional nesta fase.
-    dados.ativo = false;
+    // Ativação só pelo controle administrativo dedicado; edição não amplia o teste.
+    const anteriorDados = parseIA(old);
+    dados.ativo = tipo === 'agente' && anteriorDados.ativo === true && anteriorDados.papel === dados.papel;
+    if (dados.ativo) {
+      dados.connection_id = anteriorDados.connection_id;
+      dados.modo = anteriorDados.modo;
+      dados.telefones_teste = anteriorDados.telefones_teste;
+      dados.ativado_em = anteriorDados.ativado_em;
+    }
     if (tipo === 'agente') {
       if (!['qualificador', 'vendedor', 'follow_up'].includes(dados.papel)) return fail('Selecione uma função válida.');
       dados.permissoes = Array.isArray(dados.permissoes) ? dados.permissoes.filter((p: string) => ['consultar_cliente','registrar_memoria','consultar_tabelas','simular','consultar_lances','enviar_mensagem','enviar_video','ligar','transferir'].includes(p)) : [];
@@ -142,7 +176,7 @@ Deno.serve(async (req) => {
     const conteudo = text(source.conteudo ?? old?.conteudo);
     if (tipo !== 'configuracao' && !conteudo) return fail('Informe o conteúdo.');
     if (/sk-(?:proj-)?[a-zA-Z0-9_-]{20,}/.test(conteudo) || /sk-(?:proj-)?[a-zA-Z0-9_-]{20,}/.test(JSON.stringify(dados))) return fail('Não salve chaves de API nos registros. Use os segredos do servidor.');
-    let status = tipo === 'agente' || tipo === 'configuracao' ? 'desativado' : tipo === 'memoria' ? 'rascunho' : 'pendente';
+    let status = tipo === 'agente' ? (dados.ativo ? 'aprovado' : 'desativado') : tipo === 'configuracao' ? 'desativado' : tipo === 'memoria' ? 'rascunho' : 'pendente';
     if (action === 'revisar') {
       if (!old || !['aprendizado','conhecimento'].includes(tipo) || !['aprovado','rejeitado','arquivado'].includes(body.status)) return fail('Revisão inválida.');
       status = body.status;
