@@ -1,3 +1,4 @@
+import { processarQualificadorTesteIA } from '../../shared/qualificadorTesteIA.ts';
 import { aplicarReciboDapi, expandirRecibosDapi } from '../../shared/recibosDapiShared.ts';
 import { registrarChamadaRecebidaDapi, finalizarChamadaDapi } from '../../shared/chamadaDapiShared.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
@@ -593,7 +594,7 @@ async function processarMensagemRecebida(base44, connection, data) {
 
     const { texto: respostaParaTexto, nome: respostaParaNome, whatsappId: respostaParaWhatsappId, id: respostaParaId } = await extrairRespostaCitada(base44, empresaId, data);
 
-    await base44.entities.MensagemWhatsapp.create({
+    const mensagemParaIA = await base44.entities.MensagemWhatsapp.create({
       conversa_id: conversa.id,
       empresa_id: empresaId,
       remetente: 'cliente',
@@ -623,6 +624,8 @@ async function processarMensagemRecebida(base44, connection, data) {
       cliente_respondeu: true
     });
 
+    try { await processarQualificadorTesteIA(base44.entities, connection, conversa, mensagemParaIA); }
+    catch { console.error('Falha isolada no Qualificador de teste.'); }
     console.log('✅ Mensagem D-API salva com sucesso:', { conversaId: conversa.id, whatsappMessageId, telefone, texto });
   } catch (error) {
     console.error('❌ Erro ao processar mensagem D-API:', error?.message, error?.stack);
