@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
       const cons = await db.WhatsappConnection.filter({ empresa_id: empresa, provider_type: 'dapi', is_active: true }, '-created_date', 100);
       return Response.json({ empresa_id: empresa, empresas, registros: all.slice(0, 500), mais_registros: all.length > 500,
         conexoes: cons.map((c: any) => ({ id: c.id, nome: c.nome || c.session_id || 'WhatsApp', status: c.status })),
-        integracao: { chave_presente: Boolean(Deno.env.get('OPENAI_API_KEY')), atendimento_automatico: false, voz_pronta: false } });
+        integracao: { chave_presente: Boolean(Deno.env.get('OPENAI_API_KEY_AGENTES')), atendimento_automatico: false, voz_pronta: false } });
     }
     if (action === 'clientes') {
       const q = text(body.busca, 80);
