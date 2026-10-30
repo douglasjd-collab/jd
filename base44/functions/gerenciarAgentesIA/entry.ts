@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 
-// Administração apenas. Nenhuma ação deste módulo envia mensagens, liga ou chama LLMs.
+// Administração apenas. Validação OpenAI é explícita; nenhuma ação envia mensagens ou faz ligações.
 const ADM = ['master', 'super_admin', 'admin'];
 const TYPES = ['agente', 'conhecimento', 'memoria', 'aprendizado', 'historico', 'configuracao'];
 const text = (v: unknown, n = 30000) => typeof v === 'string' ? v.trim().slice(0, n) : '';
@@ -26,6 +26,51 @@ Deno.serve(async (req) => {
     if (!empresa || !empresas.some((e: any) => e.id === empresa)) return fail('Selecione uma empresa autorizada.', 403);
     const records = db.AgenteIARegistro;
     const action = body.acao || 'listar';
+    if (action === 'validar_openai') {
+      const key = Deno.env.get('OPENAI_API_KEY_AGENTES')?.trim();
+      if (!key) return fail('Cadastre OPENAI_API_KEY_AGENTES nos segredos do aplicativo.');
+      const recent = await records.filter({ empresa_id: empresa, tipo: 'historico', titulo: 'Validação da conexão OpenAI', autor_id: me.id }, '-created_date', 1);
+      if (recent[0] && Date.now() - new Date(recent[0].created_date).getTime() < 60000) {
+        return Response.json({ resultado: JSON.parse(recent[0].dados_json || '{}'), reutilizado: true });
+      }
+      const inicio = Date.now();
+      const resultado: any = { sucesso: false, testado_em: new Date().toISOString(), modelo: 'gpt-4.1-mini',
+        atendimento_automatico: false };
+      try {
+        const response = await fetch('https://api.openai.com/v1/responses', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: resultado.modelo, input: 'Responda apenas: Conexão JD OK', max_output_tokens: 64, store: false }),
+          signal: AbortSignal.timeout(30000),
+        });
+        const json = await response.json().catch(() => ({}));
+        resultado.http_status = response.status;
+        if (response.ok) {
+          const saida = (json.output || []).filter((x: any) => x.type === 'message')
+            .flatMap((x: any) => x.content || []).filter((x: any) => x.type === 'output_text').map((x: any) => x.text || '').join('').trim();
+          resultado.sucesso = Boolean(saida);
+          resultado.mensagem = saida ? 'Autenticação aceita e resposta de texto gerada. Uso da API disponível para este teste.' : 'A API aceitou a requisição, mas não retornou texto. Revise o modelo antes de avançar.';
+          resultado.resposta = saida.slice(0, 200);
+          resultado.tokens_entrada = json.usage?.input_tokens || 0;
+          resultado.tokens_saida = json.usage?.output_tokens || 0;
+        } else {
+          const code = String(json.error?.code || '');
+          resultado.mensagem = response.status === 401 ? 'Chave recusada. Confira a chave cadastrada no segredo dos agentes.' :
+            code === 'insufficient_quota' || code === 'credit_balance_exhausted' ? 'Crédito ou cota indisponível no projeto desta chave. Confira o faturamento da organização correta.' :
+            response.status === 429 ? 'Limite de requisições atingido. Aguarde e tente novamente.' :
+            response.status === 403 ? 'O projeto ou a chave não tem permissão para gerar esta resposta.' :
+            response.status === 404 ? 'O modelo de teste não está disponível para este projeto.' :
+            'A OpenAI recusou o teste. Confira permissões, faturamento e disponibilidade do serviço.';
+        }
+      } catch {
+        resultado.mensagem = 'Não foi possível alcançar a OpenAI no prazo. Tente novamente; isso não confirma que a chave esteja inválida.';
+      }
+      resultado.duracao_ms = Date.now() - inicio;
+      await records.create({ empresa_id: empresa, tipo: 'historico', titulo: 'Validação da conexão OpenAI',
+        conteudo: resultado.mensagem, status: resultado.sucesso ? 'aprovado' : 'pendente', versao: 1,
+        dados_json: JSON.stringify(resultado), autor_id: me.id, autor_nome: me.full_name || me.email });
+      return Response.json({ resultado });
+    }
     if (action === 'listar') {
       const all = await records.filter({ empresa_id: empresa }, '-updated_date', 501);
       const cons = await db.WhatsappConnection.filter({ empresa_id: empresa, provider_type: 'dapi', is_active: true }, '-created_date', 100);
