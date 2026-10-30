@@ -1,3 +1,4 @@
+import { processarQualificadorTesteIA } from '../../shared/qualificadorTesteIA.ts';
 import { idReciboDapi, expandirRecibosDapi, aplicarReciboDapi } from '../../shared/recibosDapiShared.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 import { processReactionDapi } from '../../shared/reactionDapiShared.ts';
@@ -955,6 +956,10 @@ async function processMessageReceived(base44, body, connection, empresaId) {
     status: 'sucesso',
   });
 
+  // O motor só atua na lista de teste, após persistir a mensagem recebida.
+  try {
+    await processarQualificadorTesteIA(base44.asServiceRole.entities, connection, conversa, _mensagemSalva);
+  } catch { console.error('Falha isolada no Qualificador de teste.'); }
   return {
     handled: true,
     conversaId: conversa.id,
