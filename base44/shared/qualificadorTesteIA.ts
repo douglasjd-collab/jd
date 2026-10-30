@@ -7,7 +7,7 @@ export const telefoneTesteIA = (v: any) => TELEFONES_TESTE_IA.includes(String(v 
 export function elegivelTesteIA(agente: any, conversa: any, mensagem: any, conexao: any) {
   const d = parseIA(agente);
   return agente?.empresa_id === EMPRESA_TESTE_IA && conversa?.empresa_id === EMPRESA_TESTE_IA &&
-    conexao?.empresa_id === EMPRESA_TESTE_IA && conexao?.id === CONEXAO_TESTE_IA &&
+    conexao?.empresa_id === EMPRESA_TESTE_IA && conexao?.id === CONEXAO_TESTE_IA && conexao?.is_active === true && conexao?.status === 'conectado' &&
     conversa?.connection_id === CONEXAO_TESTE_IA && d.connection_id === CONEXAO_TESTE_IA &&
     d.papel === 'qualificador' && d.ativo === true && d.modo === 'teste' &&
     telefoneTesteIA(conversa.cliente_telefone) && mensagem?.remetente === 'cliente' &&
@@ -84,6 +84,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
     const out = JSON.parse(extrairTexto(json));
     if (typeof out.resposta !== 'string' || !out.resposta.trim() || out.resposta.length > 2500 || typeof out.resumo !== 'string') throw new Error('saida_invalida');
     const latest = await db.AgenteIARegistro.get(agente.id);
+    connection = await db.WhatsappConnection.get(connection.id);
     conversa = await db.ConversaWhatsapp.get(conversa.id);
     if (!elegivelTesteIA(latest, conversa, mensagem, connection) || parseIA(latest).ativado_em !== d.ativado_em) {
       await registrar('cancelado', 'Resposta cancelada: teste desativado ou alterado antes do envio.'); return;
