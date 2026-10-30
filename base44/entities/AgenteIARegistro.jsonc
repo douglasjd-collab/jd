@@ -1,0 +1,74 @@
+{
+  "name": "AgenteIARegistro",
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "tipo": {
+      "type": "string",
+      "enum": [
+        "agente",
+        "conhecimento",
+        "memoria",
+        "aprendizado",
+        "historico",
+        "configuracao"
+      ]
+    },
+    "titulo": {
+      "type": "string"
+    },
+    "conteudo": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "rascunho",
+        "pendente",
+        "aprovado",
+        "rejeitado",
+        "arquivado",
+        "desativado"
+      ],
+      "default": "rascunho"
+    },
+    "agente_id": {
+      "type": "string"
+    },
+    "cliente_id": {
+      "type": "string"
+    },
+    "cliente_nome": {
+      "type": "string"
+    },
+    "origem": {
+      "type": "string"
+    },
+    "versao": {
+      "type": "integer",
+      "default": 1
+    },
+    "dados_json": {
+      "type": "string"
+    },
+    "autor_id": {
+      "type": "string"
+    },
+    "autor_nome": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "tipo",
+    "titulo"
+  ],
+  "rls": {
+    "create": false,
+    "read": false,
+    "update": false,
+    "delete": false
+  }
+}
