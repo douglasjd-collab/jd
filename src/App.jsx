@@ -49,6 +49,7 @@ import CentrosCusto from './pages/CentrosCusto';
 import MeuFinanceiro from './pages/MeuFinanceiro';
 import ImportacaoComissao from './pages/ImportacaoComissao';
 import RobosIntegracoes from './pages/RobosIntegracoes';
+import AgentesIA from './pages/AgentesIA';
 import Campanhas from './pages/Campanhas';
 import GerenciadorAssinaturas from './pages/GerenciadorAssinaturas';
 import MonitoramentoInstancias from './pages/MonitoramentoInstancias';
@@ -153,6 +154,7 @@ const AuthenticatedApp = () => {
       <Route path="/CentrosCusto" element={<LayoutWrapper currentPageName="CentrosCusto"><CentrosCusto /></LayoutWrapper>} />
       <Route path="/MeuFinanceiro" element={<LayoutWrapper currentPageName="MeuFinanceiro"><MeuFinanceiro /></LayoutWrapper>} />
       <Route path="/ImportacaoComissao" element={<LayoutWrapper currentPageName="ImportacaoComissao"><ImportacaoComissao /></LayoutWrapper>} />
+      <Route path="/AgentesIA" element={<LayoutWrapper currentPageName="AgentesIA"><AgentesIA /></LayoutWrapper>} />
       <Route path="/RobosIntegracoes" element={<LayoutWrapper currentPageName="RobosIntegracoes"><RobosIntegracoes /></LayoutWrapper>} />
       <Route path="/MonitoramentoInstancias" element={<LayoutWrapper currentPageName="MonitoramentoInstancias"><MonitoramentoInstancias /></LayoutWrapper>} />
       <Route path="/ConfiguracaoWhatsAppConexoes" element={<LayoutWrapper currentPageName="ConfiguracaoWhatsAppConexoes"><ConfiguracaoWhatsAppConexoes /></LayoutWrapper>} />
