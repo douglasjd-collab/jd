@@ -25,6 +25,7 @@ export default function AgentesIA() {
   const [details, setDetails] = useState(null);
   const [busca, setBusca] = useState('');
   const [clientes, setClientes] = useState([]);
+  const [validacao, setValidacao] = useState(null);
   const call = async (args) => (await base44.functions.invoke('gerenciarAgentesIA', { empresa_id: empresa || undefined, ...args })).data;
   const load = async (company = empresa) => {
     setLoading(true); setError('');
@@ -56,14 +57,26 @@ export default function AgentesIA() {
     try { const res = await call({ acao:'clientes',busca }); setClientes(res.clientes); if (!res.clientes.length) toast.info('Nenhum cliente encontrado. Tente outro nome ou telefone.'); }
     catch (e) { toast.error(e?.response?.data?.error || 'Falha ao buscar clientes.'); } finally { setBusy(false); }
   };
+  const validarOpenAI = async () => {
+    setBusy(true);
+    try {
+      const res = await call({ acao: 'validar_openai' });
+      setValidacao(res.resultado);
+      if (res.resultado.sucesso) toast.success('Conexão OpenAI validada.');
+      else toast.error(res.resultado.mensagem);
+      await load();
+    } catch (e) { toast.error(e?.response?.data?.error || 'Não foi possível executar o teste.'); }
+    finally { setBusy(false); }
+  };
   const records = data?.registros || [];
+  const ultimoTeste = validacao || parse(records.find((r) => r.tipo === 'historico' && r.titulo === 'Validação da conexão OpenAI'));
   const visible = records.filter((r) => r.tipo === tab && [r.titulo,r.conteudo,r.cliente_nome].some((s) => String(s || '').toLowerCase().includes(filter.toLowerCase())));
   const config = records.find((r) => r.tipo === 'configuracao');
   const currentHistoryTarget = details?.tipo === 'historico' && records.find((r) => r.id === details.agente_id);
   return <div className="space-y-6">
     <PageHeader title="Agentes de IA" subtitle="Atendimento da JD com treinamento, memória e acompanhamento em um só lugar." />
     <div className="flex flex-wrap items-center gap-3">
-      {data?.empresas?.length > 1 && <label className="text-sm">Empresa <select aria-label="Empresa" className={inputClass} value={empresa} disabled={loading || busy} onChange={(e) => { setEmpresa(e.target.value); setForm(null); setDetails(null); void load(e.target.value); }}>{data.empresas.map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}</select></label>}
+      {data?.empresas?.length > 1 && <label className="text-sm">Empresa <select aria-label="Empresa" className={inputClass} value={empresa} disabled={loading || busy} onChange={(e) => { setEmpresa(e.target.value); setForm(null); setDetails(null); setValidacao(null); void load(e.target.value); }}>{data.empresas.map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}</select></label>}
       <span className="rounded-full bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800">Preparação • Atendimento automático desativado</span>
       <Button variant="outline" size="sm" disabled={loading || busy} onClick={() => load()}><RefreshCw className="mr-2 h-4 w-4" />Atualizar</Button>
     </div>
@@ -76,6 +89,7 @@ export default function AgentesIA() {
       {tab === 'configuracao' ? <div className="grid gap-5 lg:grid-cols-2">
         <section className="space-y-4 rounded-xl border bg-white p-6 dark:bg-slate-900"><h2 className="text-lg font-semibold">Conexões e operação</h2><p className="text-sm text-slate-500">OpenAI direta para inteligência. D-API para WhatsApp. O CRM guarda a memória e controla os atendimentos.</p>
           <div className="rounded-lg bg-slate-50 p-4 text-sm dark:bg-slate-800">Chave OpenAI no servidor: <strong>{data?.integracao?.chave_presente ? 'Presente — ainda não validada' : 'Não configurada'}</strong><p className="mt-2 text-slate-500">A chave deve ser cadastrada nos segredos do servidor como OPENAI_API_KEY_AGENTES. Não cole a chave em treinamentos ou documentos.</p></div>
+          <div className="space-y-2"><Button disabled={busy || loading || !data?.integracao?.chave_presente} onClick={validarOpenAI}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Validar conexão OpenAI</Button><p className="text-xs text-slate-500">Gera uma resposta curta com pequeno consumo da sua API. Não envia dados de clientes nem ativa atendimento.</p>{ultimoTeste.testado_em && <div role="status" className={'rounded-lg border p-3 text-sm ' + (ultimoTeste.sucesso ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-900')}><strong>{ultimoTeste.sucesso ? 'Último teste aprovado' : 'Último teste não aprovado'}</strong><p>{ultimoTeste.mensagem}</p>{ultimoTeste.resposta && <p className="mt-1">Resposta: {ultimoTeste.resposta}</p>}<p className="mt-1 text-xs">{fmt(ultimoTeste.testado_em)} • {ultimoTeste.modelo} • {ultimoTeste.duracao_ms} ms</p><p className="text-xs">Este teste não consulta o saldo exato nem valida voz ou WhatsApp.</p></div>}</div>
           <p className="text-sm">Voz da IA: <strong>Ponte de áudio pendente de implementação e teste.</strong></p>
           <p className="text-sm">Atendimento automático: <strong>Desativado nesta etapa.</strong></p>
           <Button onClick={() => open(config,'configuracao')}>Configurar regras de operação</Button>
