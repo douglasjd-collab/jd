@@ -116,6 +116,14 @@ Deno.serve(async (req) => {
         dados.hora_inicio < 0 || dados.hora_fim > 23 || dados.hora_inicio >= dados.hora_fim ||
         dados.limite_tentativas < 1 || dados.limite_tentativas > 10) return fail('Revise horários e limite de tentativas.');
       dados.pausar_ao_humano = true; dados.aprovar_aprendizado = true;
+      dados.voz_tipo = dados.voz_tipo === 'padrao' ? 'padrao' : 'personalizada';
+      dados.voz_nome = text(dados.voz_nome, 120);
+      dados.voz_estilo = text(dados.voz_estilo, 2000) || 'Português brasileiro, tom acolhedor e profissional, ritmo natural, frases curtas e pausas de conversa. Identificar-se como assistente virtual da JD.';
+      dados.responder_audio_com_audio = true;
+      dados.audio_todos_agentes = true;
+      dados.atender_ligacoes_todos = true;
+      dados.integracao_audio_pronta = false;
+      dados.integracao_chamadas_pronta = false;
     }
     if (dados.connection_id) {
       const c = await db.WhatsappConnection.get(dados.connection_id);
