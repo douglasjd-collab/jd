@@ -7,7 +7,7 @@ Deno.serve(async req=>{
   const {conversaId}=await req.json(),db=b.asServiceRole.entities;
   const conversa=await db.ConversaWhatsapp.get(conversaId);
   if(conversa.empresa_id!==u.empresa_id&&!['master','super_admin'].includes(u.perfil))return Response.json({error:'Sem autorização'},{status:403});
-  const pending=await db.MensagemWhatsapp.filter({empresa_id:conversa.empresa_id,conversa_id:conversa.id,provider:'dapi',remetente:'vendedor',status:'enviada'},'-data_envio',30);
+  const pending=await db.MensagemWhatsapp.filter({empresa_id:conversa.empresa_id,conversa_id:conversa.id,provider:'dapi',remetente:'vendedor',status:{$in:['enviada','entregue']}},'-data_envio',30);
   if(!pending.length)return Response.json({success:true,updated:0});
   const candidates=conversa.connection_id?[await db.WhatsappConnection.get(conversa.connection_id)]:await db.WhatsappConnection.filter({empresa_id:conversa.empresa_id,session_id:conversa.instancia},'-created_date',1);
   const c=candidates[0];if(!c||c.empresa_id!==conversa.empresa_id||c.provider_type!=='dapi'||/^cloud-/i.test(c.session_id||''))return Response.json({success:true,updated:0});
