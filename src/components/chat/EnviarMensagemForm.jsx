@@ -800,7 +800,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
               }}
             />
             {/* Figurinhas (Joinha) dentro do quadro de digitação */}
-            <StickerPicker onEnviar={onEnviar} isLoading={isLoading} />
+            <StickerPicker onEnviar={onEnviar} isLoading={isLoading} empresaId={empresaId} />
           </div>
 
           {/* Botão gravar áudio (vazio) / Enviar (com texto) — estilo WhatsApp */}
