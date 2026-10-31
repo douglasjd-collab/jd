@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Sticker, Plus, Loader2 } from 'lucide-react';
+import { Sticker, Plus, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // Figurinhas no estilo "Joinha" — personagem com boné e óculos
@@ -42,6 +42,24 @@ const FIGURINHAS = [
 export default function StickerPicker({ onEnviar, isLoading = false, empresaId }) {
   const [aberto, setAberto] = useState(false);
   const [enviando, setEnviando] = useState(null);
+
+  const [excluindo, setExcluindo] = useState(null);
+  const excluirFigurinha = async (fig) => {
+    if (!empresaId || excluindo || enviando || !window.confirm('Excluir a figurinha "' + fig.label + '" da coleção da empresa?')) return;
+    setExcluindo(fig.id);
+    try {
+      if (fig.personalizada) {
+        await base44.entities.Figurinha.delete(fig.id);
+      } else {
+        // Registra a remoção dos itens originais somente para esta empresa.
+        await base44.entities.Figurinha.create({ empresa_id: empresaId, nome: '__oculta_padrao__' + fig.id, url: fig.url });
+      }
+      await queryClient.invalidateQueries({ queryKey: ['figurinhas', empresaId] });
+      toast.success('Figurinha excluída da coleção.');
+    } catch {
+      toast.error('Não foi possível excluir a figurinha. Tente novamente.');
+    } finally { setExcluindo(null); }
+  };
 
   const inputRef = useRef(null);
   const [adicionando, setAdicionando] = useState(false);
@@ -217,13 +235,13 @@ export default function StickerPicker({ onEnviar, isLoading = false, empresaId }
             </div>
             {erroCarregamento && <p className="text-xs text-red-500 mb-2">Não foi possível carregar as figurinhas salvas. Feche e abra para tentar novamente.</p>}
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 max-h-[45vh] overflow-y-auto">
-              {[...FIGURINHAS, ...personalizadas.map(f => ({ id: f.id, label: f.nome, nome: 'figurinha.webp', url: f.url, personalizada: true }))].map((fig) => (
+              {[...FIGURINHAS.filter(f => !personalizadas.some(p => p.nome === '__oculta_padrao__' + f.id)), ...personalizadas.filter(f => !f.nome?.startsWith('__oculta_padrao__')).map(f => ({ id: f.id, label: f.nome, nome: 'figurinha.webp', url: f.url, personalizada: true }))].map((fig) => (
+                <div key={fig.id} className="relative">
                 <button
-                  key={fig.id}
                   type="button"
-                  disabled={!!enviando}
+                  disabled={!!enviando || !!excluindo}
                   onClick={() => enviarFigurinha(fig)}
-                  className="group relative aspect-square rounded-xl overflow-hidden border border-slate-200 hover:border-purple-400 hover:shadow-md transition-all disabled:opacity-50"
+                  className="group relative w-full aspect-square rounded-xl overflow-hidden border border-slate-200 hover:border-purple-400 hover:shadow-md transition-all disabled:opacity-50"
                   title={fig.label}
                 >
                   <img
@@ -237,6 +255,13 @@ export default function StickerPicker({ onEnviar, isLoading = false, empresaId }
                     </div>
                   )}
                 </button>
+                <button type="button" title={'Excluir ' + fig.label} aria-label={'Excluir ' + fig.label}
+                  disabled={!empresaId || !!excluindo || !!enviando || adicionando}
+                  onClick={() => excluirFigurinha(fig)}
+                  className="absolute top-1 right-1 p-2 rounded-full bg-white border border-red-100 text-red-500 hover:bg-red-50 shadow-sm disabled:opacity-50">
+                  {excluindo === fig.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                </button>
+                </div>
               ))}
             </div>
             <p className="text-[10px] text-slate-400 mt-2 text-center">
