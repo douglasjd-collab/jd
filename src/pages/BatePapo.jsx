@@ -830,26 +830,44 @@ export default function BatePapo() {
     },
     staleTime: 30000,
     gcTime: Infinity,
-    refetchInterval: 60000,
-    refetchOnWindowFocus: false,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
     // Sem placeholder de outra conversa: o cache é isolado por conversation ID.
   });
 
   const mensagens = React.useMemo(() => mesclarHistoricoMensagens([], mensagensCache), [mensagensCache]);
 
-  // Confere recibos pendentes uma vez ao abrir a conversa ou após novo envio.
-  // A consulta só avança com confirmação real da D-API; não presume entrega.
-  const ultimaSaidaDapi = mensagens.filter(m => m.provider === 'dapi' && m.remetente === 'vendedor').at(-1)?.whatsapp_message_id;
+  // Reconciliar entrega e leitura enquanto houver saída sem confirmação de leitura.
+  // Somente recibos reais do provedor avançam o status.
+  const ultimaSaidaDapi = mensagens.filter(m => m.provider === 'dapi' && m.remetente === 'vendedor' &&
+    ['enviada', 'entregue'].includes(m.status)).at(-1)?.whatsapp_message_id;
   useEffect(() => {
     if (!conversaSelecionadaId || !ultimaSaidaDapi) return;
     let cancelado = false;
-    const timer = setTimeout(() => {
-      base44.functions.invoke('reconciliarEntregasDapi', { conversaId: conversaSelecionadaId })
-        .then(r => { if (!cancelado && r.data?.updated) void refetchMensagens(); })
-        .catch(() => {});
-    }, 2500);
-    return () => { cancelado = true; clearTimeout(timer); };
-  }, [conversaSelecionadaId, ultimaSaidaDapi]);
+    let consultando = false;
+    const conferir = async () => {
+      if (cancelado || consultando || document.visibilityState === 'hidden') return;
+      consultando = true;
+      try {
+        await base44.functions.invoke('reconciliarEntregasDapi', { conversaId: conversaSelecionadaId });
+        if (!cancelado) await refetchMensagens();
+      } catch {
+        // A próxima consulta e o realtime continuam disponíveis.
+      } finally { consultando = false; }
+    };
+    const aoRetornar = () => { if (document.visibilityState === 'visible') void conferir(); };
+    const timer = setTimeout(conferir, 2500);
+    const intervalo = setInterval(conferir, 30000);
+    document.addEventListener('visibilitychange', aoRetornar);
+    window.addEventListener('focus', aoRetornar);
+    return () => {
+      cancelado = true;
+      clearTimeout(timer);
+      clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', aoRetornar);
+      window.removeEventListener('focus', aoRetornar);
+    };
+  }, [conversaSelecionadaId, ultimaSaidaDapi, refetchMensagens]);
 
   useEffect(() => {
     if (!escopoHistorico || !conversaSelecionadaId || !mensagens.length) return;
