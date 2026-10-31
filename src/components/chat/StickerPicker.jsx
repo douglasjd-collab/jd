@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { Sticker } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { Sticker, Plus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // Figurinhas no estilo "Joinha" — personagem com boné e óculos
@@ -36,14 +39,58 @@ const FIGURINHAS = [
   },
 ];
 
-export default function StickerPicker({ onEnviar, isLoading = false }) {
+export default function StickerPicker({ onEnviar, isLoading = false, empresaId }) {
   const [aberto, setAberto] = useState(false);
   const [enviando, setEnviando] = useState(null);
+
+  const inputRef = useRef(null);
+  const [adicionando, setAdicionando] = useState(false);
+  const queryClient = useQueryClient();
+  const { data: personalizadas = [], isError: erroCarregamento } = useQuery({
+    queryKey: ['figurinhas', empresaId],
+    enabled: aberto && !!empresaId,
+    queryFn: () => base44.entities.Figurinha.filter({ empresa_id: empresaId }, '-created_date', 500),
+  });
+  const adicionarFigurinhas = async (event) => {
+    const arquivos = Array.from(event.target.files || []);
+    event.target.value = '';
+    if (!empresaId || !arquivos.length || adicionando) return;
+    setAdicionando(true);
+    let salvas = 0;
+    try {
+      for (const arquivo of arquivos) {
+        if (!['image/png', 'image/jpeg', 'image/webp'].includes(arquivo.type) || arquivo.size > 5 * 1024 * 1024) {
+          toast.error(arquivo.name + ': use PNG, JPG ou WebP de até 5 MB.');
+          continue;
+        }
+        // Não remove cores da imagem importada; mantém proporção e transparência.
+        const local = URL.createObjectURL(arquivo);
+        try {
+          const blob = await prepararFigurinha(local, false);
+          const file = new File([blob], 'figurinha.webp', { type: 'image/webp' });
+          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+          if (!file_url) throw new Error('Upload não retornou o arquivo');
+          await base44.entities.Figurinha.create({
+            empresa_id: empresaId, nome: arquivo.name.replace(/\.[^.]+$/, ''), url: file_url,
+          });
+          salvas++;
+        } finally { URL.revokeObjectURL(local); }
+      }
+    } catch {
+      toast.error('Não foi possível salvar todas as figurinhas. Tente novamente.');
+    } finally {
+      if (salvas) {
+        toast.success(salvas + ' figurinha(s) adicionada(s)!');
+        await queryClient.invalidateQueries({ queryKey: ['figurinhas', empresaId] });
+      }
+      setAdicionando(false);
+    }
+  };
 
   // Prepara uma figurinha real: WebP de 512 px e fundo transparente.
   // O recorte remove somente o fundo conectado à borda; assim, o boné, óculos
   // e camisa escuros do personagem não desaparecem.
-  const prepararFigurinha = async (url) => {
+  const prepararFigurinha = async (url, removerFundo = true) => {
     const resp = await fetch(url);
     if (!resp.ok) throw new Error('Falha ao baixar figurinha');
     const objectUrl = URL.createObjectURL(await resp.blob());
@@ -61,7 +108,9 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
       canvas.width = size;
       canvas.height = size;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      ctx.drawImage(img, 0, 0, size, size);
+      const escala = Math.min(size / img.width, size / img.height);
+      const largura = img.width * escala, altura = img.height * escala;
+      ctx.drawImage(img, (size - largura) / 2, (size - altura) / 2, largura, altura);
 
       const imageData = ctx.getImageData(0, 0, size, size);
       const { data } = imageData;
@@ -79,6 +128,7 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
         }
       };
 
+      if (removerFundo) {
       for (let x = 0; x < size; x++) { colocarSeFundo(x, 0); colocarSeFundo(x, size - 1); }
       for (let y = 1; y < size - 1; y++) { colocarSeFundo(0, y); colocarSeFundo(size - 1, y); }
 
@@ -92,6 +142,7 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
         if (y < size - 1) colocarSeFundo(x, y + 1);
       }
       ctx.putImageData(imageData, 0, 0);
+      }
 
       const webpBlob = await new Promise((res) => canvas.toBlob(res, 'image/webp', 0.9));
       if (!webpBlob || !webpBlob.size) throw new Error('Seu navegador não conseguiu preparar a figurinha');
@@ -112,7 +163,7 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
     if (isLoading || enviando) return;
     setEnviando(fig.id);
     try {
-      const blob = await prepararFigurinha(fig.url);
+      const blob = await prepararFigurinha(fig.url, !fig.personalizada);
       const nome = fig.nome.replace(/\.png$/, '.webp');
       const base64 = await lerBase64(blob);
       onEnviar({
@@ -128,6 +179,7 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
       setAberto(false);
     } catch (err) {
       console.error('Erro ao enviar figurinha:', err);
+      toast.error('Não foi possível preparar a figurinha para envio.');
     } finally {
       setEnviando(null);
     }
@@ -156,10 +208,16 @@ export default function StickerPicker({ onEnviar, isLoading = false }) {
           <div className="absolute bottom-full left-0 right-0 mb-2 mx-3 bg-white border border-slate-200 rounded-2xl shadow-lg p-4 z-40">
             <div className="flex items-center gap-2 mb-3 px-1">
               <Sticker className="w-4 h-4 text-purple-500" />
-              <span className="text-xs font-semibold text-slate-600">Figurinhas Joinha</span>
+              <span className="text-xs font-semibold text-slate-600">Figurinhas</span>
+              <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={adicionarFigurinhas} />
+              <Button type="button" variant="outline" size="sm" className="ml-auto gap-1 text-purple-600 text-xs" disabled={!empresaId || adicionando} onClick={() => inputRef.current?.click()}>
+                {adicionando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                {adicionando ? 'Adicionando...' : 'Adicionar figurinhas'}
+              </Button>
             </div>
-            <div className="grid grid-cols-5 gap-3">
-              {FIGURINHAS.map((fig) => (
+            {erroCarregamento && <p className="text-xs text-red-500 mb-2">Não foi possível carregar as figurinhas salvas. Feche e abra para tentar novamente.</p>}
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 max-h-[45vh] overflow-y-auto">
+              {[...FIGURINHAS, ...personalizadas.map(f => ({ id: f.id, label: f.nome, nome: 'figurinha.webp', url: f.url, personalizada: true }))].map((fig) => (
                 <button
                   key={fig.id}
                   type="button"

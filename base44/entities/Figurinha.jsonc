@@ -1,0 +1,34 @@
+{
+  "type": "object",
+  "properties": {
+    "empresa_id": {
+      "type": "string"
+    },
+    "nome": {
+      "type": "string"
+    },
+    "url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "empresa_id",
+    "nome",
+    "url"
+  ],
+  "rls": {
+    "create": {
+      "data.empresa_id": "{{user.data.empresa_id}}"
+    },
+    "read": {
+      "data.empresa_id": "{{user.data.empresa_id}}"
+    },
+    "update": {
+      "data.empresa_id": "{{user.data.empresa_id}}"
+    },
+    "delete": {
+      "data.empresa_id": "{{user.data.empresa_id}}"
+    }
+  },
+  "name": "Figurinha"
+}
