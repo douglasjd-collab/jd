@@ -9,6 +9,16 @@ function formatarTempo(minutos) {
   return `${minutos} minuto(s)`;
 }
 
+// A Agenda não guarda o nome do cliente: quando o compromisso não tem esse
+// campo, usamos o trecho depois do separador do título (ex: "Reunião - Murcio").
+function nomeDoCliente(comp) {
+  if (comp.cliente_nome) return comp.cliente_nome;
+  const titulo = String(comp.titulo || '').trim();
+  const partes = titulo.split(/\s+[-–—]\s+/);
+  const nome = partes.length > 1 ? partes.slice(1).join(' - ') : titulo;
+  return nome.trim() || 'Cliente';
+}
+
 function resolverTemplate(template, vars) {
   return template
     .replace(/{cliente_nome}/g, vars.cliente_nome || 'Cliente')
@@ -89,7 +99,7 @@ Deno.serve(async (req) => {
             const jaEnviadoCliente = (jaEnviado || []).find(j => j.tipo === 'cliente' && j.destinatario_telefone === telefone);
             
             if (!jaEnviadoCliente && telefone.length >= 10) {
-              const clienteNome = comp.cliente_nome || comp.titulo || 'Cliente';
+              const clienteNome = nomeDoCliente(comp);
               const msg = resolverTemplate(msgCliente, { cliente_nome: clienteNome, hora, titulo: comp.titulo, faltam: formatarTempo(minAntes) });
               
               let status = 'enviado';
@@ -118,13 +128,24 @@ Deno.serve(async (req) => {
             }
           }
 
-          // Enviar para responsáveis
-          if (config.enviar_para_responsaveis !== false && comp.responsaveis_ids) {
-            let responsaveisIds = [];
-            try { responsaveisIds = JSON.parse(comp.responsaveis_ids); } catch {}
+          // Enviar para responsáveis — a Agenda guarda o responsável em
+          // usuario_id (usuário autenticado); compromissos antigos podem ter a
+          // lista em responsaveis_ids.
+          if (config.enviar_para_responsaveis !== false) {
+            let responsaveis = [];
+            try {
+              responsaveis = JSON.parse(comp.responsaveis_ids || '[]') || [];
+            } catch { responsaveis = []; }
+            if (!responsaveis.length && comp.usuario_id) {
+              responsaveis = [{ user_id: comp.usuario_id }];
+            }
 
-            for (const respId of responsaveisIds) {
-              const colabs = await base44.asServiceRole.entities.Colaborador.filter({ id: respId });
+            for (const resp of responsaveis) {
+              const alvo = typeof resp === 'string' ? { id: resp } : (resp || {});
+              const filtroColab = alvo.user_id ? { user_id: alvo.user_id } : { id: alvo.id };
+              if (!alvo.user_id && !alvo.id) continue;
+
+              const colabs = await base44.asServiceRole.entities.Colaborador.filter(filtroColab);
               const colab = colabs?.[0];
               if (!colab || !colab.telefone) continue;
               
@@ -133,7 +154,7 @@ Deno.serve(async (req) => {
               if (jaEnviadoResp || telefone.length < 10) continue;
 
               const msg = resolverTemplate(msgResponsavel, {
-                cliente_nome: comp.cliente_nome || comp.titulo || 'Cliente',
+                cliente_nome: nomeDoCliente(comp),
                 hora,
                 titulo: comp.titulo,
                 faltam: formatarTempo(minAntes),
