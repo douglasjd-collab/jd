@@ -192,21 +192,15 @@ export default function Layout({ children, currentPageName }) {
     }
   }, [user]);
 
+  // Badge do Bate-Papo: conta apenas mensagens das conexões liberadas para o
+  // usuário (a autorização por canal é aplicada no backend, não no navegador).
   useEffect(() => {
-    if (!user) return;
-    const filtroEmpresa = user.empresa_id ? { empresa_id: user.empresa_id } : {};
-    if (user.empresa_id) {
-      base44.entities.MensagemWhatsapp.filter({ ...filtroEmpresa, remetente: 'cliente' }, {
-        sort: '-data_envio',
-        limit: 500,
-        fields: ['status'],
-      })
-        .then(resposta => {
-          const msgs = listaDe(resposta);
-          const naoLidas = msgs.filter(m => m.status !== 'lida').length;
-          setMensagensNaoLidas(naoLidas);
-        }).catch(() => {});
-    }
+    if (!user?.empresa_id) return;
+    base44.functions.invoke('contarNaoLidasBatePapo', { empresa_id: user.empresa_id })
+      .then(resp => {
+        const total = resp?.data?.total;
+        if (typeof total === 'number') setMensagensNaoLidas(total);
+      }).catch(() => {});
   }, [user]);
 
   useEffect(() => {
