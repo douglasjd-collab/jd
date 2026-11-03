@@ -68,8 +68,8 @@ Deno.serve(async (req) => {
       // Antes carregava até 500 compromissos de uma janela muito maior em toda execução.
       const maxMinutos = Math.max(...tempos, 60);
       const minMinutos = Math.min(...tempos);
-      const inicioJanela = new Date(now.getTime() + Math.max(0, minMinutos - 2) * 60 * 1000);
-      const fimJanela = new Date(now.getTime() + (maxMinutos + 2) * 60 * 1000);
+      const inicioJanela = new Date(now.getTime() + Math.max(0, minMinutos - 3) * 60 * 1000);
+      const fimJanela = new Date(now.getTime() + (maxMinutos + 3) * 60 * 1000);
 
       const compromissos = await base44.asServiceRole.entities.Agenda.filter({
         empresa_id: empresaId,
@@ -80,11 +80,13 @@ Deno.serve(async (req) => {
       for (const comp of (compromissos || [])) {
         const inicio = new Date(comp.inicio);
         const diffMin = (inicio.getTime() - now.getTime()) / 60000;
-        const hora = `${String(inicio.getHours()).padStart(2,'0')}:${String(inicio.getMinutes()).padStart(2,'0')}`;
+        const hora = new Intl.DateTimeFormat('pt-BR', {
+          timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+        }).format(inicio);
 
         for (const minAntes of tempos) {
-          // Janela: entre minAntes+2 e minAntes-2 minutos antes
-          if (diffMin > minAntes + 2 || diffMin < minAntes - 2) continue;
+          // Janela de seis minutos cobre a verificação automática a cada cinco minutos.
+          if (diffMin > minAntes + 3 || diffMin < minAntes - 3) continue;
 
           // Verificar se já foi enviado para este compromisso + minutos
           const jaEnviado = await base44.asServiceRole.entities.AgendaLembretesEnviados.filter({
