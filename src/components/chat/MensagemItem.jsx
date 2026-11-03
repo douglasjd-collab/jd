@@ -71,7 +71,9 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
   const [barReacaoFixa, setBarReacaoFixa] = useState(false);
   const [contatoModalAberto, setContatoModalAberto] = useState(false);
   const [contatoExtraido, setContatoExtraido] = useState(null);
-  const [statusAtual, setStatusAtual] = useState(mensagem.status);
+  // Recibos persistidos também confirmam o status se o evento parcial omitir status.
+  const statusConfirmado = mensagem.lida_em ? 'lida' : mensagem.entregue_em ? 'entregue' : mensagem.status;
+  const [statusAtual, setStatusAtual] = useState(statusConfirmado);
   const audioRef = React.useRef(null);
   const baixandoRef = useRef(false);
 
@@ -84,10 +86,9 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
   // Sincronizar statusAtual com a prop mensagem.status para re-render imediato
   useEffect(() => {
     const prioridade = { 'lida': 3, 'entregue': 2, 'enviada': 1, 'pendente': 0, 'erro': -1 };
-    if ((prioridade[mensagem.status] ?? -99) >= (prioridade[statusAtual] ?? -99)) {
-      setStatusAtual(mensagem.status);
-    }
-  }, [mensagem.status]);
+    setStatusAtual(atual => (prioridade[statusConfirmado] ?? -99) >= (prioridade[atual] ?? -99)
+      ? statusConfirmado : atual);
+  }, [statusConfirmado]);
 
   // Tentar parsear JSON mesmo se vier com caracteres problemáticos
   const tryParseContactJson = (texto) => {
