@@ -2,6 +2,13 @@
   "name": "ConversaWhatsapp",
   "type": "object",
   "properties": {
+    "ia_sessao_id": {
+      "type": "string"
+    },
+    "ia_sessao_inicio_em": {
+      "type": "string",
+      "format": "date-time"
+    },
     "ia_aguardando_humano": {
       "type": "boolean",
       "default": false
