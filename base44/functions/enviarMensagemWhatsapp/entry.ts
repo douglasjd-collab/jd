@@ -341,7 +341,8 @@ Deno.serve(async (req) => {
         ...camposReaberturaConversa,
         ultima_mensagem: mensagem_texto.trim().substring(0, 100),
         data_ultima_mensagem: new Date().toISOString(),
-        ultimo_remetente: 'vendedor',
+        ia_atendendo: false,
+          ultimo_remetente: 'vendedor',
       });
 
       console.log('✅ Mensagem Instagram enviada e salva:', novaMensagem.id);
@@ -492,6 +493,7 @@ Deno.serve(async (req) => {
         await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
           ultima_mensagem: emojiReacao,
           data_ultima_mensagem: new Date().toISOString(),
+          ia_atendendo: false,
           ultimo_remetente: 'vendedor'
         });
 
@@ -791,7 +793,8 @@ Deno.serve(async (req) => {
             ...camposReaberturaConversa,
             ultima_mensagem: (textoEnviar || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
             data_ultima_mensagem: new Date().toISOString(),
-            ultimo_remetente: 'vendedor',
+            ia_atendendo: false,
+          ultimo_remetente: 'vendedor',
           }).catch((e) => console.error('⚠️ Erro ao atualizar resumo da conversa:', e.message)),
           logPromise,
         ]));
@@ -1248,6 +1251,7 @@ Deno.serve(async (req) => {
           ...camposReaberturaConversa,
           ultima_mensagem: (mensagem_texto || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
           data_ultima_mensagem: new Date().toISOString(),
+          ia_atendendo: false,
           ultimo_remetente: 'vendedor',
         }).catch(e => console.error('⚠️ Erro ao atualizar resumo da conversa:', e.message)),
       ]));
