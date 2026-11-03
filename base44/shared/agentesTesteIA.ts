@@ -151,9 +151,12 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
   const claims = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA_TESTE_IA, tipo: 'historico', origem }, 'created_date', 10);
   claims.sort((a: any, b: any) => String(a.created_date).localeCompare(String(b.created_date)) || String(a.id).localeCompare(String(b.id)));
   if (claims[0]?.id !== exec.id) return { enviado: false, motivo: 'concorrente' };
-  const registrar = async (etapa: string, conteudo: string, extra: any = {}) => db.AgenteIARegistro.update(exec.id, {
+  const registrar = async (etapa: string, conteudo: string, extra: any = {}) => {
+    if (['erro','erro_openai','cancelado','midia_pendente','envio_incerto','sem_envio'].includes(etapa)) await db.ConversaWhatsapp.update(conversa.id, camposAtendimentoIA(null));
+    return db.AgenteIARegistro.update(exec.id, {
     status: etapa === 'enviado' ? 'aprovado' : 'pendente', conteudo,
     dados_json: JSON.stringify({ mensagem_id: mensagem.id, conversa_id: conversa.id, papel, proativo, etapa, ...extra }) });
+  };
   let memoriaDestino = memoria;
   await db.ConversaWhatsapp.update(conversa.id, camposAtendimentoIA(agente));
   try {
