@@ -166,6 +166,18 @@ Deno.serve(async (req) => {
       const c = await db.WhatsappConnection.get(dados.connection_id);
       if (c.empresa_id !== empresa || c.provider_type !== 'dapi') return fail('Conexão não autorizada.', 403);
     }
+    // Conhecimento geral usa agente_id vazio; vínculo específico só aceita agente da mesma empresa.
+    let agenteId = text(old?.agente_id, 100);
+    if (['conhecimento','aprendizado'].includes(tipo)) {
+      const informouDestino = Object.prototype.hasOwnProperty.call(source, 'agente_id');
+      if (!old && !informouDestino) return fail('Selecione quem pode usar este conhecimento.');
+      if (informouDestino && typeof source.agente_id !== 'string') return fail('Destino do conhecimento inválido.');
+      agenteId = informouDestino ? text(source.agente_id, 100) : agenteId;
+      if (agenteId) {
+        const alvo = await records.get(agenteId).catch(() => null);
+        if (!alvo || alvo.empresa_id !== empresa || alvo.tipo !== 'agente') return fail('Selecione um agente desta empresa.', 403);
+      }
+    }
     let clienteNome = '';
     const clienteId = text(source.cliente_id || old?.cliente_id, 100);
     if (tipo === 'memoria') {
@@ -184,7 +196,7 @@ Deno.serve(async (req) => {
       if (!old || !['aprendizado','conhecimento'].includes(tipo) || !['aprovado','rejeitado','arquivado'].includes(body.status)) return fail('Revisão inválida.');
       status = body.status;
     }
-    const clean = { empresa_id: empresa, tipo, titulo, conteudo, status, cliente_id: clienteId, cliente_nome: clienteNome,
+    const clean = { empresa_id: empresa, tipo, titulo, conteudo, status, agente_id: agenteId, cliente_id: clienteId, cliente_nome: clienteNome,
       origem: text(source.origem || old?.origem, 600), versao: Number(old?.versao || 0) + 1,
       dados_json: JSON.stringify(dados), autor_id: me.id, autor_nome: me.full_name || me.email };
     // Snapshot imutável antes da alteração. Uma revisão nunca apaga a versão anterior.
