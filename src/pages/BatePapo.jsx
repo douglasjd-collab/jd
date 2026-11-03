@@ -718,20 +718,6 @@ export default function BatePapo() {
     },
   });
 
-  const { data: contadoresGlobais = {} } = useQuery({
-    queryKey: ['contadores-bate-papo', empresaId, user?.colaborador_id || user?.id],
-    enabled: !!empresaId && !!user,
-    staleTime: 300000,
-    refetchInterval: 300000,
-    queryFn: async () => {
-      const resp = await base44.functions.invoke('buscarContadoresBatePapo', {
-        empresa_id: empresaId,
-        responsavel_id: user?.colaborador_id || user?.id,
-      });
-      return resp?.data?.contadores || {};
-    },
-  });
-
   // Dados para o modal de criar tarefa
   const { colaboradores: colaboradoresTarefa, clientes: clientesTarefa, statusList: statusListTarefa, setores: setoresTarefa, subsetores: subsetoresTarefa } = useTarefaFormData(empresaId);
   const tiposListTarefa = [];
@@ -1792,12 +1778,10 @@ export default function BatePapo() {
     microtarefas: Object.keys(microtarefasPorConversa).length,
     funil: conversas.filter(c => !isGrupo(c) && c.status !== 'campanha' && estaNoFunil(c)).length,
   };
-  const contadores = {
-    ...contadoresLocais,
-    ...contadoresGlobais,
-    microtarefas: contadoresLocais.microtarefas,
-    funil: contadoresLocais.funil,
-  };
+  // Os contadores das abas vêm da MESMA lista que a tela exibe (já deduplicada
+  // por telefone). Contar direto do banco mostrava números sem conversa
+  // correspondente — ex.: linha duplicada em "Esperando" escondida pela deduplicação.
+  const contadores = contadoresLocais;
 
 
 
@@ -2210,9 +2194,7 @@ export default function BatePapo() {
                     <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2 px-2">
                       <MessageCircle className="w-8 h-8 opacity-40" />
                       <p className="text-xs text-center text-slate-400">
-                        {conversasValidas.filter(c => !isGrupo(c)).length} conversas verificadas.<br/>
-                        Com último remetente cliente: {conversasValidas.filter(c => !isGrupo(c) && c.ultimo_remetente === 'cliente').length}<br/>
-                        Com msgs não lidas: {conversasValidas.filter(c => !isGrupo(c) && naoLidasPorConversa[c.id] > 0).length}
+                        Nenhuma conversa esperando resposta.
                       </p>
                     </div>
                   ) : conversasFiltradas.length === 0 ? (
