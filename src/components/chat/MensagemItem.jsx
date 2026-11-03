@@ -44,7 +44,8 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     // URLs do nosso storage com download_status "pendente" = upload incompleto/corrompido
     if (downloadStatus === 'pendente') return false;
 
-    // Bloquear URLs do storage sem extensão (truncadas)
+    // Um download concluído pode ter URL sem extensão; o backend já validou o arquivo.
+    // Sem confirmação do download, manter a proteção contra URLs truncadas.
     if (downloadStatus !== 'baixado' && url.includes('base44.app/api/apps') && url.includes('/files/')) {
       const nomeArquivo = url.split('?')[0].split('/').pop();
       if (!/\.[a-zA-Z0-9]{2,5}$/.test(nomeArquivo)) return false;
@@ -371,7 +372,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
       .then(res => {
         const data = res?.data;
         const url = data?.arquivo_url;
-        if (url && url !== 'indisponivel' && isUrlValida(url)) {
+        if (url && url !== 'indisponivel' && isUrlValida(url, 'baixado')) {
           setMediaUrl(sanitizeUrl(url));
         } else {
           toast.error('Não foi possível carregar a mídia. Tente novamente.');
