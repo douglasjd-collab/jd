@@ -1,4 +1,5 @@
 import { enviarDapiDireto } from './dapiEnvioShared.ts';
+import { camposAtendimentoIA } from './atendimentoIA.ts';
 import { consultarPlanosDoAtendimentoIA } from './planosVendedorIA.ts';
 
 // Escopo deliberadamente fixo enquanto a equipe valida o fluxo completo.
@@ -115,7 +116,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
   const novoCiclo = ativos.qualificador && coord.sessao !== parseIA(ativos.qualificador).ativado_em;
   if (novoCiclo) coord = { responsavel: 'qualificador', inicio: parseIA(ativos.qualificador).ativado_em,
     sessao: parseIA(ativos.qualificador).ativado_em, tentativas: 0, aguardando_resposta: false };
-  if (md.parar_contato === true || coord.pausado_humano) return { enviado: false, motivo: 'interrompido' };
+  if (md.parar_contato === true || coord.pausado_humano) { if (conversa.ia_atendendo) await db.ConversaWhatsapp.update(conversa.id, camposAtendimentoIA(null)); return { enviado: false, motivo: 'interrompido' }; }
   if (!coord.inicio) {
     const entrada = ativos.qualificador;
     if (!entrada || proativo) return { enviado: false, motivo: 'sem_entrada' };
@@ -130,7 +131,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
   if (['vendedor', 'follow_up'].includes(papel) && !(d.permissoes || []).includes('enviar_mensagem')) return { enviado: false, motivo: 'sem_permissao' };
   const hist = await db.MensagemWhatsapp.filter({ empresa_id: EMPRESA_TESTE_IA, conversa_id: conversa.id }, '-data_envio', 40);
   const recentes = hist.filter((m: any) => Date.parse(m.data_envio) >= Date.parse(coord.inicio));
-  if (recentes.some(humano)) return { enviado: false, motivo: 'atendimento_humano' };
+  if (recentes.some(humano)) { if (conversa.ia_atendendo) await db.ConversaWhatsapp.update(conversa.id, camposAtendimentoIA(null)); return { enviado: false, motivo: 'atendimento_humano' }; }
   const cfg = proativo ? await configuracao(db) : {};
   const maxTentativas = Math.min(10, Math.max(1, Number(cfg.limite_tentativas) || 4));
   if (proativo) {
@@ -154,6 +155,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
     status: etapa === 'enviado' ? 'aprovado' : 'pendente', conteudo,
     dados_json: JSON.stringify({ mensagem_id: mensagem.id, conversa_id: conversa.id, papel, proativo, etapa, ...extra }) });
   let memoriaDestino = memoria;
+  await db.ConversaWhatsapp.update(conversa.id, camposAtendimentoIA(agente));
   try {
     const key = Deno.env.get('OPENAI_API_KEY_AGENTES')?.trim();
     if (!key) { await registrar('erro', 'Chave OpenAI dos agentes não configurada.'); return { enviado: false }; }
@@ -245,7 +247,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
     const agora = new Date().toISOString();
     const eco = await db.MensagemWhatsapp.filter({ empresa_id: EMPRESA_TESTE_IA, whatsapp_message_id: String(idWa) }, '-created_date', 1);
     const saida = { empresa_id: EMPRESA_TESTE_IA, conversa_id: conversa.id, remetente: 'vendedor',
-      usuario_nome: 'IA • ' + NOMES[papel], atendente_nome: 'IA • ' + NOMES[papel], tipo_conteudo: 'texto',
+      usuario_nome: 'IA • ' + (d.nome_atendimento || NOMES[papel]), atendente_nome: 'IA • ' + (d.nome_atendimento || NOMES[papel]), tipo_conteudo: 'texto',
       texto: out.resposta.trim(), provider: 'dapi', whatsapp_message_id: String(idWa), status: 'enviada', data_envio: agora };
     if (eco[0]) await db.MensagemWhatsapp.update(eco[0].id, saida); else await db.MensagemWhatsapp.create(saida);
     const responsavel = out.destino === 'humano' ? 'humano' : out.destino === 'vendedor' ? 'vendedor' : papel;
@@ -260,7 +262,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
       dados_json: JSON.stringify({ conversa_id: conversa.id, agente_id: agente.id, transferir: out.destino === 'humano',
         parar_contato: out.parar_contato === true, coordenador: novoCoord }), autor_nome: 'IA • ' + NOMES[papel] };
     if (memoriaDestino) await db.AgenteIARegistro.update(memoriaDestino.id, dataMemoria); else await db.AgenteIARegistro.create(dataMemoria);
-    await db.ConversaWhatsapp.update(conversa.id, { ultima_mensagem: out.resposta.slice(0, 200), data_ultima_mensagem: agora, ultimo_remetente: 'vendedor' });
+    await db.ConversaWhatsapp.update(conversa.id, { ultima_mensagem: out.resposta.slice(0, 200), data_ultima_mensagem: agora, ultimo_remetente: 'vendedor', ...camposAtendimentoIA(out.parar_contato || out.destino === 'humano' ? null : ativos[responsavel]) });
     await registrar('enviado', out.destino === 'humano' ? 'Resposta enviada; conversa pausada para a equipe assumir no Bate-Papo.' :
       'Resposta enviada. Próximo responsável: ' + (NOMES[responsavel] || responsavel) + '.', {
       whatsapp_message_id: String(idWa), tokens_entrada: json.usage?.input_tokens || 0, tokens_saida: json.usage?.output_tokens || 0,
@@ -268,6 +270,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
       consulta_planos: { status: consultaPlanos.status, filtros: consultaPlanos.filtros, ids: (consultaPlanos.opcoes || []).map((p: any) => p.id), consultado_em: consultaPlanos.consultado_em, uso_extracao: consultaPlanos.uso_extracao } });
     return { enviado: true, papel, destino: responsavel };
   } catch {
+    await db.ConversaWhatsapp.update(conversa.id, camposAtendimentoIA(null)).catch(() => {});
     await registrar('erro', 'Não foi possível concluir o atendimento. Confira o histórico antes de tentar novamente.');
     return { enviado: false };
   }
