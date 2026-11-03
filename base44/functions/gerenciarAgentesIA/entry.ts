@@ -33,7 +33,9 @@ Deno.serve(async (req) => {
       if (!agente || agente.empresa_id !== empresa || agente.tipo !== 'agente') return fail('Agente não autorizado.', 403);
       const dados = parseIA(agente);
       if (body.ativo) {
-        if (empresa !== EMPRESA_TESTE_IA || dados.papel !== 'qualificador') return fail('Nesta etapa, somente o Qualificador da JD pode ser ativado para teste.');
+        if (empresa !== EMPRESA_TESTE_IA || !['qualificador','vendedor','follow_up'].includes(dados.papel)) return fail('A ativação está restrita aos agentes de teste da JD.');
+        const outros = await records.filter({ empresa_id: empresa, tipo: 'agente' }, '-updated_date', 50);
+        if (outros.some((r: any) => r.id !== agente.id && parseIA(r).papel === dados.papel && parseIA(r).ativo === true)) return fail('Já existe um agente ativo com esta função. Desative-o antes de ativar outro.');
         if (Number(body.versao) !== Number(agente.versao || 1)) return fail('O agente foi alterado. Atualize antes de ativar.', 409);
         if (!Deno.env.get('OPENAI_API_KEY_AGENTES')?.trim()) return fail('Configure a chave OpenAI dos agentes antes de ativar.');
         const c = await db.WhatsappConnection.get(CONEXAO_TESTE_IA);
@@ -43,6 +45,7 @@ Deno.serve(async (req) => {
         dados.telefones_teste = TELEFONES_TESTE_IA;
         dados.ativado_em = new Date().toISOString();
       }
+      if (Number(body.versao) !== Number(agente.versao || 1)) return fail('O agente foi alterado. Atualize antes de continuar.', 409);
       dados.ativo = body.ativo;
       const mudanca = { dados_json: JSON.stringify(dados), status: body.ativo ? 'aprovado' : 'desativado',
         versao: Number(agente.versao || 1) + 1, autor_id: me.id, autor_nome: me.full_name || me.email };
@@ -103,7 +106,7 @@ Deno.serve(async (req) => {
       const cons = await db.WhatsappConnection.filter({ empresa_id: empresa, provider_type: 'dapi', is_active: true }, '-created_date', 100);
       return Response.json({ empresa_id: empresa, empresas, registros: all.slice(0, 500), mais_registros: all.length > 500,
         conexoes: cons.map((c: any) => ({ id: c.id, nome: c.nome || c.session_id || 'WhatsApp', status: c.status })),
-        integracao: { chave_presente: Boolean(Deno.env.get('OPENAI_API_KEY_AGENTES')), atendimento_automatico: all.some((r: any) => r.tipo === 'agente' && parseIA(r).ativo === true), voz_pronta: false } });
+        integracao: { chave_presente: Boolean(Deno.env.get('OPENAI_API_KEY_AGENTES')), atendimento_automatico: all.some((r: any) => r.tipo === 'agente' && parseIA(r).ativo === true), voz_pronta: false, simulador_pronto: false, follow_up_intervalo_horas: 24 } });
     }
     if (action === 'clientes') {
       const q = text(body.busca, 80);
