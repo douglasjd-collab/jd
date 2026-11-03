@@ -400,6 +400,18 @@ export default function BatePapo() {
   }, [conversaTarefa?.id]);
   const [transferirModal, setTransferirModal] = useState(null); // conversa a transferir
   const [revisaoLeitura, setRevisaoLeitura] = useState(0);
+  const [crmEmFoco, setCrmEmFoco] = useState(() => document.visibilityState === 'visible' && document.hasFocus());
+  useEffect(() => {
+    const atualizarFoco = () => setCrmEmFoco(document.visibilityState === 'visible' && document.hasFocus());
+    document.addEventListener('visibilitychange', atualizarFoco);
+    window.addEventListener('focus', atualizarFoco);
+    window.addEventListener('blur', atualizarFoco);
+    return () => {
+      document.removeEventListener('visibilitychange', atualizarFoco);
+      window.removeEventListener('focus', atualizarFoco);
+      window.removeEventListener('blur', atualizarFoco);
+    };
+  }, []);
   const timerLeituraRef = React.useRef(null);
   const reconciliarLeitura = React.useCallback(() => {
     clearTimeout(timerLeituraRef.current);
@@ -863,9 +875,9 @@ export default function BatePapo() {
 
   const ultimaMensagemVisivelId = mensagens.at(-1)?.id || '';
   useEffect(() => {
-    if (!conversaSelecionadaId || loadingMensagens || !mensagens.length) return;
+    if (!crmEmFoco || document.visibilityState !== 'visible' || !document.hasFocus() || !conversaSelecionadaId || loadingMensagens || !mensagens.length) return;
     (usuarioRestritoWhatsapp(user) ? base44.functions.invoke('marcarConversaVistaBatePapo', { conversa_id: conversaSelecionadaId }) : marcarConversaComoLida(conversaSelecionadaId)).then(reconciliarLeitura).catch(() => {});
-  }, [conversaSelecionadaId, loadingMensagens, ultimaMensagemVisivelId, reconciliarLeitura]);
+  }, [conversaSelecionadaId, loadingMensagens, ultimaMensagemVisivelId, reconciliarLeitura, crmEmFoco]);
 
 
   // Recarregar somente quando o usuário pedir mais itens, mantendo a mesma chave de cache.
@@ -900,16 +912,16 @@ export default function BatePapo() {
         // o webhook de leitura ainda esteja processando ou chegue fora de ordem.
         if (resumo?.ultimo_remetente === 'vendedor' &&
             new Date(m.data_envio).getTime() <= new Date(resumo.data_ultima_mensagem).getTime()) return;
-        if (m.conversa_id === abertaId) return; // conversa aberta não conta
+        if (m.conversa_id === abertaId && crmEmFoco) return; // só a conversa efetivamente visível conta como vista
         if (!conversaIds.includes(m.conversa_id)) return; // só desta empresa
         if (m.status === 'lida') return; // já lida, não conta
         contadores[m.conversa_id] = (contadores[m.conversa_id] || 0) + 1;
       });
       // Manter contadores zerados para conversa aberta
-      setNaoLidasPorConversa(prev => ({ ...contadores, [abertaId]: 0 }));
+      setNaoLidasPorConversa(crmEmFoco ? { ...contadores, [abertaId]: 0 } : contadores);
     }).catch(() => {}), 350);
     return () => { cancelado = true; clearTimeout(timer); };
-  }, [empresaId, conversaIdsKey, conversaSelecionadaId, revisaoLeitura]);
+  }, [empresaId, conversaIdsKey, conversaSelecionadaId, revisaoLeitura, crmEmFoco]);
 
   // Navegação interna do alerta: usa a conversa em cache e preserva a página.
   // O id exato é mantido, inclusive para o mesmo contato em conexões diferentes.
@@ -1148,12 +1160,13 @@ export default function BatePapo() {
       // Atualizar contador de não lidas e marcar último remetente como cliente
       if (msgData?.remetente === 'cliente' && !recebidaAntesDaResposta && msgData?.status !== 'lida' && msgData?.conversa_id) {
         const conversaAtualId = conversaSelecionadaIdRef.current;
-        if (msgData.conversa_id !== conversaAtualId) {
+        const conversaEstaVisivel = msgData.conversa_id === conversaAtualId && document.visibilityState === 'visible' && document.hasFocus();
+        if (!conversaEstaVisivel) {
           setNaoLidasPorConversa(prev => {
             const nova = { ...prev };
             nova[msgData.conversa_id] = (nova[msgData.conversa_id] || 0) + 1;
             // Garantir que conversa aberta mantenha contador = 0
-            nova[conversaAtualId] = 0;
+            if (document.visibilityState === 'visible' && document.hasFocus()) nova[conversaAtualId] = 0;
             return nova;
           });
         } else {
@@ -2210,7 +2223,7 @@ export default function BatePapo() {
                          || c.canal_origem === 'meta'
                          || c.tipo_conexao === 'meta_oficial'
                          || c.instancia === 'META_OFICIAL';
-                       const mostrarBadge = naoLidas > 0 && !isSelecionada; // bolinha verde: mensagem não visualizada
+                       const mostrarBadge = naoLidas > 0; // bolinha verde: mensagem não visualizada
                       const cache = contatosWhatsapp[c.id];
                       const nomeEhId = !cache?.nome || cache?.nome?.startsWith('Instagram ') || cache?.nome === c.cliente_telefone;
                       const nome = (!nomeEhId && cache?.nome) || c.cliente_nome || c.cliente_telefone;
@@ -2247,7 +2260,7 @@ export default function BatePapo() {
                               <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white bg-orange-500 flex items-center justify-center">
                                 <Lock className="w-2 h-2 text-white" />
                               </span>
-                            ) : naoLidas > 0 && !isSelecionada ? (
+                            ) : naoLidas > 0 ? (
                               <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" title="Mensagem não visualizada" />
                             ) : null}
                             {/* Badge de API no topo direito do avatar */}
