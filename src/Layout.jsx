@@ -192,15 +192,30 @@ export default function Layout({ children, currentPageName }) {
     }
   }, [user]);
 
-  // Badge do Bate-Papo: conta apenas mensagens das conexões liberadas para o
-  // usuário (a autorização por canal é aplicada no backend, não no navegador).
+  // Badge do Bate-Papo: mensagens recebidas ainda sem resposta, apenas das
+  // conexões liberadas para o usuário (a autorização é aplicada no backend).
+  // Recalcula periodicamente e ao voltar para a aba para o número cair assim
+  // que o atendimento responde.
   useEffect(() => {
     if (!user?.empresa_id) return;
-    base44.functions.invoke('contarNaoLidasBatePapo', { empresa_id: user.empresa_id })
-      .then(resp => {
-        const total = resp?.data?.total;
-        if (typeof total === 'number') setMensagensNaoLidas(total);
-      }).catch(() => {});
+    const atualizarNaoLidas = () => {
+      if (document.visibilityState === 'hidden') return;
+      base44.functions.invoke('contarNaoLidasBatePapo', { empresa_id: user.empresa_id })
+        .then(resp => {
+          const total = resp?.data?.total;
+          if (typeof total === 'number') setMensagensNaoLidas(total);
+        }).catch(() => {});
+    };
+    atualizarNaoLidas();
+    const intervalo = window.setInterval(atualizarNaoLidas, 60000);
+    const aoVoltar = () => {
+      if (document.visibilityState === 'visible') atualizarNaoLidas();
+    };
+    document.addEventListener('visibilitychange', aoVoltar);
+    return () => {
+      window.clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', aoVoltar);
+    };
   }, [user]);
 
   useEffect(() => {

@@ -1,10 +1,11 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { carregarAcessoWhatsapp, podeAcessarConversa } from '../../shared/acessoWhatsappShared.ts';
 
-// Contador do badge "Bate - Papo" no menu: soma as mensagens de cliente ainda
-// não lidas, mas APENAS nas conversas das conexões liberadas para o usuário.
-// Sem isso o badge somava a empresa inteira e expunha movimento de instâncias
-// que o colaborador não pode abrir.
+// Contador do badge "Bate - Papo" no menu.
+// Regra: conta as mensagens RECEBIDAS do cliente que ainda NÃO foram respondidas
+// por ninguém do atendimento (mensagens enviadas depois da última resposta).
+// Também respeita as conexões liberadas para o usuário: conversas de canais sem
+// acesso não entram na soma.
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -20,44 +21,65 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Sem permissão para esta empresa' }, { status: 403 });
     }
 
-    const acesso = await carregarAcessoWhatsapp({
-      db: base44.asServiceRole.entities,
-      user,
-      empresaId: empresa_id,
-    });
+    const db = base44.asServiceRole.entities;
+    const acesso = await carregarAcessoWhatsapp({ db, user, empresaId: empresa_id });
     // Falha fechada: sem permissões validadas nada é contado.
     if (acesso.erroLeitura) return Response.json({ total: 0 });
 
-    const naoLidas = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-      { empresa_id, remetente: 'cliente', status: { $ne: 'lida' } },
+    // Consulta já restrita ao que interessa: atendimento ativo aguardando o
+    // cliente (última mensagem recebida, ainda sem resposta).
+    const filtroConversas = { empresa_id, status: 'ativa', ultimo_remetente: 'cliente' };
+    if (!acesso.irrestrito) {
+      if (!acesso.conexoesPermitidas.length) return Response.json({ total: 0 });
+      filtroConversas.connection_id = { $in: acesso.conexoesPermitidas };
+    }
+
+    const conversas = await db.ConversaWhatsapp.filter(filtroConversas, '-data_ultima_mensagem', 5000);
+
+    const ehGrupo = (c) =>
+      String(c.cliente_telefone || '').includes('@g.us') ||
+      String(c.whatsapp_id || '').includes('@g.us') ||
+      String(c.cliente_telefone || '').includes('@broadcast') ||
+      String(c.whatsapp_id || '').includes('@broadcast');
+
+    // Só interessam conversas em atendimento aberto (status ativa) cuja última
+    // mensagem é do cliente — ou seja, o cliente está aguardando resposta.
+    // Atendimentos encerrados/arquivados e disparos de campanha não contam.
+    const semResposta = conversas.filter((c) => {
+      if (ehGrupo(c) || c.bloqueado === true || c.bloqueado === 'true') return false;
+      if (!acesso.irrestrito && !podeAcessarConversa(acesso, c)) return false;
+      return true;
+    });
+
+    const ids = semResposta.map((c) => c.id);
+    if (!ids.length) return Response.json({ total: 0 });
+
+    const tempo = (v) => (v ? new Date(v).getTime() : 0);
+
+    // Última resposta enviada em cada conversa. Legendas técnicas de arquivo não
+    // contam como resposta, e envios com erro não respondem o cliente.
+    const respostas = await db.MensagemWhatsapp.filter(
+      { empresa_id, remetente: 'vendedor', conversa_id: { $in: ids } },
+      '-data_envio',
+      3000
+    );
+    const ultimaResposta = new Map();
+    respostas.forEach((m) => {
+      if (m.mensagem_tecnica === true || m.status === 'erro') return;
+      const t = tempo(m.data_envio);
+      const atual = ultimaResposta.get(m.conversa_id) || 0;
+      if (t > atual) ultimaResposta.set(m.conversa_id, t);
+    });
+
+    const recebidas = await db.MensagemWhatsapp.filter(
+      { empresa_id, remetente: 'cliente', conversa_id: { $in: ids } },
       '-data_envio',
       3000
     );
 
-    if (acesso.irrestrito) {
-      return Response.json({ total: naoLidas.filter(m => !!m.conversa_id).length });
-    }
-
-    // Só as conversas das conexões liberadas entram na conta.
-    let conversas = [];
-    if (acesso.conexoesPermitidas.length) {
-      conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
-        { empresa_id, connection_id: { $in: acesso.conexoesPermitidas } },
-        '-data_ultima_mensagem',
-        3000
-      );
-    }
-    const permitidas = new Map(
-      conversas.filter(c => podeAcessarConversa(acesso, c)).map(c => [c.id, c])
-    );
-
-    const total = naoLidas.filter(m => {
-      if (!m.conversa_id || !permitidas.has(m.conversa_id)) return false;
-      const resumo = permitidas.get(m.conversa_id);
-      // Resposta já enviada cobre as mensagens anteriores daquela conversa.
-      if (resumo?.ultimo_remetente === 'vendedor' && resumo?.data_ultima_mensagem &&
-          new Date(m.data_envio).getTime() <= new Date(resumo.data_ultima_mensagem).getTime()) return false;
-      return true;
+    const total = recebidas.filter((m) => {
+      const corte = ultimaResposta.get(m.conversa_id) || 0;
+      return tempo(m.data_envio) > corte;
     }).length;
 
     return Response.json({ total });
