@@ -1,3 +1,4 @@
+import { camposReaberturaIA } from '../../shared/atendimentoIA.ts';
 import { processarQualificadorTesteIA } from '../../shared/qualificadorTesteIA.ts';
 import { idReciboDapi, expandirRecibosDapi, aplicarReciboDapi } from '../../shared/recibosDapiShared.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
@@ -782,7 +783,10 @@ async function processMessageReceived(base44, body, connection, empresaId) {
       if (conversa.status === 'encerrada') {
         atualizarConversa.status = 'ativa';
         atualizarConversa.responsavel_id = null;
+        atualizarConversa.responsavel_nome = null;
+        atualizarConversa.responsavel_user_id = null;
         atualizarConversa.responsavel_expira_em = null;
+        Object.assign(atualizarConversa, camposReaberturaIA(conversa, connection, timestamp));
       }
       _antesUltimaMensagem = conversa.ultima_mensagem;
       _antesUltimaMensagemEm = conversa.data_ultima_mensagem;
