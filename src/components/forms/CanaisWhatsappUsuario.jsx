@@ -5,11 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { nivelEfetivo, montarPlano, rotuloNivel } from './canaisWhatsappHelper';
+import ExcluirCanalWhatsappButton from './ExcluirCanalWhatsappButton';
 
 // Canais de WhatsApp liberados para o usuário. Grava direto na permissão por
 // colaborador e conexão (mesma base usada pelo Bate-papo), permitindo liberar
 // um ou vários canais e bloquear os demais.
-export default function CanaisWhatsappUsuario({ colaboradorId, empresaId, podeEditar = true, onSelecaoChange }) {
+export default function CanaisWhatsappUsuario({ colaboradorId, empresaId, podeEditar = true, podeExcluir = false, onSelecaoChange }) {
   const [carregando, setCarregando] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [conexoes, setConexoes] = useState([]);
@@ -150,6 +151,9 @@ export default function CanaisWhatsappUsuario({ colaboradorId, empresaId, podeEd
               >
                 {rotuloNivel(nivel)}
               </Badge>
+              {podeExcluir && (
+                <ExcluirCanalWhatsappButton conexao={conexao} onExcluido={carregar} />
+              )}
             </label>
           );
         })}

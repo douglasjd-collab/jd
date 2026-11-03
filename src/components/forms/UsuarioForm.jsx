@@ -377,6 +377,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
                         colaboradorId={usuario?.id || null}
                         empresaId={usuario?.empresa_id || watch('empresa_id') || currentUser?.empresa_id || null}
                         podeEditar
+                        podeExcluir={isMasterAdmin}
                         onSelecaoChange={onCanaisWhatsappChange}
                       />
                     </div>
