@@ -143,6 +143,7 @@ Deno.serve(async (req) => {
       dados.ativado_em = anteriorDados.ativado_em;
     }
     if (tipo === 'agente') {
+      dados.nome_atendimento = text(dados.nome_atendimento, 80).replace(/\s+/g, ' ');
       if (!['qualificador', 'vendedor', 'follow_up'].includes(dados.papel)) return fail('Selecione uma função válida.');
       dados.permissoes = Array.isArray(dados.permissoes) ? dados.permissoes.filter((p: string) => ['consultar_cliente','registrar_memoria','consultar_tabelas','simular','consultar_lances','enviar_mensagem','enviar_video','ligar','transferir'].includes(p)) : [];
     }
