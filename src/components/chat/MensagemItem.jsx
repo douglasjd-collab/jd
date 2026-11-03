@@ -259,7 +259,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
 
   // Confirmar leitura ao montar a mensagem (se for mensagem de cliente)
   useEffect(() => {
-    if (mensagem.remetente === 'cliente' && (mensagem.status === 'entregue' || mensagem.status === 'enviada')) {
+    if (document.visibilityState === 'visible' && document.hasFocus() && mensagem.remetente === 'cliente' && (mensagem.status === 'entregue' || mensagem.status === 'enviada')) {
       base44.functions.invoke('confirmarLeituraMensagem', {
         mensagem_id: mensagem.id,
         conversa_id: conversaId
