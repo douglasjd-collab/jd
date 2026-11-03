@@ -161,6 +161,7 @@ export default function FinalizarAtendimentoDialog({
 
       await base44.entities.ConversaWhatsapp.update(idAlvo, {
         status: 'encerrada',
+        ia_atendendo: false,
         responsavel_id: null,
         responsavel_nome: null,
         responsavel_expira_em: null,
