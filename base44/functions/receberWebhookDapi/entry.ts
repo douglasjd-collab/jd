@@ -514,6 +514,19 @@ async function processarMensagemRecebida(base44, connection, data) {
 
     console.log('✅ Dados extraídos:', { telefone, nomeContato, tipo_conteudo, texto, arquivo_url });
 
+    const whatsappMessageId = data?.id || data?.key?.id || `dapi_in_${Date.now()}`;
+
+    // Evitar duplicação caso o webhook seja reenviado
+    const mensagensExistentes = await base44.entities.MensagemWhatsapp.filter({
+      empresa_id: empresaId,
+      whatsapp_message_id: whatsappMessageId
+    }, '-created_date', 1);
+
+    if (mensagensExistentes && mensagensExistentes.length > 0) {
+      console.log('ℹ️ Mensagem D-API já registrada:', whatsappMessageId);
+      return;
+    }
+
     // Buscar conversa existente
     let conversas = await base44.entities.ConversaWhatsapp.filter({
       empresa_id: empresaId,
@@ -581,19 +594,6 @@ async function processarMensagemRecebida(base44, connection, data) {
         cliente_respondeu: true,
         data_primeira_resposta: new Date().toISOString()
       });
-    }
-
-    const whatsappMessageId = data?.id || data?.key?.id || `dapi_in_${Date.now()}`;
-
-    // Evitar duplicação caso o webhook seja reenviado
-    const mensagensExistentes = await base44.entities.MensagemWhatsapp.filter({
-      empresa_id: empresaId,
-      whatsapp_message_id: whatsappMessageId
-    }, '-created_date', 1);
-
-    if (mensagensExistentes && mensagensExistentes.length > 0) {
-      console.log('ℹ️ Mensagem D-API já registrada:', whatsappMessageId);
-      return;
     }
 
     const { texto: respostaParaTexto, nome: respostaParaNome, whatsappId: respostaParaWhatsappId, id: respostaParaId } = await extrairRespostaCitada(base44, empresaId, data);
