@@ -1046,9 +1046,9 @@ export default function BatePapo() {
       if (conv?.id) {
         queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) => {
           if (!Array.isArray(old)) return old;
-          const existe = old.some(c => c.id === conv.id);
-          if (existe) return old.map(c => c.id === conv.id ? { ...c, ...conv } : c);
-          return event.type === 'create' ? [conv, ...old].slice(0, limiteConversas) : old;
+          // Evento em tempo real não passa pela autorização por conexão: só atualiza conversa já liberada.
+          if (!old.some(c => c.id === conv.id)) return old;
+          return old.map(c => c.id === conv.id ? { ...c, ...conv } : c);
         });
       }
       // Updates já chegam completos pela assinatura; criação reconcilia o contato em segundo plano.
