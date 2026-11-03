@@ -141,6 +141,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
   const registrar = async (etapa: string, conteudo: string, extra: any = {}) => db.AgenteIARegistro.update(exec.id, {
     status: etapa === 'enviado' ? 'aprovado' : 'pendente', conteudo,
     dados_json: JSON.stringify({ mensagem_id: mensagem.id, conversa_id: conversa.id, papel, proativo, etapa, ...extra }) });
+  let memoriaDestino = memoria;
   try {
     const key = Deno.env.get('OPENAI_API_KEY_AGENTES')?.trim();
     if (!key) { await registrar('erro', 'Chave OpenAI dos agentes não configurada.'); return { enviado: false }; }
@@ -206,6 +207,15 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
     }
     // O público e o agente são verificados novamente junto ao efeito externo.
     if (!parseIA(await db.AgenteIARegistro.get(agente.id)).ativo) return { enviado: false };
+    // Persistir interrupção/pausa antes do envio: vale mesmo se o provedor falhar na confirmação.
+    if (out.parar_contato || out.destino === 'humano') {
+      const bloqueio = { empresa_id: EMPRESA_TESTE_IA, tipo: 'memoria', titulo: 'Memória de teste — Eduarda',
+        origem: ORIGEM_MEMORIA, status: 'rascunho', conteudo: out.resumo.slice(0, 5000),
+        cliente_id: conversa.cliente_id || '', cliente_nome: 'Eduarda', versao: Number(memoria?.versao || 0) + 1,
+        dados_json: JSON.stringify({ ...md, conversa_id: conversa.id, parar_contato: out.parar_contato,
+          coordenador: { ...coord, aguardando_resposta: false, pausado_humano: out.destino === 'humano' } }) };
+      memoriaDestino = memoria ? await db.AgenteIARegistro.update(memoria.id, bloqueio) : await db.AgenteIARegistro.create(bloqueio);
+    }
     await registrar('enviando', 'Resposta preparada; aguardando confirmação da D-API.');
     const result = await enviarDapiDireto(connection, 'sendText', conversa.cliente_telefone, out.resposta.trim(), {});
     const idWa = result.data?.data?.messageId || result.data?.messageId;
@@ -227,10 +237,10 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
       ultima_atividade_ia: agora, envio_incerto: false };
     const dataMemoria = { empresa_id: EMPRESA_TESTE_IA, tipo: 'memoria', titulo: 'Memória de teste — Eduarda',
       conteudo: out.resumo.slice(0, 5000), cliente_id: conversa.cliente_id || '', cliente_nome: 'Eduarda',
-      origem: ORIGEM_MEMORIA, status: 'rascunho', versao: Number(memoria?.versao || 0) + 1,
+      origem: ORIGEM_MEMORIA, status: 'rascunho', versao: Number(memoriaDestino?.versao || 0) + 1,
       dados_json: JSON.stringify({ conversa_id: conversa.id, agente_id: agente.id, transferir: out.destino === 'humano',
         parar_contato: out.parar_contato === true, coordenador: novoCoord }), autor_nome: 'IA • ' + NOMES[papel] };
-    if (memoria) await db.AgenteIARegistro.update(memoria.id, dataMemoria); else await db.AgenteIARegistro.create(dataMemoria);
+    if (memoriaDestino) await db.AgenteIARegistro.update(memoriaDestino.id, dataMemoria); else await db.AgenteIARegistro.create(dataMemoria);
     await db.ConversaWhatsapp.update(conversa.id, { ultima_mensagem: out.resposta.slice(0, 200), data_ultima_mensagem: agora, ultimo_remetente: 'vendedor' });
     await registrar('enviado', out.destino === 'humano' ? 'Resposta enviada; conversa pausada para a equipe assumir no Bate-Papo.' :
       'Resposta enviada. Próximo responsável: ' + (NOMES[responsavel] || responsavel) + '.', {
