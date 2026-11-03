@@ -2,7 +2,7 @@ export function camposAtendimentoIA(agente: any) {
   let d: any = {};
   try { d = JSON.parse(agente?.dados_json || '{}'); } catch {}
   const ativo = Boolean(agente && d.ativo === true);
-  return { ia_atendendo: ativo, ia_agente_id: ativo ? agente.id : '',
+  return { ...(ativo ? { ia_aguardando_humano:false, ia_motivo_handoff:'' } : {}), ia_atendendo: ativo, ia_agente_id: ativo ? agente.id : '',
     ia_agente_nome: ativo ? String(d.nome_atendimento || agente.titulo || 'Atendimento JD').trim().slice(0, 80) : '',
     ia_agente_papel: ativo ? String(d.papel || '') : '', ia_atualizado_em: new Date().toISOString() };
 }
