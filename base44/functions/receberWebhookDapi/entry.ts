@@ -1,3 +1,4 @@
+import { camposReaberturaIA } from '../../shared/atendimentoIA.ts';
 import { processarQualificadorTesteIA } from '../../shared/qualificadorTesteIA.ts';
 import { aplicarReciboDapi, expandirRecibosDapi } from '../../shared/recibosDapiShared.ts';
 import { registrarChamadaRecebidaDapi, finalizarChamadaDapi } from '../../shared/chamadaDapiShared.ts';
@@ -555,7 +556,10 @@ async function processarMensagemRecebida(base44, connection, data) {
         // Conversa finalizada e cliente mandou mensagem: reabrir e colocar em "Esperando"
         atualizarConversa.status = 'ativa';
         atualizarConversa.responsavel_id = null;
+        atualizarConversa.responsavel_nome = null;
+        atualizarConversa.responsavel_user_id = null;
         atualizarConversa.responsavel_expira_em = null;
+        Object.assign(atualizarConversa, camposReaberturaIA(conversa, connection, data?.timestamp));
       }
 
       await base44.entities.ConversaWhatsapp.update(conversa.id, atualizarConversa);
