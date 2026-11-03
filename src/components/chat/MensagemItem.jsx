@@ -72,7 +72,8 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
   const [contatoModalAberto, setContatoModalAberto] = useState(false);
   const [contatoExtraido, setContatoExtraido] = useState(null);
   // Recibos persistidos também confirmam o status se o evento parcial omitir status.
-  const statusConfirmado = mensagem.lida_em ? 'lida' : mensagem.entregue_em ? 'entregue' : mensagem.status;
+  const statusConfirmado = mensagem.status === 'lida' || mensagem.lida_em ? 'lida'
+    : mensagem.status === 'entregue' || mensagem.entregue_em ? 'entregue' : mensagem.status;
   const [statusAtual, setStatusAtual] = useState(statusConfirmado);
   const audioRef = React.useRef(null);
   const baixandoRef = useRef(false);
