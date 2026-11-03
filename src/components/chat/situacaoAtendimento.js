@@ -18,10 +18,10 @@ export const rotuloSituacaoConversa = (conversa, { emAtendimento = false } = {})
   const status = conversa.status;
   const ultimoDoCliente = conversa.ultimo_remetente === 'cliente';
 
+  // Finalizada é finalizada: se o cliente escrever depois, o webhook reabre a
+  // conversa (status volta para 'ativa'), então aqui nunca há pendência.
   if (status === 'encerrada') {
-    return ultimoDoCliente
-      ? { texto: 'Novo atendimento pendente', cor: '#be123c', fundo: '#ffe4e6' }
-      : { texto: 'Finalizada', cor: '#64748b', fundo: '#f1f5f9' };
+    return { texto: 'Finalizada', cor: '#64748b', fundo: '#f1f5f9' };
   }
   if (status === 'arquivada') return { texto: 'Arquivada', cor: '#64748b', fundo: '#f1f5f9' };
   if (status === 'campanha') return { texto: 'Campanha sem resposta', cor: '#6d28d9', fundo: '#ede9fe' };
