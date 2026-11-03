@@ -1,0 +1,28 @@
+import { processarQualificadorTesteIA, EMPRESA_TESTE_IA, CONEXAO_TESTE_IA, parseIA, telefoneTesteIA } from './agentesTesteIA.ts';
+import { encaminharFalhaIA } from './handoffIA.ts';
+export async function monitorarAtendimentoTesteIA(db: any) {
+  const memorias = await db.AgenteIARegistro.filter({ empresa_id:EMPRESA_TESTE_IA,tipo:'memoria',origem:'teste-eduarda:' + CONEXAO_TESTE_IA },'-updated_date',1);
+  let mem = memorias[0], md = parseIA(mem);
+  if (!mem || md.parar_contato || md.coordenador?.pausado_humano || !md.conversa_id) return { ignorado:'pausado_ou_sem_conversa' };
+  const c = await db.ConversaWhatsapp.get(md.conversa_id);
+  if (c.empresa_id !== EMPRESA_TESTE_IA || c.connection_id !== CONEXAO_TESTE_IA || !telefoneTesteIA(c.cliente_telefone) ||
+    c.bloqueado || ['encerrada','encerrado','finalizado'].includes(c.status)) return { ignorado:'fora_do_teste' };
+  const agentes = await db.AgenteIARegistro.filter({ empresa_id:EMPRESA_TESTE_IA,tipo:'agente' },'-updated_date',50);
+  const papel = md.coordenador?.responsavel === 'follow_up' ? md.coordenador.retorno || 'vendedor' : md.coordenador?.responsavel;
+  const agente = agentes.find((a: any) => { const d=parseIA(a);return d.papel===papel && d.ativo===true && d.modo==='teste' && d.connection_id===CONEXAO_TESTE_IA; });
+  if (!agente) return { ignorado:'agente_desativado' };
+  const ultimas = await db.MensagemWhatsapp.filter({ empresa_id:EMPRESA_TESTE_IA,conversa_id:c.id },'-data_envio',1);
+  const mensagem = ultimas[0];
+  if (!mensagem || mensagem.remetente !== 'cliente' || Date.parse(mensagem.data_envio) < Date.parse(md.coordenador.inicio)) return { ignorado:'sem_cliente_aguardando' };
+  if (md.retomada_mensagem_id === mensagem.id) {
+    // Autorização de uma tentativa para o evento exato. Consumir antes de qualquer efeito externo.
+    await db.AgenteIARegistro.update(mem.id, { versao:Number(mem.versao||0)+1,
+      dados_json:JSON.stringify({...md,retomada_mensagem_id:null,retomada_consumida_em:new Date().toISOString()}) });
+    const connection = await db.WhatsappConnection.get(CONEXAO_TESTE_IA);
+    const resultado = await processarQualificadorTesteIA(db,connection,c,mensagem);
+    if (resultado?.enviado) return { retomado:true,resultado };
+    return encaminharFalhaIA(db,c.id,mensagem.id,'A retomada autorizada da IA não concluiu a resposta.');
+  }
+  if (Date.now() - Date.parse(mensagem.data_envio) < 120000) return { ignorado:'dentro_do_prazo' };
+  return encaminharFalhaIA(db,c.id,mensagem.id,'IA não respondeu à mensagem do cliente em até 2 minutos.');
+}
