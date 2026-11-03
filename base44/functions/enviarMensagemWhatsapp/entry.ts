@@ -690,6 +690,21 @@ Deno.serve(async (req) => {
             console.error('⚠️ Erro ao registrar log D-API:', logErr.message);
           }
           
+          // Sessão inexistente na D-API: a conexão ficou órfã (sessão removida/recriada
+          // no painel da D-API). Marcar o canal como desconectado para a tela de
+          // configuração mostrar o estado real, em vez de "conectado".
+          if (httpStatus === 404 && /session not found|sess[ãa]o n[ãa]o encontrada/i.test(String(erroDetalhes))) {
+            try {
+              await base44.asServiceRole.entities.WhatsappConnection.update(conexaoDapi.id, {
+                status: 'desconectado',
+                last_error_at: new Date().toISOString(),
+                last_error_message: 'Sessão não existe mais na D-API (reconecte este número)',
+              });
+            } catch (connErr) {
+              console.error('⚠️ Erro ao marcar conexão como desconectada:', connErr.message);
+            }
+          }
+
           // Retornar erro claro para o frontend
           let errorMsg = 'Erro ao enviar mensagem via D-API';
           if (httpStatus === 400) {
@@ -697,7 +712,7 @@ Deno.serve(async (req) => {
           } else if (httpStatus === 401) {
             errorMsg = `Erro 401: API Key inválida ou expirada. ${erroDetalhes}`;
           } else if (httpStatus === 404) {
-            errorMsg = `Erro 404: Sessão não encontrada. ${erroDetalhes}`;
+            errorMsg = `Este canal não existe mais na D-API (sessão "${conexaoDapi.session_id}"). Reconecte o número em Configurações > WhatsApp ou escolha outro canal no seletor do bate-papo. Detalhe: ${erroDetalhes}`;
           }
           
           return Response.json({ 
