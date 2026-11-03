@@ -3,12 +3,14 @@ import { encaminharFalhaIA } from './handoffIA.ts';
 export async function monitorarAtendimentoTesteIA(db: any) {
   const memorias = await db.AgenteIARegistro.filter({ empresa_id:EMPRESA_TESTE_IA,tipo:'memoria',origem:'teste-eduarda:' + CONEXAO_TESTE_IA },'-updated_date',1);
   let mem = memorias[0], md = parseIA(mem);
-  if (!mem || md.parar_contato || md.coordenador?.pausado_humano || !md.conversa_id) return { ignorado:'pausado_ou_sem_conversa' };
+  if (!mem || md.parar_contato || !md.conversa_id) return { ignorado:'pausado_ou_sem_conversa' };
   const c = await db.ConversaWhatsapp.get(md.conversa_id);
   if (c.empresa_id !== EMPRESA_TESTE_IA || c.connection_id !== CONEXAO_TESTE_IA || !telefoneTesteIA(c.cliente_telefone) ||
     c.bloqueado || ['encerrada','encerrado','finalizado'].includes(c.status)) return { ignorado:'fora_do_teste' };
+  const reaberturaPendente = Boolean(c.ia_sessao_id && md.coordenador?.reabertura_sessao !== c.ia_sessao_id);
+  if (md.coordenador?.pausado_humano && !reaberturaPendente) return { ignorado:'pausado_ou_sem_conversa' };
   const agentes = await db.AgenteIARegistro.filter({ empresa_id:EMPRESA_TESTE_IA,tipo:'agente' },'-updated_date',50);
-  const papel = md.coordenador?.responsavel === 'follow_up' ? md.coordenador.retorno || 'vendedor' : md.coordenador?.responsavel;
+  const papel = reaberturaPendente ? 'qualificador' : md.coordenador?.responsavel === 'follow_up' ? md.coordenador.retorno || 'vendedor' : md.coordenador?.responsavel;
   const agente = agentes.find((a: any) => { const d=parseIA(a);return d.papel===papel && d.ativo===true && d.modo==='teste' && d.connection_id===CONEXAO_TESTE_IA; });
   if (!agente) return { ignorado:'agente_desativado' };
   const ultimas = await db.MensagemWhatsapp.filter({ empresa_id:EMPRESA_TESTE_IA,conversa_id:c.id },'-data_envio',1);
