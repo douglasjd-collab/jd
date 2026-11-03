@@ -1,5 +1,5 @@
 import { dataHistorico } from '@/components/chat/dataHistorico';
-import { mesclarHistoricoMensagens } from '@/components/chat/cacheMensagens';
+import { mesclarHistoricoMensagens } from '@/components/chat/cacheMensagens'; import StatusConversaBadge from '@/components/chat/StatusConversaBadge';
 import useNotasConversa from '@/components/chat/useNotasConversa';
 import NotasConversaEditor from '@/components/chat/NotasConversaEditor';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
@@ -1535,31 +1535,6 @@ export default function BatePapo() {
 
   const TEMPO_ATENDIMENTO_MS = 24 * 60 * 60 * 1000;
 
-  // Verificar se a conversa tem atendente ativo (responsável não expirado)
-  const temAtendente = (c) => {
-    if (!c.responsavel_id || !c.responsavel_expira_em) return false;
-    return new Date(c.responsavel_expira_em) > new Date();
-  };
-
-  // Em espera: último remetente foi o CLIENTE AND NÃO há atendente ativo
-  // Só mostra bolinha quando cliente enviou mensagem E ninguém respondeu ainda
-  const estaEmEspera = (c) => {
-    if (!c || !c.id) return false;
-    if (c.status === 'arquivada' || c.status === 'encerrada') return false;
-    if (c.status !== 'ativa') return false;
-    if (c.ultimo_remetente !== 'cliente') return false;
-    // NÃO está em espera se há um atendente ativo responsável
-    return !temAtendente(c);
-  };
-
-  // Em atendimento: existe responsável dentro da janela máxima de 24 horas.
-  const estaEmAtendimento = (c) => {
-    if (!c || !c.id) return false;
-    if (c.status === 'arquivada' || c.status === 'encerrada') return false;
-    if (estaEmEspera(c)) return false; // se está em espera, não está em atendimento
-    return temAtendente(c) && c.status === 'ativa';
-  };
-
   // Ao assumir/enviar, preserva o prazo original; mensagens posteriores não reiniciam as 24h.
   const marcarResponsabilidade = async (conversaId) => {
     const expiraAtual = conversaSelecionada?.id === conversaId
@@ -2253,7 +2228,7 @@ export default function BatePapo() {
                          || c.canal_origem === 'meta'
                          || c.tipo_conexao === 'meta_oficial'
                          || c.instancia === 'META_OFICIAL';
-                       const mostrarBadge = !isSelecionada && c.status !== 'encerrada' && naoLidas > 0;
+                       const mostrarBadge = naoLidas > 0 && !isSelecionada; // bolinha verde: mensagem não visualizada
                       const cache = contatosWhatsapp[c.id];
                       const nomeEhId = !cache?.nome || cache?.nome?.startsWith('Instagram ') || cache?.nome === c.cliente_telefone;
                       const nome = (!nomeEhId && cache?.nome) || c.cliente_nome || c.cliente_telefone;
@@ -2262,7 +2237,6 @@ export default function BatePapo() {
                       const hora = c.data_ultima_mensagem
                         ? format(new Date(c.data_ultima_mensagem), "HH:mm", { locale: ptBR })
                         : '';
-                      const statusDotColor = estaEmEspera(c) ? '#f59e0b' : estaEmAtendimento(c) ? '#22c55e' : '#cbd5e1';
                       return (
                         <div
                           key={c.id}
@@ -2291,9 +2265,9 @@ export default function BatePapo() {
                               <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white bg-orange-500 flex items-center justify-center">
                                 <Lock className="w-2 h-2 text-white" />
                               </span>
-                            ) : (
-                              <span style={{ backgroundColor: statusDotColor }} className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white" />
-                            )}
+                            ) : naoLidas > 0 && !isSelecionada ? (
+                              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-emerald-500" title="Mensagem não visualizada" />
+                            ) : null}
                             {/* Badge de API no topo direito do avatar */}
                             {(() => {
                               const isIg = c.cliente_telefone?.startsWith('ig_') || c.instancia === 'INSTAGRAM' || c.tipo_conexao === 'instagram';
@@ -2341,37 +2315,7 @@ export default function BatePapo() {
                                 </div>
                               );
                             })()}
-                            {/* Etiqueta de atendimento */}
-                            {(() => {
-                              const nomeAtendente = c.responsavel_nome || c.usuario_responsavel_nome;
-                              const atendenteAtivo = nomeAtendente && (
-                                !c.responsavel_expira_em || atendenteDentroDoTempo(c)
-                              );
-                              if (c.status === 'encerrada') return (
-                                <span className="inline-flex w-fit max-w-full self-start items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5" style={{ background: '#f1f5f9', fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                  Finalizada
-                                </span>
-                              );
-                              if (c.ia_aguardando_humano && !['encerrada','encerrado','finalizado'].includes(c.status)) return (
-                                <span title={c.ia_motivo_handoff || 'IA não concluiu a resposta'} className="inline-flex w-fit max-w-full self-start items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5 bg-amber-100 text-amber-800" style={{ fontSize:'10px' }}>
-                                  {nomeAtendente ? nomeAtendente + ' · assumir atendimento' : 'Aguardando atendimento humano'}
-                                </span>
-                              );
-                              if (c.ia_atendendo && c.ia_agente_nome && !['encerrada','encerrado','finalizado'].includes(c.status)) return (
-                                <span title={c.ia_agente_papel || 'Atendimento por IA'} className="inline-flex w-fit max-w-full self-start items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5 bg-blue-100 text-blue-700" style={{ fontSize: '10px' }}>
-                                  <span className="font-semibold truncate">{c.ia_agente_nome}</span><span>· IA atendendo</span>
-                                </span>
-                              );
-                              if (atendenteAtivo) return (
-                                <span className="inline-flex w-fit max-w-full self-start items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5" style={{ background: '#dcfce7', fontSize: '10px' }}>
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                                  <span style={{ color: '#16a34a', fontWeight: 600 }}>{nomeAtendente}</span>
-                                  <span style={{ color: '#4ade80' }}>atendendo</span>
-                                </span>
-                              );
-                              return null;
-                            })()}
+                            <StatusConversaBadge conversa={c} emAtendimento={atendenteDentroDoTempo(c)} />
                             {microtarefasPorConversa[c.id]?.[0] && (() => {
                               const tarefa = microtarefasPorConversa[c.id][0];
                               const atrasada = tarefa.vencimento_em && new Date(tarefa.vencimento_em) < new Date();
