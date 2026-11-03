@@ -1,0 +1,193 @@
+{
+  "description": "Cada compromisso da Agenda agenda seus pr\u00f3prios lembretes e dorme at\u00e9 o hor\u00e1rio exato de cada um. Nenhuma verifica\u00e7\u00e3o peri\u00f3dica da agenda.",
+  "name": "Lembretes de Reuni\u00e3o (por agendamento)",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create",
+        "update"
+      ],
+      "entity_name": "Agenda"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "lembretes_reuniao_por_agendamento",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "calcular_1": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "lembreteAgendaPreparar",
+            "args": {
+              "agenda_id": "${ .trigger.entity_id }"
+            }
+          },
+          "then": "decidir_1",
+          "x-base44": {
+            "title": "Calcular 1\u00ba lembrete",
+            "description": "Quanto falta at\u00e9 o primeiro aviso"
+          }
+        }
+      },
+      {
+        "decidir_1": {
+          "switch": [
+            {
+              "when": "${ .calcular_1.aguardar == true }",
+              "then": "esperar_1"
+            },
+            {
+              "when": "${ true }",
+              "then": "end"
+            }
+          ]
+        }
+      },
+      {
+        "esperar_1": {
+          "wait": "PT${ .calcular_1.segundos }S",
+          "then": "enviar_1",
+          "x-base44": {
+            "title": "Aguardar 1\u00ba lembrete",
+            "description": "Dorme at\u00e9 o hor\u00e1rio exato"
+          }
+        }
+      },
+      {
+        "enviar_1": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "lembreteAgendaEnviar",
+            "args": {
+              "agenda_id": "${ .trigger.entity_id }"
+            }
+          },
+          "then": "calcular_2",
+          "x-base44": {
+            "title": "Enviar 1\u00ba lembrete",
+            "description": "WhatsApp para cliente e respons\u00e1vel"
+          }
+        }
+      },
+      {
+        "calcular_2": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "lembreteAgendaPreparar",
+            "args": {
+              "agenda_id": "${ .trigger.entity_id }"
+            }
+          },
+          "then": "decidir_2",
+          "x-base44": {
+            "title": "Calcular 2\u00ba lembrete",
+            "description": "Quanto falta at\u00e9 o pr\u00f3ximo aviso"
+          }
+        }
+      },
+      {
+        "decidir_2": {
+          "switch": [
+            {
+              "when": "${ .calcular_2.aguardar == true }",
+              "then": "esperar_2"
+            },
+            {
+              "when": "${ true }",
+              "then": "end"
+            }
+          ]
+        }
+      },
+      {
+        "esperar_2": {
+          "wait": "PT${ .calcular_2.segundos }S",
+          "then": "enviar_2",
+          "x-base44": {
+            "title": "Aguardar 2\u00ba lembrete",
+            "description": "Dorme at\u00e9 o hor\u00e1rio exato"
+          }
+        }
+      },
+      {
+        "enviar_2": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "lembreteAgendaEnviar",
+            "args": {
+              "agenda_id": "${ .trigger.entity_id }"
+            }
+          },
+          "then": "calcular_3",
+          "x-base44": {
+            "title": "Enviar 2\u00ba lembrete",
+            "description": "WhatsApp para cliente e respons\u00e1vel"
+          }
+        }
+      },
+      {
+        "calcular_3": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "lembreteAgendaPreparar",
+            "args": {
+              "agenda_id": "${ .trigger.entity_id }"
+            }
+          },
+          "then": "decidir_3",
+          "x-base44": {
+            "title": "Calcular 3\u00ba lembrete",
+            "description": "Verifica se h\u00e1 mais um aviso previsto"
+          }
+        }
+      },
+      {
+        "decidir_3": {
+          "switch": [
+            {
+              "when": "${ .calcular_3.aguardar == true }",
+              "then": "esperar_3"
+            },
+            {
+              "when": "${ true }",
+              "then": "end"
+            }
+          ]
+        }
+      },
+      {
+        "esperar_3": {
+          "wait": "PT${ .calcular_3.segundos }S",
+          "then": "enviar_3",
+          "x-base44": {
+            "title": "Aguardar 3\u00ba lembrete",
+            "description": "Dorme at\u00e9 o hor\u00e1rio exato"
+          }
+        }
+      },
+      {
+        "enviar_3": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "lembreteAgendaEnviar",
+            "args": {
+              "agenda_id": "${ .trigger.entity_id }"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Enviar 3\u00ba lembrete",
+            "description": "WhatsApp para cliente e respons\u00e1vel"
+          }
+        }
+      }
+    ]
+  }
+}

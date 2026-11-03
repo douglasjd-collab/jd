@@ -284,7 +284,7 @@ export default function ConfiguracaoLembretesAgenda({ user }) {
           {/* Info sobre o scheduler */}
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700">
             <p className="font-semibold mb-1">ℹ️ Como funciona</p>
-            <p>O sistema verifica os lembretes a cada 5 minutos automaticamente. Para cada compromisso ativo, envia a mensagem no horário configurado e registra o histórico para evitar envios duplicados.</p>
+            <p>Não há verificação de tempos em tempos: ao criar ou alterar um compromisso, o sistema agenda os lembretes daquele compromisso e aguarda o horário exato de cada um para enviar. Envios ficam registrados no histórico para evitar mensagens duplicadas.</p>
           </div>
         </>
       )}
