@@ -111,9 +111,9 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
   }
   const dono = coord.responsavel || 'qualificador';
   // Durante follow-up, a próxima resposta volta ao vendedor; sem vendedor, não envia.
-  const papel = proativo ? 'follow_up' : dono === 'follow_up' ? 'vendedor' : dono;
+  const papel = proativo ? 'follow_up' : dono === 'follow_up' ? (coord.retorno || 'vendedor') : dono;
   const agente = ativos[papel];
-  if (!agente || (proativo && (!ativos[dono === 'follow_up' ? 'vendedor' : dono] || novoCiclo))) return { enviado: false, motivo: 'agente_desativado' };
+  if (!agente || (proativo && (!ativos[dono === 'follow_up' ? (coord.retorno || 'vendedor') : dono] || novoCiclo))) return { enviado: false, motivo: 'agente_desativado' };
   const d = parseIA(agente);
   if (['vendedor', 'follow_up'].includes(papel) && !(d.permissoes || []).includes('enviar_mensagem')) return { enviado: false, motivo: 'sem_permissao' };
   const hist = await db.MensagemWhatsapp.filter({ empresa_id: EMPRESA_TESTE_IA, conversa_id: conversa.id }, '-data_envio', 40);
@@ -123,7 +123,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
   const maxTentativas = Math.min(10, Math.max(1, Number(cfg.limite_tentativas) || 4));
   if (proativo) {
     if (!dentroHorarioIA(cfg) || !coord.aguardando_resposta || coord.envio_incerto || !coord.ultima_saida_id ||
-      Date.now() < Date.parse(coord.proximo_follow_em) || Number(coord.tentativas || 0) >= maxTentativas) return { enviado: false, motivo: 'fora_da_janela' };
+      !Number.isFinite(Date.parse(coord.proximo_follow_em)) || Date.now() < Date.parse(coord.proximo_follow_em) || Number(coord.tentativas || 0) >= maxTentativas) return { enviado: false, motivo: 'fora_da_janela' };
     if (recentes[0]?.whatsapp_message_id !== coord.ultima_saida_id || recentes[0]?.remetente !== 'vendedor') return { enviado: false, motivo: 'conversa_alterada' };
     mensagem = { id: 'follow:' + coord.ultima_saida_id, empresa_id: EMPRESA_TESTE_IA, conversa_id: conversa.id,
       remetente: 'cliente', tipo_conteudo: 'texto', data_envio: new Date().toISOString(), texto: '[Retomada após silêncio]' };
@@ -195,13 +195,13 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
       await registrar('cancelado', 'Agente desativado ou alterado antes do envio.'); return { enviado: false };
     }
     const novos = await db.MensagemWhatsapp.filter({ empresa_id: EMPRESA_TESTE_IA, conversa_id: conversa.id }, '-data_envio', 40);
-    if (novos.some((m: any) => Date.parse(m.data_envio) >= Date.parse(coord.inicio) && humano(m)) ||
+    if ((!proativo && novos.some((m: any) => m.remetente === 'cliente' && m.id !== mensagem.id && Date.parse(m.data_envio) > Date.parse(mensagem.data_envio))) || novos.some((m: any) => Date.parse(m.data_envio) >= Date.parse(coord.inicio) && humano(m)) ||
       (proativo && (novos[0]?.whatsapp_message_id !== coord.ultima_saida_id || !dentroHorarioIA(cfg)))) {
       await registrar('cancelado', 'Cliente respondeu, a equipe assumiu ou a janela encerrou.'); return { enviado: false };
     }
     const atualMem = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA_TESTE_IA, tipo: 'memoria', origem: ORIGEM_MEMORIA }, '-updated_date', 1);
     if ((memoria && (atualMem[0]?.id !== memoria.id || atualMem[0]?.versao !== memoria.versao)) ||
-      parseIA(atualMem[0]).parar_contato || parseIA(atualMem[0]).coordenador?.pausado_humano) {
+      parseIA(atualMem[0]).parar_contato || (!novoCiclo && parseIA(atualMem[0]).coordenador?.pausado_humano)) {
       await registrar('cancelado', 'Memória ou responsável mudou durante a geração.'); return { enviado: false };
     }
     // O público e o agente são verificados novamente junto ao efeito externo.
@@ -220,7 +220,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
       texto: out.resposta.trim(), provider: 'dapi', whatsapp_message_id: String(idWa), status: 'enviada', data_envio: agora };
     if (eco[0]) await db.MensagemWhatsapp.update(eco[0].id, saida); else await db.MensagemWhatsapp.create(saida);
     const responsavel = out.destino === 'humano' ? 'humano' : out.destino === 'vendedor' ? 'vendedor' : papel;
-    const novoCoord = { ...coord, responsavel, pausado_humano: out.destino === 'humano',
+    const novoCoord = { ...coord, responsavel, retorno: proativo ? (coord.retorno || dono) : papel, pausado_humano: out.destino === 'humano',
       aguardando_resposta: out.destino !== 'humano' && !out.parar_contato,
       tentativas: proativo ? Number(coord.tentativas || 0) + 1 : 0,
       ultima_saida_id: String(idWa), proximo_follow_em: new Date(Date.now() + DIA).toISOString(),
