@@ -85,6 +85,7 @@ export default async function (req: Request): Promise<Response> {
     historico.push(registro);
 
     const dadosTransferencia = {
+      ia_atendendo: false,
       responsavel_id: destino.id,
       responsavel_nome: destino.nome || '',
       responsavel_user_id: destino.user_id,
