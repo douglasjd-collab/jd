@@ -2354,7 +2354,7 @@ export default function BatePapo() {
                                 </span>
                               );
                               if (c.ia_atendendo && c.ia_agente_nome && !['encerrada','encerrado','finalizado'].includes(c.status)) return (
-                                <span title={c.ia_agente_papel || 'Atendimento por IA'} className="inline-flex w-fit max-w-full self-start items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5 bg-violet-100 text-violet-700" style={{ fontSize: '10px' }}>
+                                <span title={c.ia_agente_papel || 'Atendimento por IA'} className="inline-flex w-fit max-w-full self-start items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5 bg-blue-100 text-blue-700" style={{ fontSize: '10px' }}>
                                   <span className="font-semibold truncate">{c.ia_agente_nome}</span><span>· IA atendendo</span>
                                 </span>
                               );
