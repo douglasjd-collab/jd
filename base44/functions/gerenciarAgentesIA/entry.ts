@@ -1,3 +1,4 @@
+import { sincronizarEtiquetaIA } from '../../shared/atendimentoIA.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { parseIA, EMPRESA_TESTE_IA, CONEXAO_TESTE_IA, TELEFONES_TESTE_IA } from '../../shared/qualificadorTesteIA.ts';
 
@@ -54,6 +55,7 @@ Deno.serve(async (req) => {
         status: 'aprovado', agente_id: agente.id, versao: mudanca.versao,
         dados_json: JSON.stringify({ anterior: agente, seguinte: { ...agente, ...mudanca } }), autor_id: me.id, autor_nome: me.full_name || me.email });
       const registro = await records.update(agente.id, mudanca);
+      await sincronizarEtiquetaIA(db, registro);
       return Response.json({ success: true, registro });
     }
     if (action === 'validar_openai') {
@@ -206,6 +208,7 @@ Deno.serve(async (req) => {
       status: 'aprovado', agente_id: old?.id || '', versao: clean.versao,
       dados_json: JSON.stringify({ anterior: old, seguinte: clean }), autor_id: me.id, autor_nome: me.full_name || me.email });
     const saved = old ? await records.update(old.id, clean) : await records.create(clean);
+    if (tipo === 'agente') await sincronizarEtiquetaIA(db, saved);
     return Response.json({ success: true, registro: saved });
   } catch (e) {
     console.error('Agentes IA: falha na operação', e?.status || '');
