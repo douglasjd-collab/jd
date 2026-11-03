@@ -220,7 +220,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
       texto: out.resposta.trim(), provider: 'dapi', whatsapp_message_id: String(idWa), status: 'enviada', data_envio: agora };
     if (eco[0]) await db.MensagemWhatsapp.update(eco[0].id, saida); else await db.MensagemWhatsapp.create(saida);
     const responsavel = out.destino === 'humano' ? 'humano' : out.destino === 'vendedor' ? 'vendedor' : papel;
-    const novoCoord = { ...coord, responsavel, retorno: proativo ? (coord.retorno || dono) : papel, pausado_humano: out.destino === 'humano',
+    const novoCoord = { ...coord, responsavel, retorno: proativo ? (dono === 'follow_up' ? coord.retorno : dono) : responsavel, pausado_humano: out.destino === 'humano',
       aguardando_resposta: out.destino !== 'humano' && !out.parar_contato,
       tentativas: proativo ? Number(coord.tentativas || 0) + 1 : 0,
       ultima_saida_id: String(idWa), proximo_follow_em: new Date(Date.now() + DIA).toISOString(),
