@@ -1,0 +1,15 @@
+{
+  "name": "monitorarAtendimentoAgentesIA",
+  "entry": "entry.ts",
+  "automations": [
+    {
+      "name": "IA sem resposta — teste Eduarda",
+      "description": "Verifica a cada minuto mensagens de cliente sem resposta por 2 minutos e encaminha ao atendimento humano. Somente contato de teste.",
+      "type": "scheduled",
+      "schedule_mode": "recurring",
+      "schedule_type": "cron",
+      "cron_expression": "* * * * *",
+      "is_active": true
+    }
+  ]
+}
