@@ -28,6 +28,10 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     if (!url) return false;
     if (typeof url !== 'string') return false;
 
+    // Áudios enviados podem permanecer em data URL após o envio bem-sucedido.
+    // Somente mídia base64 é aceita aqui; HTML e outros esquemas continuam bloqueados.
+    if (/^data:(audio|image|video)\/[a-z0-9.+-]+(?:;[^,]*)?;base64,[a-z0-9+/=\s]+$/i.test(url)) return true;
+
     // Bloquear URLs temporárias/privadas do WhatsApp/Meta (expiram rapidamente)
     if (url.includes('pps.whatsapp.net')) return false;
     if (url.includes('mmg.whatsapp.net')) return false;
@@ -41,7 +45,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     if (downloadStatus === 'pendente') return false;
 
     // Bloquear URLs do storage sem extensão (truncadas)
-    if (url.includes('base44.app/api/apps') && url.includes('/files/')) {
+    if (downloadStatus !== 'baixado' && url.includes('base44.app/api/apps') && url.includes('/files/')) {
       const nomeArquivo = url.split('?')[0].split('/').pop();
       if (!/\.[a-zA-Z0-9]{2,5}$/.test(nomeArquivo)) return false;
     }
@@ -271,7 +275,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     // Uma URL pública/temporária da D-API pode tocar, mas demora para informar
     // a duração e pode expirar. Só considerar pronto quando for permanente.
     const urlRecebida = mensagem.arquivo_url || '';
-    const urlPermanente = urlRecebida.includes('base44') || urlRecebida.includes('supabase') || urlRecebida.includes('amazonaws');
+    const urlPermanente = urlRecebida.startsWith('data:') || urlRecebida.includes('base44') || urlRecebida.includes('supabase') || urlRecebida.includes('amazonaws');
     if (isUrlValida(urlRecebida, mensagem.download_status) && mensagem.arquivo_url !== urlFalhouRef.current && (tipoConteudo !== 'audio' || urlPermanente)) {
       setMediaUrl(sanitizeUrl(urlRecebida));
       return;
@@ -292,7 +296,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
       conversa_id: conversaId || mensagem.conversa_id
     }).then(res => {
       const url = res?.data?.arquivo_url;
-      if (url && isUrlValida(url)) setMediaUrl(sanitizeUrl(url));
+      if (url && isUrlValida(url, 'baixado')) setMediaUrl(sanitizeUrl(url));
     }).catch(err => {
       console.warn('baixarMidia falhou:', err?.message);
     }).finally(() => setLoadingMedia(false));
@@ -776,7 +780,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
                     controls 
                     className="flex-1 h-8" 
                     src={mediaUrl} 
-                    preload="none"
+                    preload="metadata"
                     data-chat-audio="true"
                     data-conversa-id={String(conversaId || '')}
                     data-mensagem-id={String(mensagem.id || '')}
