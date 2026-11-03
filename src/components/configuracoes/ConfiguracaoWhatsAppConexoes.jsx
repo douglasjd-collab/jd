@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
@@ -155,6 +155,34 @@ export default function ConfiguracaoWhatsApp() {
   }, [connections, user?.empresa_id]);
 
   const queryClient = useQueryClient();
+
+  // Espelha no CRM os canais criados/alterados no painel da D-API.
+  // Canais novos entram na lista automaticamente (o backend só cria o que ainda não existe).
+  const sincronizarCanaisDapi = useCallback(async () => {
+    if (!user?.empresa_id) return;
+    try {
+      const origin = (window.location.origin || 'https://app.jdpromotora.com.br')
+        .replace('https://preview-sandbox--6950a9860c8af0e2ff10fc9e.base44.app', 'https://app.jdpromotora.com.br');
+      const resp = await base44.functions.invoke('sincronizarConexoesDapi', {
+        empresa_id: user.empresa_id,
+        webhook_url: `${origin}/functions/webhookDapi`,
+      });
+      const data = resp?.data || {};
+      if (Array.isArray(data.criadas) && data.criadas.length > 0) {
+        toast.success(data.criadas.length === 1
+          ? `Novo canal adicionado: ${data.criadas[0]}`
+          : `${data.criadas.length} novos canais adicionados`);
+        queryClient.invalidateQueries({ queryKey: ['whatsapp-connections'] });
+      }
+    } catch (error) {
+      console.error('Erro ao sincronizar canais da D-API:', error);
+    }
+  }, [user?.empresa_id, queryClient]);
+
+  useEffect(() => {
+    if (!user?.empresa_id) return;
+    sincronizarCanaisDapi();
+  }, [user?.empresa_id, sincronizarCanaisDapi]);
 
   const createMutation = useMutation({
     mutationFn: async (data) => {
@@ -942,7 +970,13 @@ export default function ConfiguracaoWhatsApp() {
             </CardDescription>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={() => refetch()}>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                await sincronizarCanaisDapi();
+                refetch();
+              }}
+            >
               <RefreshCw className="w-4 h-4 mr-2" />
               Atualizar
             </Button>
