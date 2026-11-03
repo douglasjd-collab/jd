@@ -34,7 +34,7 @@ export async function buscarPlanosVendedorIA(db: any, empresa: string, filtros: 
     typeof p.valor_bem === 'number' && p.valor_bem > 0 && typeof p.parcela === 'number' && p.parcela > 0 &&
     typeof p.prazo_meses === 'number' && Number.isInteger(p.prazo_meses) && p.prazo_meses > 0 &&
     (aproximado ? Math.abs(p.valor_bem - credito) <= credito * 0.100001 : p.valor_bem === credito));
-  const preferencias = filtros.preferencia_parcela;
+  const preferencias = filtros.preferencia_parcela || 'normal';
   const normal = (p: any) => tipoParcelaPlanoIA(p) === 'sem_identificacao_reduzida';
   const preferido = (p: any) => preferencias === 'normal' ? normal(p) : preferencias === 'reduzida' ?
     ['reduzida_50','reduzida_70'].includes(tipoParcelaPlanoIA(p)) : preferencias ? tipoParcelaPlanoIA(p) === preferencias : true;
@@ -45,7 +45,12 @@ export async function buscarPlanosVendedorIA(db: any, empresa: string, filtros: 
       parcelaMax != null ? a.prazo_meses - b.prazo_meses : a.parcela - b.parcela) ||
     String(b.ultima_sincronizacao || '').localeCompare(String(a.ultima_sincronizacao || '')) || String(a.id).localeCompare(String(b.id));
   validos.sort(ordenar);
-  const distintos = [...new Map(validos.map((p: any) => [String(p.grupo) + ':' + p.valor_bem + ':' + p.prazo_meses + ':' + p.parcela + ':' + tipoParcelaPlanoIA(p), p])).values()] as any[];
+  const vistos = new Set<string>();
+  const distintos = validos.filter((p: any) => {
+    const chave = String(p.grupo) + ':' + p.valor_bem + ':' + p.prazo_meses + ':' + p.parcela + ':' + tipoParcelaPlanoIA(p);
+    if (vistos.has(chave)) return false;
+    vistos.add(chave); return true;
+  });
   // Incluir opções normais e reduzidas sem esconder as diferenças no ranking.
   const selecionados: any[] = [];
   const adicionar = (p: any) => { if (p && !selecionados.some((s: any) => s.id === p.id)) selecionados.push(p); };
