@@ -1,0 +1,42 @@
+{
+  "name": "Prazo de resposta IA - Eduarda",
+  "description": "Ap\u00f3s mensagem da Eduarda, aguarda 2 minutos e verifica se a IA respondeu; encaminha ao humano em caso de sil\u00eancio.",
+  "trigger": {
+    "condition": "${ ((.trigger.data.empresa_id == \"699696c2c9f5bffc2e67402b\") and (.trigger.data.conversa_id == \"6a072e6eea8a77bf63314d8d\") and (.trigger.data.remetente == \"cliente\")) }",
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create"
+      ],
+      "entity_name": "MensagemWhatsapp"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "prazo_resposta_ia_teste",
+      "version": "1.0.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "aguardar_resposta": {
+          "wait": {
+            "seconds": 120
+          },
+          "then": "run_function"
+        }
+      },
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "monitorarAtendimentoAgentesIA",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
