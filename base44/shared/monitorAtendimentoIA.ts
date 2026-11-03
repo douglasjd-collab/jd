@@ -21,8 +21,9 @@ export async function monitorarAtendimentoTesteIA(db: any) {
     const connection = await db.WhatsappConnection.get(CONEXAO_TESTE_IA);
     const resultado = await processarQualificadorTesteIA(db,connection,c,mensagem);
     if (resultado?.enviado) return { retomado:true,resultado };
-    return encaminharFalhaIA(db,c.id,mensagem.id,'A retomada autorizada da IA não concluiu a resposta.');
+    return { retomada_iniciada:true, resultado:resultado || null };
   }
+  if (md.retomada_consumida_em && Date.now() - Date.parse(md.retomada_consumida_em) < 120000) return { ignorado:'retomada_em_andamento' };
   if (Date.now() - Date.parse(mensagem.data_envio) < 120000) return { ignorado:'dentro_do_prazo' };
   return encaminharFalhaIA(db,c.id,mensagem.id,'IA não respondeu à mensagem do cliente em até 2 minutos.');
 }
