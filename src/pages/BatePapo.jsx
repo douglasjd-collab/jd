@@ -877,8 +877,8 @@ export default function BatePapo() {
 
   const ultimaMensagemVisivelId = mensagens.at(-1)?.id || '';
   useEffect(() => {
-    if (!conversaSelecionadaId || loadingMensagens || !mensagens.length || usuarioRestritoWhatsapp(user)) return;
-    marcarConversaComoLida(conversaSelecionadaId).then(reconciliarLeitura);
+    if (!conversaSelecionadaId || loadingMensagens || !mensagens.length) return;
+    (usuarioRestritoWhatsapp(user) ? base44.functions.invoke('marcarConversaVistaBatePapo', { conversa_id: conversaSelecionadaId }) : marcarConversaComoLida(conversaSelecionadaId)).then(reconciliarLeitura).catch(() => {});
   }, [conversaSelecionadaId, loadingMensagens, ultimaMensagemVisivelId, reconciliarLeitura]);
 
 

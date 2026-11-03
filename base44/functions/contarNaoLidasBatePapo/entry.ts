@@ -2,10 +2,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { carregarAcessoWhatsapp, podeAcessarConversa } from '../../shared/acessoWhatsappShared.ts';
 
 // Contador do badge "Bate - Papo" no menu.
-// Regra: conta as mensagens RECEBIDAS do cliente que ainda NÃO foram respondidas
-// por ninguém do atendimento (mensagens enviadas depois da última resposta).
-// Também respeita as conexões liberadas para o usuário: conversas de canais sem
-// acesso não entram na soma.
+// Regra: conta as mensagens RECEBIDAS do cliente que ainda NÃO foram
+// visualizadas no CRM (status diferente de "lida"). Assim que o atendente abre
+// a conversa, ela deixa de pesar no contador — mesmo sem responder.
+// Também valem as regras de atendimento: só conversas em andamento (status
+// ativa) com o cliente aguardando, fora grupos, bloqueadas e disparos de
+// campanha; e apenas as conexões liberadas para o usuário.
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -26,8 +28,6 @@ Deno.serve(async (req) => {
     // Falha fechada: sem permissões validadas nada é contado.
     if (acesso.erroLeitura) return Response.json({ total: 0 });
 
-    // Consulta já restrita ao que interessa: atendimento ativo aguardando o
-    // cliente (última mensagem recebida, ainda sem resposta).
     const filtroConversas = { empresa_id, status: 'ativa', ultimo_remetente: 'cliente' };
     if (!acesso.irrestrito) {
       if (!acesso.conexoesPermitidas.length) return Response.json({ total: 0 });
@@ -42,22 +42,31 @@ Deno.serve(async (req) => {
       String(c.cliente_telefone || '').includes('@broadcast') ||
       String(c.whatsapp_id || '').includes('@broadcast');
 
-    // Só interessam conversas em atendimento aberto (status ativa) cuja última
-    // mensagem é do cliente — ou seja, o cliente está aguardando resposta.
-    // Atendimentos encerrados/arquivados e disparos de campanha não contam.
-    const semResposta = conversas.filter((c) => {
+    const validas = conversas.filter((c) => {
       if (ehGrupo(c) || c.bloqueado === true || c.bloqueado === 'true') return false;
       if (!acesso.irrestrito && !podeAcessarConversa(acesso, c)) return false;
       return true;
     });
 
-    const ids = semResposta.map((c) => c.id);
+    const ids = validas.map((c) => c.id);
     if (!ids.length) return Response.json({ total: 0 });
 
     const tempo = (v) => (v ? new Date(v).getTime() : 0);
 
-    // Última resposta enviada em cada conversa. Legendas técnicas de arquivo não
-    // contam como resposta, e envios com erro não respondem o cliente.
+    // Mensagens do cliente ainda não visualizadas.
+    const naoLidas = await db.MensagemWhatsapp.filter(
+      {
+        empresa_id,
+        remetente: 'cliente',
+        conversa_id: { $in: ids },
+        status: { $ne: 'lida' },
+      },
+      '-data_envio',
+      3000
+    );
+
+    // Uma resposta enviada já cobre as mensagens anteriores: elas não voltam a
+    // pesar no contador mesmo que o recibo de leitura não tenha sido gravado.
     const respostas = await db.MensagemWhatsapp.filter(
       { empresa_id, remetente: 'vendedor', conversa_id: { $in: ids } },
       '-data_envio',
@@ -71,13 +80,8 @@ Deno.serve(async (req) => {
       if (t > atual) ultimaResposta.set(m.conversa_id, t);
     });
 
-    const recebidas = await db.MensagemWhatsapp.filter(
-      { empresa_id, remetente: 'cliente', conversa_id: { $in: ids } },
-      '-data_envio',
-      3000
-    );
-
-    const total = recebidas.filter((m) => {
+    const total = naoLidas.filter((m) => {
+      if (m.status === 'erro') return false;
       const corte = ultimaResposta.get(m.conversa_id) || 0;
       return tempo(m.data_envio) > corte;
     }).length;
