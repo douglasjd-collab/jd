@@ -1,0 +1,41 @@
+{
+  "name": "Monitor de resposta IA - Eduarda",
+  "description": "Verifica mensagens sem resposta e executa uma retomada somente quando autorizada.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/5 * * * *",
+      "one_time_date": null,
+      "timezone": "America/Sao_Paulo",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "monitorar_atendimento_ia_teste",
+      "version": "1.0.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "monitorarAtendimentoAgentesIA",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
