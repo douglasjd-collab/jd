@@ -75,6 +75,7 @@ export default function Usuarios() {
   const [filialModalOpen, setFilialModalOpen] = useState(false);
   const [usuarioFilial, setUsuarioFilial] = useState(null);
   const [empresasExpandidas, setEmpresasExpandidas] = useState(new Set());
+  const [canaisWhatsapp, setCanaisWhatsapp] = useState({ conexoes: [], selecionados: [] });
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -377,6 +378,25 @@ export default function Usuarios() {
         if (resData?.error) {
           throw new Error(resData.error);
         }
+
+        // Canais de WhatsApp escolhidos no cadastro (aplicados ao colaborador criado)
+        if (resData?.colaborador?.id && canaisWhatsapp.conexoes.length) {
+          try {
+            for (const connectionId of canaisWhatsapp.conexoes) {
+              await base44.functions.invoke('permissoesWhatsapp', {
+                modo: 'salvar',
+                empresa_id: resData.colaborador.empresa_id || normalizedData.empresa_id,
+                colaborador_id: resData.colaborador.id,
+                connection_id: connectionId,
+                nivel_acesso: canaisWhatsapp.selecionados.includes(connectionId) ? 'todas' : 'sem_acesso',
+                responsavel_padrao: false,
+              });
+            }
+          } catch (e) {
+            toast.error('Usuário criado, mas não foi possível aplicar os canais de WhatsApp.');
+          }
+        }
+        setCanaisWhatsapp({ conexoes: [], selecionados: [] });
 
         // Atualizar lista
         await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
@@ -919,6 +939,7 @@ export default function Usuarios() {
         isLoading={isSubmitting || updateMutation.isPending}
         currentUser={currentUser}
         inviteSuccess={inviteSuccess}
+        onCanaisWhatsappChange={setCanaisWhatsapp}
       />
 
       {/* Vincular Modal */}

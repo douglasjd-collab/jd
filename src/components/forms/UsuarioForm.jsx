@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Smartphone, User, MapPin, Landmark, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Loader2, Smartphone, User, MapPin, Landmark, ShieldCheck, AlertCircle, MessageSquare } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
+import CanaisWhatsappUsuario from './CanaisWhatsappUsuario';
 
 const formatCPF = (value) => {
   const c = value.replace(/\D/g, '');
@@ -18,7 +19,7 @@ const formatCPF = (value) => {
 
 const formatPhone = (value) => value.replace(/\D/g, '').replace(/(\d{2})(\d)/, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2').replace(/(-\d{4})\d+?$/, '$1');
 
-export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isLoading, currentUser, inviteSuccess }) {
+export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isLoading, currentUser, inviteSuccess, onCanaisWhatsappChange }) {
   const [gerentes, setGerentes] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [buscandoCep, setBuscandoCep] = useState(false);
@@ -42,6 +43,7 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
   const pixTipo = watch('pix_tipo');
   const isGerenteOuSuperior = ['gerente', 'admin', 'super_admin', 'master'].includes(currentUser?.perfil);
   const isMasterAdmin = ['master', 'super_admin', 'admin'].includes(currentUser?.perfil);
+  const podeGerenciarCanais = ['gerente', 'admin', 'super_admin', 'master'].includes(currentUser?.perfil);
 
   useEffect(() => {
     loadGerentes();
@@ -363,6 +365,23 @@ export default function UsuarioForm({ open, onOpenChange, usuario, onSubmit, isL
               {/* ABA 4 — ACESSO E PERMISSÕES */}
               <TabsContent value="acesso" className="mt-0">
                 <div className="grid grid-cols-2 gap-3 pt-2">
+                  {podeGerenciarCanais && (
+                    <div className="col-span-2 rounded-lg border border-slate-200 p-3">
+                      <p className="mb-1 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <MessageSquare className="w-3 h-3" /> Canais de WhatsApp liberados
+                      </p>
+                      <p className="mb-2 text-xs text-slate-500">
+                        Marque os canais que este usuário pode atender. Os canais desmarcados ficam bloqueados.
+                      </p>
+                      <CanaisWhatsappUsuario
+                        colaboradorId={usuario?.id || null}
+                        empresaId={usuario?.empresa_id || watch('empresa_id') || currentUser?.empresa_id || null}
+                        podeEditar
+                        onSelecaoChange={onCanaisWhatsappChange}
+                      />
+                    </div>
+                  )}
+
                   {/* Seleção de empresa APENAS para master/super_admin sem empresa_id própria */}
                   {['master', 'super_admin'].includes(currentUser?.perfil) && !currentUser?.empresa_id && perfil !== 'super_admin' && (
                     <FormField label="Empresa" col2 required>
