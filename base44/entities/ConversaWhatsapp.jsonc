@@ -2,6 +2,17 @@
   "name": "ConversaWhatsapp",
   "type": "object",
   "properties": {
+    "ia_aguardando_humano": {
+      "type": "boolean",
+      "default": false
+    },
+    "ia_motivo_handoff": {
+      "type": "string"
+    },
+    "ia_handoff_em": {
+      "type": "string",
+      "format": "date-time"
+    },
     "ia_atendendo": {
       "type": "boolean",
       "default": false,
