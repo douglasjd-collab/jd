@@ -1,5 +1,6 @@
 import { enviarDapiDireto } from './dapiEnvioShared.ts';
 import { camposAtendimentoIA } from './atendimentoIA.ts';
+import { encaminharFalhaIA } from './handoffIA.ts';
 import { consultarPlanosDoAtendimentoIA } from './planosVendedorIA.ts';
 
 // Escopo deliberadamente fixo enquanto a equipe valida o fluxo completo.
@@ -22,7 +23,7 @@ export function elegivelTesteIA(agente: any, conversa: any, mensagem: any, conex
     telefoneTesteIA(conversa.cliente_telefone) && mensagem?.remetente === 'cliente' &&
     mensagem?.empresa_id === conversa.empresa_id && mensagem?.conversa_id === conversa.id &&
     !conversa.bloqueado && !conversa.is_group && !String(conversa.whatsapp_id || '').includes('@g.us') &&
-    !['finalizado', 'encerrado'].includes(conversa.status) &&
+    !['finalizado', 'encerrado', 'encerrada'].includes(conversa.status) &&
     Date.parse(mensagem.data_envio) >= Date.parse(d.ativado_em);
 }
 async function serializar(job: () => Promise<any>) {
@@ -153,6 +154,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
   if (claims[0]?.id !== exec.id) return { enviado: false, motivo: 'concorrente' };
   const registrar = async (etapa: string, conteudo: string, extra: any = {}) => {
     if (['erro','erro_openai','cancelado','midia_pendente','envio_incerto','sem_envio'].includes(etapa)) await db.ConversaWhatsapp.update(conversa.id, camposAtendimentoIA(null));
+    if (!proativo && ['erro','erro_openai','midia_pendente','envio_incerto'].includes(etapa)) await encaminharFalhaIA(db, conversa.id, mensagem.id, conteudo).catch(() => {});
     return db.AgenteIARegistro.update(exec.id, {
     status: etapa === 'enviado' ? 'aprovado' : 'pendente', conteudo,
     dados_json: JSON.stringify({ mensagem_id: mensagem.id, conversa_id: conversa.id, papel, proativo, etapa, ...extra }) });
