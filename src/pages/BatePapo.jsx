@@ -993,7 +993,7 @@ export default function BatePapo() {
       const conversaAtualizada = conversas.find(c => c.id === conversaSelecionada.id);
       if (conversaAtualizada) {
         // Atualizar silenciosamente os dados da conversa selecionada (status, última mensagem, etc.)
-        setConversaSelecionada(prev => prev ? { ...prev, status: conversaAtualizada.status, ultima_mensagem: conversaAtualizada.ultima_mensagem, data_ultima_mensagem: conversaAtualizada.data_ultima_mensagem, ultimo_remetente: conversaAtualizada.ultimo_remetente, tipo_conexao: conversaAtualizada.tipo_conexao, instancia: conversaAtualizada.instancia, phone_number_id_meta: conversaAtualizada.phone_number_id_meta, canal_atendimento: conversaAtualizada.canal_atendimento, canal_preferencial: conversaAtualizada.canal_preferencial, canal_origem: conversaAtualizada.canal_origem, provider: conversaAtualizada.provider, locked_provider: conversaAtualizada.locked_provider, last_inbound_provider: conversaAtualizada.last_inbound_provider, ia_atendendo: conversaAtualizada.ia_atendendo, ia_agente_id: conversaAtualizada.ia_agente_id, ia_agente_nome: conversaAtualizada.ia_agente_nome, ia_agente_papel: conversaAtualizada.ia_agente_papel, responsavel_id: conversaAtualizada.responsavel_id, responsavel_nome: conversaAtualizada.responsavel_nome, responsavel_expira_em: conversaAtualizada.responsavel_expira_em, atendimento_transferido_para_id: conversaAtualizada.atendimento_transferido_para_id, atendimento_prioritario: conversaAtualizada.atendimento_prioritario, bloqueado: conversaAtualizada.bloqueado, foto_url: conversaAtualizada.foto_url } : prev);
+        setConversaSelecionada(prev => prev ? { ...prev, status: conversaAtualizada.status, ultima_mensagem: conversaAtualizada.ultima_mensagem, data_ultima_mensagem: conversaAtualizada.data_ultima_mensagem, ultimo_remetente: conversaAtualizada.ultimo_remetente, tipo_conexao: conversaAtualizada.tipo_conexao, instancia: conversaAtualizada.instancia, phone_number_id_meta: conversaAtualizada.phone_number_id_meta, canal_atendimento: conversaAtualizada.canal_atendimento, canal_preferencial: conversaAtualizada.canal_preferencial, canal_origem: conversaAtualizada.canal_origem, provider: conversaAtualizada.provider, locked_provider: conversaAtualizada.locked_provider, last_inbound_provider: conversaAtualizada.last_inbound_provider, ia_aguardando_humano: conversaAtualizada.ia_aguardando_humano, ia_motivo_handoff: conversaAtualizada.ia_motivo_handoff, ia_atendendo: conversaAtualizada.ia_atendendo, ia_agente_id: conversaAtualizada.ia_agente_id, ia_agente_nome: conversaAtualizada.ia_agente_nome, ia_agente_papel: conversaAtualizada.ia_agente_papel, responsavel_id: conversaAtualizada.responsavel_id, responsavel_nome: conversaAtualizada.responsavel_nome, responsavel_expira_em: conversaAtualizada.responsavel_expira_em, atendimento_transferido_para_id: conversaAtualizada.atendimento_transferido_para_id, atendimento_prioritario: conversaAtualizada.atendimento_prioritario, bloqueado: conversaAtualizada.bloqueado, foto_url: conversaAtualizada.foto_url } : prev);
       } else {
         // Alerta aponta para o id exato: não trocar por outra conexão do contato.
         if (location.state?.atendimentoConversaId === conversaSelecionada.id) return;
@@ -1339,7 +1339,7 @@ export default function BatePapo() {
         // 1. Atualizar cache LOCAL imediatamente — move conversa para "Em Atendimento"
         queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
           old.map(c => c.id === conversaSelecionada.id
-            ? { ...c, ia_atendendo: false, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString(), responsavel_id: user?.colaborador_id || user?.id, responsavel_nome: user?.nome_perfil || user?.full_name || user?.email || 'Atendente', responsavel_expira_em: expira }
+            ? { ...c, ia_atendendo: false, ia_aguardando_humano: false, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString(), responsavel_id: user?.colaborador_id || user?.id, responsavel_nome: user?.nome_perfil || user?.full_name || user?.email || 'Atendente', responsavel_expira_em: expira }
             : c
           )
         );
@@ -1349,7 +1349,7 @@ export default function BatePapo() {
           ultima_mensagem: msgExibicao,
           data_ultima_mensagem: new Date().toISOString(),
           ultimo_remetente: 'vendedor',
-          ia_atendendo: false,
+          ia_atendendo: false, ia_aguardando_humano: false,
           responsavel_id: user?.colaborador_id || user?.id || 'atendente',
           responsavel_nome: user?.nome_perfil || user?.full_name || user?.email || 'Atendente',
           responsavel_expira_em: expira,
@@ -1406,7 +1406,7 @@ export default function BatePapo() {
           : new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
         queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
           (Array.isArray(old) ? old : []).map((c) => c.id === conversaSelecionada.id
-            ? { ...c, ia_atendendo: false, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString(), responsavel_id: user?.colaborador_id || user?.id, responsavel_nome: user?.nome_perfil || user?.full_name || 'Atendente', responsavel_expira_em: expira }
+            ? { ...c, ia_atendendo: false, ia_aguardando_humano: false, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString(), responsavel_id: user?.colaborador_id || user?.id, responsavel_nome: user?.nome_perfil || user?.full_name || 'Atendente', responsavel_expira_em: expira }
             : c));
       }
       return true;
@@ -2351,6 +2351,11 @@ export default function BatePapo() {
                                 <span className="inline-flex w-fit max-w-full self-start items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5" style={{ background: '#f1f5f9', fontSize: '10px', color: '#64748b', fontWeight: 500 }}>
                                   <svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                                   Finalizada
+                                </span>
+                              );
+                              if (c.ia_aguardando_humano && !['encerrada','encerrado','finalizado'].includes(c.status)) return (
+                                <span title={c.ia_motivo_handoff || 'IA não concluiu a resposta'} className="inline-flex w-fit max-w-full self-start items-center gap-1 px-1.5 py-0.5 rounded-full mb-0.5 bg-amber-100 text-amber-800" style={{ fontSize:'10px' }}>
+                                  {nomeAtendente ? nomeAtendente + ' · assumir atendimento' : 'Aguardando atendimento humano'}
                                 </span>
                               );
                               if (c.ia_atendendo && c.ia_agente_nome && !['encerrada','encerrado','finalizado'].includes(c.status)) return (
