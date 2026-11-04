@@ -5,7 +5,7 @@ const MAX_BYTES = 15 * 1024 * 1024;
 export default async function(req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
+    const user = await base44.auth.me().catch(() => null);
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
     if (typeof body.url !== 'string') return Response.json({ error: 'URL obrigatória' }, { status: 400 });
@@ -18,11 +18,13 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ error: 'Origem de arquivo não permitida' }, { status: 400 });
     }
     const variantes = [...new Set([body.url, url.href, decodeURI(url.href)])];
-    const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-      { arquivo_url: { $in: variantes } }, '-created_date', 50
-    );
+    const db = base44.asServiceRole.entities;
+    const mensagens = body.mensagem_id
+      ? [await db.MensagemWhatsapp.get(body.mensagem_id)]
+      : await db.MensagemWhatsapp.filter({ arquivo_url: { $in: variantes } }, '-created_date', 50);
     let mensagem = null;
     for (const candidata of mensagens || []) {
+      if (!candidata || !variantes.includes(candidata.arquivo_url)) continue;
       const acesso = await carregarConversaAutorizada({ base44, user, conversaId: candidata.conversa_id });
       if (!('erro' in acesso)) { mensagem = candidata; break; }
     }
@@ -56,7 +58,8 @@ export default async function(req: Request): Promise<Response> {
       base64: btoa(binario),
       mime_type: resposta.headers.get('content-type') || 'application/octet-stream'
     });
-  } catch {
+  } catch (erro: any) {
+    console.error('Falha no download do anexo:', erro?.status || erro?.response?.status || '', erro?.message || 'erro desconhecido');
     return Response.json({ error: 'Não foi possível obter o anexo' }, { status: 502 });
   }
 }
