@@ -13,6 +13,13 @@ export function chaveContatoWhatsapp(body: any, evento: string): string {
   return telefone ? 'tel_' + telefone : '';
 }
 
+export function variantesTelefoneWhatsapp(telefone: string): string[] {
+  const t = String(telefone || '').replace(/\D/g, '');
+  if (t.startsWith('55') && t.length === 13) return [t, t.slice(0, 4) + t.slice(5)];
+  if (t.startsWith('55') && t.length === 12) return [t, t.slice(0, 4) + '9' + t.slice(4)];
+  return [t];
+}
+
 export async function serializarContatoWhatsapp(
   db: any, connection: any, chave: string, executar: () => Promise<any>,
   opcoes: any = {}
