@@ -36,6 +36,27 @@ import { responsavelPadraoDaConexao } from '../../shared/acessoWhatsappShared.ts
  * como "1784775654936" (Unix ms em string) — new Date("1784775654936") = Invalid Date.
  * Aceita: ISO string, número (ms), string numérica (ms ou s), ou null/undefined → agora.
  */
+// O mesmo ID existe no envio e no recebimento entre dois números do CRM.
+// A deduplicação pertence à conexão e ao sentido, nunca à empresa inteira.
+async function mensagensDaConexao(db, connection, messageId, remetente) {
+  const candidatas = await db.MensagemWhatsapp.filter({
+    empresa_id: connection.empresa_id,
+    whatsapp_message_id: messageId,
+    remetente
+  }, '-created_date', 100);
+  const resultado = [];
+  for (const mensagem of candidatas || []) {
+    if (!mensagem.conversa_id) continue;
+    const conversa = await db.ConversaWhatsapp.get(mensagem.conversa_id);
+    if (conversa?.empresa_id === connection.empresa_id &&
+        (conversa.connection_id === connection.id ||
+         (!conversa.connection_id && conversa.instancia === connection.session_id))) {
+      resultado.push(mensagem);
+    }
+  }
+  return resultado;
+}
+
 function parseTimestamp(ts) {
   if (!ts) return new Date().toISOString();
   if (typeof ts === 'number') {
@@ -571,10 +592,7 @@ async function processMessageReceived(base44, body, connection, empresaId) {
   // Se NÃO existir ainda, foi enviada direto pelo celular/WhatsApp — precisa ser salva no histórico.
   if (isFromMe) {
     if (externalMessageId) {
-      const jaRegistrada = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
-        empresa_id: empresaId,
-        whatsapp_message_id: externalMessageId
-      }, '-created_date', 1);
+      const jaRegistrada = await mensagensDaConexao(base44.asServiceRole.entities, connection, externalMessageId, 'vendedor');
       if (jaRegistrada && jaRegistrada.length > 0) {
         await marcarRecebidasAteResposta(base44.asServiceRole.entities, empresaId, jaRegistrada[0].conversa_id, jaRegistrada[0].data_envio);
         return { handled: false, reason: 'mensagem própria já registrada (enviada via CRM)' };
@@ -705,10 +723,7 @@ async function processMessageReceived(base44, body, connection, empresaId) {
 
   // Evitar duplicação caso o webhook seja reenviado
   if (externalMessageId) {
-    const mensagensExistentes = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
-      empresa_id: empresaId,
-      whatsapp_message_id: externalMessageId
-    }, '-created_date', 1);
+    const mensagensExistentes = await mensagensDaConexao(base44.asServiceRole.entities, connection, externalMessageId, 'cliente');
     if (mensagensExistentes && mensagensExistentes.length > 0) {
       await registrarDiagnostico(base44, _traceId, 6, {
         etapa_nome: 'Duplicidade_DETECTADA',
@@ -1154,11 +1169,8 @@ async function processMessageSent(base44, body, connection) {
   const to = messageData.to || messageData.receiver;
   const toPhone = (typeof to === 'string' ? to : (to?.jid || to?.id || '')).replace(/@[\w.]+/g, '');
   
-  // Buscar mensagem pelo external_message_id
-  const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
-    empresa_id: connection.empresa_id,
-    whatsapp_message_id: externalMessageId
-  });
+  // Buscar somente o envio desta conexão.
+  const mensagens = await mensagensDaConexao(base44.asServiceRole.entities, connection, externalMessageId, 'vendedor');
   
   if (mensagens.length > 0) {
     const msg = mensagens[0];
