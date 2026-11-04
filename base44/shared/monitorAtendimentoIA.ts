@@ -1,11 +1,17 @@
 import { processarQualificadorTesteIA, EMPRESA_TESTE_IA, CONEXAO_TESTE_IA, parseIA, telefoneTesteIA } from './agentesTesteIA.ts';
+import { ORIGENS_MEMORIA_TESTE_IA, origemMemoriaTesteIA } from './escopoTesteIA.ts';
 import { encaminharFalhaIA } from './handoffIA.ts';
 export async function monitorarAtendimentoTesteIA(db: any) {
-  const memorias = await db.AgenteIARegistro.filter({ empresa_id:EMPRESA_TESTE_IA,tipo:'memoria',origem:'teste-eduarda:' + CONEXAO_TESTE_IA },'-updated_date',1);
+  const resultados = [];
+  for (const origem of ORIGENS_MEMORIA_TESTE_IA) resultados.push(await monitorarMemoria(db, origem));
+  return { resultados };
+}
+async function monitorarMemoria(db: any, origem: string) {
+  const memorias = await db.AgenteIARegistro.filter({ empresa_id:EMPRESA_TESTE_IA,tipo:'memoria',origem },'-updated_date',1);
   let mem = memorias[0], md = parseIA(mem);
   if (!mem || md.parar_contato || !md.conversa_id) return { ignorado:'pausado_ou_sem_conversa' };
   const c = await db.ConversaWhatsapp.get(md.conversa_id);
-  if (c.empresa_id !== EMPRESA_TESTE_IA || c.connection_id !== CONEXAO_TESTE_IA || !telefoneTesteIA(c.cliente_telefone) ||
+  if (c.empresa_id !== EMPRESA_TESTE_IA || c.connection_id !== CONEXAO_TESTE_IA || !telefoneTesteIA(c.cliente_telefone) || origemMemoriaTesteIA(c.cliente_telefone) !== origem ||
     c.bloqueado || ['encerrada','encerrado','finalizado'].includes(c.status)) return { ignorado:'fora_do_teste' };
   const reaberturaPendente = Boolean(c.ia_sessao_id && md.coordenador?.reabertura_sessao !== c.ia_sessao_id);
   if (md.coordenador?.pausado_humano && !reaberturaPendente) return { ignorado:'pausado_ou_sem_conversa' };
