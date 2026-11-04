@@ -391,7 +391,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     let urlFinal = sanitizeUrl(url);
     
     // Se a URL não é permanente (não é do nosso storage), buscar via backend
-    const isPermanente = url.includes('base44') || url.includes('supabase') || url.includes('amazonaws');
+    const isPermanente = url.includes('base44') || url.includes('supabase') || url.includes('amazonaws') || url.includes('.backblazeb2.com/');
     if (!isPermanente) {
       toast.message('Preparando arquivo...');
       try {
@@ -411,7 +411,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     
     // Salva o arquivo uma única vez, com o nome correto (sem abrir abas).
     toast.message('Baixando...');
-    const baixou = await baixarArquivo(urlFinal, nomeArquivoEfetivo(mensagem) || nomeArquivo);
+    const baixou = await baixarArquivo(urlFinal, nomeArquivoEfetivo(mensagem) || nomeArquivo, mensagem.id);
     if (baixou) toast.success('Arquivo baixado');
     else toast.error('Não foi possível baixar o arquivo. Tente novamente.');
     return baixou;
@@ -425,7 +425,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     setErroPdf('');
     try {
       let urlFinal = sanitizeUrl(url);
-      const isPermanente = url.includes('base44') || url.includes('supabase') || url.includes('amazonaws');
+      const isPermanente = url.includes('base44') || url.includes('supabase') || url.includes('amazonaws') || url.includes('.backblazeb2.com/');
       if (!isPermanente) {
         try {
           const res = await base44.functions.invoke('baixarMidiaWhatsApp', {
