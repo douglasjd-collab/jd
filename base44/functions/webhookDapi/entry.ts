@@ -1,4 +1,4 @@
-import { chaveContatoWhatsapp, serializarContatoWhatsapp } from '../../shared/serializarContatoWhatsapp.ts';
+import { chaveContatoWhatsapp, serializarContatoWhatsapp, variantesTelefoneWhatsapp } from '../../shared/serializarContatoWhatsapp.ts';
 import { camposReaberturaIA } from '../../shared/atendimentoIA.ts';
 import { processarQualificadorTesteIA } from '../../shared/qualificadorTesteIA.ts';
 import { idReciboDapi, expandirRecibosDapi, aplicarReciboDapi } from '../../shared/recibosDapiShared.ts';
@@ -758,7 +758,7 @@ async function processMessageReceived(base44, body, connection, empresaId) {
     // connection_id são reaproveitadas apenas até a primeira mensagem nova.
     const _todasConversasTelefone = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
       empresa_id: empresaId,
-      cliente_telefone: fromPhone
+      cliente_telefone: { $in: variantesTelefoneWhatsapp(fromPhone) }
     }, '-created_date', 50);
     const _daConexao = _todasConversasTelefone.find((c: any) => c.connection_id === connection.id) || null;
     const _legadaSemConexao = _todasConversasTelefone.find((c: any) => !c.connection_id) || null;
@@ -1047,7 +1047,7 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
   const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
     empresa_id: empresaId,
     connection_id: connection.id,
-    cliente_telefone: telefone
+    cliente_telefone: { $in: variantesTelefoneWhatsapp(telefone) }
   }, '-created_date', 1);
 
   let conversa;
