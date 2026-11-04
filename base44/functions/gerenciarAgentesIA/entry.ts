@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
       const mudanca = { dados_json: JSON.stringify(dados), status: body.ativo ? 'aprovado' : 'desativado',
         versao: Number(agente.versao || 1) + 1, autor_id: me.id, autor_nome: me.full_name || me.email };
       await records.create({ empresa_id: empresa, tipo: 'historico', titulo: (body.ativo ? 'Ativação de teste: ' : 'Desativação: ') + agente.titulo,
-        conteudo: body.ativo ? 'Teste restrito à Eduarda, por texto, na conexão Douglas | JD Promotora.' : 'Respostas automáticas desativadas manualmente.',
+        conteudo: body.ativo ? 'Teste por texto nos contatos autorizados (Eduarda e +55 (87) 99152-7083), na conexão Douglas | JD Promotora, com memórias individuais.' : 'Respostas automáticas desativadas manualmente.',
         status: 'aprovado', agente_id: agente.id, versao: mudanca.versao,
         dados_json: JSON.stringify({ anterior: agente, seguinte: { ...agente, ...mudanca } }), autor_id: me.id, autor_nome: me.full_name || me.email });
       const registro = await records.update(agente.id, mudanca);
