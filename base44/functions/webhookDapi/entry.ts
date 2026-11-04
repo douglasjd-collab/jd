@@ -1,3 +1,4 @@
+import { chaveContatoWhatsapp, serializarContatoWhatsapp } from '../../shared/serializarContatoWhatsapp.ts';
 import { camposReaberturaIA } from '../../shared/atendimentoIA.ts';
 import { processarQualificadorTesteIA } from '../../shared/qualificadorTesteIA.ts';
 import { idReciboDapi, expandirRecibosDapi, aplicarReciboDapi } from '../../shared/recibosDapiShared.ts';
@@ -260,7 +261,12 @@ export default async function(req) {
     let errorMessage = null;
     
     try {
-      processResult = await processEvent(base44, eventType, body, connection, empresaId);
+      const processar = () => processEvent(base44, eventType, body, connection, empresaId);
+      processResult = ['messages.received', 'messages.sent'].includes(eventType)
+        ? await serializarContatoWhatsapp(
+            base44.asServiceRole.entities, connection, chaveContatoWhatsapp(body, eventType), processar
+          )
+        : await processar();
       console.log(`✅ [Webhook D-API] ${webhookId} - Processado: handled=${!!processResult?.handled}`);
     } catch (error) {
       errorMessage = error.message;
@@ -297,7 +303,7 @@ export default async function(req) {
       webhookId,
       timestamp: new Date().toISOString(),
       processed: !!processResult
-    }, { status: erroTransitorio(errorMessage) ? 500 : 200 });
+    }, { status: errorMessage && ['messages.received', 'messages.sent'].includes(eventType) || erroTransitorio(errorMessage) ? 500 : 200 });
     
   } catch (error) {
     console.error(`❌ [Webhook D-API] ${webhookId} - Erro geral:`, error.message);
@@ -861,7 +867,7 @@ async function processMessageReceived(base44, body, connection, empresaId) {
       status: 'erro',
       erro: error.message,
     });
-    return { handled: false, error: error.message };
+    throw error; // falha de persistência precisa solicitar retentativa à API
   }
 
   const { texto: respostaParaTexto, nome: respostaParaNome, whatsappId: respostaParaWhatsappId } = await extrairRespostaCitada(base44, empresaId, data);
@@ -1040,6 +1046,7 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
 
   const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
     empresa_id: empresaId,
+    connection_id: connection.id,
     cliente_telefone: telefone
   }, '-created_date', 1);
 
