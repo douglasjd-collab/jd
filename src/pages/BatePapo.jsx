@@ -1094,8 +1094,9 @@ export default function BatePapo() {
           if (local) { msgData.conversa_id = local.conversa_id || key[1]; break; }
         }
       }
+      // Recibos em lote podem conter só id/status, sem remetente ou conversa.
+      if (msgData.status === 'lida' || msgData.lida_em) reconciliarLeitura();
       if (!msgData.conversa_id) return;
-      if (msgData.remetente === 'cliente' && msgData.status === 'lida') reconciliarLeitura();
 
       console.log(`🟢 Update msg via subscription: ${msgData.id} → status: ${msgData.status}`);
 
@@ -1132,7 +1133,10 @@ export default function BatePapo() {
         resumoAtual?.ultimo_remetente === 'vendedor' &&
         new Date(msgData.data_envio).getTime() <= new Date(resumoAtual.data_ultima_mensagem).getTime();
       // Reconciliar também quando a resposta veio pelo celular/WhatsApp.
-      if (msgData.remetente === 'vendedor') reconciliarLeitura();
+      if (msgData.remetente === 'vendedor') {
+        setNaoLidasPorConversa(prev => ({ ...prev, [msgData.conversa_id]: 0 }));
+        reconciliarLeitura();
+      }
 
       console.log(`🔄 Nova mensagem: ${msgData?.id} para conversa ${msgData?.conversa_id}, conversa aberta: ${conversaAtualId}`);
 
@@ -2217,7 +2221,7 @@ export default function BatePapo() {
                   ) : <>
                     {buscandoConversas && buscaGlobal && <div className="flex items-center justify-center py-2 text-xs text-slate-400 gap-2"><Loader2 className="w-3 h-3 animate-spin"/>Buscando mais resultados...</div>}
                     {conversasFiltradas.map((c) => {
-                      const naoLidas = naoLidasPorConversa[c.id] ?? 0;
+                      const naoLidas = c.ultimo_remetente === 'vendedor' ? 0 : (naoLidasPorConversa[c.id] ?? 0);
                        const isSelecionada = conversaSelecionada?.id === c.id;
                        const isApiOficial = c.provider === 'whatsapp_meta'
                          || c.canal_origem === 'meta'
