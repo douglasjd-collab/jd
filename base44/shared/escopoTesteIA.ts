@@ -8,6 +8,12 @@ export function telefoneCanonicoTesteIA(valor: any): string | null {
  if (['5587991527083', '558791527083'].includes(numero)) return '5587991527083';
  return null;
 }
+// O novo contato só participa a partir desta liberação; não reprocessa conversas antigas.
+export function inicioTesteContatoIA(valor: any, ativadoEm: string): string {
+ const inicio = Date.parse(ativadoEm);
+ if (telefoneCanonicoTesteIA(valor) !== '5587991527083' || !Number.isFinite(inicio)) return ativadoEm;
+ return new Date(Math.max(inicio, Date.parse('2026-11-04T03:50:23.944Z'))).toISOString();
+}
 export const telefoneTesteIA = (valor: any) => telefoneCanonicoTesteIA(valor) !== null;
 export function origemMemoriaTesteIA(valor: any): string {
  const numero = telefoneCanonicoTesteIA(valor);
