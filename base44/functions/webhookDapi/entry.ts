@@ -1303,39 +1303,28 @@ async function processChatUpdate(base44, body, connection) {
     if (!telefone) continue;
 
     // Só marca como lidas quando o unreadCount chegou a 0 (usuário abriu o chat no celular)
-    if (unreadCount !== 0) {
+    if (unreadCount !== 0 && unreadCount !== '0') {
       console.log(`ℹ️ [Webhook D-API] chats.update ${telefone} unreadCount=${unreadCount} — ignorando`);
       continue;
     }
 
     const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
       empresa_id: connection.empresa_id,
+      connection_id: connection.id,
       cliente_telefone: telefone
-    }, '-created_date', 1);
+    }, '-created_date', 50);
 
     if (!conversas || conversas.length === 0) {
       console.log(`ℹ️ [Webhook D-API] Conversa não encontrada para ${telefone}`);
       continue;
     }
 
-    const conversa = conversas[0];
-    const agora = new Date().toISOString();
-
-    const msgsCliente = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
-      conversa_id: conversa.id,
-      remetente: 'cliente'
-    }, '-created_date', 200);
-
-    const paraMarcar = msgsCliente
-      .filter(m => m.status !== 'lida')
-      .map(m => ({ id: m.id, status: 'lida', lida_em: agora }));
-
-    if (paraMarcar.length > 0) {
-      await base44.asServiceRole.entities.MensagemWhatsapp.bulkUpdate(paraMarcar);
-      console.log(`✅ [Webhook D-API] ${paraMarcar.length} mensagens de ${telefone} marcadas como lidas (leitura no celular via chats.update)`);
-      totalMarcados += paraMarcar.length;
-    } else {
-      console.log(`ℹ️ [Webhook D-API] Nenhuma mensagem de ${telefone} pendente de leitura`);
+    // Limitar ao instante do evento: uma leitura antiga não apaga mensagens novas.
+    const corte = parseTimestamp(chat.timestamp || data.timestamp || body.timestamp);
+    for (const conversa of conversas) {
+      totalMarcados += await marcarRecebidasAteResposta(
+        base44.asServiceRole.entities, connection.empresa_id, conversa.id, corte
+      );
     }
   }
 
