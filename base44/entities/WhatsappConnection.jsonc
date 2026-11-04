@@ -101,6 +101,15 @@
       "default": true,
       "description": "Se est\u00e1 ativo"
     },
+    "processamento_contatos": {
+      "type": "object",
+      "description": "Travas tempor\u00e1rias por contato, adquiridas por atualiza\u00e7\u00e3o condicional at\u00f4mica no backend.",
+      "additionalProperties": true,
+      "rls": {
+        "read": false,
+        "update": false
+      }
+    },
     "config_json": {
       "type": "string",
       "description": "Configura\u00e7\u00f5es espec\u00edficas do provedor em JSON"
