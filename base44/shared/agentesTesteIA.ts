@@ -1,4 +1,4 @@
-import { EMPRESA_TESTE_IA, CONEXAO_TESTE_IA, TELEFONES_TESTE_IA, telefoneTesteIA, origemMemoriaTesteIA, ORIGENS_MEMORIA_TESTE_IA } from './escopoTesteIA.ts';
+import { EMPRESA_TESTE_IA, CONEXAO_TESTE_IA, TELEFONES_TESTE_IA, telefoneTesteIA, origemMemoriaTesteIA, ORIGENS_MEMORIA_TESTE_IA, inicioTesteContatoIA } from './escopoTesteIA.ts';
 export { EMPRESA_TESTE_IA, CONEXAO_TESTE_IA, TELEFONES_TESTE_IA, telefoneTesteIA } from './escopoTesteIA.ts';
 import { enviarDapiDireto } from './dapiEnvioShared.ts';
 import { camposAtendimentoIA } from './atendimentoIA.ts';
@@ -22,7 +22,7 @@ export function elegivelTesteIA(agente: any, conversa: any, mensagem: any, conex
     mensagem?.empresa_id === conversa.empresa_id && mensagem?.conversa_id === conversa.id &&
     !conversa.bloqueado && !conversa.is_group && !String(conversa.whatsapp_id || '').includes('@g.us') &&
     !['finalizado', 'encerrado', 'encerrada'].includes(conversa.status) &&
-    Date.parse(mensagem.data_envio) >= Date.parse(d.ativado_em);
+    Date.parse(mensagem.data_envio) >= Date.parse(inicioTesteContatoIA(conversa.cliente_telefone, d.ativado_em));
 }
 async function serializar(chave: string, job: () => Promise<any>) {
   const anterior = filas.get(chave) || Promise.resolve();
@@ -128,7 +128,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
     const recebido = Date.parse(mensagem?.data_envio);
     const inicioReabertura = Date.parse(conversa.ia_sessao_inicio_em || mensagem?.data_envio);
     if (!Number.isFinite(recebido) || !Number.isFinite(inicioReabertura) || recebido < inicioReabertura) return { enviado:false, motivo:'evento_anterior_a_reabertura' };
-    coord = { responsavel:'qualificador', retorno:'qualificador', inicio:new Date(inicioReabertura).toISOString(),
+    coord = { responsavel:'qualificador', retorno:'qualificador', inicio:inicioTesteContatoIA(conversa.cliente_telefone, new Date(inicioReabertura).toISOString()),
       sessao:parseIA(ativos.qualificador).ativado_em, reabertura_sessao:marcadorReabertura,
       tentativas:0, aguardando_resposta:false, pausado_humano:false };
     md = { ...md, conversa_id:conversa.id, transferir:false, retomada_mensagem_id:null,
@@ -139,14 +139,14 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
       cliente_nome:memoria?.cliente_nome || nomeContato,cliente_id:memoria?.cliente_id || conversa.cliente_id || '',
       status:'rascunho',versao:Number(memoria?.versao || 0)+1,dados_json:JSON.stringify(md) };
     memoria = memoria ? await db.AgenteIARegistro.update(memoria.id,dadosMemoria) : await db.AgenteIARegistro.create(dadosMemoria);
-  } else if (novaAtivacao) coord = { responsavel: 'qualificador', inicio: parseIA(ativos.qualificador).ativado_em,
+  } else if (novaAtivacao) coord = { responsavel: 'qualificador', inicio: inicioTesteContatoIA(conversa.cliente_telefone, parseIA(ativos.qualificador).ativado_em),
     sessao: parseIA(ativos.qualificador).ativado_em, reabertura_sessao:coord.reabertura_sessao,
     tentativas: 0, aguardando_resposta: false };
   if (md.parar_contato === true || coord.pausado_humano) { if (conversa.ia_atendendo) await db.ConversaWhatsapp.update(conversa.id, camposAtendimentoIA(null)); return { enviado: false, motivo: 'interrompido' }; }
   if (!coord.inicio) {
     const entrada = ativos.qualificador;
     if (!entrada || proativo) return { enviado: false, motivo: 'sem_entrada' };
-    coord = { responsavel: 'qualificador', inicio: parseIA(entrada).ativado_em, sessao: parseIA(entrada).ativado_em, tentativas: 0 };
+    coord = { responsavel: 'qualificador', inicio: inicioTesteContatoIA(conversa.cliente_telefone, parseIA(entrada).ativado_em), sessao: parseIA(entrada).ativado_em, tentativas: 0 };
   }
   const dono = coord.responsavel || 'qualificador';
   // Durante follow-up, a próxima resposta volta ao vendedor; sem vendedor, não envia.
