@@ -11,6 +11,8 @@
 //
 // O bug anterior: o <a> usava target=_blank, que abre uma URL de blob em nova aba em
 // vez de disparar o download. Sem target, o atributo download salva o arquivo.
+import { base44 } from '@/api/base44Client';
+
 const baixamentosEmAndamento = new Set();
 
 function nomeDaUrl(url) {
@@ -53,9 +55,20 @@ export async function baixarArquivo(url, nomeArquivo) {
     // Baixa os bytes e salva via blob: assim o nome do arquivo é preservado e o clique
     // gera exatamente um arquivo, mesmo em URL de outro domínio (onde o navegador
     // ignoraria o atributo download de um link direto).
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const blob = await resp.blob();
+    let blob;
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      blob = await resp.blob();
+    } catch {
+      // O storage pode permitir <img> e bloquear fetch por CORS.
+      // O backend valida o acesso à conversa antes de entregar os mesmos bytes.
+      const resposta = await base44.functions.invoke('baixarAnexoWhatsapp', { url });
+      const dados = resposta?.data;
+      if (!dados?.base64) throw new Error('Anexo indisponível');
+      const bytes = Uint8Array.from(atob(dados.base64), c => c.charCodeAt(0));
+      blob = new Blob([bytes], { type: dados.mime_type || 'application/octet-stream' });
+    }
     const objectUrl = URL.createObjectURL(blob);
     dispararDownload(objectUrl, nome);
     setTimeout(() => URL.revokeObjectURL(objectUrl), 15000);
