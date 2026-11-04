@@ -1,9 +1,10 @@
+import { telefoneTesteIA, origemMemoriaTesteIA } from './escopoTesteIA.ts';
 import { camposAtendimentoIA } from './atendimentoIA.ts';
 const EMPRESA = '699696c2c9f5bffc2e67402b', CONEXAO = '6a406c5e86664cdaac6f95cb';
 export async function encaminharFalhaIA(db: any, conversaId: string, mensagemId: string, motivo: string) {
   const c = await db.ConversaWhatsapp.get(conversaId);
   if (c.empresa_id !== EMPRESA || c.connection_id !== CONEXAO || c.bloqueado ||
-    !['558781184956','5587981184956'].includes(String(c.cliente_telefone || '').replace(/\D/g,'')) ||
+    !telefoneTesteIA(c.cliente_telefone) ||
     ['encerrada','encerrado','finalizado'].includes(c.status)) return { encaminhado: false };
   const ultimas = await db.MensagemWhatsapp.filter({ empresa_id: EMPRESA, conversa_id: c.id }, '-data_envio', 1);
   // Não assumir uma conversa que já teve resposta ou mudou enquanto a geração falhava.
@@ -11,7 +12,7 @@ export async function encaminharFalhaIA(db: any, conversaId: string, mensagemId:
   const origem = 'ia-handoff:' + mensagemId;
   const ja = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA, tipo:'historico', origem }, '-created_date', 1);
   if (ja.length) return { encaminhado: true, repetido: true };
-  const memorias = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA, tipo:'memoria', origem:'teste-eduarda:' + CONEXAO }, '-updated_date', 1);
+  const memorias = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA, tipo:'memoria', origem:origemMemoriaTesteIA(c.cliente_telefone) }, '-updated_date', 1);
   const mem = memorias[0];
   let md: any = {}; try { md = JSON.parse(mem?.dados_json || '{}'); } catch {}
   if (md.parar_contato) return { encaminhado: false, motivo: 'contato_interrompido' };
@@ -31,7 +32,7 @@ export async function encaminharFalhaIA(db: any, conversaId: string, mensagemId:
     responsavel_expira_em:destino ? new Date(Date.now()+3600000).toISOString() : null,
     atendimento_prioritario:true });
   const alertas = await db.AtendimentoAlerta.filter({ empresa_id:EMPRESA, conversa_id:c.id }, '-updated_date',1);
-  const alerta = { empresa_id:EMPRESA, conversa_id:c.id, connection_id:CONEXAO, cliente_nome:c.cliente_nome || 'Eduarda',
+  const alerta = { empresa_id:EMPRESA, conversa_id:c.id, connection_id:CONEXAO, cliente_nome:c.cliente_nome || 'Contato de teste',
     cliente_telefone:c.cliente_telefone, aguardando_desde:ultimas[0].data_envio, alerta_adiado_ate:null,
     status_conversa:c.status, atualizado_em:agora };
   if (alertas[0]) await db.AtendimentoAlerta.update(alertas[0].id,alerta); else await db.AtendimentoAlerta.create(alerta);
