@@ -1,16 +1,14 @@
+import { EMPRESA_TESTE_IA, CONEXAO_TESTE_IA, TELEFONES_TESTE_IA, telefoneTesteIA, origemMemoriaTesteIA, ORIGENS_MEMORIA_TESTE_IA } from './escopoTesteIA.ts';
+export { EMPRESA_TESTE_IA, CONEXAO_TESTE_IA, TELEFONES_TESTE_IA, telefoneTesteIA } from './escopoTesteIA.ts';
 import { enviarDapiDireto } from './dapiEnvioShared.ts';
 import { camposAtendimentoIA } from './atendimentoIA.ts';
 import { encaminharFalhaIA } from './handoffIA.ts';
 import { consultarPlanosDoAtendimentoIA } from './planosVendedorIA.ts';
 
 // Escopo deliberadamente fixo enquanto a equipe valida o fluxo completo.
-export const EMPRESA_TESTE_IA = '699696c2c9f5bffc2e67402b';
-export const CONEXAO_TESTE_IA = '6a406c5e86664cdaac6f95cb';
-export const TELEFONES_TESTE_IA = ['558781184956', '5587981184956'];
+// Empresa, conexão e contatos permitidos vêm do escopo compartilhado.
 export const parseIA = (r: any) => { try { return JSON.parse(r?.dados_json || '{}'); } catch { return {}; } };
-export const telefoneTesteIA = (v: any) => TELEFONES_TESTE_IA.includes(String(v || '').replace(/\D/g, ''));
 const NOMES: any = { qualificador: 'Qualificador', vendedor: 'Vendedor', follow_up: 'Follow-up' };
-const ORIGEM_MEMORIA = 'teste-eduarda:' + CONEXAO_TESTE_IA;
 const DIA = 86400000;
 const filas = new Map<string, Promise<any>>();
 export function elegivelTesteIA(agente: any, conversa: any, mensagem: any, conexao: any) {
@@ -26,11 +24,11 @@ export function elegivelTesteIA(agente: any, conversa: any, mensagem: any, conex
     !['finalizado', 'encerrado', 'encerrada'].includes(conversa.status) &&
     Date.parse(mensagem.data_envio) >= Date.parse(d.ativado_em);
 }
-async function serializar(job: () => Promise<any>) {
-  const anterior = filas.get(CONEXAO_TESTE_IA) || Promise.resolve();
+async function serializar(chave: string, job: () => Promise<any>) {
+  const anterior = filas.get(chave) || Promise.resolve();
   const atual = anterior.catch(() => {}).then(job);
-  filas.set(CONEXAO_TESTE_IA, atual);
-  try { return await atual; } finally { if (filas.get(CONEXAO_TESTE_IA) === atual) filas.delete(CONEXAO_TESTE_IA); }
+  filas.set(chave, atual);
+  try { return await atual; } finally { if (filas.get(chave) === atual) filas.delete(chave); }
 }
 // Não permitir que uma inferência de contemplação transforme um pedido simples em pausa humana.
 export function corrigirCartaAmbiguaIA(out: any, papel: string, texto: string) {
@@ -53,32 +51,34 @@ export function dentroHorarioIA(config: any, agora = new Date()) {
   const inicio = Number(config.hora_inicio ?? 8), fim = Number(config.hora_fim ?? 18);
   return Number.isInteger(inicio) && Number.isInteger(fim) && inicio >= 0 && fim <= 23 && fim > inicio && h >= inicio && h < fim;
 }
-async function carregar(db: any) {
+async function carregar(db: any, origemMemoria: string) {
   const agentes = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA_TESTE_IA, tipo: 'agente' }, '-updated_date', 50);
   const ativos: any = {};
   for (const a of agentes) {
     const d = parseIA(a);
     if (d.ativo === true && d.modo === 'teste' && d.connection_id === CONEXAO_TESTE_IA && !ativos[d.papel]) ativos[d.papel] = a;
   }
-  const memorias = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA_TESTE_IA, tipo: 'memoria', origem: ORIGEM_MEMORIA }, '-updated_date', 1);
+  const memorias = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA_TESTE_IA, tipo: 'memoria', origem: origemMemoria }, '-updated_date', 1);
   return { ativos, memoria: memorias[0] };
 }
 export async function processarQualificadorTesteIA(db: any, connection: any, conversa: any, mensagem: any) {
   if (connection?.id !== CONEXAO_TESTE_IA || !contextoTeste(conversa) || mensagem?.remetente !== 'cliente') return;
-  return serializar(() => executar(db, connection, conversa, mensagem, false));
+  return serializar(origemMemoriaTesteIA(conversa.cliente_telefone), () => executar(db, connection, conversa, mensagem, false));
 }
 export async function processarFollowUpTesteIA(db: any) {
-  // Uma memória conhecida; não pesquisa nem percorre outros clientes.
-  return serializar(async () => {
-    const { ativos, memoria } = await carregar(db);
+  // Somente as memórias dos contatos explicitamente autorizados.
+  const resultados = [];
+  for (const origemMemoria of ORIGENS_MEMORIA_TESTE_IA) resultados.push(await serializar(origemMemoria, async () => {
+    const { ativos, memoria } = await carregar(db, origemMemoria);
     if (!ativos.follow_up || !memoria) return { enviado: false, motivo: 'sem_pendencia' };
     const m = parseIA(memoria);
     if (!m.coordenador || !m.conversa_id) return { enviado: false, motivo: 'aguardando_nova_conversa' };
     const conversa = await db.ConversaWhatsapp.get(m.conversa_id);
-    if (!contextoTeste(conversa)) return { enviado: false, motivo: 'fora_do_teste' };
+    if (!contextoTeste(conversa) || origemMemoriaTesteIA(conversa.cliente_telefone) !== origemMemoria) return { enviado: false, motivo: 'fora_do_teste' };
     const connection = await db.WhatsappConnection.get(CONEXAO_TESTE_IA);
     return executar(db, connection, conversa, null, true);
-  });
+  }));
+  return { resultados };
 }
 async function configuracao(db: any) {
   const r = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA_TESTE_IA, tipo: 'configuracao' }, '-updated_date', 1);
@@ -110,7 +110,9 @@ async function dadosComerciais(db: any, agente: any) {
   return JSON.stringify(dados).slice(0, 14000);
 }
 async function executar(db: any, connection: any, conversaOriginal: any, mensagem: any, proativo: boolean) {
-  const carregado = await carregar(db), ativos = carregado.ativos;
+  const origemMemoria = origemMemoriaTesteIA(conversaOriginal.cliente_telefone);
+  const nomeContato = conversaOriginal.cliente_nome || 'Contato de teste';
+  const carregado = await carregar(db, origemMemoria), ativos = carregado.ativos;
   let memoria = carregado.memoria;
   let md = parseIA(memoria), coord = md.coordenador || {};
   let conversa = await db.ConversaWhatsapp.get(conversaOriginal.id);
@@ -132,9 +134,9 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
     md = { ...md, conversa_id:conversa.id, transferir:false, retomada_mensagem_id:null,
       retomada_consumida_em:null, coordenador:coord };
     // Preservar resumo e vínculo individual; renovar somente o controle desta sessão.
-    const dadosMemoria = { empresa_id:EMPRESA_TESTE_IA,tipo:'memoria',titulo:memoria?.titulo || 'Memória de teste — Eduarda',
-      origem:ORIGEM_MEMORIA,conteudo:memoria?.conteudo || 'Novo atendimento; sem resumo anterior.',
-      cliente_nome:memoria?.cliente_nome || 'Eduarda',cliente_id:memoria?.cliente_id || conversa.cliente_id || '',
+    const dadosMemoria = { empresa_id:EMPRESA_TESTE_IA,tipo:'memoria',titulo:memoria?.titulo || 'Memória de teste — ' + nomeContato,
+      origem:origemMemoria,conteudo:memoria?.conteudo || 'Novo atendimento; sem resumo anterior.',
+      cliente_nome:memoria?.cliente_nome || nomeContato,cliente_id:memoria?.cliente_id || conversa.cliente_id || '',
       status:'rascunho',versao:Number(memoria?.versao || 0)+1,dados_json:JSON.stringify(md) };
     memoria = memoria ? await db.AgenteIARegistro.update(memoria.id,dadosMemoria) : await db.AgenteIARegistro.create(dadosMemoria);
   } else if (novaAtivacao) coord = { responsavel: 'qualificador', inicio: parseIA(ativos.qualificador).ativado_em,
@@ -249,7 +251,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
       (proativo && (novos[0]?.whatsapp_message_id !== coord.ultima_saida_id || !dentroHorarioIA(cfg)))) {
       await registrar('cancelado', 'Cliente respondeu, a equipe assumiu ou a janela encerrou.'); return { enviado: false };
     }
-    const atualMem = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA_TESTE_IA, tipo: 'memoria', origem: ORIGEM_MEMORIA }, '-updated_date', 1);
+    const atualMem = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA_TESTE_IA, tipo: 'memoria', origem: origemMemoria }, '-updated_date', 1);
     if ((memoria && (atualMem[0]?.id !== memoria.id || atualMem[0]?.versao !== memoria.versao)) ||
       parseIA(atualMem[0]).parar_contato || (!novoCiclo && parseIA(atualMem[0]).coordenador?.pausado_humano)) {
       await registrar('cancelado', 'Memória ou responsável mudou durante a geração.'); return { enviado: false };
@@ -258,9 +260,9 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
     if (!parseIA(await db.AgenteIARegistro.get(agente.id)).ativo) return { enviado: false };
     // Persistir interrupção/pausa antes do envio: vale mesmo se o provedor falhar na confirmação.
     if (out.parar_contato || out.destino === 'humano') {
-      const bloqueio = { empresa_id: EMPRESA_TESTE_IA, tipo: 'memoria', titulo: 'Memória de teste — Eduarda',
-        origem: ORIGEM_MEMORIA, status: 'rascunho', conteudo: out.resumo.slice(0, 5000),
-        cliente_id: conversa.cliente_id || '', cliente_nome: 'Eduarda', versao: Number(memoria?.versao || 0) + 1,
+      const bloqueio = { empresa_id: EMPRESA_TESTE_IA, tipo: 'memoria', titulo: 'Memória de teste — ' + nomeContato,
+        origem: origemMemoria, status: 'rascunho', conteudo: out.resumo.slice(0, 5000),
+        cliente_id: conversa.cliente_id || '', cliente_nome: nomeContato, versao: Number(memoria?.versao || 0) + 1,
         dados_json: JSON.stringify({ ...md, conversa_id: conversa.id, parar_contato: out.parar_contato,
           coordenador: { ...coord, aguardando_resposta: false, pausado_humano: out.destino === 'humano' } }) };
       memoriaDestino = memoria ? await db.AgenteIARegistro.update(memoria.id, bloqueio) : await db.AgenteIARegistro.create(bloqueio);
@@ -284,9 +286,9 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
       tentativas: proativo ? Number(coord.tentativas || 0) + 1 : 0,
       ultima_saida_id: String(idWa), proximo_follow_em: new Date(Date.now() + DIA).toISOString(),
       ultima_atividade_ia: agora, envio_incerto: false };
-    const dataMemoria = { empresa_id: EMPRESA_TESTE_IA, tipo: 'memoria', titulo: 'Memória de teste — Eduarda',
-      conteudo: out.resumo.slice(0, 5000), cliente_id: conversa.cliente_id || '', cliente_nome: 'Eduarda',
-      origem: ORIGEM_MEMORIA, status: 'rascunho', versao: Number(memoriaDestino?.versao || 0) + 1,
+    const dataMemoria = { empresa_id: EMPRESA_TESTE_IA, tipo: 'memoria', titulo: 'Memória de teste — ' + nomeContato,
+      conteudo: out.resumo.slice(0, 5000), cliente_id: conversa.cliente_id || '', cliente_nome: nomeContato,
+      origem: origemMemoria, status: 'rascunho', versao: Number(memoriaDestino?.versao || 0) + 1,
       dados_json: JSON.stringify({ conversa_id: conversa.id, agente_id: agente.id, transferir: out.destino === 'humano',
         parar_contato: out.parar_contato === true, coordenador: novoCoord }), autor_nome: 'IA • ' + NOMES[papel] };
     if (memoriaDestino) await db.AgenteIARegistro.update(memoriaDestino.id, dataMemoria); else await db.AgenteIARegistro.create(dataMemoria);
