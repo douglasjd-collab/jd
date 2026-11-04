@@ -1,3 +1,4 @@
+import { telefoneTesteIA } from './escopoTesteIA.ts';
 export function camposAtendimentoIA(agente: any) {
   let d: any = {};
   try { d = JSON.parse(agente?.dados_json || '{}'); } catch {}
@@ -10,7 +11,7 @@ export function camposAtendimentoIA(agente: any) {
 export function camposReaberturaIA(conversa: any, conexao: any, recebidoEm: any) {
   if (conversa?.empresa_id !== '699696c2c9f5bffc2e67402b' ||
       conexao?.id !== '6a406c5e86664cdaac6f95cb' ||
-      !['558781184956','5587981184956'].includes(String(conversa?.cliente_telefone || '').replace(/\D/g,''))) return {};
+      !telefoneTesteIA(conversa?.cliente_telefone)) return {};
   const quando = new Date(recebidoEm || Date.now());
   return { ia_sessao_id: crypto.randomUUID(), ia_sessao_inicio_em: Number.isFinite(quando.getTime()) ? quando.toISOString() : new Date().toISOString(),
     ...camposAtendimentoIA(null), ia_aguardando_humano:false, ia_motivo_handoff:'' };
