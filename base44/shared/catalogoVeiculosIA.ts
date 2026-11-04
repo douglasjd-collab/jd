@@ -100,7 +100,7 @@ export async function consultarVeiculoDoAtendimentoIA(db:any,empresa:string,key:
  if (/\b(boleto|extrato|sinistro|guincho|cancelamento|atendente|humano)\b/i.test(ultimaEntrada)) return {status:'nao_consultado',opcoes:[]};
  if(!/seguro|prote[cç][aã]o|cota[cç][aã]o/i.test(dados.resumo+' '+somenteCliente))return {status:'nao_consultado',opcoes:[]};
  // A placa já satisfaz a identificação inicial; nunca enviar a placa a esta API.
- if(/\b[A-Z]{3}[- ]?\d[A-Z0-9]\d{2}\b/i.test(somenteCliente))return {status:'placa_informada',opcoes:[],limites:'Não foi realizada consulta por placa.'};
+ if(/\b[A-Z]{3}-?\d[A-Z0-9]\d{2}\b/i.test(somenteCliente) || /\bplaca\s*(?:é|e|:)?\s*[A-Z]{3}[- ]?\d[A-Z0-9]\d{2}\b/i.test(somenteCliente))return {status:'placa_informada',opcoes:[],limites:'Não foi realizada consulta por placa.'};
  const campos:any={marca:{type:['string','null']},modelo:{type:['string','null']},ano:{type:['integer','null']},
   ano_tipo:{type:'string',enum:['modelo','fabricacao','nao_especificado']},tipo:{type:['string','null'],enum:['cars','motorcycles','trucks',null]},
   combustivel:{type:['string','null'],enum:['Flex','Diesel','Gasolina','Álcool','Elétrico','Híbrido',null]},
