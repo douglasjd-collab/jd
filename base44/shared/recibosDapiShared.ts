@@ -26,11 +26,26 @@ export async function aplicarReciboDapi(base44:any,connection:any,payload:any,st
  const db=base44.asServiceRole?.entities||base44.entities,results=[];
  for(const item of expandirRecibosDapi(payload)){
   const id=idReciboDapi(item);if(!id)continue;
-  const result=await db.MensagemWhatsapp.updateMany({
-   empresa_id:connection.empresa_id,whatsapp_message_id:id,remetente:'vendedor',
-   status:{$nin:status==='lida'?['lida']:['entregue','lida']}
-  },{$set:{status,...(status==='lida'?{lida_em:new Date().toISOString()}:{entregue_em:new Date().toISOString()})}});
-  results.push({messageId:id,status,updated:result.updated||0});
+  // Leitura no celular referencia a mensagem recebida; leitura pelo cliente
+  // referencia o envio. Resolver pela conexão antes de atualizar qualquer lado.
+  const mensagens=await db.MensagemWhatsapp.filter({
+   empresa_id:connection.empresa_id,whatsapp_message_id:id
+  },'-created_date',100);
+  let updated=0;
+  for(const mensagem of mensagens||[]){
+   if(!mensagem.conversa_id)continue;
+   if(mensagem.remetente!=='vendedor' && !(status==='lida'&&mensagem.remetente==='cliente'))continue;
+   const conversa=await db.ConversaWhatsapp.get(mensagem.conversa_id);
+   if(conversa?.empresa_id!==connection.empresa_id)continue;
+   if(conversa.connection_id!==connection.id &&
+      !(!conversa.connection_id&&conversa.instancia===connection.session_id))continue;
+   const result=await db.MensagemWhatsapp.updateMany({
+    id:mensagem.id,empresa_id:connection.empresa_id,
+    status:{$nin:status==='lida'?['lida']:['entregue','lida']}
+   },{$set:{status,...(status==='lida'?{lida_em:new Date().toISOString()}:{entregue_em:new Date().toISOString()})}});
+   updated+=result.updated||0;
+  }
+  results.push({messageId:id,status,updated});
  }
  return {handled:results.length>0,results};
 }
