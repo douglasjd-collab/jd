@@ -41,7 +41,7 @@ function dispararDownload(objectUrl, nome) {
 
 // Retorna true quando o arquivo foi baixado, false quando falhou (para o chamador
 // mostrar erro e permitir tentar novamente).
-export async function baixarArquivo(url, nomeArquivo) {
+export async function baixarArquivo(url, nomeArquivo, mensagemId) {
   if (!url) return false;
 
   const chave = url;
@@ -57,13 +57,16 @@ export async function baixarArquivo(url, nomeArquivo) {
     // ignoraria o atributo download de um link direto).
     let blob;
     try {
+      if (new URL(url, window.location.origin).hostname.endsWith('.backblazeb2.com')) {
+        throw new Error('Storage requer download pelo backend');
+      }
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       blob = await resp.blob();
     } catch {
       // O storage pode permitir <img> e bloquear fetch por CORS.
       // O backend valida o acesso à conversa antes de entregar os mesmos bytes.
-      const resposta = await base44.functions.invoke('baixarAnexoWhatsapp', { url });
+      const resposta = await base44.functions.invoke('baixarAnexoWhatsapp', { url, ...(mensagemId ? { mensagem_id: mensagemId } : {}) });
       const dados = resposta?.data;
       if (!dados?.base64) throw new Error('Anexo indisponível');
       const bytes = Uint8Array.from(atob(dados.base64), c => c.charCodeAt(0));
