@@ -116,7 +116,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
   let memoria = carregado.memoria;
   let md = parseIA(memoria), coord = md.coordenador || {};
   let conversa = await db.ConversaWhatsapp.get(conversaOriginal.id);
-  if (!contextoTeste(conversa)) return { enviado: false };
+  if (!contextoTeste(conversa) || origemMemoriaTesteIA(conversa.cliente_telefone) !== origemMemoria) return { enviado: false };
   const marcadorReabertura = conversa.ia_sessao_id ||
     (md.conversa_id && md.conversa_id !== conversa.id ? 'conversa:' + conversa.id : null);
   const novaReabertura = Boolean(marcadorReabertura && coord.reabertura_sessao !== marcadorReabertura);
@@ -243,7 +243,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
     const latest = await db.AgenteIARegistro.get(agente.id);
     connection = await db.WhatsappConnection.get(connection.id);
     conversa = await db.ConversaWhatsapp.get(conversa.id);
-    if (!elegivelTesteIA(latest, conversa, mensagem, connection) || parseIA(latest).ativado_em !== d.ativado_em) {
+    if (!elegivelTesteIA(latest, conversa, mensagem, connection) || origemMemoriaTesteIA(conversa.cliente_telefone) !== origemMemoria || parseIA(latest).ativado_em !== d.ativado_em) {
       await registrar('cancelado', 'Agente desativado ou alterado antes do envio.'); return { enviado: false };
     }
     const novos = await db.MensagemWhatsapp.filter({ empresa_id: EMPRESA_TESTE_IA, conversa_id: conversa.id }, '-data_envio', 40);
