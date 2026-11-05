@@ -1,0 +1,12 @@
+{
+  "name": "LeituraConversaWhatsapp",
+  "type": "object",
+  "properties": {
+    "empresa_id": { "type": "string" },
+    "usuario_id": { "type": "string" },
+    "conversa_id": { "type": "string" },
+    "vista_ate": { "type": "string", "format": "date-time" }
+  },
+  "required": ["empresa_id", "usuario_id", "conversa_id", "vista_ate"],
+  "rls": { "create": false, "read": false, "update": false, "delete": false }
+}

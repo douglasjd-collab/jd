@@ -5,7 +5,6 @@ import NotasConversaEditor from '@/components/chat/NotasConversaEditor';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { marcarConversaComoLida } from '@/components/chat/marcarConversaComoLida';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,35 +146,11 @@ export default function BatePapo() {
      // Só ativar mobileViewChat se for dispositivo mobile E abrirMobile for true
      if (abrirMobile && window.innerWidth < 1024) setMobileViewChat(true);
      localStorage.setItem('ultimaConversaId', conversa.id);
-     // Zerar contador de não lidas ao abrir a conversa — garantir que não reapareça
-     setNaoLidasPorConversa(prev => {
-       const nova = { ...prev };
-       nova[conversa.id] = 0;
+     setMarcadasNaoLidasManual(prev => {
+       const nova = new Set(prev);
+       nova.delete(conversa.id);
        return nova;
      });
-    // Remover da lista de marcadas manualmente como não lido
-    setMarcadasNaoLidasManual(prev => {
-      const nova = new Set(prev);
-      nova.delete(conversa.id);
-      return nova;
-    });
-
-    // A leitura será gravada depois que o histórico estiver disponível.
-
-    // Marca como "Em Atendimento" ao abrir quando há cliente esperando resposta
-    if (!isGrupo(conversa) && conversa.status === 'ativa') {
-      const meuId = user?.colaborador_id || user?.id;
-      const meuNome = user?.nome_perfil || user?.full_name || user?.email || 'Atendente';
-      const temAtendAtivo = conversa.responsavel_expira_em && new Date(conversa.responsavel_expira_em) > new Date();
-      const precisa = (conversa.ultimo_remetente === 'cliente' || (naoLidasPorConversa[conversa.id] || 0) > 0) && !temAtendAtivo;
-      if (meuId && precisa) {
-        const expira = new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
-        const dados = { responsavel_id: meuId, responsavel_nome: meuNome, responsavel_expira_em: expira };
-        queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
-          (Array.isArray(old) ? old : []).map(c => c.id === conversa.id ? { ...c, ...dados } : c));
-        base44.entities.ConversaWhatsapp.update(conversa.id, dados).then(refetchConversasComDebounce).catch(() => {});
-      }
-    }
 
     // A troca do conversation_id já dispara uma única consulta pelo React Query.
 
@@ -873,14 +848,16 @@ export default function BatePapo() {
     return () => clearTimeout(timer);
   }, [escopoHistorico, conversaSelecionadaId, mensagens]);
 
-  const ultimaMensagemVisivelId = mensagens.at(-1)?.id || '';
+  const chatVisivel = crmEmFoco && (mobileViewChat || window.innerWidth >= 1024);
+  const ultimaRecebidaId = mensagens.findLast(m => m.remetente === 'cliente')?.id;
   useEffect(() => {
-    if (!crmEmFoco || document.visibilityState !== 'visible' || !document.hasFocus() || !conversaSelecionadaId || loadingMensagens || !mensagens.length) return;
-    (usuarioRestritoWhatsapp(user) ? base44.functions.invoke('marcarConversaVistaBatePapo', { conversa_id: conversaSelecionadaId }) : marcarConversaComoLida(conversaSelecionadaId)).then(reconciliarLeitura).catch(() => {});
-  }, [conversaSelecionadaId, loadingMensagens, ultimaMensagemVisivelId, reconciliarLeitura, crmEmFoco]);
+    if (!chatVisivel || !conversaSelecionadaId || loadingMensagens || !ultimaRecebidaId) return;
+    base44.functions.invoke('marcarConversaVistaBatePapo', {
+      conversa_id: conversaSelecionadaId,
+      mensagem_id: ultimaRecebidaId,
+    }).then(reconciliarLeitura).catch(() => {});
+  }, [conversaSelecionadaId, loadingMensagens, ultimaRecebidaId, reconciliarLeitura, chatVisivel]);
 
-
-  // Recarregar somente quando o usuário pedir mais itens, mantendo a mesma chave de cache.
   useEffect(() => {
     if (!iniciouLimiteConversasRef.current) { iniciouLimiteConversasRef.current = true; return; }
     if (empresaId) refetchConversas();
@@ -890,38 +867,28 @@ export default function BatePapo() {
     if (conversaSelecionadaId) refetchMensagens();
   }, [limiteMensagens]);
 
-  // Buscar mensagens não lidas do banco e montar contadores por conversa
   const conversaIdsKey = useMemo(() => conversas.filter(c => c.id).map(c => [c.id, c.data_ultima_mensagem, c.ultimo_remetente].join(':')).sort().join('|'), [conversas]);
   useEffect(() => {
-    if (!empresaId || conversas.length === 0 || usuarioRestritoWhatsapp(user)) return;
-    const conversaIds = conversas.filter(c => c.id).map(c => c.id);
-    const abertaId = conversaSelecionadaId;
-
+    if (!empresaId || !conversas.length) return;
     let cancelado = false;
-    const timer = setTimeout(() => base44.entities.MensagemWhatsapp.filter(
-      { empresa_id: empresaId, remetente: 'cliente', status: { $ne: 'lida' } },
-      '-data_envio',
-      1000
-    ).then(msgs => {
-      if (cancelado) return;
-      const contadores = {};
-      msgs.forEach(m => {
-        if (!m.conversa_id || m.remetente !== 'cliente') return;
-        const resumo = conversas.find(c => c.id === m.conversa_id);
-        // Uma resposta enviada já cobriu as mensagens anteriores, mesmo que
-        // o webhook de leitura ainda esteja processando ou chegue fora de ordem.
-        if (resumo?.ultimo_remetente === 'vendedor' &&
-            new Date(m.data_envio).getTime() <= new Date(resumo.data_ultima_mensagem).getTime()) return;
-        if (m.conversa_id === abertaId && crmEmFoco) return; // só a conversa efetivamente visível conta como vista
-        if (!conversaIds.includes(m.conversa_id)) return; // só desta empresa
-        if (m.status === 'lida') return; // já lida, não conta
-        contadores[m.conversa_id] = (contadores[m.conversa_id] || 0) + 1;
-      });
-      // Manter contadores zerados para conversa aberta
-      setNaoLidasPorConversa(crmEmFoco ? { ...contadores, [abertaId]: 0 } : contadores);
-    }).catch(() => {}), 350);
+    const ids = conversas.map(c => c.id).filter(Boolean);
+    const timer = setTimeout(async () => {
+      try {
+        const contadores = {};
+        for (let i = 0; i < ids.length && !cancelado; i += 500) {
+          const { data } = await base44.functions.invoke('contarNaoLidasBatePapo', {
+            empresa_id: empresaId,
+            conversa_ids: ids.slice(i, i + 500),
+          });
+          Object.assign(contadores, data?.por_conversa);
+        }
+        if (!cancelado) setNaoLidasPorConversa(contadores);
+      } catch {
+        // Preserva a última contagem até o próximo evento ou retorno à aba.
+      }
+    }, 350);
     return () => { cancelado = true; clearTimeout(timer); };
-  }, [empresaId, conversaIdsKey, conversaSelecionadaId, revisaoLeitura, crmEmFoco]);
+  }, [empresaId, user?.id, conversaIdsKey, revisaoLeitura, crmEmFoco]);
 
   // Navegação interna do alerta: usa a conversa em cache e preserva a página.
   // O id exato é mantido, inclusive para o mesmo contato em conexões diferentes.
@@ -1161,25 +1128,7 @@ export default function BatePapo() {
         }, 800);
       }
 
-      // Atualizar contador de não lidas e marcar último remetente como cliente
-      if (msgData?.remetente === 'cliente' && !recebidaAntesDaResposta && msgData?.status !== 'lida' && msgData?.conversa_id) {
-        const conversaAtualId = conversaSelecionadaIdRef.current;
-        const conversaEstaVisivel = msgData.conversa_id === conversaAtualId && document.visibilityState === 'visible' && document.hasFocus();
-        if (!conversaEstaVisivel) {
-          setNaoLidasPorConversa(prev => {
-            const nova = { ...prev };
-            nova[msgData.conversa_id] = (nova[msgData.conversa_id] || 0) + 1;
-            // Garantir que conversa aberta mantenha contador = 0
-            if (document.visibilityState === 'visible' && document.hasFocus()) nova[conversaAtualId] = 0;
-            return nova;
-          });
-        } else {
-          // Conversa aberta: garantir que o contador seja 0
-          setNaoLidasPorConversa(prev => ({ ...prev, [conversaAtualId]: 0 }));
-        }
-        // O webhook mantém o resumo; um evento antigo não deve sobrescrever uma resposta nova.
-
-      }
+      if (msgData.remetente === 'cliente') reconciliarLeitura();
 
       // Notificação apenas para mensagens de cliente — apenas UMA VEZ por mensagem
       if (msgData?.remetente === 'cliente' && !recebidaAntesDaResposta && msgData?.status !== 'lida' && msgData?.id) {
@@ -1399,19 +1348,6 @@ export default function BatePapo() {
         numeroCliente: conversaSelecionada.cliente_telefone,
         whatsappIdDestino: conversaSelecionada.whatsapp_id,
       });
-      // Atualiza a conversa para "Em Atendimento" imediatamente (mesmo efeito
-      // do enviarMensagemMutation.onSuccess, mas sem bloquear).
-      if (conversaSelecionada) {
-        const msgExibicao = texto || (arquivo?.nome || '');
-        const expira = conversaSelecionada.responsavel_expira_em
-          && new Date(conversaSelecionada.responsavel_expira_em) > new Date()
-          ? conversaSelecionada.responsavel_expira_em
-          : new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
-        queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
-          (Array.isArray(old) ? old : []).map((c) => c.id === conversaSelecionada.id
-            ? { ...c, ia_atendendo: false, ia_aguardando_humano: false, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString(), responsavel_id: user?.colaborador_id || user?.id, responsavel_nome: user?.nome_perfil || user?.full_name || 'Atendente', responsavel_expira_em: expira }
-            : c));
-      }
       return true;
     } catch (e) {
       toast.error(e?.message || 'Não foi possível iniciar o envio');
@@ -2221,7 +2157,7 @@ export default function BatePapo() {
                   ) : <>
                     {buscandoConversas && buscaGlobal && <div className="flex items-center justify-center py-2 text-xs text-slate-400 gap-2"><Loader2 className="w-3 h-3 animate-spin"/>Buscando mais resultados...</div>}
                     {conversasFiltradas.map((c) => {
-                      const naoLidas = c.ultimo_remetente === 'vendedor' ? 0 : (naoLidasPorConversa[c.id] ?? 0);
+                      const naoLidas = chatVisivel && conversaSelecionadaId === c.id ? 0 : (naoLidasPorConversa[c.id] ?? 0);
                        const isSelecionada = conversaSelecionada?.id === c.id;
                        const isApiOficial = c.provider === 'whatsapp_meta'
                          || c.canal_origem === 'meta'
@@ -2314,7 +2250,7 @@ export default function BatePapo() {
                                 </div>
                               );
                             })()}
-                            <StatusConversaBadge conversa={c} emAtendimento={atendenteDentroDoTempo(c)} />
+                            <StatusConversaBadge conversa={c} />
                             {microtarefasPorConversa[c.id]?.[0] && (() => {
                               const tarefa = microtarefasPorConversa[c.id][0];
                               const atrasada = tarefa.vencimento_em && new Date(tarefa.vencimento_em) < new Date();
@@ -2329,13 +2265,9 @@ export default function BatePapo() {
                             <div className="jd-chat-bottom">
                               <span className="jd-chat-message">{ultimaMsg}</span>
                               <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                                {mostrarBadge && conversaSelecionada?.id !== c.id && (
+                                {mostrarBadge && (
                                   <span className="jd-chat-badge">
                                     {naoLidas}
-                                  </span>
-                                )}
-                                {marcadasNaoLidasManual.has(c.id) && (
-                                  <span className="jd-chat-badge" style={{ backgroundColor: '#22c55e' }}>
                                   </span>
                                 )}
                                 <DropdownMenu>
