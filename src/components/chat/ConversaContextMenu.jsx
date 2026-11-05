@@ -31,7 +31,6 @@ export default function ConversaContextMenu({
   setConversaSelecionada,
   setMarcadasNaoLidasManual,
   marcadasNaoLidasManual,
-  setNaoLidasPorConversa,
   abrirSalvarCrm,
   setContatoParaTags,
   setTagsModalOpen,
@@ -140,7 +139,6 @@ export default function ConversaContextMenu({
           toast.success('Marcado como lido');
         } else {
           setMarcadasNaoLidasManual(prev => new Set(prev).add(conversa.id));
-          setNaoLidasPorConversa(prev => ({ ...prev, [conversa.id]: 1 }));
           toast.success('Marcado como não lido');
         }
       }}>

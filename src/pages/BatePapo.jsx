@@ -933,6 +933,7 @@ export default function BatePapo() {
       const ultimaConversa = ultimaId ? conversas.find(c => c.id === ultimaId) : null;
       // No mobile, não abrir chat automaticamente (usuário deve clicar)
       const isMobileDevice = window.innerWidth < 1024;
+      if (isMobileDevice && !conversaPorUrl) return;
       const conversaParaAbrir = conversaPorUrl || ultimaConversa || conversas[0];
       // No desktop, não ativar mobileViewChat (coluna esquerda deve permanecer visível)
       selecionarConversa(conversaParaAbrir, true, isMobileDevice ? true : false);
@@ -1100,8 +1101,7 @@ export default function BatePapo() {
         resumoAtual?.ultimo_remetente === 'vendedor' &&
         new Date(msgData.data_envio).getTime() <= new Date(resumoAtual.data_ultima_mensagem).getTime();
       // Reconciliar também quando a resposta veio pelo celular/WhatsApp.
-      if (msgData.remetente === 'vendedor') {
-        setNaoLidasPorConversa(prev => ({ ...prev, [msgData.conversa_id]: 0 }));
+      if (msgData.remetente === 'vendedor' && !msgData.mensagem_tecnica && !['erro', 'pendente'].includes(msgData.status)) {
         reconciliarLeitura();
       }
 
@@ -1205,7 +1205,7 @@ export default function BatePapo() {
   });
 
   const enviarMensagemMutation = useMutation({
-    mutationFn: async ({ texto, arquivo, mensagemParaResponder }) => {
+    mutationFn: async ({ texto, arquivo, mensagemParaResponder, finalizarAposEnvio }) => {
       if (!texto?.trim() && !arquivo) {
         throw new Error('Mensagem ou arquivo obrigatório');
       }
@@ -1220,6 +1220,7 @@ export default function BatePapo() {
         numero_cliente: destinatario,
         empresa_id: empresaId,
         arquivo: arquivo,
+        finalizar_apos_envio: finalizarAposEnvio === true,
         resposta_para_texto: mensagemParaResponder?.texto || null,
         resposta_para_nome: mensagemParaResponder ? (mensagemParaResponder.remetente === 'vendedor' ? (mensagemParaResponder.usuario_nome || 'Você') : (conversaSelecionada?.cliente_nome || 'Cliente')) : null,
         resposta_para_message_id: mensagemParaResponder?.whatsapp_message_id || null, resposta_para_id: mensagemParaResponder?.id || null,
@@ -1279,34 +1280,8 @@ export default function BatePapo() {
       // O encerramento tem sua própria confirmação e não precisa consultar ACKs
       // ou recarregar mensagens de um chat que já foi fechado.
       if (variables.finalizarAposEnvio) return;
-      // No envio de encerramento, não reatribuir o atendente: a finalização
-      // seguinte precisa manter responsavel_id vazio para ir direto a "Finalizados".
-      if (conversaSelecionada && !variables.finalizarAposEnvio) {
-        const msgExibicao = variables.texto || (variables.arquivo ? variables.arquivo.nome : '');
-        const expira = conversaSelecionada.responsavel_expira_em
-          && new Date(conversaSelecionada.responsavel_expira_em) > new Date()
-          ? conversaSelecionada.responsavel_expira_em
-          : new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
-
-        // 1. Atualizar cache LOCAL imediatamente — move conversa para "Em Atendimento"
-        queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
-          old.map(c => c.id === conversaSelecionada.id
-            ? { ...c, ia_atendendo: false, ia_aguardando_humano: false, ultimo_remetente: 'vendedor', ultima_mensagem: msgExibicao, data_ultima_mensagem: new Date().toISOString(), responsavel_id: user?.colaborador_id || user?.id, responsavel_nome: user?.nome_perfil || user?.full_name || user?.email || 'Atendente', responsavel_expira_em: expira }
-            : c
-          )
-        );
-
-        // 2. Salvar no banco em background (sem bloquear a UI)
-        base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
-          ultima_mensagem: msgExibicao,
-          data_ultima_mensagem: new Date().toISOString(),
-          ultimo_remetente: 'vendedor',
-          ia_atendendo: false, ia_aguardando_humano: false,
-          responsavel_id: user?.colaborador_id || user?.id || 'atendente',
-          responsavel_nome: user?.nome_perfil || user?.full_name || user?.email || 'Atendente',
-          responsavel_expira_em: expira,
-        }).then(() => refetchConversas()).catch(() => {});
-      }
+      reconciliarLeitura();
+      refetchConversasComDebounce();
 
       // 3. Buscar mensagem real do banco imediatamente e substituir o temp_
       queryClient.refetchQueries({ queryKey: ['mensagens-whatsapp', conversaSelecionadaId], type: 'active' });
@@ -2270,6 +2245,9 @@ export default function BatePapo() {
                                     {naoLidas}
                                   </span>
                                 )}
+                                {marcadasNaoLidasManual.has(c.id) && (
+                                  <span title="Marcada manualmente como não lida" className="text-xs text-amber-600">●</span>
+                                )}
                                 <DropdownMenu>
                                  <DropdownMenuTrigger asChild>
                                    <button className="jd-chat-menu p-0.5 hover:bg-black/5 rounded">
@@ -2286,7 +2264,6 @@ export default function BatePapo() {
                                      setConversaSelecionada={setConversaSelecionada}
                                      setMarcadasNaoLidasManual={setMarcadasNaoLidasManual}
                                      marcadasNaoLidasManual={marcadasNaoLidasManual}
-                                     setNaoLidasPorConversa={setNaoLidasPorConversa}
                                      abrirSalvarCrm={abrirSalvarCrm}
                                      setContatoParaTags={setContatoParaTags}
                                      setTagsModalOpen={setTagsModalOpen}

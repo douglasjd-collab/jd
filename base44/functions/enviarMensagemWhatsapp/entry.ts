@@ -121,6 +121,22 @@ Deno.serve(async (req) => {
       console.log('📦 empresaId obtido da conversa:', empresaId);
     }
 
+    const camposResponsavel = (nome, colaboradorId) => {
+      const endereco = String(conversaDoBanco?.whatsapp_id || conversaDoBanco?.cliente_telefone || '');
+      if (payload.finalizar_apos_envio || endereco.includes('@g.us')) return {};
+      const id = colaboradorId || user.colaborador_id || user.id;
+      return {
+        responsavel_id: id,
+        responsavel_nome: nome,
+        responsavel_user_id: user.id,
+        usuario_responsavel_id: id,
+        usuario_responsavel_nome: nome,
+        usuario_responsavel_user_id: user.id,
+        responsavel_expira_em: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        atendimento_transferido_para_id: conversaDoBanco?.atendimento_transferido_para_id === id ? id : null,
+      };
+    };
+
     // ── Reabertura automática ────────────────────────────────────────────────
     // Mensagem enviada pelo CRM para uma conversa Finalizada reabre a MESMA conversa
     // (histórico, responsável e canal preservados, sem duplicar registro e sem
@@ -314,9 +330,11 @@ Deno.serve(async (req) => {
 
       // Buscar nome real do colaborador para Instagram também
       let nomeAtendenteIg = user?.full_name || user?.email || 'Atendente';
+      let colaboradorIg;
       try {
         const colabsIg = await base44.asServiceRole.entities.Colaborador.filter({ user_id: user.id }, '-created_date', 1);
-        if (colabsIg?.length > 0) nomeAtendenteIg = colabsIg[0].nome || colabsIg[0].nome_completo || nomeAtendenteIg;
+        colaboradorIg = colabsIg?.[0];
+        if (colaboradorIg) nomeAtendenteIg = colabsIg[0].nome || colabsIg[0].nome_completo || nomeAtendenteIg;
       } catch (_) {}
 
       // Salvar mensagem no banco
@@ -339,6 +357,7 @@ Deno.serve(async (req) => {
 
       await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
         ...camposReaberturaConversa,
+        ...camposResponsavel(nomeAtendenteIg, colaboradorIg?.id),
         ultima_mensagem: mensagem_texto.trim().substring(0, 100),
         data_ultima_mensagem: new Date().toISOString(),
         ia_atendendo: false, ia_aguardando_humano: false,
@@ -651,7 +670,7 @@ Deno.serve(async (req) => {
         // Nome do atendente buscado em paralelo com o envio.
         const nomeAtendentePromise = base44.asServiceRole.entities.Colaborador
           .filter({ user_id: user.id }, '-created_date', 1)
-          .then((cols) => cols?.[0]?.nome || null)
+          .then((cols) => cols?.[0] || null)
           .catch(() => null);
 
         const startTime = Date.now();
@@ -764,8 +783,8 @@ Deno.serve(async (req) => {
         }).catch((logErr) => console.error('⚠️ Erro ao registrar log D-API:', logErr.message));
 
         // Salvar mensagem no banco
-        const nomeColaborador = await nomeAtendentePromise;
-        const nomeAtendente = nomeColaborador || user?.nome_perfil || user?.full_name || user?.email || 'Atendente';
+        const colaborador = await nomeAtendentePromise;
+        const nomeAtendente = colaborador?.nome || colaborador?.nome_completo || user?.nome_perfil || user?.full_name || user?.email || 'Atendente';
 
         // Gravar a mensagem é o passo crítico. O log de auditoria e o resumo da lista de
         // conversas são secundários: se qualquer um deles falhar, o envio não pode voltar
@@ -815,6 +834,7 @@ Deno.serve(async (req) => {
             .catch(e => console.error('⚠️ Erro ao confirmar leitura após resposta D-API:', e.message)),
           base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
             ...camposReaberturaConversa,
+            ...camposResponsavel(nomeAtendente, colaborador?.id),
             ultima_mensagem: (textoEnviar || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
             data_ultima_mensagem: new Date().toISOString(),
             ia_atendendo: false, ia_aguardando_humano: false,
@@ -1190,11 +1210,13 @@ Deno.serve(async (req) => {
       user?.email ||
       'Atendente';
 
+    let colaboradorId;
     try {
       const colaboradores = await base44.asServiceRole.entities.Colaborador.filter({
         user_id: user.id
       }, '-created_date', 1);
       if (colaboradores?.length > 0) {
+        colaboradorId = colaboradores[0].id;
         nomeAtendente =
           colaboradores[0].nome ||
           colaboradores[0].nome_completo ||
@@ -1273,6 +1295,7 @@ Deno.serve(async (req) => {
           .catch(e => console.error('⚠️ Erro ao confirmar leitura após resposta:', e.message)),
         base44.asServiceRole.entities.ConversaWhatsapp.update(conversa_id, {
           ...camposReaberturaConversa,
+          ...camposResponsavel(nomeAtendente, colaboradorId),
           ultima_mensagem: (mensagem_texto || `📎 ${arquivo?.nome || 'arquivo'}`).substring(0, 200),
           data_ultima_mensagem: new Date().toISOString(),
           ia_atendendo: false, ia_aguardando_humano: false,
