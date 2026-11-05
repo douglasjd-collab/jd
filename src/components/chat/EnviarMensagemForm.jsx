@@ -325,7 +325,27 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
     let tipo = file.type || '';
     if (!tipo) {
       const ext = file.name.split('.').pop()?.toLowerCase();
-      const mimeMap = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', mp3: 'audio/mpeg', mp4: 'video/mp4', webm: 'audio/webm', ogg: 'audio/ogg', heic: 'image/jpeg', heif: 'image/jpeg' };
+      const mimeMap = {
+        pdf: 'application/pdf',
+        jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif',
+        mp3: 'audio/mpeg', mp4: 'video/mp4', webm: 'audio/webm', ogg: 'audio/ogg',
+        heic: 'image/jpeg', heif: 'image/jpeg',
+        // Planilhas e documentos: sem o MIME correto o WhatsApp trata o
+        // arquivo como genérico e a planilha chega sem formato.
+        xls: 'application/vnd.ms-excel',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        xlsm: 'application/vnd.ms-excel.sheet.macroEnabled.12',
+        ods: 'application/vnd.oasis.opendocument.spreadsheet',
+        csv: 'text/csv',
+        txt: 'text/plain',
+        doc: 'application/msword',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ppt: 'application/vnd.ms-powerpoint',
+        pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        zip: 'application/zip',
+        rar: 'application/vnd.rar',
+        '7z': 'application/x-7z-compressed',
+      };
       tipo = mimeMap[ext] || 'application/octet-stream';
     }
     // HEIC/HEIF serão convertidos para JPEG antes do envio
@@ -417,24 +437,13 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const handleArquivo = (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    const aceitos = files.filter(file => {
-      const nome = file.name?.toLowerCase() || '';
-      const tipo = file.type || '';
-      return tipo.startsWith('image/') || tipo.startsWith('audio/') || tipo.startsWith('video/') ||
-        tipo === 'application/pdf' || tipo.includes('pdf') ||
-        tipo === 'image/heic' || tipo === 'image/heif' ||
-        nome.endsWith('.pdf') || nome.endsWith('.jpg') || nome.endsWith('.jpeg') ||
-        nome.endsWith('.png') || nome.endsWith('.gif') || nome.endsWith('.mp3') ||
-        nome.endsWith('.mp4') || nome.endsWith('.webm') || nome.endsWith('.ogg') ||
-        nome.endsWith('.doc') || nome.endsWith('.docx') || nome.endsWith('.xls') || nome.endsWith('.xlsx') ||
-        nome.endsWith('.heic') || nome.endsWith('.heif');
-    });
-    if (aceitos.length < files.length) {
-      setErro('Alguns arquivos não são suportados e foram ignorados.');
-    }
+    // Qualquer arquivo é aceito: planilhas, documentos, áudios e imagens saem
+    // como mídia/documento no WhatsApp. A lista fixa de extensões bloqueava
+    // planilhas (xlsx/xls/csv) que o usuário precisava enviar.
+    setErro(null);
     // Todos os arquivos entram diretamente como anexos.
     // O editor só abre quando o usuário escolher explicitamente "Editar".
-    setArquivos(prev => [...prev, ...aceitos]);
+    setArquivos(prev => [...prev, ...files]);
     // Reset input para permitir selecionar os mesmos arquivos novamente
     e.target.value = '';
   };
@@ -555,7 +564,7 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
         multiple
         onChange={handleArquivo}
         className="hidden"
-        accept="image/*,audio/*,video/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.heic,.heif"
+        accept="image/*,audio/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12,application/vnd.oasis.opendocument.spreadsheet,text/csv,text/plain,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/zip,application/vnd.rar,application/x-7z-compressed,.pdf,.doc,.docx,.xls,.xlsx,.xlsm,.ods,.csv,.txt,.ppt,.pptx,.zip,.rar,.7z,.heic,.heif"
       />
 
       {/* Quick Replies Popup */}

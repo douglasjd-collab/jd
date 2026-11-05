@@ -34,7 +34,16 @@ function montarPayloadDapi(action, sessionId, numero, texto, params) {
     case 'sendAudio':
       return { ...base, audio: params.audioUrl, ptt: true, ...ctx };
     case 'sendDocument':
-      return { ...base, document: params.documentUrl, caption: params.caption || '', fileName: params.fileName || undefined, ...ctx };
+      // O mimetype evita que planilhas (xlsx/xls/csv) cheguem como arquivo
+      // genérico e não abram no WhatsApp do cliente.
+      return {
+        ...base,
+        document: params.documentUrl,
+        caption: params.caption || '',
+        fileName: params.fileName || undefined,
+        mimetype: params.mimeType && params.mimeType !== 'application/octet-stream' ? params.mimeType : undefined,
+        ...ctx,
+      };
     case 'sendVideo':
       return { ...base, video: params.videoUrl, caption: params.caption || '', ...ctx };
     default:

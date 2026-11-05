@@ -618,9 +618,18 @@ Deno.serve(async (req) => {
           dapiAction = 'sendVideo';
           dapiActionParams = { videoUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '', contextInfo: dapiContextInfo };
         } else {
-          tipoConteudoDapi = 'pdf';
+          // Planilhas e outros documentos não são PDF: só o PDF abre no
+          // visualizador; os demais são exibidos/baixados como documento.
+          const ehPdf = tipoArq.includes('pdf') || /\.pdf$/i.test(arquivo.nome || nomeUploadDapi);
+          tipoConteudoDapi = ehPdf ? 'pdf' : 'documento';
           dapiAction = 'sendDocument';
-          dapiActionParams = { documentUrl: arquivoUrlDapi, caption: mensagem_texto?.trim() || '', fileName: arquivo.nome || nomeUploadDapi, contextInfo: dapiContextInfo };
+          dapiActionParams = {
+            documentUrl: arquivoUrlDapi,
+            caption: mensagem_texto?.trim() || '',
+            fileName: arquivo.nome || nomeUploadDapi,
+            mimeType: tipoArq,
+            contextInfo: dapiContextInfo,
+          };
         }
       } else if (!mensagem_texto || !mensagem_texto.trim()) {
         return Response.json({ error: 'Mensagem de texto é obrigatória para D-API' }, { status: 400 });
@@ -1208,7 +1217,7 @@ Deno.serve(async (req) => {
       else if (tipo.startsWith('image')) tipo_conteudo = 'imagem';
       else if (tipo.startsWith('audio')) tipo_conteudo = 'audio';
       else if (tipo.startsWith('video')) tipo_conteudo = 'video';
-      else tipo_conteudo = 'pdf';
+      else tipo_conteudo = (tipo.includes('pdf') || /\.pdf$/i.test(arquivo.nome || '')) ? 'pdf' : 'documento';
 
       // Upload para Base44 para URL permanente
       try {
