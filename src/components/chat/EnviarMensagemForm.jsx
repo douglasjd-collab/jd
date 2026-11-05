@@ -451,8 +451,9 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
   const handleDrop = (e) => {
     e.preventDefault();
     const files = Array.from(e.dataTransfer?.files || []);
-    const imagens = files.filter(f => TIPOS_IMAGEM.includes(f.type));
-    if (imagens.length > 0) setArquivos(prev => [...prev, ...imagens]);
+    if (!files.length) return;
+    setErro(null);
+    setArquivos(prev => [...prev, ...files]);
   };
 
   const removerArquivo = (idx) => {
@@ -564,7 +565,6 @@ export default function EnviarMensagemForm({ onEnviar, isLoading = false, nomeUs
         multiple
         onChange={handleArquivo}
         className="hidden"
-        accept="image/*,audio/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12,application/vnd.oasis.opendocument.spreadsheet,text/csv,text/plain,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/zip,application/vnd.rar,application/x-7z-compressed,.pdf,.doc,.docx,.xls,.xlsx,.xlsm,.ods,.csv,.txt,.ppt,.pptx,.zip,.rar,.7z,.heic,.heif"
       />
 
       {/* Quick Replies Popup */}

@@ -57,12 +57,10 @@ export async function baixarArquivo(url, nomeArquivo, mensagemId) {
     // ignoraria o atributo download de um link direto).
     let blob;
     try {
-      if (new URL(url, window.location.origin).hostname.endsWith('.backblazeb2.com')) {
-        throw new Error('Storage requer download pelo backend');
-      }
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       blob = await resp.blob();
+      if (!blob.size || blob.type.startsWith('text/html')) throw new Error('Resposta sem arquivo');
     } catch {
       // O storage pode permitir <img> e bloquear fetch por CORS.
       // O backend valida o acesso à conversa antes de entregar os mesmos bytes.

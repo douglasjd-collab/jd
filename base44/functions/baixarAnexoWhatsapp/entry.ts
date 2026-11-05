@@ -2,6 +2,18 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { carregarConversaAutorizada } from '../../shared/acessoWhatsappShared.ts';
 
 const MAX_BYTES = 15 * 1024 * 1024;
+function urlPermitida(valor: unknown, base?: string): URL | null {
+  if (typeof valor !== 'string' || !valor) return null;
+  try {
+    const url = new URL(valor, base);
+    const dominios = ['backblazeb2.com', 'supabase.co', 'supabase.in', 'amazonaws.com', 'base44.app'];
+    return url.protocol === 'https:' && !url.username && !url.password && !url.port &&
+      dominios.some(dominio => url.hostname.endsWith('.' + dominio)) ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function(req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
@@ -9,28 +21,32 @@ export default async function(req: Request): Promise<Response> {
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const body = await req.json();
     if (typeof body.url !== 'string') return Response.json({ error: 'URL obrigatória' }, { status: 400 });
-    const url = new URL(body.url);
-    // Este endpoint só baixa anexos já registrados, nunca URLs arbitrárias.
-    const host = url.hostname.toLowerCase();
-    if (url.protocol !== 'https:' || url.username || url.password || url.port ||
-        !['backblazeb2.com', 'supabase.co', 'supabase.in', 'amazonaws.com', 'base44.app']
-          .some(d => host.endsWith('.' + d))) {
-      return Response.json({ error: 'Origem de arquivo não permitida' }, { status: 400 });
-    }
-    const variantes = [...new Set([body.url, url.href, decodeURI(url.href)])];
+    const url = urlPermitida(body.url);
+    if (!url) return Response.json({ error: 'Origem de arquivo não permitida' }, { status: 400 });
+    const variantes = [...new Set([body.url, url.href, url.href.replace(/%20/g, ' ')])];
     const db = base44.asServiceRole.entities;
     const mensagens = body.mensagem_id
       ? [await db.MensagemWhatsapp.get(body.mensagem_id)]
       : await db.MensagemWhatsapp.filter({ arquivo_url: { $in: variantes } }, '-created_date', 50);
     let mensagem = null;
     for (const candidata of mensagens || []) {
-      if (!candidata || !variantes.includes(candidata.arquivo_url)) continue;
+      if (!candidata || urlPermitida(candidata.arquivo_url)?.href !== url.href) continue;
       const acesso = await carregarConversaAutorizada({ base44, user, conversaId: candidata.conversa_id });
       if (!('erro' in acesso)) { mensagem = candidata; break; }
     }
     if (!mensagem) return Response.json({ error: 'Arquivo indisponível ou sem permissão' }, { status: 403 });
-    const resposta = await fetch(url.href, { redirect: 'error', signal: AbortSignal.timeout(20000) });
-    if (!resposta.ok) return Response.json({ error: 'Falha ao obter arquivo' }, { status: 502 });
+    const sinal = AbortSignal.timeout(20000);
+    let destino = url;
+    let resposta = await fetch(destino.href, { redirect: 'manual', signal: sinal });
+    for (let i = 0; i < 3 && [301, 302, 303, 307, 308].includes(resposta.status); i++) {
+      const local = resposta.headers.get('location');
+      await resposta.body?.cancel();
+      const proximo = local && urlPermitida(local, destino.href);
+      if (!proximo) return Response.json({ error: 'Destino do arquivo não permitido' }, { status: 502 });
+      destino = proximo;
+      resposta = await fetch(destino.href, { redirect: 'manual', signal: sinal });
+    }
+    if (!resposta.ok || resposta.headers.get('content-type')?.startsWith('text/html')) return Response.json({ error: 'Falha ao obter arquivo' }, { status: 502 });
     if (Number(resposta.headers.get('content-length')) > MAX_BYTES) {
       return Response.json({ error: 'Arquivo excede 15 MB' }, { status: 413 });
     }
@@ -48,6 +64,7 @@ export default async function(req: Request): Promise<Response> {
       }
       partes.push(value);
     }
+    if (!tamanho) return Response.json({ error: 'Arquivo vazio' }, { status: 502 });
     let binario = '';
     for (const parte of partes) {
       for (let i = 0; i < parte.length; i += 8192) {

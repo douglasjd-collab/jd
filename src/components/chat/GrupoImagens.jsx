@@ -248,7 +248,10 @@ export default function GrupoImagens({ mensagens, conversaId, isVendedor, onReag
       </div>
 
       {/* Lightbox */}
-      {imagemAberta && <ImagemZoom url={imagemAberta} onClose={() => setImagemAberta(null)} onDownload={() => baixarArquivo(imagemAberta, mensagens.find(m => urls[m.id] === imagemAberta)?.arquivo_nome)} /> }
+      {imagemAberta && <ImagemZoom url={imagemAberta} onClose={() => setImagemAberta(null)} onDownload={() => {
+        const mensagem = mensagens.find(m => urls[m.id] === imagemAberta);
+        return baixarArquivo(imagemAberta, mensagem?.arquivo_nome, mensagem?.id);
+      }} /> }
     </>
   );
 }
