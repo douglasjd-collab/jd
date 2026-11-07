@@ -60,6 +60,10 @@ export async function moverOportunidade({ oportunidadeId, novaEtapaId, updates =
         } : {}),
       });
 
+      // A etapa já foi salva: falhas secundárias devem ser avisadas sem repetir a movimentação.
+      const registrar = async (operacao, mensagem) => {
+        try { await operacao(); } catch { avisar(mensagem); }
+      };
       // Se estava em Pré-Fechamento e saiu, encerrar alertas ativos
       const etapaOrigemObj = etapas.find(e => e.id === oportunidade?.etapa_id);
       const eraPreFechamento = etapaOrigemObj?.nome?.toLowerCase().includes('pré-fechamento') ||
@@ -71,6 +75,7 @@ export async function moverOportunidade({ oportunidadeId, novaEtapaId, updates =
         etapaDestino?.nome?.toLowerCase().includes('pré fechamento') ||
         etapaDestino?.nome?.toLowerCase().includes('pre fechamento');
       if (eraPreFechamento && !continuaPreFechamento) {
+        await registrar(async () => {
         // Encerrar alertas ativos deste lead
         const alertasAtivos = await client.entities.AlertePreFechamento.filter({
           oportunidade_id: oportunidadeId,
@@ -79,10 +84,11 @@ export async function moverOportunidade({ oportunidadeId, novaEtapaId, updates =
         for (const alerta of alertasAtivos) {
           await client.entities.AlertePreFechamento.update(alerta.id, { status: 'encerrado' });
         }
+        }, 'Etapa atualizada, mas não foi possível encerrar os alertas anteriores.');
       }
 
       // histórico
-      await client.entities.MovimentacaoFunil.create({
+      await registrar(() => client.entities.MovimentacaoFunil.create({
         oportunidade_id: oportunidadeId,
         etapa_origem_id: oportunidade?.etapa_id,
         etapa_origem_nome: oportunidade?.etapa_nome || '',
@@ -91,22 +97,22 @@ export async function moverOportunidade({ oportunidadeId, novaEtapaId, updates =
         ...(observacao ? { observacao } : {}),
         usuario_id: user.id,
         usuario_nome: user.full_name
-      });
-
-      // integração com vendas
-      if (etapaDestino?.tipo === 'ganho' && !oportunidade?.venda_id) {
-        return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: true, oportunidade };
-      }
+      }), 'Etapa atualizada, mas não foi possível registrar o histórico.');
 
       // auditoria
-      await client.entities.LogAuditoria.create({
+      await registrar(() => client.entities.LogAuditoria.create({
         usuario_id: user.id,
         usuario_nome: user.full_name,
         acao: `Moveu oportunidade "${oportunidade?.titulo}" de "${oportunidade?.etapa_nome}" para "${etapaDestino?.nome}"`,
         entidade: 'Oportunidade',
         entidade_id: oportunidadeId,
         tipo: 'edicao'
-      });
+      }), 'Etapa atualizada, mas não foi possível registrar a auditoria.');
+
+      // integração com vendas
+      if (etapaDestino?.tipo === 'ganho' && !oportunidade?.venda_id) {
+        return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: true, oportunidade };
+      }
 
       return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: false };
 }

@@ -115,7 +115,7 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave, ocup
           usuario_id: usuario.id, usuario_nome: usuario.full_name,
           acao: 'Editou negociação pelo bate-papo: ' + oportunidade.titulo,
           entidade: 'Oportunidade', entidade_id: oportunidade.id, tipo: 'edicao',
-        });
+        }).catch(() => toast.warning('Negociação salva, mas não foi possível registrar a auditoria.'));
         return;
       }
       if (acao === 'anotar') {
@@ -125,7 +125,7 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave, ocup
           usuario_id: usuario.id, usuario_nome: usuario.nome_perfil || usuario.full_name || '',
           mensagem: texto.trim(), tipo: 'comentario',
         });
-        await base44.entities.Oportunidade.update(oportunidade.id, { data_ultima_movimentacao: new Date().toISOString() });
+        await base44.entities.Oportunidade.update(oportunidade.id, { data_ultima_movimentacao: new Date().toISOString() }).catch(() => toast.warning('Anotação salva, mas não foi possível atualizar a data do último contato.'));
       }
     },
     onSuccess: async (resultado) => {
