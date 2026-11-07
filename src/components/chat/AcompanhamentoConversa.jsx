@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { TrendingUp, ChevronDown, ChevronUp, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import OportunidadeAcaoRapida from './OportunidadeAcaoRapida';
+import ExcluirOportunidadeDialog, { podeExcluirOportunidade } from './ExcluirOportunidadeDialog';
 import CriarProximaAcaoBar from './CriarProximaAcaoBar';
 import MicrotarefasConversa from './MicrotarefasConversa';
 
@@ -16,6 +17,7 @@ const produtoTexto = (produto) => ({
 export default function AcompanhamentoConversa({ oportunidades = [], onAdicionarFunil, ...tarefaProps }) {
   const [expandido, setExpandido] = useState(null);
   const [acaoRapida, setAcaoRapida] = useState(null);
+  const [oportunidadeExcluir, setOportunidadeExcluir] = useState(null);
   const temTarefa = tarefaProps.tarefas?.length > 0;
   const temOportunidade = oportunidades.length > 0;
   const oportunidadeAberta = expandido === 'oportunidade' && temOportunidade;
@@ -75,6 +77,7 @@ export default function AcompanhamentoConversa({ oportunidades = [], onAdicionar
                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setAcaoRapida({ id: o.id, tipo: 'editar' })}>Editar negociação</Button>
                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setAcaoRapida({ id: o.id, tipo: 'anotar' })}>Adicionar anotação</Button>
                     <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setAcaoRapida({ id: o.id, tipo: 'historico' })}>Histórico</Button>
+                    {podeExcluirOportunidade(tarefaProps.user, o) && <Button size="sm" variant="outline" className="h-8 border-red-200 text-xs text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => setOportunidadeExcluir(o)}>Excluir oportunidade</Button>}
                   </div>
                   <Link to={'/FunilVendas?oportunidade_id=' + encodeURIComponent(o.id)} className="mt-2 inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">
                     Ver no funil <ArrowUpRight className="h-3.5 w-3.5" />
@@ -86,6 +89,7 @@ export default function AcompanhamentoConversa({ oportunidades = [], onAdicionar
         </section>
       )}
     </div>
+    {oportunidadeExcluir && <ExcluirOportunidadeDialog oportunidade={oportunidadeExcluir} currentUser={tarefaProps.user} onClose={() => setOportunidadeExcluir(null)} />}
     {acaoRapida && <OportunidadeAcaoRapida key={acaoRapida.id + acaoRapida.tipo} oportunidadeId={acaoRapida.id} acao={acaoRapida.tipo} currentUser={tarefaProps.user} onClose={() => setAcaoRapida(null)} />}
     </>
   );
