@@ -945,17 +945,14 @@ export default function FunilVendas() {
     );
   }
 
-  // Métricas computadas
-  const totalAtivos = filteredOportunidades.filter(o => o.status === 'aberta').length;
-  const totalGanhos = filteredOportunidades.filter(o => o.status === 'ganha').length;
-  const agora2 = new Date();
-  const totalAtrasados = filteredOportunidades.filter(o =>
-    o.data_fechamento_prevista && o.data_fechamento_prevista < agora2.toISOString().split('T')[0] && o.status === 'aberta'
-  ).length;
-  const totalSemResposta = filteredOportunidades.filter(o => {
-    const diffMs = agora2 - new Date(o.data_ultima_movimentacao || o.created_date || agora2);
-    return diffMs / (1000 * 60 * 60) >= 24 && o.status === 'aberta';
-  }).length;
+  // As métricas usam a mesma regra de status dos filtros.
+  const totalAtivos = filteredOportunidades.filter(o => correspondeRapido(o, 'em_negociacao', etapas)).length;
+  const totalGanhos = filteredOportunidades.filter(o => correspondeRapido(o, 'ganhos', etapas)).length;
+  const baseIndicadores = oportunidadesDoVendedor.filter(o =>
+    (filterProduto === 'todos' || produtoOportunidade(o) === filterProduto) && correspondeBusca(o, searchCard)
+  );
+  const totalAtrasados = baseIndicadores.filter(o => correspondeRapido(o, 'atrasados', etapas)).length;
+  const totalSemResposta = baseIndicadores.filter(o => correspondeRapido(o, 'sem_resposta', etapas)).length;
   // Usar o tipo da ETAPA (não o status da oportunidade) para garantir consistência com as colunas do Kanban
   const getTipoEtapa = (etapaId) => etapasComProduto.find(e => e.id === etapaId)?.tipo || 'aberta';
   const valorNegociacao = filteredOportunidades
