@@ -1,3 +1,4 @@
+import { bancoPrincipal, encontrarBanco, bancoDaProposta } from '../../shared/bancosHierarquia.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 import * as XLSX from 'npm:xlsx@0.18.5';
 
@@ -252,10 +253,8 @@ Deno.serve(async (req) => {
       return prop.comissao_vendedor_paga === true;
     };
 
-    const findBanco = (nome) => {
-      if (!nome) return null;
-      return bancos.find(b => normStr(b.nome).includes(normStr(nome)) || normStr(nome).includes(normStr(b.nome)));
-    };
+    const findBanco = (nome) => encontrarBanco(nome, bancos);
+    const idBancoPrincipalProposta = (p) => bancoDaProposta(p, bancos)?.id || p.administradora_id || null;
 
     const findConvenio = (nome) => {
       if (!nome) return null;
@@ -420,7 +419,8 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const banco   = findBanco(bancoVal);
+        const bancoOrigem = findBanco(bancoVal);
+        const banco = bancoPrincipal(bancoOrigem, bancos);
         const conv    = findConvenio(convenioVal);
         let cliente = findCliente(cpfVal, nomeVal);
         const vend    = findVendedor(vendedorVal);
@@ -548,6 +548,8 @@ Deno.serve(async (req) => {
            cliente_nome:                nomeVal || cliente?.nome_completo || '',
            cliente_cpf:                 cpfVal || cliente?.cpf || null,
            administradora_nome:         banco?.nome || bancoVal || null,
+           banco_origem_id:             bancoOrigem?.id || null,
+           banco_origem_nome:           bancoVal || null,
            emprestimo_convenio_nome:    conv?.nome || convenioVal || null,
            emprestimo_tipo:             tipo || null,
            tipo_importacao_original:    tipoPendente ? tipoVal : undefined,
@@ -637,7 +639,7 @@ Deno.serve(async (req) => {
           // Nível 1: contrato normalizado + banco
           if (contratoFinal && administradoraId) {
             propostaExistente = propostasExistentes.find(p =>
-              p.administradora_id === administradoraId &&
+              idBancoPrincipalProposta(p) === administradoraId &&
               normalizarContrato(p.contrato) === contratoFinal
             ) || null;
             if (propostaExistente) {
@@ -669,7 +671,7 @@ Deno.serve(async (req) => {
             const adeNorm = normalizarContrato(adeVal);
             if (adeNorm) {
               propostaExistente = propostasExistentes.find(p =>
-                p.administradora_id === administradoraId &&
+                idBancoPrincipalProposta(p) === administradoraId &&
                 (normalizarContrato(p.emprestimo_numero_ade) === adeNorm ||
                  normalizarContrato(p.contrato) === adeNorm)
               ) || null;
@@ -730,6 +732,9 @@ Deno.serve(async (req) => {
                 updateData.emprestimo_convenio_nome = convenioVal;
               }
 
+              // Preservar a origem e consolidar no banco pai.
+              if (bancoVal) updateData.banco_origem_nome = bancoVal;
+              if (bancoOrigem?.id) updateData.banco_origem_id = bancoOrigem.id;
               // Banco
               if (banco?.id) updateData.administradora_id = banco.id;
               if (banco?.nome || bancoVal) updateData.administradora_nome = banco?.nome || bancoVal;

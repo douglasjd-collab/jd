@@ -1,3 +1,4 @@
+import { bancoDaProposta } from '@/lib/bancosHierarquia';
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -133,7 +134,7 @@ export default function VendasEmprestimos() {
     }
   };
 
-  const { data: propostas = [], isLoading } = useQuery({
+  const { data: propostasOriginais = [], isLoading } = useQuery({
     queryKey: ['vendas-emprestimos', currentUser?.empresa_id, currentUser?.perfil],
     enabled: !!currentUser,
     staleTime: 0,
@@ -147,10 +148,19 @@ export default function VendasEmprestimos() {
   });
 
   const { data: bancos = [] } = useQuery({
-    queryKey: ['bancos-emprestimos'],
-    queryFn: () => base44.entities.Banco.filter({ ativo: true }),
+    queryKey: ['bancos-emprestimos', currentUser?.empresa_id],
+    enabled: !!currentUser?.empresa_id,
+    queryFn: () => base44.entities.Banco.filter({ empresa_id: currentUser.empresa_id }, 'nome', 2000),
   });
 
+  const propostas = propostasOriginais.map(p => {
+    try {
+      const principal = bancoDaProposta(p, bancos);
+      return principal ? { ...p, administradora_id: principal.id, administradora_nome: principal.nome } : p;
+    } catch {
+      return p; // Um vínculo inválido não impede a consulta da proposta original.
+    }
+  });
   const getBanco = (administradoraId) => bancos.find(b => b.id === administradoraId);
 
   const { data: clientes = [] } = useQuery({
@@ -717,7 +727,7 @@ export default function VendasEmprestimos() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os Bancos</SelectItem>
-              {bancos.map(b => (
+              {bancos.filter(b => b.ativo && !b.banco_pai_id).map(b => (
                 <SelectItem key={b.id} value={b.nome}>{b.nome}</SelectItem>
               ))}
             </SelectContent>
