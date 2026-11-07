@@ -403,7 +403,7 @@ export default function ImportacaoProducao() {
                   <div className="flex items-start gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
                     <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
                     <div>
-                      <p className="font-semibold text-green-800">Importação concluída!</p>
+                      <p className="font-semibold text-green-800">{resultado.linhas_pendentes ? 'Importação concluída com linhas recusadas' : 'Importação concluída!'}</p>
                       <p className="text-sm text-green-700">
                         <strong>{resultado.criadas || 0}</strong> nova(s) criada(s)
                         {resultado.atualizadas > 0 && <>, <strong>{resultado.atualizadas}</strong> atualizada(s)</>}
