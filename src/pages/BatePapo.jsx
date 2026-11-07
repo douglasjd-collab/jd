@@ -70,7 +70,8 @@ import TransferirAtendimentoModal from '@/components/chat/TransferirAtendimentoM
 import TagsModal from '@/components/chat/TagsModal';
 import TagsGerenciamentoModal from '@/components/chat/TagsGerenciamentoModal';
 import FunilSelectionModal from '@/components/chat/FunilSelectionModal';
-import CriarProximaAcaoBar from '@/components/chat/CriarProximaAcaoBar';
+import AcompanhamentoConversa from '@/components/chat/AcompanhamentoConversa';
+import { useOportunidadesConversa } from '@/hooks/useOportunidadesConversa';
 import FunilInfoPanel from '@/components/chat/FunilInfoPanel';
 import PainelInfoLead from '@/components/chat/PainelInfoLead';
 import BatePapoMenu from '@/components/chat/BatePapoMenu'; import PermissoesWhatsappModal from '@/components/chat/PermissoesWhatsappModal'; import { carregarMensagensConversa, usuarioRestritoWhatsapp } from '@/components/chat/historicoAutorizado';
@@ -90,7 +91,7 @@ import { criarLocalizarMensagem } from '@/components/chat/localizarMensagemNoHis
 import EstrelaPrioridadeButton from '@/components/chat/EstrelaPrioridadeButton';
 import BatePapoAbas from '@/components/chat/BatePapoAbas';
 import useClientesNoFunil from '@/hooks/useClientesNoFunil'; import useSwipeBack from '@/components/chat/useSwipeBack'; import '@/styles/batePapoCustom.css';
-import MicrotarefasConversa from '@/components/chat/MicrotarefasConversa';
+
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(" ");
@@ -154,20 +155,7 @@ export default function BatePapo() {
 
     // A troca do conversation_id já dispara uma única consulta pelo React Query.
 
-    // Buscar oportunidade associada ao contato
-    try {
-      const ops = await base44.entities.Oportunidade.filter({
-        empresa_id: empresaId,
-        cliente_telefone: conversa.cliente_telefone
-      }, '-updated_date', 1);
-      if (ops?.length > 0) {
-        setOportunidadeAtual(ops[0]);
-      } else {
-        setOportunidadeAtual(null);
-      }
-    } catch (_) {
-      setOportunidadeAtual(null);
-    }
+    // Oportunidades são carregadas pelo hook, com cache isolado por conversa.
 
     // Instagram: sincronizar perfil (nome/foto/username) automaticamente
     if (isInstagram(conversa)) {
@@ -402,7 +390,8 @@ export default function BatePapo() {
   const [contatoParaTags, setContatoParaTags] = useState(null);
   const [gerenciamentoTagsOpen, setGerenciamentoTagsOpen] = useState(false);
   const [funilModalOpen, setFunilModalOpen] = useState(false);
-  const [oportunidadeAtual, setOportunidadeAtual] = useState(null);
+  const oportunidadesConversa = useOportunidadesConversa(conversaSelecionada, empresaId);
+  const oportunidadeAtual = oportunidadesConversa[0] || null;
   const [agendarMensagemModal, setAgendarMensagemModal] = useState(null); // conversa
   const [agendadasOpen, setAgendadasOpen] = useState(false); const [permissoesOpen, setPermissoesOpen] = useState(false);
   const [agendarReuniaoModal, setAgendarReuniaoModal] = useState(null); // conversa
@@ -975,18 +964,7 @@ export default function BatePapo() {
     }
   }, [conversas]);
 
-  const oportunidadeAtualRef = React.useRef(oportunidadeAtual);
-  React.useEffect(() => { oportunidadeAtualRef.current = oportunidadeAtual; }, [oportunidadeAtual]);
-  useEffect(() => {
-    if (!conversaSelecionada?.id || !oportunidadeAtual?.id) return;
-
-    const unsub = base44.entities.Oportunidade.subscribe((event) => {
-      if (event.id === oportunidadeAtualRef.current?.id && (event.type === 'update' || event.type === 'create')) {
-        setOportunidadeAtual(event.data);
-      }
-    });
-    return unsub;
-  }, [conversaSelecionada?.id, oportunidadeAtual?.id]);
+  // A assinatura de oportunidades fica centralizada em useOportunidadesConversa.
 
   // Real-time: atualizar lista de conversas quando chegar nova mensagem ou conversa criada
   const refetchConversasRef = React.useRef(refetchConversas);
@@ -1913,6 +1891,7 @@ export default function BatePapo() {
           existingOportunidade={oportunidadeAtual}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
+            queryClient.invalidateQueries({ queryKey: ['oportunidades-conversa', empresaId, conversaSelecionada?.id] });
             selecionarConversa(conversaSelecionada);
           }}
         />
@@ -2386,10 +2365,7 @@ export default function BatePapo() {
                 }
                 />
                 {!isGrupo(conversaSelecionada) && (
-                  <div className="flex shrink-0 items-stretch gap-2 border-b border-slate-100 bg-white px-3 py-2">
-                    <CriarProximaAcaoBar className={(microtarefasPorConversa[conversaSelecionada.id] || []).length ? 'shrink-0' : 'flex-1'} oportunidadeAtual={oportunidadeAtual} onAdicionarFunil={() => setFunilModalOpen(true)} onCriarTarefa={() => novaAcaoRef.current?.()} />
-                    <MicrotarefasConversa tarefas={microtarefasPorConversa[conversaSelecionada.id] || []} onCriar={criarMicrotarefa} onConcluir={concluirMicrotarefa} onAdiar={adiarMicrotarefa} onEditar={editarMicrotarefa} salvando={salvandoMicrotarefa} user={user} empresaId={empresaId} conversa={conversaSelecionada} novaAcaoRef={novaAcaoRef} />
-                  </div>
+                  <AcompanhamentoConversa key={conversaSelecionada.id} oportunidades={oportunidadesConversa} onAdicionarFunil={() => setFunilModalOpen(true)} tarefas={microtarefasPorConversa[conversaSelecionada.id] || []} onCriar={criarMicrotarefa} onConcluir={concluirMicrotarefa} onAdiar={adiarMicrotarefa} onEditar={editarMicrotarefa} salvando={salvandoMicrotarefa} user={user} empresaId={empresaId} conversa={conversaSelecionada} novaAcaoRef={novaAcaoRef} />
                 )}
                 {(dapiChamadaAtivaVisivel || dapiCall.status === 'error') && (
                   <DapiCallBar
