@@ -4,7 +4,7 @@
   "properties": {
     "comissao_vendedor_comprovante_url": {
       "type": "string",
-      "description": "Comprovante banc\u00e1rio do pagamento de comiss\u00e3o legado (PDF ou imagem)"
+      "description": "Comprovante bancário do pagamento de comissão legado (PDF ou imagem)"
     },
     "empresa_id": {
       "type": "string",
@@ -41,19 +41,19 @@
     },
     "responsavel_id": {
       "type": "string",
-      "description": "ID do colaborador respons\u00e1vel principal (legado)"
+      "description": "ID do colaborador responsável principal (legado)"
     },
     "responsavel_nome": {
       "type": "string",
-      "description": "Nome do colaborador respons\u00e1vel principal (legado)"
+      "description": "Nome do colaborador responsável principal (legado)"
     },
     "responsavel_foto": {
       "type": "string",
-      "description": "URL da foto do colaborador respons\u00e1vel principal (legado)"
+      "description": "URL da foto do colaborador responsável principal (legado)"
     },
     "responsaveis_json": {
       "type": "string",
-      "description": "JSON array com m\u00faltiplos respons\u00e1veis [{id, nome, foto}]"
+      "description": "JSON array com múltiplos responsáveis [{id, nome, foto}]"
     },
     "administradora_id": {
       "type": "string",
@@ -73,19 +73,19 @@
     },
     "grupo": {
       "type": "string",
-      "description": "C\u00f3digo do grupo (cons\u00f3rcio)"
+      "description": "Código do grupo (consórcio)"
     },
     "cota": {
       "type": "string",
-      "description": "N\u00famero da cota (cons\u00f3rcio)"
+      "description": "Número da cota (consórcio)"
     },
     "contrato": {
       "type": "string",
-      "description": "N\u00famero do contrato"
+      "description": "Número do contrato"
     },
     "chave_unica": {
       "type": "string",
-      "description": "Chave \u00fanica para deduplica\u00e7\u00e3o: banco_normalizado + _ + contrato (ex: happyconsig_1785552)"
+      "description": "Chave única para deduplicação: banco_normalizado + _ + contrato (ex: happyconsig_1785552)"
     },
     "status": {
       "type": "string",
@@ -102,32 +102,32 @@
     },
     "valor_credito": {
       "type": "number",
-      "description": "Valor do cr\u00e9dito/bem (Valor Bruto)"
+      "description": "Valor do crédito/bem (Valor Bruto)"
     },
     "valor_liquido": {
       "type": "number",
-      "description": "[EMPR\u00c9STIMO] Valor l\u00edquido liberado ao cliente (ap\u00f3s descontos/taxas)"
+      "description": "[EMPRÉSTIMO] Valor líquido liberado ao cliente (após descontos/taxas)"
     },
     "valor_comissao": {
       "type": "number",
-      "description": "Valor da comiss\u00e3o estimada"
+      "description": "Valor da comissão estimada"
     },
     "comissao_recebida": {
       "type": "number",
       "default": 0,
-      "description": "Comiss\u00e3o j\u00e1 recebida"
+      "description": "Comissão já recebida"
     },
     "observacoes": {
       "type": "string",
-      "description": "Observa\u00e7\u00f5es gerais"
+      "description": "Observações gerais"
     },
     "origem_tabela": {
       "type": "string",
-      "description": "Tabela original (para rastreamento de migra\u00e7\u00e3o)"
+      "description": "Tabela original (para rastreamento de migração)"
     },
     "origem_id": {
       "type": "string",
-      "description": "ID original (para rastreamento de migra\u00e7\u00e3o)"
+      "description": "ID original (para rastreamento de migração)"
     },
     "tabela_comissao_id": {
       "type": "string",
@@ -135,19 +135,19 @@
     },
     "tabela_comissao_nome": {
       "type": "string",
-      "description": "Nome da tabela de comiss\u00e3o (denormalizado)"
+      "description": "Nome da tabela de comissão (denormalizado)"
     },
     "consorcio_tabela_id": {
       "type": "string",
-      "description": "[CONS\u00d3RCIO] ID da tabela de cons\u00f3rcio"
+      "description": "[CONSÓRCIO] ID da tabela de consórcio"
     },
     "consorcio_tabela_nome": {
       "type": "string",
-      "description": "[CONS\u00d3RCIO] Nome da tabela"
+      "description": "[CONSÓRCIO] Nome da tabela"
     },
     "consorcio_plano_id": {
       "type": "string",
-      "description": "[CONS\u00d3RCIO] ID do plano"
+      "description": "[CONSÓRCIO] ID do plano"
     },
     "consorcio_tipo_bem": {
       "type": "string",
@@ -158,75 +158,75 @@
         "servico",
         "bens_moveis"
       ],
-      "description": "[CONS\u00d3RCIO] Tipo do bem"
+      "description": "[CONSÓRCIO] Tipo do bem"
     },
     "consorcio_prazo": {
       "type": "number",
-      "description": "[CONS\u00d3RCIO] Prazo em meses"
+      "description": "[CONSÓRCIO] Prazo em meses"
     },
     "consorcio_taxa_adm": {
       "type": "number",
-      "description": "[CONS\u00d3RCIO] Taxa de administra\u00e7\u00e3o %"
+      "description": "[CONSÓRCIO] Taxa de administração %"
     },
     "consorcio_percentual_comissao": {
       "type": "number",
-      "description": "[CONS\u00d3RCIO] Percentual de comiss\u00e3o"
+      "description": "[CONSÓRCIO] Percentual de comissão"
     },
     "emprestimo_tipo": {
       "type": "string",
-      "description": "[EMPR\u00c9STIMO] Tipo de empr\u00e9stimo (slug do TipoEmprestimo)"
+      "description": "[EMPRÉSTIMO] Tipo de empréstimo (slug do TipoEmprestimo)"
     },
     "emprestimo_convenio_id": {
       "type": "string",
-      "description": "[EMPR\u00c9STIMO] ID do conv\u00eanio"
+      "description": "[EMPRÉSTIMO] ID do convênio"
     },
     "emprestimo_convenio_nome": {
       "type": "string",
-      "description": "[EMPR\u00c9STIMO] Nome do conv\u00eanio"
+      "description": "[EMPRÉSTIMO] Nome do convênio"
     },
     "emprestimo_numero_beneficio": {
       "type": "string",
-      "description": "[EMPR\u00c9STIMO] N\u00famero do benef\u00edcio"
+      "description": "[EMPRÉSTIMO] Número do benefício"
     },
     "emprestimo_numero_ade": {
       "type": "string",
-      "description": "[EMPR\u00c9STIMO] N\u00famero ADE"
+      "description": "[EMPRÉSTIMO] Número ADE"
     },
     "emprestimo_prazo": {
       "type": "number",
-      "description": "[EMPR\u00c9STIMO] Prazo em meses"
+      "description": "[EMPRÉSTIMO] Prazo em meses"
     },
     "emprestimo_valor_parcela": {
       "type": "number",
-      "description": "[EMPR\u00c9STIMO] Valor da parcela do contrato"
+      "description": "[EMPRÉSTIMO] Valor da parcela do contrato"
     },
     "emprestimo_banco_anterior": {
       "type": "string",
-      "description": "[EMPR\u00c9STIMO] Banco anterior (portabilidade)"
+      "description": "[EMPRÉSTIMO] Banco anterior (portabilidade)"
     },
     "emprestimo_saldo_devedor": {
       "type": "number",
-      "description": "[EMPR\u00c9STIMO] Saldo devedor"
+      "description": "[EMPRÉSTIMO] Saldo devedor"
     },
     "emprestimo_data_liberacao": {
       "type": "string",
       "format": "date",
-      "description": "[EMPR\u00c9STIMO] Data de libera\u00e7\u00e3o / Pagamento ao cliente"
+      "description": "[EMPRÉSTIMO] Data de liberação / Pagamento ao cliente"
     },
     "data_comissao_recebida": {
       "type": "string",
       "format": "date",
-      "description": "[EMPR\u00c9STIMO] Data de recebimento da comiss\u00e3o pelo banco"
+      "description": "[EMPRÉSTIMO] Data de recebimento da comissão pelo banco"
     },
     "comissao_banco_recebida": {
       "type": "boolean",
       "default": false,
-      "description": "[EMPR\u00c9STIMO] Se a comiss\u00e3o do banco j\u00e1 foi recebida pela empresa"
+      "description": "[EMPRÉSTIMO] Se a comissão do banco já foi recebida pela empresa"
     },
     "comissao_vendedor_paga": {
       "type": "boolean",
       "default": false,
-      "description": "[EMPR\u00c9STIMO] Se a comiss\u00e3o foi paga ao vendedor"
+      "description": "[EMPRÉSTIMO] Se a comissão foi paga ao vendedor"
     },
     "comissao_vendedor_agendada": {
       "type": "boolean",
@@ -249,19 +249,19 @@
     "comissao_vendedor_data_pagamento": {
       "type": "string",
       "format": "date",
-      "description": "[EMPR\u00c9STIMO] Data do pagamento ao vendedor"
+      "description": "[EMPRÉSTIMO] Data do pagamento ao vendedor"
     },
     "comissao_vendedor_forma_pagamento": {
       "type": "string",
-      "description": "[EMPR\u00c9STIMO] Forma de pagamento ao vendedor"
+      "description": "[EMPRÉSTIMO] Forma de pagamento ao vendedor"
     },
     "percentual_comissao_vendedor": {
       "type": "number",
-      "description": "[EMPR\u00c9STIMO] Percentual de comiss\u00e3o pago ao vendedor"
+      "description": "[EMPRÉSTIMO] Percentual de comissão pago ao vendedor"
     },
     "valor_comissao_vendedor_pago": {
       "type": "number",
-      "description": "[EMPR\u00c9STIMO] Valor efetivamente pago ao vendedor"
+      "description": "[EMPRÉSTIMO] Valor efetivamente pago ao vendedor"
     },
     "cip_data_entrada": {
       "type": "string",
@@ -271,7 +271,7 @@
     "cip_data_retorno_prevista": {
       "type": "string",
       "format": "date",
-      "description": "[CIP] Data prevista de retorno do saldo (5 dias \u00fateis)"
+      "description": "[CIP] Data prevista de retorno do saldo (5 dias úteis)"
     },
     "cip_valor_previsto": {
       "type": "number",
@@ -314,16 +314,16 @@
     "financiamento_data_liberacao": {
       "type": "string",
       "format": "date",
-      "description": "[FINANCIAMENTO] Data de libera\u00e7\u00e3o"
+      "description": "[FINANCIAMENTO] Data de liberação"
     },
     "tipo_importacao_original": {
       "type": "string",
-      "description": "Tipo vindo do arquivo de importa\u00e7\u00e3o (quando n\u00e3o mapeado)"
+      "description": "Tipo vindo do arquivo de importação (quando não mapeado)"
     },
     "pendente_vinculacao_tipo": {
       "type": "boolean",
       "default": false,
-      "description": "Sinaliza que o tipo de empr\u00e9stimo precisa ser vinculado manualmente"
+      "description": "Sinaliza que o tipo de empréstimo precisa ser vinculado manualmente"
     },
     "banco_id": {
       "type": "string",
@@ -335,15 +335,15 @@
     },
     "codigo_proposta_banco": {
       "type": "string",
-      "description": "[API] C\u00f3digo da proposta retornado pelo banco"
+      "description": "[API] Código da proposta retornado pelo banco"
     },
     "codigo_operacao_banco": {
       "type": "string",
-      "description": "[API] C\u00f3digo da opera\u00e7\u00e3o retornado pelo banco"
+      "description": "[API] Código da operação retornado pelo banco"
     },
     "status_atual": {
       "type": "string",
-      "description": "[API] Status atual convertido para o padr\u00e3o interno"
+      "description": "[API] Status atual convertido para o padrão interno"
     },
     "status_externo_atual": {
       "type": "string",
@@ -357,7 +357,7 @@
     "data_ultima_atualizacao_api": {
       "type": "string",
       "format": "date-time",
-      "description": "[API] Data da \u00faltima atualiza\u00e7\u00e3o via API"
+      "description": "[API] Data da última atualização via API"
     },
     "api_sincronizada": {
       "type": "boolean",
@@ -367,23 +367,23 @@
     "api_ultima_tentativa": {
       "type": "string",
       "format": "date-time",
-      "description": "[API] Data da \u00faltima tentativa de sincroniza\u00e7\u00e3o"
+      "description": "[API] Data da última tentativa de sincronização"
     },
     "api_ultimo_erro": {
       "type": "string",
-      "description": "[API] \u00daltimo erro de sincroniza\u00e7\u00e3o"
+      "description": "[API] Último erro de sincronização"
     },
     "payload_ultima_resposta_json": {
       "type": "string",
-      "description": "[API] JSON bruto da \u00faltima resposta da API"
+      "description": "[API] JSON bruto da última resposta da API"
     },
     "finantobank_id": {
       "type": "string",
-      "description": "[FINANTOBANK] ID \u00fanico da proposta no FinantoBank"
+      "description": "[FINANTOBANK] ID único da proposta no FinantoBank"
     },
     "finantobank_tipo": {
       "type": "string",
-      "description": "[FINANTOBANK] Tipo de opera\u00e7\u00e3o: novo, portabilidade, refinanciamento"
+      "description": "[FINANTOBANK] Tipo de operação: novo, portabilidade, refinanciamento"
     },
     "status_finantobank": {
       "type": "string",
@@ -392,7 +392,7 @@
     "data_ultima_atualizacao_finantobank": {
       "type": "string",
       "format": "date-time",
-      "description": "[FINANTOBANK] Data/hora da \u00faltima atualiza\u00e7\u00e3o do status"
+      "description": "[FINANTOBANK] Data/hora da última atualização do status"
     },
     "finantobank_saldo_aprovado": {
       "type": "boolean",
@@ -401,19 +401,19 @@
     },
     "finantobank_valor_parcela": {
       "type": "number",
-      "description": "[FINANTOBANK] Valor da parcela retornado pela simula\u00e7\u00e3o"
+      "description": "[FINANTOBANK] Valor da parcela retornado pela simulação"
     },
     "finantobank_taxa": {
       "type": "number",
-      "description": "[FINANTOBANK] Taxa de juros retornada pela simula\u00e7\u00e3o"
+      "description": "[FINANTOBANK] Taxa de juros retornada pela simulação"
     },
     "finantobank_iof": {
       "type": "number",
-      "description": "[FINANTOBANK] IOF retornado pela simula\u00e7\u00e3o"
+      "description": "[FINANTOBANK] IOF retornado pela simulação"
     },
     "payload_ultima_resposta_finantobank": {
       "type": "string",
-      "description": "[FINANTOBANK] JSON completo da \u00faltima resposta da API do FinantoBank"
+      "description": "[FINANTOBANK] JSON completo da última resposta da API do FinantoBank"
     },
     "anexos_json": {
       "type": "string",
@@ -433,7 +433,7 @@
     },
     "testemunha1_endereco": {
       "type": "string",
-      "description": "[TESTEMUNHA 1] Endere\u00e7o"
+      "description": "[TESTEMUNHA 1] Endereço"
     },
     "testemunha2_nome": {
       "type": "string",
@@ -449,16 +449,16 @@
     },
     "testemunha2_endereco": {
       "type": "string",
-      "description": "[TESTEMUNHA 2] Endere\u00e7o"
+      "description": "[TESTEMUNHA 2] Endereço"
     },
     "cliente_analfabeto": {
       "type": "boolean",
       "default": false,
-      "description": "[ANALFABETO] Se o cliente \u00e9 analfabeto \u2014 termo ser\u00e1 impresso para impress\u00e3o digital + assinatura a rogo por parente de 1\u00ba grau + 2 testemunhas obrigat\u00f3rias"
+      "description": "[ANALFABETO] Se o cliente é analfabeto — termo será impresso para impressão digital + assinatura a rogo por parente de 1º grau + 2 testemunhas obrigatórias"
     },
     "rogo_nome": {
       "type": "string",
-      "description": "[ANALFABETO] Nome do parente de 1\u00ba grau que assina a rogo pelo cliente"
+      "description": "[ANALFABETO] Nome do parente de 1º grau que assina a rogo pelo cliente"
     },
     "rogo_cpf": {
       "type": "string",
@@ -466,7 +466,15 @@
     },
     "rogo_parentesco": {
       "type": "string",
-      "description": "[ANALFABETO] Grau de parentesco do rogo (ex: pai, m\u00e3e, filho, filha, irm\u00e3o, irm\u00e3)"
+      "description": "[ANALFABETO] Grau de parentesco do rogo (ex: pai, mãe, filho, filha, irmão, irmã)"
+    },
+    "banco_origem_id": {
+      "type": "string",
+      "description": "Banco filho identificado antes de resolver o banco pai."
+    },
+    "banco_origem_nome": {
+      "type": "string",
+      "description": "Nome original do banco recebido na planilha de produção."
     }
   },
   "required": [

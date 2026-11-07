@@ -12,7 +12,7 @@
     },
     "codigo": {
       "type": "string",
-      "description": "C\u00f3digo do banco (opcional)"
+      "description": "Código do banco (opcional)"
     },
     "logo_url": {
       "type": "string",
@@ -21,7 +21,18 @@
     "ativo": {
       "type": "boolean",
       "default": true,
-      "description": "Se o banco est\u00e1 ativo"
+      "description": "Se o banco está ativo"
+    },
+    "banco_pai_id": {
+      "type": "string",
+      "description": "ID do banco pai da mesma empresa; o banco pai prevalece na importação de produção."
+    },
+    "aliases_importacao": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Nomes alternativos exatos usados nas planilhas de produção."
     }
   },
   "required": [

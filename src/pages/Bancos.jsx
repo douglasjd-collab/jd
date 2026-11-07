@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Loader2, Plus, Pencil, Trash2, Building2, Search, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { validarVinculoBanco } from '@/lib/bancosHierarquia';
 
 export default function Bancos() {
   const [user, setUser] = useState(null);
@@ -35,7 +36,9 @@ export default function Bancos() {
   const [formData, setFormData] = useState({
     codigo: '',
     nome: '',
-    logo_url: ''
+    logo_url: '',
+    banco_pai_id: '',
+    aliases_texto: ''
   });
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const logoInputRef = React.useRef(null);
@@ -93,11 +96,14 @@ export default function Bancos() {
         codigo: dados.codigo,
         nome: dados.nome,
         logo_url: dados.logo_url || '',
+        banco_pai_id: dados.banco_pai_id || null,
+        aliases_importacao: dados.aliases_texto.split('\n').map(a => a.trim()).filter(Boolean),
         ativo: true
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bancos', empresaId] });
+      queryClient.invalidateQueries({ queryKey: ['bancos-emprestimos'] });
       toast.success('Banco cadastrado com sucesso!');
       setShowModal(false);
       resetForm();
@@ -112,11 +118,14 @@ export default function Bancos() {
       return await base44.entities.Banco.update(id, {
         codigo: dados.codigo,
         nome: dados.nome,
-        logo_url: dados.logo_url || ''
+        logo_url: dados.logo_url || '',
+        banco_pai_id: dados.banco_pai_id || null,
+        aliases_importacao: dados.aliases_texto.split('\n').map(a => a.trim()).filter(Boolean)
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bancos', empresaId] });
+      queryClient.invalidateQueries({ queryKey: ['bancos-emprestimos'] });
       toast.success('Banco atualizado!');
       setShowModal(false);
       resetForm();
@@ -128,10 +137,12 @@ export default function Bancos() {
 
   const deletarMutation = useMutation({
     mutationFn: async (id) => {
+      if (bancos.some(b => b.ativo && b.banco_pai_id === id)) throw new Error('Remova os vínculos dos bancos filhos antes de remover o banco pai.');
       return await base44.entities.Banco.update(id, { ativo: false });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bancos', empresaId] });
+      queryClient.invalidateQueries({ queryKey: ['bancos-emprestimos'] });
       toast.success('Banco removido!');
       setDeleteId(null);
     },
@@ -142,7 +153,7 @@ export default function Bancos() {
   });
 
   const resetForm = () => {
-    setFormData({ codigo: '', nome: '', logo_url: '' });
+    setFormData({ codigo: '', nome: '', logo_url: '', banco_pai_id: '', aliases_texto: '' });
     setEditando(null);
   };
 
@@ -156,13 +167,25 @@ export default function Bancos() {
     setFormData({
       codigo: banco.codigo || '',
       nome: banco.nome,
-      logo_url: banco.logo_url || ''
+      logo_url: banco.logo_url || '',
+      banco_pai_id: banco.banco_pai_id || '',
+      aliases_texto: (banco.aliases_importacao || []).join('\n')
     });
     setShowModal(true);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    try {
+      validarVinculoBanco(editando?.id, formData.banco_pai_id, bancos, empresaId);
+      const nomes = [formData.nome, ...formData.aliases_texto.split('\n')].map(a => a.trim().toLocaleLowerCase()).filter(Boolean);
+      if (bancos.some(b => b.id !== editando?.id && [b.nome, ...(b.aliases_importacao || [])].some(n => nomes.includes(n.trim().toLocaleLowerCase())))) {
+        throw new Error('Este nome ou nome alternativo já pertence a outro banco.');
+      }
+    } catch (erro) {
+      toast.error(erro.message);
+      return;
+    }
     if (editando) {
       editarMutation.mutate({ id: editando.id, dados: formData });
     } else {
@@ -243,6 +266,8 @@ export default function Bancos() {
                     <h3 className="font-semibold text-slate-900">
                       {banco.nome}
                     </h3>
+                    {banco.banco_pai_id && <p className="text-sm text-blue-700">Banco pai: {bancos.find(b => b.id === banco.banco_pai_id)?.nome || 'Não encontrado'}</p>}
+                    {(banco.aliases_importacao || []).length > 0 && <p className="text-xs text-slate-500">Nomes na importação: {banco.aliases_importacao.join(', ')}</p>}
                     {banco.codigo && (
                       <p className="text-sm text-slate-500 mt-0.5">
                         Código: {banco.codigo}
@@ -330,6 +355,21 @@ export default function Bancos() {
               />
             </div>
 
+            <div>
+              <Label htmlFor="banco-pai">Banco pai (opcional)</Label>
+              <select id="banco-pai" className="mt-1 w-full rounded-md border border-slate-200 bg-white p-2 text-sm" value={formData.banco_pai_id}
+                onChange={e => setFormData({ ...formData, banco_pai_id: e.target.value })}>
+                <option value="">Sem banco pai — este é o banco principal</option>
+                {bancos.filter(b => b.ativo && b.id !== editando?.id).map(b => <option key={b.id} value={b.id}>{b.nome}</option>)}
+              </select>
+              <p className="mt-1 text-xs text-slate-500">Na importação, o banco pai prevalece como banco da proposta.</p>
+            </div>
+            <div>
+              <Label htmlFor="banco-aliases">Nomes alternativos na planilha</Label>
+              <textarea id="banco-aliases" className="mt-1 w-full rounded-md border border-slate-200 p-2 text-sm" rows={3}
+                value={formData.aliases_texto} onChange={e => setFormData({ ...formData, aliases_texto: e.target.value })}
+                placeholder="Um nome por linha, exatamente como aparece na planilha" />
+            </div>
             <div className="flex gap-3 justify-end pt-4">
               <Button type="button" variant="outline" onClick={() => setShowModal(false)}>
                 Cancelar
