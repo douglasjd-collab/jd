@@ -24,7 +24,7 @@
     },
     "usuario_nome": {
       "type": "string",
-      "description": "Nome do usu\u00e1rio que importou"
+      "description": "Nome do usuário que importou"
     },
     "criadas": {
       "type": "number",
@@ -43,15 +43,15 @@
     },
     "propostas_ids_criadas": {
       "type": "string",
-      "description": "JSON array com IDs das propostas criadas nesta importa\u00e7\u00e3o (para desfazer)"
+      "description": "JSON array com IDs das propostas criadas nesta importação (para desfazer)"
     },
     "erros_json": {
       "type": "string",
-      "description": "JSON array com detalhes das falhas da importa\u00e7\u00e3o [{linha, cliente, contrato, motivo, tipo_original}] \u2014 para exibir no modal de resultado"
+      "description": "JSON array com detalhes das falhas da importação [{linha, cliente, contrato, motivo, tipo_original}] — para exibir no modal de resultado"
     },
     "tipos_nao_mapeados_json": {
       "type": "string",
-      "description": "JSON array com os tipos de empr\u00e9stimo n\u00e3o reconhecidos nesta importa\u00e7\u00e3o"
+      "description": "JSON array com os tipos de empréstimo não reconhecidos nesta importação"
     },
     "status": {
       "type": "string",
@@ -60,6 +60,18 @@
         "desfeita"
       ],
       "default": "concluida"
+    },
+    "reprocessamento_json": {
+      "type": "string",
+      "description": "Parâmetros originais e índices das linhas recusadas; usados para reprocessar somente falhas."
+    },
+    "reprocessamento_origem_id": {
+      "type": "string",
+      "description": "Importação anterior que originou este reprocessamento."
+    },
+    "recusadas_tipo": {
+      "type": "number",
+      "description": "Quantidade de linhas não importadas por tipo ausente, desconhecido ou ambíguo."
     }
   },
   "required": [

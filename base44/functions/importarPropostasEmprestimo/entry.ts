@@ -1,3 +1,4 @@
+import { resolverTipoImportacao } from '../../shared/tipoImportacao.ts';
 import { bancoPrincipal, encontrarBanco, bancoDaProposta } from '../../shared/bancosHierarquia.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 import * as XLSX from 'npm:xlsx@0.18.5';
@@ -30,7 +31,22 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Empresa não encontrada' }, { status: 400 });
     }
 
-    const body = await req.json();
+    let body = await req.json();
+    let origemReprocessamento = null;
+    let indicesReprocessamento = null;
+    if (body.reprocessar_log_id) {
+      origemReprocessamento = await base44.asServiceRole.entities.ImportacaoPropostasLog.get(body.reprocessar_log_id);
+      if (!origemReprocessamento || origemReprocessamento.empresa_id !== empresaId) {
+        return Response.json({ error: 'Importação não encontrada nesta empresa' }, { status: 403 });
+      }
+      if (origemReprocessamento.status === 'desfeita' || !origemReprocessamento.reprocessamento_json) {
+        return Response.json({ error: 'Esta importação não possui linhas disponíveis para reprocessamento' }, { status: 400 });
+      }
+      const salvo = JSON.parse(origemReprocessamento.reprocessamento_json);
+      if (!salvo.indices?.length) return Response.json({ error: 'Não há linhas pendentes' }, { status: 400 });
+      indicesReprocessamento = new Set(salvo.indices);
+      body = salvo;
+    }
     const { file_url, layout, atualizar_telefone } = body;
     const atualizarTelefone = atualizar_telefone === true;
 
@@ -326,39 +342,6 @@ Deno.serve(async (req) => {
     // Resolver tipo com base nos TipoEmprestimo cadastrados (aliases_importacao)
     const tiposNaoMapeados = {}; // { nomeOriginal: true } — para rastrear tipos desconhecidos desta importação
 
-    const normTipo = (tipoRaw) => {
-      if (!tipoRaw) return null; // null = sem tipo definido no arquivo
-      const raw = String(tipoRaw).trim();
-
-      // 1. Verificar aliases cadastrados em TipoEmprestimo
-      if (tiposEmprestimo.length > 0) {
-        for (const te of tiposEmprestimo) {
-          const aliases = te.aliases_importacao || [];
-          for (const alias of aliases) {
-            if (normStr(alias) === normStr(raw)) return te.slug;
-          }
-          // Verificar também por nome direto
-          if (normStr(te.nome) === normStr(raw) || normStr(te.slug) === normStr(raw)) return te.slug;
-        }
-        // Tipo não encontrado — marcar como não mapeado
-        tiposNaoMapeados[raw] = true;
-        return null; // pendente de vinculação
-      }
-
-      // 2. Fallback: mapeamento padrão (quando não há tipos cadastrados)
-      const t = normStr(raw);
-      if (t.includes('refin') && t.includes('port')) return 'REFIN_PORTABILIDADE';
-      if (t.includes('port')) return 'PORTABILIDADE_PURA';
-      if (t.includes('refin')) return 'REFINANCIAMENTO';
-      if (t.includes('cartao') || t.includes('cartão')) {
-        if (t.includes('benef')) return 'CARTAO_BENEFICIO';
-        if (t.includes('consig')) return 'CARTAO_CONSIGNADO';
-        return 'CARTAO';
-      }
-      if (t.includes('saque')) return 'SAQUE';
-      return 'NOVO';
-    };
-
     // Pré-carregar nome da empresa parceira (evitar busca repetida no loop)
     let empresaParceiraNome = body.empresa_parceira_nome || '';
     if (body.empresa_parceira_id && !empresaParceiraNome) {
@@ -370,13 +353,17 @@ Deno.serve(async (req) => {
     let criadas = 0;
     let atualizadas = 0;
     let ignoradas = 0;
-    let pendentes_tipo = 0;
+    let pendentes_tipo = 0; // Compatibilidade da resposta: agora são linhas RECUSADAS.
+    const indicesPendentes = new Set();
+    const propostasProcessadasIds = new Set();
+    let logImportacaoId = null;
     const erros = [];
     const falhas = []; // falhas detalhadas: {linha, cliente, contrato, motivo, tipo_original}
     const previews = [];
     const propostasCriadasIds = []; // para log de desfazer
 
     for (let i = 0; i < dataRows.length; i++) {
+      if (indicesReprocessamento && !indicesReprocessamento.has(i)) continue;
       const row = dataRows[i];
       const rowStr = row.join('').trim();
       if (!rowStr) continue;
@@ -419,6 +406,18 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        // Validar antes de qualquer gravação de cliente, tabela, status ou proposta.
+        const validacaoTipo = resolverTipoImportacao(tipoVal, tiposEmprestimo);
+        const tipo = validacaoTipo.tipo;
+        if (!tipo) {
+          pendentes_tipo++;
+          indicesPendentes.add(i);
+          if (tipoVal) tiposNaoMapeados[tipoVal] = true;
+          const motivo = validacaoTipo.motivo + ' para o contrato ' + (contratoVal || adeVal || '(sem contrato)') + (tipoVal ? ': "' + tipoVal + '"' : '');
+          erros.push('Linha ' + (headerRowIndex + i + 2) + ': ' + motivo);
+          falhas.push({ linha: headerRowIndex + i + 2, cliente: nomeVal, contrato: contratoVal || adeVal, motivo, tipo_original: tipoVal });
+          continue;
+        }
         const bancoOrigem = findBanco(bancoVal);
         const banco = bancoPrincipal(bancoOrigem, bancos);
         const conv    = findConvenio(convenioVal);
@@ -507,14 +506,9 @@ Deno.serve(async (req) => {
         const parcela      = parcelaVal ? parseValor(parcelaVal) : null;
         const prazo        = prazoVal ? (parseInt(String(prazoVal).replace(/\D/g, '')) || null) : null;
         const dataVend = parseData(dataVal) || new Date().toISOString().slice(0, 10);
-        const tipo     = normTipo(tipoVal);
         const comissao = comissaoVal ? parseValor(comissaoVal) : null;
 
-        // Se o tipo não foi mapeado E existem tipos cadastrados, pendenciar
-        const tipoPendente = tipoVal && tipo === null && tiposEmprestimo.length > 0;
-        if (tipoPendente) {
-          pendentes_tipo++;
-        }
+        const tipoPendente = false;
 
         // Mapear status do arquivo para ID interno
         let statusId = null;
@@ -774,6 +768,7 @@ Deno.serve(async (req) => {
 
               await base44.asServiceRole.entities.Proposta.update(propostaExistente.id, updateData);
               Object.assign(propostaExistente, updateData);
+              propostasProcessadasIds.add(propostaExistente.id);
               atualizadas++;
               console.log(`✅ ATUALIZADA: ${contratoFinal || nomeVal}`);
             }
@@ -784,12 +779,14 @@ Deno.serve(async (req) => {
             propostasExistentes.push(nova);
             criadas++;
             propostasCriadasIds.push(nova.id);
+            propostasProcessadasIds.add(nova.id);
             console.log(`🆕 CRIADA: ${contratoFinal || nomeVal}`);
           }
         } catch (err) {
           console.error(`❌ Erro ao processar ${contratoFinal || nomeVal}:`, err.message);
           ignoradas++;
-          falhas.push({ linha: i + 2, cliente: nomeVal, contrato: contratoVal || adeVal, motivo: `Erro: ${err.message}` });
+          indicesPendentes.add(i);
+          falhas.push({ linha: headerRowIndex + i + 2, cliente: nomeVal, contrato: contratoVal || adeVal, motivo: `Erro: ${err.message}` });
         }
 
         previews.push({
@@ -803,8 +800,9 @@ Deno.serve(async (req) => {
         });
 
       } catch (err) {
-        erros.push(`Linha ${i + 2}: ${err.message}`);
-        falhas.push({ linha: i + 2, cliente: nomeVal || '', contrato: contratoVal || adeVal || '', motivo: `Erro: ${err.message}` });
+        indicesPendentes.add(i);
+        erros.push(`Linha ${headerRowIndex + i + 2}: ${err.message}`);
+        falhas.push({ linha: headerRowIndex + i + 2, cliente: nomeVal || '', contrato: contratoVal || adeVal || '', motivo: `Erro: ${err.message}` });
         console.error(`Erro na linha ${i + 2}:`, err);
       }
     }
@@ -830,6 +828,7 @@ Deno.serve(async (req) => {
 
       // Aplicar vendedor nas propostas sem vendedor do mesmo CPF
       for (const p of todasPropostas) {
+        if (!propostasProcessadasIds.has(p.id)) continue;
         const cpf = normCpf(p.cliente_cpf || '');
         if (!cpf) continue;
         if (p.vendedor_id) continue; // já tem vendedor
@@ -862,7 +861,7 @@ Deno.serve(async (req) => {
         layoutNome = lays[0]?.nome || '';
       }
 
-      await base44.asServiceRole.entities.ImportacaoPropostasLog.create({
+      const novoLog = await base44.asServiceRole.entities.ImportacaoPropostasLog.create({
         empresa_id: empresaId,
         empresa_parceira_id: body.empresa_parceira_id || null,
         empresa_parceira_nome: epNome,
@@ -873,10 +872,24 @@ Deno.serve(async (req) => {
         atualizadas,
         ignoradas,
         propostas_ids_criadas: JSON.stringify(propostasCriadasIds),
-        erros_json: JSON.stringify(falhas.slice(0, 500)),
+        erros_json: JSON.stringify(falhas),
+        recusadas_tipo: pendentes_tipo,
+        reprocessamento_origem_id: origemReprocessamento?.id || null,
+        reprocessamento_json: indicesPendentes.size ? JSON.stringify({
+          file_url, layout, atualizar_telefone: atualizarTelefone,
+          layout_id: body.layout_id || null,
+          empresa_parceira_id: body.empresa_parceira_id || null,
+          empresa_parceira_nome: empresaParceiraNome,
+          arquivo_nome: body.arquivo_nome || '',
+          indices: [...indicesPendentes],
+        }) : null,
         tipos_nao_mapeados_json: JSON.stringify(Object.keys(tiposNaoMapeados)),
         status: 'concluida',
       });
+      logImportacaoId = novoLog.id;
+      if (origemReprocessamento) {
+        await base44.asServiceRole.entities.ImportacaoPropostasLog.update(origemReprocessamento.id, { reprocessamento_json: null });
+      }
     } catch (logErr) {
       console.error('Erro ao salvar log:', logErr.message);
     }
@@ -884,6 +897,10 @@ Deno.serve(async (req) => {
 
     return Response.json({
       success: true,
+      log_id: logImportacaoId,
+      recusadas_tipo: pendentes_tipo,
+      linhas_pendentes: indicesPendentes.size,
+      falhas,
       criadas,
       atualizadas,
       ignoradas,
