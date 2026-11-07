@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
 import { TrendingUp, ChevronDown, ChevronUp, ArrowUpRight } from 'lucide-react';
 import CriarProximaAcaoBar from './CriarProximaAcaoBar';
 import MicrotarefasConversa from './MicrotarefasConversa';
@@ -15,8 +17,15 @@ export default function AcompanhamentoConversa({ oportunidades = [], onAdicionar
   const temOportunidade = oportunidades.length > 0;
   const oportunidadeAberta = expandido === 'oportunidade' && temOportunidade;
   const tarefaAberta = expandido === 'tarefa' && temTarefa;
+  const { data: etapas = [] } = useQuery({
+    queryKey: ['etapas-funil'],
+    queryFn: () => base44.entities.EtapaFunil.list('ordem', 500),
+    enabled: oportunidades.some(o => o.etapa_id && !o.etapa_nome),
+    staleTime: 60000,
+  });
+  const etapaTexto = (o) => etapas.find(e => e.id === o.etapa_id)?.nome || o.etapa_nome || 'Consultar no funil';
   const primeira = oportunidades[0];
-  const resumo = primeira ? [produtoTexto(primeira.produto), primeira.etapa_nome].filter(Boolean).join(' · ') : '';
+  const resumo = primeira ? [produtoTexto(primeira.produto), etapaTexto(primeira)].join(' · ') : '';
 
   return (
     <div className="flex shrink-0 items-stretch gap-2 border-b border-slate-100 bg-white px-3 py-2">
@@ -53,7 +62,7 @@ export default function AcompanhamentoConversa({ oportunidades = [], onAdicionar
               {oportunidades.map(o => (
                 <div key={o.id} className="rounded-lg bg-white/80 p-3">
                   <p className="text-sm font-semibold text-slate-800">{o.titulo || produtoTexto(o.produto)}</p>
-                  <p className="mt-1 text-xs text-slate-600">Funil: {produtoTexto(o.produto)} · Etapa: {o.etapa_nome || 'Consultar no funil'}</p>
+                  <p className="mt-1 text-xs text-slate-600">Funil: {produtoTexto(o.produto)} · Etapa: {etapaTexto(o)}</p>
                   <p className="mt-1 text-xs text-slate-600">Responsável: {o.vendedor_nome || 'Consultar no funil'}</p>
                   {o.status && <p className="mt-1 text-xs text-slate-600">Situação: {({ aberta: 'Em andamento', ganha: 'Ganha', perdida: 'Perdida' })[o.status] || o.status}</p>}
                   <Link to={'/FunilVendas?oportunidade_id=' + encodeURIComponent(o.id)} className="mt-2 inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">
