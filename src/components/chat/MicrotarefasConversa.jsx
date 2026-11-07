@@ -29,8 +29,14 @@ const prazoTexto = (iso) => {
   return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + `, ${hora}`;
 };
 
-export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir, onAdiar, onEditar, salvando = false, user, empresaId, conversa, novaAcaoRef }) {
-  const [aberto, setAberto] = useState(false);
+export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir, onAdiar, onEditar, salvando = false, user, empresaId, conversa, novaAcaoRef, abertoControlado, onAbertoChange }) {
+  const [abertoLocal, setAbertoLocal] = useState(false);
+  const aberto = abertoControlado ?? abertoLocal;
+  const setAberto = (valor) => {
+    const proximo = typeof valor === 'function' ? valor(aberto) : valor;
+    if (onAbertoChange) onAbertoChange(proximo);
+    else setAbertoLocal(proximo);
+  };
 
   useEffect(() => {
     setAberto(false);
