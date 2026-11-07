@@ -109,7 +109,7 @@ export default function ImportacaoProducao() {
       setVisualizarTiposNaoMapeados(tiposNaoMapeados);
 
       // Se há falhas com tipo não reconhecido, abrir na aba de falhas
-      const temFalhasTipo = falhas.some(f => f.motivo && f.(motivo.includes('Tipo não reconhecido') || motivo.includes('Tipo de proposta')));
+      const temFalhasTipo = falhas.some(f => f.motivo && (f.motivo.includes('Tipo não reconhecido') || f.motivo.includes('Tipo de proposta')));
       if (temFalhasTipo || (falhas.length > 0 && log.criadas === 0)) {
         setVisualizarAba('falhas');
       }
