@@ -1,3 +1,4 @@
+import { moverOportunidade } from '@/components/funil/moverOportunidade';
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -556,106 +557,9 @@ export default function FunilVendas() {
   });
 
   const moverOportunidadeMutation = useMutation({
-    mutationFn: async ({ oportunidadeId, novaEtapaId, updates = {} }) => {
-      const user = await base44.auth.me();
-      const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
-      const etapaDestino = etapas.find(e => e.id === novaEtapaId);
-
-      // ✅ empresa_id com fallback REAL (prioriza o que já existe na oportunidade)
-      const empresaId =
-        updates.empresa_id ||
-        oportunidade?.empresa_id ||
-        currentUserFull?.empresa_id ||
-        currentUser?.empresa_id ||
-        user?.empresa_id ||
-        user?.empresa?.id;
-
-      if (!empresaId) {
-        throw new Error("empresa_id não encontrado. Verifique se o usuário e a oportunidade estão vinculados a uma empresa.");
-      }
-
-      // HU 04 - avisos
-      if (etapaDestino?.requer_cliente && !oportunidade?.cliente_id) {
-        toast.warning('Atenção: Esta etapa requer cliente vinculado');
-      }
-
-      // Se está sendo movido para etapa de planejamento E é consórcio, registrar data de entrada
-      const entrandoNoPlanejamento = etapaDestino?.tipo === 'planejamento' && !oportunidade?.data_entrada_planejamento && oportunidade?.produto === 'consorcio';
-      const saindoDoPlanejamento = oportunidade?.etapa_id && (() => {
-        const etapaOrigem = etapas.find(e => e.id === oportunidade.etapa_id);
-        return etapaOrigem?.tipo === 'planejamento' && etapaDestino?.tipo !== 'planejamento';
-      })();
-
-      // ✅ UPDATE sempre com empresa_id + campos essenciais
-      await base44.entities.Oportunidade.update(oportunidadeId, {
-        ...updates,
-        empresa_id: empresaId,
-        etapa_id: novaEtapaId,
-        etapa_nome: etapaDestino?.nome || '',
-        titulo: oportunidade?.titulo || '',
-        vendedor_id: oportunidade?.vendedor_id || '',
-        data_ultima_movimentacao: new Date().toISOString(),
-        status:
-          etapaDestino?.tipo === 'ganho'
-            ? 'ganha'
-            : etapaDestino?.tipo === 'perdida'
-            ? 'perdida'
-            : 'aberta',
-        ...(entrandoNoPlanejamento ? {
-          data_entrada_planejamento: new Date().toISOString(),
-          campanha_planejamento_ultima: 0,
-        } : {}),
-      });
-
-      // Se estava em Pré-Fechamento e saiu, encerrar alertas ativos
-      const etapaOrigemObj = etapas.find(e => e.id === oportunidade?.etapa_id);
-      const eraPreFechamento = etapaOrigemObj?.nome?.toLowerCase().includes('pré-fechamento') ||
-        etapaOrigemObj?.nome?.toLowerCase().includes('pre-fechamento') ||
-        etapaOrigemObj?.nome?.toLowerCase().includes('pré fechamento') ||
-        etapaOrigemObj?.nome?.toLowerCase().includes('pre fechamento');
-      const continuaPreFechamento = etapaDestino?.nome?.toLowerCase().includes('pré-fechamento') ||
-        etapaDestino?.nome?.toLowerCase().includes('pre-fechamento') ||
-        etapaDestino?.nome?.toLowerCase().includes('pré fechamento') ||
-        etapaDestino?.nome?.toLowerCase().includes('pre fechamento');
-      if (eraPreFechamento && !continuaPreFechamento) {
-        // Encerrar alertas ativos deste lead
-        const alertasAtivos = await base44.entities.AlertePreFechamento.filter({
-          oportunidade_id: oportunidadeId,
-          status: 'ativo'
-        });
-        for (const alerta of alertasAtivos) {
-          await base44.entities.AlertePreFechamento.update(alerta.id, { status: 'encerrado' });
-        }
-      }
-
-      // histórico
-      await base44.entities.MovimentacaoFunil.create({
-        oportunidade_id: oportunidadeId,
-        etapa_origem_id: oportunidade?.etapa_id,
-        etapa_origem_nome: oportunidade?.etapa_nome || '',
-        etapa_destino_id: novaEtapaId,
-        etapa_destino_nome: etapaDestino?.nome || '',
-        usuario_id: user.id,
-        usuario_nome: user.full_name
-      });
-
-      // integração com vendas
-      if (etapaDestino?.tipo === 'ganho' && !oportunidade?.venda_id) {
-        return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: true, oportunidade };
-      }
-
-      // auditoria
-      await base44.entities.LogAuditoria.create({
-        usuario_id: user.id,
-        usuario_nome: user.full_name,
-        acao: `Moveu oportunidade "${oportunidade?.titulo}" de "${oportunidade?.etapa_nome}" para "${etapaDestino?.nome}"`,
-        entidade: 'Oportunidade',
-        entidade_id: oportunidadeId,
-        tipo: 'edicao'
-      });
-
-      return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: false };
-    },
+    mutationFn: ({ oportunidadeId, novaEtapaId, updates = {} }) => moverOportunidade({
+      oportunidadeId, novaEtapaId, updates, etapas, currentUser: currentUserFull || currentUser,
+    }),
 
     onMutate: async () => {
       // Cancela refetches pendentes para não sobrescrever o estado otimista
