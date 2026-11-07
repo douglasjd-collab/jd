@@ -30,7 +30,11 @@ const prazoTexto = (iso) => {
 };
 
 export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir, onAdiar, onEditar, salvando = false, user, empresaId, conversa, novaAcaoRef }) {
-  const [aberto, setAberto] = useState(true);
+  const [aberto, setAberto] = useState(false);
+
+  useEffect(() => {
+    setAberto(false);
+  }, [conversa?.id]);
   const [modal, setModal] = useState(false);
   const [editando, setEditando] = useState(false);
   const [tituloInicial, setTituloInicial] = useState('');
@@ -144,14 +148,14 @@ export default function MicrotarefasConversa({ tarefas = [], onCriar, onConcluir
       <div className={`min-w-0 flex-1 rounded-xl border px-3 py-2 shadow-sm ${vencida ? 'border-red-300 bg-red-50' : 'border-amber-300 bg-amber-50'}`}>
         <div className="flex items-center gap-2">
           <ClipboardList className={`h-4 w-4 shrink-0 ${vencida ? 'text-red-600' : 'text-amber-700'}`} />
-          <button onClick={() => setAberto(v => !v)} className="min-w-0 flex-1 text-left">
+          <button type="button" aria-expanded={aberto} onClick={() => setAberto(v => !v)} className="min-w-0 flex-1 text-left">
             <div className="flex items-center gap-2">
               <span className={`text-[10px] font-bold uppercase tracking-wide ${vencida ? 'text-red-700' : 'text-amber-800'}`}>Próxima ação</span>
               {ordenadas.length > 1 && <span className="rounded-full bg-white/80 px-1.5 text-[10px] font-bold">+{ordenadas.length - 1}</span>}
             </div>
             <p className="truncate text-sm font-semibold text-slate-800">{proxima.titulo}</p>
           </button>
-          <button onClick={() => setAberto(v => !v)} className="rounded p-1 text-slate-500">{aberto ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
+          <button type="button" aria-label={aberto ? 'Recolher tarefa' : 'Expandir tarefa'} aria-expanded={aberto} onClick={() => setAberto(v => !v)} className="rounded p-1 text-slate-500">{aberto ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
         </div>
         {aberto && (
           <div className="mt-2 border-t border-black/5 pt-2">
