@@ -4,8 +4,9 @@ import { toast } from 'sonner';
 // Compartilhado pelo quadro e pela edição rápida do bate-papo.
 export async function moverOportunidade({ oportunidadeId, novaEtapaId, updates = {}, etapas, currentUser, observacao = '', etapaEsperada, validarRequisitos = false, avisar = toast.warning, client = base44 }) {
       const user = await client.auth.me();
-      const oportunidade = await client.entities.Oportunidade.get(oportunidadeId);
-      if (!oportunidade) throw new Error("Oportunidade não encontrada");
+      const registro = await client.entities.Oportunidade.get(oportunidadeId);
+      if (!registro) throw new Error("Oportunidade não encontrada");
+      const oportunidade = { ...registro };
       const etapaDestino = etapas.find(e => e.id === novaEtapaId);
       if (!etapaDestino || etapaDestino.status === "inativa" || (etapaDestino.empresa_id && etapaDestino.empresa_id !== oportunidade.empresa_id)) throw new Error("Etapa indisponível");
       if (etapaEsperada && oportunidade.etapa_id !== etapaEsperada) throw new Error('A etapa foi alterada por outra pessoa. Feche e abra novamente para atualizar.');
