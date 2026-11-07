@@ -45,6 +45,7 @@ import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import ClienteSearchModal from '@/components/forms/ClienteSearchModal';
+import { carregarPaginas, correspondeResponsavel, idsResponsaveis, produtoDaOportunidade, correspondeBusca, correspondeRapido } from '@/components/funil/filtrosFunil';
 
 export default function FunilVendas() {
   const navigate = useNavigate();
@@ -181,16 +182,16 @@ export default function FunilVendas() {
     queryFn: () => base44.entities.EtapaFunil.list('ordem', 500),
   });
 
-  const { data: oportunidades = [], isLoading: loadingOportunidades } = useQuery({
+  const { data: oportunidades = [], isLoading: loadingOportunidades, isError: erroOportunidades, refetch: recarregarOportunidades } = useQuery({
     queryKey: ['oportunidades', currentUser?.empresa_id],
     enabled: !!currentUser?.empresa_id,
     staleTime: 30000,
     queryFn: async () => {
       if (!currentUser?.empresa_id) return [];
-      return base44.entities.Oportunidade.filter(
+      return carregarPaginas(
+        base44.entities.Oportunidade,
         { empresa_id: currentUser.empresa_id },
-        '-data_ultima_movimentacao',
-        1000
+        '-created_date'
       );
     },
   });
@@ -221,9 +222,9 @@ export default function FunilVendas() {
     queryFn: async () => {
       const filtro = { status: 'ativo' };
       if (currentUser?.empresa_id) filtro.empresa_id = currentUser.empresa_id;
-      const colabs = await base44.entities.Colaborador.filter(filtro);
+      const colabs = await carregarPaginas(base44.entities.Colaborador, filtro, 'id');
       return colabs.filter(c =>
-        ['vendedor', 'gerente', 'admin', 'master', 'super_admin'].includes(c.perfil)
+        ['vendedor', 'colaborador_vendedor', 'colaborador', 'funcionario', 'parceiro', 'gerente', 'admin', 'master', 'super_admin'].includes(c.perfil)
       );
     },
   });
@@ -826,118 +827,30 @@ export default function FunilVendas() {
     }
   };
 
-  // Base de oportunidades visíveis para o usuário atual (respeita visão/perfil + filtro de responsável)
+  // A seleção usa os mesmos IDs e responsáveis em todos os contadores.
+  const meusLeads = (o) => correspondeResponsavel(o, currentUser);
+  const responsavelSelecionado = vendedores.find(v => v.id === filterVendedor);
+  const correspondeVendedor = (o) => correspondeResponsavel(o, responsavelSelecionado || { id: filterVendedor });
+  const produtoOportunidade = (o) => produtoDaOportunidade(o, etapas);
   const oportunidadesDoVendedor = !currentUser ? [] : oportunidades.filter(o => {
-    // Primeiro filtro: quem pode ver
-    let podeVer = false;
-    if (!isAdmin && !isGerente) {
-      podeVer = (
-        o.vendedor_id === currentUser.id ||
-        o.vendedor_id === currentUser.colaborador_id ||
-        o.vendedor_id === currentUser.auth_id
-      );
-    } else if (filterVisao === 'meus') {
-      podeVer = (
-        o.vendedor_id === currentUser.id ||
-        o.vendedor_id === currentUser.colaborador_id ||
-        o.vendedor_id === currentUser.auth_id
-      );
-    } else if (filterVisao === 'sem_responsavel') {
-      podeVer = !o.vendedor_id;
-    } else {
-      podeVer = true; // 'equipe' ou 'todos'
-    }
-
-    if (!podeVer) return false;
-
-    // Segundo filtro: responsável específico (apenas admins/gerentes)
-    if (podeVerTodos && filterVendedor !== 'todos') {
-      return o.vendedor_id === filterVendedor;
-    }
-
-    return true;
+    if ((!podeVerTodos || filterVisao === 'meus') && !meusLeads(o)) return false;
+    if (podeVerTodos && filterVisao === 'sem_responsavel' && idsResponsaveis(o).length) return false;
+    return !podeVerTodos || filterVendedor === 'todos' || correspondeVendedor(o);
   });
 
-  // HU 05 - Indicadores
-  const filteredOportunidades = (() => {
-    const agora = new Date();
-    const hoje = agora.toISOString().split('T')[0];
-    const inicioSemana = new Date(agora);
-    inicioSemana.setDate(agora.getDate() - agora.getDay());
-    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
-    
-    const base = oportunidadesDoVendedor
-      .filter((o) => {
-        if (filterProduto === 'todos') return true;
-        const produtoOport = o.produto || 'consorcio';
-        return produtoOport === filterProduto;
-      })
-      .filter((o) => {
-        if (!podeVerTodos) return true;
-        if (!filterVendedor || filterVendedor === 'todos') return true;
-        return o.vendedor_id === filterVendedor;
-      })
-      .filter((o) => {
-        if (!searchCard.trim()) return true;
-        const t = searchCard.toLowerCase();
-        return (
-          o.titulo?.toLowerCase().includes(t) ||
-          o.cliente_nome?.toLowerCase().includes(t) ||
-          o.telefone_lead?.toLowerCase().includes(t)
-        );
-      })
-      .filter((o) => {
-        if (!filtroRapido) return true;
-        
-        const dataMovimentacao = new Date(o.data_ultima_movimentacao || o.created_date || agora);
-        const diffMs = agora - dataMovimentacao;
-        const diffDias = diffMs / (1000 * 60 * 60 * 24);
-        const dataOport = o.data_cadastro_lead ? new Date(o.data_cadastro_lead) : dataMovimentacao;
-        
-        if (filtroRapido === 'hoje') {
-          return o.data_cadastro_lead && o.data_cadastro_lead === hoje;
-        }
-        if (filtroRapido === 'esta_semana') {
-          return dataOport >= inicioSemana;
-        }
-        if (filtroRapido === 'este_mes') {
-          return dataOport >= inicioMes && dataOport.getMonth() === agora.getMonth();
-        }
-        if (filtroRapido === 'atrasados') {
-          return o.data_fechamento_prevista && o.data_fechamento_prevista < hoje && o.status === 'aberta';
-        }
-        if (filtroRapido === 'sem_resposta') {
-          return diffDias >= 1 && o.status === 'aberta';
-        }
-        if (filtroRapido === 'sem_movimento_3') {
-          return diffDias >= 3 && o.status === 'aberta';
-        }
-        if (filtroRapido === 'sem_movimento_7') {
-          return diffDias >= 7 && o.status === 'aberta';
-        }
-        if (filtroRapido === 'sem_movimento_15') {
-          return diffDias >= 15 && o.status === 'aberta';
-        }
-        if (filtroRapido === 'quentes') {
-          return (o.valor_estimado || 0) > 50000 && o.status === 'aberta';
-        }
-        if (filtroRapido === 'ganhos') {
-          return o.status === 'ganha';
-        }
-        if (filtroRapido === 'perdidos') {
-          return o.status === 'perdida';
-        }
-        if (filtroRapido === 'em_negociacao') {
-          return o.status === 'aberta';
-        }
-        if (filtroRapido === 'sem_responsavel') {
-          return !o.vendedor_id;
-        }
-        return true;
-      });
+  const filteredOportunidades = oportunidadesDoVendedor.filter(o =>
+    (filterProduto === 'todos' || produtoOportunidade(o) === filterProduto) &&
+    correspondeBusca(o, searchCard) &&
+    correspondeRapido(o, filtroRapido, etapas)
+  );
 
-    return base;
-  })();
+  const limparFiltros = () => {
+    setFilterVisao('todos');
+    setFilterVendedor('todos');
+    setFilterProduto('todos');
+    setFiltroRapido(null);
+    setSearchCard('');
+  };
 
   const calcularIndicadores = (etapaId) => {
     const oportEtapa = filteredOportunidades.filter(o => o.etapa_id === etapaId);
@@ -1110,19 +1023,19 @@ export default function FunilVendas() {
       {(isAdmin || isGerente) && (
         <div className="flex items-center gap-2 flex-wrap">
            {[
-             { key: 'meus', label: '👤 Meus Leads', count: oportunidades.filter(o => o.vendedor_id === currentUser?.id && o.status === 'aberta').length },
+             { key: 'meus', label: '👤 Meus Leads', count: oportunidades.filter(o => meusLeads(o) && o.status === 'aberta').length },
              { key: 'equipe', label: '👥 Equipe', count: oportunidades.filter(o => o.status === 'aberta').length },
              { key: 'todos', label: '🌎 Todos', count: oportunidades.length },
-             { key: 'sem_responsavel', label: '⚠️ Sem Responsável', count: oportunidades.filter(o => !o.vendedor_id).length },
+             { key: 'sem_responsavel', label: '⚠️ Sem Responsável', count: oportunidades.filter(o => !idsResponsaveis(o).length).length },
            ].map(v => (
-             <button key={v.key} onClick={() => setFilterVisao(v.key)}
+             <button key={v.key} onClick={() => { setFilterVisao(v.key); setFilterVendedor('todos'); }}
                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${filterVisao === v.key ? 'bg-[#1e3a5f] text-white border-[#1e3a5f] shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}>
                {v.label}
                {v.count > 0 && <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${filterVisao === v.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>{v.count}</span>}
              </button>
            ))}
            <div className="ml-auto">
-             <Select value={filterVendedor} onValueChange={setFilterVendedor} disabled={!podeVerTodos}>
+             <Select value={filterVendedor} onValueChange={(value) => { setFilterVendedor(value); if (value !== 'todos') setFilterVisao('todos'); }} disabled={!podeVerTodos}>
                <SelectTrigger className="h-8 text-xs w-44 border-slate-200">
                  <User className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
                  <SelectValue placeholder="Responsável" />
@@ -1131,8 +1044,8 @@ export default function FunilVendas() {
                  <SelectItem value="todos">Todos os responsáveis</SelectItem>
                  {vendedores.map((v) => {
                    const countVendedor = oportunidades.filter(o => {
-                     const produtoOport = o.produto || (etapasComProduto.find(e => e.id === o.etapa_id)?.produto) || 'consorcio';
-                     return o.vendedor_id === v.id && o.status === 'aberta' && (filterProduto === 'todos' || produtoOport === filterProduto);
+                     const produtoOport = produtoOportunidade(o);
+                     return correspondeResponsavel(o, v) && o.status === 'aberta' && (filterProduto === 'todos' || produtoOport === filterProduto);
                    }).length;
                    return <SelectItem key={v.id} value={v.id}>{v.nome || v.razao_social || v.full_name} <span className="text-slate-400 ml-2">({countVendedor})</span></SelectItem>;
                  })}
@@ -1156,7 +1069,7 @@ export default function FunilVendas() {
           const iconUrl = funisMeta[funil.value]?.iconUrl;
           const nomeExibicao = funisMeta[funil.value]?.nome || funil.label;
           const count = oportunidadesDoVendedor.filter(o => {
-            const produtoOport = o.produto || (etapasComProduto.find(e => e.id === o.etapa_id)?.produto) || 'consorcio';
+            const produtoOport = produtoOportunidade(o);
             return produtoOport === funil.value && o.status === 'aberta';
           }).length;
           const isActive = filterProduto === funil.value;
@@ -1203,6 +1116,25 @@ export default function FunilVendas() {
             }`}>{f.label}</button>
         ))}
       </div>
+
+      {(filterVisao !== 'todos' || filterVendedor !== 'todos' || filterProduto !== 'todos' || filtroRapido || searchCard) && (
+        <div className="flex items-center gap-3 text-sm text-slate-500">
+          <span>{filteredOportunidades.length} oportunidades com os filtros selecionados</span>
+          <Button variant="outline" size="sm" onClick={limparFiltros}>Limpar filtros</Button>
+        </div>
+      )}
+      {erroOportunidades && (
+        <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          Não foi possível carregar todas as oportunidades. Atualize para tentar novamente.
+          <Button variant="outline" size="sm" className="ml-3" onClick={() => recarregarOportunidades()}>Tentar novamente</Button>
+        </div>
+      )}
+      {!erroOportunidades && filteredOportunidades.length === 0 && (
+        <div role="status" className="rounded-lg border border-slate-200 p-3 text-sm text-slate-600">
+          Nenhuma oportunidade corresponde aos filtros selecionados.
+          <Button variant="outline" size="sm" className="ml-3" onClick={limparFiltros}>Limpar filtros</Button>
+        </div>
+      )}
 
       {/* ── ABAS: FUNIL vs RELATÓRIO ── */}
       <div className="flex gap-2 border-b border-slate-200">
@@ -1260,7 +1192,7 @@ export default function FunilVendas() {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {etapasOrdenadas
-          .filter(etapa => filterProduto === 'todos' || etapa.produto === filterProduto)
+          .filter(etapa => filterProduto === 'todos' || etapa.produto === filterProduto || filteredOportunidades.some(o => o.etapa_id === etapa.id))
           .map((etapa) => {
             const { quantidade, valor } = calcularIndicadores(etapa.id);
             const oportEtapa = filteredOportunidades.filter(o => o.etapa_id === etapa.id);
