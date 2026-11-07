@@ -22,6 +22,7 @@ export default function ImportacaoProducao() {
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [resultado, setResultado] = useState(null);
+  const [reprocessandoId, setReprocessandoId] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [preview, setPreview] = useState(null); // { headers, rows }
   const [historico, setHistorico] = useState([]);
@@ -68,6 +69,26 @@ export default function ImportacaoProducao() {
     setHistorico(hist);
   };
 
+  const handleReprocessar = async (logId) => {
+    if (!logId || reprocessandoId || isProcessing) return;
+    setReprocessandoId(logId);
+    try {
+      const resp = await base44.functions.invoke('importarPropostasEmprestimo', { reprocessar_log_id: logId });
+      const data = resp.data;
+      if (data.error || data.success === false) throw new Error(data.error || 'Erro ao reprocessar');
+      setResultado(data);
+      setVisualizarOpen(false);
+      await recarregarHistorico();
+      const mensagem = (data.criadas + data.atualizadas) + ' proposta(s) processada(s); ' + (data.linhas_pendentes || 0) + ' linha(s) ainda com erro.';
+      if (data.linhas_pendentes) toast.warning(mensagem);
+      else toast.success(mensagem);
+    } catch (erro) {
+      toast.error(erro.response?.data?.error || erro.message);
+    } finally {
+      setReprocessandoId(null);
+    }
+  };
+
   const handleVisualizar = async (log) => {
     setVisualizarLog(log);
     setVisualizarOpen(true);
@@ -88,7 +109,7 @@ export default function ImportacaoProducao() {
       setVisualizarTiposNaoMapeados(tiposNaoMapeados);
 
       // Se há falhas com tipo não reconhecido, abrir na aba de falhas
-      const temFalhasTipo = falhas.some(f => f.motivo && f.motivo.includes('Tipo não reconhecido'));
+      const temFalhasTipo = falhas.some(f => f.motivo && f.(motivo.includes('Tipo não reconhecido') || motivo.includes('Tipo de proposta')));
       if (temFalhasTipo || (falhas.length > 0 && log.criadas === 0)) {
         setVisualizarAba('falhas');
       }
@@ -198,7 +219,8 @@ export default function ImportacaoProducao() {
         setResultado({ erro: data.error || 'Erro desconhecido' });
       } else {
         const total = (data.criadas || 0) + (data.atualizadas || 0);
-        toast.success(`${total} proposta(s) processada(s) com sucesso!`);
+        if (data.linhas_pendentes) toast.warning(`${total} proposta(s) processada(s); ${data.linhas_pendentes} linha(s) com erro.`);
+        else toast.success(`${total} proposta(s) processada(s) com sucesso!`);
         setResultado(data);
         recarregarHistorico();
       }
@@ -387,7 +409,7 @@ export default function ImportacaoProducao() {
                         {resultado.atualizadas > 0 && <>, <strong>{resultado.atualizadas}</strong> atualizada(s)</>}
                         {resultado.ignoradas > 0 && `, ${resultado.ignoradas} ignorada(s)`}
                         {resultado.vinculados_auto > 0 && <>, <strong className="text-blue-700">{resultado.vinculados_auto} vendedor(es) vinculado(s) automaticamente</strong></>}
-                        {resultado.pendentes_tipo > 0 && <>, <strong className="text-orange-700">{resultado.pendentes_tipo} com tipo pendente</strong></>}
+                        {resultado.pendentes_tipo > 0 && <>, <strong className="text-orange-700">{resultado.pendentes_tipo} não importada(s) por tipo inválido</strong></>}
                       </p>
                       {resultado.erros?.length > 0 && (
                         <div className="mt-2">
@@ -399,13 +421,25 @@ export default function ImportacaoProducao() {
                     </div>
                   </div>
 
+                  {resultado.linhas_pendentes > 0 && resultado.log_id && (
+                    <Button variant="outline" disabled={!!reprocessandoId || isProcessing} onClick={() => handleReprocessar(resultado.log_id)}>
+                      {reprocessandoId && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Reprocessar linhas com erro ({resultado.linhas_pendentes})
+                    </Button>
+                  )}
+                  {resultado.falhas?.length > 0 && <details className="rounded-lg border border-red-200 p-3">
+                    <summary className="cursor-pointer text-sm font-semibold text-red-700">Ver contratos com erro ({resultado.falhas.length})</summary>
+                    <div className="mt-2 max-h-64 overflow-y-auto space-y-1">
+                      {resultado.falhas.map((f, i) => <p key={i} className="text-xs text-red-700">Linha {f.linha} · Contrato {f.contrato || 'não informado'} · {f.motivo}</p>)}
+                    </div>
+                  </details>}
                   {resultado.pendentes_tipo > 0 && resultado.tipos_nao_mapeados?.length > 0 && (
                     <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-300 rounded-xl">
                       <Tag className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
                       <div className="flex-1">
                         <p className="font-semibold text-orange-800">⚠️ Tipos de empréstimo não reconhecidos</p>
                         <p className="text-sm text-orange-700 mt-1">
-                          {resultado.pendentes_tipo} proposta(s) foram importadas com tipo pendente de vinculação. Os seguintes tipos vieram no arquivo mas não estão cadastrados:
+                          {resultado.pendentes_tipo} proposta(s) não foram importadas por tipo ausente, não cadastrado ou ambíguo. Os seguintes tipos vieram no arquivo mas não estão cadastrados:
                         </p>
                         <div className="flex flex-wrap gap-2 mt-2">
                           {resultado.tipos_nao_mapeados.map((t, i) => (
@@ -415,7 +449,7 @@ export default function ImportacaoProducao() {
                           ))}
                         </div>
                         <p className="text-xs text-orange-600 mt-2">
-                          Acesse <strong>Cadastros → Tipos de Empréstimo</strong> e adicione esses tipos com os aliases de importação correspondentes. Em seguida, reimporte o arquivo para que as propostas sejam vinculadas corretamente.
+                          Acesse <strong>Cadastros → Tipos de Empréstimo</strong> e adicione esses tipos com os aliases de importação correspondentes. Depois, clique em Reprocessar linhas com erro. As linhas já importadas não serão processadas novamente.
                         </p>
                         <button
                           onClick={() => window.location.href = createPageUrl('TiposEmprestimo')}
@@ -435,7 +469,7 @@ export default function ImportacaoProducao() {
           {empresaParceiraId && layouts.length > 0 && (
             <div className="flex justify-end">
               <Button
-                disabled={!file || !layoutId || isProcessing}
+                disabled={!file || !layoutId || isProcessing || !!reprocessandoId}
                 className="bg-green-600 hover:bg-green-700 gap-2"
                 onClick={handleImportar}
               >
@@ -465,6 +499,13 @@ export default function ImportacaoProducao() {
                       {new Date(log.created_date).toLocaleString('pt-BR')} · {log.usuario_nome}
                     </p>
                   </div>
+                  {log.status !== 'desfeita' && log.reprocessamento_json && (
+                    <Button size="sm" variant="outline" disabled={!!reprocessandoId || isProcessing || !!desfazendoId}
+                      onClick={() => handleReprocessar(log.id)} className="text-xs">
+                      {reprocessandoId === log.id && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
+                      Reprocessar erros
+                    </Button>
+                  )}
                   <button
                     onClick={() => handleVisualizar(log)}
                     className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 px-3 py-1.5 rounded-lg transition-colors"
@@ -478,7 +519,7 @@ export default function ImportacaoProducao() {
                   ) : (
                     <button
                       onClick={() => setConfirmDesfazer(log)}
-                      disabled={desfazendoId === log.id}
+                      disabled={desfazendoId === log.id || !!reprocessandoId || isProcessing}
                       className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-800 border border-red-200 hover:border-red-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -609,7 +650,7 @@ export default function ImportacaoProducao() {
                     tiposNaoMapeados={visualizarTiposNaoMapeados}
                     empresaId={empresaId}
                     onTipoCriado={() => {
-                      toast.success('Tipo criado! Reimporte o arquivo para vincular as propostas pendentes.');
+                      toast.success('Tipo criado! Clique em Reprocessar linhas com erro.');
                       setVisualizarOpen(false);
                       recarregarHistorico();
                     }}
@@ -655,7 +696,7 @@ function FalhasTab({ falhas, tiposNaoMapeados, empresaId, onTipoCriado }) {
             <div className="flex-1">
               <p className="text-sm font-semibold text-orange-800">Tipos de empréstimo não reconhecidos</p>
               <p className="text-xs text-orange-700 mt-0.5">
-                Crie o tipo abaixo para vincular as propostas pendentes. Após criar, reimporte o arquivo.
+                Cadastre o tipo ou ajuste o nome alternativo em Tipos de Empréstimo. Depois, reprocese as linhas com erro.
               </p>
             </div>
           </div>
@@ -677,7 +718,7 @@ function FalhasTab({ falhas, tiposNaoMapeados, empresaId, onTipoCriado }) {
       {/* Lista de falhas agrupadas por motivo */}
       <div className="space-y-3">
         {Object.entries(falhasPorMotivo).map(([motivo, lista]) => {
-          const isTipoNaoReconhecido = motivo.includes('Tipo não reconhecido');
+          const isTipoNaoReconhecido = (motivo.includes('Tipo não reconhecido') || motivo.includes('Tipo de proposta'));
           return (
             <div key={motivo} className={`border rounded-xl overflow-hidden ${isTipoNaoReconhecido ? 'border-orange-200' : 'border-red-200'}`}>
               <div className={`px-4 py-2.5 flex items-center justify-between ${isTipoNaoReconhecido ? 'bg-orange-50' : 'bg-red-50'}`}>

@@ -684,7 +684,11 @@ Deno.serve(async (req) => {
               console.log(`❌ IGNORADA (comissão do vendedor já paga): ${contratoFinal || nomeVal}`);
             } else {
               // ✅ Atualizar apenas campos que vieram preenchidos no arquivo
-              const updateData = {};
+              const updateData = {
+                emprestimo_tipo: tipo,
+                tipo_importacao_original: tipoVal,
+                pendente_vinculacao_tipo: false,
+              };
 
               // Status
               if (statusVal) {
