@@ -20,7 +20,8 @@ const campos = ['titulo', 'valor_estimado', 'origem', 'telefone_lead', ...datas,
 export default function OportunidadeAcaoRapida({ oportunidadeId, acao, onClose, currentUser }) {
   const queryClient = useQueryClient();
   const [venda, setVenda] = useState(null);
-  const { data: oportunidade, isPending, isError, refetch } = useQuery({
+  const ocupadoRef = useRef(false);
+  const { data: oportunidade, isPending, isError, refetch, isFetchedAfterMount } = useQuery({
     queryKey: ['oportunidade', oportunidadeId],
     queryFn: () => base44.entities.Oportunidade.get(oportunidadeId),
     enabled: !!oportunidadeId,
@@ -42,23 +43,23 @@ export default function OportunidadeAcaoRapida({ oportunidadeId, acao, onClose, 
   };
   return (
     <>
-      <Dialog open={!venda} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <Dialog open={!venda} onOpenChange={(v) => { if (!v && !ocupadoRef.current) onClose(); }}>
         <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{titulos[acao]}</DialogTitle>
             <p className="text-sm text-slate-500">{oportunidade?.titulo || 'Carregando oportunidade…'}</p>
           </DialogHeader>
-          {isPending ? <Loader2 className="mx-auto my-8 h-6 w-6 animate-spin" /> :
+          {isPending || (!isError && !isFetchedAfterMount) ? <Loader2 className="mx-auto my-8 h-6 w-6 animate-spin" /> :
             isError || !oportunidade ? <div className="space-y-3 text-sm"><p>Não foi possível carregar a oportunidade.</p><Button onClick={() => refetch()}>Tentar novamente</Button></div> :
-              <FormularioAcao key={oportunidadeId + acao} oportunidade={oportunidade} acao={acao} currentUser={currentUser} onClose={onClose} onSave={salvo} />}
+              <FormularioAcao key={oportunidadeId + acao} oportunidade={oportunidade} acao={acao} currentUser={currentUser} onClose={onClose} onSave={salvo} ocupadoRef={ocupadoRef} />}
         </DialogContent>
       </Dialog>
-      {venda && <ModalVenda open={true} onOpenChange={(v) => { if (!v) onClose(); }} oportunidade={venda} currentUser={currentUser} onSuccess={async () => { await atualizar(); onClose(); }} />}
+      {venda && <ModalVenda open={true} onOpenChange={(v) => { if (!v && !ocupadoRef.current) onClose(); }} oportunidade={venda} currentUser={currentUser} onSuccess={async () => { await atualizar(); onClose(); }} />}
     </>
   );
 }
 
-function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave }) {
+function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave, ocupadoRef }) {
   const [form, setForm] = useState(() => Object.fromEntries(campos.map(c => [c, oportunidade[c] ?? ''])));
   const versaoInicial = useRef(oportunidade.updated_date);
   const [etapaId, setEtapaId] = useState(oportunidade.etapa_id || '');
@@ -72,7 +73,7 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave }) {
   });
   const { data: comentarios = [], isError: erroComentarios } = useQuery({
     queryKey: ['comentarios-oportunidade', oportunidade.id],
-    queryFn: () => base44.entities.ComentarioOportunidade.filter({ oportunidade_id: oportunidade.id }, '-created_date', 100),
+    queryFn: () => base44.entities.ComentarioOportunidade.filter({ oportunidade_id: oportunidade.id }, 'created_date', 1000),
     enabled: acao === 'anotar' || acao === 'historico',
   });
   const { data: movimentacoes = [] } = useQuery({
@@ -94,7 +95,7 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave }) {
         if (exigeMotivo && !texto.trim()) throw new Error('Informe o motivo da perda.');
         return moverOportunidade({
           oportunidadeId: oportunidade.id, novaEtapaId: etapaId, etapas, currentUser,
-          observacao: texto.trim(),
+          observacao: texto.trim(), etapaEsperada: oportunidade.etapa_id, validarRequisitos: true,
         });
       }
       if (acao === 'editar') {
@@ -132,12 +133,13 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave }) {
       await onSave(resultado);
     },
     onError: (erro) => toast.error(erro.message || 'Não foi possível salvar.'),
-    onSettled: () => { bloqueio.current = false; },
+    onSettled: () => { bloqueio.current = false; ocupadoRef.current = false; },
   });
   const enviar = (e) => {
     e.preventDefault();
     if (bloqueio.current) return;
     bloqueio.current = true;
+    ocupadoRef.current = true;
     salvar.mutate();
   };
   const campo = (chave, valor) => setForm(f => ({ ...f, [chave]: valor }));
@@ -173,7 +175,7 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave }) {
       </>}
       {acao === 'anotar' && <>
         <div className="space-y-1"><Label htmlFor="anotacao-negociacao">Nova anotação</Label><Textarea id="anotacao-negociacao" autoFocus rows={4} value={texto} onChange={e => setTexto(e.target.value)} required maxLength={10000} placeholder="Registre o que foi conversado com o cliente…" /><p className="text-xs text-slate-500">Registro interno da negociação, com seu nome, data e horário.</p></div>
-        <details className="rounded-md border p-3 text-sm"><summary className="cursor-pointer font-medium">Anotações anteriores</summary><div className="mt-2 max-h-48 space-y-3 overflow-y-auto">{erroComentarios ? <p>Não foi possível carregar as anotações.</p> : comentarios.length === 0 ? <p className="text-slate-500">Nenhuma anotação registrada.</p> : comentarios.map(c => <div key={c.id}><p className="text-xs text-slate-500">{c.usuario_nome} · {formatDateTimeBR(c.created_date)}</p><p className="whitespace-pre-wrap break-words">{c.mensagem}</p></div>)}</div></details>
+        <details className="rounded-md border p-3 text-sm"><summary className="cursor-pointer font-medium">Anotações anteriores</summary><div className="mt-2 max-h-48 space-y-3 overflow-y-auto">{erroComentarios ? <p>Não foi possível carregar as anotações.</p> : comentarios.length === 0 ? <p className="text-slate-500">Nenhuma anotação registrada.</p> : [...comentarios].reverse().map(c => <div key={c.id}><p className="text-xs text-slate-500">{c.usuario_nome} · {formatDateTimeBR(c.created_date)}</p><p className="whitespace-pre-wrap break-words">{c.mensagem}</p></div>)}</div></details>
       </>}
       <DialogFooter>
         <Button type="button" variant="outline" disabled={salvar.isPending} onClick={onClose}>Cancelar</Button>
