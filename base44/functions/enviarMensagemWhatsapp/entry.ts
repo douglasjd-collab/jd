@@ -448,12 +448,27 @@ Deno.serve(async (req) => {
       const emojiReacao = textoTrimReacao;
       console.log(`👍 Reação detectada: "${emojiReacao}" → mensagem ${resposta_para_message_id}`);
 
-      const originais = await base44.asServiceRole.entities.MensagemWhatsapp.filter(
-        { whatsapp_message_id: String(resposta_para_message_id) }, '-created_date', 5
-      );
-      const original = (originais && originais.length > 0)
-        ? (originais.find(m => m.empresa_id === empresaId) || originais[0])
-        : null;
+      // O Bate-Papo já informa o ID local. get evita consumir entity_list,
+      // cujo limite compartilhado causava erro 500 antes de enviar a reação.
+      let original = null;
+      if (resposta_para_id) {
+        original = await base44.asServiceRole.entities.MensagemWhatsapp.get(String(resposta_para_id));
+      } else {
+        // Compatibilidade com callers antigos, sempre limitada à conversa.
+        const originais = await base44.asServiceRole.entities.MensagemWhatsapp.filter({
+          conversa_id,
+          whatsapp_message_id: String(resposta_para_message_id)
+        }, '-created_date', 1);
+        original = originais?.[0] || null;
+      }
+      if (!original || original.conversa_id !== conversa_id ||
+          original.empresa_id !== conversaDoBanco?.empresa_id ||
+          String(original.whatsapp_message_id) !== String(resposta_para_message_id)) {
+        return Response.json({
+          success: false,
+          error: 'A mensagem original não pertence a esta conversa ou não está disponível.'
+        }, { status: 400 });
+      }
 
       // Número normalizado para envio da reação (E.164 Brasil sem "+")
       let numeroReacao = String(numero_cliente || '').replace(/\D/g, '').replace(/@.*$/, '');
