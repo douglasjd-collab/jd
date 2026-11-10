@@ -997,6 +997,8 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     </button>
   ) : null;
 
+  if (ocultaParaMim) return <div className="text-xs italic text-slate-400 px-3 py-2">Mensagem ocultada nesta sessão. O histórico permanece salvo.</div>;
+
   if (isImagemLimpa) {
     const stickerSize = 33;
     return (
