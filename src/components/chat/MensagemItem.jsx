@@ -355,37 +355,25 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     }
   }, [mensagem.arquivo_url, mensagem.download_status]);
 
-  const handleDeletar = async () => {
-    if (mensagem.id?.startsWith('temp_')) {
-      // Mensagem temporária (não foi enviada ainda)
-      queryClient.setQueryData(['mensagens-whatsapp', conversaId], (old = []) =>
-        old.filter(m => m.id !== mensagem.id)
-      );
-      toast.success('Mensagem removida');
-      return;
-    }
-
-    if (!confirm('Deseja realmente deletar esta mensagem?')) return;
-
-    setDeletando(true);
-    try {
-      await base44.entities.MensagemWhatsapp.delete(mensagem.id);
-      console.log(`✅ Mensagem ${mensagem.id} deletada do banco`);
-      
-      // Remover do cache localmente
-      queryClient.setQueryData(['mensagens-whatsapp', conversaId], (old = []) =>
-        old.filter(m => m.id !== mensagem.id)
-      );
-      
-      toast.success('Mensagem deletada');
-    } catch (e) {
-      console.error('Erro ao deletar mensagem:', e);
-      toast.error('Erro ao deletar: ' + e.message);
-    } finally {
-      setDeletando(false);
-    }
+  const [ocultaParaMim, setOcultaParaMim] = useState(false);
+  const apagarParaMim = () => {
+    if (!window.confirm('Ocultar esta mensagem apenas para você nesta sessão do CRM? O histórico será preservado.')) return;
+    setOcultaParaMim(true);
+    toast.success('Mensagem ocultada nesta sessão do CRM. O histórico foi preservado.');
   };
-
+  const apagarParaTodos = () => {
+    toast.info('Apagar para todos ainda não está disponível: a operação remota precisa ser validada na D-API. Nenhuma mensagem foi excluída.');
+  };
+  const menuExclusao = (
+    <>
+      <DropdownMenuItem onClick={apagarParaMim} className="text-red-600 focus:text-red-600">
+        <Trash2 className="w-4 h-4 mr-2" />Apagar para mim
+      </DropdownMenuItem>
+      <DropdownMenuItem onClick={apagarParaTodos} className="text-red-600 focus:text-red-600">
+        <Trash2 className="w-4 h-4 mr-2" />Apagar para todos (indisponível)
+      </DropdownMenuItem>
+    </>
+  );
 
 
   const handleCarregarMidia = () => {
@@ -1114,9 +1102,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
             {mediaUrl && (
               <DropdownMenuItem onClick={() => onEditarReenviar?.(mediaUrl)}><Pencil className="w-4 h-4 mr-2" />Editar e reenviar</DropdownMenuItem>
             )}
-            <DropdownMenuItem onClick={handleDeletar} disabled={deletando} className="text-red-600 focus:text-red-600">
-              {deletando ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Deletando...</> : <><Trash2 className="w-4 h-4 mr-2" />Deletar mensagem</>}
-            </DropdownMenuItem>
+            {menuExclusao}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -1347,23 +1333,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
                Baixar arquivo
              </DropdownMenuItem>
            )}
-           <DropdownMenuItem 
-             onClick={handleDeletar}
-             disabled={deletando}
-             className="text-red-600 focus:text-red-600"
-           >
-             {deletando ? (
-               <>
-                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                 Deletando...
-               </>
-             ) : (
-               <>
-                 <Trash2 className="w-4 h-4 mr-2" />
-                 Deletar mensagem
-               </>
-             )}
-           </DropdownMenuItem>
+           {menuExclusao}
          </DropdownMenuContent>
       </DropdownMenu>
     </div>
