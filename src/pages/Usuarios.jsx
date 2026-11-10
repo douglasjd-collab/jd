@@ -765,8 +765,18 @@ export default function Usuarios() {
                     {/* Usuários da Empresa (Expandidos) */}
                     {empresasExpandidas.has(grupo.empresa_id) && grupo.usuarios.map((usuario) => (
                       <tr 
-                        key={usuario.id} 
-                        className="border-b border-slate-100 hover:bg-slate-50"
+                        key={usuario.id}
+                        onDoubleClick={(event) => {
+                          if (event.target.closest('button, a, input, select, textarea, [role="menu"], [role="menuitem"]')) return;
+                          if (usuario.aguardando_configuracao) {
+                            setUsuarioToVincular(usuario);
+                            setVincularOpen(true);
+                          } else {
+                            handleEdit(usuario);
+                          }
+                        }}
+                        title="Dê dois cliques para abrir o cadastro completo"
+                        className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
                       >
                         <td className="px-4 py-3 pl-10">
                           <div className="flex items-center gap-3">
