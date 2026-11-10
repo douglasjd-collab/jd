@@ -46,8 +46,8 @@ export async function moverOportunidade({ oportunidadeId, novaEtapaId, updates =
         empresa_id: empresaId,
         etapa_id: novaEtapaId,
         etapa_nome: etapaDestino?.nome || '',
-        titulo: oportunidade?.titulo || '',
-        vendedor_id: oportunidade?.vendedor_id || '',
+        titulo: updates.titulo ?? oportunidade?.titulo ?? '',
+        vendedor_id: updates.vendedor_id ?? oportunidade?.vendedor_id ?? '',
         data_ultima_movimentacao: new Date().toISOString(),
         status:
           etapaDestino?.tipo === 'ganho'
