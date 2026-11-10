@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -62,6 +63,7 @@ export default function FinalizarAtendimentoDialog({
   onIniciada,
   onConcluida,
 }) {
+  const queryClient = useQueryClient();
   const [mensagem, setMensagem] = useState(MENSAGEM_FINALIZACAO_PADRAO);
   const [finalizando, setFinalizando] = useState(false);
   const [erro, setErro] = useState('');
@@ -172,6 +174,19 @@ export default function FinalizarAtendimentoDialog({
         prioritario_removido_em: finalizadoEm,
       });
 
+      // Refletir a confirmação do servidor imediatamente no cache compartilhado
+      // entre a Central de Atendimento e o Bate-Papo, sem aguardar o polling.
+      const encerramento = {
+        status: 'encerrada', ia_atendendo: false,
+        responsavel_id: null, responsavel_nome: null,
+        responsavel_expira_em: null, atendimento_transferido_para_id: null,
+        atendimento_prioritario: false,
+      };
+      queryClient.setQueriesData({ queryKey: ['conversas-whatsapp', empresaId] }, (lista) =>
+        Array.isArray(lista) ? lista.map(c => c.id === idAlvo ? { ...c, ...encerramento } : c) : lista
+      );
+      window.dispatchEvent(new CustomEvent('jd:conversa-finalizada', { detail: { conversaId: idAlvo, empresaId, ...encerramento } }));
+      queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
       onConcluida?.(idAlvo, { enviarMensagem: enviar });
       onOpenChange?.(false);
       toast.success(
