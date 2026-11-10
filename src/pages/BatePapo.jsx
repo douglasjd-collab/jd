@@ -264,7 +264,7 @@ export default function BatePapo() {
   };
   const [searchConversas, setSearchConversas] = useState('');
   const [buscaGlobal, setBuscaGlobal] = useState('');
-  const [limiteConversas, setLimiteConversas] = useState(200);
+  const [limiteConversas, setLimiteConversas] = useState(30);
   const [limiteMensagens, setLimiteMensagens] = useState(100);
   const iniciouLimiteConversasRef = useRef(false);
   const iniciouLimiteMensagensRef = useRef(false);
@@ -703,8 +703,8 @@ export default function BatePapo() {
     return () => clearTimeout(timer);
   }, [searchConversas]);
 
-  const { data: conversas = [], refetch: refetchConversas } = useQuery({
-    queryKey: ['conversas-whatsapp', empresaId],
+  const { data: conversas = [], refetch: refetchConversas, isPending: carregandoConversas, isError: erroConversas, isFetching: atualizandoConversas } = useQuery({
+    queryKey: ['conversas-whatsapp', empresaId, limiteConversas],
     enabled: !!empresaId,
     staleTime: 60000,
     queryFn: async () => {
@@ -849,7 +849,7 @@ export default function BatePapo() {
 
   useEffect(() => {
     if (!iniciouLimiteConversasRef.current) { iniciouLimiteConversasRef.current = true; return; }
-    if (empresaId) refetchConversas();
+    // O limite faz parte da chave da consulta: React Query busca a próxima página automaticamente.
   }, [limiteConversas]);
   useEffect(() => {
     if (!iniciouLimiteMensagensRef.current) { iniciouLimiteMensagensRef.current = true; return; }
@@ -2097,7 +2097,11 @@ export default function BatePapo() {
 
               <div className="jd-conversation-list mt-1" style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', overflowX: 'hidden', width: '100%' }}>
                 <div className="jd-chat-list pb-4" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
-                  {conversasFiltradas.length === 0 && filtroStatus === 'espera' ? (
+                  {carregandoConversas && conversas.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-32 text-slate-500 gap-2" role="status"><Loader2 className="w-6 h-6 animate-spin"/><p className="text-xs">Carregando conversas...</p></div>
+                  ) : erroConversas && conversas.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-32 gap-2 text-slate-500"><p className="text-xs">Não foi possível carregar as conversas.</p><Button size="sm" variant="outline" onClick={() => refetchConversas()}>Tentar novamente</Button></div>
+                  ) : conversasFiltradas.length === 0 && filtroStatus === 'espera' ? (
                     <div className="flex flex-col items-center justify-center h-32 text-slate-400 gap-2 px-2">
                       <MessageCircle className="w-8 h-8 opacity-40" />
                       <p className="text-xs text-center text-slate-400">
@@ -2293,7 +2297,7 @@ export default function BatePapo() {
                                   })}
                     {!buscaGlobal && conversas.length >= limiteConversas && (
                       <div className="flex justify-center py-3">
-                        <Button variant="outline" size="sm" onClick={() => setLimiteConversas(v => v + 200)}>
+                        <Button variant="outline" size="sm" disabled={atualizandoConversas} onClick={() => setLimiteConversas(v => v + 30)}>
                           Carregar conversas anteriores
                         </Button>
                       </div>
