@@ -304,6 +304,19 @@ export default function BatePapo() {
   const [nomeContatoEdit, setNomeContatoEdit] = useState('');
   const [salvandoCrm, setSalvandoCrm] = useState(false);
   const queryClient = useQueryClient();
+  useEffect(() => {
+    const aoFinalizarExternamente = (event) => {
+      const dados = event.detail || {};
+      if (dados.empresaId !== empresaId || !dados.conversaId) return;
+      setConversaSelecionada(atual => atual?.id === dados.conversaId ? {
+        ...atual, status: 'encerrada', ia_atendendo: false,
+        responsavel_id: null, responsavel_nome: null,
+        atendimento_transferido_para_id: null, atendimento_prioritario: false,
+      } : atual);
+    };
+    window.addEventListener('jd:conversa-finalizada', aoFinalizarExternamente);
+    return () => window.removeEventListener('jd:conversa-finalizada', aoFinalizarExternamente);
+  }, [empresaId]);
 
   const abrirSalvarCrm = (conversa) => {
     const contatoAtual = contatosWhatsapp[conversa.id];
