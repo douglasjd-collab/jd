@@ -54,6 +54,7 @@ import { useFilaEnvio } from '@/components/chat/useFilaEnvio';
 import { temPendentesGlobal } from '@/components/chat/filaEnvioStore';
 import { bolhasPendentesNaLista } from '@/components/chat/bolhaOtimista';
 import { lerHistoricoSessao, salvarHistoricoSessao } from '@/components/chat/historicoSessao';
+import { lerListaConversas, salvarListaConversas } from '@/components/chat/cacheListaConversas';
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageFooter from '@/components/chat/ChatMessageFooter';
 import ConversaContextMenu from '@/components/chat/ConversaContextMenu';
@@ -528,37 +529,7 @@ export default function BatePapo() {
   };
 
   const limparHistoricoCompleto = async () => {
-    const confirmacao = window.confirm(
-      `🔴 LIMPAR TUDO?\n\n${conversas.length} conversas + mensagens serão deletadas.\n\nClique OK para confirmar.`
-    );
-    if (!confirmacao) return;
-
-    setLimpandoTudo(true);
-    try {
-      toast.message('🗑️ Limpando histórico...', { duration: 30000 });
-      
-      // 1. Apagar todas as conversas da empresa
-      const convsFiltro = await base44.entities.ConversaWhatsapp.filter({ empresa_id: empresaId }, '-created_date', 10000);
-      for (const conv of convsFiltro) {
-        await base44.entities.ConversaWhatsapp.delete(conv.id).catch(() => {});
-      }
-      console.log(`✅ ${convsFiltro.length} conversas deletadas`);
-
-      // 2. Apagar todas as mensagens da empresa
-      const msgsFiltro = await base44.entities.MensagemWhatsapp.filter({ empresa_id: empresaId }, '-created_date', 10000);
-      for (const msg of msgsFiltro) {
-        await base44.entities.MensagemWhatsapp.delete(msg.id).catch(() => {});
-      }
-      console.log(`✅ ${convsFiltro.length} conversas deletadas`);
-      
-      toast.success(`✅ Histórico limpo! ${convsFiltro.length} conversas + ${msgsFiltro.length} msgs deletadas`);
-      refetchConversas();
-      setConversaSelecionada(null);
-    } catch (e) {
-      toast.error('Erro ao limpar: ' + e.message);
-    } finally {
-      setLimpandoTudo(false);
-    }
+    toast.error('Exclusão definitiva de histórico desativada para proteger os atendimentos.');
   };
 
   const sincronizarTodosContatosEvolution = async () => {
@@ -704,7 +675,9 @@ export default function BatePapo() {
   }, [searchConversas]);
 
   const { data: conversas = [], refetch: refetchConversas, isPending: carregandoConversas, isError: erroConversas, isFetching: atualizandoConversas } = useQuery({
-    queryKey: ['conversas-whatsapp', empresaId, limiteConversas],
+    queryKey: ['conversas-whatsapp', empresaId, user?.id, limiteConversas],
+    initialData: () => lerListaConversas(empresaId, user?.id, limiteConversas),
+    initialDataUpdatedAt: 0,
     enabled: !!empresaId,
     staleTime: 60000,
     queryFn: async () => {
@@ -736,7 +709,9 @@ export default function BatePapo() {
         });
         return merged;
       });
-      return data.filter(c => c.id && c.cliente_telefone);
+      const validas = data.filter(c => c.id && c.cliente_telefone);
+      salvarListaConversas(empresaId, user?.id, limiteConversas, validas);
+      return validas;
     },
     refetchInterval: 60000,  // Tempo real cuida das mudanças; consulta completa de segurança a cada 60s
     placeholderData: (prev) => prev,
@@ -2261,17 +2236,7 @@ export default function BatePapo() {
                                    <DropdownMenuSeparator />
                                    <DropdownMenuItem
                                      className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                     onClick={async () => {
-                                       if (confirm('Excluir esta conversa e todas as mensagens?')) {
-                                         const msgsExcluir = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id });
-                                         for (const msg of msgsExcluir) await base44.entities.MensagemWhatsapp.delete(msg.id);
-                                         await base44.entities.ConversaWhatsapp.delete(c.id);
-                                         queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] });
-                                         queryClient.removeQueries({ queryKey: ['mensagens-whatsapp', c.id] });
-                                         if (conversaSelecionada?.id === c.id) setConversaSelecionada(null);
-                                         toast.success('Conversa excluída');
-                                       }
-                                     }}
+                                     onClick={() => toast.error('Exclusão definitiva desativada para preservar o histórico.')}
                                    >
                                      <Trash2 className="mr-2 h-3.5 w-3.5" />
                                      Excluir
@@ -2406,7 +2371,7 @@ export default function BatePapo() {
             { id: 'ligar', label: 'Ligar', icon: Phone, color: 'emerald', action: (c) => ligarParaContato(c) },
             { id: 'transferir', label: 'Transferir', icon: Users, color: 'slate', action: (c) => setTransferirModal(c) },
             { id: 'bloquear', label: 'Bloquear/Desbloquear', icon: Lock, color: 'slate', action: async (c) => { await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: !c.bloqueado }); toast.success('Status de bloqueio atualizado'); refetchConversas(); } },
-            { id: 'excluir', label: 'Excluir', icon: Trash2, color: 'slate', danger: true, action: async (c) => { if (confirm('Excluir conversa?')) { const msgs = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id }); for (const m of msgs) await base44.entities.MensagemWhatsapp.delete(m.id); await base44.entities.ConversaWhatsapp.delete(c.id); queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] }); if (conversaSelecionada?.id === c.id) setConversaSelecionada(null); toast.success('Conversa excluída'); } } },
+            { id: 'excluir', label: 'Excluir', icon: Trash2, color: 'slate', danger: true, action: () => toast.error('Exclusão definitiva desativada para preservar o histórico.') },
           ]}
         />
 
@@ -2568,7 +2533,7 @@ export default function BatePapo() {
             { id: 'ligar', label: 'Ligar', icon: Phone, color: 'emerald', action: (c) => ligarParaContato(c) },
             { id: 'transferir', label: 'Transferir', icon: Users, color: 'slate', action: (c) => setTransferirModal(c) },
             { id: 'bloquear', label: 'Bloquear/Desbloquear', icon: Lock, color: 'slate', action: async (c) => { await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: !c.bloqueado }); toast.success('Status de bloqueio atualizado'); refetchConversas(); } },
-            { id: 'excluir', label: 'Excluir', icon: Trash2, color: 'slate', danger: true, action: async (c) => { if (confirm('Excluir conversa?')) { const msgs = await base44.entities.MensagemWhatsapp.filter({ conversa_id: c.id }); for (const m of msgs) await base44.entities.MensagemWhatsapp.delete(m.id); await base44.entities.ConversaWhatsapp.delete(c.id); queryClient.invalidateQueries({ queryKey: ['conversas-whatsapp', empresaId] }); if (conversaSelecionada?.id === c.id) setConversaSelecionada(null); toast.success('Conversa excluída'); } } },
+            { id: 'excluir', label: 'Excluir', icon: Trash2, color: 'slate', danger: true, action: () => toast.error('Exclusão definitiva desativada para preservar o histórico.') },
           ]}
         />
       </div>
