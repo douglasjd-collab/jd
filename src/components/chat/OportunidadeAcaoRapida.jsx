@@ -63,14 +63,23 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave, ocup
   const [form, setForm] = useState(() => Object.fromEntries(campos.map(c => [c, oportunidade[c] ?? ''])));
   const versaoInicial = useRef(oportunidade.updated_date);
   const [etapaId, setEtapaId] = useState(oportunidade.etapa_id || '');
+  const [funilId, setFunilId] = useState(oportunidade.produto || '');
+  const [responsavelId, setResponsavelId] = useState(oportunidade.vendedor_id || '');
   const [texto, setTexto] = useState('');
   const bloqueio = useRef(false);
   const { data: etapas = [], isPending: carregandoEtapas, isError: erroEtapas } = useQuery({
     queryKey: ['etapas-funil', oportunidade.empresa_id],
     queryFn: () => base44.entities.EtapaFunil.filter({ empresa_id: oportunidade.empresa_id }, 'ordem', 500),
-    enabled: acao === 'mover',
+    enabled: acao === 'mover' || acao === 'editar',
     staleTime: 30000,
   });
+  const { data: colaboradores = [], isPending: carregandoColaboradores, isError: erroColaboradores } = useQuery({
+    queryKey: ['colaboradores-negociacao', oportunidade.empresa_id],
+    queryFn: () => base44.entities.Colaborador.filter({ empresa_id: oportunidade.empresa_id, status: 'ativo' }, 'nome', 300),
+    enabled: acao === 'editar', staleTime: 60000,
+  });
+  const podeTransferir = ['master', 'super_admin', 'admin', 'gerente'].includes(currentUser?.perfil);
+  const funisDisponiveis = [...new Set(etapas.filter(e => e.status !== 'inativa').map(e => e.produto).filter(Boolean))];
   const { data: comentarios = [], isError: erroComentarios } = useQuery({
     queryKey: ['comentarios-oportunidade', oportunidade.id],
     queryFn: () => base44.entities.ComentarioOportunidade.filter({ oportunidade_id: oportunidade.id }, 'created_date', 1000),
@@ -109,14 +118,43 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave, ocup
           const valorCampo = campo === 'valor_estimado' ? valor : datas.includes(campo) ? (form[campo] || null) : form[campo];
           if (String(valorCampo ?? '') !== String(oportunidade[campo] ?? '')) alteracoes[campo] = valorCampo;
         }
-        if (!Object.keys(alteracoes).length) return;
-        await base44.entities.Oportunidade.update(oportunidade.id, alteracoes);
+        const trocaEtapa = etapaId !== oportunidade.etapa_id;
+        const trocaFunil = funilId !== oportunidade.produto;
+        const trocaResponsavel = responsavelId !== (oportunidade.vendedor_id || '');
+        if ((trocaFunil || trocaResponsavel) && !podeTransferir) throw new Error('Somente administradores e gerentes podem transferir funil ou responsável.');
+        if ((trocaEtapa || trocaFunil) && (carregandoEtapas || erroEtapas)) throw new Error('Aguarde carregar as etapas.');
+        if (trocaFunil && !trocaEtapa) throw new Error('Selecione uma etapa do novo funil.');
+        if ((trocaEtapa || trocaFunil) && (!destino || destino.produto !== funilId || destino.status === 'inativa')) throw new Error('Selecione uma etapa válida do funil escolhido.');
+        if (trocaResponsavel) {
+          if (carregandoColaboradores || erroColaboradores) throw new Error('Não foi possível validar o responsável.');
+          const colaborador = colaboradores.find(c => c.id === responsavelId);
+          if (!colaborador) throw new Error('Selecione um colaborador ativo.');
+          alteracoes.vendedor_id = colaborador.id;
+          alteracoes.vendedor_nome = colaborador.nome || colaborador.razao_social || '';
+          alteracoes.foto_perfil_responsavel = colaborador.foto_perfil || '';
+          alteracoes.responsaveis_ids = JSON.stringify([colaborador.id]);
+          alteracoes.responsaveis_nomes = JSON.stringify([alteracoes.vendedor_nome]);
+          alteracoes.responsaveis_fotos = JSON.stringify([alteracoes.foto_perfil_responsavel]);
+        }
+        if (!Object.keys(alteracoes).length && !trocaEtapa && !trocaFunil) return;
+        let resultado;
+        if (trocaEtapa || trocaFunil) {
+          if (destino.requer_cliente && !oportunidade.cliente_id) throw new Error('Vincule o cliente antes de mover para esta etapa.');
+          if (destino.tipo === 'perdida') throw new Error('Para registrar uma perda, use Mover etapa e informe o motivo.');
+          resultado = await moverOportunidade({
+            oportunidadeId: oportunidade.id, novaEtapaId: etapaId, etapas, currentUser,
+            etapaEsperada: oportunidade.etapa_id, validarRequisitos: true,
+            updates: { ...alteracoes, ...(trocaFunil ? { produto: funilId } : {}) },
+          });
+        } else {
+          await base44.entities.Oportunidade.update(oportunidade.id, alteracoes);
+        }
         await base44.entities.LogAuditoria.create({
           usuario_id: usuario.id, usuario_nome: usuario.full_name,
           acao: 'Editou negociação pelo bate-papo: ' + oportunidade.titulo,
           entidade: 'Oportunidade', entidade_id: oportunidade.id, tipo: 'edicao',
         }).catch(() => toast.warning('Negociação salva, mas não foi possível registrar a auditoria.'));
-        return;
+        return resultado;
       }
       if (acao === 'anotar') {
         if (!texto.trim()) throw new Error('Digite a anotação.');
@@ -165,6 +203,25 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave, ocup
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1"><Label htmlFor="negociacao-valor">Valor estimado (R$)</Label><Input id="negociacao-valor" type="number" min="0" step="0.01" value={form.valor_estimado} onChange={e => campo('valor_estimado', e.target.value)} /></div>
           <div className="space-y-1"><Label htmlFor="negociacao-origem">Origem</Label><Input id="negociacao-origem" value={form.origem} onChange={e => campo('origem', e.target.value)} /></div>
+          <div className="space-y-1"><Label htmlFor="negociacao-responsavel">Responsável pela negociação</Label>
+            <select id="negociacao-responsavel" className="h-10 w-full rounded-md border bg-white px-3 text-sm" value={responsavelId} onChange={e => setResponsavelId(e.target.value)} disabled={!podeTransferir || carregandoColaboradores || erroColaboradores || salvar.isPending}>
+              <option value="">Selecione o responsável</option>
+              {responsavelId && !colaboradores.some(c => c.id === responsavelId) && <option value={responsavelId}>{oportunidade.vendedor_nome || 'Responsável atual'}</option>}
+              {colaboradores.map(c => <option key={c.id} value={c.id}>{c.nome || c.razao_social}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1"><Label htmlFor="negociacao-funil">Funil de vendas</Label>
+            <select id="negociacao-funil" className="h-10 w-full rounded-md border bg-white px-3 text-sm" value={funilId} onChange={e => { setFunilId(e.target.value); setEtapaId(''); }} disabled={!podeTransferir || carregandoEtapas || erroEtapas || salvar.isPending}>
+              {funisDisponiveis.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1 col-span-2"><Label htmlFor="negociacao-etapa">Etapa do funil</Label>
+            <select id="negociacao-etapa" className="h-10 w-full rounded-md border bg-white px-3 text-sm" value={etapaId} onChange={e => setEtapaId(e.target.value)} disabled={carregandoEtapas || erroEtapas || salvar.isPending}>
+              <option value="">Selecione a etapa</option>
+              {etapas.filter(e => e.produto === funilId && e.status !== 'inativa').map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+            </select>
+            {(erroEtapas || erroColaboradores) && <p className="text-xs text-red-600">Falha ao carregar opções. Feche e tente novamente.</p>}
+          </div>
           <div className="space-y-1"><Label htmlFor="negociacao-fechamento">Previsão de fechamento</Label><Input id="negociacao-fechamento" type="date" value={form.data_fechamento_prevista} onChange={e => campo('data_fechamento_prevista', e.target.value)} /></div>
           <div className="space-y-1"><Label htmlFor="negociacao-pre">Pré-fechamento</Label><Input id="negociacao-pre" type="date" value={form.data_pre_fechamento} onChange={e => campo('data_pre_fechamento', e.target.value)} /></div>
           <div className="space-y-1"><Label htmlFor="negociacao-retorno">Próximo contato</Label><Input id="negociacao-retorno" type="date" value={form.data_proximo_contato} onChange={e => campo('data_proximo_contato', e.target.value)} /></div>
