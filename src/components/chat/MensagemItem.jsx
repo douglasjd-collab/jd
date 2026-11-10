@@ -72,7 +72,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
   const audioKey = tipoConteudoSeguroKey(user, conversaId || mensagem.conversa_id, mensagem.id);
   const [mediaUrl, setMediaUrl] = useState(() => {
     const salva = audioUrlsResolvidas.get(audioKey);
-    if (salva && mensagem.tipo_conteudo === 'audio') return salva;
+    if (salva && resolverTipoConteudo(mensagem) === 'audio') return salva;
     return isUrlValida(mensagem.arquivo_url, mensagem.download_status) && !isPacoteFigurinha(mensagem.arquivo_url) ? sanitizeUrl(mensagem.arquivo_url) : null;
   });
   const [loadingMedia, setLoadingMedia] = useState(false);
@@ -897,7 +897,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
             loadingMedia={loadingMedia}
             onCarregar={handleCarregarMidia}
             onDownload={() => handleDownload(mediaUrl, mensagem.arquivo_nome)}
-            onErro={() => { urlFalhouRef.current = mediaUrl; setMediaUrl(null); }}
+            onErro={() => { urlFalhouRef.current = mediaUrl; audioUrlsResolvidas.delete(audioKey); setMediaUrl(null); }}
             arquivoNome={mensagem.arquivo_nome}
             texto={mensagem.texto}
             textoIsPadrao={textoIsPadraoMidia}
