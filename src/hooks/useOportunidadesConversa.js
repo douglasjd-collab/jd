@@ -47,7 +47,7 @@ export function useOportunidadesConversa(conversa, empresaId) {
     });
   }, [empresaId, conversa?.id, filtros, queryClient, clienteId, telefone]);
   // O painel do Bate-Papo representa somente negociações em andamento.
-  // Oportunidades ganhas ou perdidas permanecem no banco e no histórico do funil,
-  // mas não devem ocupar o painel de oportunidades ativas do atendimento.
-  return (consulta.data || []).filter(o => o.status !== 'ganha' && o.status !== 'perdida');
+  // Oportunidades ganhas permanecem no banco e no histórico do funil,
+  // mas deixam de aparecer como negociações ativas no atendimento.
+  return (consulta.data || []).filter(o => o.status !== 'ganha');
 }
