@@ -19,6 +19,19 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
+// Cache em memória de URLs resolvidas e solicitações em andamento por mensagem.
+// Não armazena bytes de áudio nem URLs privadas em localStorage.
+const audioUrlsResolvidas = new Map();
+const audioBuscasPendentes = new Map();
+const MAX_AUDIO_URLS = 300;
+const tipoConteudoSeguroKey = (user, conversaId, mensagemId) => JSON.stringify([user?.id || '', conversaId || '', mensagemId || '']);
+function guardarAudioUrl(key, url) {
+  if (!key || !url) return;
+  audioUrlsResolvidas.delete(key);
+  audioUrlsResolvidas.set(key, url);
+  if (audioUrlsResolvidas.size > MAX_AUDIO_URLS) audioUrlsResolvidas.delete(audioUrlsResolvidas.keys().next().value);
+}
+
 export default function MensagemItem({ onAdicionarNota = null, mensagem, conversaId, conversa = null, isGrupo = false, onResponder, user = null, onEditarReenviar = null, onSelecionarOpcaoLista = null, modoSelecao = false, selecionada = false, onToggleSelecao = null, onEncaminhar = null, onEditar = null, onReenviarEnvio = null, onCancelarEnvio = null, onReagir = null }) {
   // Corrige URLs com espaços não codificados (ex: pastas "CRM JD"), que quebram <img>/<audio>/<video>
   const sanitizeUrl = (url) => (typeof url === 'string' ? url.replace(/ /g, '%20') : url);
@@ -56,7 +69,12 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
   // Pacote de figurinhas (.was) enviado direto pelo celular = arquivo ZIP, nunca exibível como imagem
   const isPacoteFigurinha = (url) => typeof url === 'string' && url.toLowerCase().endsWith('.was');
   const urlFalhouRef = useRef(null); // rastrear URL que deu erro para não re-setar
-  const [mediaUrl, setMediaUrl] = useState(() => isUrlValida(mensagem.arquivo_url, mensagem.download_status) && !isPacoteFigurinha(mensagem.arquivo_url) ? sanitizeUrl(mensagem.arquivo_url) : null);
+  const audioKey = tipoConteudoSeguroKey(user, conversaId || mensagem.conversa_id, mensagem.id);
+  const [mediaUrl, setMediaUrl] = useState(() => {
+    const salva = audioUrlsResolvidas.get(audioKey);
+    if (salva && mensagem.tipo_conteudo === 'audio') return salva;
+    return isUrlValida(mensagem.arquivo_url, mensagem.download_status) && !isPacoteFigurinha(mensagem.arquivo_url) ? sanitizeUrl(mensagem.arquivo_url) : null;
+  });
   const [loadingMedia, setLoadingMedia] = useState(false);
   const [transcricao, setTranscricao] = useState(
     mensagem.tipo_conteudo === 'audio' && mensagem.texto && mensagem.texto !== 'Áudio'
@@ -280,6 +298,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     const urlRecebida = mensagem.arquivo_url || '';
     const urlPermanente = urlRecebida.startsWith('data:') || urlRecebida.includes('base44') || urlRecebida.includes('supabase') || urlRecebida.includes('amazonaws');
     if (isUrlValida(urlRecebida, mensagem.download_status) && mensagem.arquivo_url !== urlFalhouRef.current && (tipoConteudo !== 'audio' || urlPermanente)) {
+      if (tipoConteudo === 'audio') guardarAudioUrl(audioKey, sanitizeUrl(urlRecebida));
       setMediaUrl(sanitizeUrl(urlRecebida));
       return;
     }
@@ -292,17 +311,39 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     const urlAtual = mensagem.arquivo_url || '';
     if (!urlAtual && !mensagem.media_id) return;
 
+    const jaResolvida = tipoConteudo === 'audio' ? audioUrlsResolvidas.get(audioKey) : null;
+    if (jaResolvida && jaResolvida !== urlFalhouRef.current) {
+      setMediaUrl(jaResolvida);
+      return;
+    }
+    let ativa = true;
     setLoadingMedia(true);
-    base44.functions.invoke('baixarMidiaWhatsApp', {
-      mensagem_id: mensagem.id,
-      arquivo_url: mensagem.arquivo_url || null,
-      conversa_id: conversaId || mensagem.conversa_id
-    }).then(res => {
+    const keyPendente = tipoConteudo === 'audio' ? audioKey : null;
+    let requisicao = keyPendente ? audioBuscasPendentes.get(keyPendente) : null;
+    if (!requisicao) {
+      requisicao = base44.functions.invoke('baixarMidiaWhatsApp', {
+        mensagem_id: mensagem.id,
+        arquivo_url: mensagem.arquivo_url || null,
+        conversa_id: conversaId || mensagem.conversa_id
+      });
+      if (keyPendente) {
+        audioBuscasPendentes.set(keyPendente, requisicao);
+        requisicao.finally(() => {
+          if (audioBuscasPendentes.get(keyPendente) === requisicao) audioBuscasPendentes.delete(keyPendente);
+        }).catch(() => {});
+      }
+    }
+    requisicao.then(res => {
       const url = res?.data?.arquivo_url;
-      if (url && isUrlValida(url, 'baixado')) setMediaUrl(sanitizeUrl(url));
+      if (url && isUrlValida(url, 'baixado')) {
+        const pronta = sanitizeUrl(url);
+        if (keyPendente) guardarAudioUrl(keyPendente, pronta);
+        if (ativa) setMediaUrl(pronta);
+      }
     }).catch(err => {
       console.warn('baixarMidia falhou:', err?.message);
-    }).finally(() => setLoadingMedia(false));
+    }).finally(() => { if (ativa) setLoadingMedia(false); });
+    return () => { ativa = false; };
   }, [mensagem.id, mensagem.arquivo_url, mensagem.media_id, mensagem.download_status, tipoConteudo]);
 
   // Quando o banco atualizar arquivo_url (ex: download feito em background), refletir no estado
@@ -310,6 +351,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
   useEffect(() => {
     if (isUrlValida(mensagem.arquivo_url, mensagem.download_status) && !mediaUrl && mensagem.arquivo_url !== urlFalhouRef.current) {
       setMediaUrl(sanitizeUrl(mensagem.arquivo_url));
+      if (tipoConteudo === 'audio') guardarAudioUrl(audioKey, sanitizeUrl(mensagem.arquivo_url));
     }
   }, [mensagem.arquivo_url, mensagem.download_status]);
 
