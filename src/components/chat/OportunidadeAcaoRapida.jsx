@@ -141,9 +141,13 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave, ocup
         if (trocaEtapa || trocaFunil) {
           if (destino.requer_cliente && !oportunidade.cliente_id) throw new Error('Vincule o cliente antes de mover para esta etapa.');
           if (destino.tipo === 'perdida') throw new Error('Para registrar uma perda, use Mover etapa e informe o motivo.');
+          if (destino.requer_documentos) {
+            const anexos = await base44.entities.ComentarioOportunidade.filter({ oportunidade_id: oportunidade.id }, '-created_date', 5000);
+            if (!anexos.some(c => /\[[^\]]+\]\(https?:\/\/[^)]+\)/.test(c.mensagem || ''))) throw new Error('Esta etapa exige documentos anexados no card.');
+          }
           resultado = await moverOportunidade({
             oportunidadeId: oportunidade.id, novaEtapaId: etapaId, etapas, currentUser,
-            etapaEsperada: oportunidade.etapa_id, validarRequisitos: true,
+            etapaEsperada: oportunidade.etapa_id, validarRequisitos: !trocaFunil,
             updates: { ...alteracoes, ...(trocaFunil ? { produto: funilId } : {}) },
           });
         } else {
