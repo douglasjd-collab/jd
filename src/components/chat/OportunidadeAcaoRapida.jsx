@@ -90,7 +90,9 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave, ocup
     queryFn: () => base44.entities.MovimentacaoFunil.filter({ oportunidade_id: oportunidade.id }, '-created_date', 100),
     enabled: acao === 'historico',
   });
-  const destino = etapas.find(e => e.id === etapaId);
+  const etapaAtualRegistrada = etapas.find(e => e.id === oportunidade.etapa_id) || etapas.find(e => e.produto === oportunidade.produto && e.nome === oportunidade.etapa_nome);
+  const etapaEfetivaId = etapaId || (funilId === oportunidade.produto ? etapaAtualRegistrada?.id || '' : '');
+  const destino = etapas.find(e => e.id === etapaEfetivaId);
   const etapasDisponiveis = etapas.filter(e => e.produto === oportunidade.produto && e.status !== 'inativa');
   const precisaCliente = destino?.requer_cliente && !oportunidade.cliente_id;
   const exigeMotivo = destino?.tipo === 'perdida';
@@ -118,12 +120,12 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave, ocup
           const valorCampo = campo === 'valor_estimado' ? valor : datas.includes(campo) ? (form[campo] || null) : form[campo];
           if (String(valorCampo ?? '') !== String(oportunidade[campo] ?? '')) alteracoes[campo] = valorCampo;
         }
-        const trocaEtapa = etapaId !== oportunidade.etapa_id;
+        const trocaEtapa = !!etapaId && etapaId !== (etapaAtualRegistrada?.id || oportunidade.etapa_id);
         const trocaFunil = funilId !== oportunidade.produto;
         const trocaResponsavel = responsavelId !== (oportunidade.vendedor_id || '');
         if ((trocaFunil || trocaResponsavel) && !podeTransferir) throw new Error('Somente administradores e gerentes podem transferir funil ou responsável.');
         if ((trocaEtapa || trocaFunil) && (carregandoEtapas || erroEtapas)) throw new Error('Aguarde carregar as etapas.');
-        if (trocaFunil && !trocaEtapa) throw new Error('Selecione uma etapa do novo funil.');
+        if (trocaFunil && !etapaId) throw new Error('Selecione uma etapa do novo funil.');
         if ((trocaEtapa || trocaFunil) && (!destino || destino.produto !== funilId || destino.status === 'inativa')) throw new Error('Selecione uma etapa válida do funil escolhido.');
         if (trocaResponsavel) {
           if (carregandoColaboradores || erroColaboradores) throw new Error('Não foi possível validar o responsável.');
@@ -146,7 +148,7 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave, ocup
             if (!anexos.some(c => /\[[^\]]+\]\(https?:\/\/[^)]+\)/.test(c.mensagem || ''))) throw new Error('Esta etapa exige documentos anexados no card.');
           }
           resultado = await moverOportunidade({
-            oportunidadeId: oportunidade.id, novaEtapaId: etapaId, etapas, currentUser,
+            oportunidadeId: oportunidade.id, novaEtapaId: etapaEfetivaId, etapas, currentUser,
             etapaEsperada: oportunidade.etapa_id, validarRequisitos: !trocaFunil,
             updates: { ...alteracoes, ...(trocaFunil ? { produto: funilId } : {}) },
           });
@@ -220,9 +222,9 @@ function FormularioAcao({ oportunidade, acao, currentUser, onClose, onSave, ocup
             </select>
           </div>
           <div className="space-y-1 col-span-2"><Label htmlFor="negociacao-etapa">Etapa do funil</Label>
-            <select id="negociacao-etapa" className="h-10 w-full rounded-md border bg-white px-3 text-sm" value={etapaId} onChange={e => setEtapaId(e.target.value)} disabled={carregandoEtapas || erroEtapas || salvar.isPending}>
-              <option value="">Selecione a etapa</option>
-              {etapas.filter(e => e.produto === funilId && e.status !== 'inativa').map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+            <select id="negociacao-etapa" className="h-10 w-full rounded-md border bg-white px-3 text-sm" value={etapaEfetivaId} onChange={e => setEtapaId(e.target.value)} disabled={carregandoEtapas || erroEtapas || salvar.isPending}>
+              <option value="">{carregandoEtapas ? 'Carregando etapa atual...' : oportunidade.etapa_nome && funilId === oportunidade.produto && !etapaAtualRegistrada ? `Etapa atual: ${oportunidade.etapa_nome}` : 'Selecione a etapa'}</option>
+              {etapas.filter(e => e.produto === funilId && (e.status !== 'inativa' || e.id === oportunidade.etapa_id)).map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
             </select>
             {(erroEtapas || erroColaboradores) && <p className="text-xs text-red-600">Falha ao carregar opções. Feche e tente novamente.</p>}
           </div>
