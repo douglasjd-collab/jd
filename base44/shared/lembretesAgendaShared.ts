@@ -25,6 +25,39 @@ export function nomeDoCliente(comp: any) {
   return nome.trim() || 'Cliente';
 }
 
+// Participantes da reunião — todos recebem o aviso no WhatsApp.
+// Ordem de leitura: participantes_json (novo) → responsaveis_ids (legado)
+// → usuario_id (responsável único antigo).
+export function participantesDoCompromisso(comp: any) {
+  let lista: any[] = [];
+  for (const bruto of [comp.participantes_json, comp.responsaveis_ids]) {
+    if (!bruto) continue;
+    try {
+      const parsed = typeof bruto === 'string' ? JSON.parse(bruto) : bruto;
+      if (Array.isArray(parsed) && parsed.length) {
+        lista = parsed;
+        break;
+      }
+    } catch {
+      // formato inválido: segue para a próxima origem
+    }
+  }
+  if (!lista.length && comp.usuario_id) {
+    lista = [{ user_id: comp.usuario_id, nome: comp.usuario_nome }];
+  }
+
+  const vistos = new Set<string>();
+  const resultado: any[] = [];
+  for (const item of lista) {
+    const alvo = typeof item === 'string' ? { id: item } : (item || {});
+    const chave = alvo.user_id || alvo.id;
+    if (!chave || vistos.has(chave)) continue;
+    vistos.add(chave);
+    resultado.push(alvo);
+  }
+  return resultado;
+}
+
 export function resolverTemplate(template: string, vars: any) {
   return String(template || '')
     .replace(/{cliente_nome}/g, vars.cliente_nome || 'Cliente')
@@ -128,30 +161,22 @@ export async function enviarLembretesDoTempo(base44: any, comp: any, config: any
     }
   }
 
-  // Responsáveis — a Agenda guarda o responsável em usuario_id (usuário
-  // autenticado); compromissos antigos podem ter a lista em responsaveis_ids.
+  // Participantes da reunião — todos recebem o aviso no WhatsApp.
   if (config.enviar_para_responsaveis !== false) {
-    let responsaveis: any[] = [];
-    try {
-      responsaveis = JSON.parse(comp.responsaveis_ids || '[]') || [];
-    } catch {
-      responsaveis = [];
-    }
-    if (!responsaveis.length && comp.usuario_id) {
-      responsaveis = [{ user_id: comp.usuario_id }];
-    }
-
-    for (const resp of responsaveis) {
-      const alvo = typeof resp === 'string' ? { id: resp } : (resp || {});
-      if (!alvo.user_id && !alvo.id) continue;
-
-      const colabs = await base44.asServiceRole.entities.Colaborador.filter(
+    for (const alvo of participantesDoCompromisso(comp)) {
+      let colab = (await base44.asServiceRole.entities.Colaborador.filter(
         alvo.user_id ? { user_id: alvo.user_id } : { id: alvo.id }
-      );
-      const colab = colabs?.[0];
-      if (!colab || !colab.telefone) continue;
+      ))?.[0];
+      if (!colab && alvo.id && alvo.user_id) {
+        colab = (await base44.asServiceRole.entities.Colaborador.filter({ id: alvo.id }))?.[0];
+      }
 
-      const telefone = String(colab.telefone).replace(/\D/g, '');
+      // Telefone do cadastro do colaborador; se não houver, usa o snapshot
+      // gravado no próprio participante.
+      const telefoneBruto = colab?.telefone || alvo.telefone;
+      if (!telefoneBruto) continue;
+
+      const telefone = String(telefoneBruto).replace(/\D/g, '');
       if (telefone.length < 10) continue;
       if (jaEnviados.find((j: any) => j.tipo === 'responsavel' && j.destinatario_telefone === telefone)) continue;
 
@@ -168,7 +193,7 @@ export async function enviarLembretesDoTempo(base44: any, comp: any, config: any
       }
       await registrar(base44, comp, {
         destinatario_telefone: telefone,
-        destinatario_nome: colab.nome,
+        destinatario_nome: colab?.nome || alvo.nome || 'Participante',
         tipo: 'responsavel',
         minutos_antes: minutosAntes,
         status,

@@ -1,54 +1,13 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+import { enviarLembretesDoTempo } from '../../shared/lembretesAgendaShared.ts';
 
-const MSG_CLIENTE_DEFAULT = `Olá {cliente_nome} 👋\n\nLembramos que você possui uma reunião agendada hoje às {hora}.\n\nAssunto: {titulo}\n\nEquipe JD Promotora.`;
-const MSG_RESPONSAVEL_DEFAULT = `⏰ *Lembrete de reunião*\n\nCliente: {cliente_nome}\nHorário: {hora}\nAssunto: {titulo}\n\nFaltam {faltam} para a reunião.`;
-
-function formatarTempo(minutos) {
-  if (minutos >= 1440) return `${Math.round(minutos / 1440)} dia(s)`;
-  if (minutos >= 60) return `${Math.round(minutos / 60)} hora(s)`;
-  return `${minutos} minuto(s)`;
-}
-
-// A Agenda não guarda o nome do cliente: quando o compromisso não tem esse
-// campo, usamos o trecho depois do separador do título (ex: "Reunião - Murcio").
-function nomeDoCliente(comp) {
-  if (comp.cliente_nome) return comp.cliente_nome;
-  const titulo = String(comp.titulo || '').trim();
-  const partes = titulo.split(/\s+[-–—]\s+/);
-  const nome = partes.length > 1 ? partes.slice(1).join(' - ') : titulo;
-  return nome.trim() || 'Cliente';
-}
-
-function resolverTemplate(template, vars) {
-  return template
-    .replace(/{cliente_nome}/g, vars.cliente_nome || 'Cliente')
-    .replace(/{hora}/g, vars.hora || '')
-    .replace(/{titulo}/g, vars.titulo || '')
-    .replace(/{faltam}/g, vars.faltam || '');
-}
-
-async function enviarWhatsApp(base44, empresaId, telefone, mensagem) {
-  // Lembretes automáticos usam sempre a D-API (nunca a Meta Oficial)
-  const conexoes = await base44.asServiceRole.entities.WhatsappConnection.filter(
-    { empresa_id: empresaId, provider_type: 'dapi', is_active: true },
-    '-created_date',
-    1
-  );
-  const conexao = conexoes[0];
-  if (!conexao) throw new Error('Nenhuma conexão D-API ativa para esta empresa');
-  return await base44.functions.invoke('whatsappService', {
-    connectionId: conexao.id,
-    action: 'sendText',
-    phoneNumber: telefone.replace(/\D/g, ''),
-    text: mensagem
-  });
-}
-
+// Rede de segurança: confere se algum lembrete venceu e ainda não saiu
+// (ex: o workflow do compromisso não executou). Usa a MESMA regra do envio
+// principal, então o contato e todos os participantes da reunião são avisados.
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
 
-    // Buscar todas empresas com configuração ativa
     const configs = await base44.asServiceRole.entities.ConfiguracaoLembretesAgenda.filter({ ativo: true });
     if (!configs || configs.length === 0) {
       return Response.json({ success: true, message: 'Nenhuma configuração ativa encontrada' });
@@ -60,12 +19,10 @@ Deno.serve(async (req) => {
 
     for (const config of configs) {
       const empresaId = config.empresa_id;
-      const tempos = config.tempos_minutos || [60, 10];
-      const msgCliente = config.mensagem_cliente || MSG_CLIENTE_DEFAULT;
-      const msgResponsavel = config.mensagem_responsavel || MSG_RESPONSAVEL_DEFAULT;
+      const tempos: number[] = (config.tempos_minutos?.length ? config.tempos_minutos : [60, 10])
+        .map((n: any) => Number(n))
+        .filter((n: number) => Number.isFinite(n) && n >= 0);
 
-      // Busca apenas compromissos dentro da janela dos lembretes configurados.
-      // Antes carregava até 500 compromissos de uma janela muito maior em toda execução.
       const maxMinutos = Math.max(...tempos, 60);
       const minMinutos = Math.min(...tempos);
       const inicioJanela = new Date(now.getTime() + Math.max(0, minMinutos - 3) * 60 * 1000);
@@ -80,119 +37,19 @@ Deno.serve(async (req) => {
       for (const comp of (compromissos || [])) {
         const inicio = new Date(comp.inicio);
         const diffMin = (inicio.getTime() - now.getTime()) / 60000;
-        const hora = new Intl.DateTimeFormat('pt-BR', {
-          timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
-        }).format(inicio);
 
         for (const minAntes of tempos) {
           // Janela de seis minutos cobre a verificação automática a cada cinco minutos.
           if (diffMin > minAntes + 3 || diffMin < minAntes - 3) continue;
-
-          // Verificar se já foi enviado para este compromisso + minutos
-          const jaEnviado = await base44.asServiceRole.entities.AgendaLembretesEnviados.filter({
-            agenda_id: comp.id,
-            minutos_antes: minAntes,
-            status: 'enviado',
-          });
-
-          // Enviar para cliente
-          if (config.enviar_para_cliente !== false && comp.telefone) {
-            const telefone = comp.telefone.replace(/\D/g, '');
-            const jaEnviadoCliente = (jaEnviado || []).find(j => j.tipo === 'cliente' && j.destinatario_telefone === telefone);
-            
-            if (!jaEnviadoCliente && telefone.length >= 10) {
-              const clienteNome = nomeDoCliente(comp);
-              const msg = resolverTemplate(msgCliente, { cliente_nome: clienteNome, hora, titulo: comp.titulo, faltam: formatarTempo(minAntes) });
-              
-              let status = 'enviado';
-              let erro = null;
-              try {
-                await enviarWhatsApp(base44, empresaId, telefone, msg);
-                totalEnviados++;
-              } catch (e) {
-                status = 'erro';
-                erro = e.message;
-                totalErros++;
-              }
-
-              await base44.asServiceRole.entities.AgendaLembretesEnviados.create({
-                agenda_id: comp.id,
-                empresa_id: empresaId,
-                destinatario_telefone: telefone,
-                destinatario_nome: clienteNome,
-                tipo: 'cliente',
-                minutos_antes: minAntes,
-                horario_programado: new Date(inicio.getTime() - minAntes * 60000).toISOString(),
-                horario_enviado: new Date().toISOString(),
-                status,
-                erro,
-              });
-            }
-          }
-
-          // Enviar para responsáveis — a Agenda guarda o responsável em
-          // usuario_id (usuário autenticado); compromissos antigos podem ter a
-          // lista em responsaveis_ids.
-          if (config.enviar_para_responsaveis !== false) {
-            let responsaveis = [];
-            try {
-              responsaveis = JSON.parse(comp.responsaveis_ids || '[]') || [];
-            } catch { responsaveis = []; }
-            if (!responsaveis.length && comp.usuario_id) {
-              responsaveis = [{ user_id: comp.usuario_id }];
-            }
-
-            for (const resp of responsaveis) {
-              const alvo = typeof resp === 'string' ? { id: resp } : (resp || {});
-              const filtroColab = alvo.user_id ? { user_id: alvo.user_id } : { id: alvo.id };
-              if (!alvo.user_id && !alvo.id) continue;
-
-              const colabs = await base44.asServiceRole.entities.Colaborador.filter(filtroColab);
-              const colab = colabs?.[0];
-              if (!colab || !colab.telefone) continue;
-              
-              const telefone = colab.telefone.replace(/\D/g, '');
-              const jaEnviadoResp = (jaEnviado || []).find(j => j.tipo === 'responsavel' && j.destinatario_telefone === telefone);
-              if (jaEnviadoResp || telefone.length < 10) continue;
-
-              const msg = resolverTemplate(msgResponsavel, {
-                cliente_nome: nomeDoCliente(comp),
-                hora,
-                titulo: comp.titulo,
-                faltam: formatarTempo(minAntes),
-              });
-
-              let status = 'enviado';
-              let erro = null;
-              try {
-                await enviarWhatsApp(base44, empresaId, telefone, msg);
-                totalEnviados++;
-              } catch (e) {
-                status = 'erro';
-                erro = e.message;
-                totalErros++;
-              }
-
-              await base44.asServiceRole.entities.AgendaLembretesEnviados.create({
-                agenda_id: comp.id,
-                empresa_id: empresaId,
-                destinatario_telefone: telefone,
-                destinatario_nome: colab.nome,
-                tipo: 'responsavel',
-                minutos_antes: minAntes,
-                horario_programado: new Date(inicio.getTime() - minAntes * 60000).toISOString(),
-                horario_enviado: new Date().toISOString(),
-                status,
-                erro,
-              });
-            }
-          }
+          const r = await enviarLembretesDoTempo(base44, comp, config, minAntes);
+          totalEnviados += r.enviados;
+          totalErros += r.erros;
         }
       }
     }
 
     return Response.json({ success: true, enviados: totalEnviados, erros: totalErros });
-  } catch (e) {
+  } catch (e: any) {
     console.error('Erro processarLembretesAgendaWhatsApp:', e);
     return Response.json({ error: e.message }, { status: 500 });
   }

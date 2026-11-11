@@ -165,7 +165,7 @@ export default function ConfiguracaoLembretesAgenda({ user }) {
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-purple-500" />
-                <span className="text-sm text-slate-700">Responsáveis (colaboradores)</span>
+                <span className="text-sm text-slate-700">Participantes da reunião (colaboradores)</span>
               </div>
               <Switch checked={config.enviar_para_responsaveis} onCheckedChange={v => setConfig(c => ({ ...c, enviar_para_responsaveis: v }))} />
             </div>
@@ -263,7 +263,7 @@ export default function ConfiguracaoLembretesAgenda({ user }) {
           {config.enviar_para_responsaveis && (
             <div className="bg-white rounded-xl border p-5 space-y-3">
               <div>
-                <h3 className="font-semibold text-slate-700 text-sm">Mensagem para os responsáveis</h3>
+                <h3 className="font-semibold text-slate-700 text-sm">Mensagem para os participantes</h3>
                 <p className="text-xs text-slate-400 mt-0.5">Variáveis: <code className="bg-slate-100 px-1 rounded">{'{cliente_nome}'}</code> <code className="bg-slate-100 px-1 rounded">{'{hora}'}</code> <code className="bg-slate-100 px-1 rounded">{'{titulo}'}</code> <code className="bg-slate-100 px-1 rounded">{'{faltam}'}</code></p>
               </div>
               <Textarea

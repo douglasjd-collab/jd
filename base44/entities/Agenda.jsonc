@@ -28,6 +28,10 @@
       "format": "date-time",
       "type": "string"
     },
+    "participantes_json": {
+      "description": "JSON array com os participantes da reuni\u00e3o: [{id, user_id, nome, telefone}]. Todos recebem o lembrete no WhatsApp.",
+      "type": "string"
+    },
     "lembrete_0_enviado_em": {
       "description": "Timestamp de quando o lembrete na hora foi enviado (opcional)",
       "format": "date-time",

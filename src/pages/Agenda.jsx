@@ -20,6 +20,9 @@ import {
 import { toast } from 'sonner';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
 import ConfiguracaoLembretesAgenda from '@/components/agenda/ConfiguracaoLembretesAgenda';
+import ParticipantesReuniaoSelect from '@/components/agenda/ParticipantesReuniaoSelect';
+import StatusLembretesReuniao from '@/components/agenda/StatusLembretesReuniao';
+import { participantesDoCompromisso } from '@/components/agenda/participantesReuniao';
 import {
   format, parseISO, addDays, subDays, startOfWeek, endOfWeek,
   isSameDay, startOfMonth, endOfMonth, eachDayOfInterval, addMonths,
@@ -388,7 +391,7 @@ function CompromissoCard({ item, selected, onClick, onEdit, onConcluir, onCancel
 }
 
 // ─── Painel de detalhes ────────────────────────────────────────────────────────
-function DetalhesPanel({ item, onEdit, onConcluir, onCancelar, onClose, statusConfig, onWhatsApp }) {
+function DetalhesPanel({ item, onEdit, onConcluir, onCancelar, onClose, statusConfig, onWhatsApp, configLembretes, colaboradores }) {
   if (!item) return (
     <div className="bg-white rounded-xl shadow-sm flex flex-col items-center justify-center py-16 text-slate-400">
       <CalendarDays className="w-12 h-12 mb-3 opacity-30" />
@@ -449,6 +452,8 @@ function DetalhesPanel({ item, onEdit, onConcluir, onCancelar, onClose, statusCo
             <p className="text-sm text-slate-700 whitespace-pre-wrap">{item.descricao}</p>
           </div>
         )}
+
+        <StatusLembretesReuniao item={item} config={configLembretes} colaboradores={colaboradores} />
 
         <div className="bg-slate-50 rounded-lg p-3 grid grid-cols-2 gap-3 text-xs">
           <div>
@@ -634,7 +639,7 @@ export default function AgendaPage() {
   const atrasadosShownRef = React.useRef(false);
 
   const [formData, setFormData] = useState({
-    titulo: '', tipo: 'reuniao', inicio: '', fim: '', status: 'agendado', descricao: '', local: '', telefone: '',
+    titulo: '', tipo: 'reuniao', inicio: '', fim: '', status: 'agendado', descricao: '', local: '', telefone: '', participantes: [],
   });
 
   const queryClient = useQueryClient();
@@ -675,8 +680,28 @@ export default function AgendaPage() {
     enabled: !!user,
   });
 
+  // Colaboradores da empresa: usados para escolher os participantes da reunião
+  // (todos eles recebem o aviso no WhatsApp).
+  const { data: colaboradoresAgenda = [] } = useQuery({
+    queryKey: ['agenda-colaboradores', user?.empresa_id],
+    enabled: !!user?.empresa_id,
+    staleTime: 60000,
+    queryFn: () => base44.entities.Colaborador.filter({ empresa_id: user.empresa_id, status: 'ativo' }, 'nome', 200),
+  });
+
+  // Configuração de lembretes da empresa: alimenta o painel de avisos da reunião.
+  const { data: configLembretes = null } = useQuery({
+    queryKey: ['agenda-config-lembretes', user?.empresa_id],
+    enabled: !!user?.empresa_id,
+    staleTime: 60000,
+    queryFn: async () => {
+      const configs = await base44.entities.ConfiguracaoLembretesAgenda.filter({ empresa_id: user.empresa_id });
+      return configs?.[0] || null;
+    },
+  });
+
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Agenda.create({ ...data, empresa_id: user?.empresa_id, usuario_id: user?.auth_id }),
+    mutationFn: (data) => base44.entities.Agenda.create({ ...data, empresa_id: user?.empresa_id, usuario_id: data.usuario_id || user?.auth_id }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['agenda'] });
       toast.success('Compromisso criado!');
@@ -705,7 +730,14 @@ export default function AgendaPage() {
       inicio: item.inicio ? format(parseISO(item.inicio), "yyyy-MM-dd'T'HH:mm") : '',
       fim: item.fim ? format(parseISO(item.fim), "yyyy-MM-dd'T'HH:mm") : '',
       status: item.status || 'agendado', descricao: item.descricao || '', local: item.local || '', telefone: formatPhoneBR(item.telefone || ''),
-    } : { titulo: '', tipo: 'reuniao', inicio: format(selectedDate, "yyyy-MM-dd'T'HH:mm"), fim: '', status: 'agendado', descricao: '', local: '', telefone: '' });
+      participantes: participantesDoCompromisso(item),
+    } : {
+      titulo: '', tipo: 'reuniao', inicio: format(selectedDate, "yyyy-MM-dd'T'HH:mm"), fim: '', status: 'agendado',
+      descricao: '', local: '', telefone: '',
+      // O criador já entra como participante: sem ninguém selecionado o aviso
+      // só chegaria ao contato.
+      participantes: user?.auth_id ? [{ user_id: user.auth_id, nome: user.full_name || user.nome_perfil || 'Eu' }] : [],
+    });
     setModalOpen(true);
   };
 
@@ -729,12 +761,17 @@ export default function AgendaPage() {
       return;
     }
 
+    const { participantes = [], ...resto } = formData;
+    const principal = participantes[0];
     const payload = {
-      ...formData,
+      ...resto,
       titulo: formData.titulo.trim(),
       telefone: formatPhoneBR(formData.telefone),
       inicio: inicio.toISOString(),
       ...(fim ? { fim: fim.toISOString() } : {}),
+      participantes_json: JSON.stringify(participantes),
+      usuario_id: principal?.user_id || principal?.id || user?.auth_id,
+      usuario_nome: principal?.nome || user?.full_name || '',
     };
     if (editingItem) updateMutation.mutate({ id: editingItem.id, data: payload });
     else createMutation.mutate(payload);
@@ -746,6 +783,12 @@ export default function AgendaPage() {
     setSelectedItem(p => p?.id === item.id ? { ...p, status: 'cancelado' } : p);
   };
   const handleDelete = (id) => { if (window.confirm('Excluir compromisso?')) deleteMutation.mutate(id); };
+
+  // Mantém o painel de detalhes alinhado à versão mais recente do compromisso
+  // (ex: participantes alterados após editar).
+  useEffect(() => {
+    setSelectedItem(prev => (prev ? (compromissos.find(c => c.id === prev.id) || prev) : prev));
+  }, [compromissos]);
 
   // Abrir popup de atrasados uma vez ao carregar
   useEffect(() => {
@@ -928,6 +971,8 @@ export default function AgendaPage() {
             onClose={() => setSelectedItem(null)}
             statusConfig={statusConfig}
             onWhatsApp={setWhatsAppItem}
+            configLembretes={configLembretes}
+            colaboradores={colaboradoresAgenda}
           />
         </div>
 
@@ -1105,6 +1150,11 @@ export default function AgendaPage() {
                 />
               </div>
             </div>
+            <ParticipantesReuniaoSelect
+              colaboradores={colaboradoresAgenda}
+              value={formData.participantes || []}
+              onChange={(participantes) => setFormData(prev => ({ ...prev, participantes }))}
+            />
             <div>
               <Label>Descrição</Label>
               <Textarea value={formData.descricao} onChange={e => setFormData({ ...formData, descricao: e.target.value })} rows={3} placeholder="Detalhes do compromisso..." />
