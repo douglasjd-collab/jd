@@ -78,6 +78,7 @@ export default function ParticipantesReuniaoSelect({ colaboradores = [], value =
         />
       </div>
 
+      {busca.trim().length > 0 && (
       <div className="max-h-44 overflow-y-auto rounded-lg border divide-y">
         {filtrados.length === 0 ? (
           <p className="px-3 py-4 text-xs text-slate-400 text-center">Nenhum colaborador encontrado</p>
@@ -115,6 +116,7 @@ export default function ParticipantesReuniaoSelect({ colaboradores = [], value =
           })
         )}
       </div>
+      )}
     </div>
   );
 }
