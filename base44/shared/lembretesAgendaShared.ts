@@ -96,12 +96,21 @@ async function enviarWhatsApp(base44: any, empresaId: string, telefone: string, 
   );
   const conexao = conexoes[0];
   if (!conexao) throw new Error('Nenhuma conexão D-API ativa para esta empresa');
-  return await base44.functions.invoke('whatsappService', {
+  const digits = telefone.replace(/\D/g, '');
+  const numeroInternacional = digits.length === 10 || digits.length === 11 ? `55${digits}` : digits;
+  if (!/^\d{12,15}$/.test(numeroInternacional)) throw new Error('Telefone inválido para envio internacional');
+  const resposta = await base44.functions.invoke('whatsappService', {
     connectionId: conexao.id,
     action: 'sendText',
-    phoneNumber: telefone.replace(/\D/g, ''),
+    phoneNumber: numeroInternacional,
     text: mensagem,
   });
+  const envelope = resposta?.data;
+  const resultado = envelope?.data;
+  if (envelope?.success !== true || resultado?.success !== true) {
+    throw new Error(resultado?.error || envelope?.error || 'Provedor não confirmou o envio do lembrete');
+  }
+  return resposta;
 }
 
 async function registrar(base44: any, comp: any, dados: any) {
