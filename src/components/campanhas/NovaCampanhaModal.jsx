@@ -1206,7 +1206,9 @@ function Step4({ preview, loading, onRecalc, form, setForm, onLimparFiltros, tem
   const primeiroNome = exemplo?.nome && exemplo.nome !== 'Sem nome'
     ? exemplo.nome.trim().split(/\s+/)[0]
     : 'Cliente';
-  const textoExemplo = (form.mensagem_texto || '').replace(/\{nome\}/gi, primeiroNome);
+  const textoExemplo = (form.mensagem_texto || '')
+    .replace(/\\([*_~])/g, '$1')
+    .replace(/(?:\{\s*nome\s*\}|\bnome\s*\})/gi, () => primeiroNome);
 
   return (
     <div className="space-y-5">
