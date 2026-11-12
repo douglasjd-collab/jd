@@ -24,6 +24,33 @@ import { toast } from 'sonner';
 const audioUrlsResolvidas = new Map();
 const audioBuscasPendentes = new Map();
 const MAX_AUDIO_URLS = 300;
+// Evitar rajadas de downloads ao abrir históricos com muitas mídias.
+let filaMidia = Promise.resolve();
+const falhasMidia = new Map();
+function solicitarMidia(key, payload) {
+  const pendente = audioBuscasPendentes.get(key);
+  if (pendente) return pendente;
+  const falha = falhasMidia.get(key);
+  if (falha && Date.now() - falha.em < 15000) return Promise.reject(falha.erro);
+  const requisicao = filaMidia.then(async () => {
+    try {
+      const resposta = await base44.functions.invoke('baixarMidiaWhatsApp', payload);
+      if (!resposta?.data?.arquivo_url) throw new Error(resposta?.data?.error || 'Áudio indisponível');
+      falhasMidia.delete(key);
+      return resposta;
+    } catch (erro) {
+      falhasMidia.set(key, { em: Date.now(), erro });
+      if (falhasMidia.size > MAX_AUDIO_URLS) falhasMidia.delete(falhasMidia.keys().next().value);
+      throw erro;
+    }
+  });
+  filaMidia = requisicao.catch(() => {}).then(() => new Promise(resolve => setTimeout(resolve, 500)));
+  audioBuscasPendentes.set(key, requisicao);
+  requisicao.finally(() => {
+    if (audioBuscasPendentes.get(key) === requisicao) audioBuscasPendentes.delete(key);
+  }).catch(() => {});
+  return requisicao;
+}
 const tipoConteudoSeguroKey = (user, conversaId, mensagemId) => JSON.stringify([user?.id || '', conversaId || '', mensagemId || '']);
 function guardarAudioUrl(key, url) {
   if (!key || !url) return;
@@ -68,11 +95,13 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
   };
   // Pacote de figurinhas (.was) enviado direto pelo celular = arquivo ZIP, nunca exibível como imagem
   const isPacoteFigurinha = (url) => typeof url === 'string' && url.toLowerCase().endsWith('.was');
+  const recuperacaoAudioRef = useRef(false);
   const urlFalhouRef = useRef(null); // rastrear URL que deu erro para não re-setar
   const audioKey = tipoConteudoSeguroKey(user, conversaId || mensagem.conversa_id, mensagem.id);
   const [mediaUrl, setMediaUrl] = useState(() => {
     const salva = audioUrlsResolvidas.get(audioKey);
     if (salva && resolverTipoConteudo(mensagem) === 'audio') return salva;
+    if (resolverTipoConteudo(mensagem) === 'audio' && !/^(data:|https:\/\/[^/]*(?:base44|supabase|amazonaws))/.test(mensagem.arquivo_url || '')) return null;
     return isUrlValida(mensagem.arquivo_url, mensagem.download_status) && !isPacoteFigurinha(mensagem.arquivo_url) ? sanitizeUrl(mensagem.arquivo_url) : null;
   });
   const [loadingMedia, setLoadingMedia] = useState(false);
@@ -319,20 +348,11 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     let ativa = true;
     setLoadingMedia(true);
     const keyPendente = tipoConteudo === 'audio' ? audioKey : null;
-    let requisicao = keyPendente ? audioBuscasPendentes.get(keyPendente) : null;
-    if (!requisicao) {
-      requisicao = base44.functions.invoke('baixarMidiaWhatsApp', {
-        mensagem_id: mensagem.id,
-        arquivo_url: mensagem.arquivo_url || null,
-        conversa_id: conversaId || mensagem.conversa_id
-      });
-      if (keyPendente) {
-        audioBuscasPendentes.set(keyPendente, requisicao);
-        requisicao.finally(() => {
-          if (audioBuscasPendentes.get(keyPendente) === requisicao) audioBuscasPendentes.delete(keyPendente);
-        }).catch(() => {});
-      }
-    }
+    const requisicao = solicitarMidia(audioKey, {
+      mensagem_id: mensagem.id,
+      arquivo_url: mensagem.arquivo_url || null,
+      conversa_id: conversaId || mensagem.conversa_id
+    });
     requisicao.then(res => {
       const url = res?.data?.arquivo_url;
       if (url && isUrlValida(url, 'baixado')) {
@@ -349,7 +369,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
   // Quando o banco atualizar arquivo_url (ex: download feito em background), refletir no estado
   // Mas não re-setar URL que já falhou (causaria loop)
   useEffect(() => {
-    if (isUrlValida(mensagem.arquivo_url, mensagem.download_status) && !mediaUrl && mensagem.arquivo_url !== urlFalhouRef.current) {
+    if (tipoConteudo !== 'audio' && isUrlValida(mensagem.arquivo_url, mensagem.download_status) && !mediaUrl && mensagem.arquivo_url !== urlFalhouRef.current) {
       setMediaUrl(sanitizeUrl(mensagem.arquivo_url));
       if (tipoConteudo === 'audio') guardarAudioUrl(audioKey, sanitizeUrl(mensagem.arquivo_url));
     }
@@ -378,11 +398,11 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
 
   const handleCarregarMidia = () => {
     if (loadingMedia) return;
-    if (mediaUrl && isUrlValida(mediaUrl)) return;
+    if (mediaUrl && mediaUrl !== urlFalhouRef.current && isUrlValida(mediaUrl)) return;
 
     // Se já tem URL do storage, tentar usar diretamente (ignorar download_status ao clicar manualmente)
     const url = mensagem.arquivo_url || '';
-    if (url.includes('base44.app/api/apps') && url.startsWith('https://') && !url.includes('.enc')) {
+    if (tipoConteudo !== 'audio' && url.includes('base44.app/api/apps') && url.startsWith('https://') && !url.includes('.enc')) {
       const nomeArquivo = url.split('?')[0].split('/').pop();
       if (/\.[a-zA-Z0-9]{2,5}$/.test(nomeArquivo)) {
         setMediaUrl(sanitizeUrl(url));
@@ -394,7 +414,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     if (!url && !mensagem.media_id) return;
 
     setLoadingMedia(true);
-    base44.functions.invoke('baixarMidiaWhatsApp', {
+    solicitarMidia(audioKey, {
       mensagem_id: mensagem.id,
       arquivo_url: mensagem.arquivo_url || null,
       conversa_id: conversaId || mensagem.conversa_id
@@ -809,6 +829,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
                     );
                   })()}
                   <audio 
+                    key={mediaUrl}
                     ref={audioRef}
                     controls 
                     className="flex-1 h-8" 
@@ -835,14 +856,18 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
                       });
                     }}
                     onError={(e) => {
-                      // Não limpar a URL automaticamente para evitar loop
-                      // Apenas logar o erro — o usuário pode clicar no botão de baixar
-                      console.warn('Erro ao reproduzir áudio:', mediaUrl?.substring(0, 80));
+                      console.warn('Erro ao reproduzir áudio:', e.currentTarget.error?.code);
+                      urlFalhouRef.current = mediaUrl;
+                      audioUrlsResolvidas.delete(audioKey);
+                      setMediaUrl(null);
+                      // Uma única recuperação automática; depois permitir nova tentativa manual.
+                      if (!recuperacaoAudioRef.current) {
+                        recuperacaoAudioRef.current = true;
+                        handleCarregarMidia();
+                      }
                     }}
                   >
-                    <source src={mediaUrl} type="audio/ogg" />
-                    <source src={mediaUrl} type="audio/webm" />
-                    <source src={mediaUrl} type="audio/mpeg" />
+
                   </audio>
                 </div>
                 <div className="flex items-center gap-1.5">
