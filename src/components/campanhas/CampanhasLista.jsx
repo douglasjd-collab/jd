@@ -212,19 +212,33 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
   const retomarNaoOficial = async (c) => {
     const atual = await base44.entities.Campanha.get(c.id);
     if (atual.status === 'executando') { toast.info('Esta campanha já está em andamento.'); return; }
-    const naFila = await base44.entities.CampanhaDestinatario.filter(
-      { campanha_id: c.id, status: 'na_fila' },
-      null,
-      500
+    const candidatos = await base44.entities.CampanhaDestinatario.filter(
+      { campanha_id: c.id, status: { $in: ['na_fila', 'cancelado'] } }, null, 5000
+    );
+    const naFila = candidatos.filter(d =>
+      !d.data_envio && !d.whatsapp_message_id &&
+      (d.status === 'na_fila' ||
+        (d.status === 'cancelado' && d.erro_mensagem === 'Envio interrompido pelo usuário'))
     );
     if (!naFila.length) {
       toast.info('Não há destinatários na fila para continuar.');
       return;
     }
-    if (!confirm(`Retomar "${c.nome}" para ${naFila.length} destinatário(s) que ainda estão na fila?`)) return;
+    if (!confirm(`Retomar "${c.nome}" para ${naFila.length} destinatário(s) pendente(s)? Números já enviados serão preservados.`)) return;
 
     setRetomando(c.id);
     try {
+      for (const destinatario of naFila) {
+        if (destinatario.status !== 'cancelado') continue;
+        const registro = await base44.entities.CampanhaDestinatario.get(destinatario.id);
+        if (registro.status === 'cancelado' &&
+            registro.erro_mensagem === 'Envio interrompido pelo usuário' &&
+            !registro.data_envio && !registro.whatsapp_message_id) {
+          await base44.entities.CampanhaDestinatario.update(registro.id, {
+            status: 'na_fila', erro_mensagem: null,
+          });
+        }
+      }
       await base44.entities.Campanha.update(c.id, {
         status: 'executando',
         fim_execucao: null,
