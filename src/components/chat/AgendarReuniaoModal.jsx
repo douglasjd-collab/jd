@@ -20,7 +20,29 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
     if (!open || !user?.empresa_id) return;
     let ativo = true;
     base44.entities.Colaborador.filter({ empresa_id: user.empresa_id, status: 'ativo' }, 'nome', 200)
-      .then(lista => { if (ativo) setColaboradores(lista || []); })
+      .then(lista => {
+        if (!ativo) return;
+        const ativos = lista || [];
+        setColaboradores(ativos);
+        const email = String(user?.email || '').toLowerCase();
+        const proprio = ativos.find(c =>
+          (user?.colaborador_id && c.id === user.colaborador_id) ||
+          (user?.auth_id && c.user_id === user.auth_id) ||
+          (user?.id && c.user_id === user.id) ||
+          (email && String(c.email || '').toLowerCase() === email)
+        );
+        if (proprio) {
+          const selecionado = {
+            id: proprio.id, user_id: proprio.user_id || null,
+            nome: proprio.nome, telefone: proprio.telefone || '',
+          };
+          setParticipantes(anteriores => {
+            const chave = selecionado.user_id || selecionado.id;
+            return anteriores.some(p => (p.user_id || p.id) === chave)
+              ? anteriores : [selecionado, ...anteriores];
+          });
+        }
+      })
       .catch(() => { if (ativo) toast.error('Não foi possível carregar os participantes.'); });
     return () => { ativo = false; };
   }, [open, user?.empresa_id]);
