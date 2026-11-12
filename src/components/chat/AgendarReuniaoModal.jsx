@@ -10,9 +10,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { CalendarCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import ParticipantesReuniaoSelect from '@/components/agenda/ParticipantesReuniaoSelect';
 
 export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user }) {
   const [loading, setLoading] = useState(false);
+  const [colaboradores, setColaboradores] = useState([]);
+  const [participantes, setParticipantes] = useState([]);
+  useEffect(() => {
+    if (!open || !user?.empresa_id) return;
+    let ativo = true;
+    base44.entities.Colaborador.filter({ empresa_id: user.empresa_id, status: 'ativo' }, 'nome', 200)
+      .then(lista => { if (ativo) setColaboradores(lista || []); })
+      .catch(() => { if (ativo) toast.error('Não foi possível carregar os participantes.'); });
+    return () => { ativo = false; };
+  }, [open, user?.empresa_id]);
 
   const clienteNome = conversa?.cliente_nome || conversa?.contato_nome || '';
   const clienteTelefone = conversa?.cliente_telefone || '';
@@ -30,6 +41,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
   // Atualiza o título se o clienteNome mudar (quando o modal abre)
   useEffect(() => {
     if (open) {
+      setParticipantes([]);
       const agora = new Date();
       setForm({
         titulo: clienteNome ? `Reunião - ${clienteNome}` : 'Nova Reunião',
@@ -60,6 +72,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
         status: 'agendado',
         telefone: clienteTelefone,
         cliente_nome: clienteNome,
+        participantes_json: JSON.stringify(participantes),
         telegram_chat_id: user?.telegram_chat_id || '',
       });
       toast.success('✅ Reunião agendada com sucesso!');
@@ -129,6 +142,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
             />
           </div>
 
+          <ParticipantesReuniaoSelect colaboradores={colaboradores} value={participantes} onChange={setParticipantes} />
           <div>
             <Label>Observações</Label>
             <Textarea
