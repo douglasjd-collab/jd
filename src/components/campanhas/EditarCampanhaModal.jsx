@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -31,6 +31,7 @@ function isoToCampos(isoStr) {
 
 export default function EditarCampanhaModal({ open, onOpenChange, campanha, empresaId, onContinuar }) {
   const qc = useQueryClient();
+  const mensagemRef = useRef(null);
   const [form, setForm] = useState(null);
   const [salvando, setSalvando] = useState(false);
   const [enviandoMidia, setEnviandoMidia] = useState(false);
@@ -61,6 +62,18 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
     ? campanha?.status !== 'executando'
     : ['rascunho', 'agendada', 'pausada'].includes(campanha?.status) && Number(campanha?.enviados || 0) === 0 && Number(campanha?.falhas || 0) === 0;
   const podeEditarAgendamento = ['rascunho', 'agendada'].includes(campanha?.status);
+
+  const inserirVariavel = (variavel) => {
+    const campo = mensagemRef.current;
+    const texto = form.mensagem_texto || '';
+    const inicio = campo?.selectionStart ?? texto.length;
+    const fim = campo?.selectionEnd ?? inicio;
+    setForm(anterior => ({ ...anterior, mensagem_texto: texto.slice(0, inicio) + variavel + texto.slice(fim) }));
+    requestAnimationFrame(() => {
+      campo?.focus();
+      campo?.setSelectionRange(inicio + variavel.length, inicio + variavel.length);
+    });
+  };
 
   const uploadMidia = async (file) => {
     if (!file || enviandoMidia) return;
@@ -221,8 +234,15 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
                 </select>
               </div>
               <div>
-                <Label>Mensagem</Label>
-                <Textarea rows={5} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })} placeholder="Texto enviado aos destinatários" />
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Label>Mensagem</Label>
+                  {['{nome}', '{primeiro_nome}'].map(variavel => (
+                    <Button key={variavel} type="button" variant="outline" size="sm"
+                      onMouseDown={e => e.preventDefault()} onClick={() => inserirVariavel(variavel)}
+                      title="Inserir primeiro nome do cliente">{variavel}</Button>
+                  ))}
+                </div>
+                <Textarea ref={mensagemRef} rows={5} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })} placeholder="Texto enviado aos destinatários" />
               </div>
               <div className="space-y-2 rounded-md border p-3">
                 <Label htmlFor="editar-campanha-midia">Carregar nova imagem ou vídeo</Label>
