@@ -673,9 +673,7 @@ export default function ChatHeader({
             conversa={conversaSelecionada}
             empresaId={empresaId}
             user={user}
-            enviarMensagem={onEnviarMensagemFinalizacao}
-            fecharAoIniciar
-            onIniciada={aoIniciarFinalizacao}
+            fecharAoIniciar={false}
             onConcluida={aoConcluirFinalizacao}
           />
 
