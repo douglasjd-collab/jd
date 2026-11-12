@@ -602,7 +602,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       const campanha = await base44.entities.Campanha.create({
         empresa_id: empresaId,
         criador_id: user.id,
-        criador_nome: user.full_name || user.email,
+        criador_nome: user.nome_perfil || user.full_name || user.email,
         nome: form.nome,
         descricao: form.descricao,
         canal: form.canal_tipo === 'nao_oficial' ? 'whatsapp_nao_oficial' : 'whatsapp_meta_oficial',
