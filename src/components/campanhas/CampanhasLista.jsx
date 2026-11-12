@@ -29,6 +29,8 @@ const FILTROS_RAPIDOS = [
 
 export default function CampanhasLista({ empresaId, user, onNova }) {
   const [search, setSearch] = useState('');
+  const [periodo, setPeriodo] = useState('todos');
+  const [pagina, setPagina] = useState(1);
   const [filtroStatus, setFiltroStatus] = useState('todos');
   const [detalhe, setDetalhe] = useState(null);
   const [copiando, setCopiando] = useState(false);
@@ -59,11 +61,16 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
       const matchSearch = !search || (c.nome || '').toLowerCase().includes(search.toLowerCase());
       const matchStatus = filtroStatus === 'todos'
         || (filtroStatus === 'falhas' ? Number(c.falhas || 0) > 0 || c.status === 'erro' : c.status === filtroStatus);
-      return matchSearch && matchStatus;
+      const limite = periodo === 'todos' ? null : new Date(Date.now() - Number(periodo) * 86400000);
+      const matchPeriodo = !limite || new Date(c.created_date) >= limite;
+      return matchSearch && matchStatus && matchPeriodo;
     }).sort((a, b) => filtroStatus === 'agendada'
       ? new Date(a.agendada_para || 0) - new Date(b.agendada_para || 0)
       : new Date(b.created_date || 0) - new Date(a.created_date || 0));
-  }, [campanhas, search, filtroStatus]);
+  }, [campanhas, search, filtroStatus, periodo]);
+  const totalPaginas = Math.max(1, Math.ceil(filtradas.length / 10));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  const campanhasVisiveis = filtradas.slice((paginaAtual - 1) * 10, paginaAtual * 10);
 
   const duplicar = async (c) => {
     setCopiando(true);
@@ -267,39 +274,42 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Campanhas</h1>
-          <p className="text-sm text-slate-500">Gerencie seus disparos e acompanhe os resultados em um só lugar.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Campanhas</h1>
+          <p className="text-sm text-slate-500">Organize seus disparos e acompanhe cada resultado.</p>
         </div>
         <Button onClick={onNova} className="gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 shadow-sm">
           <Plus className="w-4 h-4" /> Nova Campanha
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          { label: 'Agendadas', filtro: 'agendada', total: campanhas.filter(c => c.status === 'agendada').length, Icon: CalendarClock, cor: 'bg-blue-50 text-blue-600' },
+          { label: 'Agendadas', filtro: 'agendada', total: campanhas.filter(c => c.status === 'agendada').length, Icon: CalendarClock, cor: 'bg-emerald-50 text-emerald-600' },
           { label: 'Em andamento', filtro: 'executando', total: campanhas.filter(c => c.status === 'executando').length, Icon: Send, cor: 'bg-emerald-50 text-emerald-600' },
           { label: 'Concluídas', filtro: 'concluida', total: campanhas.filter(c => c.status === 'concluida').length, Icon: CheckCircle2, cor: 'bg-teal-50 text-teal-600' },
           { label: 'Com falhas', filtro: 'falhas', total: campanhas.filter(c => Number(c.falhas || 0) > 0 || c.status === 'erro').length, Icon: AlertCircle, cor: 'bg-rose-50 text-rose-600' },
         ].map(({ label, filtro, total, Icon, cor }) => (
-          <button type="button" key={filtro} onClick={() => setFiltroStatus(filtro)} aria-pressed={filtroStatus === filtro}
-            className={`flex items-center justify-between rounded-xl border bg-white p-4 text-left transition hover:shadow-sm ${filtroStatus === filtro ? 'border-emerald-500 ring-1 ring-emerald-100' : 'border-slate-200'}`}>
-            <div><p className="text-xs font-medium text-slate-500">{label}</p><p className="mt-1 text-2xl font-semibold text-slate-900">{isLoading ? '—' : total}</p></div>
+          <button type="button" key={filtro} onClick={() => { setFiltroStatus(filtro); setPagina(1); }} aria-pressed={filtroStatus === filtro}
+            className={`flex items-center justify-start gap-4 rounded-xl border bg-white p-4 shadow-sm text-left transition hover:shadow-sm ${filtroStatus === filtro ? 'border-emerald-500 ring-1 ring-emerald-100' : 'border-slate-200'}`}>
             <span className={`rounded-xl p-3 ${cor}`}><Icon className="h-5 w-5" /></span>
+            <div><p className="text-sm font-medium text-slate-700">{label}</p><p className="mt-1 text-2xl font-semibold text-slate-900">{isLoading ? '—' : total}</p></div>
           </button>
         ))}
       </div>
 
       <Card className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <CardContent className="p-4 space-y-4">
-          <div className="relative">
+          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setPagina(1); }}
               placeholder="Buscar campanha por nome…"
               className="pl-9"
             />
+          </div>
+          <select aria-label="Filtrar por data de criação" value={periodo} onChange={e => { setPeriodo(e.target.value); setPagina(1); }} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 sm:w-52"><option value="todos">Todos os períodos</option><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option></select>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {FILTROS_RAPIDOS.map((filtro) => {
@@ -314,7 +324,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                   type="button"
                   size="sm"
                   variant={filtroStatus === filtro.id ? 'default' : 'outline'}
-                  onClick={() => setFiltroStatus(filtro.id)}
+                  onClick={() => { setFiltroStatus(filtro.id); setPagina(1); }}
                   className={`whitespace-nowrap rounded-full border ${filtroStatus === filtro.id ? 'bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700' : 'border-slate-200 text-slate-600'}`}
                 >
                   {filtro.label}<span className="ml-1.5 opacity-75">{quantidade}</span>
@@ -323,11 +333,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
             })}
           </div>
         </CardContent>
-      </Card>
-
-      <Card className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <CardContent className="p-0 overflow-x-auto">
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between"><h2 className="text-sm font-semibold text-slate-800">Suas campanhas</h2><span className="text-xs text-slate-500">{filtradas.length} de {campanhas.length} campanhas</span></div>
+        <CardContent className="p-0 overflow-x-auto border-t border-slate-100">
           <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
@@ -341,14 +347,14 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
               </tr>
             </thead>
             <tbody>
-              {filtradas.map((c) => (
+              {campanhasVisiveis.map((c) => (
                   <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
                     <Td>
                       <button type="button" onClick={() => setDetalhe(c)} className="font-semibold text-slate-800 hover:text-emerald-700 text-left">{c.nome}</button>
                       {c.template_nome && <p className="text-xs text-slate-500 mt-1">{c.template_nome}</p>}
                       <p className="text-xs text-slate-400">{format(new Date(c.created_date), 'dd/MM/yyyy HH:mm')}</p>
                     </Td>
-                    <Td>{c.criador_nome || '-'}</Td>
+                    <Td><div className="flex items-center gap-2 whitespace-nowrap"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-800" aria-hidden="true">{(c.criador_nome || '').trim().split(/\s+/).filter(Boolean).map(n => n[0]).filter((_, i, arr) => i === 0 || i === arr.length - 1).join('').toUpperCase() || '?'}</span><span>{c.criador_nome || 'Não informado'}</span></div></Td>
                     <Td><StatusBadge status={c.status} /></Td>
                     <Td>
                       {c.status === 'agendada' && c.agendada_para
@@ -362,6 +368,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                           className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
                           <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Number(c.enviados || 0) / (Number(c.total_destinatarios) || 1) * 100)}%` }} />
                         </div>
+                        <p className="text-[11px] text-slate-500 text-right">{Math.min(100, Math.round(Number(c.enviados || 0) / (Number(c.total_destinatarios) || 1) * 100))}%</p>
                       </div>
                     </Td>
                     <Td className="text-right"><span className={Number(c.falhas || 0) > 0 ? 'rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700' : 'text-slate-400'}>{c.falhas || 0}</span></Td>
@@ -369,15 +376,6 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                       <div className="flex items-center justify-center gap-1">
                         <IconBtn title="Visualizar" onClick={() => setDetalhe(c)}><Eye className="w-4 h-4" /></IconBtn>
                         <IconBtn title="Editar" onClick={() => setEditando(c)}><Pencil className="w-4 h-4" /></IconBtn>
-                        <IconBtn
-                          title="Reenviar falhas"
-                          onClick={() => reenviar(c)}
-                          disabled={reenviando === c.id || Number(c.falhas || 0) <= 0 || (c.canal !== 'whatsapp_nao_oficial' && !c.template_nome)}
-                        >
-                          {reenviando === c.id
-                            ? <Loader2 className="w-4 h-4 animate-spin" />
-                            : <RotateCw className="w-4 h-4" />}
-                        </IconBtn>
                         {['pausada', 'cancelada', 'erro'].includes(c.status) && c.canal === 'whatsapp_nao_oficial' && (
                           <IconBtn title="Retomar envio" onClick={() => retomarNaoOficial(c)} disabled={retomando === c.id}>
                             {retomando === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
@@ -386,6 +384,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" aria-label={`Mais ações de ${c.nome}`}><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => reenviar(c)} disabled={reenviando === c.id || Number(c.falhas || 0) <= 0 || (c.canal !== 'whatsapp_nao_oficial' && !c.template_nome)}><RotateCw className="mr-2 h-4 w-4" />Reenviar falhas</DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => duplicar(c)} disabled={copiando}><Copy className="mr-2 h-4 w-4" />Duplicar campanha</DropdownMenuItem>
                             <DropdownMenuItem onSelect={() => cancelar(c)} disabled={c.status === 'cancelada' || c.status === 'concluida'} className="text-rose-600"><Ban className="mr-2 h-4 w-4" />Cancelar campanha</DropdownMenuItem>
                             <DropdownMenuItem disabled><Download className="mr-2 h-4 w-4" />Exportar (em breve)</DropdownMenuItem>
@@ -406,6 +405,14 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
             </tbody>
           </table>
         </CardContent>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+          <p className="text-xs text-slate-500">Exibindo {filtradas.length ? (paginaAtual - 1) * 10 + 1 : 0}–{Math.min(paginaAtual * 10, filtradas.length)} de {filtradas.length} campanhas</p>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" aria-label="Página anterior" disabled={paginaAtual <= 1} onClick={() => setPagina(paginaAtual - 1)}>‹</Button>
+            <span className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white">{paginaAtual}</span>
+            <Button variant="outline" size="sm" aria-label="Próxima página" disabled={paginaAtual >= totalPaginas} onClick={() => setPagina(paginaAtual + 1)}>›</Button>
+          </div>
+        </div>
       </Card>
 
       <Dialog open={!!detalhe} onOpenChange={(o) => !o && setDetalhe(null)}>
@@ -618,7 +625,7 @@ function Th({ children, className = '' }) {
   return <th className={`text-left font-semibold px-4 py-3 text-xs ${className}`}>{children}</th>;
 }
 function Td({ children, className = '' }) {
-  return <td className={`px-4 py-4 align-middle ${className}`}>{children}</td>;
+  return <td className={`px-4 py-3 align-middle ${className}`}>{children}</td>;
 }
 function Info({ label, value }) {
   return (
