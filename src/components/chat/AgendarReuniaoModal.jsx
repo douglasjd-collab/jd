@@ -11,6 +11,7 @@ import { CalendarCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import ParticipantesReuniaoSelect from '@/components/agenda/ParticipantesReuniaoSelect';
+import { conflitosReuniao } from '@/components/agenda/conflitosReuniao';
 
 export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user }) {
   const [loading, setLoading] = useState(false);
@@ -84,6 +85,11 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
     }
     setLoading(true);
     try {
+      const existentes = await base44.entities.Agenda.filter({ empresa_id: user?.empresa_id }, '-inicio', 500);
+      const conflitos = conflitosReuniao(existentes, form.inicio, form.fim, participantes);
+      if (conflitos.length && !window.confirm(`Atenção: ${conflitos.length} reunião(ões) já ocupam esse horário para um dos participantes. Deseja agendar mesmo assim?`)) {
+        return;
+      }
       await base44.entities.Agenda.create({
         empresa_id: user?.empresa_id,
         usuario_id: user?.auth_id || user?.id,
