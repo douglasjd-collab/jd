@@ -54,7 +54,7 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
     });
   }, [open, campanha]);
 
-  if (!form) return null;
+  if (!form || !campanha) return null;
 
   const podeEditarConteudo = campanha?.canal === 'whatsapp_nao_oficial'
     ? campanha?.status !== 'executando'
