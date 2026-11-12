@@ -247,6 +247,41 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
   );
 
   const carregarClientesBase = async () => {
+    // Uma lista importada é o próprio público, não um filtro da base geral.
+    if (form.origens?.length === 1 && form.origens[0] === 'listas') {
+      const ids = [...new Set(form.listas_selecionadas || [])];
+      if (!ids.length) return [];
+      const listas = await base44.entities.ListaContatosImportada.filter({
+        empresa_id: empresaId, id: { $in: ids }, status: 'ativa',
+      }, null, 200);
+      if (listas.length !== ids.length) throw new Error('Uma lista selecionada não está mais disponível. Revise a etapa Público.');
+      const clientes = new Map();
+      for (const lista of listas) {
+        let contatos;
+        try { contatos = JSON.parse(lista.contatos_json || '[]'); }
+        catch { throw new Error('Não foi possível ler os contatos da lista ' + lista.nome); }
+        if (!Array.isArray(contatos)) throw new Error('Formato inválido da lista ' + lista.nome);
+        if (Number(lista.total_contatos) > contatos.length) throw new Error('A lista ' + lista.nome + ' possui um histórico parcial. Importe novamente para incluir todos os contatos.');
+        contatos.forEach((contato, indice) => {
+          const chave = contato.cliente_id || ('lista-' + lista.id + '-' + indice);
+          const telefones = Array.isArray(contato.telefones) ? contato.telefones : [];
+          const anterior = clientes.get(chave);
+          clientes.set(chave, {
+            ...anterior,
+            id: chave, empresa_id: empresaId,
+            _cliente_id_campanha: contato.cliente_id || null,
+            nome_completo: contato.nome || anterior?.nome_completo || '',
+            primeiro_nome: contato.primeiro_nome || '',
+            cpf: contato.cpf || '', email: contato.email || '',
+            res_cidade: contato.cidade || '',
+            celular: contato.telefone || telefones[0]?.numero || anterior?.celular || '',
+            _telefones_campanha: [...(anterior?._telefones_campanha || []), ...telefones],
+            status: 'ativo',
+          });
+        });
+      }
+      return [...clientes.values()];
+    }
     if (form.publico_produto === 'consorcio' || form.publico_consorcio_ativo) {
       // O público nasce da mesma entidade exibida em Menu > Consórcio > Propostas.
       // Por padrão entram todas as cotas vigentes; canceladas, contempladas e
@@ -1018,9 +1053,17 @@ function Step3({ form, setForm, empresaId }) {
   return (
     <div className="space-y-4">
       <div>
-        <Label className="block mb-1">Filtros</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label className="block mb-1">Filtros opcionais</Label>
+          <Button type="button" variant="outline" size="sm" onClick={() => setForm({
+            ...form, filtro_cidade: '', filtro_uf: '', filtro_com_nome: false, filtro_sem_nome: false,
+            filtro_telefone_valido: false, filtro_apenas_whatsapp: false, filtro_vendedor_id: '', filtro_parceiro_id: '',
+          })}>Limpar filtros</Button>
+        </div>
         <p className="text-xs text-slate-500 mb-3">
-          Filtros opcionais para refinar o público de primeiro contato. Você pode avançar sem preencher nada.
+          {form.origens?.length === 1 && form.origens[0] === 'listas'
+            ? 'O público já é a lista selecionada. Avance sem preencher para manter os contatos dela. Filtros adicionais podem reduzir essa seleção.'
+            : 'Filtros opcionais para refinar o público selecionado. Você pode avançar sem preencher nada.'}
         </p>
       </div>
 
