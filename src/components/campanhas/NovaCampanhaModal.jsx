@@ -57,7 +57,6 @@ const EMOJIS_CAMPANHA = [
 const STEPS = [
   { id: 1, label: 'Template', icon: FileText },
   { id: 2, label: 'Público', icon: Users },
-  { id: 3, label: 'Filtros', icon: FilterIcon },
   { id: 4, label: 'Prévia', icon: Eye },
   { id: 5, label: 'Agendamento', icon: CalendarClock },
   { id: 6, label: 'Confirmar', icon: ListChecks },
@@ -532,12 +531,12 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
 
   const avancar = () => {
     if (!podeAvancar) return;
-    if (step === 3) {
+    if (step === 2) {
       calcularPrevia();
     }
-    setStep((s) => Math.min(6, s + 1));
+    setStep((s) => s === 2 ? 4 : Math.min(6, s + 1));
   };
-  const voltar = () => setStep((s) => Math.max(1, s - 1));
+  const voltar = () => setStep((s) => s === 4 ? 2 : Math.max(1, s - 1));
 
   const submit = async () => {
     setSaving(true);
@@ -702,7 +701,6 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
           {step === 2 && (
             <PublicoBuilder form={form} setForm={setForm} empresaId={empresaId} user={user} />
           )}
-          {step === 3 && <Step3 form={form} setForm={setForm} empresaId={empresaId} />}
           {step === 4 && (
             <Step4
               preview={preview}
@@ -757,7 +755,7 @@ function Stepper({ step }) {
               <span className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs ${
                 ativo ? 'border-emerald-600 bg-emerald-600 text-white' : feito ? 'border-emerald-200 bg-emerald-100 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500'
               }`}>
-                {feito ? <Check className="w-3.5 h-3.5" /> : s.id}
+                {feito ? <Check className="w-3.5 h-3.5" /> : i + 1}
               </span>
               <span>{s.label}</span>
             </div>
