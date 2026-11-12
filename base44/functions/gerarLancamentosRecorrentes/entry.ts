@@ -26,9 +26,12 @@ Deno.serve(async (req) => {
     if (repetirAteTipo === 'fim_ano') {
       dataLimite = new Date(anoAtual, 11, 31); // 31/dez/ano atual
     } else if (repetirAteTipo === 'meses') {
-      const meses = dados.repetir_ate_meses || 12;
-      dataLimite = new Date(hoje);
-      dataLimite.setMonth(dataLimite.getMonth() + meses);
+      // A data original é a parcela 1 da série: o limite é o mês da última
+      // parcela (origem + meses - 1), garantindo exatamente "meses" parcelas.
+      const meses = Number(dados.repetir_ate_meses) || 12;
+      const base = dados.data ? new Date(dados.data + 'T12:00:00') : new Date(hoje);
+      const mesLimite = new Date(base.getFullYear(), base.getMonth() + Math.max(meses - 1, 0), 1);
+      dataLimite = new Date(mesLimite.getFullYear(), mesLimite.getMonth() + 1, 0);
     } else if (repetirAteTipo === 'data' && dados.repetir_ate_data) {
       dataLimite = new Date(dados.repetir_ate_data + 'T00:00:00');
     } else {
