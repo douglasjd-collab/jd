@@ -30,6 +30,7 @@ export default function EditarMensagemModal({ open, onOpenChange, mensagem, conv
   if (!mensagem) return null;
 
   const handleSalvar = async () => {
+    if (salvando) return;
     if (!texto.trim()) {
       toast.error('O texto não pode ficar vazio');
       return;
@@ -78,7 +79,7 @@ export default function EditarMensagemModal({ open, onOpenChange, mensagem, conv
       }
     } catch (e) {
       console.error('Erro ao editar mensagem:', e);
-      toast.error('Erro ao editar: ' + e.message);
+      toast.error('Erro ao editar: ' + (e?.response?.data?.error || e.message));
     } finally {
       setSalvando(false);
     }
