@@ -33,6 +33,10 @@ export default function Campanhas() {
   const loadUser = async () => {
     try {
       const me = await base44.auth.me();
+      const perfis = await base44.entities.Colaborador.filter({ user_id: me.id }, '-created_date');
+      const perfil = perfis.find(c => c.status === 'ativo' && c.empresa_id === me.empresa_id)
+        || perfis.find(c => c.status === 'ativo') || perfis[0];
+      me.nome_perfil = perfil?.nome || me.nome_perfil || me.full_name || me.email;
       if (me.role === 'super_admin' || me.perfil === 'super_admin') {
         setEmpresaId('699696c2c9f5bffc2e67402b');
       } else {
