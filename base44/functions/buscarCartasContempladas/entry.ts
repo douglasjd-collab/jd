@@ -24,6 +24,7 @@ const texto = (v: unknown) => (v ?? "").toString().trim();
 
 const normalizaStatus = (v: unknown) => {
   const s = texto(v).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (s.includes("indisp")) return "indisponivel";
   if (!s || s === "reservar" || s.includes("dispon")) return "disponivel";
   if (s.includes("reservad")) return "reservada";
   if (s.includes("vend")) return "vendida";
@@ -69,6 +70,7 @@ async function carregarFragaBitello(tipo: "contemplados" | "desagios") {
   });
 
   if (!response.ok) {
+    if (response.status === 410) throw new Error("Integração Fraga & Bitello desativada pelo fornecedor em 12/11/2026. Atualize a integração na área do parceiro.");
     throw new Error(`Fraga & Bitello respondeu HTTP ${response.status}`);
   }
 
@@ -219,7 +221,9 @@ async function carregarJobsConsorcios() {
   });
   const lista = extrairListaJobs(data);
   if (!lista) throw new Error("Formato da lista de cartas da JOBS não reconhecido");
-  return lista.map(normalizaCartaJobs).filter((c) => c.valor_credito > 0);
+  const normalizadas = lista.map(normalizaCartaJobs).filter((c) => c.valor_credito > 0);
+  if (lista.length && !normalizadas.length) throw new Error("A JOBS retornou registros, mas o formato do crédito não foi reconhecido. A consulta precisa ser revisada.");
+  return normalizadas;
 }
 
 const normalizaTexto = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -311,7 +315,8 @@ function combinarPorAdministradora(cartas: any[], maxCartas: number, alvo: numbe
     // (mais próximas do alvo e ainda dentro do teto). Assim o sistema avalia 2, 3, 4, 5 ou 6
     // cartas e escolhe a melhor composição, sem tentar todas as combinações possíveis.
     let nivel: any[][] = arr.map((carta) => [carta]);
-    for (const itens of nivel) adiciona(itens);
+    // Avaliar todas as cartas individuais; o corte limita somente composições.
+    for (const carta of arrOriginal) adiciona([carta]);
 
     for (let tamanho = 2; tamanho <= maxCartas && nivel.length; tamanho++) {
       const proximo = new Map<string, any[]>();
@@ -443,6 +448,7 @@ Deno.serve(async (req) => {
       credito_desejado: creditoDesejado,
       parcela_desejada: parcelaDesejada,
       tolerancia_percentual: toleranciaPct,
+      consulta_parcial: statusFontes.some((f) => f.status === "erro" || f.status === "pendente"),
       total_cartas_recebidas: cartas.length,
       total_combinacoes: combinacoes.length,
       fontes: statusFontes,
