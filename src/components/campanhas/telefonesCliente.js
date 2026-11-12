@@ -122,7 +122,7 @@ export function telefonesDoCliente(cliente, telefonesExtra = []) {
   }
   // Extras de ClienteTelefone (sem limite por cliente)
   let extraPrincipal = null;
-  for (const t of (telefonesExtra || [])) {
+  for (const t of (Array.isArray(cliente._telefones_campanha) ? [] : (telefonesExtra || []))) {
     const n = normalizarTelefone(t.telefone || t.numero || '');
     if (n.length < 10) continue;
     const tipo = t.tipo || 'celular';
