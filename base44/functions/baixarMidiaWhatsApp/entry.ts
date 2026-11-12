@@ -16,8 +16,7 @@ export default async function(req) {
     }
 
     // Buscar mensagem
-    const mensagens = await base44.asServiceRole.entities.MensagemWhatsapp.filter({ id: mensagem_id });
-    const mensagem = mensagens?.[0];
+    const mensagem = await base44.asServiceRole.entities.MensagemWhatsapp.get(mensagem_id);
     if (!mensagem) return Response.json({ error: 'Mensagem não encontrada' }, { status: 404 });
 
     // Anexo só é liberado para quem tem acesso à conversa da mensagem.
@@ -54,13 +53,9 @@ export default async function(req) {
     }
 
     // Buscar conversa e empresa
-    const conversaId = conversa_id || mensagem.conversa_id;
-    const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({ id: conversaId });
-    const conversa = conversas?.[0];
-
-    const empresaId = mensagem.empresa_id || '699696c2c9f5bffc2e67402b';
-    const empresas = await base44.asServiceRole.entities.Empresa.filter({ id: empresaId });
-    const empresa = empresas?.[0];
+    const conversa = autorizado.conversa;
+    const empresaId = mensagem.empresa_id || conversa.empresa_id;
+    const empresa = empresaId ? await base44.asServiceRole.entities.Empresa.get(empresaId) : null;
 
     const tipoParaMime = {
       'audio': 'audio/ogg',
@@ -423,7 +418,7 @@ export default async function(req) {
     const ext = extMap[extRaw] || extRaw;
     const file = new File([blob], nomeOriginal || `media_${mensagem_id}.${ext}`, { type: mimeType });
 
-    const uploadRes = await base44.asServiceRole.integrations.Core.UploadPublicFile({ file });
+    const uploadRes = await base44.asServiceRole.integrations.Core.UploadFile({ file });
     if (!uploadRes?.file_url) {
       return Response.json({ error: 'Upload para storage falhou' }, { status: 500 });
     }
