@@ -31,6 +31,19 @@ export default async function(req: Request): Promise<Response> {
     if (!body.titulo?.trim() || !Number.isFinite(inicio.getTime()) || !Number.isFinite(fim.getTime()) || fim <= inicio) {
       return Response.json({ erro: 'Informe título, início e término válidos.' }, { status: 400 });
     }
+    const agendaId = body.agenda_id;
+    let registro: any = null;
+    if (agendaId) {
+      const encontrados = await base44.asServiceRole.entities.Agenda.filter({ id: agendaId }, '-created_date', 1);
+      registro = encontrados?.[0];
+      if (!registro || registro.empresa_id !== body.empresa_id || registro.usuario_id !== user.id) {
+        return Response.json({ erro: 'Reunião não autorizada para gerar Meet.' }, { status: 403 });
+      }
+      if (registro.google_event_id && registro.link_reuniao?.includes('meet.google.com')) {
+        return Response.json({ link: registro.link_reuniao, evento_id: registro.google_event_id, existente: true });
+      }
+    }
+    const eventoExistente = registro?.google_event_id || null;
     const payload = {
       summary: body.titulo.trim(),
       description: body.descricao || '',
@@ -40,17 +53,18 @@ export default async function(req: Request): Promise<Response> {
       conferenceData: { createRequest: { requestId: crypto.randomUUID(), conferenceSolutionKey: { type: 'hangoutsMeet' } } },
       extendedProperties: { private: { jd_meet_previa: user.id } },
     };
-    const url = `${BASE}?conferenceDataVersion=1`;
-    const resp = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+    const url = eventoExistente ? `${BASE}/${encodeURIComponent(eventoExistente)}?conferenceDataVersion=1` : `${BASE}?conferenceDataVersion=1`;
+    const resp = await fetch(url, { method: eventoExistente ? 'PATCH' : 'POST', headers, body: JSON.stringify(payload) });
     const data = await resp.json().catch(() => ({}));
     if (!resp.ok) return Response.json({ erro: `Google Calendar ${resp.status}: ${data.error?.message || 'Falha ao criar Meet'}` }, { status: 502 });
     const link = data.hangoutLink || data.conferenceData?.entryPoints?.find((p: any) => p.entryPointType === 'video')?.uri;
     if (!link) {
       // Não deixar evento provisório órfão se a API não gerou conferência.
-      await fetch(`${BASE}/${encodeURIComponent(data.id)}`, { method: 'DELETE', headers });
+      if (!eventoExistente) await fetch(`${BASE}/${encodeURIComponent(data.id)}`, { method: 'DELETE', headers });
       return Response.json({ erro: 'Google não retornou o link do Meet. Tente novamente.' }, { status: 502 });
     }
-    return Response.json({ link, evento_id: data.id });
+    if (registro) await base44.asServiceRole.entities.Agenda.update(registro.id, { link_reuniao: link, google_event_id: data.id, google_sync_status: 'sincronizado', google_sync_em: new Date().toISOString() });
+    return Response.json({ link, evento_id: data.id, existente: !!registro });
   } catch (e: any) {
     return Response.json({ erro: e.message || 'Erro ao gerar Google Meet' }, { status: 500 });
   }
