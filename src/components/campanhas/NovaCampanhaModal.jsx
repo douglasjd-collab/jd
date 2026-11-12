@@ -109,8 +109,8 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     agendada_para_data: '',
     agendada_para_hora: '',
     velocidade_envio: 60,
-    intervalo_min_segundos: 5,
-    intervalo_max_segundos: 10,
+    intervalo_min_segundos: 10,
+    intervalo_max_segundos: 20,
     pausa_apos: '50',
     duracao_pausa_min: '0',
   });
@@ -155,8 +155,8 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         agendada_para_data: '',
         agendada_para_hora: '',
         velocidade_envio: 60,
-        intervalo_min_segundos: 5,
-        intervalo_max_segundos: 10,
+        intervalo_min_segundos: 10,
+        intervalo_max_segundos: 20,
         pausa_apos: '50',
         duracao_pausa_min: '0',
       });
@@ -255,6 +255,11 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
         empresa_id: empresaId, id: { $in: ids }, status: 'ativa',
       }, null, 200);
       if (listas.length !== ids.length) throw new Error('Uma lista selecionada não está mais disponível. Revise a etapa Público.');
+      const idsClientes = [...new Set(listas.flatMap((lista) => {
+        try { return JSON.parse(lista.contatos_json || '[]').map((c) => c.cliente_id).filter(Boolean); } catch { return []; }
+      }))];
+      const cadastros = idsClientes.length ? await base44.entities.Cliente.filter({ empresa_id: empresaId, id: { $in: idsClientes } }, null, 5000) : [];
+      const cadastrosPorId = new Map(cadastros.map((c) => [c.id, c]));
       const clientes = new Map();
       for (const lista of listas) {
         let contatos;
@@ -267,13 +272,14 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
           const telefones = Array.isArray(contato.telefones) ? contato.telefones : [];
           const anterior = clientes.get(chave);
           clientes.set(chave, {
+            ...cadastrosPorId.get(contato.cliente_id),
             ...anterior,
             id: chave, empresa_id: empresaId,
             _cliente_id_campanha: contato.cliente_id || null,
             nome_completo: contato.nome || anterior?.nome_completo || '',
             primeiro_nome: contato.primeiro_nome || '',
             cpf: contato.cpf || '', email: contato.email || '',
-            res_cidade: contato.cidade || '',
+            res_cidade: contato.cidade || cadastrosPorId.get(contato.cliente_id)?.res_cidade || '',
             celular: contato.telefone || telefones[0]?.numero || anterior?.celular || '',
             _telefones_campanha: [...(anterior?._telefones_campanha || []), ...telefones],
             status: 'ativo',
@@ -395,7 +401,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
     return clientes;
   };
 
-  const calcularPrevia = async () => {
+  const calcularPrevia = async (opcoes = null) => {
     if (!empresaId) return;
     setLoadingPreview(true);
     setPreview(null);
@@ -403,7 +409,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
       const baseClientes = await carregarClientesBase();
       const telsMap = await carregarTelefonesPorCliente(empresaId);
       const bloqueados = await carregarTelefonesBloqueados(empresaId);
-      const filtrados = aplicarFiltrosPublico(baseClientes, form, telsMap);
+      const filtrados = aplicarFiltrosPublico(baseClientes, opcoes?.form || form, telsMap);
       const comTelefone = filtrados.filter((c) =>
         selecionarTelefonesParaCampanha(c, modoTelefoneParaCampanha(form), telsMap.get(c.id) || []).length > 0
       );
@@ -701,7 +707,14 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
             <Step4
               preview={preview}
               loading={loadingPreview}
-              onRecalc={calcularPrevia}
+              onRecalc={() => calcularPrevia()}
+              setForm={setForm}
+              onLimparFiltros={() => {
+                const proximo = { ...form, filtro_cidade: '', filtro_uf: '', filtro_com_nome: false, filtro_sem_nome: false,
+                  filtro_telefone_valido: false, filtro_apenas_whatsapp: false, filtro_vendedor_id: '', filtro_parceiro_id: '' };
+                setForm(proximo);
+                calcularPrevia({ form: proximo });
+              }}
               form={form}
               template={templateSelecionado}
             />
@@ -1173,7 +1186,7 @@ function ToggleCheck({ checked, onChange, label }) {
   );
 }
 
-function Step4({ preview, loading, onRecalc, form, template }) {
+function Step4({ preview, loading, onRecalc, form, setForm, onLimparFiltros, template }) {
   const [busca, setBusca] = useState('');
   const [situacao, setSituacao] = useState('todos');
 
@@ -1208,6 +1221,21 @@ function Step4({ preview, loading, onRecalc, form, template }) {
         </Button>
       </div>
 
+      <div className="rounded-lg border border-slate-200 p-3 space-y-2">
+        <p className="text-sm font-semibold">Intervalo entre os envios</p>
+        <select className="w-full border rounded-md p-2 text-sm" value={`${form.intervalo_min_segundos}-${form.intervalo_max_segundos}`}
+          onChange={(e) => { const [min, max] = e.target.value.split('-').map(Number); setForm({ ...form, intervalo_min_segundos: min, intervalo_max_segundos: max }); }}>
+          <option value="5-10">Aleatório entre 5 e 10 segundos</option>
+          <option value="10-20">Aleatório entre 10 e 20 segundos</option>
+          <option value="11-20">Aleatório entre 11 e 20 segundos</option>
+          <option value="21-30">Aleatório entre 21 e 30 segundos</option>
+        </select>
+        <p className="text-xs text-slate-500">Um contato por vez. A espera varia a cada envio: por exemplo, 10s, 20s e 15s.</p>
+      </div>
+      {preview?.clientes_removidos_filtros > 0 && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm space-y-2">
+        <p>{preview.clientes_removidos_filtros} contatos removidos pelos filtros: {resumoFiltros(form)}.</p>
+        <Button type="button" variant="outline" size="sm" onClick={onLimparFiltros} disabled={loading}>Limpar filtros e recalcular</Button>
+      </div>}
       {loading ? (
         <div className="flex items-center justify-center py-16 text-slate-500">
           <Loader2 className="w-5 h-5 animate-spin mr-2" /> Preparando a prévia…
@@ -1406,6 +1434,7 @@ function Step5({ form, setForm }) {
               }}
               className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-emerald-500"
             >
+              <option value="10-20">Aleatório entre 10 e 20 segundos</option>
               <option value="5-10">Aleatório entre 5 e 10 segundos</option>
               <option value="11-20">Aleatório entre 11 e 20 segundos</option>
               <option value="21-30">Aleatório entre 21 e 30 segundos</option>
