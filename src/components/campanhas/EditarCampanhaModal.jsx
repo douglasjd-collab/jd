@@ -33,6 +33,7 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
   const qc = useQueryClient();
   const [form, setForm] = useState(null);
   const [salvando, setSalvando] = useState(false);
+  const [enviandoMidia, setEnviandoMidia] = useState(false);
 
   useEffect(() => {
     if (!open || !campanha) return;
@@ -61,7 +62,31 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
     : ['rascunho', 'agendada', 'pausada'].includes(campanha?.status) && Number(campanha?.enviados || 0) === 0 && Number(campanha?.falhas || 0) === 0;
   const podeEditarAgendamento = ['rascunho', 'agendada'].includes(campanha?.status);
 
+  const uploadMidia = async (file) => {
+    if (!file || enviandoMidia) return;
+    if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+      toast.error('Selecione uma imagem ou um vídeo.');
+      return;
+    }
+    setEnviandoMidia(true);
+    try {
+      const resultado = await base44.integrations.Core.UploadFile({ file });
+      if (!resultado?.file_url) throw new Error('O upload não retornou o arquivo.');
+      setForm(anterior => ({
+        ...anterior,
+        mensagem_tipo: file.type.startsWith('video/') ? 'video_texto' : 'imagem_texto',
+        midia_url: resultado.file_url,
+      }));
+      toast.success('Mídia carregada. Salve para aplicar à campanha.');
+    } catch (e) {
+      toast.error('Erro ao carregar mídia: ' + (e.message || 'desconhecido'));
+    } finally {
+      setEnviandoMidia(false);
+    }
+  };
+
   const submit = async (continuar = false) => {
+    if (enviandoMidia) return;
     setSalvando(true);
     try {
       if (form.status === 'agendada' && (!form.agendada_para_data || !form.agendada_para_hora)) {
@@ -86,7 +111,7 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
           return;
         }
         if (form.mensagem_tipo !== 'texto' && !String(form.midia_url || '').trim()) {
-          toast.error('Informe a URL da imagem ou do vídeo.');
+          toast.error('Carregue uma imagem ou vídeo, ou informe a URL da mídia.');
           setSalvando(false);
           return;
         }
@@ -129,7 +154,7 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(valor) => { if (!enviandoMidia && !salvando) onOpenChange(valor); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Editar Campanha</DialogTitle>
@@ -199,12 +224,29 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
                 <Label>Mensagem</Label>
                 <Textarea rows={5} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })} placeholder="Texto enviado aos destinatários" />
               </div>
-              {form.mensagem_tipo !== 'texto' && (
-                <div>
-                  <Label>URL da mídia</Label>
-                  <Input value={form.midia_url} onChange={(e) => setForm({ ...form, midia_url: e.target.value })} placeholder="https://..." />
-                </div>
-              )}
+              <div className="space-y-2 rounded-md border p-3">
+                <Label htmlFor="editar-campanha-midia">Carregar nova imagem ou vídeo</Label>
+                <Input id="editar-campanha-midia" type="file" accept="image/*,video/*"
+                  disabled={enviandoMidia || salvando}
+                  onChange={(e) => { uploadMidia(e.target.files?.[0]); e.target.value = ''; }} />
+                {enviandoMidia && <p role="status" className="text-sm text-slate-500 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Carregando mídia…</p>}
+                <p className="text-xs text-slate-500">O tipo da mensagem será ajustado ao arquivo escolhido. A troca será aplicada aos próximos envios após salvar.</p>
+                {form.mensagem_tipo !== 'texto' && (
+                  <>
+                    <Label>URL da mídia (opcional se carregar arquivo)</Label>
+                    <Input value={form.midia_url} disabled={enviandoMidia || salvando} onChange={(e) => setForm({ ...form, midia_url: e.target.value })} placeholder="https://..." />
+                    {form.midia_url && (
+                      <div className="rounded-md bg-slate-50 p-2">
+                        {form.mensagem_tipo === 'video_texto'
+                          ? <video key={form.midia_url} src={form.midia_url} controls preload="metadata" className="max-h-56 w-full rounded" />
+                          : <img src={form.midia_url} alt="Prévia da mídia da campanha" className="max-h-56 w-full rounded object-contain" />}
+                        <Button type="button" variant="ghost" size="sm" disabled={enviandoMidia || salvando}
+                          onClick={() => setForm({ ...form, midia_url: '', mensagem_tipo: 'texto' })}>Remover mídia</Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
                   <Label>Intervalo mínimo (segundos)</Label>
@@ -245,11 +287,11 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={salvando}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={salvando || enviandoMidia}>
             Cancelar
           </Button>
-          {podeEditarConteudo && campanha.canal === 'whatsapp_nao_oficial' && onContinuar && <Button onClick={() => submit(true)} disabled={salvando || !form.nome?.trim() || !form.mensagem_texto?.trim()}>Salvar e continuar pendentes</Button>}
-          <Button onClick={() => submit(false)} disabled={salvando || !form.nome?.trim()}>
+          {podeEditarConteudo && campanha.canal === 'whatsapp_nao_oficial' && onContinuar && <Button onClick={() => submit(true)} disabled={salvando || enviandoMidia || !form.nome?.trim() || !form.mensagem_texto?.trim()}>Salvar e continuar pendentes</Button>}
+          <Button onClick={() => submit(false)} disabled={salvando || enviandoMidia || !form.nome?.trim()}>
             {salvando ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
             Salvar
           </Button>
