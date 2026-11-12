@@ -90,7 +90,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
       if (conflitos.length && !window.confirm(`Atenção: ${conflitos.length} reunião(ões) já ocupam esse horário para um dos participantes. Deseja agendar mesmo assim?`)) {
         return;
       }
-      await base44.entities.Agenda.create({
+      const compromissoCriado = await base44.entities.Agenda.create({
         empresa_id: user?.empresa_id,
         usuario_id: user?.auth_id || user?.id,
         titulo: form.titulo,
@@ -106,6 +106,11 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
         participantes_json: JSON.stringify(participantes),
         telegram_chat_id: user?.telegram_chat_id || '',
       });
+      if (String(user?.email || '').toLowerCase() === 'douglas.jdpromotora@gmail.com' && compromissoCriado?.id) {
+        try {
+          await base44.functions.invoke('sincronizarAgendaGoogle', { agenda_id: compromissoCriado.id });
+        } catch (erro) { console.warn('Google Agenda não sincronizado:', erro); toast.warning('Reunião salva no CRM; sincronização Google pendente.'); }
+      }
       toast.success('✅ Reunião agendada com sucesso!');
       onOpenChange(false);
     } catch (e) {
