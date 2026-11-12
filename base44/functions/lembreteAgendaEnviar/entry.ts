@@ -2,6 +2,7 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 import {
   enviarLembretesDoTempo,
   horaDoLembrete,
+  enviadosDoHorario,
   temposDoConfig,
   JANELA_TOLERANCIA_MS,
 } from '../../shared/lembretesAgendaShared.ts';
@@ -38,7 +39,7 @@ Deno.serve(async (req) => {
       agenda_id,
       status: 'enviado',
     });
-    const temposEnviados = new Set((enviados || []).map((e: any) => Number(e.minutos_antes)));
+    const temposEnviados = new Set(enviadosDoHorario(enviados, inicioMs).map((e: any) => Number(e.minutos_antes)));
 
     // Vencidos (já passou o horário) e ainda dentro da janela de tolerância.
     const devidos = temposDoConfig(config).filter((tempo: number) => {
