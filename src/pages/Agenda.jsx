@@ -15,7 +15,7 @@ import {
 import {
   Calendar, Clock, MapPin, Search, Edit2, Trash2, CheckCircle,
   XCircle, Plus, ChevronLeft, ChevronRight, CalendarDays, MoreVertical,
-  AlertCircle, RefreshCw, Settings, MessageCircle, X, Bell,
+  AlertCircle, RefreshCw, Settings, MessageCircle, X, Bell, Video,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
@@ -626,6 +626,7 @@ export default function AgendaPage() {
   const [user, setUser] = useState(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedItem, setSelectedItem] = useState(null);
+  const [gerandoMeet, setGerandoMeet] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -734,6 +735,27 @@ export default function AgendaPage() {
     onSuccess: () => { queryClient.invalidateQueries(['agenda']); toast.success('Excluído!'); setSelectedItem(null); },
   });
 
+  const gerarMeetNaAgenda = async () => {
+    if (!formData.titulo?.trim() || !formData.inicio || !formData.fim || new Date(formData.fim) <= new Date(formData.inicio)) {
+      toast.error('Informe título, início e término válidos para gerar o Meet.');
+      return;
+    }
+    setGerandoMeet(true);
+    try {
+      const resposta = await base44.functions.invoke('gerarLinkMeetAgenda', {
+        empresa_id: user?.empresa_id, agenda_id: editingItem?.id,
+        titulo: formData.titulo, inicio: new Date(formData.inicio).toISOString(),
+        fim: new Date(formData.fim).toISOString(), local: formData.local, descricao: formData.descricao,
+      });
+      const data = resposta?.data;
+      if (!data?.link) throw new Error(data?.erro || 'Google não retornou link do Meet.');
+      setFormData(prev => ({ ...prev, link_reuniao: data.link, local: prev.local || 'Online', ...(data.evento_id ? { google_event_id: data.evento_id } : {}) }));
+      toast.success('Link do Google Meet gerado!');
+      if (editingItem?.id) await queryClient.invalidateQueries({ queryKey: ['agenda'] });
+    } catch (e) { toast.error('Erro ao gerar Meet: ' + (e.response?.data?.erro || e.message)); }
+    finally { setGerandoMeet(false); }
+  };
+
   const handleOpenModal = (item = null) => {
     setEditingItem(item);
     setFormData(item ? {
@@ -741,10 +763,11 @@ export default function AgendaPage() {
       inicio: item.inicio ? format(parseISO(item.inicio), "yyyy-MM-dd'T'HH:mm") : '',
       fim: item.fim ? format(parseISO(item.fim), "yyyy-MM-dd'T'HH:mm") : '',
       status: item.status || 'agendado', descricao: item.descricao || '', local: item.local || '', telefone: formatPhoneBR(item.telefone || ''),
+      link_reuniao: item.link_reuniao || '', google_event_id: item.google_event_id || '',
       participantes: participantesDoCompromisso(item),
     } : {
       titulo: '', tipo: 'reuniao', inicio: format(selectedDate, "yyyy-MM-dd'T'HH:mm"), fim: '', status: 'agendado',
-      descricao: '', local: '', telefone: '',
+      descricao: '', local: '', telefone: '', link_reuniao: '', google_event_id: '',
       // O criador já entra como participante: sem ninguém selecionado o aviso
       // só chegaria ao contato.
       participantes: user?.auth_id ? [{ user_id: user.auth_id, nome: user.full_name || user.nome_perfil || 'Eu' }] : [],
@@ -1161,6 +1184,20 @@ export default function AgendaPage() {
                 />
               </div>
             </div>
+            {formData.tipo === 'reuniao' && (
+              <div className="space-y-2">
+                <Label>Link da reunião (opcional)</Label>
+                <div className="flex gap-2">
+                  <Input type="url" value={formData.link_reuniao || ''} onChange={e => setFormData(prev => ({ ...prev, link_reuniao: e.target.value }))} placeholder="https://meet.google.com/..." />
+                  {user?.auth_id === '6956d1f3d631cbba22ce3021' && (
+                    <Button type="button" variant="outline" className="shrink-0 gap-2" disabled={gerandoMeet || !formData.inicio || !formData.fim || new Date(formData.fim) <= new Date(formData.inicio)} onClick={gerarMeetNaAgenda}>
+                      <Video className="w-4 h-4" /> {gerandoMeet ? 'Gerando...' : 'Gerar Meet'}
+                    </Button>
+                  )}
+                </div>
+                {!formData.fim && <p className="text-xs text-slate-500">Preencha o horário de término para gerar o Meet.</p>}
+              </div>
+            )}
             <ParticipantesReuniaoSelect
               colaboradores={colaboradoresAgenda}
               value={formData.participantes || []}
