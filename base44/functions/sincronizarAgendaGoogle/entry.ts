@@ -49,7 +49,7 @@ export default async function(req: Request): Promise<Response> {
       end: { dateTime: fim.toISOString(), timeZone: 'America/Recife' },
       extendedProperties: { private: { jd_agenda_id: agenda.id } },
     };
-    const resp = await fetch(eventoId ? `${BASE}/${encodeURIComponent(eventoId)}` : BASE, {
+    const resp = await fetch(eventoId ? `${BASE}/${encodeURIComponent(eventoId)}?conferenceDataVersion=1` : `${BASE}?conferenceDataVersion=1`, {
       method: eventoId ? 'PATCH' : 'POST', headers, body: JSON.stringify(payload),
     });
     if (!resp.ok) {
@@ -57,7 +57,7 @@ export default async function(req: Request): Promise<Response> {
       return Response.json({ erro: `Google Calendar ${resp.status}: ${erro.slice(0,300)}` }, { status: 502 });
     }
     const evento = await resp.json();
-    await db.Agenda.update(agenda.id, { google_event_id: evento.id, google_sync_status: 'sincronizado', google_sync_em: new Date().toISOString() });
+    await db.Agenda.update(agenda.id, { google_event_id: evento.id, ...(evento.hangoutLink && !agenda.link_reuniao ? { link_reuniao: evento.hangoutLink } : {}), google_sync_status: 'sincronizado', google_sync_em: new Date().toISOString() });
     return Response.json({ sincronizado: true, google_event_id: evento.id, link: evento.htmlLink });
   } catch (e: any) {
     return Response.json({ erro: e.message || 'Erro de sincronização' }, { status: 500 });
