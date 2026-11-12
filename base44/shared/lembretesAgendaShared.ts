@@ -95,6 +95,14 @@ export function horaDoLembrete(inicioMs: number, minutosAntes: number) {
   return inicioMs - minutosAntes * 60000;
 }
 
+// Um envio de uma ocorrência anterior não quita o lembrete após reagendamento.
+export function enviadosDoHorario(registros: any[], inicioMs: number) {
+  return (registros || []).filter((registro: any) =>
+    registro.status === 'enviado' &&
+    new Date(registro.horario_programado).getTime() === horaDoLembrete(inicioMs, Number(registro.minutos_antes))
+  );
+}
+
 async function enviarWhatsApp(base44: any, empresaId: string, telefone: string, mensagem: string) {
   // Lembretes automáticos usam sempre a D-API (nunca a Meta Oficial)
   const conexoes = await base44.asServiceRole.entities.WhatsappConnection.filter(
@@ -166,7 +174,7 @@ export async function enviarLembretesDoTempo(base44: any, comp: any, config: any
     agenda_id: comp.id,
     minutos_antes: minutosAntes,
   });
-  const jaEnviados = (existentes || []).filter((e: any) => e.status === 'enviado');
+  const jaEnviados = enviadosDoHorario(existentes, inicio.getTime());
 
   // Cliente
   if (config.enviar_para_cliente !== false && comp.telefone) {
