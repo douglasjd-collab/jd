@@ -116,6 +116,10 @@ export function telefonesDoCliente(cliente, telefonesExtra = []) {
   push(cliente.telefone_fixo, 'residencial', false, false);
   push(cliente.pj_celular, 'celular', true, false);
   push(cliente.pj_telefone_fixo, 'comercial', false, false);
+  // Telefones do arquivo selecionado permanecem disponíveis na prévia e no envio.
+  for (const t of cliente._telefones_campanha || []) {
+    push(t.numero || t.telefone, t.tipo || 'contato', t.is_whatsapp ?? ['celular', 'whatsapp'].includes(t.tipo), !!t.is_principal);
+  }
   // Extras de ClienteTelefone (sem limite por cliente)
   let extraPrincipal = null;
   for (const t of (telefonesExtra || [])) {
