@@ -35,7 +35,8 @@ export default function ChatMessageFooter({
     let ativo = true;
     base44.functions.invoke('permissoesWhatsapp', { modo: 'matriz', empresa_id: empresaId })
       .then(({data}) => {
-        if (!ativo || data?.error) return;
+        if (!ativo) return;
+        if (data?.error) { setPermissoesCanal([]); return; }
         const colaborador = (data?.colaboradores || []).find(c =>
           c.id === user.colaborador_id || c.user_id === user.id ||
           (c.email && user.email && c.email.toLowerCase() === user.email.toLowerCase())
