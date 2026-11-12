@@ -1213,7 +1213,7 @@ function Step4({ preview, loading, onRecalc, form, setForm, onLimparFiltros, tem
     : 'Cliente';
   const textoExemplo = (form.mensagem_texto || '')
     .replace(/\\([*_~])/g, '$1')
-    .replace(/(?:\{\s*nome\s*\}|\bnome\s*\})/gi, () => primeiroNome);
+    .replace(/(?:\{\s*(?:nome|primeiro_nome)\s*\}|\bnome\s*\})/gi, () => primeiroNome);
 
   return (
     <div className="space-y-5">
