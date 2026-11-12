@@ -1,6 +1,10 @@
 {
   "name": "Agenda",
   "properties": {
+    "link_reuniao": {
+      "type": "string",
+      "description": "Link de videoconfer\u00eancia, incluindo Google Meet"
+    },
     "google_event_id": {
       "type": "string",
       "description": "Identificador do evento no Google Calendar (sincroniza\u00e7\u00e3o da conta titular)"
