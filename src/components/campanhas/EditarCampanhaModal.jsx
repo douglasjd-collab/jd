@@ -155,12 +155,12 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
 
   return (
     <Dialog open={open} onOpenChange={(valor) => { if (!enviandoMidia && !salvando) onOpenChange(valor); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="w-[95vw] max-w-3xl max-h-[92dvh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Editar Campanha</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+        <div className="space-y-4 min-h-0 max-h-[72dvh] overflow-y-auto pr-2">
           <div>
             <Label>Nome *</Label>
             <Input
@@ -286,7 +286,7 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
 
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0 flex-wrap gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={salvando || enviandoMidia}>
             Cancelar
           </Button>
