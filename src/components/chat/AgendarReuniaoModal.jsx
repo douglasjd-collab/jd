@@ -224,12 +224,10 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
 
           <div className="space-y-2">
             <Label>Link da reunião (opcional)</Label>
-            <div className="flex gap-2">
-              <Input type="url" value={form.link_reuniao || ''} onChange={e => setForm(f => ({ ...f, link_reuniao: e.target.value }))} placeholder="https://meet.google.com/..." />
-              <Button type="button" variant="outline" onClick={gerarMeet} disabled={gerandoMeet || loading || !form.titulo?.trim() || !form.inicio || !form.fim || new Date(form.fim) <= new Date(form.inicio)} className="shrink-0 gap-1">
-                <Video className="w-4 h-4" /> {gerandoMeet ? 'Gerando...' : 'Gerar Meet'}
-              </Button>
-            </div>
+            <Input type="url" value={form.link_reuniao || ''} onChange={e => setForm(f => ({ ...f, link_reuniao: e.target.value }))} placeholder="https://meet.google.com/..." />
+            <Button type="button" variant="outline" onClick={gerarMeet} disabled={gerandoMeet || loading || !form.titulo?.trim() || !form.inicio || !form.fim || new Date(form.fim) <= new Date(form.inicio)} className="w-full gap-2 border-blue-300 text-blue-700 hover:bg-blue-50">
+              <Video className="w-4 h-4" /> {gerandoMeet ? 'Gerando link do Meet...' : 'Gerar link do Google Meet'}
+            </Button>
             {!form.fim && <p className="text-xs text-slate-500">Preencha o horário de término para gerar o Google Meet.</p>}
           </div>
           <ParticipantesReuniaoSelect colaboradores={colaboradores} value={participantes} onChange={setParticipantes} />
