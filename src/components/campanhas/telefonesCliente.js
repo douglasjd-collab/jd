@@ -9,12 +9,12 @@ const HEADERS_WHATSAPP = ['whatsapp', 'whats', 'zap'];
 const HEADERS_RESIDENCIAL = ['residencial', 'fixo', 'casa'];
 const HEADERS_COMERCIAL = ['comercial', 'commercial', 'empresa', 'trabalho'];
 const HEADERS_RECADO = ['recado', 'mensagem'];
-const HEADERS_PHONE_BASE = ['telefone', 'tel', 'celular', 'cel', 'whatsapp', 'whats', 'fone', 'numero', 'número', 'phone', 'contato', 'comercial', 'residencial', 'recado', 'zap'];
+const HEADERS_PHONE_BASE = ['telefone', 'tel', 'celular', 'cel', 'whatsapp', 'whats', 'fone', 'numero', 'número', 'phone'];
 
 export function isColunaTelefone(header) {
   const h = String(header || '').toLowerCase().trim();
   if (!h) return false;
-  return HEADERS_PHONE_BASE.some((k) => h === k || h.includes(k));
+  return /^(contato|comercial|residencial|recado|zap)(\s*\d+)?$/.test(h) || HEADERS_PHONE_BASE.some((k) => h === k || h.includes(k));
 }
 
 function classificarHeader(header) {
