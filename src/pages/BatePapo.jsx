@@ -1093,8 +1093,13 @@ export default function BatePapo() {
       if (msgData?.id && msgData?.conversa_id && (!msgData.empresa_id || msgData.empresa_id === empresaId)) {
         const key = ['mensagens-whatsapp', msgData.conversa_id];
         // Não criar um histórico incompleto para conversa ainda nunca carregada.
-        if (queryClient.getQueryData(key)) {
+        if (queryClient.getQueryData(key) !== undefined) {
           queryClient.setQueryData(key, old => mesclarHistoricoMensagens(old || [], [msgData]));
+        }
+        // A lista lateral e o painel principal devem convergir mesmo quando
+        // o evento chega antes do primeiro carregamento do histórico.
+        if (msgData.conversa_id === conversaAtualId) {
+          queryClient.invalidateQueries({ queryKey: key, exact: true, refetchType: 'active' });
         }
       }
       if (conversaAtualId && msgData?.conversa_id === conversaAtualId) {
