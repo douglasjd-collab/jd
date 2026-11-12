@@ -22,6 +22,14 @@ const PRESETS = [
   { label: '1 dia antes', valor: 1440 },
 ];
 
+function modeloAtual(texto, padrao, tipo) {
+  const atual = String(texto || '').trim();
+  if (!atual) return padrao;
+  const legadoCliente = atual.includes('Lembramos que você possui uma reunião agendada hoje às {hora}');
+  const legadoParticipante = atual.includes('⏰ *Lembrete de reunião*') && atual.includes('Faltam {faltam}');
+  return (tipo === 'cliente' ? legadoCliente : legadoParticipante) ? padrao : texto;
+}
+
 function formatarTempo(minutos) {
   if (minutos >= 1440) return `${Math.round(minutos / 1440)} dia(s) antes`;
   if (minutos >= 60) return `${Math.round(minutos / 60)} hora(s) antes`;
@@ -47,13 +55,20 @@ export default function ConfiguracaoLembretesAgenda({ user }) {
       const configs = await base44.entities.ConfiguracaoLembretesAgenda.filter({ empresa_id: user.empresa_id });
       if (configs && configs.length > 0) {
         setConfigId(configs[0].id);
+        const mensagemCliente = modeloAtual(configs[0].mensagem_cliente, MSG_CLIENTE_DEFAULT, 'cliente');
+        const mensagemResponsavel = modeloAtual(configs[0].mensagem_responsavel, MSG_RESPONSAVEL_DEFAULT, 'participante');
+        if (mensagemCliente !== configs[0].mensagem_cliente || mensagemResponsavel !== configs[0].mensagem_responsavel) {
+          await base44.entities.ConfiguracaoLembretesAgenda.update(configs[0].id, {
+            mensagem_cliente: mensagemCliente, mensagem_responsavel: mensagemResponsavel,
+          });
+        }
         setConfig({
           ativo: configs[0].ativo ?? false,
           tempos_minutos: configs[0].tempos_minutos || [60, 10],
           enviar_para_cliente: configs[0].enviar_para_cliente ?? true,
           enviar_para_responsaveis: configs[0].enviar_para_responsaveis ?? true,
-          mensagem_cliente: configs[0].mensagem_cliente || MSG_CLIENTE_DEFAULT,
-          mensagem_responsavel: configs[0].mensagem_responsavel || MSG_RESPONSAVEL_DEFAULT,
+          mensagem_cliente: mensagemCliente,
+          mensagem_responsavel: mensagemResponsavel,
         });
       } else {
         setConfig({
