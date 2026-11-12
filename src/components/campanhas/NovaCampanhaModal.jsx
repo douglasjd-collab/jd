@@ -891,7 +891,7 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
                 { id: 'video_texto', label: 'Vídeo + texto', Icon: Video },
               ].map(({ id: tipo, label, Icon }) => (
                 <button key={tipo} type="button" onClick={() => setForm({ ...form, mensagem_tipo: tipo, midia_url: '', midia_nome: '' })}
-                  className={`flex min-h-[76px] items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${form.mensagem_tipo === tipo ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}>
+                  className={`flex min-h-[48px] items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${form.mensagem_tipo === tipo ? 'border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'}`}>
                   <Icon className="w-5 h-5" />{label}
                 </button>
               ))}
@@ -1238,7 +1238,7 @@ function Step4({ preview, loading, onRecalc, form, setForm, onLimparFiltros, tem
                     ) : (
                       <>
                         {form.mensagem_tipo === 'imagem_texto' && form.midia_url && (
-                          <img src={form.midia_url} alt="Imagem da campanha" className="w-full max-h-56 object-cover" />
+                          <img src={form.midia_url} alt="Imagem da campanha" className="w-full max-h-56 object-contain" />
                         )}
                         {form.mensagem_tipo === 'video_texto' && form.midia_url && (
                           <video src={form.midia_url} controls className="w-full max-h-56 bg-black" />
@@ -1253,17 +1253,17 @@ function Step4({ preview, loading, onRecalc, form, setForm, onLimparFiltros, tem
 
             <div className="space-y-3">
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5">
-                <p className="text-sm font-medium text-emerald-800">Mensagens que serão enviadas</p>
+                <p className="text-sm font-medium text-emerald-800">Destinatários aptos para envio</p>
                 <p className="text-4xl font-bold text-emerald-700 mt-1">{preview.total_final_envios ?? 0}</p>
                 <p className="text-xs text-emerald-700 mt-1">Um envio por telefone apto e sem duplicidade.</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Stat label="Público encontrado" value={preview.clientes_base ?? 0} color="text-slate-700" />
-                <Stat label="Após os filtros" value={preview.clientes_selecionados ?? 0} color="text-blue-600" />
+                <Stat label="Público selecionado" value={preview.clientes_selecionados ?? 0} color="text-blue-600" />
               </div>
               <div className="rounded-lg border border-slate-200 p-3">
                 <p className="text-xs font-semibold text-slate-600 mb-2">Contatos que não receberão</p>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
                   <Row label="Removidos pelos filtros" value={preview.clientes_removidos_filtros ?? 0} />
                   <Row label="Sem telefone" value={preview.clientes_sem_telefone ?? 0} />
                   <Row label="Telefone inválido" value={preview.telefones_invalidos ?? 0} />
@@ -1271,9 +1271,6 @@ function Step4({ preview, loading, onRecalc, form, setForm, onLimparFiltros, tem
                   <Row label="Bloqueados" value={preview.bloqueados_removidos ?? 0} />
                 </div>
               </div>
-            </div>
-          </div>
-
           <Card className="border-slate-200">
             <CardContent className="p-0">
               <div className="p-4 border-b space-y-3">
@@ -1348,6 +1345,10 @@ function Step4({ preview, loading, onRecalc, form, setForm, onLimparFiltros, tem
               </div>
             </CardContent>
           </Card>
+            </div>
+          </div>
+
+
         </>
       ) : (
         <div className="text-center text-slate-400 py-10">Prévia ainda não calculada.</div>
@@ -1453,7 +1454,7 @@ function Step6({ form, template, preview, user }) {
     <div className="space-y-3">
       <div><h3 className="text-lg font-semibold text-slate-800">Confirmar campanha</h3><p className="mt-1 text-sm text-slate-500">Revise a mensagem, o público e o agendamento antes de confirmar.</p></div>
       <Card className="border-slate-200">
-        <CardContent className="p-4 space-y-2 text-sm">
+        <CardContent className="p-5 space-y-4 text-sm">
           <Row label="Nome" value={form.nome || '-'} />
           {form.canal_tipo === 'oficial'
             ? <Row label="Template" value={template?.display_name || template?.name || '-'} />
