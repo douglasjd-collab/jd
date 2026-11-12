@@ -338,7 +338,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                             ? <Loader2 className="w-4 h-4 animate-spin" />
                             : <RotateCw className="w-4 h-4" />}
                         </IconBtn>
-                        {c.status === 'pausada' && c.canal === 'whatsapp_nao_oficial' && (
+                        {['pausada', 'cancelada', 'erro'].includes(c.status) && c.canal === 'whatsapp_nao_oficial' && (
                           <IconBtn title="Retomar envio" onClick={() => retomarNaoOficial(c)} disabled={retomando === c.id}>
                             {retomando === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                           </IconBtn>
@@ -432,6 +432,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
         onOpenChange={(o) => !o && setEditando(null)}
         campanha={editando}
         empresaId={empresaId}
+        onContinuar={retomarNaoOficial}
       />
 
       {/* O monitor flutuante é global e é renderizado pelo Layout. */}
