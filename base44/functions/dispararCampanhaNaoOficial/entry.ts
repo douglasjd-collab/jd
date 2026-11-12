@@ -72,6 +72,12 @@ async function processarCampanha(base44: any, campanha: any, campanhaId: string)
     inicio_execucao: campanha.inicio_execucao || new Date().toISOString(),
   });
 
+  const historicoEnviado = await base44.asServiceRole.entities.CampanhaDestinatario.filter(
+    { campanha_id: campanhaId, status: { $in: ["enviada", "entregue", "lida", "respondida"] } }, null, 5000
+  );
+  const telefonesJaEnviados = new Set(historicoEnviado.map((d: any) => {
+    try { return telefoneInternacionalDapiBrasil(d.telefone); } catch { return somenteDigitos(d.telefone); }
+  }));
   let enviados = Number(campanha.enviados || 0);
   let falhas = Number(campanha.falhas || 0);
   const minConfigurado = Number(campanha.intervalo_min_segundos);
@@ -91,6 +97,17 @@ async function processarCampanha(base44: any, campanha: any, campanhaId: string)
     const campanhaAtual = await base44.asServiceRole.entities.Campanha.get(campanhaId);
     if (["cancelada", "pausada"].includes(campanhaAtual?.status)) break;
 
+    const atual = await base44.asServiceRole.entities.CampanhaDestinatario.get(destinatario.id);
+    if (atual.status !== "na_fila") continue;
+    let telefoneChave;
+    try { telefoneChave = telefoneInternacionalDapiBrasil(destinatario.telefone); }
+    catch { telefoneChave = somenteDigitos(destinatario.telefone); }
+    if (telefonesJaEnviados.has(telefoneChave)) {
+      await base44.asServiceRole.entities.CampanhaDestinatario.update(destinatario.id, {
+        status: "cancelado", erro_mensagem: "Número já recebeu esta campanha; duplicidade preservada sem novo envio.",
+      });
+      continue;
+    }
     await base44.asServiceRole.entities.CampanhaDestinatario.update(destinatario.id, { status: "enviando" });
     const texto = String(campanhaAtual?.mensagem_texto ?? campanha.mensagem_texto ?? "")
       .replace(/\\([*_~])/g, '$1')
@@ -159,6 +176,7 @@ async function processarCampanha(base44: any, campanha: any, campanhaId: string)
         erro_mensagem: "",
       });
       await marcarComoConversaDeCampanha(base44, campanha, destinatario, texto);
+      telefonesJaEnviados.add(telefoneChave);
       enviados++;
       enviadosNestaExecucao++;
     } catch (error) {
