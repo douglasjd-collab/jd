@@ -63,7 +63,15 @@ export function resolverTemplate(template: string, vars: any) {
     .replace(/{cliente_nome}/g, vars.cliente_nome || 'Cliente')
     .replace(/{hora}/g, vars.hora || '')
     .replace(/{titulo}/g, vars.titulo || '')
-    .replace(/{faltam}/g, vars.faltam || '');
+    .replace(/{faltam}/g, vars.faltam || '')
+    .replace(/{data}/g, vars.data || '')
+    .replace(/{data_referencia}/g, vars.data_referencia || '')
+    .replace(/{colaborador_nome}/g, vars.colaborador_nome || '')
+    .replace(/{descricao_bloco}/g, vars.descricao_bloco || '')
+    .replace(/{descricao_colaborador}/g, vars.descricao_colaborador || '')
+    .replace(/{participantes_bloco}/g, vars.participantes_bloco || '')
+    .replace(/{local_bloco}/g, vars.local_bloco || '')
+    .replace(/{link_bloco}/g, vars.link_bloco || '');
 }
 
 export function horaLocal(inicio: Date) {
@@ -132,6 +140,18 @@ export async function enviarLembretesDoTempo(base44: any, comp: any, config: any
   const msgCliente = config.mensagem_cliente || MSG_CLIENTE_DEFAULT;
   const msgResponsavel = config.mensagem_responsavel || MSG_RESPONSAVEL_DEFAULT;
   const clienteNome = nomeDoCliente(comp);
+  const data = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(inicio);
+  const hoje = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());
+  const participantesNomes = participantesDoCompromisso(comp).map(p => p.nome).filter(Boolean).join(', ');
+  const campos = {
+    cliente_nome: clienteNome, hora: hora.replace(':', 'h'), titulo: comp.titulo, faltam, data,
+    data_referencia: data === hoje ? 'hoje' : data,
+    descricao_bloco: comp.descricao?.trim() ? '\n📝 *Sobre a reunião:*\n' + comp.descricao.trim() + '\n' : '',
+    descricao_colaborador: comp.descricao?.trim() ? '\n📝 *Descrição da reunião:*\n' + comp.descricao.trim() + '\n' : '',
+    participantes_bloco: participantesNomes ? '\n👥 *Participantes:* ' + participantesNomes + '\n' : '',
+    local_bloco: comp.local?.trim() ? '\n📍 *Local:* ' + comp.local.trim() + '\n' : '',
+    link_bloco: comp.link_reuniao?.trim() ? '🔗 *Link da reunião:* ' + comp.link_reuniao.trim() + '\n' : '',
+  };
 
   let enviados = 0;
   let erros = 0;
@@ -148,7 +168,7 @@ export async function enviarLembretesDoTempo(base44: any, comp: any, config: any
     const jaEnviado = jaEnviados.find((j: any) => j.tipo === 'cliente' && j.destinatario_telefone === telefone);
 
     if (!jaEnviado && telefone.length >= 10) {
-      const mensagem = resolverTemplate(msgCliente, { cliente_nome: clienteNome, hora, titulo: comp.titulo, faltam });
+      const mensagem = resolverTemplate(msgCliente, campos);
       let status = 'enviado';
       let erro: string | null = null;
       try {
@@ -189,7 +209,7 @@ export async function enviarLembretesDoTempo(base44: any, comp: any, config: any
       if (telefone.length < 10) continue;
       if (jaEnviados.find((j: any) => j.tipo === 'responsavel' && j.destinatario_telefone === telefone)) continue;
 
-      const mensagem = resolverTemplate(msgResponsavel, { cliente_nome: clienteNome, hora, titulo: comp.titulo, faltam });
+      const mensagem = resolverTemplate(msgResponsavel, { ...campos, colaborador_nome: (colab?.nome || alvo.nome || 'Colaborador').split(' ')[0] });
       let status = 'enviado';
       let erro: string | null = null;
       try {
