@@ -57,6 +57,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
     inicio: format(agoraLocal, "yyyy-MM-dd'T'HH:mm"),
     fim: '',
     local: '',
+    link_reuniao: '',
     descricao: '',
   });
 
@@ -70,6 +71,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
         inicio: format(agora, "yyyy-MM-dd'T'HH:mm"),
         fim: '',
         local: '',
+        link_reuniao: '',
         descricao: '',
       });
     }
@@ -90,6 +92,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
         inicio: new Date(form.inicio).toISOString(),
         fim: form.fim ? new Date(form.fim).toISOString() : null,
         local: form.local || '',
+        link_reuniao: form.link_reuniao?.trim() || '',
         descricao: form.descricao || '',
         status: 'agendado',
         telefone: clienteTelefone,
@@ -164,6 +167,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
             />
           </div>
 
+          <div><Label>Link da reunião (opcional)</Label><Input type="url" value={form.link_reuniao || ''} onChange={e => setForm(f => ({ ...f, link_reuniao: e.target.value }))} placeholder="https://meet.google.com/..." /></div>
           <ParticipantesReuniaoSelect colaboradores={colaboradores} value={participantes} onChange={setParticipantes} />
           <div>
             <Label>Observações</Label>
