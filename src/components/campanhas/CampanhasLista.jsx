@@ -395,10 +395,25 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                   <p className="text-slate-700">{detalhe.descricao}</p>
                 </div>
               )}
-              {detalhe.mensagem_texto && (
-                <div className="col-span-2 rounded-md bg-slate-50 p-3">
-                  <p className="text-xs text-slate-500 mb-1">Mensagem</p>
-                  <p className="text-slate-700 whitespace-pre-wrap">{detalhe.mensagem_texto}</p>
+              {(detalhe.mensagem_texto || detalhe.midia_url) && (
+                <div className="col-span-2 rounded-xl border border-slate-200 overflow-hidden">
+                  <p className="text-xs text-slate-500 bg-slate-50 px-3 py-2">Mensagem da campanha</p>
+                  <div className="p-3 bg-[#e5ddd5]">
+                    <div className="max-w-md rounded-lg bg-[#d9fdd3] p-2 space-y-2 shadow-sm">
+                      {detalhe.midia_url && detalhe.mensagem_tipo === 'video_texto' ? (
+                        <video key={detalhe.midia_url} src={detalhe.midia_url} controls preload="metadata" className="w-full max-h-80 rounded-md bg-black" />
+                      ) : detalhe.midia_url ? (
+                        <div>
+                          <a href={detalhe.midia_url} target="_blank" rel="noopener noreferrer" title="Abrir imagem em tamanho original">
+                            <img key={detalhe.midia_url} src={detalhe.midia_url} alt="Imagem da campanha" className="w-full max-h-96 object-contain rounded-md bg-white"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.parentElement.nextElementSibling.hidden = false; }} />
+                          </a>
+                          <a href={detalhe.midia_url} target="_blank" rel="noopener noreferrer" hidden className="text-sm text-blue-700 underline">Não foi possível carregar a imagem. Abrir arquivo original</a>
+                        </div>
+                      ) : null}
+                      {detalhe.mensagem_texto && <p className="text-slate-800 whitespace-pre-wrap break-words text-sm">{detalhe.mensagem_texto}</p>}
+                    </div>
+                  </div>
                 </div>
               )}
               <div className="col-span-2 border-t pt-3 mt-1">
