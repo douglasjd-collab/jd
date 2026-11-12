@@ -12,12 +12,13 @@ export default function CampanhaMonitorGlobal({ empresaId }) {
 
   const { data: campanhas = [] } = useQuery({
     queryKey: ['campanha-monitor-global', empresaId],
-    queryFn: () => base44.entities.Campanha.filter({ empresa_id: empresaId }, '-created_date', 20),
+    queryFn: () => base44.entities.Campanha.filter({ empresa_id: empresaId, status: { $in: ['executando', 'pausada'] } }, '-created_date', 100),
     enabled: !!empresaId,
     refetchInterval: 2000,
   });
   const campanha = useMemo(
-    () => campanhas.find((c) => ['executando', 'agendada', 'pausada'].includes(c.status)) || null,
+    () => campanhas.find(c => c.status === 'executando')
+      || campanhas.find(c => c.status === 'pausada' && c.inicio_execucao) || null,
     [campanhas]
   );
   const { data: destinatarios = [] } = useQuery({
@@ -80,7 +81,7 @@ export default function CampanhaMonitorGlobal({ empresaId }) {
         onMouseDown={iniciarArraste} onTouchStart={iniciarArraste}>
         <GripVertical className="w-4 h-4 opacity-80" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate">{campanha.status === 'agendada' ? 'Campanha agendada' : 'Disparo em andamento'}</p>
+          <p className="text-sm font-semibold truncate">{campanha.status === 'pausada' ? 'Disparo pausado' : 'Disparo em andamento'}</p>
           <p className="text-[11px] text-emerald-100 truncate">{campanha.nome}</p>
         </div>
         <button type="button" onMouseDown={(e) => e.stopPropagation()} onClick={() => setMinimizado((v) => !v)}
