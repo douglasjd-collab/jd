@@ -97,6 +97,7 @@ function aplicarRegrasPersonalizadas(lista, regras) {
 
 export default function PublicoBuilder({ form, setForm, empresaId, user }) {
   const origens = form.origens || [];
+  const [buscaResponsavel, setBuscaResponsavel] = useState('');
 
   const [funis, setFunis] = useState([]);
   const [tags, setTags] = useState([]);
@@ -331,13 +332,13 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
   return (
     <div className="space-y-4">
       <div className={cn(
-        'rounded-xl border p-4 space-y-4',
-        form.publico_produto === 'consorcio' ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 bg-white'
+        'rounded-xl border p-4 space-y-3',
+        form.publico_produto === 'consorcio' ? 'border-emerald-200 bg-white' : 'border-slate-200 bg-white'
       )}>
         <div>
           <div className="flex items-center gap-2 mb-1">
             <WalletCards className="w-5 h-5 text-emerald-700" />
-            <p className="font-semibold text-sm text-slate-800">Filtrar clientes por produto</p>
+            <p className="font-semibold text-sm text-slate-800">Público por produto</p>
           </div>
           <p className="text-xs text-slate-500">Escolha a área do cadastro usada para montar o público da campanha.</p>
         </div>
@@ -404,7 +405,7 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
                   type="button"
                   onClick={() => setForm({
                     ...form,
-                    consorcio_vendedores_ids: vendedoresConsorcio.map((v) => v.id),
+                    consorcio_vendedores_ids: vendedoresConsorcio.filter(v => !buscaResponsavel || String(v.nome || v.email || '').toLocaleLowerCase('pt-BR').includes(buscaResponsavel.toLocaleLowerCase('pt-BR'))).map((v) => v.id),
                   })}
                   disabled={vendedoresConsorcio.length === 0 ||
                     vendedoresConsorcio.every((v) => (form.consorcio_vendedores_ids || []).includes(v.id))}
@@ -416,8 +417,9 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
                     : 'Selecionar todos'}
                 </button>
               </div>
+              <Input value={buscaResponsavel} onChange={e => setBuscaResponsavel(e.target.value)} placeholder="Buscar responsável pelo nome" aria-label="Buscar responsável" className="mb-2" />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-40 overflow-auto rounded-lg border border-emerald-200 bg-white p-2">
-                {vendedoresConsorcio.map((v) => {
+                {vendedoresConsorcio.filter(v => !buscaResponsavel || String(v.nome || v.email || '').toLocaleLowerCase('pt-BR').includes(buscaResponsavel.toLocaleLowerCase('pt-BR'))).map((v) => {
                   const marcado = (form.consorcio_vendedores_ids || []).includes(v.id);
                   return (
                     <label key={v.id} className={cn(
@@ -453,11 +455,11 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
         )}
       </div>
 
-      <div className={form.publico_produto === 'consorcio' ? 'opacity-40 pointer-events-none' : ''}>
+      <div className={form.publico_produto === 'consorcio' ? 'hidden' : ''}>
         <Label className="block mb-2 text-sm font-semibold text-slate-700">
-          Fontes de audiência (selecione uma ou várias)
+          Outras fontes de público (selecione uma ou várias)
         </Label>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
           {FONTES.map((f) => {
             const sel = origens.includes(f.id);
             return (
@@ -466,7 +468,7 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
                 type="button"
                 onClick={() => toggleOrigem(f.id)}
                 className={cn(
-                  'group relative p-3.5 rounded-xl border text-left transition-all flex flex-col items-start gap-2',
+                  'group relative px-3 py-2.5 rounded-lg border text-left transition-all flex flex-col items-start gap-1.5',
                   sel
                     ? 'border-emerald-500 bg-emerald-50 shadow-sm'
                     : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
@@ -474,7 +476,7 @@ export default function PublicoBuilder({ form, setForm, empresaId, user }) {
               >
                 <div className="flex items-center justify-between w-full">
                   <div className={cn(
-                    'w-9 h-9 rounded-lg flex items-center justify-center transition-colors',
+                    'w-7 h-7 rounded-lg flex items-center justify-center transition-colors',
                     sel ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
                   )}>
                     <f.icon className="w-5 h-5" />
