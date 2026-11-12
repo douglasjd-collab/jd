@@ -1156,7 +1156,7 @@ export default function AgendaPage() {
               onChange={(participantes) => setFormData(prev => ({ ...prev, participantes }))}
             />
             <div>
-              <Label>Descrição</Label>
+              <Label>Sobre a reunião</Label>
               <Textarea value={formData.descricao} onChange={e => setFormData({ ...formData, descricao: e.target.value })} rows={3} placeholder="Detalhes do compromisso..." />
             </div>
             <DialogFooter>
