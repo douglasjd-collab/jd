@@ -68,7 +68,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
       await base44.entities.Campanha.create({
         empresa_id: c.empresa_id,
         criador_id: user.id,
-        criador_nome: user.full_name || user.email,
+        criador_nome: user.nome_perfil || user.full_name || user.email,
         nome: `${c.nome} (cópia)`,
         descricao: c.descricao,
         canal: c.canal || 'whatsapp_meta_oficial',
