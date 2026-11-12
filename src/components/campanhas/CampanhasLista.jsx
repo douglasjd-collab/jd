@@ -342,8 +342,8 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                 <Th>Status</Th>
                 <Th>Agendamento</Th>
                 <Th>Envios</Th>
-                <Th className="text-right">Falhas</Th>
-                <Th className="text-center">Ações</Th>
+                <Th className="!text-center w-20">Falhas</Th>
+                <Th className="!text-center w-[176px]">Ações</Th>
               </tr>
             </thead>
             <tbody>
@@ -371,16 +371,16 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                         <p className="text-[11px] text-slate-500 text-right">{Math.min(100, Math.round(Number(c.enviados || 0) / (Number(c.total_destinatarios) || 1) * 100))}%</p>
                       </div>
                     </Td>
-                    <Td className="text-right"><span className={Number(c.falhas || 0) > 0 ? 'rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700' : 'text-slate-400'}>{c.falhas || 0}</span></Td>
+                    <Td className="text-center"><span className={Number(c.falhas || 0) > 0 ? 'rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700' : 'text-slate-400'}>{c.falhas || 0}</span></Td>
                     <Td>
-                      <div className="flex items-center justify-center gap-1">
+                      <div className="grid grid-cols-[repeat(4,32px)] items-center justify-center gap-1">
                         <IconBtn title="Visualizar" onClick={() => setDetalhe(c)}><Eye className="w-4 h-4" /></IconBtn>
                         <IconBtn title="Editar" onClick={() => setEditando(c)}><Pencil className="w-4 h-4" /></IconBtn>
-                        {['pausada', 'cancelada', 'erro'].includes(c.status) && c.canal === 'whatsapp_nao_oficial' && (
+                        {['pausada', 'cancelada', 'erro'].includes(c.status) && c.canal === 'whatsapp_nao_oficial' ? (
                           <IconBtn title="Retomar envio" onClick={() => retomarNaoOficial(c)} disabled={retomando === c.id}>
                             {retomando === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                           </IconBtn>
-                        )}
+                        ) : <span className="h-8 w-8" aria-hidden="true" />}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" aria-label={`Mais ações de ${c.nome}`}><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
