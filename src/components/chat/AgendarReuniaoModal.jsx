@@ -106,7 +106,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
         participantes_json: JSON.stringify(participantes),
         telegram_chat_id: user?.telegram_chat_id || '',
       });
-      if (String(user?.email || '').toLowerCase() === 'douglas.jdpromotora@gmail.com' && compromissoCriado?.id) {
+      if ((user?.auth_id || user?.id) === '6956d1f3d631cbba22ce3021' && compromissoCriado?.id) {
         try {
           await base44.functions.invoke('sincronizarAgendaGoogle', { agenda_id: compromissoCriado.id });
         } catch (erro) { console.warn('Google Agenda não sincronizado:', erro); toast.warning('Reunião salva no CRM; sincronização Google pendente.'); }
