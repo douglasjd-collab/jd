@@ -36,7 +36,11 @@ export default function ChatMessageFooter({
     base44.functions.invoke('permissoesWhatsapp', { modo: 'matriz', empresa_id: empresaId })
       .then(({data}) => {
         if (!ativo || data?.error) return;
-        const colaboradorId = user.colaborador_id || user.id;
+        const colaborador = (data?.colaboradores || []).find(c =>
+          c.id === user.colaborador_id || c.user_id === user.id ||
+          (c.email && user.email && c.email.toLowerCase() === user.email.toLowerCase())
+        );
+        const colaboradorId = colaborador?.id || user.colaborador_id || user.id;
         const mapa = {};
         (data?.permissoes || []).filter(p => p.colaborador_id === colaboradorId).forEach(p => { mapa[p.connection_id] = p.nivel_acesso; });
         const irrestrito = Object.keys(mapa).length === 0;
@@ -57,9 +61,10 @@ export default function ChatMessageFooter({
     tipo: /meta|oficial/i.test([c.tipo_conexao, c.provider_type, c.tipo, c.nome].join(' ')) ? 'meta_oficial' : 'dapi',
   }));
   const canalSelecionado = canaisDisponiveis.find(c => c.value === canalReabrir) || canaisDisponiveis[0];
+  const verificandoCanais = permissoesCanal === null;
 
   if (conversaSelecionada?.status === 'encerrada') {
-    const canalLabel = canalSelecionado?.label || 'Verificando canais autorizados';
+    const canalLabel = canalSelecionado?.label || (verificandoCanais ? 'Verificando canais autorizados' : 'Nenhum canal autorizado');
 
     return (
       <div className="bg-emerald-50 border-t border-emerald-200 px-5 py-4 flex flex-col gap-3">
