@@ -92,8 +92,9 @@ async function processarCampanha(base44: any, campanha: any, campanhaId: string)
     if (["cancelada", "pausada"].includes(campanhaAtual?.status)) break;
 
     await base44.asServiceRole.entities.CampanhaDestinatario.update(destinatario.id, { status: "enviando" });
-    const texto = String(campanha.mensagem_texto || "")
-      .replace(/\{nome\}/gi, primeiroNome(destinatario.cliente_nome));
+    const texto = String(campanhaAtual?.mensagem_texto ?? campanha.mensagem_texto ?? "")
+      .replace(/\\([*_~])/g, '$1')
+      .replace(/(?:\{\s*nome\s*\}|\bnome\s*\})/gi, () => primeiroNome(destinatario.cliente_nome));
     const payload: Record<string, unknown> = {
       connectionId: campanha.connection_id,
       phoneNumber: destinatario.telefone,
