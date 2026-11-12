@@ -30,10 +30,13 @@ export default async function (req: Request): Promise<Response> {
 
     if (modo === 'minhas') {
       const acesso = await carregarAcessoWhatsapp({ db, user, empresaId });
+      const conexoes = await db.WhatsappConnection.filter({ empresa_id: empresaId }, '-created_date', 100);
+      const autorizadas = conexoes.filter((c: any) => acesso.irrestrito || acesso.conexoesPermitidas.includes(c.id));
       return Response.json({
         irrestrito: acesso.irrestrito,
         mapa: acesso.mapa,
         conexoes_permitidas: acesso.conexoesPermitidas,
+        conexoes: autorizadas.map((c: any) => ({ id: c.id, nome: c.nome || c.session_id, provider_type: c.provider_type, session_id: c.session_id, status: c.status })),
       });
     }
 
