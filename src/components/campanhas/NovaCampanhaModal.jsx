@@ -953,13 +953,18 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
                   </div>
                 </PopoverContent>
               </Popover>
-              <span className="ml-2 text-[11px] text-slate-500">Selecione um trecho ou posicione o cursor.</span>
+              {['{nome}', '{primeiro_nome}'].map(variavel => (
+                <Button key={variavel} type="button" variant="outline" size="sm"
+                  onMouseDown={e => e.preventDefault()} onClick={() => inserirEmoji(variavel)}
+                  title="Inserir primeiro nome do cliente">{variavel}</Button>
+              ))}
+              <span className="ml-2 text-[11px] text-slate-500">Clique para inserir no cursor.</span>
             </div>
             <Textarea ref={mensagemRef} rows={5} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })}
               className="min-h-[140px] resize-y rounded-t-none border-slate-200 shadow-sm focus-visible:ring-emerald-500"
               placeholder={"Olá, {nome}!\nHoje é o vencimento da sua parcela.\nSe já realizou o pagamento, desconsidere esta mensagem."} />
             <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[11px] text-slate-500">Use <strong>{'{nome}'}</strong> para inserir o primeiro nome. O WhatsApp exibirá *negrito* e _itálico_.</p>
+              <p className="text-[11px] text-slate-500">Use <strong>{'{nome}'}</strong> ou <strong>{'{primeiro_nome}'}</strong> para inserir o primeiro nome. O WhatsApp exibirá *negrito* e _itálico_.</p>
               <p className="shrink-0 text-[11px] tabular-nums text-slate-500">{(form.mensagem_texto || '').length} caracteres</p>
             </div>
           </div>
