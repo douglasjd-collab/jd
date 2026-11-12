@@ -9,8 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Bell, Plus, Trash2, Save, Clock, MessageCircle, User, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
-const MSG_CLIENTE_DEFAULT = `Olá {cliente_nome} 👋\n\nLembramos que você possui uma reunião agendada hoje às {hora}.\n\nAssunto: {titulo}\n\nEquipe JD Promotora.`;
-const MSG_RESPONSAVEL_DEFAULT = `⏰ *Lembrete de reunião*\n\nCliente: {cliente_nome}\nHorário: {hora}\nAssunto: {titulo}\n\nFaltam {faltam} para a reunião.`;
+const MSG_CLIENTE_DEFAULT = `📅 *LEMBRETE DE REUNIÃO — JD PROMOTORA*\n\nOlá, {cliente_nome}! 👋\n\nPassando para lembrar que você tem uma reunião agendada conosco.\n\n📆 *Data:* {data}\n🕒 *Horário:* {hora}\n📌 *Assunto:* {titulo}\n{descricao_bloco}{local_bloco}{link_bloco}\n🤝 Nossa equipe estará aguardando você no horário combinado!\n\n*JD Promotora*\n_Seu sonho, nosso compromisso!_ 💚`;
+const MSG_RESPONSAVEL_DEFAULT = `📅 *LEMBRETE DE REUNIÃO — JD PROMOTORA*\n\nOlá, {colaborador_nome}! 👋\n\nVocê tem uma reunião agendada para {data_referencia}. Confira as informações:\n\n👤 *Cliente:* {cliente_nome}\n📆 *Data:* {data}\n🕒 *Horário:* {hora}\n📌 *Assunto:* {titulo}\n{descricao_colaborador}{participantes_bloco}{local_bloco}{link_bloco}\n⚠️ *Prepare-se para o atendimento!*\n\nConfira as informações do cliente e esteja disponível no horário agendado.\n\n💚 *JD Promotora — Gestão de Reuniões*`;
 
 const PRESETS = [
   { label: '5 min antes', valor: 5 },
