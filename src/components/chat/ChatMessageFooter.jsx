@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { nivelEfetivo } from '@/components/forms/canaisWhatsappHelper';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Lock, Unlock, X, ChevronDown } from 'lucide-react';
@@ -27,20 +28,38 @@ export default function ChatMessageFooter({
   nomeCliente,
 }) {
   const queryClient = useQueryClient();
-  const [canalReabrir, setCanalReabrir] = useState(conversaSelecionada?.tipo_conexao === 'dapi' ? 'dapi' : 'meta_oficial');
+  const [canalReabrir, setCanalReabrir] = useState('dapi');
+  const [permissoesCanal, setPermissoesCanal] = useState(null);
+  React.useEffect(() => {
+    if (!empresaId || !user) return;
+    let ativo = true;
+    base44.functions.invoke('permissoesWhatsapp', { modo: 'matriz', empresa_id: empresaId })
+      .then(({data}) => {
+        if (!ativo || data?.error) return;
+        const colaboradorId = user.colaborador_id || user.id;
+        const mapa = {};
+        (data?.permissoes || []).filter(p => p.colaborador_id === colaboradorId).forEach(p => { mapa[p.connection_id] = p.nivel_acesso; });
+        const irrestrito = Object.keys(mapa).length === 0;
+        const autorizadas = (data?.conexoes || []).filter(c => nivelEfetivo(mapa, c.id, irrestrito) !== 'sem_acesso');
+        setPermissoesCanal(autorizadas);
+      }).catch(() => { if (ativo) setPermissoesCanal([]); });
+    return () => { ativo = false; };
+  }, [empresaId, user?.id, user?.colaborador_id]);
 
   // Sincronizar canal ao trocar de conversa
   React.useEffect(() => {
-    setCanalReabrir(conversaSelecionada?.tipo_conexao === 'dapi' ? 'dapi' : 'meta_oficial');
+    setCanalReabrir('dapi');
   }, [conversaSelecionada?.id]);
 
-  const canaisDisponiveis = [
-    { value: 'meta_oficial', label: '📱 Meta Oficial (API)' },
-    { value: 'dapi', label: '🟦 D-API' },
-  ];
+  const canaisDisponiveis = (permissoesCanal || []).map(c => ({
+    value: c.id,
+    label: c.nome || c.name || c.instance_name || 'Canal WhatsApp',
+    tipo: /meta|oficial/i.test([c.tipo_conexao, c.provider_type, c.tipo, c.nome].join(' ')) ? 'meta_oficial' : 'dapi',
+  }));
+  const canalSelecionado = canaisDisponiveis.find(c => c.value === canalReabrir) || canaisDisponiveis[0];
 
   if (conversaSelecionada?.status === 'encerrada') {
-    const canalLabel = canaisDisponiveis.find(c => c.value === canalReabrir)?.label || canalReabrir;
+    const canalLabel = canalSelecionado?.label || 'Verificando canais autorizados';
 
     return (
       <div className="bg-emerald-50 border-t border-emerald-200 px-5 py-4 flex flex-col gap-3">
@@ -51,7 +70,7 @@ export default function ChatMessageFooter({
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <span className="text-xs text-emerald-700 whitespace-nowrap">Canal ao reabrir:</span>
-            <DropdownMenu>
+            {canaisDisponiveis.length > 1 ? <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs border-emerald-300 bg-white">
                   {canalLabel}
@@ -65,15 +84,17 @@ export default function ChatMessageFooter({
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
-            </DropdownMenu>
+            </DropdownMenu> : <span className="text-xs font-medium text-emerald-800">{canalLabel}</span>}
           </div>
           <Button
             size="sm"
+            disabled={!canalSelecionado}
             className="bg-emerald-600 hover:bg-emerald-700 gap-1.5 text-white shrink-0"
             onClick={async () => {
-              const dadosCanal = canalReabrir === 'dapi'
-                ? { tipo_conexao: 'dapi', canal_origem: 'dapi', provider: 'dapi' }
-                : { tipo_conexao: 'meta_oficial', canal_origem: 'meta', provider: 'whatsapp_meta' };
+              if (!canalSelecionado) { toast.error('Nenhum canal autorizado disponível.'); return; }
+              const dadosCanal = canalSelecionado.tipo === 'dapi'
+                ? { tipo_conexao: 'dapi', canal_origem: 'dapi', provider: 'dapi', connection_id: canalSelecionado.value }
+                : { tipo_conexao: 'meta_oficial', canal_origem: 'meta', provider: 'whatsapp_meta', connection_id: canalSelecionado.value };
               await base44.entities.ConversaWhatsapp.update(conversaSelecionada.id, {
                 status: 'ativa',
                 ...dadosCanal,
