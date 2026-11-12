@@ -210,6 +210,8 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
   };
 
   const retomarNaoOficial = async (c) => {
+    const atual = await base44.entities.Campanha.get(c.id);
+    if (atual.status === 'executando') { toast.info('Esta campanha já está em andamento.'); return; }
     const naFila = await base44.entities.CampanhaDestinatario.filter(
       { campanha_id: c.id, status: 'na_fila' },
       null,
