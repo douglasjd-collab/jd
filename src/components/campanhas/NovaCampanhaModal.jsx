@@ -55,7 +55,7 @@ const EMOJIS_CAMPANHA = [
 ];
 
 const STEPS = [
-  { id: 1, label: 'Template', icon: FileText },
+  { id: 1, label: 'Mensagem', icon: FileText },
   { id: 2, label: 'Público', icon: Users },
   { id: 4, label: 'Prévia', icon: Eye },
   { id: 5, label: 'Agendamento', icon: CalendarClock },
@@ -677,15 +677,15 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100vw-1rem)] max-w-6xl max-h-[94vh] flex flex-col gap-4 overflow-hidden">
+      <DialogContent className="w-[calc(100vw-1rem)] max-w-5xl h-[90dvh] max-h-[960px] flex flex-col gap-4 overflow-hidden rounded-2xl border-slate-200 bg-white shadow-2xl">
         <DialogHeader className="shrink-0 space-y-1">
           <DialogTitle className="text-2xl">Nova campanha</DialogTitle>
-          <p className="text-sm text-slate-500">Configure o disparo em etapas.</p>
+          <p className="text-sm text-slate-500">Crie sua mensagem, escolha o público e programe o envio.</p>
         </DialogHeader>
 
         <Stepper step={step} />
 
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-2">
           {step === 1 && (
             <Step1
               form={form}
@@ -732,7 +732,7 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
           ) : (
             <Button onClick={submit} disabled={saving}>
               {saving ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Check className="w-4 h-4 mr-1.5" />}
-              Confirmar e Criar
+              {form.agendamento === 'agendar' ? 'Confirmar agendamento' : 'Criar e iniciar envio'}
             </Button>
           )}
         </div>
@@ -743,14 +743,14 @@ export default function NovaCampanhaModal({ open, onOpenChange, empresaId, user 
 
 function Stepper({ step }) {
   return (
-    <div className="flex shrink-0 items-center gap-2 overflow-x-auto pb-1">
+    <div className="flex shrink-0 items-center gap-2 overflow-x-auto rounded-xl bg-slate-50 px-2 py-2 border border-slate-100">
       {STEPS.map((s, i) => {
         const ativo = step === s.id;
         const feito = step > s.id;
         return (
           <React.Fragment key={s.id}>
             <div className={`flex shrink-0 items-center gap-2 rounded-full px-2 py-1.5 text-xs font-semibold ${
-              ativo ? 'text-emerald-800' : feito ? 'text-emerald-700' : 'text-slate-500'
+              ativo ? 'bg-white text-emerald-800 shadow-sm' : feito ? 'text-emerald-700' : 'text-slate-500'
             }`}>
               <span className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs ${
                 ativo ? 'border-emerald-600 bg-emerald-600 text-white' : feito ? 'border-emerald-200 bg-emerald-100 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-500'
@@ -830,7 +830,7 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+    <div className="mx-auto w-full max-w-4xl">
       <div className="min-w-0 space-y-4">
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
@@ -847,7 +847,7 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
         <Label className="block mb-2">Tipo de API *</Label>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <button type="button" onClick={() => setForm({ ...form, canal_tipo: 'nao_oficial', conn_selecionada: '', template_id: '' })}
-            className={`min-h-[84px] rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${form.canal_tipo === 'nao_oficial' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+            className={`min-h-[64px] rounded-xl border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${form.canal_tipo === 'nao_oficial' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-sm">D-API não oficial</p>
@@ -857,7 +857,7 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
             </div>
           </button>
           <button type="button" onClick={() => setForm({ ...form, canal_tipo: 'oficial', conn_selecionada: '', template_id: '' })}
-            className={`min-h-[84px] rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${form.canal_tipo === 'oficial' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+            className={`min-h-[64px] rounded-xl border px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${form.canal_tipo === 'oficial' ? 'border-emerald-500 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="font-semibold text-sm">Meta oficial</p>
@@ -959,7 +959,7 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
               <span className="ml-2 text-[11px] text-slate-500">Clique para inserir no cursor.</span>
             </div>
             <Textarea ref={mensagemRef} rows={5} value={form.mensagem_texto} onChange={(e) => setForm({ ...form, mensagem_texto: e.target.value })}
-              className="min-h-[140px] resize-y rounded-t-none border-slate-200 shadow-sm focus-visible:ring-emerald-500"
+              className="min-h-[180px] resize-y rounded-t-none border-slate-200 shadow-sm focus-visible:ring-emerald-500"
               placeholder={"Olá, {nome}!\nHoje é o vencimento da sua parcela.\nSe já realizou o pagamento, desconsidere esta mensagem."} />
             <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
               <p className="text-[11px] text-slate-500">Use <strong>{'{nome}'}</strong> ou <strong>{'{primeiro_nome}'}</strong> para inserir o primeiro nome. O WhatsApp exibirá *negrito* e _itálico_.</p>
@@ -993,26 +993,7 @@ function Step1({ form, setForm, templates, loading, syncing, syncError, onSync, 
       )}
       </div>
 
-      <aside className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 lg:sticky lg:top-0">
-        <div className="mb-4">
-          <h3 className="text-base font-semibold text-slate-800">Resumo da campanha</h3>
-          <p className="mt-1 text-xs text-slate-500">Confira as informações deste disparo.</p>
-        </div>
-        <div className="space-y-4">
-          <ResumoItem label="Nome da campanha" value={form.nome?.trim() || '—'} />
-          {form.descricao?.trim() && <ResumoItem label="Descrição" value={form.descricao.trim()} />}
-          <ResumoItem label="Tipo de API" value={tipoApiResumo} />
-          <ResumoItem
-            label="Canal de envio"
-            value={conexaoSelecionada ? (conexaoSelecionada.nome || conexaoSelecionada.session_id || 'Conexão selecionada') : 'Selecione uma conexão'}
-            detalhe={conexaoSelecionada?.phone_number || ''}
-          />
-          <ResumoItem label={form.canal_tipo === 'oficial' ? 'Template' : 'Formato da mensagem'} value={formatoResumo} />
-          {form.canal_tipo === 'nao_oficial' && (
-            <ResumoItem label="Texto da mensagem" value={form.mensagem_texto?.trim() || 'Escreva a mensagem da campanha'} compacto />
-          )}
-        </div>
-      </aside>
+
     </div>
   );
 }
@@ -1226,17 +1207,6 @@ function Step4({ preview, loading, onRecalc, form, setForm, onLimparFiltros, tem
         </Button>
       </div>
 
-      <div className="rounded-lg border border-slate-200 p-3 space-y-2">
-        <p className="text-sm font-semibold">Intervalo entre os envios</p>
-        <select className="w-full border rounded-md p-2 text-sm" value={`${form.intervalo_min_segundos}-${form.intervalo_max_segundos}`}
-          onChange={(e) => { const [min, max] = e.target.value.split('-').map(Number); setForm({ ...form, intervalo_min_segundos: min, intervalo_max_segundos: max }); }}>
-          <option value="5-10">Aleatório entre 5 e 10 segundos</option>
-          <option value="10-20">Aleatório entre 10 e 20 segundos</option>
-          <option value="11-20">Aleatório entre 11 e 20 segundos</option>
-          <option value="21-30">Aleatório entre 21 e 30 segundos</option>
-        </select>
-        <p className="text-xs text-slate-500">Um contato por vez. A espera varia a cada envio: por exemplo, 10s, 20s e 15s.</p>
-      </div>
       {preview?.clientes_removidos_filtros > 0 && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm space-y-2">
         <p>{preview.clientes_removidos_filtros} contatos removidos pelos filtros: {resumoFiltros(form)}.</p>
         <Button type="button" variant="outline" size="sm" onClick={onLimparFiltros} disabled={loading}>Limpar filtros e recalcular</Button>
@@ -1389,7 +1359,7 @@ function Step4({ preview, loading, onRecalc, form, setForm, onLimparFiltros, tem
 function Step5({ form, setForm }) {
   return (
     <div className="space-y-4">
-      <Label className="block">Agendamento</Label>
+      <div><h3 className="text-lg font-semibold text-slate-800">Agendamento</h3><p className="mt-1 text-sm text-slate-500">Defina quando e como a campanha será enviada.</p></div>
       <div className="flex gap-2">
         <button
           onClick={() => setForm({ ...form, agendamento: 'agora' })}
@@ -1419,14 +1389,14 @@ function Step5({ form, setForm }) {
             <Label>Hora</Label>
             <Input type="time" value={form.agendada_para_hora} onChange={(e) => setForm({ ...form, agendada_para_hora: e.target.value })} />
           </div>
-          <p className="text-xs text-slate-400 md:col-span-2">Fuso horário: America/Sao_Paulo (configurável no futuro).</p>
+          <p className="text-xs text-slate-400 md:col-span-2">Horário de Brasília (America/Sao_Paulo).</p>
         </div>
       )}
 
-      <div className="border-t pt-4">
-        <Label className="block mb-2">Cadência segura de envio</Label>
+      <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+        <Label className="block mb-2">Intervalos e pausas</Label>
         <p className="text-xs text-slate-500 mb-3">
-          O sistema respeita o limite configurado, aplica pausas e recuo automático quando o provedor apresenta erro.
+          Defina o ritmo dos envios e as pausas entre os lotes.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
@@ -1464,6 +1434,7 @@ function Step5({ form, setForm }) {
               className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="0">Sem pausa automática</option>
+              <option value="5">5 minutos</option>
               <option value="10">10 minutos</option>
               <option value="20">20 minutos</option>
               <option value="30">30 minutos</option>
@@ -1472,6 +1443,7 @@ function Step5({ form, setForm }) {
           </div>
         </div>
       </div>
+      <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800"><p className="font-semibold">Envio em segundo plano</p><p className="mt-1 text-xs">Após o início, acompanhe o progresso sem bloquear o uso do CRM.</p></div>
     </div>
   );
 }
@@ -1479,7 +1451,7 @@ function Step5({ form, setForm }) {
 function Step6({ form, template, preview, user }) {
   return (
     <div className="space-y-3">
-      <Label className="block">Resumo</Label>
+      <div><h3 className="text-lg font-semibold text-slate-800">Confirmar campanha</h3><p className="mt-1 text-sm text-slate-500">Revise a mensagem, o público e o agendamento antes de confirmar.</p></div>
       <Card className="border-slate-200">
         <CardContent className="p-4 space-y-2 text-sm">
           <Row label="Nome" value={form.nome || '-'} />
@@ -1489,7 +1461,7 @@ function Step6({ form, template, preview, user }) {
           <Row label="Canal" value={form.canal_tipo === 'nao_oficial' ? 'WhatsApp API não oficial — JD/D-API' : 'WhatsApp API Oficial'} />
           {(form.publico_produto === 'consorcio' || form.publico_consorcio_ativo) && <Row label="Público" value={`Consórcio · ${form.consorcio_situacao === 'em_atraso' ? 'cotas vigentes em atraso' : 'cotas ativas'} · administradora selecionada · ${(form.consorcio_vendedores_ids || []).length ? `${form.consorcio_vendedores_ids.length} vendedor(es)` : 'todos os vendedores'}`} />}
           <Row label="Público (fontes)" value={resumoPublico(form)} />
-          <Row label="Filtros" value={resumoFiltros(form)} />
+          
           <Row label="Prontos p/ envio" value={preview?.prontos_envio ?? '-'} />
           <Row label="Agendamento" value={form.agendamento === 'agora' ? 'Imediato' : `${form.agendada_para_data} ${form.agendada_para_hora}`} />
           <Row label="Intervalo entre mensagens" value={`Aleatório entre ${form.intervalo_min_segundos} e ${form.intervalo_max_segundos} segundos`} />
@@ -1499,12 +1471,12 @@ function Step6({ form, template, preview, user }) {
               ? `A cada ${Number(form.pausa_apos) || 50} envios · ${form.duracao_pausa_min} min`
               : 'Desativada'}
           />
-          <Row label="Empresa" value={empresaIdShort(user)} />
-          <Row label="Responsável" value={user?.full_name || user?.email} />
+          
+          <Row label="Responsável" value={user?.nome_perfil || user?.full_name || user?.email} />
         </CardContent>
       </Card>
       <p className="text-xs text-slate-500">
-        A campanha será criada com destinatários em fila. O disparo será processado pela próxima iteração (função backend de execução).
+        {form.agendamento === 'agendar' ? 'Ao confirmar, a campanha ficará salva para o horário escolhido.' : 'Ao confirmar, o envio será iniciado para os destinatários aptos.'}
       </p>
     </div>
   );
