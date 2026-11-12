@@ -137,8 +137,14 @@ export async function enviarLembretesDoTempo(base44: any, comp: any, config: any
   const inicio = new Date(comp.inicio);
   const hora = horaLocal(inicio);
   const faltam = formatarTempo(Math.max(1, Math.round((inicio.getTime() - Date.now()) / 60000)));
-  const msgCliente = config.mensagem_cliente || MSG_CLIENTE_DEFAULT;
-  const msgResponsavel = config.mensagem_responsavel || MSG_RESPONSAVEL_DEFAULT;
+  // Configurações antigas com os modelos legados migram para o novo padrão.
+  // Modelos personalizados continuam sendo respeitados.
+  const legadoCliente = 'Olá {cliente_nome} 👋';
+  const legadoResponsavel = '⏰ *Lembrete de reunião*';
+  const msgCliente = !config.mensagem_cliente || config.mensagem_cliente.startsWith(legadoCliente)
+    ? MSG_CLIENTE_DEFAULT : config.mensagem_cliente;
+  const msgResponsavel = !config.mensagem_responsavel || config.mensagem_responsavel.startsWith(legadoResponsavel)
+    ? MSG_RESPONSAVEL_DEFAULT : config.mensagem_responsavel;
   const clienteNome = nomeDoCliente(comp);
   const data = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(inicio);
   const hoje = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric' }).format(new Date());
