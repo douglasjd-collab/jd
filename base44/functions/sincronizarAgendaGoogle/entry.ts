@@ -18,7 +18,7 @@ export default async function(req: Request): Promise<Response> {
     if (!colab && user.role !== 'super_admin') return Response.json({ erro: 'Sem acesso à empresa' }, { status: 403 });
     // Uma conexão compartilhada não equivale a OAuth individual dos vendedores.
     // Só o titular da conta conectada pode publicar na agenda primária.
-    if (String(user.email || '').toLowerCase() !== CONTA_GOOGLE) {
+    if (user.id !== '6956d1f3d631cbba22ce3021') {
       return Response.json({ ignorado: true, motivo: 'Conta Google individual ainda não vinculada ao usuário' });
     }
     const participantes = (() => { try { return JSON.parse(agenda.participantes_json || '[]'); } catch { return []; } })();
