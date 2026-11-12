@@ -1,6 +1,19 @@
 {
   "name": "Agenda",
   "properties": {
+    "google_event_id": {
+      "type": "string",
+      "description": "Identificador do evento no Google Calendar (sincroniza\u00e7\u00e3o da conta titular)"
+    },
+    "google_sync_status": {
+      "type": "string",
+      "description": "Estado da \u00faltima sincroniza\u00e7\u00e3o Google"
+    },
+    "google_sync_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data da \u00faltima sincroniza\u00e7\u00e3o Google"
+    },
     "cancelado_em": {
       "description": "Timestamp de cancelamento (opcional)",
       "format": "date-time",
