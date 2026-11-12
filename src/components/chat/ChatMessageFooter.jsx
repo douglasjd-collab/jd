@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { nivelEfetivo } from '@/components/forms/canaisWhatsappHelper';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Lock, Unlock, X, ChevronDown } from 'lucide-react';
@@ -33,20 +32,11 @@ export default function ChatMessageFooter({
   React.useEffect(() => {
     if (!empresaId || !user) return;
     let ativo = true;
-    base44.functions.invoke('permissoesWhatsapp', { modo: 'matriz', empresa_id: empresaId })
+    base44.functions.invoke('permissoesWhatsapp', { modo: 'minhas', empresa_id: empresaId })
       .then(({data}) => {
         if (!ativo) return;
         if (data?.error) { setPermissoesCanal([]); return; }
-        const colaborador = (data?.colaboradores || []).find(c =>
-          c.id === user.colaborador_id || c.user_id === user.id ||
-          (c.email && user.email && c.email.toLowerCase() === user.email.toLowerCase())
-        );
-        const colaboradorId = colaborador?.id || user.colaborador_id || user.id;
-        const mapa = {};
-        (data?.permissoes || []).filter(p => p.colaborador_id === colaboradorId).forEach(p => { mapa[p.connection_id] = p.nivel_acesso; });
-        const irrestrito = Object.keys(mapa).length === 0;
-        const autorizadas = (data?.conexoes || []).filter(c => nivelEfetivo(mapa, c.id, irrestrito) !== 'sem_acesso');
-        setPermissoesCanal(autorizadas);
+        setPermissoesCanal(data?.conexoes || []);
       }).catch(() => { if (ativo) setPermissoesCanal([]); });
     return () => { ativo = false; };
   }, [empresaId, user?.id, user?.colaborador_id]);
