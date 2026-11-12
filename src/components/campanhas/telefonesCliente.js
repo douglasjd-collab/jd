@@ -9,7 +9,7 @@ const HEADERS_WHATSAPP = ['whatsapp', 'whats', 'zap'];
 const HEADERS_RESIDENCIAL = ['residencial', 'fixo', 'casa'];
 const HEADERS_COMERCIAL = ['comercial', 'commercial', 'empresa', 'trabalho'];
 const HEADERS_RECADO = ['recado', 'mensagem'];
-const HEADERS_PHONE_BASE = ['telefone', 'tel', 'celular', 'cel', 'whatsapp', 'whats', 'fone', 'numero', 'número', 'phone'];
+const HEADERS_PHONE_BASE = ['telefone', 'tel', 'celular', 'cel', 'whatsapp', 'whats', 'fone', 'numero', 'número', 'phone', 'contato', 'comercial', 'residencial', 'recado', 'zap'];
 
 export function isColunaTelefone(header) {
   const h = String(header || '').toLowerCase().trim();
@@ -24,8 +24,8 @@ function classificarHeader(header) {
   if (HEADERS_RESIDENCIAL.some((k) => h.includes(k))) return 'residencial';
   if (HEADERS_RECADO.some((k) => h.includes(k))) return 'recado';
   if (h.includes('celular') || h.includes('cel')) return 'celular';
-  if (h === 'telefone' || h === 'tel' || h.includes('telefone') || h.includes('tel')) return 'telefone';
-  return 'telefone';
+  // ClienteTelefone aceita contato para números genéricos; telefone não pertence ao enum.
+  return 'contato';
 }
 
 // Detecta todas as colunas de telefone no header
