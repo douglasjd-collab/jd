@@ -111,7 +111,7 @@ async function processarCampanha(base44: any, campanha: any, campanhaId: string)
     await base44.asServiceRole.entities.CampanhaDestinatario.update(destinatario.id, { status: "enviando" });
     const texto = String(campanhaAtual?.mensagem_texto ?? campanha.mensagem_texto ?? "")
       .replace(/\\([*_~])/g, '$1')
-      .replace(/(?:\{\s*nome\s*\}|\bnome\s*\})/gi, () => primeiroNome(destinatario.cliente_nome));
+      .replace(/(?:\{\s*(?:nome|primeiro_nome)\s*\}|\bnome\s*\})/gi, () => primeiroNome(destinatario.cliente_nome));
     const payload: Record<string, unknown> = {
       connectionId: campanha.connection_id,
       phoneNumber: destinatario.telefone,
