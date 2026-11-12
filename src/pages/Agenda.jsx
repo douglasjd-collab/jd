@@ -704,7 +704,9 @@ export default function AgendaPage() {
     if (user?.auth_id !== '6956d1f3d631cbba22ce3021' || !agendaId) return;
     try {
       const resultado = await base44.functions.invoke('sincronizarAgendaGoogle', { agenda_id: agendaId });
-      if (resultado?.data?.erro) toast.error('Google Agenda: ' + resultado.data.erro);
+      if (resultado?.data?.erro) { toast.error('Google Agenda: ' + resultado.data.erro); return; }
+      if (resultado?.data?.sincronizado) { toast.success('Reunião sincronizada com o Google Agenda!'); await queryClient.invalidateQueries({ queryKey: ['agenda'] }); }
+      else toast.warning('Google Agenda: ' + (resultado?.data?.motivo || 'Não foi possível confirmar a sincronização.')); 
     } catch (e) { console.warn('Sincronização Google pendente:', e); toast.warning('Compromisso salvo no CRM; sincronização Google pendente.'); }
   };
 
@@ -1169,6 +1171,11 @@ export default function AgendaPage() {
               <Textarea value={formData.descricao} onChange={e => setFormData({ ...formData, descricao: e.target.value })} rows={3} placeholder="Detalhes do compromisso..." />
             </div>
             <DialogFooter>
+              {editingItem?.id && user?.auth_id === '6956d1f3d631cbba22ce3021' && (
+                <Button type="button" variant="outline" onClick={() => sincronizarGoogle(editingItem.id)}>
+                  <RefreshCw className="w-4 h-4 mr-2" /> Sincronizar Google
+                </Button>
+              )}
               <Button type="button" variant="outline" onClick={handleCloseModal}>Cancelar</Button>
               <Button
                 type="submit"
