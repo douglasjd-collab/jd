@@ -40,10 +40,7 @@ export default function Campanhas() {
       if (me.role === 'super_admin' || me.perfil === 'super_admin') {
         setEmpresaId('699696c2c9f5bffc2e67402b');
       } else {
-        const colabs = await base44.entities.Colaborador.filter(
-          { user_id: me.id },
-          '-created_date'
-        );
+        const colabs = perfis;
         const ativo = colabs.find((c) => c.status === 'ativo') || colabs[0];
         if (ativo) setEmpresaId(ativo.empresa_id);
       }
