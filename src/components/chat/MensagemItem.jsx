@@ -1282,7 +1282,8 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
           <Button 
             size="icon" 
             variant="ghost" 
-            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Ações da mensagem"
+            className="h-8 w-8 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 data-[state=open]:opacity-100 transition-opacity"
             disabled={deletando}
           >
             <MoreVertical className="w-4 h-4 text-slate-400" />
@@ -1303,7 +1304,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
                Reagir
              </DropdownMenuItem>
            )}
-           {isVendedor && mensagem.tipo_conteudo === 'texto' && onEditar && !mensagem.id?.startsWith('temp_') && (
+           {isVendedor && tipoConteudo === 'texto' && onEditar && !mensagem.id?.startsWith('temp_') && (
              <DropdownMenuItem onClick={() => onEditar(mensagem)}>
                <Pencil className="w-4 h-4 mr-2" />
                Editar mensagem
