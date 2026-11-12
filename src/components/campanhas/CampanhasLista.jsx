@@ -10,10 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Search, Eye, Copy, Ban, Download, BarChart3, Loader2, RotateCw, Pencil, Minus, Maximize2, GripVertical, Play } from 'lucide-react';
+import { Plus, Search, Eye, Copy, Ban, Download, BarChart3, Loader2, RotateCw, Pencil, Minus, Maximize2, GripVertical, Play, MoreHorizontal, CalendarClock, Send, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import EditarCampanhaModal from './EditarCampanhaModal';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const FILTROS_RAPIDOS = [
   { id: 'todos', label: 'Todas' },
@@ -22,6 +23,8 @@ const FILTROS_RAPIDOS = [
   { id: 'pausada', label: 'Pausadas' },
   { id: 'falhas', label: 'Com falhas' },
   { id: 'concluida', label: 'Concluídas' },
+  { id: 'cancelada', label: 'Canceladas' },
+  { id: 'rascunho', label: 'Rascunhos' },
 ];
 
 export default function CampanhasLista({ empresaId, user, onNova }) {
@@ -264,16 +267,31 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Campanhas</h1>
-          <p className="text-sm text-slate-500">Todas as campanhas de marketing da empresa</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Campanhas</h1>
+          <p className="text-sm text-slate-500">Gerencie seus disparos e acompanhe os resultados em um só lugar.</p>
         </div>
-        <Button onClick={onNova} className="gap-1.5">
+        <Button onClick={onNova} className="gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 shadow-sm">
           <Plus className="w-4 h-4" /> Nova Campanha
         </Button>
       </div>
 
-      <Card className="border border-slate-200 shadow-sm">
-        <CardContent className="p-3 space-y-3">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        {[
+          { label: 'Agendadas', filtro: 'agendada', total: campanhas.filter(c => c.status === 'agendada').length, Icon: CalendarClock, cor: 'bg-blue-50 text-blue-600' },
+          { label: 'Em andamento', filtro: 'executando', total: campanhas.filter(c => c.status === 'executando').length, Icon: Send, cor: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Concluídas', filtro: 'concluida', total: campanhas.filter(c => c.status === 'concluida').length, Icon: CheckCircle2, cor: 'bg-teal-50 text-teal-600' },
+          { label: 'Com falhas', filtro: 'falhas', total: campanhas.filter(c => Number(c.falhas || 0) > 0 || c.status === 'erro').length, Icon: AlertCircle, cor: 'bg-rose-50 text-rose-600' },
+        ].map(({ label, filtro, total, Icon, cor }) => (
+          <button type="button" key={filtro} onClick={() => setFiltroStatus(filtro)} aria-pressed={filtroStatus === filtro}
+            className={`flex items-center justify-between rounded-xl border bg-white p-4 text-left transition hover:shadow-sm ${filtroStatus === filtro ? 'border-emerald-500 ring-1 ring-emerald-100' : 'border-slate-200'}`}>
+            <div><p className="text-xs font-medium text-slate-500">{label}</p><p className="mt-1 text-2xl font-semibold text-slate-900">{isLoading ? '—' : total}</p></div>
+            <span className={`rounded-xl p-3 ${cor}`}><Icon className="h-5 w-5" /></span>
+          </button>
+        ))}
+      </div>
+
+      <Card className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <CardContent className="p-4 space-y-4">
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <Input
@@ -297,7 +315,7 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                   size="sm"
                   variant={filtroStatus === filtro.id ? 'default' : 'outline'}
                   onClick={() => setFiltroStatus(filtro.id)}
-                  className="whitespace-nowrap"
+                  className={`whitespace-nowrap rounded-full border ${filtroStatus === filtro.id ? 'bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700' : 'border-slate-200 text-slate-600'}`}
                 >
                   {filtro.label}<span className="ml-1.5 opacity-75">{quantidade}</span>
                 </Button>
@@ -307,18 +325,17 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
         </CardContent>
       </Card>
 
-      <Card className="border border-slate-200 shadow-sm">
+      <Card className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-sm">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between"><h2 className="text-sm font-semibold text-slate-800">Suas campanhas</h2><span className="text-xs text-slate-500">{filtradas.length} de {campanhas.length} campanhas</span></div>
+          <table className="w-full min-w-[900px] text-sm">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
-                <Th>Nome</Th>
+                <Th>Campanha</Th>
                 <Th>Criador</Th>
-                <Th>Template</Th>
                 <Th>Status</Th>
                 <Th>Agendamento</Th>
-                <Th className="text-right">Total</Th>
-                <Th className="text-right">Enviadas</Th>
+                <Th>Envios</Th>
                 <Th className="text-right">Falhas</Th>
                 <Th className="text-center">Ações</Th>
               </tr>
@@ -327,20 +344,27 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
               {filtradas.map((c) => (
                   <tr key={c.id} className="border-t border-slate-100 hover:bg-slate-50">
                     <Td>
-                      <p className="font-medium text-slate-800">{c.nome}</p>
+                      <button type="button" onClick={() => setDetalhe(c)} className="font-semibold text-slate-800 hover:text-emerald-700 text-left">{c.nome}</button>
+                      {c.template_nome && <p className="text-xs text-slate-500 mt-1">{c.template_nome}</p>}
                       <p className="text-xs text-slate-400">{format(new Date(c.created_date), 'dd/MM/yyyy HH:mm')}</p>
                     </Td>
                     <Td>{c.criador_nome || '-'}</Td>
-                    <Td>{c.template_nome || '-'}</Td>
                     <Td><StatusBadge status={c.status} /></Td>
                     <Td>
                       {c.status === 'agendada' && c.agendada_para
                         ? <span className="text-sm font-medium text-blue-700">{format(new Date(c.agendada_para), 'dd/MM/yyyy HH:mm')}</span>
                         : <span className="text-xs text-slate-400">{c.inicio_execucao ? format(new Date(c.inicio_execucao), 'dd/MM/yyyy HH:mm') : '—'}</span>}
                     </Td>
-                    <Td className="text-right">{c.total_destinatarios || 0}</Td>
-                    <Td className="text-right">{c.enviados || 0}</Td>
-                    <Td className="text-right">{c.falhas || 0}</Td>
+                    <Td>
+                      <div className="min-w-[130px] max-w-[180px] space-y-1.5">
+                        <p className="text-xs text-slate-600"><span className="font-semibold text-slate-800">{c.enviados || 0}</span> de {c.total_destinatarios || 0} enviadas</p>
+                        <div role="progressbar" aria-label="Mensagens enviadas" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.min(100, Math.round(Number(c.enviados || 0) / (Number(c.total_destinatarios) || 1) * 100))}
+                          className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                          <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Number(c.enviados || 0) / (Number(c.total_destinatarios) || 1) * 100)}%` }} />
+                        </div>
+                      </div>
+                    </Td>
+                    <Td className="text-right"><span className={Number(c.falhas || 0) > 0 ? 'rounded-full bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700' : 'text-slate-400'}>{c.falhas || 0}</span></Td>
                     <Td>
                       <div className="flex items-center justify-center gap-1">
                         <IconBtn title="Visualizar" onClick={() => setDetalhe(c)}><Eye className="w-4 h-4" /></IconBtn>
@@ -359,17 +383,22 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
                             {retomando === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                           </IconBtn>
                         )}
-                        <IconBtn title="Duplicar" onClick={() => duplicar(c)} disabled={copiando}> <Copy className="w-4 h-4" /></IconBtn>
-                        <IconBtn title="Cancelar" onClick={() => cancelar(c)} disabled={c.status === 'cancelada' || c.status === 'concluida'}><Ban className="w-4 h-4" /></IconBtn>
-                        <IconBtn title="Exportar" onClick={() => toast.info('Exportação em breve')}><Download className="w-4 h-4" /></IconBtn>
-                        <IconBtn title="Relatório" onClick={() => toast.info('Relatórios em breve')}><BarChart3 className="w-4 h-4" /></IconBtn>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" aria-label={`Mais ações de ${c.nome}`}><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => duplicar(c)} disabled={copiando}><Copy className="mr-2 h-4 w-4" />Duplicar campanha</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => cancelar(c)} disabled={c.status === 'cancelada' || c.status === 'concluida'} className="text-rose-600"><Ban className="mr-2 h-4 w-4" />Cancelar campanha</DropdownMenuItem>
+                            <DropdownMenuItem disabled><Download className="mr-2 h-4 w-4" />Exportar (em breve)</DropdownMenuItem>
+                            <DropdownMenuItem disabled><BarChart3 className="mr-2 h-4 w-4" />Relatório (em breve)</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </Td>
                   </tr>
               ))}
               {filtradas.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="text-center py-10 text-slate-400">
+                  <td colSpan={7} className="text-center py-10 text-slate-400">
                     {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Nenhuma campanha encontrada com esses filtros.'}
                   </td>
                 </tr>
@@ -586,10 +615,10 @@ function CampanhaFlutuante({ campanha }) {
 }
 
 function Th({ children, className = '' }) {
-  return <th className={`text-left font-medium px-3 py-2 ${className}`}>{children}</th>;
+  return <th className={`text-left font-semibold px-4 py-3 text-xs ${className}`}>{children}</th>;
 }
 function Td({ children, className = '' }) {
-  return <td className={`px-3 py-2 align-top ${className}`}>{children}</td>;
+  return <td className={`px-4 py-4 align-middle ${className}`}>{children}</td>;
 }
 function Info({ label, value }) {
   return (
@@ -601,7 +630,7 @@ function Info({ label, value }) {
 }
 function IconBtn({ children, ...props }) {
   return (
-    <Button variant="ghost" size="icon" className="h-8 w-8" {...props}>
+    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-slate-500 hover:bg-emerald-50 hover:text-emerald-700" aria-label={props.title} {...props}>
       {children}
     </Button>
   );
@@ -618,7 +647,7 @@ function StatusBadge({ status }) {
   };
   return (
     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${map[status] || 'bg-slate-100 text-slate-600'}`}>
-      {status}
+      {{ rascunho: 'Rascunho', agendada: 'Agendada', executando: 'Em andamento', concluida: 'Concluída', cancelada: 'Cancelada', pausada: 'Pausada', erro: 'Com erro' }[status] || status}
     </span>
   );
 }
