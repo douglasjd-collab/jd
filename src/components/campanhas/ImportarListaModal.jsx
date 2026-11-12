@@ -128,14 +128,15 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
       const { map: mapaColCampo, nao_mapeadas } = mapearColunasParaCampos(colTelefones);
 
       const parsed = json.map((r) => {
-        const row = Object.values(r);
+        // Ler pela chave do cabeçalho: a ordem das propriedades pode variar entre linhas.
+        const row = headers.map((header) => r[header]);
         const nomeRaw = idxNome >= 0 ? String(row[idxNome] || '').trim() : '';
         const cpfRaw = idxCpf >= 0 ? String(row[idxCpf] || '').trim() : '';
         const emailRaw = idxEmail >= 0 ? String(row[idxEmail] || '').trim() : '';
         const cidadeRaw = idxCidade >= 0 ? String(row[idxCidade] || '').trim() : '';
         const telefones = [];
         for (const c of colTelefones) {
-          const raw = String(row[c.idx] || '').trim();
+          const raw = String(r[headers[c.idx]] ?? '').trim();
           const num = normalizarTelefone(raw);
           if (num.length < 8) continue;
           if (telefones.some((t) => t.numero === num)) continue;
@@ -180,6 +181,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
         .map(([cidade, count]) => ({ cidade, count }))
         .sort((a, b) => b.count - a.count);
 
+      setNomeLista(file.name.replace(/\.xlsx$/i, ''));
       setLinhasTudo(parsed);
       setColunas({
         nome: idxNome >= 0 ? headers[idxNome] : null,
@@ -415,6 +417,7 @@ export default function ImportarListaModal({ open, onOpenChange, empresaId, user
             await base44.entities.ClienteTelefone.bulkCreate(telefonesUnicos);
           } catch (e) {
             console.warn('ClienteTelefone bulkCreate falhou:', e.message);
+            throw new Error('Não foi possível gravar os telefones da lista. A importação não foi concluída: ' + (e.message || 'erro de gravação'));
           }
         }
       }
