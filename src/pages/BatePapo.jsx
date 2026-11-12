@@ -1883,7 +1883,10 @@ export default function BatePapo() {
         <AgendarReuniaoModal
           open={!!agendarReuniaoModal}
           onOpenChange={(v) => !v && setAgendarReuniaoModal(null)}
-          conversa={agendarReuniaoModal}
+          conversa={agendarReuniaoModal ? {
+            ...agendarReuniaoModal,
+            cliente_nome: contatosWhatsapp[agendarReuniaoModal.id]?.nome || agendarReuniaoModal.cliente_nome,
+          } : null}
           user={user}
         />
 
