@@ -701,7 +701,7 @@ export default function AgendaPage() {
   });
 
   const sincronizarGoogle = async (agendaId) => {
-    if (String(user?.email || '').toLowerCase() !== 'douglas.jdpromotora@gmail.com' || !agendaId) return;
+    if (user?.auth_id !== '6956d1f3d631cbba22ce3021' || !agendaId) return;
     try {
       const resultado = await base44.functions.invoke('sincronizarAgendaGoogle', { agenda_id: agendaId });
       if (resultado?.data?.erro) toast.error('Google Agenda: ' + resultado.data.erro);
