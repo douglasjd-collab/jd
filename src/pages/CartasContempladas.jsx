@@ -114,7 +114,7 @@ function FonteBadge({ fonte }) {
   return (
     <div title={fonte.detalhe || fonte.erro || ""} className={`rounded-xl border p-3 flex items-center justify-between gap-3 ${cfg.cls}`}>
       <div className="flex items-center gap-2 min-w-0"><Icon className="w-4 h-4 shrink-0"/><span className="font-semibold text-sm truncate">{fonte.nome}</span></div>
-      <span className="text-xs whitespace-nowrap">{cfg.texto}</span>
+      <div className="text-right"><span className="text-xs whitespace-nowrap">{cfg.texto}</span>{(fonte.erro || fonte.detalhe) && <p className="text-xs mt-1 max-w-sm">{fonte.erro || fonte.detalhe}</p>}</div>
     </div>
   );
 }
@@ -169,7 +169,9 @@ export default function CartasContempladas() {
     onSuccess: (r) => {
       if (!r?.ok) return toast.error(r?.error || "Não foi possível consultar as cartas");
       setData(r);
-      if (!r.total_combinacoes) toast.info("Consulta concluída, mas nenhuma combinação ficou dentro da faixa escolhida.");
+      const falhas = (r.fontes || []).filter((f) => f.status === "erro" || f.status === "pendente");
+      if (falhas.length) toast.warning("Consulta incompleta: " + falhas.map((f) => f.nome).join(", ") + ". Confira os avisos das fontes.");
+      else if (!r.total_combinacoes) toast.info("Nenhuma carta disponível nas fontes consultadas dentro da faixa escolhida.");
     },
     onError: (e) => toast.error(e?.response?.data?.error || e?.message || "Erro ao consultar cartas"),
   });
@@ -226,7 +228,7 @@ export default function CartasContempladas() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {(data?.fontes || [
-          {nome:"Fraga & Bitello",status:"conectada",quantidade:0}, {nome:"Play Consórcios",status:"site_sem_api"}, {nome:"Consórcios Digital / Jobs",status:"pendente"}
+          {nome:"Fraga & Bitello",status:"pendente",detalhe:"Aguardando consulta"}, {nome:"Play Consórcios",status:"site_sem_api"}, {nome:"Consórcios Digital / Jobs",status:"pendente"}
         ]).map((f, i) => <FonteBadge key={f.fonte || i} fonte={f}/>)}
       </div>
 
@@ -242,7 +244,7 @@ export default function CartasContempladas() {
           <CardHeader className="pb-3"><div className="flex items-center justify-between gap-3"><CardTitle className="text-base flex items-center gap-2"><WalletCards className="w-5 h-5"/>Resultados encontrados</CardTitle><div className="flex items-center gap-2 text-xs text-slate-500"><Badge variant="outline">{data.total_combinacoes} combinações</Badge><Button variant="ghost" size="sm" onClick={buscar}><RefreshCw className="w-4 h-4 mr-1"/>Atualizar</Button></div></div></CardHeader>
           <CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm"><thead className="bg-slate-50 border-y"><tr className="text-left text-slate-500"><th className="p-3">Administradora</th><th className="p-3">Composição</th><th className="p-3">Crédito</th><th className="p-3">Saldo devedor</th><th className="p-3">Entrada</th><th className="p-3">Parcela</th><th className="p-3">Prazo</th><th className="p-3">Taxa</th><th className="p-3"></th></tr></thead><tbody>
-              {resultados.length === 0 ? <tr><td colSpan="9" className="p-8 text-center text-slate-500">Nenhuma combinação encontrada nessa faixa de crédito. Ajuste o crédito desejado ou amplie a faixa.</td></tr> : resultados.map((r) => <tr key={r.id} className="border-b hover:bg-slate-50"><td className="p-3 font-semibold"><AdministradoraIdentidade compact nome={r.administradora} carta={r.cartas?.[0] || r} /></td><td className="p-3"><Badge variant="outline"><Layers3 className="w-3 h-3 mr-1"/>{r.quantidade_cartas} {r.quantidade_cartas === 1 ? "carta" : "cartas"}</Badge></td><td className="p-3 font-semibold">{moneyBR(r.valor_credito)}</td><td className="p-3 font-semibold text-slate-700">{moneyBR(saldoDevedorTotal(r))}</td><td className="p-3">{moneyBR(r.entrada)}</td><td className="p-3">{moneyBR(r.valor_parcela)}</td><td className="p-3">{r.parcelas || "—"} meses</td><td className="p-3">{pctBR(r.taxa)}</td><td className="p-3"><Button size="sm" variant="outline" onClick={() => setSelected(r)}>Detalhes</Button></td></tr>)}
+              {resultados.length === 0 ? <tr><td colSpan="9" className="p-8 text-center text-slate-500">{data.consulta_parcial ? "Consulta incompleta: uma ou mais fontes não puderam ser consultadas. Confira os avisos acima antes de concluir que não há crédito disponível." : "Nenhuma combinação encontrada nessa faixa de crédito. Ajuste o crédito desejado ou amplie a faixa."}</td></tr> : resultados.map((r) => <tr key={r.id} className="border-b hover:bg-slate-50"><td className="p-3 font-semibold"><AdministradoraIdentidade compact nome={r.administradora} carta={r.cartas?.[0] || r} /></td><td className="p-3"><Badge variant="outline"><Layers3 className="w-3 h-3 mr-1"/>{r.quantidade_cartas} {r.quantidade_cartas === 1 ? "carta" : "cartas"}</Badge></td><td className="p-3 font-semibold">{moneyBR(r.valor_credito)}</td><td className="p-3 font-semibold text-slate-700">{moneyBR(saldoDevedorTotal(r))}</td><td className="p-3">{moneyBR(r.entrada)}</td><td className="p-3">{moneyBR(r.valor_parcela)}</td><td className="p-3">{r.parcelas || "—"} meses</td><td className="p-3">{pctBR(r.taxa)}</td><td className="p-3"><Button size="sm" variant="outline" onClick={() => setSelected(r)}>Detalhes</Button></td></tr>)}
             </tbody></table>
           </CardContent>
         </Card>
