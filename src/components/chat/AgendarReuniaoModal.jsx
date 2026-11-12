@@ -17,13 +17,11 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
   const clienteNome = conversa?.cliente_nome || conversa?.contato_nome || '';
   const clienteTelefone = conversa?.cliente_telefone || '';
 
-  const amanhaCedo = new Date();
-  amanhaCedo.setDate(amanhaCedo.getDate() + 1);
-  amanhaCedo.setHours(9, 0, 0, 0);
+  const agoraLocal = new Date();
 
   const [form, setForm] = useState({
     titulo: clienteNome ? `Reunião - ${clienteNome}` : 'Nova Reunião',
-    inicio: format(amanhaCedo, "yyyy-MM-dd'T'HH:mm"),
+    inicio: format(agoraLocal, "yyyy-MM-dd'T'HH:mm"),
     fim: '',
     local: '',
     descricao: '',
@@ -32,12 +30,10 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
   // Atualiza o título se o clienteNome mudar (quando o modal abre)
   useEffect(() => {
     if (open) {
-      const amanha = new Date();
-      amanha.setDate(amanha.getDate() + 1);
-      amanha.setHours(9, 0, 0, 0);
+      const agora = new Date();
       setForm({
         titulo: clienteNome ? `Reunião - ${clienteNome}` : 'Nova Reunião',
-        inicio: format(amanha, "yyyy-MM-dd'T'HH:mm"),
+        inicio: format(agora, "yyyy-MM-dd'T'HH:mm"),
         fim: '',
         local: '',
         descricao: '',
