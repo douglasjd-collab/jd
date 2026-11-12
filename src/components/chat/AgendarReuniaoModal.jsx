@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarCheck } from 'lucide-react';
+import { CalendarCheck, Video } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import ParticipantesReuniaoSelect from '@/components/agenda/ParticipantesReuniaoSelect';
@@ -15,6 +15,8 @@ import { conflitosReuniao } from '@/components/agenda/conflitosReuniao';
 
 export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user }) {
   const [loading, setLoading] = useState(false);
+  const [gerandoMeet, setGerandoMeet] = useState(false);
+  const [eventoMeet, setEventoMeet] = useState(null);
   const [colaboradores, setColaboradores] = useState([]);
   const [participantes, setParticipantes] = useState([]);
   useEffect(() => {
@@ -66,6 +68,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
   useEffect(() => {
     if (open) {
       setParticipantes([]);
+      setEventoMeet(null);
       const agora = new Date();
       setForm({
         titulo: clienteNome ? `Reunião - ${clienteNome}` : 'Nova Reunião',
@@ -78,9 +81,48 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
     }
   }, [open, clienteNome]);
 
+  const descartarMeet = async () => {
+    if (!eventoMeet?.id) return;
+    try { await base44.functions.invoke('gerarLinkMeetAgenda', { modo: 'descartar', evento_id: eventoMeet.id, empresa_id: user?.empresa_id }); }
+    catch (e) { console.warn('Falha ao descartar prévia Google Meet', e); }
+    setEventoMeet(null);
+  };
+
+  const fecharModal = async () => {
+    if (loading || gerandoMeet) return;
+    await descartarMeet();
+    onOpenChange(false);
+  };
+
+  const gerarMeet = async () => {
+    if (!form.titulo?.trim() || !form.inicio || !form.fim || new Date(form.fim) <= new Date(form.inicio)) {
+      toast.error('Preencha o título, o início e o término da reunião corretamente.');
+      return;
+    }
+    setGerandoMeet(true);
+    try {
+      if (eventoMeet?.id) await descartarMeet();
+      const resposta = await base44.functions.invoke('gerarLinkMeetAgenda', {
+        empresa_id: user?.empresa_id, titulo: form.titulo,
+        inicio: new Date(form.inicio).toISOString(), fim: new Date(form.fim).toISOString(),
+        local: form.local, descricao: form.descricao,
+      });
+      const data = resposta?.data;
+      if (!data?.link || !data?.evento_id) throw new Error(data?.erro || 'O Google não retornou um link de reunião.');
+      setEventoMeet({ id: data.evento_id, inicio: form.inicio, fim: form.fim, titulo: form.titulo });
+      setForm(f => ({ ...f, link_reuniao: data.link, local: f.local || 'Online' }));
+      toast.success('Link do Google Meet gerado!');
+    } catch (e) { toast.error('Não foi possível gerar o Meet: ' + (e.response?.data?.erro || e.message)); }
+    finally { setGerandoMeet(false); }
+  };
+
   const handleSalvar = async () => {
     if (!form.titulo || !form.inicio) {
       toast.error('Preencha título e data/hora');
+      return;
+    }
+    if (eventoMeet && (eventoMeet.inicio !== form.inicio || eventoMeet.fim !== form.fim || eventoMeet.titulo !== form.titulo)) {
+      toast.error('Os dados da reunião mudaram. Gere novamente o link do Meet com os horários atualizados.');
       return;
     }
     setLoading(true);
@@ -99,6 +141,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
         fim: form.fim ? new Date(form.fim).toISOString() : null,
         local: form.local || '',
         link_reuniao: form.link_reuniao?.trim() || '',
+        ...(eventoMeet?.id ? { google_event_id: eventoMeet.id } : {}),
         descricao: form.descricao || '',
         status: 'agendado',
         telefone: clienteTelefone,
@@ -111,6 +154,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
           await base44.functions.invoke('sincronizarAgendaGoogle', { agenda_id: compromissoCriado.id });
         } catch (erro) { console.warn('Google Agenda não sincronizado:', erro); toast.warning('Reunião salva no CRM; sincronização Google pendente.'); }
       }
+      setEventoMeet(null);
       toast.success('✅ Reunião agendada com sucesso!');
       onOpenChange(false);
     } catch (e) {
@@ -121,7 +165,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(proximo) => { if (!proximo) fecharModal(); else onOpenChange(true); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -178,7 +222,16 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
             />
           </div>
 
-          <div><Label>Link da reunião (opcional)</Label><Input type="url" value={form.link_reuniao || ''} onChange={e => setForm(f => ({ ...f, link_reuniao: e.target.value }))} placeholder="https://meet.google.com/..." /></div>
+          <div className="space-y-2">
+            <Label>Link da reunião (opcional)</Label>
+            <div className="flex gap-2">
+              <Input type="url" value={form.link_reuniao || ''} onChange={e => setForm(f => ({ ...f, link_reuniao: e.target.value }))} placeholder="https://meet.google.com/..." />
+              <Button type="button" variant="outline" onClick={gerarMeet} disabled={gerandoMeet || loading || !form.titulo?.trim() || !form.inicio || !form.fim || new Date(form.fim) <= new Date(form.inicio)} className="shrink-0 gap-1">
+                <Video className="w-4 h-4" /> {gerandoMeet ? 'Gerando...' : 'Gerar Meet'}
+              </Button>
+            </div>
+            {!form.fim && <p className="text-xs text-slate-500">Preencha o horário de término para gerar o Google Meet.</p>}
+          </div>
           <ParticipantesReuniaoSelect colaboradores={colaboradores} value={participantes} onChange={setParticipantes} />
           <div>
             <Label>Observações</Label>
@@ -192,7 +245,7 @@ export default function AgendarReuniaoModal({ open, onOpenChange, conversa, user
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={fecharModal}>Cancelar</Button>
           <Button
             className="bg-blue-600 hover:bg-blue-700 gap-2"
             onClick={handleSalvar}
