@@ -700,9 +700,18 @@ export default function AgendaPage() {
     },
   });
 
+  const sincronizarGoogle = async (agendaId) => {
+    if (String(user?.email || '').toLowerCase() !== 'douglas.jdpromotora@gmail.com' || !agendaId) return;
+    try {
+      const resultado = await base44.functions.invoke('sincronizarAgendaGoogle', { agenda_id: agendaId });
+      if (resultado?.data?.erro) toast.error('Google Agenda: ' + resultado.data.erro);
+    } catch (e) { console.warn('Sincronização Google pendente:', e); toast.warning('Compromisso salvo no CRM; sincronização Google pendente.'); }
+  };
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Agenda.create({ ...data, empresa_id: user?.empresa_id, usuario_id: data.usuario_id || user?.auth_id }),
-    onSuccess: async () => {
+    onSuccess: async (criado) => {
+      await sincronizarGoogle(criado?.id);
       await queryClient.invalidateQueries({ queryKey: ['agenda'] });
       toast.success('Compromisso criado!');
       handleCloseModal();
@@ -715,7 +724,7 @@ export default function AgendaPage() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Agenda.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries(['agenda']); toast.success('Atualizado!'); handleCloseModal(); },
+    onSuccess: async (_resultado, vars) => { await sincronizarGoogle(vars.id); queryClient.invalidateQueries({ queryKey: ['agenda'] }); toast.success('Atualizado!'); handleCloseModal(); },
   });
 
   const deleteMutation = useMutation({
