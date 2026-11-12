@@ -29,7 +29,7 @@ function isoToCampos(isoStr) {
   }
 }
 
-export default function EditarCampanhaModal({ open, onOpenChange, campanha, empresaId }) {
+export default function EditarCampanhaModal({ open, onOpenChange, campanha, empresaId, onContinuar }) {
   const qc = useQueryClient();
   const [form, setForm] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -56,12 +56,12 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
 
   if (!form) return null;
 
-  const podeEditarConteudo = ['rascunho', 'agendada', 'pausada'].includes(campanha?.status)
-    && Number(campanha?.enviados || 0) === 0
-    && Number(campanha?.falhas || 0) === 0;
+  const podeEditarConteudo = campanha?.canal === 'whatsapp_nao_oficial'
+    ? campanha?.status !== 'executando'
+    : ['rascunho', 'agendada', 'pausada'].includes(campanha?.status) && Number(campanha?.enviados || 0) === 0 && Number(campanha?.falhas || 0) === 0;
   const podeEditarAgendamento = ['rascunho', 'agendada'].includes(campanha?.status);
 
-  const submit = async () => {
+  const submit = async (continuar = false) => {
     setSalvando(true);
     try {
       if (form.status === 'agendada' && (!form.agendada_para_data || !form.agendada_para_hora)) {
@@ -117,6 +117,7 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
       }
       await base44.entities.Campanha.update(campanha.id, update);
       toast.success('Campanha atualizada');
+      if (continuar && onContinuar) await onContinuar({ ...campanha, ...update });
       qc.invalidateQueries(['campanhas-lista', empresaId]);
       qc.invalidateQueries(['campanhas-dashboard', empresaId]);
       onOpenChange(false);
@@ -180,7 +181,7 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
             </>
           ) : (
             <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
-              Status: {campanha.status}. Esta campanha já teve processamento; mensagem, público e agendamento estão bloqueados para preservar o histórico.
+              {campanha.status === 'executando' ? 'Pause a campanha antes de editar o texto.' : 'A edição será aplicada somente aos próximos envios. Destinatários já enviados, entregues ou lidos serão preservados.'}
             </p>
           )}
 
@@ -247,7 +248,8 @@ export default function EditarCampanhaModal({ open, onOpenChange, campanha, empr
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={salvando}>
             Cancelar
           </Button>
-          <Button onClick={submit} disabled={salvando || !form.nome?.trim()}>
+          {podeEditarConteudo && campanha.canal === 'whatsapp_nao_oficial' && onContinuar && <Button onClick={() => submit(true)} disabled={salvando || !form.nome?.trim() || !form.mensagem_texto?.trim()}>Salvar e continuar pendentes</Button>}
+          <Button onClick={() => submit(false)} disabled={salvando || !form.nome?.trim()}>
             {salvando ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
             Salvar
           </Button>
