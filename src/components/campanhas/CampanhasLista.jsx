@@ -238,27 +238,9 @@ export default function CampanhasLista({ empresaId, user, onNova }) {
 
     setRetomando(c.id);
     try {
-      for (const destinatario of naFila) {
-        if (destinatario.status !== 'cancelado') continue;
-        const registro = await base44.entities.CampanhaDestinatario.get(destinatario.id);
-        if (registro.status === 'cancelado' &&
-            registro.erro_mensagem === 'Envio interrompido pelo usuário' &&
-            !registro.data_envio && !registro.whatsapp_message_id) {
-          await base44.entities.CampanhaDestinatario.update(registro.id, {
-            status: 'na_fila', erro_mensagem: null,
-          });
-        }
-      }
-      await base44.entities.Campanha.update(c.id, {
-        status: 'executando',
-        fim_execucao: null,
-      });
-      try {
-        await base44.functions.invoke('dispararCampanhaNaoOficial', { campanha_id: c.id });
-      } catch (e) {
-        await base44.entities.Campanha.update(c.id, { status: 'pausada' }).catch(() => {});
-        throw e;
-      }
+      // A reabertura dos interrompidos e o arme da campanha são feitos no backend,
+      // de forma atômica e com trava — evita reenviar quem já recebeu.
+      await base44.functions.invoke('dispararCampanhaNaoOficial', { campanha_id: c.id, acao: 'retomar' });
       toast.success(`Envio retomado para ${naFila.length} destinatário(s) na fila.`);
       queryClient.invalidateQueries(['campanhas-lista', empresaId]);
       queryClient.invalidateQueries(['campanhas-dashboard', empresaId]);

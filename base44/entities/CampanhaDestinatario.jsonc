@@ -21,7 +21,7 @@
     },
     "telefone": {
       "type": "string",
-      "description": "Telefone\u683c\u5f0fado (com DDD)"
+      "description": "Telefone formatado (com DDD)"
     },
     "status": {
       "type": "string",
@@ -33,13 +33,14 @@
         "lida",
         "respondida",
         "falhou",
+        "revisar",
         "numero_invalido",
         "sem_whatsapp",
         "bloqueado",
         "cancelado"
       ],
       "default": "na_fila",
-      "description": "Status atual do envio para este destinat\u00e1rio"
+      "description": "Status atual do envio. 'revisar' = resultado incerto (worker interrompido ou sem resposta do provedor): conferir manualmente, nunca reenviar automaticamente"
     },
     "whatsapp_message_id": {
       "type": "string",
@@ -53,6 +54,11 @@
       "type": "string",
       "format": "date-time",
       "description": "Data/hora do envio"
+    },
+    "data_tentativa_envio": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data/hora da tentativa de envio em andamento \u2014 usada para recuperar envios sem confirma\u00e7\u00e3o"
     },
     "data_entrega": {
       "type": "string",

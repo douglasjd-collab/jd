@@ -1,232 +1,34 @@
 import { createClientFromRequest } from "npm:@base44/sdk";
+import { waitUntil } from "base44:runtime";
+import { processarLoteCampanha, reabrirInterrompidos } from "../../shared/campanhaDisparoShared.ts";
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const withTimeout = <T>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(message)), ms);
-    }),
-  ]).finally(() => {
-    if (timer) clearTimeout(timer);
-  });
-};
-const primeiroNome = (nome = "") => String(nome).trim().split(/\s+/)[0] || "cliente";
-const somenteDigitos = (valor = "") => String(valor).replace(/\D/g, "");
-const telefoneInternacionalDapiBrasil = (valor = "") => {
-  const digitos = somenteDigitos(valor);
-  // A D-API espera DDI + DDD + número, sem sinal de +.
-  // Aceita também o formato nacional salvo no CRM, adicionando o DDI do Brasil.
-  if (digitos.startsWith("55") && [12, 13].includes(digitos.length)) return digitos;
-  if ([10, 11].includes(digitos.length)) return `55${digitos}`;
-  throw new Error("Telefone inválido: informe DDD e número brasileiro com 10 ou 11 dígitos.");
-};
-
-async function marcarComoConversaDeCampanha(base44: any, campanha: any, destinatario: any, texto: string) {
-  const telefone = somenteDigitos(destinatario.telefone);
-  if (!telefone) return;
-  const existentes = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
-    { empresa_id: campanha.empresa_id, cliente_telefone: telefone },
-    "-created_date",
-    1
-  );
-  const dados = {
-    status: "campanha",
-    origem: "campanha",
-    cliente_respondeu: false,
-    ultimo_remetente: "vendedor",
-    ultima_mensagem: String(texto || "").substring(0, 200),
-    data_ultima_mensagem: new Date().toISOString(),
-    connection_id: campanha.connection_id,
-    provider: "dapi",
-    canal_origem: "dapi",
-    responsavel_id: null,
-    responsavel_nome: null,
-    responsavel_expira_em: null,
-  };
-
-  if (existentes?.length) {
-    await base44.asServiceRole.entities.ConversaWhatsapp.update(existentes[0].id, dados);
-  } else {
-    await base44.asServiceRole.entities.ConversaWhatsapp.create({
-      ...dados,
-      empresa_id: campanha.empresa_id,
-      cliente_id: destinatario.cliente_id || null,
-      cliente_nome: destinatario.cliente_nome || telefone,
-      cliente_telefone: telefone,
-      tipo_conexao: "usuario",
-    });
-  }
-}
-
-async function processarCampanha(base44: any, campanha: any, campanhaId: string) {
-  const destinatarios = await base44.asServiceRole.entities.CampanhaDestinatario.filter(
-    { campanha_id: campanhaId, status: "na_fila" },
-    "created_date",
-    500
-  );
-
-  await base44.asServiceRole.entities.Campanha.update(campanhaId, {
-    status: "executando",
-    inicio_execucao: campanha.inicio_execucao || new Date().toISOString(),
-  });
-
-  const historicoEnviado = await base44.asServiceRole.entities.CampanhaDestinatario.filter(
-    { campanha_id: campanhaId, status: { $in: ["enviada", "entregue", "lida", "respondida"] } }, null, 5000
-  );
-  const telefonesJaEnviados = new Set(historicoEnviado.map((d: any) => {
-    try { return telefoneInternacionalDapiBrasil(d.telefone); } catch { return somenteDigitos(d.telefone); }
-  }));
-  let enviados = Number(campanha.enviados || 0);
-  let falhas = Number(campanha.falhas || 0);
-  const minConfigurado = Number(campanha.intervalo_min_segundos);
-  const maxConfigurado = Number(campanha.intervalo_max_segundos);
-  const temFaixaAleatoria = Number.isFinite(minConfigurado) && minConfigurado > 0 &&
-    Number.isFinite(maxConfigurado) && maxConfigurado >= minConfigurado;
-  const porMinutoLegado = Math.max(1, Math.min(60, Number(campanha.velocidade_envio || 60)));
-  const atrasoLegadoMs = Math.max(1000, Math.round(60000 / porMinutoLegado));
-  const intervaloMinMs = temFaixaAleatoria ? Math.max(1000, Math.min(120000, minConfigurado * 1000)) : atrasoLegadoMs;
-  const intervaloMaxMs = temFaixaAleatoria ? Math.max(intervaloMinMs, Math.min(120000, maxConfigurado * 1000)) : atrasoLegadoMs;
-  const proximoIntervaloMs = () => Math.floor(intervaloMinMs + Math.random() * (intervaloMaxMs - intervaloMinMs + 1));
-  const pausarApos = Math.max(0, Number(campanha.pausa_apos || 0));
-  const duracaoPausaMs = Math.max(0, Number(campanha.duracao_pausa_min || 0)) * 60000;
-  let enviadosNestaExecucao = 0;
-
-  for (const destinatario of destinatarios || []) {
-    const campanhaAtual = await base44.asServiceRole.entities.Campanha.get(campanhaId);
-    if (["cancelada", "pausada"].includes(campanhaAtual?.status)) break;
-
-    const atual = await base44.asServiceRole.entities.CampanhaDestinatario.get(destinatario.id);
-    if (atual.status !== "na_fila") continue;
-    let telefoneChave;
-    try { telefoneChave = telefoneInternacionalDapiBrasil(destinatario.telefone); }
-    catch { telefoneChave = somenteDigitos(destinatario.telefone); }
-    if (telefonesJaEnviados.has(telefoneChave)) {
-      await base44.asServiceRole.entities.CampanhaDestinatario.update(destinatario.id, {
-        status: "cancelado", erro_mensagem: "Número já recebeu esta campanha; duplicidade preservada sem novo envio.",
-      });
-      continue;
-    }
-    await base44.asServiceRole.entities.CampanhaDestinatario.update(destinatario.id, { status: "enviando" });
-    const texto = String(campanhaAtual?.mensagem_texto ?? campanha.mensagem_texto ?? "")
-      .replace(/\\([*_~])/g, '$1')
-      .replace(/(?:\{\s*(?:nome|primeiro_nome)\s*\}|\bnome\s*\})/gi, () => primeiroNome(destinatario.cliente_nome));
-    const payload: Record<string, unknown> = {
-      connectionId: campanha.connection_id,
-      phoneNumber: destinatario.telefone,
-    };
-
-    if (campanha.mensagem_tipo === "imagem_texto") {
-      payload.action = "sendImage";
-      payload.imageUrl = campanha.midia_url;
-      payload.caption = texto;
-    } else if (campanha.mensagem_tipo === "video_texto") {
-      payload.action = "sendVideo";
-      payload.videoUrl = campanha.midia_url;
-      payload.caption = texto;
-    } else {
-      payload.action = "sendText";
-      payload.text = texto;
-    }
-
-    let atrasoDeErroAplicado = false;
-    try {
-      // Mantém o cadastro original no CRM e normaliza só o destino enviado à D-API.
-      payload.phoneNumber = telefoneInternacionalDapiBrasil(destinatario.telefone);
-      const resposta: any = await withTimeout(
-        base44.asServiceRole.functions.invoke("whatsappService", payload),
-        60000,
-        "A integração não respondeu em 60 segundos. Confira o WhatsApp antes de tentar novamente."
-      );
-      // whatsappService devolve sucesso no envelope da função, mas a resposta real
-      // da D-API fica aninhada em data.data. Validar todas as camadas evita marcar
-      // como enviada uma mensagem que recebeu HTTP 4xx/5xx do provedor.
-      const envelope = resposta?.data || resposta;
-      const resultadoApi = envelope?.data || envelope;
-      const corpoApi = resultadoApi?.data || resultadoApi;
-      const camadasResposta = [envelope, resultadoApi, corpoApi].filter(Boolean);
-      const falhaApi = camadasResposta.find((camada) =>
-        camada.success === false ||
-        (Number.isFinite(Number(camada.httpStatus)) && Number(camada.httpStatus) >= 400)
-      );
-      if (falhaApi) {
-        throw new Error(
-          falhaApi.error ||
-          falhaApi.message ||
-          resultadoApi?.error ||
-          corpoApi?.error ||
-          "Falha informada pela D-API"
-        );
-      }
-      const messageId =
-        corpoApi?.messageId ||
-        corpoApi?.message_id ||
-        corpoApi?.id ||
-        corpoApi?.key?.id ||
-        corpoApi?.message?.id ||
-        resultadoApi?.messageId ||
-        resultadoApi?.message_id ||
-        resultadoApi?.id ||
-        "";
-      await base44.asServiceRole.entities.CampanhaDestinatario.update(destinatario.id, {
-        status: "enviada",
-        data_envio: new Date().toISOString(),
-        whatsapp_message_id: String(messageId || ""),
-        erro_mensagem: "",
-      });
-      await marcarComoConversaDeCampanha(base44, campanha, destinatario, texto);
-      telefonesJaEnviados.add(telefoneChave);
-      enviados++;
-      enviadosNestaExecucao++;
-    } catch (error) {
-      falhas++;
-      await base44.asServiceRole.entities.CampanhaDestinatario.update(destinatario.id, {
-        status: "falhou",
-        erro_mensagem: error instanceof Error ? error.message : String(error),
-      });
-      // Recuo operacional após erro do provedor; o erro fica registrado e a fila continua.
-      await sleep(Math.max(5000, proximoIntervaloMs()));
-      atrasoDeErroAplicado = true;
-    }
-
-    await base44.asServiceRole.entities.Campanha.update(campanhaId, { enviados, falhas });
-
-    if (pausarApos > 0 && enviadosNestaExecucao > 0 && enviadosNestaExecucao % pausarApos === 0 && duracaoPausaMs > 0) {
-      await sleep(duracaoPausaMs);
-    }
-    if (!atrasoDeErroAplicado) await sleep(proximoIntervaloMs());
-  }
-
-  const restantes = await base44.asServiceRole.entities.CampanhaDestinatario.filter(
-    { campanha_id: campanhaId, status: "na_fila" },
-    null,
-    1
-  );
-  const campanhaFinal = await base44.asServiceRole.entities.Campanha.get(campanhaId);
-  if (!["cancelada", "pausada"].includes(campanhaFinal?.status) && !restantes?.length) {
-    await base44.asServiceRole.entities.Campanha.update(campanhaId, {
-      status: falhas > 0 && enviados === 0 ? "erro" : "concluida",
-      enviados,
-      falhas,
-      fim_execucao: new Date().toISOString(),
-    });
-  }
-}
-
+/**
+ * Arma/retoma uma campanha não oficial e dispara UM LOTE CURTO.
+ *
+ * - Não existe mais laço longo, sleep de centenas de segundos nem processamento
+ *   de toda a fila em um único worker.
+ * - O lote é limitado por tempo (orçamento) e termina gravando `proximo_envio_em`.
+ * - A continuidade é garantida pelo agendador backend (processarCampanhasNaoOficiais),
+ *   que retoma a campanha sem depender desta requisição ou de aba aberta.
+ * - A trava atômica por campanha impede workers concorrentes e envios duplicados.
+ */
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   try {
-    let user = null;
+    let user: any = null;
     try { user = await base44.auth.me(); } catch { user = null; }
     if (user && !["master", "super_admin", "admin", "gerente"].includes(user.perfil)) {
       return Response.json({ error: "Sem permissão para disparar campanhas" }, { status: 403 });
     }
 
-    const { campanha_id } = await req.json();
+    const corpo: any = await req.json().catch(() => ({}));
+    const campanha_id = corpo?.campanha_id;
+    const acao = String(corpo?.acao || "iniciar");
     if (!campanha_id) return Response.json({ error: "campanha_id obrigatório" }, { status: 400 });
 
-    const campanha = await base44.asServiceRole.entities.Campanha.get(campanha_id);
+    const campanha: any = await base44.asServiceRole.entities.Campanha
+      .get(campanha_id)
+      .catch((e: any) => (e?.status === 404 ? null : Promise.reject(e)));
     if (!campanha || campanha.canal !== "whatsapp_nao_oficial") {
       return Response.json({ error: "Campanha não oficial não encontrada" }, { status: 404 });
     }
@@ -240,28 +42,40 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, ignorada: true, status: campanha.status });
     }
 
+    // Retomada explícita: reabre apenas interrompidos e nunca enviados.
+    const reabertos = acao === "retomar" ? await reabrirInterrompidos(base44, campanha_id) : 0;
+
+    const agora = new Date().toISOString();
     await base44.asServiceRole.entities.Campanha.update(campanha_id, {
       status: "executando",
-      inicio_execucao: campanha.inicio_execucao || new Date().toISOString(),
+      inicio_execucao: campanha.inicio_execucao || agora,
+      proximo_envio_em: agora,
+      motivo_pausa: "",
+      fim_execucao: null,
     });
 
-    const tarefa = processarCampanha(base44, campanha, campanha_id).catch(async (error) => {
-      console.error("Erro no processamento em segundo plano:", error);
+    const orcamentoMs = Math.max(15000, Math.min(240000, Number(corpo?.orcamento_ms) || 150000));
+    const tarefa = processarLoteCampanha(base44, campanha_id, { orcamentoMs }).catch(async (erro: any) => {
+      const mensagem = erro?.message || String(erro);
+      console.error("Erro no processamento do lote da campanha:", mensagem);
+      // Falha real fica visível e retomável — nunca "executando" indefinido.
       await base44.asServiceRole.entities.Campanha.update(campanha_id, {
-        status: "erro",
-        fim_execucao: new Date().toISOString(),
-      });
+        status: "pausada",
+        motivo_pausa: `Erro ao processar o lote: ${mensagem}`,
+        ultimo_erro: mensagem,
+        proximo_envio_em: null,
+        heartbeat_em: new Date().toISOString(),
+      }).catch(() => {});
     });
 
-    const edgeRuntime = (globalThis as any).EdgeRuntime;
-    if (edgeRuntime?.waitUntil) {
-      edgeRuntime.waitUntil(tarefa);
-      return Response.json({ ok: true, iniciado: true, campanha_id }, { status: 202 });
+    try {
+      waitUntil(tarefa);
+      return Response.json({ ok: true, iniciado: true, campanha_id, reabertos }, { status: 202 });
+    } catch (_e) {
+      const resultado = await tarefa;
+      return Response.json({ ok: true, iniciado: true, campanha_id, reabertos, resultado });
     }
-
-    await tarefa;
-    return Response.json({ ok: true, iniciado: true, campanha_id });
-  } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
+  } catch (error: any) {
+    return Response.json({ error: error?.message || String(error) }, { status: 500 });
   }
 });

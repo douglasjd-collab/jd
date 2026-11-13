@@ -113,7 +113,7 @@
     "enviados": {
       "type": "number",
       "default": 0,
-      "description": "Mensagens enviadas com sucesso"
+      "description": "Mensagens enviadas com sucesso \u2014 sempre recalculado a partir dos destinat\u00e1rios"
     },
     "entregues": {
       "type": "number",
@@ -153,7 +153,12 @@
     "falhas": {
       "type": "number",
       "default": 0,
-      "description": "Mensagens com falha de envio"
+      "description": "Mensagens com falha de envio \u2014 recalculado a partir dos destinat\u00e1rios"
+    },
+    "revisar": {
+      "type": "number",
+      "default": 0,
+      "description": "Envios com resultado incerto que precisam de confer\u00eancia manual \u2014 n\u00e3o s\u00e3o reenviados automaticamente"
     },
     "bloqueados": {
       "type": "number",
@@ -179,6 +184,33 @@
       "type": "string",
       "format": "date-time",
       "description": "Fim efetivo da execu\u00e7\u00e3o do disparo"
+    },
+    "proximo_envio_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Pr\u00f3ximo envio agendado pelo worker. Base da continuidade dur\u00e1vel: o agendador retoma a campanha quando esta hora vence"
+    },
+    "heartbeat_em": {
+      "type": "string",
+      "format": "date-time",
+      "description": "\u00daltimo sinal do worker (heartbeat). Sinal antigo indica execu\u00e7\u00e3o \u00f3rf\u00e3"
+    },
+    "trava_worker": {
+      "type": "string",
+      "description": "Identificador do worker que det\u00e9m a trava de processamento (vazio = livre)"
+    },
+    "trava_expira_ts": {
+      "type": "number",
+      "default": 0,
+      "description": "Instante (ms) em que a trava expira. Base do compare-and-swap at\u00f4mico que impede workers concorrentes"
+    },
+    "motivo_pausa": {
+      "type": "string",
+      "description": "Motivo real da pausa/falha (pausa autom\u00e1tica por falhas seguidas, erro de lote, interrup\u00e7\u00e3o)"
+    },
+    "ultimo_erro": {
+      "type": "string",
+      "description": "\u00daltimo erro registrado no processamento em lote"
     },
     "velocidade_envio": {
       "type": "number",
