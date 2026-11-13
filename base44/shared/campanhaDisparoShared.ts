@@ -73,22 +73,12 @@ export function geradorIntervalo(campanha: any) {
   return () => Math.floor(minMs + Math.random() * (maxMs - minMs + 1));
 }
 
-/** Lê todos os status dos destinatários (paginado) — o runtime não expõe count. */
+/** Lê os status dos destinatários — o runtime não expõe count nem a forma com opções. */
 async function lerStatusDestinatarios(base44: any, campanhaId: string) {
   const alvo = base44.asServiceRole.entities.CampanhaDestinatario;
-  const statuses: string[] = [];
-  let cursor: string | undefined;
-  for (let pagina = 0; pagina < 20; pagina++) {
-    const opcoes: any = { limit: 500, fields: ["status"] };
-    if (cursor) opcoes.cursor = cursor;
-    const resposta: any = await alvo.filter({ campanha_id: campanhaId }, opcoes);
-    const itens: any[] = Array.isArray(resposta) ? resposta : (resposta?.items || []);
-    statuses.push(...itens.map((r: any) => r.status));
-    if (Array.isArray(resposta) || !resposta?.has_more) break;
-    cursor = resposta?.next_cursor;
-    if (!cursor) break;
-  }
-  return statuses;
+  const resposta: any = await alvo.filter({ campanha_id: campanhaId }, "created_date", 5000);
+  const itens: any[] = Array.isArray(resposta) ? resposta : (resposta?.items || []);
+  return itens.map((r: any) => r.status);
 }
 
 /** Contadores sempre derivados dos destinatários (fonte da verdade). */

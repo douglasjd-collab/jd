@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     }
 
     // 3) Segurança extra: nenhum destinatário pode ficar preso em 'enviando'.
-    const presosResposta: any = await Destinatarios.filter({ status: "enviando" }, { limit: 500, fields: ["id"] });
+    const presosResposta: any = await Destinatarios.filter({ status: "enviando" }, "created_date", 500);
     const presos = Array.isArray(presosResposta) ? presosResposta.length : (presosResposta?.items || []).length;
 
     return Response.json({
