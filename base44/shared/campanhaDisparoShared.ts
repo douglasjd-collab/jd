@@ -73,22 +73,34 @@ export function geradorIntervalo(campanha: any) {
   return () => Math.floor(minMs + Math.random() * (maxMs - minMs + 1));
 }
 
+/** Lê todos os status dos destinatários (paginado) — o runtime não expõe count. */
+async function lerStatusDestinatarios(base44: any, campanhaId: string) {
+  const alvo = base44.asServiceRole.entities.CampanhaDestinatario;
+  const statuses: string[] = [];
+  let cursor: string | undefined;
+  for (let pagina = 0; pagina < 20; pagina++) {
+    const opcoes: any = { limit: 500, fields: ["status"] };
+    if (cursor) opcoes.cursor = cursor;
+    const resposta: any = await alvo.filter({ campanha_id: campanhaId }, opcoes);
+    const itens: any[] = Array.isArray(resposta) ? resposta : (resposta?.items || []);
+    statuses.push(...itens.map((r: any) => r.status));
+    if (Array.isArray(resposta) || !resposta?.has_more) break;
+    cursor = resposta?.next_cursor;
+    if (!cursor) break;
+  }
+  return statuses;
+}
+
 /** Contadores sempre derivados dos destinatários (fonte da verdade). */
 export async function contadoresDaCampanha(base44: any, campanhaId: string) {
-  const alvo = base44.asServiceRole.entities.CampanhaDestinatario;
-  const [enviados, falhas, revisar, pendentes, cancelados] = await Promise.all([
-    alvo.count({ campanha_id: campanhaId, status: { $in: STATUS_ENVIADOS } }),
-    alvo.count({ campanha_id: campanhaId, status: { $in: STATUS_FALHAS } }),
-    alvo.count({ campanha_id: campanhaId, status: "revisar" }),
-    alvo.count({ campanha_id: campanhaId, status: { $in: STATUS_PENDENTES } }),
-    alvo.count({ campanha_id: campanhaId, status: "cancelado" }),
-  ]);
+  const statuses = await lerStatusDestinatarios(base44, campanhaId);
   return {
-    enviados: Number(enviados) || 0,
-    falhas: Number(falhas) || 0,
-    revisar: Number(revisar) || 0,
-    pendentes: Number(pendentes) || 0,
-    cancelados: Number(cancelados) || 0,
+    enviados: statuses.filter((s) => STATUS_ENVIADOS.includes(s)).length,
+    falhas: statuses.filter((s) => STATUS_FALHAS.includes(s)).length,
+    revisar: statuses.filter((s) => s === "revisar").length,
+    pendentes: statuses.filter((s) => STATUS_PENDENTES.includes(s)).length,
+    cancelados: statuses.filter((s) => s === "cancelado").length,
+    total: statuses.length,
   };
 }
 
@@ -395,10 +407,10 @@ export async function processarLoteCampanha(
         break;
       }
 
-      // Pausa automática após N envios: encerra o lote e agenda a retomada.
+      // Pausa automática após N envios (contagem derivada dos destinatários).
       if (pausarApos > 0 && duracaoPausaMs > 0) {
-        const enviadosTotais = await Destinatarios.count({ campanha_id: campanhaId, status: { $in: STATUS_ENVIADOS } });
-        if (Number(enviadosTotais) > 0 && Number(enviadosTotais) % pausarApos === 0) {
+        const enviadosTotais = (historico || []).length + enviadosNoLote;
+        if (enviadosTotais > 0 && enviadosTotais % pausarApos === 0) {
           proximoEnvioEm = Date.now() + duracaoPausaMs;
           break;
         }
