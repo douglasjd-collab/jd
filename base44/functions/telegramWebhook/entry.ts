@@ -218,7 +218,7 @@ const finToday = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Pa
 const finNorm = s => stripAccents(String(s)).toLowerCase();
 function finAmount(s) {
  const n = String(s).replace(/R\$|\s/g,'');
- const v = Number(n.includes(',') ? n.replaceAll('.','').replace(',','.') : n);
+ const v = Number(n.includes(',') ? n.replaceAll('.','').replace(',','.') : /^\d{1,3}(\.\d{3})+$/.test(n) ? n.replaceAll('.','') : n);
  return Number.isFinite(v) && v > 0 ? Math.round(v*100)/100 : null;
 }
 function finDate(s) {
@@ -339,7 +339,8 @@ async function finSave(b,id,d,key) {
    observacao:marker,
    ...(d.account?{conta_bancaria_id:d.account.id}:{}),
    ...(paid?{[rec?'data_recebimento':'data_pagamento']:d.paymentDate || date}:{}),
-   ...(personal?{categoria:d.category.nome,...(d.category.id?{categoria_id:d.category.id}:{}),tipo_lancamento:'unico'}:
+   ...(personal?{categoria:d.category.nome,...(d.category.id?{categoria_id:d.category.id}:{}),tipo_lancamento:d.repeat!=='unico' && i===0?'recorrente':'unico',
+          ...(d.repeat!=='unico'?{frequencia:d.freq,dia_vencimento:Number(d.date.slice(8)),repetir_ate_tipo:'data',repetir_ate_data:finNext(d.date,count-1,d.freq),...(i>0?{recorrencia_origem_id:d.progress[0]}:{})}:{} )}:
      rec?{categoria_id:d.category.id,categoria_nome:d.category.nome,origem:'Telegram'}:{categoria:d.category.nome,despesa_fixa:d.repeat==='recorrente'}),
    ...(!personal && d.branch?{filial_id:d.branch.id,filial_nome:d.branch.nome}:{}),
    ...(!personal && d.cost?{centro_custo_id:d.cost.id,centro_custo_nome:d.cost.nome}:{}),
@@ -483,7 +484,7 @@ async function handleFinancialTelegram(b,body) {
   await sendTelegram(chat,'💰 <b>Financeiro rápido</b>\nEnvie <code>Mercado 58,50</code> ou <code>Recebi comissão 1.200 hoje</code>.\nEscolha Pessoal ou Empresa, confira os dados e confirme.\n\nPara vincular: CRM → Robôs e Integrações → Telegram → Vincular meu financeiro.\n\nAgenda, oportunidades e adiantamentos continuam disponíveis.'); return true;
  }
  if(!body.financialIntent && /\b(adiantamento|reuniao|agenda|oportunidade|lead|consorcio|reagendar)\b/.test(finNorm(text))) return false;
- const match=text.match(/(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})|\d+(?:[.,]\d{1,2})?)/);
+ const match=text.match(/(?:R\$\s*)?(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?|\d+(?:[.,]\d{1,2})?)/);
  if(!match && !body.financialIntent && !/^\/?financeiro$/i.test(text)) return false;
  if(!id){await sendTelegram(chat,'Para começar, vincule seu usuário no CRM: <b>Robôs e Integrações → Telegram → Vincular meu financeiro</b>.');return true;}
  if(d && !d.saved){await sendTelegram(chat,'Você tem um lançamento em aberto. Confirme ou cancele antes de iniciar outro.');return true;}
@@ -494,7 +495,14 @@ async function handleFinancialTelegram(b,body) {
  if(parsed.is_financial===false) return false;
  d={ownerId:id.usuario_id,nonce:crypto.randomUUID().slice(0,8),sourceUpdate:body.update_id,repeatReady:!!parsed.count,descricao:parsed.descricao || '',valor:parsed.valor || (match?finAmount(match[1]):0),tipo:parsed.tipo==='receita'?'receita':'despesa',settled:typeof parsed.settled==='boolean'?parsed.settled:null,dest:null,date:finDate(parsed.date)||finToday(),repeat:['recorrente','parcelada'].includes(parsed.repeticao)?parsed.repeticao:'unico',count:parsed.count || 1,freq:['semanal','quinzenal'].includes(parsed.freq)?parsed.freq:'mensal',valueMode:parsed.valueMode,suggestedCategory:parsed.categoria};
  if(d.repeat!=='unico' && (!parsed.count || !d.valueMode && d.repeat==='parcelada')) d.error='Configure Repetir / Parcelar antes de confirmar.';
+ if(d.repeat==='unico')d.count=1;
  if(d.settled===true)d.paymentDate=d.date;
+ if(['pessoal','empresa'].includes(parsed.dest) && (parsed.dest==='pessoal' || ['master','super_admin','admin','gerente'].includes(id.perfil))) {
+  d.dest=parsed.dest;
+  const cats=await finOptions(b,id,d,'category');
+  d.category=cats.find(c=>finNorm(c.nome)===finNorm(d.suggestedCategory || 'Outros')) || (d.dest==='pessoal'?{nome:d.suggestedCategory || 'Outros'}:null);
+  await finShow(b,chat,key,d);return true;
+ }
  await finRender(b,chat,key,d,'💰 <b>Novo lançamento</b>\n\n📝 '+finEsc(d.descricao)+'\n💵 '+finMoney(d.valor)+'\n\nOnde deseja registrar?',[[['👤 Financeiro pessoal','dest_pessoal']],[['🏢 Financeiro da empresa','dest_empresa']],[['❌ Cancelar','cancel']]]);
  return true;
 }
