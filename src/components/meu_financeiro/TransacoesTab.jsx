@@ -339,6 +339,7 @@ export default function TransacoesTab({ user, refreshKey, onSaved }) {
                 key={`${t._tipo}-${t.id}`}
                 t={t}
                 onClick={abrirEfetivacao}
+                onSettle={abrirReceberPagar}
                 onEdit={(item) => setModal({ open: true, item, tipo: item._tipo })}
                 onDelete={abrirExclusao}
               />
