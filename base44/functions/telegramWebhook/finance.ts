@@ -218,7 +218,7 @@ async function handleFinancialTelegram(b,body) {
   else if(field==='value') { const v=finAmount(text); if(!v) {await sendTelegram(chat,'Digite um valor válido, por exemplo 58,50.'); return true;} d.valor=v; }
   else if(field==='date' || field==='paymentDate') { const date=finDate(text); if(!date) {await sendTelegram(chat,'Use DD/MM/AAAA, hoje ou ontem.'); return true;} d[field]=date; }
   else if(field==='category') d.category={nome:text.slice(0,80)};
-  else if(field==='count') { const n=Number(text); if(!Number.isInteger(n)||n<2||n>120){await sendTelegram(chat,'Informe de 2 a 120 ocorrências.');return true;}d.count=n;d.repeatReady=true; d.repeatReady=true; }
+  else if(field==='count') { const n=Number(text); if(!Number.isInteger(n)||n<2||n>120){await sendTelegram(chat,'Informe de 2 a 120 ocorrências.');return true;}d.count=n;d.repeatReady=true; }
   else if(field==='until') {
    const end=finDate(text); if(!end || end<d.date){await sendTelegram(chat,'Informe uma data final igual ou posterior ao primeiro vencimento.');return true;}
    let n=1; while(n<=120 && finNext(d.date,n,d.freq)<=end)n++;
@@ -233,7 +233,7 @@ async function handleFinancialTelegram(b,body) {
    d.dest=action.slice(5); d.account=null;d.category=null;d.branch=null;d.cost=null;
    if(d.dest==='empresa' && !['master','super_admin','admin','gerente'].includes(id.perfil)){await sendTelegram(chat,'Seu perfil não permite lançamentos na empresa. Escolha Pessoal.');return true;}
    const cats=await finOptions(b,id,d,'category');
-   const guess=cats.find(c=>finNorm(c.nome).includes(finNorm(d.suggestedCategory || 'Alimentação'))); if(guess)d.category=guess;
+   const guess=cats.find(c=>finNorm(c.nome).includes(finNorm(d.suggestedCategory || 'Alimentação'))); if(guess)d.category=guess; else if(d.dest==='pessoal')d.category={nome:d.suggestedCategory || 'Outros'};
    await finShow(b,chat,key,d);
   } else if(action==='paid') {d.settled=true; d.paymentDate=d.paymentDate || finToday();await finChoose(b,chat,key,d,id,'account');}
   else if(action==='pending'){d.settled=false;await finPrompt(b,chat,key,d,'date','📅 Qual é o vencimento? Envie DD/MM/AAAA, hoje ou ontem.');}
@@ -270,17 +270,19 @@ async function handleFinancialTelegram(b,body) {
  if(/^\/(start|help)$|^(ajuda|help)$/i.test(text)) {
   await sendTelegram(chat,'💰 <b>Financeiro rápido</b>\nEnvie <code>Mercado 58,50</code> ou <code>Recebi comissão 1.200 hoje</code>.\nEscolha Pessoal ou Empresa, confira os dados e confirme.\n\nPara vincular: CRM → Robôs e Integrações → Telegram → Vincular meu financeiro.\n\nAgenda, oportunidades e adiantamentos continuam disponíveis.'); return true;
  }
- if(/\b(adiantamento|reuniao|agenda|oportunidade|lead|consorcio|reagendar)\b/.test(finNorm(text))) return false;
+ if(!body.financialIntent && /\b(adiantamento|reuniao|agenda|oportunidade|lead|consorcio|reagendar)\b/.test(finNorm(text))) return false;
  const match=text.match(/(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})|\d+(?:[.,]\d{1,2})?)/);
- if(!match && !/^\/?financeiro$/i.test(text)) return false;
+ if(!match && !body.financialIntent && !/^\/?financeiro$/i.test(text)) return false;
  if(!id){await sendTelegram(chat,'Para começar, vincule seu usuário no CRM: <b>Robôs e Integrações → Telegram → Vincular meu financeiro</b>.');return true;}
  if(d && !d.saved){await sendTelegram(chat,'Você tem um lançamento em aberto. Confirme ou cancele antes de iniciar outro.');return true;}
  const parsed=await b.asServiceRole.integrations.Core.InvokeLLM({
-  prompt:'Extraia um lançamento financeiro do texto. Não invente valores nem situação. Data local de hoje: '+finToday()+'. Texto: '+text+'. tipo receita somente se entrada explícita; senão despesa. settled true somente se pagamento/recebimento explícito, false se futuro explícito, senão null. dest pessoal ou empresa somente se explícito. repeticao unico, recorrente ou parcelada. Em parcelada valor é o valor citado e valueMode total ou parcela somente se explícito. count inclui primeira ocorrência. Datas ISO.',
-  response_json_schema:{type:'object',properties:{descricao:{type:'string'},valor:{type:'number'},tipo:{type:'string'},settled:{type:['boolean','null']},dest:{type:['string','null']},date:{type:['string','null']},categoria:{type:'string'},repeticao:{type:'string'},count:{type:['integer','null']},freq:{type:'string'},valueMode:{type:['string','null']}}}
+  prompt:'Extraia um lançamento financeiro do texto. Se for contato, lead, agenda ou outra solicitação sem lançamento financeiro, retorne is_financial false. Não invente valores nem situação. Data local de hoje: '+finToday()+'. Texto: '+text+'. tipo receita somente se entrada explícita; senão despesa. settled true somente se pagamento/recebimento explícito, false se futuro explícito, senão null. dest pessoal ou empresa somente se explícito. repeticao unico, recorrente ou parcelada. Em parcelada valor é o valor citado e valueMode total ou parcela somente se explícito. count inclui primeira ocorrência. Datas ISO.',
+  response_json_schema:{type:'object',properties:{is_financial:{type:'boolean'},descricao:{type:'string'},valor:{type:'number'},tipo:{type:'string'},settled:{type:['boolean','null']},dest:{type:['string','null']},date:{type:['string','null']},categoria:{type:'string'},repeticao:{type:'string'},count:{type:['integer','null']},freq:{type:'string'},valueMode:{type:['string','null']}}}
  });
+ if(parsed.is_financial===false) return false;
  d={ownerId:id.usuario_id,nonce:crypto.randomUUID().slice(0,8),sourceUpdate:body.update_id,repeatReady:!!parsed.count,descricao:parsed.descricao || '',valor:parsed.valor || (match?finAmount(match[1]):0),tipo:parsed.tipo==='receita'?'receita':'despesa',settled:typeof parsed.settled==='boolean'?parsed.settled:null,dest:null,date:finDate(parsed.date)||finToday(),repeat:['recorrente','parcelada'].includes(parsed.repeticao)?parsed.repeticao:'unico',count:parsed.count || 1,freq:['semanal','quinzenal'].includes(parsed.freq)?parsed.freq:'mensal',valueMode:parsed.valueMode,suggestedCategory:parsed.categoria};
  if(d.repeat!=='unico' && (!parsed.count || !d.valueMode && d.repeat==='parcelada')) d.error='Configure Repetir / Parcelar antes de confirmar.';
+ if(d.settled===true)d.paymentDate=d.date;
  await finRender(b,chat,key,d,'💰 <b>Novo lançamento</b>\n\n📝 '+finEsc(d.descricao)+'\n💵 '+finMoney(d.valor)+'\n\nOnde deseja registrar?',[[['👤 Financeiro pessoal','dest_pessoal']],[['🏢 Financeiro da empresa','dest_empresa']],[['❌ Cancelar','cancel']]]);
  return true;
 }
