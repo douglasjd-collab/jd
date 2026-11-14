@@ -2,6 +2,7 @@
 /* Financeiro conversacional: rascunhos e vínculos privados por remetente. */
 const finLocks = new Set();
 const finEsc = v => String(v ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+const finQueues = new Map();
 const finMoney = v => Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const finToday = () => new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const finNorm = s => stripAccents(String(s)).toLowerCase();
@@ -101,6 +102,8 @@ async function finSave(b,id,d,key) {
  if(d.dest==='empresa' && !['master','super_admin','admin','gerente'].includes(id.perfil)) throw new Error('Seu perfil não tem permissão para lançar no financeiro da empresa.');
  if(d.dest==='empresa' && d.tipo==='despesa' && !d.branch) throw new Error('Selecione a filial da despesa.');
  if(d.count<1 || d.count>120) throw new Error('Escolha entre 1 e 120 ocorrências.');
+ if(d.repeat!=='unico' && !d.repeatReady) throw new Error('Configure a quantidade ou data final em Repetir / Parcelar.');
+ if(d.settled && (d.paymentDate || d.date)>finToday()) throw new Error('Uma baixa não pode ter data futura. Use A pagar / A receber.');
  if(d.repeat==='parcelada' && !d.valueMode) throw new Error('Informe se o valor é total ou por parcela.');
  // Revalida os IDs no escopo escolhido antes de gravar.
  for(const [kind,selected] of [['account',d.account],['branch',d.branch],['cost',d.cost]]) {
@@ -174,10 +177,38 @@ async function handleFinancialTelegram(b,body) {
   await sendTelegram(chat,'Há um lançamento em processamento. Use Confirmar novamente para concluir sem duplicar os registros.'); return true;
  }
  const id=await finIdentity(b,actor);
- if(cq && cmd.endsWith(':new')) { await finPut(b,key,{...d,saved:true},1); await sendTelegram(chat,'Envie a descrição e o valor. Exemplo: <b>Mercado 58,50</b>'); return true; }
+ if(d && !d.saved && id && d.ownerId!==id.usuario_id) {await sendTelegram(chat,'O vínculo mudou. Cancele o lançamento anterior e envie novamente.');return true;}
+ if(cq && cmd.endsWith(':new')) { await finPut(b,key,{...d,saved:true,attachmentPending:false},1); await sendTelegram(chat,'Envie a descrição e o valor. Exemplo: <b>Mercado 58,50</b>'); return true; }
  if(cq && cmd.endsWith(':cancel') || !cq && /^\/?cancelar$/i.test(text)) {
-  if(d) await finPut(b,key,{...d,saved:true},1);
+  if(d) await finPut(b,key,{...d,saved:true,attachmentPending:false},1);
   await sendTelegram(chat,'Lançamento cancelado.'); return true;
+ }
+ if(cq && d.saved && cmd.endsWith(':summary')) {
+  await sendTelegram(chat,'🧾 <b>Resumo do lançamento</b>\n'+finEsc(d.descricao)+' • '+finMoney(d.valor)+'\n'+(d.dest==='pessoal'?'Meu Financeiro':'Movimentações Financeiras')+'\nOcorrências: '+d.count+'\nData: '+d.date+'\nCategoria: '+finEsc(d.category?.nome)+'\nConta: '+finEsc(d.account?.nome_conta || 'Não vinculada'));
+  return true;
+ }
+ if(cq && d.saved && cmd.endsWith(':attachment')) {
+  d.attachmentPending=true;await finPut(b,key,d,1440);
+  await sendTelegram(chat,'📎 Envie um PDF, JPG ou PNG de até 10 MB. O comprovante será anexado à primeira ocorrência.');return true;
+ }
+ if(!cq && d?.saved && d.attachmentPending && id) {
+  const file=msg.document || msg.photo?.[msg.photo.length-1];
+  if(!file){await sendTelegram(chat,'Envie o comprovante como foto ou PDF, ou envie /cancelar.');return true;}
+  const mime=msg.document?.mime_type || 'image/jpeg';
+  if(!['application/pdf','image/jpeg','image/png'].includes(mime) || (file.file_size || 0)>10485760){await sendTelegram(chat,'Use PDF, JPG ou PNG com até 10 MB.');return true;}
+  const info=await finApi('getFile',{file_id:file.file_id});
+  const token=Deno.env.get('TELEGRAM_BOT_TOKEN');
+  const response=await fetch('https://api.telegram.org/file/bot'+token+'/'+info.file_path);
+  if(!response.ok) throw new Error('Falha ao baixar comprovante.');
+  const bytes=await response.arrayBuffer();
+  if(bytes.byteLength>10485760) throw new Error('Comprovante excede 10 MB.');
+  const upload=await b.asServiceRole.integrations.Core.UploadPublicFile({file:new File([bytes],msg.document?.file_name || 'comprovante.jpg',{type:mime})});
+  const entity=(d.dest==='pessoal'?'MeuFinanceiro':'')+(d.tipo==='receita'?'Receita':'Despesa');
+  const row=await b.asServiceRole.entities[entity].get(d.progress[0]);
+  if(row.usuario_id!==id.usuario_id || row.empresa_id!==id.empresa_id) throw new Error('Comprovante não pertence ao vínculo atual.');
+  await b.asServiceRole.entities[entity].update(row.id,{comprovante_url:upload.file_url,comprovante_nome:msg.document?.file_name || 'comprovante.jpg'});
+  d.attachmentPending=false;await finPut(b,key,d,1440);
+  await sendTelegram(chat,'✅ Comprovante anexado ao lançamento.');return true;
  }
  if(cq && d.saved) { await sendTelegram(chat,'Este lançamento já foi concluído. Envie uma nova despesa ou receita.'); return true; }
  if(!cq && d?.awaiting && !d.saved) {
@@ -187,11 +218,11 @@ async function handleFinancialTelegram(b,body) {
   else if(field==='value') { const v=finAmount(text); if(!v) {await sendTelegram(chat,'Digite um valor válido, por exemplo 58,50.'); return true;} d.valor=v; }
   else if(field==='date' || field==='paymentDate') { const date=finDate(text); if(!date) {await sendTelegram(chat,'Use DD/MM/AAAA, hoje ou ontem.'); return true;} d[field]=date; }
   else if(field==='category') d.category={nome:text.slice(0,80)};
-  else if(field==='count') { const n=Number(text); if(!Number.isInteger(n)||n<2||n>120){await sendTelegram(chat,'Informe de 2 a 120 ocorrências.');return true;}d.count=n; }
+  else if(field==='count') { const n=Number(text); if(!Number.isInteger(n)||n<2||n>120){await sendTelegram(chat,'Informe de 2 a 120 ocorrências.');return true;}d.count=n;d.repeatReady=true; d.repeatReady=true; }
   else if(field==='until') {
    const end=finDate(text); if(!end || end<d.date){await sendTelegram(chat,'Informe uma data final igual ou posterior ao primeiro vencimento.');return true;}
    let n=1; while(n<=120 && finNext(d.date,n,d.freq)<=end)n++;
-   if(n>120){await sendTelegram(chat,'O limite é de 120 ocorrências. Escolha uma data anterior.');return true;}d.count=n;
+   if(n>120){await sendTelegram(chat,'O limite é de 120 ocorrências. Escolha uma data anterior.');return true;}d.count=n;d.repeatReady=true;
   }
   await finShow(b,chat,key,d); return true;
  }
@@ -219,10 +250,10 @@ async function handleFinancialTelegram(b,body) {
    ({description:'📝 Digite a descrição:',value:'💵 Digite o valor:',date:'📅 Envie a data (DD/MM/AAAA):',paymentDate:'📆 Envie a data do pagamento/recebimento:',category_text:'🏷 Digite a categoria:',count:'🔁 Quantas ocorrências, incluindo a primeira? (2 a 120)',until:'📅 Repetir até qual data? (DD/MM/AAAA)'})[action]);
   else if(action.startsWith('type_')){d.tipo=action.slice(5);d.category=null;await finShow(b,chat,key,d);}
   else if(action==='repeat') await finRender(b,chat,key,d,'🔁 Como deseja lançar?',[[['1️⃣ Única','rep_unico']],[['🔁 Recorrente','rep_recorrente'],['🧩 Parcelada','rep_parcelada']],[['↩️ Voltar','back']]]);
-  else if(action==='rep_unico'){d.repeat='unico';d.count=1;d.freq='mensal';await finShow(b,chat,key,d);}
-  else if(action==='rep_parcelada'){d.repeat='parcelada';d.count=2;d.freq='mensal';await finRender(b,chat,key,d,'💵 O valor informado é:',[[['Valor total','mode_total'],['Valor por parcela','mode_parcela']],[['↩️ Voltar','back']]]);}
+  else if(action==='rep_unico'){d.repeat='unico';d.repeatReady=true;d.count=1;d.freq='mensal';await finShow(b,chat,key,d);}
+  else if(action==='rep_parcelada'){d.repeat='parcelada';d.repeatReady=false;d.valueMode=null;d.count=2;d.freq='mensal';await finRender(b,chat,key,d,'💵 O valor informado é:',[[['Valor total','mode_total'],['Valor por parcela','mode_parcela']],[['↩️ Voltar','back']]]);}
   else if(action.startsWith('mode_')){d.valueMode=action.slice(5);await finPrompt(b,chat,key,d,'count','Quantas parcelas mensais? (2 a 120)');}
-  else if(action==='rep_recorrente'){d.repeat='recorrente';d.count=2;await finRender(b,chat,key,d,'🔁 Escolha a frequência:',[[['Semanal','freq_semanal'],['Quinzenal','freq_quinzenal']],[['Mensal','freq_mensal']],[['↩️ Voltar','back']]]);}
+  else if(action==='rep_recorrente'){d.repeat='recorrente';d.repeatReady=false;d.count=2;await finRender(b,chat,key,d,'🔁 Escolha a frequência:',[[['Semanal','freq_semanal'],['Quinzenal','freq_quinzenal']],[['Mensal','freq_mensal']],[['↩️ Voltar','back']]]);}
   else if(action.startsWith('freq_')){d.freq=action.slice(5);await finRender(b,chat,key,d,'Quando encerrar a repetição?',[[['Por quantidade','count'],['Por data final','until']],[['↩️ Voltar','back']]]);}
   else if(action==='save'){
    if(finLocks.has(key)) return true;
@@ -248,8 +279,19 @@ async function handleFinancialTelegram(b,body) {
   prompt:'Extraia um lançamento financeiro do texto. Não invente valores nem situação. Data local de hoje: '+finToday()+'. Texto: '+text+'. tipo receita somente se entrada explícita; senão despesa. settled true somente se pagamento/recebimento explícito, false se futuro explícito, senão null. dest pessoal ou empresa somente se explícito. repeticao unico, recorrente ou parcelada. Em parcelada valor é o valor citado e valueMode total ou parcela somente se explícito. count inclui primeira ocorrência. Datas ISO.',
   response_json_schema:{type:'object',properties:{descricao:{type:'string'},valor:{type:'number'},tipo:{type:'string'},settled:{type:['boolean','null']},dest:{type:['string','null']},date:{type:['string','null']},categoria:{type:'string'},repeticao:{type:'string'},count:{type:['integer','null']},freq:{type:'string'},valueMode:{type:['string','null']}}}
  });
- d={nonce:crypto.randomUUID().slice(0,8),descricao:parsed.descricao || '',valor:parsed.valor || (match?finAmount(match[1]):0),tipo:parsed.tipo==='receita'?'receita':'despesa',settled:typeof parsed.settled==='boolean'?parsed.settled:null,dest:null,date:finDate(parsed.date)||finToday(),repeat:['recorrente','parcelada'].includes(parsed.repeticao)?parsed.repeticao:'unico',count:parsed.count || 1,freq:['semanal','quinzenal'].includes(parsed.freq)?parsed.freq:'mensal',valueMode:parsed.valueMode,suggestedCategory:parsed.categoria};
+ d={ownerId:id.usuario_id,nonce:crypto.randomUUID().slice(0,8),sourceUpdate:body.update_id,repeatReady:!!parsed.count,descricao:parsed.descricao || '',valor:parsed.valor || (match?finAmount(match[1]):0),tipo:parsed.tipo==='receita'?'receita':'despesa',settled:typeof parsed.settled==='boolean'?parsed.settled:null,dest:null,date:finDate(parsed.date)||finToday(),repeat:['recorrente','parcelada'].includes(parsed.repeticao)?parsed.repeticao:'unico',count:parsed.count || 1,freq:['semanal','quinzenal'].includes(parsed.freq)?parsed.freq:'mensal',valueMode:parsed.valueMode,suggestedCategory:parsed.categoria};
  if(d.repeat!=='unico' && (!parsed.count || !d.valueMode && d.repeat==='parcelada')) d.error='Configure Repetir / Parcelar antes de confirmar.';
  await finRender(b,chat,key,d,'💰 <b>Novo lançamento</b>\n\n📝 '+finEsc(d.descricao)+'\n💵 '+finMoney(d.valor)+'\n\nOnde deseja registrar?',[[['👤 Financeiro pessoal','dest_pessoal']],[['🏢 Financeiro da empresa','dest_empresa']],[['❌ Cancelar','cancel']]]);
  return true;
+}
+
+async function financialTelegram(b,body) {
+ const msg=body.callback_query?.message || body.message;
+ const actor=body.callback_query?.from?.id || body.message?.from?.id;
+ if(!msg || !actor) return false;
+ const key=String(msg.chat.id)+'_'+actor;
+ const previous=finQueues.get(key) || Promise.resolve();
+ const work=previous.catch(()=>{}).then(()=>handleFinancialTelegram(b,body));
+ finQueues.set(key,work);
+ try {return await work;} finally {if(finQueues.get(key)===work)finQueues.delete(key);}
 }
