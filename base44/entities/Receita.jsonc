@@ -4,7 +4,7 @@
   "properties": {
     "empresa_id": {
       "type": "string",
-      "description": "ID da empresa (obrigat\u00f3rio)"
+      "description": "ID da empresa (obrigatório)"
     },
     "filial_id": {
       "type": "string",
@@ -24,7 +24,7 @@
     },
     "descricao": {
       "type": "string",
-      "description": "Descri\u00e7\u00e3o da receita"
+      "description": "Descrição da receita"
     },
     "categoria_id": {
       "type": "string",
@@ -95,6 +95,12 @@
       "type": "string"
     },
     "conta_bancaria_id": {
+      "type": "string"
+    },
+    "comprovante_url": {
+      "type": "string"
+    },
+    "comprovante_nome": {
       "type": "string"
     }
   },
