@@ -1,43 +1,61 @@
 import React, { useRef, useState } from 'react';
-import { ArrowUpCircle, ArrowDownCircle, Trash2, Pencil } from 'lucide-react';
+import { ArrowUpCircle, ArrowDownCircle, Trash2, Pencil, CheckCircle2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 const fmtMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
 const ACTIONS_WIDTH = 168;
-const SWIPE_THRESHOLD = -55;
+const SWIPE_THRESHOLD = 55;
+const SETTLE_WIDTH = 100;
 
-export default function SwipeableTransactionCard({ t, onClick, onEdit, onDelete }) {
+export default function SwipeableTransactionCard({ t, onClick, onEdit, onDelete, onSettle }) {
   const isReceita = t._tipo === 'receita';
   const touchStartX = useRef(null);
+  const touchStartY = useRef(0);
+  const startOffset = useRef(0);
+  const currentOffset = useRef(0);
+  const gestureAxis = useRef(null);
+  const suppressClick = useRef(false);
+  const canSettle = !!onSettle && !['pago', 'recebida', 'cancelado', 'cancelada'].includes(t.status);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
 
-  const statusBadge = isReceita
-    ? { bg: 'bg-green-100', text: 'text-green-700', label: 'Recebida' }
-    : { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Pendente' };
+  const statusBadge = ['pago', 'recebida'].includes(t.status)
+    ? { bg: 'bg-green-100', text: 'text-green-700', label: isReceita ? 'Recebida' : 'Pago' }
+    : ['cancelado', 'cancelada'].includes(t.status)
+      ? { bg: 'bg-slate-100', text: 'text-slate-600', label: 'Cancelado' }
+      : { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Pendente' };
 
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+    startOffset.current = swipeOffset;
+    currentOffset.current = swipeOffset;
+    gestureAxis.current = null;
+    suppressClick.current = false;
     setIsSwiping(false);
   };
 
   const handleTouchMove = (e) => {
     if (touchStartX.current === null) return;
     const diff = e.touches[0].clientX - touchStartX.current;
-    if (diff < 0) {
-      setSwipeOffset(Math.max(diff, -ACTIONS_WIDTH));
-      setIsSwiping(true);
-    } else if (swipeOffset < 0) {
-      setSwipeOffset(Math.min(0, -ACTIONS_WIDTH + diff));
-      setIsSwiping(true);
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (!gestureAxis.current) {
+      if (Math.max(Math.abs(diff), Math.abs(dy)) < 8) return;
+      gestureAxis.current = Math.abs(diff) > Math.abs(dy) ? 'x' : 'y';
     }
+    if (gestureAxis.current !== 'x') return;
+    suppressClick.current = true;
+    currentOffset.current = Math.max(-ACTIONS_WIDTH, Math.min(canSettle ? SETTLE_WIDTH : 0, startOffset.current + diff));
+    setSwipeOffset(currentOffset.current);
+    setIsSwiping(true);
   };
 
   const handleTouchEnd = () => {
-    setSwipeOffset(swipeOffset < SWIPE_THRESHOLD ? -ACTIONS_WIDTH : 0);
+    const offset = currentOffset.current;
+    setSwipeOffset(offset < -SWIPE_THRESHOLD ? -ACTIONS_WIDTH : canSettle && offset > SWIPE_THRESHOLD ? SETTLE_WIDTH : 0);
     touchStartX.current = null;
-    setTimeout(() => setIsSwiping(false), 300);
+    setIsSwiping(false);
   };
 
   const executarAcao = (acao) => {
@@ -47,6 +65,20 @@ export default function SwipeableTransactionCard({ t, onClick, onEdit, onDelete 
 
   return (
     <div className="relative overflow-hidden rounded-xl" style={{ touchAction: 'pan-y' }}>
+      {canSettle && (
+        <div className="absolute inset-y-0 left-0 flex rounded-l-xl overflow-hidden">
+          <button
+            type="button"
+            tabIndex={swipeOffset > 0 ? 0 : -1}
+            onClick={(e) => { e.stopPropagation(); executarAcao(onSettle); }}
+            className="w-[100px] bg-green-600 text-white flex flex-col items-center justify-center gap-1 active:bg-green-700"
+            aria-label={isReceita ? 'Receber receita' : 'Pagar despesa'}
+          >
+            <CheckCircle2 className="w-5 h-5" />
+            <span className="text-xs font-semibold">{isReceita ? 'Receber' : 'Pagar'}</span>
+          </button>
+        </div>
+      )}
       {/* Ações reveladas ao deslizar para a esquerda */}
       <div className="absolute inset-y-0 right-0 flex rounded-r-xl overflow-hidden">
         <button
@@ -73,13 +105,14 @@ export default function SwipeableTransactionCard({ t, onClick, onEdit, onDelete 
       <div
         className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 cursor-pointer active:bg-slate-50 relative"
         onClick={() => {
-          if (isSwiping) return;
-          if (swipeOffset < 0) setSwipeOffset(0);
+          if (suppressClick.current || isSwiping) return;
+          if (swipeOffset !== 0) setSwipeOffset(0);
           else onClick(t);
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onTouchCancel={() => { touchStartX.current = null; setSwipeOffset(startOffset.current); setIsSwiping(false); }}
         style={{
           transform: `translateX(${swipeOffset}px)`,
           transition: touchStartX.current === null ? 'transform 0.3s ease' : 'none',
