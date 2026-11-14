@@ -9,6 +9,7 @@ import ImportarPropostaConsorcioPDF from '@/components/importacao/ImportarPropos
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -46,6 +47,8 @@ export default function Vendas() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
   const [filterAdministradora, setFilterAdministradora] = useState('todas');
+  const [selectedVendedores, setSelectedVendedores] = useState([]);
+  const [buscaVendedor, setBuscaVendedor] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [vendaToDelete, setVendaToDelete] = useState(null);
@@ -354,6 +357,7 @@ export default function Vendas() {
     return v.vendedor_id === currentUser?.colaborador_id;
   });
 
+  const vendedoresDisponiveis = Array.from(new Map(filteredByRole.filter(v => v.vendedor_id || v.vendedor_nome).map(v => [v.vendedor_id || v.vendedor_nome, { id: v.vendedor_id || v.vendedor_nome, nome: v.vendedor_nome || 'Vendedor sem nome' }])).values()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   const filteredVendas = filteredByRole.filter(v => {
     const matchSearch = 
       v.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
@@ -363,7 +367,8 @@ export default function Vendas() {
       v.contrato?.includes(search);
     const matchStatus = filterStatus === 'todos' || v.status === filterStatus;
     const matchAdministradora = filterAdministradora === 'todas' || v.administradora_id === filterAdministradora;
-    return matchSearch && matchStatus && matchAdministradora;
+    const matchVendedor = selectedVendedores.length === 0 || selectedVendedores.includes(v.vendedor_id || v.vendedor_nome);
+    return matchSearch && matchStatus && matchAdministradora && matchVendedor;
   });
 
   const formatCurrency = (value) => {
@@ -643,6 +648,26 @@ export default function Vendas() {
               ))}
             </SelectContent>
           </Select>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-48 justify-between font-normal shrink-0">
+                <span className="truncate">{selectedVendedores.length ? `${selectedVendedores.length} vendedor(es)` : 'Todos os Vendedores'}</span>
+                <Filter className="w-4 h-4 ml-2 shrink-0" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64 p-2" onCloseAutoFocus={() => setBuscaVendedor('')}>
+              <Input placeholder="Buscar vendedor..." value={buscaVendedor} onChange={e => setBuscaVendedor(e.target.value)} onKeyDown={e => e.stopPropagation()} className="mb-2" />
+              <div className="max-h-56 overflow-y-auto space-y-1">
+                <DropdownMenuItem onSelect={e => { e.preventDefault(); setSelectedVendedores([]); }} className="font-medium">Todos os Vendedores</DropdownMenuItem>
+                {vendedoresDisponiveis.filter(v => v.nome.toLocaleLowerCase('pt-BR').includes(buscaVendedor.toLocaleLowerCase('pt-BR'))).map(v => (
+                  <DropdownMenuItem key={v.id} onSelect={e => { e.preventDefault(); setSelectedVendedores(prev => prev.includes(v.id) ? prev.filter(id => id !== v.id) : [...prev, v.id]); }} className="gap-2">
+                    <Checkbox checked={selectedVendedores.includes(v.id)} />
+                    <span className="truncate">{v.nome}</span>
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-40">
               <Filter className="w-4 h-4 mr-2" />
