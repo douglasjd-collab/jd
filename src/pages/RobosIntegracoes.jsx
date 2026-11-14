@@ -88,6 +88,16 @@ export default function RobosIntegracoes() {
 
 // ─── Aba Telegram ────────────────────────────────────────────
 function TelegramTab({ empresa }) {
+  const [vinculoComando, setVinculoComando] = useState('');
+  const [vinculando, setVinculando] = useState(false);
+  const gerarVinculoFinanceiro = async () => {
+    setVinculando(true);
+    try {
+      const res = await base44.functions.invoke('vincularFinanceiroTelegram', {});
+      setVinculoComando(res.data.comando);
+    } catch (e) { toast.error(e.response?.data?.error || 'Não foi possível gerar o vínculo'); }
+    finally { setVinculando(false); }
+  };
   const [status, setStatus] = useState(null);
   const [testando, setTestando] = useState(false);
   const [reiniciando, setReiniciando] = useState(false);
@@ -149,6 +159,19 @@ function TelegramTab({ empresa }) {
 
   return (
     <div className="space-y-5">
+      <Card>
+        <CardHeader><CardTitle>Financeiro pelo Telegram</CardTitle>
+          <CardDescription>Vincule seu usuário para lançar no Meu Financeiro ou nas Movimentações Financeiras da empresa.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button onClick={gerarVinculoFinanceiro} disabled={vinculando}>{vinculando ? 'Gerando...' : 'Vincular meu financeiro'}</Button>
+          {vinculoComando && <div className="rounded-lg bg-slate-50 p-4 space-y-2">
+            <p className="text-sm">Envie este comando ao JDPromotoraBot em até 10 minutos:</p>
+            <code className="block break-all select-all">{vinculoComando}</code>
+            <p className="text-xs text-slate-500">Depois, experimente: Mercado 58,50</p>
+          </div>}
+        </CardContent>
+      </Card>
       {/* Status card */}
       <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50 to-white">
         <CardHeader>
