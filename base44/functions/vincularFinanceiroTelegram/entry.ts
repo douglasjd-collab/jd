@@ -7,7 +7,7 @@ Deno.serve(async req => {
   const empresaId = u.empresa_id || colabs[0]?.empresa_id;
   if (!empresaId) return Response.json({error:"Usuário sem empresa vinculada."},{status:400});
   const token = crypto.randomUUID().replaceAll("-","");
-  await b.asServiceRole.entities.TelegramSession.create({chat_id:"pairing",session_key:"fin_pair_"+token,session_data:JSON.stringify({usuario_id:u.id,empresa_id:empresaId}),expires_at:new Date(Date.now()+600000).toISOString()});
+  await b.asServiceRole.entities.TelegramFinanceState.create({key:"pair_"+token,data:JSON.stringify({usuario_id:u.id,empresa_id:empresaId}),expires_at:new Date(Date.now()+600000).toISOString()});
   return Response.json({comando:"/vincular "+token});
  } catch(e) { return Response.json({error:e.message},{status:500}); }
 });
