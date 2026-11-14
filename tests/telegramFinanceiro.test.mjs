@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
-const helper=fs.readFileSync('base44/functions/telegramWebhook/finance.ts','utf8');
+const entry=fs.readFileSync('base44/functions/telegramWebhook/entry.ts','utf8');
+const helper=entry.slice(entry.indexOf('/* Financeiro conversacional:'),entry.indexOf('Deno.serve(async (req) => {'));
 function setup(){
  const tables={};let seq=0;const sent=[];
  const entities=new Proxy({}, {get:(_,name)=>({

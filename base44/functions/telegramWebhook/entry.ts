@@ -293,7 +293,7 @@ async function finShow(b,chat,key,d) {
 }
 async function finPrompt(b,chat,key,d,field,text) {
  d.awaiting=field;
- await finRender(b,chat,key,d,text,[[['↩️ Voltar','back']],[['❌ Cancelar','cancel']]]);
+ await finRender(b,chat,key,d,text,[...(['date','paymentDate'].includes(field)?[[['Hoje','pick_hoje'],['Ontem','pick_ontem']]]:[]),[['↩️ Voltar','back']],[['❌ Cancelar','cancel']]]);
 }
 async function finChoose(b,chat,key,d,id,kind,page=0) {
  d.options=await finOptions(b,id,d,kind); d.optionKind=kind;
@@ -311,7 +311,7 @@ async function finSave(b,id,d,key) {
  if(d.settled && !d.account?.id) throw new Error('Selecione a conta do pagamento ou recebimento.');
  if(d.dest==='empresa' && !['master','super_admin','admin','gerente'].includes(id.perfil)) throw new Error('Seu perfil não tem permissão para lançar no financeiro da empresa.');
  if(d.dest==='empresa' && d.tipo==='despesa' && !d.branch) throw new Error('Selecione a filial da despesa.');
- if(d.count<1 || d.count>120) throw new Error('Escolha entre 1 e 120 ocorrências.');
+ if(!Number.isInteger(d.count) || d.count<1 || d.count>120) throw new Error('Escolha entre 1 e 120 ocorrências.');
  if(d.repeat!=='unico' && !d.repeatReady) throw new Error('Configure a quantidade ou data final em Repetir / Parcelar.');
  if(d.settled && (d.paymentDate || d.date)>finToday()) throw new Error('Uma baixa não pode ter data futura. Use A pagar / A receber.');
  if(d.repeat==='parcelada' && !d.valueMode) throw new Error('Informe se o valor é total ou por parcela.');
@@ -402,6 +402,7 @@ async function handleFinancialTelegram(b,body) {
   await sendTelegram(chat,'📎 Envie um PDF, JPG ou PNG de até 10 MB. O comprovante será anexado à primeira ocorrência.');return true;
  }
  if(!cq && d?.saved && d.attachmentPending && id) {
+  if(d.ownerId!==id.usuario_id){await sendTelegram(chat,'O vínculo mudou. Use o usuário original para anexar este comprovante.');return true;}
   const file=msg.document || msg.photo?.[msg.photo.length-1];
   if(!file){await sendTelegram(chat,'Envie o comprovante como foto ou PDF, ou envie /cancelar.');return true;}
   const mime=msg.document?.mime_type || 'image/jpeg';
@@ -445,7 +446,8 @@ async function handleFinancialTelegram(b,body) {
    const cats=await finOptions(b,id,d,'category');
    const guess=cats.find(c=>finNorm(c.nome).includes(finNorm(d.suggestedCategory || 'Alimentação'))); if(guess)d.category=guess; else if(d.dest==='pessoal')d.category={nome:d.suggestedCategory || 'Outros'};
    await finShow(b,chat,key,d);
-  } else if(action==='paid') {d.settled=true; d.paymentDate=d.paymentDate || finToday();await finChoose(b,chat,key,d,id,'account');}
+  } else if(action.startsWith('pick_')) {d[d.awaiting==='paymentDate'?'paymentDate':'date']=finDate(action.slice(5));await finShow(b,chat,key,d);}
+  else if(action==='paid') {d.settled=true; d.paymentDate=d.paymentDate || finToday();await finChoose(b,chat,key,d,id,'account');}
   else if(action==='pending'){d.settled=false;await finPrompt(b,chat,key,d,'date','📅 Qual é o vencimento? Envie DD/MM/AAAA, hoje ou ontem.');}
   else if(['account','category','branch','cost'].includes(action)) await finChoose(b,chat,key,d,id,action);
   else if(action.startsWith('page_')) await finChoose(b,chat,key,d,id,d.optionKind,Number(action.slice(5)));
