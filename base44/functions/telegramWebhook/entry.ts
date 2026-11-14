@@ -249,7 +249,7 @@ async function finPut(b,key,data,minutes=60) {
 async function finApi(method,payload) {
  const token=Deno.env.get('TELEGRAM_BOT_TOKEN');
  const r=await fetch('https://api.telegram.org/bot'+token+'/'+method,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
- const j=await r.json(); if(!j.ok) throw new Error('Não foi possível atualizar a mensagem do Telegram.');
+ const j=await r.json(); if(!j.ok && String(j.description || '').includes('message is not modified')) return null; if(!j.ok) throw new Error('Não foi possível atualizar a mensagem do Telegram.');
  return j.result;
 }
 async function finRender(b,chat,key,d,text,rows) {
@@ -280,7 +280,7 @@ async function finOptions(b,id,d,kind) {
 async function finShow(b,chat,key,d) {
  const rec=d.tipo==='receita', dest=d.dest==='pessoal'?'👤 Meu Financeiro':'🏢 Movimentações Financeiras';
  const rep=d.repeat==='unico'?'Única':d.repeat==='parcelada'?d.count+' parcelas de '+finMoney(d.valueMode==='total'?d.valor/d.count:d.valor)+' • total '+finMoney(d.valueMode==='total'?d.valor:d.valor*d.count):d.count+' ocorrências • '+d.freq;
- const text='🧾 <b>'+finEsc(d.descricao)+' — '+finMoney(d.valor)+'</b>\n\n'+dest+'\n'+(rec?'🟢 Receita':'🔴 Despesa')+'\n📅 '+d.date.split('-').reverse().join('/')+'\n🏷 '+finEsc(d.category?.nome || 'Selecionar categoria')+'\n🔁 '+rep+'\n💳 '+(d.settled===null?'Situação a informar':d.settled?(rec?'Recebida':'Paga'):(rec?'A receber':'A pagar'))+'\n🏦 '+finEsc(d.account?.nome_conta || 'Conta a selecionar')+(d.branch?'\n📍 '+finEsc(d.branch.nome):'')+(d.cost?'\n📊 '+finEsc(d.cost.nome):'')+(d.error?'\n\n⚠️ '+finEsc(d.error):'');
+ const text='🧾 <b>'+finEsc(d.descricao)+' — '+finMoney(d.valor)+'</b>\n\n'+dest+'\n'+(rec?'🟢 Receita':'🔴 Despesa')+'\n📅 '+d.date.split('-').reverse().join('/')+'\n🏷 '+finEsc(d.category?.nome || 'Selecionar categoria')+'\n🔁 '+rep+'\n💳 '+(d.settled===null?'Situação a informar':d.settled?(rec?'Recebida':'Paga'):(rec?'A receber':'A pagar'))+(d.settled?'\n📆 Baixa: '+(d.paymentDate || d.date).split('-').reverse().join('/'):'')+'\n🏦 '+finEsc(d.account?.nome_conta || 'Conta a selecionar')+(d.branch?'\n📍 '+finEsc(d.branch.nome):'')+(d.cost?'\n📊 '+finEsc(d.cost.nome):'')+(d.error?'\n\n⚠️ '+finEsc(d.error):'');
  d.awaiting=null;
  const rows=[
  [[rec?'✅ Já recebi':'✅ Já paguei','paid'],[rec?'📅 Vou receber':'📅 Vou pagar','pending']],
