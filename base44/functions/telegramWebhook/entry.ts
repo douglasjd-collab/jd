@@ -216,6 +216,10 @@ Deno.serve(async (req) => {
     if (!allowedChat) return Response.json({ error: "TELEGRAM_CHAT_ID não configurado" }, { status: 500 });
 
     const body = await req.json();
+    const financeChat = String(body.callback_query?.message?.chat?.id || body.message?.chat?.id || "");
+    if (financeChat === allowedChat && await financialTelegram(base44, body)) {
+      return Response.json({ ok: true });
+    }
 
     // ── Callback de botão (seleção de conta) ──────────────────────────────
     if (body?.callback_query) {
@@ -863,6 +867,11 @@ Deno.serve(async (req) => {
     } catch (_) {}
 
     const intent = await callLLM(base44, original, context, configRobo);
+    if (["create_expense", "create_revenue", "create_financial_transaction"].includes(intent.action)) {
+      if (await financialTelegram(base44, { ...body, financialIntent: intent })) return Response.json({ ok: true });
+      await sendTelegram(chatId, "Envie a descrição e o valor para iniciar o lançamento financeiro.");
+      return Response.json({ ok: true });
+    }
 
     if (intent.action === "clarify") {
       await sendTelegram(chatId, `❓ ${intent.clarify?.question || "Me diga mais detalhes, por favor."}`);
