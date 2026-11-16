@@ -35,6 +35,8 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, lotesComi
   const [filterType, setFilterType] = useState('todos');
   const [filterStatus, setFilterStatus] = useState('todos');
   const [filterProduto, setFilterProduto] = useState('todos');
+  const [filterCategoria, setFilterCategoria] = useState('todos');
+  const [filterSubcategoria, setFilterSubcategoria] = useState('todos');
   const [pagandoConta, setPagandoConta] = useState(null);
   const [recebendoReceita, setRecebendoReceita] = useState(null);
   const [editingDespesa, setEditingDespesa] = useState(null);
@@ -102,16 +104,23 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, lotesComi
     return db.localeCompare(da) || (b.created_date || '').localeCompare(a.created_date || '');
   }), [despesas, receitas, lotesConsorcioComoTransacoes, lotesEmprestimoComoTransacoes, hoje]);
 
+  const categoriasFiltro = useMemo(() => [...new Set(allTransacoes.map(t => t.categoria || t.categoria_nome).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [allTransacoes]);
+  const subcategoriasFiltro = useMemo(() => [...new Set(allTransacoes
+    .filter(t => filterCategoria === 'todos' || (t.categoria || t.categoria_nome) === filterCategoria)
+    .map(t => t.subcategoria_nome).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [allTransacoes, filterCategoria]);
+
   const filtered = useMemo(() => allTransacoes.filter(t => {
     if (filterType !== 'todos' && t._tipo !== filterType) return false;
     if (filterStatus !== 'todos' && t._status !== filterStatus) return false;
     if (filterProduto !== 'todos' && (t.produto || 'Outros') !== filterProduto) return false;
+    if (filterCategoria !== 'todos' && (t.categoria || t.categoria_nome) !== filterCategoria) return false;
+    if (filterSubcategoria !== 'todos' && t.subcategoria_nome !== filterSubcategoria) return false;
     if (search) {
       const s = search.toLowerCase();
-      return (t.descricao||'').toLowerCase().includes(s) || (t.categoria||t.categoria_nome||'').toLowerCase().includes(s) || (t.cliente_nome||t.responsavel_nome||'').toLowerCase().includes(s);
+      return [t.descricao, t.categoria || t.categoria_nome, t.subcategoria_nome, t.produto, t.cliente_nome, t.responsavel_nome].some(v => (v || '').toLowerCase().includes(s));
     }
     return true;
-  }), [allTransacoes, filterType, filterStatus, filterProduto, search]);
+  }), [allTransacoes, filterType, filterStatus, filterProduto, filterCategoria, filterSubcategoria, search]);
 
   const updateDespesa = useMutation({
     mutationFn: ({id,data}) => base44.entities.Despesa.update(id, data),
@@ -154,7 +163,7 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, lotesComi
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input placeholder="Buscar cliente, descrição..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
+            <Input placeholder="Buscar descrição, categoria, subcategoria..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
           </div>
           <Select value={filterType} onValueChange={setFilterType}>
             <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
@@ -177,6 +186,20 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, lotesComi
               <SelectItem value="cancelada">Cancelada</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={filterCategoria} onValueChange={v => { setFilterCategoria(v); setFilterSubcategoria('todos'); }}>
+            <SelectTrigger className="w-44" aria-label="Filtrar por categoria"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas categorias</SelectItem>
+              {categoriasFiltro.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterSubcategoria} onValueChange={setFilterSubcategoria}>
+            <SelectTrigger className="w-48" aria-label="Filtrar por subcategoria"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todas subcategorias</SelectItem>
+              {subcategoriasFiltro.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Select value={filterProduto} onValueChange={setFilterProduto}>
             <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -186,8 +209,8 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, lotesComi
               ))}
             </SelectContent>
           </Select>
-          {(filterType !== 'todos' || filterStatus !== 'todos' || filterProduto !== 'todos' || search) && (
-            <Button variant="ghost" size="sm" onClick={() => { setFilterType('todos'); setFilterStatus('todos'); setFilterProduto('todos'); setSearch(''); }}>
+          {(filterType !== 'todos' || filterStatus !== 'todos' || filterProduto !== 'todos' || filterCategoria !== 'todos' || filterSubcategoria !== 'todos' || search) && (
+            <Button variant="ghost" size="sm" onClick={() => { setFilterType('todos'); setFilterStatus('todos'); setFilterProduto('todos'); setFilterCategoria('todos'); setFilterSubcategoria('todos'); setSearch(''); }}>
               <X className="w-4 h-4 mr-1" /> Limpar
             </Button>
           )}
@@ -203,8 +226,8 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, lotesComi
                 <th className="text-left p-3 font-semibold text-slate-600">Tipo</th>
                 <th className="text-left p-3 font-semibold text-slate-600">Data</th>
                 <th className="text-left p-3 font-semibold text-slate-600">Cliente/Descrição</th>
-                <th className="text-left p-3 font-semibold text-slate-600">Produto</th>
                 <th className="text-left p-3 font-semibold text-slate-600">Categoria</th>
+                <th className="text-left p-3 font-semibold text-slate-600">Subcategoria</th>
                 <th className="text-left p-3 font-semibold text-slate-600">Responsável</th>
                 <th className="text-right p-3 font-semibold text-slate-600">Valor</th>
                 <th className="text-left p-3 font-semibold text-slate-600">Status</th>
@@ -230,9 +253,10 @@ export default function AbaTransacoes({ despesas, receitas, comissoes, lotesComi
                     <td className="p-3">
                       <p className="font-medium text-slate-900">{t.cliente_nome || t.descricao || '-'}</p>
                       {t.cliente_nome && <p className="text-xs text-slate-400">{t.descricao}</p>}
+                      {t.produto && <p className="text-xs text-slate-400">Produto: {t.produto}</p>}
                     </td>
-                    <td className="p-3 text-slate-500">{t.produto || '-'}</td>
                     <td className="p-3 text-slate-500">{t.categoria || t.categoria_nome || '-'}</td>
+                    <td className="p-3 text-slate-500">{t.subcategoria_nome || '-'}</td>
                     <td className="p-3 text-slate-500">{t.responsavel_nome || '-'}</td>
                     <td className="p-3 text-right">
                       <span className={`font-bold ${isDespesa ? 'text-red-600' : 'text-green-600'}`}>
