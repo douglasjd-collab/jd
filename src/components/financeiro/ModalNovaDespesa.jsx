@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { classificacaoDespesa } from './classificacaoDespesa';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -26,8 +27,8 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
 
   const getFormFromDespesa = (d) => ({
     descricao: d.descricao || '',
-    categoria: d.categoria || '',
-    subcategoria: '',
+    categoria: classificacaoDespesa(d, todasCategorias).categoria,
+    subcategoria: classificacaoDespesa(d, todasCategorias).subcategoria_nome,
     valor: d.valor ? d.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '',
     data: d.data || moment().format('YYYY-MM-DD'),
     filial_id: d.filial_id || '',
@@ -101,14 +102,13 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
     enabled: !!user,
   });
 
-  const { data: todasCategorias = [] } = useQuery({
+  const { data: todasCategorias = [], isFetched: categoriasCarregadas } = useQuery({
     queryKey: ['categorias-despesa', user?.empresa_id],
     queryFn: async () => {
-      if (!user?.empresa_id) return [];
-      const cats = await base44.entities.CategoriaDespesa.filter({ empresa_id: user.empresa_id, status: 'ativa' });
+      const cats = await base44.entities.CategoriaDespesa.filter(user?.empresa_id ? { empresa_id: user.empresa_id } : {}, 'ordem');
       return cats.sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
     },
-    enabled: !!user?.empresa_id,
+    enabled: !!user,
   });
 
   React.useEffect(() => {
@@ -116,39 +116,19 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
       formInitRef.current = null;
       return;
     }
-    if (despesaParaEditar) {
-      // Evita reinicializar o formulário se já foi preenchido para esta despesa
-      // (protege contra sobrescrever edições do usuário quando todasCategorias carrega)
-      if (formInitRef.current === despesaParaEditar.id) return;
+    if (!categoriasCarregadas) return;
+    const chave = despesaParaEditar?.id || 'nova';
+    if (formInitRef.current === chave) return;
+    setFormData(despesaParaEditar ? getFormFromDespesa(despesaParaEditar) : emptyForm);
+    formInitRef.current = chave;
+  }, [open, despesaParaEditar, todasCategorias, categoriasCarregadas]);
 
-      const form = getFormFromDespesa(despesaParaEditar);
-
-      // Se as categorias já carregaram, detecta se o "categoria" salvo é na verdade
-      // uma subcategoria e separa corretamente em categoria pai + subcategoria
-      if (todasCategorias.length > 0) {
-        const sub = todasCategorias.find(c => c.nome === form.categoria && c.categoria_pai_id);
-        if (sub) {
-          const pai = todasCategorias.find(c => c.id === sub.categoria_pai_id);
-          if (pai) {
-            form.categoria = pai.nome;
-            form.subcategoria = sub.nome;
-          }
-        }
-        // Marca como inicializado apenas quando as categorias estão disponíveis
-        formInitRef.current = despesaParaEditar.id;
-      }
-
-      setFormData(form);
-    } else {
-      setFormData(emptyForm);
-      formInitRef.current = null;
-    }
-  }, [open, despesaParaEditar, todasCategorias]);
-
-  const categoriasPai = todasCategorias.filter(c => !c.categoria_pai_id);
-  const subcategoriasDaCat = todasCategorias.filter(c => {
+  const empresaId = despesaParaEditar?.empresa_id || user?.empresa_id;
+  const categoriasDaEmpresa = todasCategorias.filter(c => !empresaId || c.empresa_id === empresaId);
+  const categoriasPai = categoriasDaEmpresa.filter(c => !c.categoria_pai_id && (c.status === 'ativa' || c.nome === formData.categoria));
+  const subcategoriasDaCat = categoriasDaEmpresa.filter(c => {
     const pai = categoriasPai.find(p => p.nome === formData.categoria);
-    return pai && c.categoria_pai_id === pai.id;
+    return pai && c.categoria_pai_id === pai.id && (c.status === 'ativa' || c.nome === formData.subcategoria);
   });
 
   const criarSubcatMutation = useMutation({
@@ -248,8 +228,9 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
   };
 
   const handleSubmit = async () => {
-    if (!formData.descricao || !formData.valor || !formData.filial_id) {
-      toast.error('Preencha os campos obrigatórios: Descrição, Valor e Filial');
+    if (!categoriasCarregadas) return;
+    if (!formData.descricao || !formData.valor || !formData.filial_id || !formData.categoria) {
+      toast.error('Preencha os campos obrigatórios: Descrição, Valor, Categoria e Filial');
       return;
     }
     const valor = parseFloat(formData.valor.replace(/\./g, '').replace(',', '.'));
@@ -265,7 +246,10 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
       centro_custo_id: formData.centro_custo_id || null,
       centro_custo_nome: formData.centro_custo_nome || null,
       descricao: formData.descricao,
-      categoria: formData.subcategoria || formData.categoria,
+      categoria: formData.categoria,
+      categoria_id: categoriasPai.find(c => c.nome === formData.categoria)?.id || '',
+      subcategoria_id: subcategoriasDaCat.find(c => c.nome === formData.subcategoria)?.id || '',
+      subcategoria_nome: formData.subcategoria || '',
       valor,
       responsavel_id: formData.responsavel_id || null,
       responsavel_nome: formData.responsavel_nome || null,
@@ -463,7 +447,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
                     <span className="text-slate-500 text-sm pl-4">↳</span>
                     <Select value={formData.subcategoria} onValueChange={(v) => {
                       if (v === '__nova__') { setCriarSubcatOpen(true); }
-                      else { setFormData({ ...formData, subcategoria: v }); }
+                      else { setFormData({ ...formData, subcategoria: v === '__remover__' ? '' : v }); }
                     }}>
                       <SelectTrigger className="bg-transparent border-none text-white focus:ring-0 flex-1">
                         <SelectValue placeholder="Subcategoria (opcional)" />
@@ -473,7 +457,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
                           <SelectItem key={sub.id} value={sub.nome}>{sub.icone} {sub.nome}</SelectItem>
                         ))}
                         {formData.subcategoria && (
-                          <SelectItem value={null}>— Remover subcategoria</SelectItem>
+                          <SelectItem value="__remover__">— Remover subcategoria</SelectItem>
                         )}
                         <div className="h-px bg-slate-600 my-1" />
                         <SelectItem value="__nova__" className="text-blue-400 font-semibold">
