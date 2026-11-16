@@ -64,6 +64,7 @@ export default function OfertaLance() {
   const [tipoLance, setTipoLance] = useState('livre');
   const [observacao, setObservacao] = useState('');
   const [search, setSearch] = useState('');
+  const [competenciaFiltro, setCompetenciaFiltro] = useState('atual');
   const [editOpen, setEditOpen] = useState(false);
   const [editOferta, setEditOferta] = useState(null);
   const [editPercentual, setEditPercentual] = useState('');
@@ -457,8 +458,17 @@ export default function OfertaLance() {
     return statusValido && !jaOfertado && matchSearch;
   });
 
-  // Todas as ofertas (persistem ao virar o mês) com filtro de busca
+  // Por padrão, exibir somente a assembleia vigente; histórico permanece acessível por mês.
+  const competenciaSelecionada = competenciaFiltro === 'atual' ? competenciaAtual : competenciaFiltro;
+  const competenciasDisponiveis = [...new Set([competenciaAtual, ...todasOfertas.map(o => o.competencia).filter(c => /^\d{4}-(0[1-9]|1[0-2])$/.test(c || ''))])]
+    .sort((a, b) => b.localeCompare(a));
+  const nomeCompetencia = (comp) => {
+    const [ano, mes] = comp.split('-').map(Number);
+    return new Date(ano, mes - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+  };
+
   const ofertasFiltered = todasOfertas.filter(o => {
+    if (o.competencia !== competenciaSelecionada) return false;
     return search === '' || 
       o.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
       o.grupo?.includes(search) ||
@@ -874,6 +884,20 @@ export default function OfertaLance() {
       </Card>
 
       <Tabs defaultValue="pendentes" className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">Exibindo ofertas da assembleia de <strong className="text-slate-700 capitalize">{nomeCompetencia(competenciaSelecionada)}</strong></p>
+          <Select value={competenciaFiltro} onValueChange={setCompetenciaFiltro}>
+            <SelectTrigger className="w-full sm:w-[250px] bg-white" aria-label="Filtrar assembleia por mês">
+              <SelectValue placeholder="Selecionar assembleia" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="atual">Assembleia atual — {nomeCompetencia(competenciaAtual)}</SelectItem>
+              {competenciasDisponiveis.filter(c => c !== competenciaAtual).map(c => (
+                <SelectItem key={c} value={c} className="capitalize">{nomeCompetencia(c)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <TabsList>
           <TabsTrigger value="pendentes">
             Pendentes ({vendasPendentes.length})
@@ -900,7 +924,7 @@ export default function OfertaLance() {
               columns={columnsOfertados}
               data={ofertasFiltered}
               isLoading={loadingOfertas}
-              emptyMessage="Nenhum lance ofertado neste mês"
+              emptyMessage={`Nenhum lance ofertado em ${nomeCompetencia(competenciaSelecionada)}`}
             />
           </Card>
         </TabsContent>
