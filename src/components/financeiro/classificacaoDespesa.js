@@ -4,7 +4,7 @@ export function classificacaoDespesa(despesa, categorias = []) {
   const disponiveis = categorias.filter(c => !despesa.empresa_id || c.empresa_id === despesa.empresa_id);
   const unica = lista => lista.length === 1 ? lista[0] : null;
   const categoriaSalva = despesa.categoria || despesa.categoria_nome || '';
-  const explicita = !!despesa.categoria_id || !!despesa.subcategoria_id || despesa.subcategoria_nome != null;
+  const explicita = !!despesa.categoria_id || !!despesa.subcategoria_id || !!despesa.subcategoria_nome;
   const categoria = disponiveis.find(c => c.id === despesa.categoria_id);
   const subcategoria = disponiveis.find(c => c.id === despesa.subcategoria_id);
 
