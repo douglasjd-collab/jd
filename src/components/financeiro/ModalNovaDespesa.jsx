@@ -346,14 +346,15 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
-        <DialogContent className="max-w-4xl bg-[#2A2A2A] text-white border-0">
-          <DialogHeader className="border-b border-slate-700 pb-4">
+        <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-4xl flex-col overflow-hidden border-0 bg-[#2A2A2A] p-0 text-white">
+          <DialogHeader className="shrink-0 border-b border-slate-700 px-4 py-3 pr-12 sm:px-6 sm:pr-12">
             <DialogTitle className="text-xl font-semibold">{despesaParaEditar ? 'Editar Despesa' : 'Nova Despesa'}</DialogTitle>
           </DialogHeader>
 
-          <div className="grid grid-cols-2 gap-6 py-4">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3 sm:px-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             {/* Coluna Esquerda */}
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-3">
               <div className="space-y-2">
                 <div className="flex items-center gap-3 border-b border-slate-700 pb-3">
                   <TrendingDown className="w-5 h-5 text-slate-400" />
@@ -370,7 +371,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
                 )}
               </div>
 
-              <div className="flex items-center justify-between border-b border-slate-700 pb-4">
+              <div className="flex items-center justify-between border-b border-slate-700 pb-3">
                 <div className="flex items-center gap-3">
                   <CheckCircle className={`w-5 h-5 ${formData.foiPaga ? 'text-green-500' : 'text-slate-400'}`} />
                   <span>Foi paga</span>
@@ -378,7 +379,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
                 <Switch checked={formData.foiPaga} onCheckedChange={(v) => setFormData({ ...formData, foiPaga: v })} />
               </div>
 
-              <div className="border-b border-slate-700 pb-4">
+              <div className="border-b border-slate-700 pb-3">
                 <div className="flex items-center gap-2 mb-2">
                   <CalendarIcon className="w-4 h-4 text-slate-400" />
                   <span className="text-sm text-slate-400">Data</span>
@@ -408,7 +409,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
                 </div>
               </div>
 
-              <div className="border-b border-slate-700 pb-4">
+              <div className="border-b border-slate-700 pb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">📝</span>
                   <Input value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
@@ -417,7 +418,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
               </div>
 
               {/* Categoria Principal */}
-              <div className="border-b border-slate-700 pb-4">
+              <div className="border-b border-slate-700 pb-3">
                 <div className="flex items-center gap-2">
                   {!formData.categoria && <span className="text-slate-400">🏷️</span>}
                   <Select value={formData.categoria} onValueChange={(v) => {
@@ -442,7 +443,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
 
               {/* Subcategoria — aparece sempre que há categoria selecionada */}
               {formData.categoria && (
-                <div className="border-b border-slate-700 pb-4 space-y-2">
+                <div className="border-b border-slate-700 pb-3 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-slate-500 text-sm pl-4">↳</span>
                     <Select value={formData.subcategoria} onValueChange={(v) => {
@@ -490,7 +491,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
               )}
 
               {/* Filial - OBRIGATÓRIO */}
-              <div className="border-b border-slate-700 pb-4">
+              <div className="border-b border-slate-700 pb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">🏢</span>
                   <Select value={formData.filial_id} onValueChange={v => {
@@ -509,7 +510,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
               </div>
 
               {/* Centro de Custo */}
-              <div className="border-b border-slate-700 pb-4">
+              <div className="border-b border-slate-700 pb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">🎯</span>
                   <Select value={formData.centro_custo_id || 'none'} onValueChange={v => {
@@ -527,7 +528,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
                 </div>
               </div>
 
-              <div className="border-b border-slate-700 pb-4">
+              <div className="border-b border-slate-700 pb-3">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">👤</span>
                   <Select value={formData.responsavel_id} onValueChange={(v) => {
@@ -544,7 +545,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
                 </div>
               </div>
 
-              <div className="border-b border-slate-700 pb-4">
+              <div className="border-b border-slate-700 pb-3">
                 <div className="flex items-center gap-2">
                   <Landmark className="w-4 h-4 text-slate-400" />
                   <Select value={formData.conta_bancaria_id} onValueChange={(v) => setFormData({ ...formData, conta_bancaria_id: v })}>
@@ -562,7 +563,7 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
               </div>
 
               {mostrarDetalhes && (
-                <div className="border-b border-slate-700 pb-4">
+                <div className="border-b border-slate-700 pb-3">
                   <label className="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white">
                     <Upload className="w-4 h-4" />
                     <span className="text-sm">Anexar Arquivo</span>
@@ -575,18 +576,18 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
             </div>
 
             {/* Coluna Direita */}
-            <div className="space-y-4">
-              <div className="border-b border-slate-700 pb-4">
+            <div className="min-w-0 space-y-3">
+              <div className="border-b border-slate-700 pb-3">
                 <Textarea value={formData.observacao} onChange={(e) => setFormData({ ...formData, observacao: e.target.value })}
                   placeholder="Observação" rows={3} className="bg-transparent border-none text-white placeholder:text-slate-500 focus-visible:ring-0 resize-none" />
               </div>
               {mostrarDetalhes && (
                 <>
-                  <div className="flex items-center justify-between border-b border-slate-700 pb-4">
+                  <div className="flex items-center justify-between border-b border-slate-700 pb-3">
                     <div className="flex items-center gap-3"><Repeat className="w-5 h-5 text-slate-400" /><span>Despesa fixa</span></div>
                     <Switch checked={formData.despesaFixa} onCheckedChange={(v) => setFormData({ ...formData, despesaFixa: v })} />
                   </div>
-                  <div className="border-b border-slate-700 pb-4">
+                  <div className="border-b border-slate-700 pb-3">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3"><Repeat className="w-5 h-5 text-slate-400" /><span>Repetir</span></div>
                       <Switch checked={formData.repetir} onCheckedChange={(v) => setFormData({ ...formData, repetir: v })} />
@@ -643,9 +644,10 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
                 </>
               )}
             </div>
+            </div>
           </div>
 
-          <DialogFooter className="border-t border-slate-700 pt-4 flex justify-between items-center">
+          <DialogFooter className="shrink-0 flex-col items-stretch gap-3 border-t border-slate-700 bg-[#2A2A2A] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:space-x-0 sm:px-6">
             <button onClick={() => setMostrarDetalhes(!mostrarDetalhes)}
               className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors">
               {mostrarDetalhes ? 'Menos detalhes' : 'Mais detalhes'}
@@ -653,9 +655,9 @@ export default function ModalNovaDespesa({ open, onOpenChange, user, onSuccess, 
             </button>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => { onOpenChange(false); resetForm(); }}
-                className="bg-slate-700 hover:bg-slate-600 text-white border-slate-600">Cancelar</Button>
+                className="flex-1 border-slate-600 bg-slate-700 text-white hover:bg-slate-600 sm:flex-none">Cancelar</Button>
               <Button onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}
-                className="bg-red-500 hover:bg-red-600 text-white">{despesaParaEditar ? 'Salvar Alterações' : 'Lançar Despesa'}</Button>
+                className="flex-1 bg-red-500 text-white hover:bg-red-600 sm:flex-none">{despesaParaEditar ? 'Salvar Alterações' : 'Salvar Despesa'}</Button>
             </div>
           </DialogFooter>
         </DialogContent>
