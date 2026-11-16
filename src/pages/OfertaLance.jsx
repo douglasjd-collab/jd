@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TrendingUp, CheckCircle2, Loader2, Search, Pencil, History, ChevronDown, MessageCircle } from 'lucide-react';
+import { TrendingUp, CheckCircle2, Loader2, Search, Pencil, History, ChevronDown, MessageCircle, CalendarDays } from 'lucide-react';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
 import {
   DropdownMenu,
@@ -884,11 +884,16 @@ export default function OfertaLance() {
       </Card>
 
       <Tabs defaultValue="pendentes" className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">Exibindo ofertas da assembleia de <strong className="text-slate-700 capitalize">{nomeCompetencia(competenciaSelecionada)}</strong></p>
+        <div className="flex justify-end">
           <Select value={competenciaFiltro} onValueChange={setCompetenciaFiltro}>
-            <SelectTrigger className="w-full sm:w-[250px] bg-white" aria-label="Filtrar assembleia por mês">
-              <SelectValue placeholder="Selecionar assembleia" />
+            <SelectTrigger className="group h-auto min-h-[66px] w-full gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm transition-all hover:border-emerald-300 hover:shadow-md focus:ring-2 focus:ring-emerald-200 sm:w-[270px] [&>svg:last-child]:ml-auto [&>svg:last-child]:shrink-0" aria-label="Filtrar assembleia por mês">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100">
+                <CalendarDays className="h-5 w-5" />
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{competenciaSelecionada === competenciaAtual ? 'Assembleia atual' : 'Assembleia anterior'}</span>
+                <span className="truncate text-sm font-semibold capitalize text-slate-900">{nomeCompetencia(competenciaSelecionada)}</span>
+              </span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="atual">Assembleia atual — {nomeCompetencia(competenciaAtual)}</SelectItem>
