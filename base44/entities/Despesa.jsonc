@@ -4,11 +4,11 @@
   "properties": {
     "empresa_id": {
       "type": "string",
-      "description": "ID da empresa (obrigatório)"
+      "description": "ID da empresa (obrigat\u00f3rio)"
     },
     "filial_id": {
       "type": "string",
-      "description": "ID da filial (obrigatório)"
+      "description": "ID da filial (obrigat\u00f3rio)"
     },
     "filial_nome": {
       "type": "string",
@@ -24,11 +24,23 @@
     },
     "descricao": {
       "type": "string",
-      "description": "Descrição da despesa"
+      "description": "Descri\u00e7\u00e3o da despesa"
     },
     "categoria": {
       "type": "string",
       "description": "Categoria da despesa"
+    },
+    "categoria_id": {
+      "type": "string",
+      "description": "ID da categoria principal"
+    },
+    "subcategoria_id": {
+      "type": "string",
+      "description": "ID da subcategoria"
+    },
+    "subcategoria_nome": {
+      "type": "string",
+      "description": "Nome da subcategoria, separado da categoria principal"
     },
     "produto": {
       "type": "string",
@@ -89,7 +101,7 @@
     "despesa_fixa": {
       "type": "boolean",
       "default": false,
-      "description": "Se é uma despesa fixa recorrente"
+      "description": "Se \u00e9 uma despesa fixa recorrente"
     },
     "comprovante_nome": {
       "type": "string"
