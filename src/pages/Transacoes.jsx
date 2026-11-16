@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { classificacaoDespesa } from '@/components/financeiro/classificacaoDespesa';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -82,8 +83,8 @@ export default function Transacoes() {
 
   const { data: categoriasDespesa = [] } = useQuery({
     queryKey: ['categorias-despesa', user?.empresa_id],
-    queryFn: () => base44.entities.CategoriaDespesa.filter({ empresa_id: user.empresa_id, status: 'ativa' }),
-    enabled: !!user?.empresa_id,
+    queryFn: () => base44.entities.CategoriaDespesa.filter(empresaFiltro, 'ordem'),
+    enabled: !!user,
   });
 
   const { data: contasBancarias = [] } = useQuery({
@@ -121,7 +122,8 @@ export default function Transacoes() {
   }
 
   const sharedProps = {
-    user, despesas, receitas, comissoes, lotesComissaoConsorcio, lotesComissaoEmprestimo,
+    user, despesas: despesas.map(d => ({ ...d, ...classificacaoDespesa(d, categoriasDespesa) })),
+    receitas, comissoes, lotesComissaoConsorcio, lotesComissaoEmprestimo,
     categoriasDespesa, contasBancarias,
     filiais, periodo, setPeriodo, refetchAll, queryClient,
     loadingDespesas, loadingReceitas,
