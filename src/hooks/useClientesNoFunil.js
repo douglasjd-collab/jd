@@ -32,6 +32,7 @@ export default function useClientesNoFunil(empresaId) {
   const telefonesNoFunil = useMemo(() => {
     const tipoPorEtapa = data?.tipoPorEtapa || {};
     const ganhos = new Set();
+    const continuidadesRating = new Set();
     const abertos = new Set();
 
     const variantes = (valor) => {
@@ -46,11 +47,14 @@ export default function useClientesNoFunil(empresaId) {
       const ehGanho = o.status === 'ganha' || tipoPorEtapa[o.etapa_id] === 'ganho';
       const destino = ehGanho ? ganhos : (o.status === 'aberta' ? abertos : null);
       if (!destino) return;
-      variantes(o.cliente_telefone || o.telefone_lead).forEach(tel => destino.add(tel));
+      variantes(o.cliente_telefone || o.telefone_lead).forEach(tel => {
+        destino.add(tel);
+        if (o.status === 'aberta' && o.rating_origem_id) continuidadesRating.add(tel);
+      });
     });
 
     // Cliente com qualquer oportunidade ganha sai do funil, mesmo que tenha outra em aberto
-    ganhos.forEach(tel => abertos.delete(tel));
+    ganhos.forEach(tel => { if (!continuidadesRating.has(tel)) abertos.delete(tel); });
     return abertos;
   }, [data]);
 
