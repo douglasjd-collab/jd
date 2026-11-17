@@ -108,14 +108,15 @@ export async function processarRating(api: any, agora = new Date(), dryRun = fal
   }
   return {success:true,processados:oportunidades.length,simulacao:dryRun,resultados};
 }
-Deno.serve(async(req)=>{
+export default async function(req: Request) {
   try{
     const api=createClientFromRequest(req);
     const user=await api.auth.me();
     if(!user) return Response.json({error:'Não autenticado'},{status:401});
+    if(user.role !== 'admin') return Response.json({error:'Sem permissão administrativa'},{status:403});
     if(user.email && !['admin','master','super_admin','gerente'].includes(user.perfil||user.role)) return Response.json({error:'Sem permissão'},{status:403});
     if(user.email && !['master','super_admin'].includes(user.perfil||user.role) && user.empresa_id!==EMPRESA_RATING) return Response.json({error:'Empresa não autorizada'},{status:403});
     const body=await req.json().catch(()=>({}));
     return Response.json(await processarRating(api,new Date(),body.dry_run===true));
   }catch(e){return Response.json({error:e.message},{status:500});}
-});
+}
