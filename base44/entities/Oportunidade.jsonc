@@ -2,6 +2,86 @@
   "name": "Oportunidade",
   "type": "object",
   "properties": {
+    "rating_valor_servico": {
+      "type": "number"
+    },
+    "rating_pagamento_status": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "pago"
+      ],
+      "default": "pendente"
+    },
+    "rating_receita_id": {
+      "type": "string"
+    },
+    "rating_instituicao": {
+      "type": "string"
+    },
+    "rating_data_contratacao": {
+      "type": "string",
+      "format": "date"
+    },
+    "rating_documentacao": {
+      "type": "string",
+      "enum": [
+        "pendente",
+        "completa"
+      ],
+      "default": "pendente"
+    },
+    "rating_documentos_pendentes": {
+      "type": "string"
+    },
+    "rating_resultado": {
+      "type": "string"
+    },
+    "rating_resultado_apresentado": {
+      "type": "boolean",
+      "default": false
+    },
+    "rating_concluido_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rating_origem_id": {
+      "type": "string"
+    },
+    "rating_planejamento_id": {
+      "type": "string"
+    },
+    "rating_followup_pausado": {
+      "type": "boolean",
+      "default": false
+    },
+    "rating_followup_pausa_manual": {
+      "type": "boolean",
+      "default": false
+    },
+    "rating_followup_motivo": {
+      "type": "string"
+    },
+    "rating_followup_reiniciado_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rating_followup_ciclo": {
+      "type": "string"
+    },
+    "rating_followup_proximo_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rating_followup_tentativa": {
+      "type": "number"
+    },
+    "rating_followup_total": {
+      "type": "number"
+    },
+    "rating_followup_acao": {
+      "type": "string"
+    },
     "empresa_id": {
       "type": "string",
       "description": "ID da empresa"
@@ -45,11 +125,7 @@
     },
     "produto": {
       "type": "string",
-      "enum": [
-        "consorcio",
-        "emprestimo"
-      ],
-      "description": "Funil/produto da oportunidade: consorcio ou emprestimo"
+      "description": "Slug do funil/produto da oportunidade, incluindo funis personalizados"
     },
     "vendedor_id": {
       "type": "string",
