@@ -1,4 +1,6 @@
 export const PRODUTO_CONFIG = {
+  rating_bancrio: { label: 'Rating Bancário', emoji: '🏦', cor: '#7c3aed', bg: 'bg-violet-100', text: 'text-violet-800', barra: '#7c3aed' },
+  planejamento_de_compra_e_credito: { label: 'Planejamento de Compra e Crédito', emoji: '📋', cor: '#0891b2', bg: 'bg-cyan-100', text: 'text-cyan-800', barra: '#0891b2' },
   consorcio:         { label: 'Consórcio',          emoji: '🟣', cor: '#7c3aed', bg: 'bg-purple-100',   text: 'text-purple-800',   barra: '#7c3aed' },
   emprestimo:        { label: 'Consignado',          emoji: '🟢', cor: '#16a34a', bg: 'bg-green-100',    text: 'text-green-800',    barra: '#16a34a' },
   financiamento:     { label: 'Financiamento',       emoji: '🔵', cor: '#2563eb', bg: 'bg-blue-100',     text: 'text-blue-800',     barra: '#2563eb' },
