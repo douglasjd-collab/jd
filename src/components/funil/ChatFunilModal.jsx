@@ -187,6 +187,7 @@ export default function ChatFunilModal({ open, onOpenChange, oportunidade, curre
   const moverEtapaMutation = useMutation({
     mutationFn: async (etapaId) => {
       const etapa = etapas.find(e => e.id === etapaId);
+      if (oportunidade.produto === 'rating_bancrio' && etapa?.tipo === 'ganho') throw new Error('Conclua o Rating nos detalhes da oportunidade para confirmar a entrega e vincular o financeiro.');
       await base44.entities.Oportunidade.update(oportunidade.id, {
         empresa_id: oportunidade.empresa_id,
         titulo: oportunidade.titulo,
