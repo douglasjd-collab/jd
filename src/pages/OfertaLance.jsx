@@ -903,8 +903,18 @@ export default function OfertaLance() {
         </div>
       </div>
 
-      <Card className="p-4 border-0 shadow-sm mb-6 flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="relative flex-1">
+      <Tabs defaultValue="pendentes" className="space-y-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <TabsList>
+          <TabsTrigger value="pendentes">
+            Pendentes ({vendasPendentes.length})
+          </TabsTrigger>
+          <TabsTrigger value="ofertados">
+            Já Ofertados ({ofertasFiltered.length})
+          </TabsTrigger>
+        </TabsList>
+          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             placeholder="Buscar por cliente, CPF, grupo ou cota..."
@@ -913,8 +923,8 @@ export default function OfertaLance() {
             className="pl-10"
           />
         </div>
-        <div className="w-full sm:w-72">
-          <Label htmlFor="filtro-vendedor-lance" className="mb-1.5 block text-xs text-slate-500">Vendedor</Label>
+        <div className="w-full sm:w-64 sm:shrink-0">
+          <Label htmlFor="filtro-vendedor-lance" className="sr-only">Vendedor</Label>
           <Select value={vendedorFiltro} onValueChange={setVendedorFiltro}>
             <SelectTrigger id="filtro-vendedor-lance" aria-label="Filtrar por vendedor">
               <SelectValue placeholder="Todos os vendedores" />
@@ -928,17 +938,8 @@ export default function OfertaLance() {
             </SelectContent>
           </Select>
         </div>
-      </Card>
-
-      <Tabs defaultValue="pendentes" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="pendentes">
-            Pendentes ({vendasPendentes.length})
-          </TabsTrigger>
-          <TabsTrigger value="ofertados">
-            Já Ofertados ({ofertasFiltered.length})
-          </TabsTrigger>
-        </TabsList>
+          </div>
+        </div>
 
         <TabsContent value="pendentes">
           <Card className="p-6">
