@@ -9,6 +9,7 @@ export async function moverOportunidade({ oportunidadeId, novaEtapaId, updates =
       const oportunidade = { ...registro };
       const etapaDestino = etapas.find(e => e.id === novaEtapaId);
       if (!etapaDestino || etapaDestino.status === "inativa" || (etapaDestino.empresa_id && etapaDestino.empresa_id !== oportunidade.empresa_id)) throw new Error("Etapa indisponível");
+      if ((oportunidade.produto === 'rating_bancrio' || etapaDestino.produto === 'rating_bancrio') && etapaDestino.tipo === 'ganho' && oportunidade.etapa_id !== novaEtapaId) throw new Error('Conclua o Rating nos detalhes da oportunidade, confirmando a entrega e o registro financeiro.');
       if (etapaEsperada && oportunidade.etapa_id !== etapaEsperada) throw new Error('A etapa foi alterada por outra pessoa. Feche e abra novamente para atualizar.');
       if (validarRequisitos && etapaDestino.produto !== oportunidade.produto) throw new Error('Selecione uma etapa do mesmo funil.');
       if (validarRequisitos && etapaDestino.requer_cliente && !oportunidade.cliente_id) throw new Error('Vincule o cliente antes de avançar.');
@@ -111,7 +112,7 @@ export async function moverOportunidade({ oportunidadeId, novaEtapaId, updates =
       }), 'Etapa atualizada, mas não foi possível registrar a auditoria.');
 
       // integração com vendas
-      if (etapaDestino?.tipo === 'ganho' && !oportunidade?.venda_id) {
+      if (etapaDestino?.tipo === 'ganho' && oportunidade.produto !== 'rating_bancrio' && !oportunidade?.venda_id) {
         return { oportunidadeId, novaEtapaId, etapaDestino, abrirFormVenda: true, oportunidade };
       }
 
