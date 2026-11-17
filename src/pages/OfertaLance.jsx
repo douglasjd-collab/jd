@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TrendingUp, CheckCircle2, Loader2, Search, Pencil, History, ChevronDown, MessageCircle, CalendarDays, AlertTriangle, Users, Coins } from 'lucide-react';
+import { TrendingUp, Loader2, Search, Pencil, History, ChevronDown, MessageCircle, CalendarDays, AlertTriangle, Users, Coins } from 'lucide-react';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
 import {
   DropdownMenu,
