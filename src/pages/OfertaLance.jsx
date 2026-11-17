@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TrendingUp, CheckCircle2, Loader2, Search, Pencil, History, ChevronDown, MessageCircle, CalendarDays } from 'lucide-react';
+import { TrendingUp, CheckCircle2, Loader2, Search, Pencil, History, ChevronDown, MessageCircle, CalendarDays, AlertTriangle, Users, Coins } from 'lucide-react';
 import ChatPopupModal from '@/components/chat/ChatPopupModal';
 import {
   DropdownMenu,
@@ -457,7 +457,7 @@ export default function OfertaLance() {
 
   // Vendas pendentes (sem oferta na competência atual, status ativa/pendente/aguardando_aprovacao)
   const vendasPendentes = todasVendas.filter(v => {
-    const statusValido = ['ativa', 'pendente', 'aguardando_aprovacao', 'em_atraso'].includes(v.status);
+    const statusValido = ['ativa', 'pendente', 'aguardando_aprovacao'].includes(v.status);
     const jaOfertado = ofertasCompetenciaAtual.some(o => o.venda_id === v.id);
     const matchSearch = search === '' || 
       v.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
@@ -466,6 +466,22 @@ export default function OfertaLance() {
       v.cota?.includes(search);
     return statusValido && !jaOfertado && matchSearch && correspondeVendedor(v.vendedor_nome);
   });
+
+  // A recuperação considera todas as cartas em atraso, mesmo que já tenham oferta.
+  const vendasEmAtraso = todasVendas.filter(v => {
+    const termo = search.trim().toLowerCase();
+    const matchSearch = !termo || [v.cliente_nome, v.cliente_cpf, v.grupo, v.cota]
+      .some(valor => String(valor || '').toLowerCase().includes(termo));
+    return v.status === 'em_atraso' && matchSearch && correspondeVendedor(v.vendedor_nome);
+  });
+  const clientesEmAtraso = new Set(vendasEmAtraso.map(v =>
+    v.cliente_id || String(v.cliente_cpf || '').replace(/\D/g, '') ||
+    String(v.cliente_nome || '').trim().toLowerCase() || v.id
+  )).size;
+  const valorVendasEmAtraso = vendasEmAtraso.reduce((total, v) => {
+    const valor = Number(v.valorCredito);
+    return total + (Number.isFinite(valor) ? valor : 0);
+  }, 0);
 
   // Por padrão, exibir somente a assembleia vigente; histórico permanece acessível por mês.
   const competenciaSelecionada = competenciaFiltro === 'atual' ? competenciaAtual : competenciaFiltro;
@@ -477,6 +493,7 @@ export default function OfertaLance() {
   };
 
   const ofertasFiltered = todasOfertas.filter(o => {
+    if (vendasPorId.get(o.venda_id)?.status === 'em_atraso') return false;
     if (o.competencia !== competenciaSelecionada || !correspondeVendedor(vendedorDaOferta(o))) return false;
     return search === '' || 
       o.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
@@ -905,12 +922,16 @@ export default function OfertaLance() {
 
       <Tabs defaultValue="pendentes" className="space-y-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-        <TabsList>
+        <TabsList className="h-auto flex-wrap shrink-0">
           <TabsTrigger value="pendentes">
             Pendentes ({vendasPendentes.length})
           </TabsTrigger>
           <TabsTrigger value="ofertados">
             Já Ofertados ({ofertasFiltered.length})
+          </TabsTrigger>
+          <TabsTrigger value="em_atraso" className="gap-1.5 data-[state=active]:bg-orange-100 data-[state=active]:text-orange-700">
+            <AlertTriangle className="h-4 w-4" />
+            Em Atraso ({vendasEmAtraso.length})
           </TabsTrigger>
         </TabsList>
           <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
@@ -948,6 +969,44 @@ export default function OfertaLance() {
               data={vendasPendentes}
               isLoading={loadingVendas}
               emptyMessage="Nenhuma venda pendente de oferta de lance"
+            />
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="em_atraso">
+          <Card className="space-y-4 p-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                <Users className="h-7 w-7 shrink-0 text-red-600" />
+                <div>
+                  <p className="text-sm text-slate-600">Clientes em atraso</p>
+                  <p className="text-2xl font-bold text-slate-900">{loadingVendas ? '—' : clientesEmAtraso}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
+                <Coins className="h-7 w-7 shrink-0 text-orange-600" />
+                <div>
+                  <p className="text-sm text-slate-600">Valor de vendas em atraso</p>
+                  <p className="text-2xl font-bold text-red-600">{loadingVendas ? '—' : formatCurrency(valorVendasEmAtraso)}</p>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500">
+              Soma do valor das cartas em atraso para recuperação. Os indicadores respeitam a busca e o vendedor selecionado.
+            </p>
+            <DataTable
+              columns={[...columnsPendentes.slice(0, -1), {
+                header: 'Recuperação',
+                cell: (row) => (
+                  <Button size="sm" variant="outline" disabled={buscandoTelefone === row.id} onClick={() => abrirChatCliente(row)} className="gap-2">
+                    {buscandoTelefone === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                    Conversar
+                  </Button>
+                ),
+              }]}
+              data={vendasEmAtraso}
+              isLoading={loadingVendas}
+              emptyMessage="Nenhum cliente em atraso para os filtros selecionados"
             />
           </Card>
         </TabsContent>
