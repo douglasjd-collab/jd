@@ -37,7 +37,7 @@ export function resolverTextoRating(texto: string, o: any) {
     .replace(/\{\{nome\}\}/g, o.cliente_nome || o.titulo || 'cliente')
     .replace(/\{\{vendedor\}\}/g, o.vendedor_nome || 'equipe JD Promotora')
     .replace(/\{\{etapa\}\}/g, o.etapa_nome || '')
-    .replace(/\{\{pendencias\}\}/g, o.rating_documentos_pendentes || 'pagamento e/ou documentos ainda não confirmados pela equipe');
+    .replace(/\{\{pendencias\}\}/g, [o.rating_pagamento_status !== 'pago' ? 'confirmação do pagamento' : '', o.rating_documentacao !== 'completa' ? (o.rating_documentos_pendentes || 'documentação ainda pendente') : ''].filter(Boolean).join(' e ') || 'pendências em conferência com a equipe');
 }
 export function motivoPausaRating(o: any, a: any, conversa: any, mensagens: any[], base: number, historico: any[], agora: Date) {
   if (conversa?.bloqueado || String(conversa?.whatsapp_id || '').includes('@g.us')) return 'Conversa bloqueada ou grupo';
