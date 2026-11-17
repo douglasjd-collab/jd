@@ -1,0 +1,43 @@
+{
+  "name": "Follow-up Rating Banc\u00e1rio",
+  "description": "Acompanha o servi\u00e7o de Rating Banc\u00e1rio: alertas internos, mensagens do Heitor e pausas por resposta, atendimento humano e conclus\u00e3o.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "interval",
+      "cron_expression": null,
+      "one_time_date": null,
+      "timezone": "America/Sao_Paulo",
+      "interval_value": 15,
+      "interval_unit": "minutes",
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "followup_rating_bancario",
+      "version": "1.0.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "processar": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "processarRatingBancario",
+            "args": {
+              "dry_run": true
+            }
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
