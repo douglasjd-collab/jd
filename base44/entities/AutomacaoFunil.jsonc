@@ -2,6 +2,36 @@
   "name": "AutomacaoFunil",
   "type": "object",
   "properties": {
+    "motor": {
+      "type": "string",
+      "description": "rating_v1 para o acompanhamento de Rating Banc\u00e1rio"
+    },
+    "inicio_vigencia_em": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "horario_fim": {
+      "type": "string",
+      "default": "18:00"
+    },
+    "dias_uteis": {
+      "type": "boolean",
+      "default": true
+    },
+    "parar_se_humano": {
+      "type": "boolean",
+      "default": true
+    },
+    "condicao_rating": {
+      "type": "string",
+      "enum": [
+        "sem_atendimento",
+        "sem_resposta",
+        "pendencias",
+        "analise",
+        "apresentacao"
+      ]
+    },
     "empresa_id": {
       "type": "string"
     },
@@ -33,7 +63,8 @@
     "canal": {
       "type": "string",
       "enum": [
-        "whatsapp"
+        "whatsapp",
+        "interno"
       ],
       "default": "whatsapp"
     },
