@@ -115,8 +115,13 @@ export default async function(req: Request) {
     if(!user) return Response.json({error:'Não autenticado'},{status:401});
     if(user.role !== 'admin') return Response.json({error:'Sem permissão administrativa'},{status:403});
     if(user.email && !['admin','master','super_admin','gerente'].includes(user.perfil||user.role)) return Response.json({error:'Sem permissão'},{status:403});
-    if(user.email && !['master','super_admin'].includes(user.perfil||user.role) && user.empresa_id!==EMPRESA_RATING) return Response.json({error:'Empresa não autorizada'},{status:403});
+    if(user.email && !['master','super_admin'].includes(user.perfil||user.role) && user.empresa_id!==EMPRESA_RATING) {
+      const colabs=await api.asServiceRole.entities.Colaborador.filter({user_id:user.id,empresa_id:EMPRESA_RATING,status:'ativo'},null,10);
+      if(!colabs.some(c=>['admin','gerente','master'].includes(c.perfil))) return Response.json({error:'Empresa não autorizada'},{status:403});
+    }
     const body=await req.json().catch(()=>({}));
-    return Response.json(await processarRating(api,new Date(),body.dry_run===true));
+    const resultado=await processarRating(api,new Date(),body.dry_run===true);
+    console.info('Rating Bancário: rotina concluída',JSON.stringify({simulacao:resultado.simulacao,processados:resultado.processados,resultados:resultado.resultados?.length||0}));
+    return Response.json(resultado);
   }catch(e){return Response.json({error:e.message},{status:500});}
 }
