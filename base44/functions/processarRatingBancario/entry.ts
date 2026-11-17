@@ -87,7 +87,7 @@ export async function processarRating(api: any, agora = new Date(), dryRun = fal
         // Marcar o envio antes das gravações auxiliares: erro de histórico não autoriza repetir WhatsApp.
         await db.HistoricoAutomacao.update(reserva.id,{status:'enviado',enviado_em:agora.toISOString()});
         await db.MensagemWhatsapp.create({empresa_id:o.empresa_id,conversa_id:recente.id,remetente:'vendedor',usuario_id:AGENTE_RATING,
-          usuario_nome:'Heitor — Follow-up do Rating',tipo_conteudo:'texto',texto,provider:'dapi',data_envio:agora.toISOString(),status:'enviada',
+          usuario_nome:'IA • Heitor — Follow-up do Rating',tipo_conteudo:'texto',texto,provider:'dapi',data_envio:agora.toISOString(),status:'enviada',
           whatsapp_message_id:dado?.messageId||dado?.id||dado?.data?.key?.id||''});
         const depois=await db.ConversaWhatsapp.get(recente.id);
         if(millis(depois.data_ultima_mensagem)<=agora.getTime()) await db.ConversaWhatsapp.update(recente.id,{ultima_mensagem:texto.slice(0,200),data_ultima_mensagem:agora.toISOString(),ultimo_remetente:'vendedor'});
