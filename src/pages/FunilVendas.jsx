@@ -1,4 +1,5 @@
 import { moverOportunidade } from '@/components/funil/moverOportunidade';
+import { RatingFollowUpResumo } from '@/components/funil/RatingServicoPanel';
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -372,6 +373,7 @@ export default function FunilVendas() {
       const oportunidade = oportunidades.find(o => o.id === oportunidadeId);
       const etapaDestino = etapas.find(e => e.id === novaEtapaId);
 
+      if (etapaDestino?.produto === 'rating_bancrio' && etapaDestino.tipo === 'ganho') throw new Error('Conclua o Rating nos detalhes da oportunidade para confirmar a entrega e o financeiro.');
       // Validações de regras (apenas aviso, não bloqueia)
       if (etapaDestino?.requer_cliente && !oportunidade?.cliente_id) {
         toast.warning('Atenção: Esta etapa requer cliente vinculado');
@@ -603,6 +605,11 @@ export default function FunilVendas() {
 
     // Aplica otimisticamente no cache imediatamente (sem await)
     const etapaDestino = etapas.find(e => e.id === novaEtapaId);
+    if (oportunidade?.produto === 'rating_bancrio' && etapaDestino?.tipo === 'ganho') {
+      setOportunidadeModalId(oportunidadeId);
+      toast.info('Confirme a entrega e o financeiro no painel do serviço para concluir o Rating.');
+      return;
+    }
     queryClient.setQueryData(['oportunidades', currentUser?.empresa_id], (old) => {
       if (!old || !Array.isArray(old)) return old;
       return old.map(o => {
@@ -643,6 +650,10 @@ export default function FunilVendas() {
     const etapa = etapas.find(e => e.id === formData.etapa_id);
 
     const produtoFinal = formData.produto;
+    if (produtoFinal === 'rating_bancrio' && etapa?.tipo === 'ganho' && selectedOportunidade?.status !== 'ganha') {
+      toast.error('Cadastre a oportunidade em uma etapa aberta e conclua pelo painel do serviço.');
+      return;
+    }
 
     // Normalizar telefone: adicionar prefixo 55 se não tiver
     const normalizarTelefone = (tel) => {
@@ -797,7 +808,7 @@ export default function FunilVendas() {
     { value: 'emprestimo', label: 'Empréstimo Consignado' },
     ...todosProdutos
       .filter(p => p !== 'consorcio' && p !== 'emprestimo')
-      .map(p => ({ value: p, label: p.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) })),
+      .map(p => ({ value: p, label: p === 'rating_bancrio' ? 'Rating Bancário' : p === 'planejamento_de_compra_e_credito' ? 'Planejamento de Compra e Crédito' : p.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) })),
   ];
 
   const openNovaOportunidade = () => {
@@ -1207,6 +1218,7 @@ export default function FunilVendas() {
                                     {prodCfg.emoji} {prodCfg.label}
                                   </span>
                                 </div>
+                                <RatingFollowUpResumo oportunidade={oport} />
                                 {prioridadeLabel && <div className="mb-1.5">{prioridadeLabel}</div>}
                                 {preFechamentoAtivo && (
                                   <div className="mb-2 p-2 bg-purple-100 rounded-lg border border-purple-300 text-xs text-purple-800">
