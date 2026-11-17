@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import RatingServicoPanel from '@/components/funil/RatingServicoPanel';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -95,6 +96,7 @@ export default function OportunidadeAbaDetalhes({ oportunidade, colaboradores, e
   const moverEtapa = useMutation({
     mutationFn: async (etapaId) => {
       const etapa = etapas.find(e => e.id === etapaId);
+      if (oportunidade.produto === 'rating_bancrio' && etapa?.tipo === 'ganho') throw new Error('Use Concluir Rating no painel do serviço para confirmar a entrega e vincular o financeiro.');
       await base44.entities.Oportunidade.update(oportunidade.id, {
         etapa_id: etapaId,
         etapa_nome: etapa?.nome || '',
@@ -128,6 +130,7 @@ export default function OportunidadeAbaDetalhes({ oportunidade, colaboradores, e
 
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+      {oportunidade.produto === 'rating_bancrio' && <RatingServicoPanel key={oportunidade.id} oportunidade={oportunidade} />}
       {/* Card Dados do Cliente */}
       <CardSection title="Dados do Cliente" icon={User} color="blue">
         <InfoItem label="Nome" value={cliente?.nome_completo || cliente?.pj_razao_social || oportunidade.cliente_nome} icon={User} />
