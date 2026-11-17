@@ -64,6 +64,7 @@ export default function OfertaLance() {
   const [tipoLance, setTipoLance] = useState('livre');
   const [observacao, setObservacao] = useState('');
   const [search, setSearch] = useState('');
+  const [vendedorFiltro, setVendedorFiltro] = useState('todos');
   const [competenciaFiltro, setCompetenciaFiltro] = useState('atual');
   const [editOpen, setEditOpen] = useState(false);
   const [editOferta, setEditOferta] = useState(null);
@@ -442,6 +443,14 @@ export default function OfertaLance() {
   const todasVendas = dadosLance.vendas || [];
   const todasOfertas = dadosLance.ofertas || [];
   const loadingOfertas = false;
+  const vendasPorId = new Map(todasVendas.map(v => [v.id, v]));
+  const vendedorDaOferta = (oferta) => vendasPorId.get(oferta.venda_id)?.vendedor_nome || oferta.vendedor_nome || '';
+  const vendedoresDisponiveis = [...new Set([
+    ...todasVendas.map(v => v.vendedor_nome),
+    ...todasOfertas.map(vendedorDaOferta),
+  ].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const correspondeVendedor = (nome) => vendedorFiltro === 'todos' ||
+    (vendedorFiltro === 'sem_vendedor' ? !nome : nome === vendedorFiltro);
 
   // Ofertas da competência atual (para determinar pendentes e duplicidade)
   const ofertasCompetenciaAtual = todasOfertas.filter(o => o.competencia === competenciaAtual);
@@ -455,7 +464,7 @@ export default function OfertaLance() {
       v.cliente_cpf?.includes(search) ||
       v.grupo?.includes(search) ||
       v.cota?.includes(search);
-    return statusValido && !jaOfertado && matchSearch;
+    return statusValido && !jaOfertado && matchSearch && correspondeVendedor(v.vendedor_nome);
   });
 
   // Por padrão, exibir somente a assembleia vigente; histórico permanece acessível por mês.
@@ -468,7 +477,7 @@ export default function OfertaLance() {
   };
 
   const ofertasFiltered = todasOfertas.filter(o => {
-    if (o.competencia !== competenciaSelecionada) return false;
+    if (o.competencia !== competenciaSelecionada || !correspondeVendedor(vendedorDaOferta(o))) return false;
     return search === '' || 
       o.cliente_nome?.toLowerCase().includes(search.toLowerCase()) ||
       o.grupo?.includes(search) ||
@@ -871,8 +880,8 @@ export default function OfertaLance() {
         subtitle={`Competência: ${new Date(compAno, compMes - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}${hoje.getDate() >= 18 ? ' (liberada antecipadamente)' : ''}`}
       />
 
-      <Card className="p-4 border-0 shadow-sm mb-6">
-        <div className="relative">
+      <Card className="p-4 border-0 shadow-sm mb-6 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             placeholder="Buscar por cliente, CPF, grupo ou cota..."
@@ -880,6 +889,21 @@ export default function OfertaLance() {
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
+        </div>
+        <div className="w-full sm:w-72">
+          <Label htmlFor="filtro-vendedor-lance" className="mb-1.5 block text-xs text-slate-500">Vendedor</Label>
+          <Select value={vendedorFiltro} onValueChange={setVendedorFiltro}>
+            <SelectTrigger id="filtro-vendedor-lance" aria-label="Filtrar por vendedor">
+              <SelectValue placeholder="Todos os vendedores" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os vendedores</SelectItem>
+              <SelectItem value="sem_vendedor">Sem vendedor</SelectItem>
+              {vendedoresDisponiveis.map(nome => (
+                <SelectItem key={nome} value={nome}>{nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </Card>
 
