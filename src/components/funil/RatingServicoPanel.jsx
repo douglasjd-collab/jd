@@ -32,7 +32,7 @@ export default function RatingServicoPanel({ oportunidade:o }) {
   const [receitaId,setReceitaId]=useState(o.rating_receita_id||'selecionar');
   const [pending,setPending]=useState('');
   const [planejamentoId,setPlanejamentoId]=useState(o.rating_planejamento_id||'');
-  useEffect(()=>{setDados(inicio(o));setReceitaId(o.rating_receita_id||'selecionar');setPlanejamentoId(o.rating_planejamento_id||'');},[o.id]);
+  useEffect(()=>{setDados(inicio(o));setReceitaId(o.rating_receita_id||'selecionar');setPlanejamentoId(o.rating_planejamento_id||'');},[o.id,o.status]);
   const {data:receitas=[]}=useQuery({
     queryKey:['receitas-rating',o.empresa_id,o.cliente_id],
     queryFn:()=>base44.entities.Receita.filter({empresa_id:o.empresa_id},'-data',500),
@@ -63,7 +63,7 @@ export default function RatingServicoPanel({ oportunidade:o }) {
       <RatingFollowUpResumo oportunidade={o}/>
       {!encerrado && <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="outline" disabled={!!pending} onClick={()=>executar(o.rating_followup_pausado?'retomar':'pausar')}>{o.rating_followup_pausado?'Retomar follow-up':'Pausar follow-up'}</Button>
-        <span className="text-xs text-slate-500">Dias úteis, 08h às 18h · horários e mensagens editáveis em Automação de Funis.</span>
+        <span className="text-xs text-slate-500">Prazos, expediente e mensagens editáveis em Automação de Funis.</span>
       </div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <div><Label>Valor do serviço (R$)</Label><Input type="number" min="0" step="0.01" disabled={encerrado} value={dados.rating_valor_servico} onChange={e=>campo('rating_valor_servico',e.target.value)}/></div>
