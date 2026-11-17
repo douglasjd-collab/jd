@@ -2,6 +2,12 @@
   "name": "HistoricoAutomacao",
   "type": "object",
   "properties": {
+    "chave_execucao": {
+      "type": "string"
+    },
+    "ciclo_id": {
+      "type": "string"
+    },
     "empresa_id": {
       "type": "string",
       "description": "ID da empresa"
@@ -44,7 +50,10 @@
       "enum": [
         "enviado",
         "erro",
-        "ignorado"
+        "ignorado",
+        "processando",
+        "alerta",
+        "cancelado"
       ],
       "default": "enviado",
       "description": "Status do disparo"
