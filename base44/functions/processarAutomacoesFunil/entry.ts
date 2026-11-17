@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
   const agora = new Date();
 
   // 1. Buscar todas automações ativas
-  const automacoes = await base44.asServiceRole.entities.AutomacaoFunil.filter({ ativo: true });
+  const automacoes = (await base44.asServiceRole.entities.AutomacaoFunil.filter({ ativo: true })).filter(a => a.motor !== 'rating_v1');
   if (!automacoes.length) return Response.json({ ok: true, logs: ['Nenhuma automação ativa'] });
 
   // 2. Buscar leads abertos
