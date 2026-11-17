@@ -875,10 +875,33 @@ export default function OfertaLance() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <PageHeader
         title="Oferta de Lance"
         subtitle={`Competência: ${new Date(compAno, compMes - 1, 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}${hoje.getDate() >= 18 ? ' (liberada antecipadamente)' : ''}`}
       />
+        <div className="w-full shrink-0 sm:w-72 sm:pr-4">
+        <div className="flex justify-end">
+          <Select value={competenciaFiltro} onValueChange={setCompetenciaFiltro}>
+            <SelectTrigger className="group h-auto min-h-[66px] w-full gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm transition-all hover:border-emerald-300 hover:shadow-md focus:ring-2 focus:ring-emerald-200 sm:w-full [&>svg:last-child]:ml-auto [&>svg:last-child]:shrink-0" aria-label="Filtrar assembleia por mês">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100">
+                <CalendarDays className="h-5 w-5" />
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{competenciaSelecionada === competenciaAtual ? 'Assembleia atual' : 'Assembleia anterior'}</span>
+                <span className="truncate text-sm font-semibold capitalize text-slate-900">{nomeCompetencia(competenciaSelecionada)}</span>
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="atual">Assembleia atual — {nomeCompetencia(competenciaAtual)}</SelectItem>
+              {competenciasDisponiveis.filter(c => c !== competenciaAtual).map(c => (
+                <SelectItem key={c} value={c} className="capitalize">{nomeCompetencia(c)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        </div>
+      </div>
 
       <Card className="p-4 border-0 shadow-sm mb-6 flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="relative flex-1">
@@ -908,25 +931,6 @@ export default function OfertaLance() {
       </Card>
 
       <Tabs defaultValue="pendentes" className="space-y-4">
-        <div className="flex justify-end">
-          <Select value={competenciaFiltro} onValueChange={setCompetenciaFiltro}>
-            <SelectTrigger className="group h-auto min-h-[66px] w-full gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left shadow-sm transition-all hover:border-emerald-300 hover:shadow-md focus:ring-2 focus:ring-emerald-200 sm:w-[270px] [&>svg:last-child]:ml-auto [&>svg:last-child]:shrink-0" aria-label="Filtrar assembleia por mês">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100">
-                <CalendarDays className="h-5 w-5" />
-              </span>
-              <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">{competenciaSelecionada === competenciaAtual ? 'Assembleia atual' : 'Assembleia anterior'}</span>
-                <span className="truncate text-sm font-semibold capitalize text-slate-900">{nomeCompetencia(competenciaSelecionada)}</span>
-              </span>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="atual">Assembleia atual — {nomeCompetencia(competenciaAtual)}</SelectItem>
-              {competenciasDisponiveis.filter(c => c !== competenciaAtual).map(c => (
-                <SelectItem key={c} value={c} className="capitalize">{nomeCompetencia(c)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
         <TabsList>
           <TabsTrigger value="pendentes">
             Pendentes ({vendasPendentes.length})
