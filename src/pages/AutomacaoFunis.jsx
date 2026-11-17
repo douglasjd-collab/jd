@@ -68,7 +68,15 @@ export default function AutomacaoFunis() {
 
   const salvarMutation = useMutation({
     mutationFn: async (data) => {
-      const payload = { ...data, empresa_id: currentUser.empresa_id };
+      const empresaId = editando?.empresa_id || currentUser.empresa_id;
+      const payload = { ...data, empresa_id: empresaId };
+      if (data.funil === 'rating_bancrio') {
+        payload.motor = 'rating_v1';
+        payload.horario_fim = data.horario_fim || '18:00';
+        payload.inicio_vigencia_em = editando?.inicio_vigencia_em || new Date().toISOString();
+        if (payload.horario_fim <= (payload.horario_envio || '08:00')) throw new Error('O fim do expediente deve ser posterior ao início.');
+        if (payload.canal === 'interno') { payload.tipo_midia = 'nenhuma'; payload.midia_url = ''; }
+      }
       if (editando) return base44.entities.AutomacaoFunil.update(editando.id, payload);
       return base44.entities.AutomacaoFunil.create(payload);
     },
@@ -106,6 +114,9 @@ export default function AutomacaoFunis() {
   const abrirEditar = (auto) => {
     setEditando(auto);
     setFormData({
+      motor: auto.motor || '', inicio_vigencia_em: auto.inicio_vigencia_em || '',
+      horario_fim: auto.horario_fim || '18:00', dias_uteis: auto.dias_uteis ?? true,
+      parar_se_humano: auto.parar_se_humano ?? true, condicao_rating: auto.condicao_rating || 'sem_resposta',
       nome: auto.nome, funil: auto.funil, etapa_id: auto.etapa_id,
       etapa_nome: auto.etapa_nome, tempo_disparo: auto.tempo_disparo,
       tipo_tempo: auto.tipo_tempo, canal: auto.canal, mensagem: auto.mensagem,
@@ -127,10 +138,10 @@ export default function AutomacaoFunis() {
     { value: 'emprestimo', label: 'Empréstimo Consignado' },
     ...produtosDasEtapas
       .filter(p => p !== 'consorcio' && p !== 'emprestimo')
-      .map(p => ({ value: p, label: p.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) })),
+      .map(p => ({ value: p, label: p === 'rating_bancrio' ? 'Rating Bancário' : p.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) })),
   ];
 
-  const etapasFiltradas = etapas.filter(e => e.produto === formData.funil);
+  const etapasFiltradas = etapas.filter(e => e.produto === formData.funil && e.status !== 'inativa' && (formData.funil !== 'rating_bancrio' || !['ganho','perdida'].includes(e.tipo)));
 
   // Agrupar automações por funil
   const automacoesPorFunil = automacoes.reduce((acc, a) => {
@@ -217,7 +228,8 @@ export default function AutomacaoFunis() {
                     <div className="flex items-center gap-3 text-xs text-slate-500 mb-2">
                       <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {labelTempo(auto)}</span>
                       <span className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> {auto.etapa_nome || auto.etapa_id}</span>
-                      <span>🕐 {auto.horario_envio || '08:00'}</span>
+                      <span>🕐 {auto.horario_envio || '08:00'}{auto.motor === 'rating_v1' ? ' às ' + (auto.horario_fim || '18:00') + ' · Brasília' : ''}</span>
+                      {auto.motor === 'rating_v1' && <Badge variant="outline">{auto.canal === 'interno' ? 'Alerta interno' : 'Heitor · WhatsApp'}</Badge>}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       {auto.tipo_midia && auto.tipo_midia !== 'nenhuma' && (
@@ -339,10 +351,20 @@ export default function AutomacaoFunis() {
                 </Select>
               </div>
               <div>
-                <Label>Horário de Envio</Label>
+                <Label>{formData.funil === 'rating_bancrio' ? 'Início do expediente (Brasília)' : 'Horário de Envio'}</Label>
                 <Input type="time" value={formData.horario_envio} onChange={(e) => setFormData({ ...formData, horario_envio: e.target.value })} />
               </div>
             </div>
+
+            {formData.funil === 'rating_bancrio' && <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-lg border border-violet-200 bg-violet-50 p-3">
+              <div><Label>Ação</Label><Select value={formData.canal || 'whatsapp'} onValueChange={v=>setFormData({...formData,canal:v,tipo_midia:'nenhuma'})}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>
+                <SelectItem value="interno">Alerta interno ao responsável</SelectItem><SelectItem value="whatsapp">Heitor — mensagem ao cliente</SelectItem>
+              </SelectContent></Select></div>
+              <div><Label>Fim do expediente (Brasília)</Label><Input type="time" value={formData.horario_fim || '18:00'} onChange={e=>setFormData({...formData,horario_fim:e.target.value})}/></div>
+              <label className="flex items-center gap-2 text-sm"><Switch checked={formData.dias_uteis !== false} onCheckedChange={v=>setFormData({...formData,dias_uteis:v})}/>Somente dias úteis</label>
+              <label className="flex items-center gap-2 text-sm"><Switch checked={formData.parar_se_humano !== false} onCheckedChange={v=>setFormData({...formData,parar_se_humano:v})}/>Parar quando o responsável assumir</label>
+              <p className="text-xs text-violet-700 sm:col-span-2">O horário de envio define o início do expediente. Respostas pausam a sequência; a retomada é feita nos detalhes do serviço. Ganho e Perdido encerram o acompanhamento.</p>
+            </div>}
 
             {/* Tipo de Conteúdo */}
             <div>
