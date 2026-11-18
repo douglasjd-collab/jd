@@ -8,10 +8,8 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +56,9 @@ import { lerListaConversas, salvarListaConversas } from '@/components/chat/cache
 import ChatHeader from '@/components/chat/ChatHeader';
 import ChatMessageFooter from '@/components/chat/ChatMessageFooter';
 import ConversaContextMenu from '@/components/chat/ConversaContextMenu';
+import ConversaCardSwipe from '@/components/chat/ConversaCardSwipe';
+import GruposBloqueadosDialog from '@/components/chat/GruposBloqueadosDialog';
+import SalvarContatoCrmDialog from '@/components/chat/SalvarContatoCrmDialog';
 import { toast } from 'sonner';
 import MensagemItem from '@/components/chat/MensagemItem';
 import GrupoImagens from '@/components/chat/GrupoImagens';
@@ -409,8 +410,6 @@ export default function BatePapo() {
   const [naoLidasPorConversa, setNaoLidasPorConversa] = useState({}); // { conversaId: count }
   const [marcadasNaoLidasManual, setMarcadasNaoLidasManual] = useState(new Set()); // IDs marcadas manualmente como não lido
   const [gruposBloqueadosOpen, setGruposBloqueadosOpen] = useState(false);
-  const [gruposBloqueadosLista, setGruposBloqueadosLista] = useState([]);
-  const [loadingGruposBloqueados, setLoadingGruposBloqueados] = useState(false);
   const [tagsModalOpen, setTagsModalOpen] = useState(false);
   const [contatoParaTags, setContatoParaTags] = useState(null);
   const [gerenciamentoTagsOpen, setGerenciamentoTagsOpen] = useState(false);
@@ -465,16 +464,6 @@ export default function BatePapo() {
   // onde a conversa alvo pode não ser a conversaSelecionada).
   const ligarParaContato = (conversa) => {
     if (conversa?.cliente_telefone) setConversaLigacao(conversa);
-  };
-
-  const abrirGruposBloqueados = async () => {
-    setGruposBloqueadosOpen(true);
-    setLoadingGruposBloqueados(true);
-    try {
-      const todos = await base44.entities.ConversaWhatsapp.filter({ empresa_id: empresaId, bloqueado: true }, '-updated_date', 200);
-      setGruposBloqueadosLista(todos);
-    } catch (e) { toast.error('Erro ao carregar grupos bloqueados'); }
-    finally { setLoadingGruposBloqueados(false); }
   };
 
   const [encerrandoTransferidos, setEncerrandoTransferidos] = useState(false);
@@ -1905,71 +1894,12 @@ export default function BatePapo() {
           }}
         />
 
-        {/* Modal Grupos Bloqueados */}
-        <Dialog open={gruposBloqueadosOpen} onOpenChange={setGruposBloqueadosOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-orange-500" />
-                Grupos Bloqueados
-              </DialogTitle>
-            </DialogHeader>
-            <div className="py-2">
-              {loadingGruposBloqueados ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-                </div>
-              ) : gruposBloqueadosLista.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-slate-400 gap-2">
-                  <Unlock className="w-10 h-10 opacity-40" />
-                  <p className="text-sm">Nenhum grupo bloqueado</p>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {gruposBloqueadosLista.map(c => {
-                    const nome = contatosWhatsapp[c.id]?.nome || c.cliente_nome || c.whatsapp_id || c.cliente_telefone;
-                    return (
-                      <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg bg-orange-50 border border-orange-100">
-                        <div className="relative flex-shrink-0">
-                          <AvatarContato
-                            contato={contatosWhatsapp[c.id] || { nome: c.cliente_nome, telefone: c.cliente_telefone, foto_url: c.foto_url }}
-                            className="h-10 w-10"
-                          />
-                          <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-2 border-white bg-orange-500 flex items-center justify-center">
-                            <Lock className="w-2 h-2 text-white" />
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold truncate">{nome}</p>
-                          <p className="text-xs text-slate-500 truncate">{c.cliente_telefone || c.whatsapp_id}</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-shrink-0 gap-1.5 text-xs text-green-600 border-green-300 hover:bg-green-50"
-                          onClick={async () => {
-                            await base44.entities.ConversaWhatsapp.update(c.id, { bloqueado: false });
-                            setGruposBloqueadosLista(prev => prev.filter(g => g.id !== c.id));
-                            queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) =>
-                              old.map(cv => cv.id === c.id ? { ...cv, bloqueado: false } : cv)
-                            );
-                            toast.success('🔓 Grupo desbloqueado');
-                          }}
-                        >
-                          <Unlock className="w-3 h-3" />
-                          Desbloquear
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setGruposBloqueadosOpen(false)}>Fechar</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <GruposBloqueadosDialog
+          open={gruposBloqueadosOpen}
+          onOpenChange={setGruposBloqueadosOpen}
+          contatosWhatsapp={contatosWhatsapp}
+          empresaId={empresaId}
+        />
 
         {/* Editor de imagem — fluxo "Editar e reenviar" de imagem recebida */}
         <ImageEditorModal
@@ -1993,41 +1923,15 @@ export default function BatePapo() {
           conversaId={conversaSelecionada?.id}
         />
 
-        {/* Modal Salvar/Editar Contato CRM */}
-        <Dialog open={!!salvarCrmModal} onOpenChange={(v) => !v && setSalvarCrmModal(null)}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Contact className="w-4 h-4" />
-                Editar contato
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-3 py-2">
-              <div>
-                <Label className="text-xs text-slate-600">Telefone</Label>
-                <p className="text-sm font-medium mt-0.5">{salvarCrmModal?.conversa?.cliente_telefone}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-slate-600">Nome do contato</Label>
-                <Input
-                  value={nomeContatoEdit}
-                  onChange={e => setNomeContatoEdit(e.target.value)}
-                  placeholder="Ex: João Silva"
-                  className="mt-1"
-                  onKeyDown={e => e.key === 'Enter' && salvarContatoCrm()}
-                  autoFocus
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setSalvarCrmModal(null)}>Cancelar</Button>
-              <Button onClick={salvarContatoCrm} disabled={salvandoCrm || !nomeContatoEdit.trim()} className="bg-[#1e3a5f] hover:bg-[#2a4a73]">
-                {salvandoCrm ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Salvar alterações
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <SalvarContatoCrmDialog
+          open={!!salvarCrmModal}
+          onOpenChange={(v) => !v && setSalvarCrmModal(null)}
+          conversa={salvarCrmModal?.conversa}
+          nome={nomeContatoEdit}
+          onNomeChange={setNomeContatoEdit}
+          onSalvar={salvarContatoCrm}
+          salvando={salvandoCrm}
+        />
 
         <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex', overflow: 'hidden', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', width: '100%' }}>
           {/* Coluna esquerda - Conversas */}
@@ -2140,8 +2044,14 @@ export default function BatePapo() {
                         ? format(new Date(c.data_ultima_mensagem), "HH:mm", { locale: ptBR })
                         : '';
                       return (
-                        <div
+                        <ConversaCardSwipe
                           key={c.id}
+                          conversa={c}
+                          empresaId={empresaId}
+                          queryClient={queryClient}
+                          refetchConversas={refetchConversas}
+                        >
+                        <div
                           className={classNames(
                             'jd-chat-card',
                             isApiOficial && 'api-oficial',
@@ -2292,6 +2202,7 @@ export default function BatePapo() {
                                   </div>
                                   </div>
                                   </div>
+                                  </ConversaCardSwipe>
                                   );
                                   })}
                     {!buscaGlobal && conversas.length >= limiteConversas && (

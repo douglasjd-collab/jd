@@ -232,3 +232,14 @@
 }
 /* Evita overflow horizontal no container raiz do bate-papo (iPhone) */
 #batepapo-root { overflow-x: hidden; }
+
+/* === Deslizar o card da conversa (celular) === */
+/* Cor do card acompanha o sentido do gesto: esquerda finaliza, direita reabre */
+.jd-swipe-finalizar .jd-chat-card {
+  background: #fee2e2 !important;
+  box-shadow: inset 3px 0 0 #ef4444;
+}
+.jd-swipe-reabrir .jd-chat-card {
+  background: #d1fae5 !important;
+  box-shadow: inset 3px 0 0 #10b981;
+}
