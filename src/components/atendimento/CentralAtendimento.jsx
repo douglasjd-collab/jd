@@ -160,12 +160,12 @@ export default function CentralAtendimento({ user }) {
       <button
         type="button"
         onClick={() => setAberto(true)}
-        className="print:hidden fixed top-20 right-6 z-[9997] flex items-center gap-2 rounded-full bg-[#10353C] px-3.5 py-2 text-white shadow-lg transition-colors hover:bg-[#155059]"
+        className="print:hidden fixed z-[9997] flex items-center justify-center rounded-full bg-[#10353C] text-white shadow-lg transition-colors hover:bg-[#155059] top-1 left-1/2 h-9 w-9 -translate-x-1/2 sm:top-20 sm:right-6 sm:left-auto sm:h-auto sm:w-auto sm:translate-x-0 sm:gap-2 sm:px-3.5 sm:py-2"
         title="Atendimentos aguardando resposta"
       >
         <BellRing className="h-4 w-4" />
-        <span className="text-xs font-semibold">Atendimento</span>
-        <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[11px] font-bold leading-tight">
+        <span className="hidden text-xs font-semibold sm:inline">Atendimento</span>
+        <span className="absolute -right-1.5 -top-1.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold leading-tight sm:static sm:px-1.5 sm:text-[11px]">
           {totalNotificacoes}
         </span>
       </button>
