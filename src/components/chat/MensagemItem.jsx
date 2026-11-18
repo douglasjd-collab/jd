@@ -325,12 +325,16 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     // Uma URL pública/temporária da D-API pode tocar, mas demora para informar
     // a duração e pode expirar. Só considerar pronto quando for permanente.
     const urlRecebida = mensagem.arquivo_url || '';
-    const urlPermanente = urlRecebida.startsWith('data:') || urlRecebida.includes('base44') || urlRecebida.includes('supabase') || urlRecebida.includes('amazonaws');
+    const urlPermanente = urlRecebida.includes('base44') || urlRecebida.includes('supabase') || urlRecebida.includes('amazonaws');
+    // Áudio antigo gravado como base64: o backend converte em URL do storage, que
+    // é o que mantém o player carregado ao sair e voltar para a conversa.
+    const audioBase64 = tipoConteudo === 'audio' && urlRecebida.startsWith('data:');
     if (isUrlValida(urlRecebida, mensagem.download_status) && mensagem.arquivo_url !== urlFalhouRef.current && (tipoConteudo !== 'audio' || urlPermanente)) {
       if (tipoConteudo === 'audio') guardarAudioUrl(audioKey, sanitizeUrl(urlRecebida));
       setMediaUrl(sanitizeUrl(urlRecebida));
       return;
     }
+    if (audioBase64 && !audioUrlsResolvidas.get(audioKey)) setMediaUrl(sanitizeUrl(urlRecebida));
 
     // Não aguardar clique nem temporizador: iniciar o download assim que a
     // mensagem entrar no bate-papo, inclusive quando o webhook marcar pendente.

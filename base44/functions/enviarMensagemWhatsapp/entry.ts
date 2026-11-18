@@ -599,6 +599,8 @@ Deno.serve(async (req) => {
       // Determinar tipo de conteúdo e ação D-API (texto ou mídia)
       let tipoConteudoDapi = 'texto';
       let arquivoUrlDapi = null;
+      // URL permanente do storage, usada no histórico: o data URI do áudio serve só para o envio.
+      let arquivoUrlPermanenteDapi = null;
       let dapiAction = 'sendText';
       let dapiActionParams = {};
 
@@ -610,13 +612,25 @@ Deno.serve(async (req) => {
           arquivoUrlDapi = arquivo.url;
           console.log('⚡ D-API mídia pré-enviada: usando URL direta do storage');
         } else if (tipoArq.startsWith('audio/') && arquivo.base64) {
-          // Enviar MP3 diretamente à D-API como data URI. Não usar Core.UploadFile:
-          // a integração possui cota mensal e não é necessária para o campo audio.
+          // O campo audio da D-API recebe o MP3 em data URI.
           const base64Limpo = String(arquivo.base64).includes(',')
             ? String(arquivo.base64).split(',').pop()
             : String(arquivo.base64);
           arquivoUrlDapi = `data:${tipoArq || 'audio/mpeg'};base64,${base64Limpo}`;
-          console.log('🎵 D-API áudio direto em base64, sem Core.UploadFile');
+          // Guardar o áudio no storage: o histórico precisa de uma URL permanente
+          // para o player carregar sozinho ao reabrir a conversa. Um base64 de
+          // centenas de KB não pode ficar gravado no cadastro da mensagem.
+          try {
+            const binAudio = atob(base64Limpo);
+            const bytesAudio = new Uint8Array(binAudio.length);
+            for (let i = 0; i < binAudio.length; i++) bytesAudio[i] = binAudio.charCodeAt(i);
+            const fileAudio = new File([bytesAudio], nomeUploadDapi, { type: tipoArq || 'audio/mpeg' });
+            const uploadAudio = await base44.integrations.Core.UploadFile({ file: fileAudio });
+            arquivoUrlPermanenteDapi = uploadAudio?.file_url || null;
+            console.log('🎵 Áudio enviado ao storage:', arquivoUrlPermanenteDapi);
+          } catch (uploadAudioErr) {
+            console.warn('⚠️ Upload do áudio para o storage falhou:', uploadAudioErr.message);
+          }
         } else try {
           const base64Limpo = String(arquivo.base64).includes(',') ? String(arquivo.base64).split(',').pop() : String(arquivo.base64);
           const binaryStrDapi = atob(base64Limpo);
@@ -817,7 +831,7 @@ Deno.serve(async (req) => {
           atendente_nome: nomeAtendente,
           tipo_conteudo: tipoConteudoDapi,
           texto: textoEnviar || (arquivo ? `📎 ${arquivo.nome}` : ''),
-          arquivo_url: arquivoUrlDapi,
+          arquivo_url: arquivoUrlPermanenteDapi || arquivoUrlDapi,
           arquivo_nome: arquivo?.nome || null,
           provider: 'dapi',
           download_status: 'nao_aplicavel',
@@ -832,7 +846,7 @@ Deno.serve(async (req) => {
         const novaMensagem = ecos?.[0]
           ? await base44.asServiceRole.entities.MensagemWhatsapp.update(ecos[0].id, {
               usuario_id: user.id, usuario_nome: nomeAtendente, atendente_nome: nomeAtendente,
-              ...(arquivoUrlDapi ? {arquivo_url: arquivoUrlDapi} : {}),
+              ...(arquivoUrlPermanenteDapi || arquivoUrlDapi ? {arquivo_url: arquivoUrlPermanenteDapi || arquivoUrlDapi} : {}),
             })
           : await base44.asServiceRole.entities.MensagemWhatsapp.create(dadosMensagemDapi);
 
@@ -870,7 +884,9 @@ Deno.serve(async (req) => {
           success: true,
           message_id: novaMensagem.id,
           whatsapp_id: messageIdDapi,
-          provider: 'dapi'
+          provider: 'dapi',
+          // Devolvido para a bolha já nascer com o player do áudio carregado.
+          arquivo_url: novaMensagem.arquivo_url || null
         });
         
       } catch (serviceError) {
@@ -883,7 +899,7 @@ Deno.serve(async (req) => {
             ...confirmacaoDapi,
             provider: 'dapi',
             sync_pending: !confirmacaoDapi.message_id,
-            arquivo_url: arquivoUrlDapi || null,
+            arquivo_url: arquivoUrlPermanenteDapi || arquivoUrlDapi || null,
           });
         }
         console.error('❌ Erro ao chamar whatsappService D-API:', serviceError.message);

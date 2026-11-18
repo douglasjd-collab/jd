@@ -29,6 +29,31 @@ export default async function(req) {
       await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagem_id, { arquivo_nome: nomeOriginal });
     }
 
+    // Áudios enviados antes desta correção foram gravados como data URI (base64).
+    // Converter em URL permanente do storage para o player carregar sozinho e
+    // continuar disponível quando a conversa for reaberta.
+    if ((mensagem.arquivo_url || '').startsWith('data:')) {
+      try {
+        const mimeDataUri = mensagem.arquivo_url.slice(5).split(';')[0] || 'audio/mpeg';
+        const base64DataUri = (mensagem.arquivo_url.split(',').pop() || '').replace(/\s/g, '');
+        const binDataUri = atob(base64DataUri);
+        const bytesDataUri = new Uint8Array(binDataUri.length);
+        for (let i = 0; i < binDataUri.length; i++) bytesDataUri[i] = binDataUri.charCodeAt(i);
+        const fileDataUri = new File([bytesDataUri], nomeOriginal || `audio_${mensagem_id}.mp3`, { type: mimeDataUri });
+        const uploadDataUri = await base44.asServiceRole.integrations.Core.UploadFile({ file: fileDataUri });
+        if (uploadDataUri?.file_url) {
+          await base44.asServiceRole.entities.MensagemWhatsapp.update(mensagem_id, {
+            arquivo_url: uploadDataUri.file_url,
+            mime_type: mimeDataUri,
+            download_status: 'baixado',
+          });
+          return Response.json({ ok: true, arquivo_url: uploadDataUri.file_url, arquivo_nome: nomeOriginal });
+        }
+      } catch (erroDataUri) {
+        console.warn('⚠️ Conversão de data URI para o storage falhou:', erroDataUri.message);
+      }
+    }
+
     // Se já tem URL permanente do nosso storage, verificar se o arquivo é válido antes de retornar
     const urlAtual = mensagem.arquivo_url;
     const isUrlPermanente = urlAtual && (
