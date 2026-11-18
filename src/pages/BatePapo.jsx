@@ -791,7 +791,7 @@ export default function BatePapo() {
       salvarHistoricoSessao(escopoHistorico, conversaSelecionadaId, ordenadas);
       return [...ordenadas, ...bolhasPendentesNaLista(conversaSelecionadaId, ordenadas)];
     },
-    staleTime: 30000,
+    staleTime: 0, // sempre conferir o histórico ao abrir a conversa
     gcTime: Infinity,
     refetchInterval: 15000,
     refetchOnWindowFocus: true,
@@ -984,17 +984,17 @@ export default function BatePapo() {
     if (!empresaId) return;
     const unsubConv = base44.entities.ConversaWhatsapp.subscribe((event) => {
       if (!['create', 'update'].includes(event.type)) return;
-      // Aplica a mudança na lista na hora — ex: conversa finalizada que reabre
-      // automaticamente ao receber/enviar mensagem nova (sai de "Finalizados"
-      // e entra em "Todos"/"Em Atend." sem precisar recarregar a página).
-      const conv = event.data;
+      // Aplica a mudança na lista na hora; se a conversa aberta recebeu mensagem, o painel atualiza junto.
+      const conv = event.data; let novaNaConversaAberta = false;
       if (conv?.id) {
         queryClient.setQueryData(['conversas-whatsapp', empresaId], (old = []) => {
-          if (!Array.isArray(old)) return old;
           // Evento em tempo real não passa pela autorização por conexão: só atualiza conversa já liberada.
-          if (!old.some(c => c.id === conv.id)) return old;
-          return old.map(c => c.id === conv.id ? { ...c, ...conv } : c);
-        });
+          if (!Array.isArray(old) || !old.some(c => c.id === conv.id)) return old;
+          return old.map(c => {
+            if (c.id === conv.id && conv.data_ultima_mensagem && conv.data_ultima_mensagem !== c.data_ultima_mensagem && conv.id === conversaSelecionadaIdRef.current) novaNaConversaAberta = true;
+            return c.id === conv.id ? { ...c, ...conv } : c;
+          });
+        }); if (novaNaConversaAberta) queryClient.invalidateQueries({ queryKey: ['mensagens-whatsapp', conv.id], exact: true, refetchType: 'active' });
       }
       // Updates já chegam completos pela assinatura; criação reconcilia o contato em segundo plano.
       if (event.type === 'create') refetchConversasComDebounce();
