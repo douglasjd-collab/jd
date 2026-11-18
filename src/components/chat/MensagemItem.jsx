@@ -105,8 +105,10 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
     return isUrlValida(mensagem.arquivo_url, mensagem.download_status) && !isPacoteFigurinha(mensagem.arquivo_url) ? sanitizeUrl(mensagem.arquivo_url) : null;
   });
   const [loadingMedia, setLoadingMedia] = useState(false);
+  // Texto gerado pelo webhook para mídia (ex: "📎 audio_123.mp3") não é transcrição.
+  const textoEhNomeArquivoMidia = (texto) => !texto || /^📎\s+\S+$/.test(String(texto).trim());
   const [transcricao, setTranscricao] = useState(
-    mensagem.tipo_conteudo === 'audio' && mensagem.texto && mensagem.texto !== 'Áudio'
+    mensagem.tipo_conteudo === 'audio' && mensagem.texto && mensagem.texto !== 'Áudio' && !textoEhNomeArquivoMidia(mensagem.texto)
       ? mensagem.texto : null
   );
   const [transcrevendo, setTranscrevendo] = useState(false);
@@ -802,7 +804,7 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
         );
 
       case 'audio':
-        const velocidades = [0.5, 1, 1.5, 2];
+        const velocidades = [1, 1.5, 2];
         const proximaVelocidade = velocidades[(velocidades.indexOf(velocidadeAudio) + 1) % velocidades.length];
         return (
           <div className="flex flex-col gap-2 min-w-[200px]">
@@ -873,6 +875,16 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
                   >
 
                   </audio>
+                  <button
+                    onClick={() => {
+                      setVelocidadeAudio(proximaVelocidade);
+                      if (audioRef.current) audioRef.current.playbackRate = proximaVelocidade;
+                    }}
+                    title="Velocidade de reprodução"
+                    className="flex-shrink-0 h-8 px-2 rounded-md bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    {velocidadeAudio}x
+                  </button>
                 </div>
                 <div className="flex items-center gap-1.5">
                   {transcricao ? (
@@ -890,17 +902,6 @@ export default function MensagemItem({ onAdicionarNota = null, mensagem, convers
                       {transcrevendo ? <><Loader2 className="w-3 h-3 animate-spin" /> Transcrevendo...</> : <><Mic className="w-3 h-3" /> Transcrever</>}
                     </button>
                   )}
-                  <button
-                    onClick={() => {
-                      setVelocidadeAudio(proximaVelocidade);
-                      if (audioRef.current) audioRef.current.playbackRate = proximaVelocidade;
-                    }}
-                    className={`text-xs px-2 py-1 rounded-lg font-medium transition-colors flex-shrink-0 ${
-                      isVendedor ? 'bg-white/15 hover:bg-white/25 text-white/80' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                    }`}
-                  >
-                    {velocidadeAudio}x
-                  </button>
                 </div>
               </div>
             ) : null}
