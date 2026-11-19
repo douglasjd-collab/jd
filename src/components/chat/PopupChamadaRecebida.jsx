@@ -36,15 +36,19 @@ export default function PopupChamadaRecebida({user}) {
  // usuário: se a chamada de configuração falhasse, o popup nunca abria.
  const load=useCallback(async()=>{
   try{
-   const rows=await base44.entities.RecebimentoLigacao.filter({empresa_id:user.empresa_id,user_id:user.id,ativo:true});
+   const [rows,prefs]=await Promise.all([
+    base44.entities.RecebimentoLigacao.filter({empresa_id:user.empresa_id,user_id:user.id,ativo:true}),
+    base44.functions.invoke('preferenciasRecebimentoLigacoes',{empresaId:user.empresa_id}).catch(()=>null),
+   ]);
    const lista=Array.isArray(rows)?rows:(rows?.items||[]);
-   const ids=lista.map(x=>x.connection_id).filter(Boolean);
+   const conexoes=prefs?.data?.connections||[];
+   setConnections(conexoes);
+   // A função devolve apenas os números liberados para o usuário: canal
+   // bloqueado nunca toca nem avisa, mesmo com configuração antiga gravada.
+   const liberadas=new Set(conexoes.map(c=>c.id));
+   const ids=lista.map(x=>x.connection_id).filter(id=>id&&liberadas.has(id));
    allowedRef.current=ids;setAllowed(ids);setError('');
   }catch{setError('Não foi possível verificar o recebimento de ligações')}
-  try{
-   const r=await base44.functions.invoke('preferenciasRecebimentoLigacoes',{empresaId:user.empresa_id});
-   setConnections(r?.data?.connections||[]);
-  }catch{}
  },[user.id,user.empresa_id]);
  useEffect(()=>{
   void load();

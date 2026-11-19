@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.57';
+import { carregarAcessoWhatsapp, nivelNaConexao } from '../../shared/acessoWhatsappShared.ts';
 Deno.serve(async req => {
  try {
   const b=createClientFromRequest(req), u=await b.auth.me();
@@ -8,7 +9,12 @@ Deno.serve(async req => {
   const admin=global || ['admin','gerente'].includes(u.perfil);
   const empresa=p.empresaId || u.empresa_id;
   if(!empresa || (!global && empresa!==u.empresa_id)) return Response.json({error:'Empresa sem autorização'},{status:403});
-  const connections=(await db.WhatsappConnection.filter({empresa_id:empresa},'-created_date',200)).filter(c=>c.provider_type==='dapi'&&!/^cloud-/i.test(c.session_id||''));
+  // Somente números liberados para o usuário: canal bloqueado não recebe ligação
+  // nem notificação, e não aparece para ativar o recebimento.
+  const acesso=await carregarAcessoWhatsapp({db,user:u,empresaId:empresa});
+  const connections=(await db.WhatsappConnection.filter({empresa_id:empresa},'-created_date',200))
+   .filter(c=>c.provider_type==='dapi'&&!/^cloud-/i.test(c.session_id||''))
+   .filter(c=>nivelNaConexao(acesso,c.id)!=='sem_acesso');
   const users=admin ? await db.User.filter({empresa_id:empresa},'full_name',1000) : [u];
   const target=p.userId || u.id;
   if(p.acao==='salvar') {

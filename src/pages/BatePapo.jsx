@@ -1115,15 +1115,24 @@ export default function BatePapo() {
         const diffSegundos = dataEnvio ? (agora - dataEnvio) / 1000 : 0;
         if (diffSegundos > 60) return;
 
-        const conversa = conversasRef.current.find(c => c.id === msgData.conversa_id);
-        const nomeRemetente = conversa?.cliente_nome || conversa?.cliente_telefone || 'Cliente';
-        const textoMsg = msgData.texto || '📎 Arquivo recebido';
-
-        if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+        const notificar = (conversa) => {
+          if (!('Notification' in window) || Notification.permission !== 'granted' || !document.hidden) return;
+          const nomeRemetente = conversa?.cliente_nome || conversa?.cliente_telefone || 'Cliente';
+          const textoMsg = msgData.texto || '📎 Arquivo recebido';
           const notif = new Notification(`💬 ${nomeRemetente}`, {
             body: textoMsg, icon: '/favicon.ico', tag: msgData.id,
           });
           notif.onclick = () => { window.focus(); if (conversa) selecionarConversa(conversa); notif.close(); };
+        };
+        const conversaConhecida = conversasRef.current.find(c => c.id === msgData.conversa_id);
+        if (conversaConhecida) {
+          notificar(conversaConhecida);
+        } else {
+          // Conversa fora da lista do usuário: confirma no banco antes de avisar.
+          // A leitura é bloqueada pelas permissões, então canal sem acesso não notifica.
+          base44.entities.ConversaWhatsapp.get(msgData.conversa_id)
+            .then(c => { if (c) notificar(c); })
+            .catch(() => {});
         }
       }
     });
