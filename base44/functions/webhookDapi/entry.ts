@@ -270,7 +270,24 @@ export default async function(req) {
       console.log(`✅ [Webhook D-API] ${webhookId} - Processado: handled=${!!processResult?.handled}`);
     } catch (error) {
       errorMessage = error.message;
-      console.error(`❌ [Webhook D-API] ${webhookId} - Erro ao processar:`, error.message);
+      const _etapaErro = /contato WhatsApp em processamento/.test(String(error?.message))
+        ? 'TRAVA_CONTATO_TIMEOUT'
+        : 'PROCESSAMENTO_ERRO';
+      const _detalheErro = [
+        `${error?.name || 'Error'}: ${error?.message || 'sem mensagem'}`,
+        ...String(error?.stack || '').split('\n').slice(1, 4).map(l => l.trim()),
+      ].filter(Boolean).join(' | ');
+      console.error(`❌ [Webhook D-API] ${webhookId} - Erro ao processar (${_etapaErro}):`, _detalheErro);
+      await registrarDiagnostico(base44, webhookId, 10, {
+        etapa_nome: _etapaErro,
+        event: eventType,
+        session_id: sessionId,
+        connection_id: connectionId,
+        empresa_id: empresaId,
+        status: 'erro',
+        erro: _detalheErro,
+        conteudo_extra: `event=${eventType} | connection=${connection?.nome || 'N/A'} | processed=false`,
+      });
     }
     
     // Atualizar log com resultado — somente metadados seguros (sem telefone, conteúdo, etc.)
