@@ -8,7 +8,7 @@ export default function StatusConversaBadge({ conversa }) {
   const agente = conversa.ia_agente_nome || 'IA';
   const vendedorAtendendo = !finalizada && !iaAtiva && !!(conversa.responsavel_nome || conversa.usuario_responsavel_nome);
   const nome = finalizada ? 'Atendimento finalizado' : iaAtiva
-    ? (/^IA\b/i.test(agente) ? agente : `IA ${agente}`)
+    ? (/\bIA$/i.test(agente) ? agente : `${agente} IA`)
     : conversa.responsavel_nome || conversa.usuario_responsavel_nome || 'Sem responsável';
 
   return (
