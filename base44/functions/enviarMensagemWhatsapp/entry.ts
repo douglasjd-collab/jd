@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
         usuario_responsavel_id: id,
         usuario_responsavel_nome: nome,
         usuario_responsavel_user_id: user.id,
-        responsavel_expira_em: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        responsavel_expira_em: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
         atendimento_transferido_para_id: conversaDoBanco?.atendimento_transferido_para_id === id ? id : null,
       };
     };
