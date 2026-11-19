@@ -89,6 +89,7 @@ Deno.serve(async (req) => {
 
       if (existente) {
         const dados: any = {};
+        if (!existente.is_active) dados.is_active = true;
         if (status && status !== existente.status) dados.status = status;
         if (phone && phone !== existente.phone_number) dados.phone_number = phone;
         if (Object.keys(dados).length) {
