@@ -34,6 +34,14 @@ export default function CanaisWhatsappUsuario({ colaboradorId, empresaId, podeEd
     setCarregando(true);
     setErro('');
     try {
+      // Antes de mostrar as permissões, reconcilia canais novos e removidos na D-API.
+      // Falha de sincronização não impede a edição das permissões já disponíveis.
+      try {
+        const sync = await base44.functions.invoke('sincronizarConexoesDapi', { empresa_id: empresaId });
+        if (sync?.data?.error) console.warn('Sincronização D-API:', sync.data.error);
+      } catch (syncError) {
+        console.warn('Sincronização D-API indisponível:', syncError);
+      }
       const { data } = await base44.functions.invoke('permissoesWhatsapp', { modo: 'matriz', empresa_id: empresaId });
       if (data?.error) throw new Error(data.error);
       const lista = data?.conexoes || [];
