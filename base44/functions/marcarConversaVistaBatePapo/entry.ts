@@ -21,10 +21,7 @@ Deno.serve(async (req) => {
     if (!registros.length) {
       await db.LeituraConversaWhatsapp.create({ ...chave, vista_ate: mensagem.data_envio });
     } else if (registros[0].vista_ate < mensagem.data_envio) {
-      await db.LeituraConversaWhatsapp.updateMany(
-        { id: registros[0].id, vista_ate: { $lt: mensagem.data_envio } },
-        { $set: { vista_ate: mensagem.data_envio } }
-      );
+      await db.LeituraConversaWhatsapp.update(registros[0].id, { vista_ate: mensagem.data_envio });
     }
     return Response.json({ ok: true });
   } catch (error) {
