@@ -1,20 +1,26 @@
 // Escopo único dos contatos autorizados; não depende do coordenador nem dos webhooks.
 export const EMPRESA_TESTE_IA = '699696c2c9f5bffc2e67402b';
-// Somente as duas instâncias D-API do teste. A instância J D Promotora (98119-4149) fica fora.
-export const CONEXOES_TESTE_IA = ['6afe4455f2b7e0a226ee5c6e', '6afe44544bd3d55e63407c54'];
-export const TELEFONES_TESTE_IA = ['558781184956', '5587981184956', '5587991527083', '558791527083'];
+// Instâncias D-API do teste: Douglas, Comercial e a conexão principal J D Promotora (98119-4149).
+export const CONEXOES_TESTE_IA = ['6afe4455f2b7e0a226ee5c6e', '6afe44544bd3d55e63407c54', '6afe4455300e325d0579fdd4'];
+export const TELEFONES_TESTE_IA = ['558781184956', '5587981184956', '5587991527083', '558791527083', '558781275628'];
 export const conexaoTesteIA = (valor: any): boolean => CONEXOES_TESTE_IA.includes(String(valor || ''));
 export function telefoneCanonicoTesteIA(valor: any): string | null {
  const numero = String(valor || '').replace(/\D/g, '');
  if (['558781184956', '5587981184956'].includes(numero)) return '5587981184956';
  if (['5587991527083', '558791527083'].includes(numero)) return '5587991527083';
+ if (numero === '558781275628') return '558781275628';
  return null;
 }
-// O novo contato só participa a partir desta liberação; não reprocessa conversas antigas.
+// Contatos liberados depois do início do teste só participam a partir da liberação.
+const INICIO_POR_CONTATO: Record<string, string> = {
+ '5587991527083': '2026-11-04T03:50:23.944Z',
+ '558781275628': '2026-11-19T02:25:00.000Z',
+};
 export function inicioTesteContatoIA(valor: any, ativadoEm: string): string {
  const inicio = Date.parse(ativadoEm);
- if (telefoneCanonicoTesteIA(valor) !== '5587991527083' || !Number.isFinite(inicio)) return ativadoEm;
- return new Date(Math.max(inicio, Date.parse('2026-11-04T03:50:23.944Z'))).toISOString();
+ const piso = INICIO_POR_CONTATO[telefoneCanonicoTesteIA(valor) || ''];
+ if (!piso || !Number.isFinite(inicio)) return ativadoEm;
+ return new Date(Math.max(inicio, Date.parse(piso))).toISOString();
 }
 export const telefoneTesteIA = (valor: any) => telefoneCanonicoTesteIA(valor) !== null;
 // Memória sempre vinculada ao canal e ao contato: nenhum resumo atravessa conexões.
