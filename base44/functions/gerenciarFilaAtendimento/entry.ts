@@ -1,7 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 
 // Automações inteligentes da fila de atendimento do Bate-Papo:
-// 1) Atendimento não finalizado em 24 horas: limpa responsável → conversa volta para Esperando.
+// 1) Atendimento ativo com 30 minutos de inatividade: devolve para Esperando.
 // 2) Inicia campanhas não oficiais cuja data/hora agendada já chegou.
 // Executada periodicamente pela automação agendada existente.
 Deno.serve(async (req) => {
@@ -17,23 +17,23 @@ Deno.serve(async (req) => {
     let totalLimpos = 0;
     let hasMore = true;
 
-    // Conversas (ativas ou encerradas) com responsavel expirado → volta para Esperando
+    // Atualiza individualmente apenas atendimentos ativos, nunca finalizados ou prioritários.
+    // Evita operadores de atualização em massa incompatíveis com o SDK.
     while (hasMore) {
-      // Conversas marcadas como atendimento prioritário (estrela) NÃO voltam
-      // para Esperando por inatividade — mantêm o atendente responsável.
-      const resp = await base44.asServiceRole.entities.ConversaWhatsapp.updateMany(
-        {
-          responsavel_id: { $exists: true, $ne: null },
-          responsavel_expira_em: { $lte: agora },
-          atendimento_prioritario: { $ne: true },
-        },
-        {
-          $set: { status: 'ativa', ultimo_remetente: 'cliente' },
-          $unset: { responsavel_id: '', responsavel_nome: '', responsavel_expira_em: '', atendimento_transferido_para_id: '' },
-        }
+      const vencidas = await base44.asServiceRole.entities.ConversaWhatsapp.filter(
+        { status: 'ativa', responsavel_expira_em: { $lte: agora } },
+        'responsavel_expira_em', 100
       );
-      totalLimpos += resp?.modified_count || resp?.n || 0;
-      hasMore = !!resp?.has_more;
+      const elegiveis = vencidas.filter(c => c.responsavel_id && !c.atendimento_prioritario);
+      for (const conversa of elegiveis) {
+        await base44.asServiceRole.entities.ConversaWhatsapp.update(conversa.id, {
+          status: 'ativa', ultimo_remetente: 'cliente',
+          responsavel_id: null, responsavel_nome: null, responsavel_user_id: null,
+          responsavel_expira_em: null, atendimento_transferido_para_id: null,
+        });
+        totalLimpos++;
+      }
+      hasMore = vencidas.length === 100 && elegiveis.length > 0;
     }
 
     // Iniciar campanhas não oficiais agendadas cuja hora já chegou.
@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       success: true,
       processados: totalLimpos,
       campanhas_iniciadas: campanhasIniciadas,
-      mensagem: `${totalLimpos} conversa(s) retornaram para Esperando após 24h; ${campanhasIniciadas} campanha(s) agendada(s) iniciada(s).`,
+      mensagem: `${totalLimpos} conversa(s) retornaram para Esperando após 30 minutos de inatividade; ${campanhasIniciadas} campanha(s) agendada(s) iniciada(s).`,
     });
   } catch (error) {
     console.error('Erro em gerenciarFilaAtendimento:', error);
