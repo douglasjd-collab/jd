@@ -74,6 +74,10 @@ Deno.serve(async (req) => {
     const criadas: string[] = [];
     const atualizadas: string[] = [];
     const falhas: string[] = [];
+    const removidas: string[] = [];
+    // Somente uma lista válida e explicitamente retornada permite reconciliar exclusões.
+    const listaValida = Array.isArray(json?.data) || Array.isArray(json?.sessions) || Array.isArray(json);
+    const idsAtuais = new Set(sessoes.map((s: any) => String(s?.id || '').trim()).filter(Boolean));
 
     for (const sessao of sessoes) {
       const sessionId = String(sessao?.id || '').trim();
@@ -141,11 +145,23 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Instâncias excluídas da D-API não podem continuar liberadas para usuários.
+    // Preserva o histórico no banco, mas retira o canal das listas ativas.
+    if (listaValida) {
+      for (const antiga of existentes) {
+        if (antiga.provider_type !== 'dapi' || !antiga.is_active || !antiga.session_id) continue;
+        if (idsAtuais.has(String(antiga.session_id))) continue;
+        await base44.asServiceRole.entities.WhatsappConnection.update(antiga.id, { is_active: false, status: 'desconectado' });
+        removidas.push(antiga.session_id);
+      }
+    }
+
     return Response.json({
       success: true,
       total_canais_dapi: sessoes.length,
       criadas,
       atualizadas,
+      removidas,
       falhas,
     });
   } catch (e) {
