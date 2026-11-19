@@ -756,10 +756,11 @@ async function processMessageReceived(base44, body, connection, empresaId) {
     // Uma conversa por conexão + cliente: o mesmo número falando com dois
     // WhatsApps da empresa nunca compartilha histórico. Conversas antigas sem
     // connection_id são reaproveitadas apenas até a primeira mensagem nova.
-    const _todasConversasTelefone = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-      empresa_id: empresaId,
-      cliente_telefone: { $in: variantesTelefoneWhatsapp(fromPhone) }
-    }, '-created_date', 50);
+    const _variantes = [...new Set(variantesTelefoneWhatsapp(fromPhone))];
+    const _resultadosTelefone = await Promise.all(_variantes.map(cliente_telefone =>
+      base44.asServiceRole.entities.ConversaWhatsapp.filter({ empresa_id: empresaId, cliente_telefone }, '-created_date', 50)
+    ));
+    const _todasConversasTelefone = [...new Map(_resultadosTelefone.flat().map(c => [c.id, c])).values()];
     const _daConexao = _todasConversasTelefone.find((c: any) => c.connection_id === connection.id) || null;
     const _legadaSemConexao = _todasConversasTelefone.find((c: any) => !c.connection_id) || null;
     const conversas = [_daConexao || _legadaSemConexao].filter(Boolean);
@@ -787,7 +788,10 @@ async function processMessageReceived(base44, body, connection, empresaId) {
       const variantesNome = new Set([fromPhone]);
       if (fromPhone.startsWith('55') && fromPhone.length === 13) variantesNome.add(fromPhone.slice(0, 4) + fromPhone.slice(5));
       if (fromPhone.startsWith('55') && fromPhone.length === 12) variantesNome.add(fromPhone.slice(0, 4) + '9' + fromPhone.slice(4));
-      const contatosNomeFixo = await base44.asServiceRole.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, telefone: { $in: [...variantesNome] }, nome_fixo: true }, '-updated_date', 1).catch(() => [{ nome: conversa.cliente_nome }]);
+      const contatosNomeFixo = (await Promise.all([...variantesNome].map(telefone =>
+        base44.asServiceRole.entities.ContatoWhatsapp.filter({ empresa_id: empresaId, telefone, nome_fixo: true }, '-updated_date', 1)
+          .catch(() => [])
+      ))).flat();
       const nomeFixoCRM = contatosNomeFixo[0]?.nome;
       const atualizarConversa = {
         cliente_nome: nomeFixoCRM || fromName,
@@ -1044,11 +1048,9 @@ async function processMessageSentFromPhone(base44, data, connection, empresaId, 
   }
   const timestamp = parseTimestamp(data.timestamp || data.createdAt);
 
-  const conversas = await base44.asServiceRole.entities.ConversaWhatsapp.filter({
-    empresa_id: empresaId,
-    connection_id: connection.id,
-    cliente_telefone: { $in: variantesTelefoneWhatsapp(telefone) }
-  }, '-created_date', 1);
+  const conversas = (await Promise.all([...new Set(variantesTelefoneWhatsapp(telefone))].map(cliente_telefone =>
+    base44.asServiceRole.entities.ConversaWhatsapp.filter({ empresa_id: empresaId, connection_id: connection.id, cliente_telefone }, '-created_date', 1)
+  ))).flat();
 
   let conversa;
   if (conversas && conversas.length > 0) {
