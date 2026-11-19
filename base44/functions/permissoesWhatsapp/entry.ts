@@ -30,7 +30,7 @@ export default async function (req: Request): Promise<Response> {
 
     if (modo === 'minhas') {
       const acesso = await carregarAcessoWhatsapp({ db, user, empresaId });
-      const conexoes = await db.WhatsappConnection.filter({ empresa_id: empresaId }, '-created_date', 100);
+      const conexoes = await db.WhatsappConnection.filter({ empresa_id: empresaId, is_active: true }, '-created_date', 100);
       const autorizadas = conexoes.filter((c: any) => acesso.irrestrito || acesso.conexoesPermitidas.includes(c.id));
       return Response.json({
         irrestrito: acesso.irrestrito,
@@ -49,7 +49,7 @@ export default async function (req: Request): Promise<Response> {
     if (modo === 'matriz') {
       const [colaboradores, conexoes, configs] = await Promise.all([
         db.Colaborador.filter({ empresa_id: empresaId, status: 'ativo' }, 'nome', 300),
-        db.WhatsappConnection.filter({ empresa_id: empresaId }, '-created_date', 50),
+        db.WhatsappConnection.filter({ empresa_id: empresaId, is_active: true }, '-created_date', 100),
         db.PermissaoWhatsappColaborador.filter({ empresa_id: empresaId, ativo: true }, '-updated_date', 1000),
       ]);
 
