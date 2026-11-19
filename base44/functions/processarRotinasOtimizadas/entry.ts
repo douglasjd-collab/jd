@@ -62,9 +62,8 @@ Deno.serve(async (req) => {
     const [filaVencida, campanhaVencida] = await Promise.all([
       base44.asServiceRole.entities.ConversaWhatsapp.filter(
         {
-          responsavel_id: { $exists: true, $ne: null },
+          status: 'ativa',
           responsavel_expira_em: { $lte: agoraISO },
-          atendimento_prioritario: { $ne: true },
         },
         'responsavel_expira_em',
         1
