@@ -129,7 +129,9 @@ Deno.serve(async (req) => {
         console.warn(`⚠️ Conversa sem telefone: ${conversa.id}`);
         continue;
       }
-      const chave = normalizarTelefone(tel);
+      // Nunca mesclar conversas de instâncias diferentes, mesmo para o mesmo telefone.
+      // Preserva também o histórico de conexões antigas/desativadas.
+      const chave = `${conversa.connection_id || conversa.instancia || 'legado'}::${normalizarTelefone(tel)}`;
       if (!chave) {
         console.warn(`⚠️ Telefone inválido: ${tel} (conversa ${conversa.id})`);
         continue;
@@ -184,6 +186,7 @@ Deno.serve(async (req) => {
         canal_origem: conversa.canal_origem || null,
         provider: conversa.provider || null,
         instancia: conversa.instancia || null,
+        connection_id: conversa.connection_id || null,
         phone_number_id_meta: conversa.phone_number_id_meta || null,
         locked_provider: conversa.locked_provider || false,
         bloqueado: conversa.bloqueado || false,
