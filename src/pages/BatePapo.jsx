@@ -1429,16 +1429,11 @@ export default function BatePapo() {
   // Ao assumir, o vendedor mantém a conversa até finalizar.
   // Se não finalizar em 24 horas, a automação devolve para "Esperando".
 
-  const TEMPO_ATENDIMENTO_MS = 24 * 60 * 60 * 1000;
+  const TEMPO_ATENDIMENTO_MS = 30 * 60 * 1000;
 
   // Ao assumir/enviar, preserva o prazo original; mensagens posteriores não reiniciam as 24h.
   const marcarResponsabilidade = async (conversaId) => {
-    const expiraAtual = conversaSelecionada?.id === conversaId
-      ? conversaSelecionada.responsavel_expira_em
-      : null;
-    const expira = expiraAtual && new Date(expiraAtual) > new Date()
-      ? expiraAtual
-      : new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
+    const expira = new Date(Date.now() + TEMPO_ATENDIMENTO_MS).toISOString();
     try {
       await base44.entities.ConversaWhatsapp.update(conversaId, {
         responsavel_id: user?.colaborador_id || user?.id || 'atendente',
