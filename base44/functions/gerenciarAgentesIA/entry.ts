@@ -1,6 +1,6 @@
 import { sincronizarEtiquetaIA } from '../../shared/atendimentoIA.ts';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
-import { parseIA, EMPRESA_TESTE_IA, CONEXAO_TESTE_IA, TELEFONES_TESTE_IA } from '../../shared/qualificadorTesteIA.ts';
+import { parseIA, EMPRESA_TESTE_IA, CONEXOES_TESTE_IA, TELEFONES_TESTE_IA } from '../../shared/qualificadorTesteIA.ts';
 
 // Administração apenas. Validação OpenAI é explícita; nenhuma ação envia mensagens ou faz ligações.
 const ADM = ['master', 'super_admin', 'admin'];
@@ -39,9 +39,15 @@ Deno.serve(async (req) => {
         if (outros.some((r: any) => r.id !== agente.id && parseIA(r).papel === dados.papel && parseIA(r).ativo === true)) return fail('Já existe um agente ativo com esta função. Desative-o antes de ativar outro.');
         if (Number(body.versao) !== Number(agente.versao || 1)) return fail('O agente foi alterado. Atualize antes de ativar.', 409);
         if (!Deno.env.get('OPENAI_API_KEY_AGENTES')?.trim()) return fail('Configure a chave OpenAI dos agentes antes de ativar.');
-        const c = await db.WhatsappConnection.get(CONEXAO_TESTE_IA);
-        if (c.empresa_id !== empresa || c.provider_type !== 'dapi' || !c.is_active || c.status !== 'conectado') return fail('A conexão de teste não está disponível ou conectada.');
-        dados.connection_id = CONEXAO_TESTE_IA;
+        const conexoes: any[] = [];
+        for (const conexaoId of CONEXOES_TESTE_IA) {
+          const c = await db.WhatsappConnection.get(conexaoId).catch(() => null);
+          if (!c || c.empresa_id !== empresa || c.provider_type !== 'dapi' || !c.is_active) return fail('Uma das instâncias de teste não está disponível nesta empresa.');
+          conexoes.push(c);
+        }
+        if (!conexoes.some((c: any) => c.status === 'conectado')) return fail('Nenhuma das duas instâncias de teste está conectada no momento.');
+        delete dados.connection_id;
+        dados.connection_ids = [...CONEXOES_TESTE_IA];
         dados.modo = 'teste';
         dados.telefones_teste = TELEFONES_TESTE_IA;
         dados.ativado_em = new Date().toISOString();
@@ -51,7 +57,7 @@ Deno.serve(async (req) => {
       const mudanca = { dados_json: JSON.stringify(dados), status: body.ativo ? 'aprovado' : 'desativado',
         versao: Number(agente.versao || 1) + 1, autor_id: me.id, autor_nome: me.full_name || me.email };
       await records.create({ empresa_id: empresa, tipo: 'historico', titulo: (body.ativo ? 'Ativação de teste: ' : 'Desativação: ') + agente.titulo,
-        conteudo: body.ativo ? 'Teste por texto nos contatos autorizados (Eduarda e +55 (87) 99152-7083), na conexão Douglas | JD Promotora, com memórias individuais.' : 'Respostas automáticas desativadas manualmente.',
+        conteudo: body.ativo ? 'Teste por texto nos contatos autorizados (Eduarda e +55 (87) 99152-7083), nas instâncias Douglas (+55 87 8127-5628) e Comercial (+55 87 9152-7083), com memórias separadas por canal. A instância J D Promotora (98119-4149) permanece sem IA.' : 'Respostas automáticas desativadas manualmente.',
         status: 'aprovado', agente_id: agente.id, versao: mudanca.versao,
         dados_json: JSON.stringify({ anterior: agente, seguinte: { ...agente, ...mudanca } }), autor_id: me.id, autor_nome: me.full_name || me.email });
       const registro = await records.update(agente.id, mudanca);
@@ -105,9 +111,14 @@ Deno.serve(async (req) => {
     }
     if (action === 'listar') {
       const all = await records.filter({ empresa_id: empresa }, '-updated_date', 501);
-      const cons = await db.WhatsappConnection.filter({ empresa_id: empresa, provider_type: 'dapi', is_active: true }, '-created_date', 100);
+      const cons = await db.WhatsappConnection.filter({ empresa_id: empresa, provider_type: 'dapi' }, '-created_date', 100);
+      // Somente as duas instâncias de teste aparecem no módulo; a J D Promotora fica fora.
+      const conexoesTeste = CONEXOES_TESTE_IA.map((id: string) => {
+        const c = cons.find((x: any) => x.id === id);
+        return { id, nome: c?.nome || 'Instância de teste', telefone: c?.phone_number || '', status: c?.status || 'não encontrada' };
+      });
       return Response.json({ empresa_id: empresa, empresas, registros: all.slice(0, 500), mais_registros: all.length > 500,
-        conexoes: cons.map((c: any) => ({ id: c.id, nome: c.nome || c.session_id || 'WhatsApp', status: c.status })),
+        conexoes: conexoesTeste, telefones_teste: TELEFONES_TESTE_IA,
         integracao: { chave_presente: Boolean(Deno.env.get('OPENAI_API_KEY_AGENTES')), atendimento_automatico: all.some((r: any) => r.tipo === 'agente' && parseIA(r).ativo === true), voz_pronta: false, simulador_pronto: false, follow_up_intervalo_horas: 24 } });
     }
     if (action === 'clientes') {
@@ -139,7 +150,9 @@ Deno.serve(async (req) => {
     const anteriorDados = parseIA(old);
     dados.ativo = tipo === 'agente' && anteriorDados.ativo === true && anteriorDados.papel === dados.papel;
     if (dados.ativo) {
-      dados.connection_id = anteriorDados.connection_id;
+      // Editar treinamento não muda os canais já autorizados no teste.
+      dados.connection_ids = anteriorDados.connection_ids || [...CONEXOES_TESTE_IA];
+      delete dados.connection_id;
       dados.modo = anteriorDados.modo;
       dados.telefones_teste = anteriorDados.telefones_teste;
       dados.ativado_em = anteriorDados.ativado_em;
@@ -147,6 +160,12 @@ Deno.serve(async (req) => {
     if (tipo === 'agente') {
       dados.nome_atendimento = text(dados.nome_atendimento, 80).replace(/\s+/g, ' ');
       if (!['qualificador', 'vendedor', 'follow_up'].includes(dados.papel)) return fail('Selecione uma função válida.');
+      if (!dados.ativo) {
+        const informadas = Array.isArray(dados.connection_ids) ? dados.connection_ids.filter((v: any) => typeof v === 'string') : [];
+        dados.connection_ids = informadas.length ? [...new Set(informadas)] : (anteriorDados.connection_ids || []);
+      }
+      if (!(Array.isArray(dados.connection_ids) ? dados.connection_ids : []).every((v: string) => CONEXOES_TESTE_IA.includes(v))) return fail('Somente as instâncias Douglas e Comercial podem ser vinculadas ao teste.', 403);
+      delete dados.connection_id;
       dados.permissoes = Array.isArray(dados.permissoes) ? dados.permissoes.filter((p: string) => ['consultar_cliente','registrar_memoria','consultar_tabelas','simular','consultar_lances','enviar_mensagem','enviar_video','ligar','transferir'].includes(p)) : [];
     }
     if (tipo === 'configuracao') {
@@ -165,9 +184,9 @@ Deno.serve(async (req) => {
       dados.integracao_audio_pronta = false;
       dados.integracao_chamadas_pronta = false;
     }
-    if (dados.connection_id) {
-      const c = await db.WhatsappConnection.get(dados.connection_id);
-      if (c.empresa_id !== empresa || c.provider_type !== 'dapi') return fail('Conexão não autorizada.', 403);
+    if (Array.isArray(dados.connection_ids) && dados.connection_ids.length) {
+      const lista = await db.WhatsappConnection.filter({ empresa_id: empresa, provider_type: 'dapi' }, '-created_date', 100);
+      if (!dados.connection_ids.every((v: string) => lista.some((c: any) => c.id === v))) return fail('Conexão não autorizada.', 403);
     }
     // Conhecimento geral usa agente_id vazio; vínculo específico só aceita agente da mesma empresa.
     let agenteId = text(old?.agente_id, 100);

@@ -1,5 +1,5 @@
-import { EMPRESA_TESTE_IA, CONEXAO_TESTE_IA, TELEFONES_TESTE_IA, telefoneTesteIA, origemMemoriaTesteIA, ORIGENS_MEMORIA_TESTE_IA, inicioTesteContatoIA } from './escopoTesteIA.ts';
-export { EMPRESA_TESTE_IA, CONEXAO_TESTE_IA, TELEFONES_TESTE_IA, telefoneTesteIA } from './escopoTesteIA.ts';
+import { EMPRESA_TESTE_IA, CONEXOES_TESTE_IA, conexaoTesteIA, telefoneTesteIA, origemMemoriaTesteIA, PARES_TESTE_IA, inicioTesteContatoIA } from './escopoTesteIA.ts';
+export { EMPRESA_TESTE_IA, CONEXOES_TESTE_IA, conexaoTesteIA, TELEFONES_TESTE_IA, telefoneTesteIA } from './escopoTesteIA.ts';
 import { consultarVeiculoDoAtendimentoIA } from './catalogoVeiculosIA.ts';
 import { enviarDapiDireto } from './dapiEnvioShared.ts';
 import { camposAtendimentoIA } from './atendimentoIA.ts';
@@ -15,9 +15,10 @@ const filas = new Map<string, Promise<any>>();
 export function elegivelTesteIA(agente: any, conversa: any, mensagem: any, conexao: any) {
   const d = parseIA(agente);
   return agente?.empresa_id === EMPRESA_TESTE_IA && conversa?.empresa_id === EMPRESA_TESTE_IA &&
-    conexao?.empresa_id === EMPRESA_TESTE_IA && conexao?.id === CONEXAO_TESTE_IA &&
+    conexao?.empresa_id === EMPRESA_TESTE_IA && conexaoTesteIA(conexao?.id) &&
     conexao?.provider_type === 'dapi' && conexao?.is_active === true && conexao?.status === 'conectado' &&
-    conversa?.connection_id === CONEXAO_TESTE_IA && d.connection_id === CONEXAO_TESTE_IA &&
+    conversa?.connection_id === conexao.id &&
+    (Array.isArray(d.connection_ids) ? d.connection_ids : []).includes(conexao.id) &&
     Object.hasOwn(NOMES, d.papel) && d.ativo === true && d.modo === 'teste' &&
     telefoneTesteIA(conversa.cliente_telefone) && mensagem?.remetente === 'cliente' &&
     mensagem?.empresa_id === conversa.empresa_id && mensagem?.conversa_id === conversa.id &&
@@ -43,7 +44,7 @@ export function corrigirCartaAmbiguaIA(out: any, papel: string, texto: string) {
   return out;
 }
 const contextoTeste = (c: any) => c?.empresa_id === EMPRESA_TESTE_IA &&
-  c?.connection_id === CONEXAO_TESTE_IA && telefoneTesteIA(c?.cliente_telefone);
+  conexaoTesteIA(c?.connection_id) && telefoneTesteIA(c?.cliente_telefone);
 const humano = (m: any) => m.remetente === 'vendedor' && !String(m.usuario_nome || m.atendente_nome || '').startsWith('IA •');
 const extrairTexto = (j: any) => (j.output || []).filter((x: any) => x.type === 'message')
   .flatMap((x: any) => x.content || []).filter((x: any) => x.type === 'output_text').map((x: any) => x.text || '').join('').trim();
@@ -52,31 +53,32 @@ export function dentroHorarioIA(config: any, agora = new Date()) {
   const inicio = Number(config.hora_inicio ?? 8), fim = Number(config.hora_fim ?? 18);
   return Number.isInteger(inicio) && Number.isInteger(fim) && inicio >= 0 && fim <= 23 && fim > inicio && h >= inicio && h < fim;
 }
-async function carregar(db: any, origemMemoria: string) {
+async function carregar(db: any, origemMemoria: string, conexaoId: string) {
   const agentes = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA_TESTE_IA, tipo: 'agente' }, '-updated_date', 50);
   const ativos: any = {};
   for (const a of agentes) {
     const d = parseIA(a);
-    if (d.ativo === true && d.modo === 'teste' && d.connection_id === CONEXAO_TESTE_IA && !ativos[d.papel]) ativos[d.papel] = a;
+    if (d.ativo === true && d.modo === 'teste' && (Array.isArray(d.connection_ids) ? d.connection_ids : []).includes(conexaoId) && !ativos[d.papel]) ativos[d.papel] = a;
   }
   const memorias = await db.AgenteIARegistro.filter({ empresa_id: EMPRESA_TESTE_IA, tipo: 'memoria', origem: origemMemoria }, '-updated_date', 1);
   return { ativos, memoria: memorias[0] };
 }
 export async function processarQualificadorTesteIA(db: any, connection: any, conversa: any, mensagem: any) {
-  if (connection?.id !== CONEXAO_TESTE_IA || !contextoTeste(conversa) || mensagem?.remetente !== 'cliente') return;
-  return serializar(origemMemoriaTesteIA(conversa.cliente_telefone), () => executar(db, connection, conversa, mensagem, false));
+  if (!conexaoTesteIA(connection?.id) || conversa?.connection_id !== connection.id || !contextoTeste(conversa) || mensagem?.remetente !== 'cliente') return;
+  return serializar(origemMemoriaTesteIA(conversa.cliente_telefone, connection.id), () => executar(db, connection, conversa, mensagem, false));
 }
 export async function processarFollowUpTesteIA(db: any) {
   // Somente as memórias dos contatos explicitamente autorizados.
   const resultados = [];
-  for (const origemMemoria of ORIGENS_MEMORIA_TESTE_IA) resultados.push(await serializar(origemMemoria, async () => {
-    const { ativos, memoria } = await carregar(db, origemMemoria);
+  for (const par of PARES_TESTE_IA) resultados.push(await serializar(par.origem, async () => {
+    const { ativos, memoria } = await carregar(db, par.origem, par.conexao_id);
     if (!ativos.follow_up || !memoria) return { enviado: false, motivo: 'sem_pendencia' };
     const m = parseIA(memoria);
     if (!m.coordenador || !m.conversa_id) return { enviado: false, motivo: 'aguardando_nova_conversa' };
     const conversa = await db.ConversaWhatsapp.get(m.conversa_id);
-    if (!contextoTeste(conversa) || origemMemoriaTesteIA(conversa.cliente_telefone) !== origemMemoria) return { enviado: false, motivo: 'fora_do_teste' };
-    const connection = await db.WhatsappConnection.get(CONEXAO_TESTE_IA);
+    if (!contextoTeste(conversa) || conversa.connection_id !== par.conexao_id ||
+      origemMemoriaTesteIA(conversa.cliente_telefone, par.conexao_id) !== par.origem) return { enviado: false, motivo: 'fora_do_teste' };
+    const connection = await db.WhatsappConnection.get(par.conexao_id);
     return executar(db, connection, conversa, null, true);
   }));
   return { resultados };
@@ -111,13 +113,14 @@ async function dadosComerciais(db: any, agente: any) {
   return JSON.stringify(dados).slice(0, 14000);
 }
 async function executar(db: any, connection: any, conversaOriginal: any, mensagem: any, proativo: boolean) {
-  const origemMemoria = origemMemoriaTesteIA(conversaOriginal.cliente_telefone);
+  const origemMemoria = origemMemoriaTesteIA(conversaOriginal.cliente_telefone, connection.id);
   const nomeContato = conversaOriginal.cliente_nome || 'Contato de teste';
-  const carregado = await carregar(db, origemMemoria), ativos = carregado.ativos;
+  const carregado = await carregar(db, origemMemoria, connection.id), ativos = carregado.ativos;
   let memoria = carregado.memoria;
   let md = parseIA(memoria), coord = md.coordenador || {};
   let conversa = await db.ConversaWhatsapp.get(conversaOriginal.id);
-  if (!contextoTeste(conversa) || origemMemoriaTesteIA(conversa.cliente_telefone) !== origemMemoria) return { enviado: false };
+  if (!contextoTeste(conversa) || conversa.connection_id !== connection.id ||
+    origemMemoriaTesteIA(conversa.cliente_telefone, connection.id) !== origemMemoria) return { enviado: false };
   const marcadorReabertura = conversa.ia_sessao_id ||
     (md.conversa_id && md.conversa_id !== conversa.id ? 'conversa:' + conversa.id : null);
   const novaReabertura = Boolean(marcadorReabertura && coord.reabertura_sessao !== marcadorReabertura);
@@ -251,7 +254,7 @@ async function executar(db: any, connection: any, conversaOriginal: any, mensage
     const latest = await db.AgenteIARegistro.get(agente.id);
     connection = await db.WhatsappConnection.get(connection.id);
     conversa = await db.ConversaWhatsapp.get(conversa.id);
-    if (!elegivelTesteIA(latest, conversa, mensagem, connection) || origemMemoriaTesteIA(conversa.cliente_telefone) !== origemMemoria || parseIA(latest).ativado_em !== d.ativado_em) {
+    if (!elegivelTesteIA(latest, conversa, mensagem, connection) || origemMemoriaTesteIA(conversa.cliente_telefone, connection.id) !== origemMemoria || parseIA(latest).ativado_em !== d.ativado_em) {
       await registrar('cancelado', 'Agente desativado ou alterado antes do envio.'); return { enviado: false };
     }
     const novos = await db.MensagemWhatsapp.filter({ empresa_id: EMPRESA_TESTE_IA, conversa_id: conversa.id }, '-data_envio', 40);

@@ -1,4 +1,4 @@
-import { telefoneTesteIA } from './escopoTesteIA.ts';
+import { EMPRESA_TESTE_IA, conexaoTesteIA, telefoneTesteIA } from './escopoTesteIA.ts';
 export function camposAtendimentoIA(agente: any) {
   let d: any = {};
   try { d = JSON.parse(agente?.dados_json || '{}'); } catch {}
@@ -9,8 +9,8 @@ export function camposAtendimentoIA(agente: any) {
 }
 // Marca apenas a reabertura por uma nova mensagem do contato de teste.
 export function camposReaberturaIA(conversa: any, conexao: any, recebidoEm: any) {
-  if (conversa?.empresa_id !== '699696c2c9f5bffc2e67402b' ||
-      conexao?.id !== '6a406c5e86664cdaac6f95cb' ||
+  if (conversa?.empresa_id !== EMPRESA_TESTE_IA ||
+      !conexaoTesteIA(conexao?.id) || conversa?.connection_id !== conexao?.id ||
       !telefoneTesteIA(conversa?.cliente_telefone)) return {};
   const quando = new Date(recebidoEm || Date.now());
   return { ia_sessao_id: crypto.randomUUID(), ia_sessao_inicio_em: Number.isFinite(quando.getTime()) ? quando.toISOString() : new Date().toISOString(),
