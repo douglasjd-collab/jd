@@ -9,7 +9,7 @@ import { carregarConversaAutorizada, carregarAcessoWhatsapp, nivelNaConexao } fr
 // quando ele não tem permissão geral (todas) naquela conexão.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const TEMPO_ATENDIMENTO_MS = 10 * 60 * 1000;
+const TEMPO_ATENDIMENTO_MS = 30 * 60 * 1000;
 
 function jsonArray(bruto: any): any[] {
   try {
