@@ -50,7 +50,18 @@ const MAPA_CAMPOS_DOC = [
   { extractKey: 'logradouro', field: 'res_endereco', label: 'Endereço (Residencial)' },
   { extractKey: 'numero', field: 'res_numero', label: 'Número (Residencial)' },
   { extractKey: 'complemento', field: 'res_complemento', label: 'Complemento (Residencial)' },
+  // Contato (aparece em comprovantes, faturas e contratos)
+  { extractKey: 'email', field: 'email', label: 'E-mail' },
+  { extractKey: 'telefone', field: 'celular', label: 'Celular', formatar: 'telefone' },
 ];
+
+// Telefone extraído chega só com dígitos; aplica a mesma máscara do campo.
+const formatarTelefoneDoc = (v) => {
+  const n = String(v || '').replace(/\D/g, '');
+  if (n.length === 11) return n.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+  if (n.length === 10) return n.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
+  return String(v || '');
+};
 
 const TIPO_DOC_LABEL = {
   cnh: 'CNH', rg: 'RG', comprovante_residencia: 'Comprovante de Residência',
@@ -189,9 +200,10 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
       if (!doc || doc.erro) continue;
       const origem = `${TIPO_DOC_LABEL[doc.tipo_documento] || doc.tipo_documento || 'Documento'}${doc.lado && doc.lado !== 'nao_identificado' ? ` (${doc.lado})` : ''}`;
       const campos = doc.campos || {};
-      for (const { extractKey, field, label } of MAPA_CAMPOS_DOC) {
-        const valorExtraido = campos[extractKey];
-        if (valorExtraido === null || valorExtraido === undefined || valorExtraido === '') continue;
+      for (const { extractKey, field, label, formatar } of MAPA_CAMPOS_DOC) {
+        const extraido = campos[extractKey];
+        if (extraido === null || extraido === undefined || extraido === '') continue;
+        const valorExtraido = formatar === 'telefone' ? formatarTelefoneDoc(extraido) : extraido;
         const conf = confiancaParaCampo(doc, extractKey);
         const atual = valorAtualCampo(field);
         if (atual === null) {
@@ -263,7 +275,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
         if (!doc || doc.erro) continue;
         const origem = `${TIPO_DOC_LABEL[doc.tipo_documento] || doc.tipo_documento}${doc.lado && doc.lado !== 'nao_identificado' ? ` (${doc.lado})` : ''}`;
         const campos = doc.campos || {};
-        for (const { extractKey, field, label } of MAPA_CAMPOS_DOC) {
+        for (const { extractKey, field, label, formatar } of MAPA_CAMPOS_DOC) {
           const v = campos[extractKey];
           if (v === null || v === undefined || v === '') continue;
           const valAtual = clienteExistente[field];
@@ -271,7 +283,7 @@ export default function ClienteForm({ open, onOpenChange, cliente, onSubmit, isL
           if (estaVazio) {
             preview.push({
               campo: field, label,
-              valorNovo: String(v),
+              valorNovo: String(formatar === 'telefone' ? formatarTelefoneDoc(v) : v),
               confianca: confiancaParaCampo(doc, extractKey),
               origem
             });

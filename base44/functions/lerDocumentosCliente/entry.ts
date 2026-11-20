@@ -258,7 +258,9 @@ export default async function(req: Request): Promise<Response> {
               bairro: dados.bairro ?? null,
               logradouro: dados.logradouro ?? null,
               numero: dados.numero ?? null,
-              complemento: dados.complemento ?? null
+              complemento: dados.complemento ?? null,
+              email: dados.email ?? null,
+              telefone: dados.telefone ?? null
             },
             confianca_geral: dados.confianca_geral || 'nao_identificado',
             campos_baixa_confianca: Array.isArray(dados.campos_baixa_confianca) ? dados.campos_baixa_confianca : [],
