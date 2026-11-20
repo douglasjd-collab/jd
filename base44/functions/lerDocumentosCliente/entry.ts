@@ -115,6 +115,7 @@ REGRAS CRÍTICAS:
 6. sexo: "Masculino", "Feminino" ou "Outro" (somente se claramente identificável).
 7. naturalidade = cidade/município de nascimento. nacionalidade = país (ex: Brasileira).
 8. COMPROVANTE DE RESIDÊNCIA: extrair cep, uf, cidade, bairro, logradouro, numero, complemento. Aceita como comprovante qualquer conta de serviço (água, luz, gás, telefonia fixa/móvel, internet/TV), fatura de cartão de crédito, extrato bancário, contrato de aluguel, IPTU, conta condominial, ou correspondência/boleto com CEP e endereço visíveis. Use apenas o endereço DESTINATÁRIO/CONSUMIDOR (geralmente "instalado em" / "endereço de cobrança" / "endereço de entrega"). NÃO use o endereço da empresa emissora/concessionária. Importante: retornar sempre pelo menos o CEP e o logradouro, mesmo que UF/cidade estiverem ilegíveis.
+8a. CONTATO: extrair email e telefone quando aparecerem no documento (comprovantes, faturas, boletos, contratos). Use APENAS os dados do cliente/destinatário/consumidor — NUNCA o e-mail ou telefone da empresa emissora (sac, atendimento, ouvidoria, fale conosco). telefone = somente dígitos com DDD (ex: 11999998888), sem máscara. email em minúsculas.
 9. Para cada campo, só retorne valor se estiver claramente visível. Se não estiver legível, retorne null (ausente).
 10. Atribua confianca_geral: "alta" se todos os campos foram lidos com clareza; "media" se alguns campos difíceis; "baixa" se a imagem estiver ruim, ilegível, cortada, ou houver risco de erro.
 11. Em campos_baixa_confianca, liste os nomes dos campos específicos cuja leitura você considerar incerta.
@@ -221,6 +222,8 @@ export default async function(req: Request): Promise<Response> {
           // Sanitiza CPF e CEP (garante somente dígitos)
           if (typeof dados.cpf === 'string') dados.cpf = dados.cpf.replace(/\D/g, '') || null;
           if (typeof dados.cep === 'string') dados.cep = dados.cep.replace(/\D/g, '') || null;
+          if (typeof dados.telefone === 'string') dados.telefone = dados.telefone.replace(/\D/g, '') || null;
+          if (typeof dados.email === 'string') dados.email = dados.email.trim().toLowerCase() || null;
 
           // Normaliza datas para ISO YYYY-MM-DD (inputs type="date" só aceitam esse formato)
           dados.data_nascimento = normalizarDataISO(dados.data_nascimento);
