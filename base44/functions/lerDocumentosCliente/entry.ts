@@ -88,8 +88,8 @@ const SCHEMA = {
     numero: { type: 'string' },
     complemento: { type: 'string' },
     // Contato (comprovantes, faturas e contratos costumam trazer)
-    email: { type: 'string' },
-    telefone: { type: 'string' },
+    email: { type: 'string', description: 'E-mail do titular. Em proposta de consórcio, priorize Dados de identificação do consorciado, inclusive o endereço para envio de boletos. Ignore contatos da administradora, parceiro comercial ou SAC. Omita se ausente.' },
+    telefone: { type: 'string', description: 'Telefone pessoal do titular com DDD. Em proposta de consórcio, priorize Celular na seção Dados de identificação do consorciado e use Fone do titular quando Celular estiver vazio. Ignore contatos da administradora, parceiro e SAC. Omita se ausente.' },
     // Confiança
     confianca_geral: { type: 'string', enum: ['alta', 'media', 'baixa', 'nao_identificado'] },
     campos_baixa_confianca: {
