@@ -3,6 +3,9 @@ import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { base44 } from '@/api/base44Client';
 import { Loader2 } from 'lucide-react';
 
+// Só o storage do próprio CRM libera CORS para o navegador ler o arquivo.
+const URL_PERMANENTE = /^https?:\/\/([^/]*\.)?(base44\.app|base44\.com|supabase\.co|amazonaws\.com)\//i;
+
 export default function PdfVisualizador({ url, mensagemId }) {
   const container = useRef(null);
   const canvas = useRef(null);
@@ -21,14 +24,18 @@ export default function PdfVisualizador({ url, mensagemId }) {
     setPdf(null); setPage(1); setZoom(1); setError(''); setBusy(true); setPreparando(false);
     (async () => {
       let urlPdf = url;
-      // D-API storage (backblazeb2) bloqueia fetch no navegador (sem CORS).
+      // Mídia hospedada fora do storage do CRM (D-API: media.d-api.cloud e
+      // backblazeb2) não libera CORS, então o navegador não consegue ler o PDF.
       // Passa pelo proxy do CRM, que baixa e re-envia para o storage público.
       // Após a primeira vez, a mensagem já fica com arquivo_url base44 (rápido).
-      if (mensagemId && /backblazeb2\.com/i.test(url)) {
+      if (mensagemId && urlPdf && !URL_PERMANENTE.test(urlPdf)) {
         setPreparando(true);
-        const result = await base44.functions.invoke('baixarMidiaWhatsApp', { mensagem_id: mensagemId });
-        if (!result.data?.ok || !result.data?.arquivo_url) throw new Error(result.data?.error || 'PDF indisponível');
-        urlPdf = result.data.arquivo_url;
+        try {
+          const result = await base44.functions.invoke('baixarMidiaWhatsApp', { mensagem_id: mensagemId });
+          if (result.data?.ok && result.data?.arquivo_url) urlPdf = result.data.arquivo_url;
+        } catch (e) {
+          console.warn('Falha ao preparar o PDF, tentando a URL original:', e?.message);
+        }
         if (disposed) return;
         setPreparando(false);
       }
