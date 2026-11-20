@@ -87,6 +87,9 @@ const SCHEMA = {
     logradouro: { type: 'string' },
     numero: { type: 'string' },
     complemento: { type: 'string' },
+    // Contato (comprovantes, faturas e contratos costumam trazer)
+    email: { type: 'string' },
+    telefone: { type: 'string' },
     // Confiança
     confianca_geral: { type: 'string', enum: ['alta', 'media', 'baixa', 'nao_identificado'] },
     campos_baixa_confianca: {
